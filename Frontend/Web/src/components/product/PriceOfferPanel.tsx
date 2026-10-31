@@ -20,6 +20,12 @@
  * further down for the few who ask. A request already standing is shown open,
  * because that is something the shopper is waiting on.
  *
+ * **It also opens from a line of the bag, on the owner's word** ("a discount
+ * icon next to each individual product … applies exclusively to that row"):
+ * `LineDiscount` draws it `embedded` in a sheet, open and with the price box
+ * focused. What it agrees is the price of that variant for this shopper, so
+ * it lowers that line and no other; a guest is offered the sign-in there.
+ *
  * **The agreed price is never drawn as a struck-through discount.** The
  * strikethrough and the `−27%` badge are the machinery of an advertised
  * saving, which Kuwaiti law requires a Ministry of Commerce permit for. This
@@ -44,7 +50,14 @@ const STATE_HEADING: Record<string, MessageKey> = {
   used: "offers.statusUsed",
 };
 
-export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; listPrice: string }) {
+export function PriceOfferPanel({ variantId, listPrice, embedded = false, onSignIn }: {
+  variantId: string;
+  listPrice: string;
+  /** Drawn inside a sheet that is about it: always open, no heading of its own. */
+  embedded?: boolean;
+  /** Where a guest signs in, when the panel is somewhere that can offer it. */
+  onSignIn?: () => void;
+}) {
   const { t } = useTranslation();
   const money = useMoney();
   const { isAuthenticated } = useAuth();
@@ -63,11 +76,12 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
   const [price, setPrice] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(embedded);
   const bodyId = useId();
+  const fieldId = useId();
   const priceRef = useRef<HTMLInputElement>(null);
   /* Opening it is asking to type a price, so the box takes the keyboard. */
-  const opened = useRef(false);
+  const opened = useRef(embedded);
   useEffect(() => {
     if (expanded && opened.current) priceRef.current?.focus();
     opened.current = false;
@@ -115,6 +129,108 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
     </span>
   );
 
+  const body = (
+    <>
+      {!isAuthenticated ? (
+        <p className="mt-1 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3 text-[13px] leading-6 text-[#404553]">
+          <strong className="font-extrabold text-[#0a285a]">{t("offers.signInFirst")}</strong>
+          <br />
+          {t("offers.signInWhy")}
+          {onSignIn ? (
+            <>
+              <br />
+              <button
+                type="button"
+                onClick={onSignIn}
+                className="glass glass-navy pressable mt-3 inline-flex min-h-11 items-center rounded-full px-5 text-xs font-extrabold"
+              >
+                {t("header.signIn")}
+              </button>
+            </>
+          ) : null}
+        </p>
+      ) : held && !settled ? (
+        <Standing offer={held} onWithdraw={() => withdraw.mutate({ offerId: held.id })} pending={withdraw.isPending} />
+      ) : (
+        <>
+          {held ? (
+            <p className="mt-1 text-[13px] font-bold text-[#404553]">
+              {t(STATE_HEADING[held.state])}
+              {held.vendorNote ? (
+                <span dir="auto" className="block font-medium ink-muted">{t("offers.sellerSaid", { note: held.vendorNote })}</span>
+              ) : null}
+            </p>
+          ) : null}
+
+          <form onSubmit={submit} className={`${held ? "mt-4" : "mt-1"} grid gap-3 sm:grid-cols-[1fr_auto]`}>
+            <div>
+              <label htmlFor={`${fieldId}-price`} className="text-[12px] font-semibold ink-muted">
+                {t("offers.yourPrice")}
+              </label>
+              {/*
+                * `inputMode="decimal"` rather than `type="number"`: a number
+                * input in Arabic refuses Arabic-Indic digits on some keyboards
+                * and silently drops what was typed. `dir="ltr"` sets the typing
+                * direction on the control, which is the one place `dir` on an
+                * element is about a value rather than a block.
+                */}
+              <input
+                id={`${fieldId}-price`}
+                ref={priceRef}
+                dir="ltr"
+                inputMode="decimal"
+                value={price}
+                onChange={event => setPrice(event.target.value)}
+                placeholder={listPrice}
+                className="glass-field mt-1 w-full rounded-xl px-3.5 py-2.5 text-[15px] font-bold"
+              />
+              <p className="mt-1 text-[12px] ink-muted">{t("offers.listPrice", { price: amount(listPrice) })}</p>
+            </div>
+            <div>
+              <label htmlFor={`${fieldId}-qty`} className="text-[12px] font-semibold ink-muted">
+                {t("offers.quantity")}
+              </label>
+              <input
+                id={`${fieldId}-qty`}
+                dir="ltr"
+                inputMode="numeric"
+                value={quantity}
+                onChange={event => setQuantity(Math.max(1, Math.min(999, Number(event.target.value) || 1)))}
+                className="glass-field mt-1 w-full rounded-xl px-3.5 py-2.5 text-[15px] font-bold sm:w-24"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label htmlFor={`${fieldId}-note`} className="text-[12px] font-semibold ink-muted">
+                {t("offers.messageLabel")}
+              </label>
+              <textarea
+                id={`${fieldId}-note`}
+                dir="auto"
+                rows={2}
+                maxLength={MAX_NOTE}
+                value={note}
+                onChange={event => setNote(event.target.value)}
+                placeholder={t("offers.messagePlaceholder")}
+                className="glass-field mt-1 w-full resize-y rounded-xl px-3.5 py-2.5 text-[13px]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={!price.trim() || request.isPending}
+              className="glass glass-navy pressable inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2 sm:w-fit"
+            >
+              {request.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+              {t(request.isPending ? "offers.sending" : "offers.send")}
+            </button>
+          </form>
+        </>
+      )}
+    </>
+  );
+  if (embedded) return body;
+
   return (
     <section className="mt-6 rounded-[1.25rem] border border-[#d5dfeb] bg-white/60 p-2">
       {standing ? (
@@ -142,91 +258,7 @@ export function PriceOfferPanel({ variantId, listPrice }: { variantId: string; l
       )}
 
       <div id={bodyId} hidden={!standing && !expanded} className="px-3 pb-3">
-
-      {!isAuthenticated ? (
-        <p className="mt-1 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3 text-[13px] leading-6 text-[#404553]">
-          <strong className="font-extrabold text-[#0a285a]">{t("offers.signInFirst")}</strong>
-          <br />
-          {t("offers.signInWhy")}
-        </p>
-      ) : held && !settled ? (
-        <Standing offer={held} onWithdraw={() => withdraw.mutate({ offerId: held.id })} pending={withdraw.isPending} />
-      ) : (
-        <>
-          {held ? (
-            <p className="mt-1 text-[13px] font-bold text-[#404553]">
-              {t(STATE_HEADING[held.state])}
-              {held.vendorNote ? (
-                <span dir="auto" className="block font-medium ink-muted">{t("offers.sellerSaid", { note: held.vendorNote })}</span>
-              ) : null}
-            </p>
-          ) : null}
-
-          <form onSubmit={submit} className={`${held ? "mt-4" : "mt-1"} grid gap-3 sm:grid-cols-[1fr_auto]`}>
-            <div>
-              <label htmlFor="offer-price" className="text-[12px] font-semibold ink-muted">
-                {t("offers.yourPrice")}
-              </label>
-              {/*
-                * `inputMode="decimal"` rather than `type="number"`: a number
-                * input in Arabic refuses Arabic-Indic digits on some keyboards
-                * and silently drops what was typed. `dir="ltr"` sets the typing
-                * direction on the control, which is the one place `dir` on an
-                * element is about a value rather than a block.
-                */}
-              <input
-                id="offer-price"
-                ref={priceRef}
-                dir="ltr"
-                inputMode="decimal"
-                value={price}
-                onChange={event => setPrice(event.target.value)}
-                placeholder={listPrice}
-                className="glass-field mt-1 w-full rounded-xl px-3.5 py-2.5 text-[15px] font-bold"
-              />
-              <p className="mt-1 text-[12px] ink-muted">{t("offers.listPrice", { price: amount(listPrice) })}</p>
-            </div>
-            <div>
-              <label htmlFor="offer-qty" className="text-[12px] font-semibold ink-muted">
-                {t("offers.quantity")}
-              </label>
-              <input
-                id="offer-qty"
-                dir="ltr"
-                inputMode="numeric"
-                value={quantity}
-                onChange={event => setQuantity(Math.max(1, Math.min(999, Number(event.target.value) || 1)))}
-                className="glass-field mt-1 w-full rounded-xl px-3.5 py-2.5 text-[15px] font-bold sm:w-24"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label htmlFor="offer-note" className="text-[12px] font-semibold ink-muted">
-                {t("offers.messageLabel")}
-              </label>
-              <textarea
-                id="offer-note"
-                dir="auto"
-                rows={2}
-                maxLength={MAX_NOTE}
-                value={note}
-                onChange={event => setNote(event.target.value)}
-                placeholder={t("offers.messagePlaceholder")}
-                className="glass-field mt-1 w-full resize-y rounded-xl px-3.5 py-2.5 text-[13px]"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={!price.trim() || request.isPending}
-              className="glass glass-navy pressable inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2 sm:w-fit"
-            >
-              {request.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-              {t(request.isPending ? "offers.sending" : "offers.send")}
-            </button>
-          </form>
-        </>
-      )}
+        {body}
       </div>
     </section>
   );

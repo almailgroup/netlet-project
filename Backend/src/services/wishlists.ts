@@ -30,7 +30,7 @@
  * against a real database.
  */
 import { randomBytes } from "node:crypto";
-import { and, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, like, lt, or, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
 import {
   customerPreferences,
@@ -522,6 +522,48 @@ export async function publicListsByPhone(rawPhone: string, viewerId: number | nu
     .innerJoin(customerPreferences, eq(customerPreferences.userId, wishlists.userId))
     .where(and(eq(customerPreferences.wishlistPhone, phone), eq(wishlists.visibility, "public")))
     .orderBy(wishlists.createdAt, wishlists.id);
+
+  return Promise.all(rows.map(row => publicFrom(row, viewerId)));
+}
+
+/** The most lists one name search answers with: a name is not unique. */
+export const NAME_SEARCH_LIMIT = 20;
+
+/**
+ * Published lists by the name their owner shows on them — the owner's word:
+ * "search for someone's public wishlist by their phone number or their
+ * username". NetLet has no usernames; the name a giver can know is the one a
+ * list shows (`ownerName`), set on that list by its owner, and only on a list
+ * made public. A list with no name shown is found by its phone number or its
+ * link alone.
+ *
+ * The whole name, or its first word or words ("Noura" finds "Noura
+ * Al-Sabah"), compared without case; never a fragment of a word, so "No"
+ * finds nobody. At most `NAME_SEARCH_LIMIT`, and the router counts every
+ * search against the caller's address, as it does a phone. What comes back is
+ * what the phone lookup answers with: the list, its name and its link —
+ * nothing about the account behind it.
+ */
+export async function publicListsByName(rawName: string, viewerId: number | null = null): Promise<PublicListView[]> {
+  const name = rawName.normalize("NFC").trim().replace(/\s+/g, " ").toLowerCase();
+  if (name.length < 2) return [];
+  const escaped = name.replace(/[\\%_]/g, character => `\\${character}`);
+  const shown = sql`lower(trim(${wishlists.ownerName}))`;
+
+  const rows = await (await db())
+    .select({
+      id: wishlists.id,
+      title: wishlists.title,
+      ownerName: wishlists.ownerName,
+      shareToken: wishlists.shareToken,
+    })
+    .from(wishlists)
+    .where(and(
+      eq(wishlists.visibility, "public"),
+      or(eq(shown, name), like(shown, `${escaped} %`)),
+    ))
+    .orderBy(wishlists.createdAt, wishlists.id)
+    .limit(NAME_SEARCH_LIMIT);
 
   return Promise.all(rows.map(row => publicFrom(row, viewerId)));
 }

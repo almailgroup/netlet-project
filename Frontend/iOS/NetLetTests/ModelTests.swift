@@ -138,6 +138,19 @@ final class ValidationTests: XCTestCase {
         XCTAssertNil(PhoneNumber.normalise("1234"))
     }
 
+    /// `giftLookup`'s own cases in `wishlist.test.ts`.
+    func testTheGiftLookupReadsANumberFirstThenAName() {
+        XCTAssertEqual(GiftLookup.read("5012 3456"), .phone("+96550123456"))
+        XCTAssertEqual(GiftLookup.read("٥٠١٢٣٤٥٦"), .phone("+96550123456"))
+        XCTAssertEqual(GiftLookup.read("  Noura   Al-Sabah "), .name("Noura Al-Sabah"))
+        XCTAssertEqual(GiftLookup.read("نورة"), .name("نورة"))
+        XCTAssertEqual(GiftLookup.read("Noura2024"), .name("Noura2024"))
+        XCTAssertNil(GiftLookup.read("N"))
+        XCTAssertNil(GiftLookup.read("1234"))
+        XCTAssertNil(GiftLookup.read("--"))
+        XCTAssertNil(GiftLookup.read(String(repeating: "a", count: GiftLookup.nameMax + 1)))
+    }
+
     func testAListingAsksForWhatTheServerRefuses() {
         let rules = ReferenceData.shared.rules.listing
         var draft = Validation.ListingDraft()
@@ -225,6 +238,26 @@ final class TillTests: XCTestCase {
         XCTAssertEqual(Till.spendValue(150), money("0.150"))
         XCTAssertEqual(Till.giftCardPayment(remaining: money("2.000"), owed: money("5.000")), money("2.000"))
         XCTAssertEqual(Till.giftCardPayment(remaining: money("9.000"), owed: money("5.000")), money("5.000"))
+    }
+
+    /// The cart's two boxes (`useSavingsBill`): a discount and a card on one
+    /// bag, the code first and the card paying what is left; a quote of the
+    /// wrong kind, or a refused one, takes nothing off.
+    func testADiscountAndAGiftCardComeOffOneBag() async throws {
+        let cart = try await Fixtures.cart()
+        let off = API.VoucherQuote(ok: true, kind: "discount", amount: money("1.000"), remaining: nil, reason: nil)
+        let card = API.VoucherQuote(ok: true, kind: "gift", amount: nil, remaining: money("500.000"), reason: nil)
+        let bill = Till.bill(for: cart, discount: off, gift: card, balance: 0, usePoints: false)
+        XCTAssertEqual(bill.discount, money("1.000"))
+        XCTAssertEqual(bill.giftCard, cart.total - money("1.000"), "the card pays what the code left")
+        XCTAssertEqual(bill.payable, .zero)
+        XCTAssertTrue(bill.reduced)
+        let swapped = Till.bill(for: cart, discount: card, gift: off, balance: 0, usePoints: false)
+        XCTAssertEqual(swapped.payable, cart.total, "each box takes only its own kind")
+        XCTAssertFalse(swapped.reduced)
+        let refused = API.VoucherQuote(ok: false, kind: nil, amount: nil, remaining: nil, reason: "voucher.expired")
+        XCTAssertEqual(Till.bill(for: cart, discount: refused, gift: nil, balance: 0, usePoints: false).payable, cart.total)
+        XCTAssertEqual(SavingsModel.normalise(" welcome-10 "), "WELCOME10")
     }
 }
 

@@ -22,7 +22,7 @@ struct CheckoutView: View {
     var body: some View {
         Group {
             if app.session.isSignedIn {
-                ModelHost(make: { CheckoutViewModel(orders: app.services.orders, account: app.services.account, api: app.services.api) }) { model in
+                ModelHost(make: { CheckoutViewModel(orders: app.services.orders, account: app.services.account, savings: app.savings) }) { model in
                     CheckoutForm(model: model, path: path)
                 }
             } else {
@@ -70,7 +70,7 @@ private struct CheckoutForm: View {
                 if let cart, !cart.isEmpty {
                     CheckoutItems(cart: cart) { editCart() }
                     // The code right before the ways to pay, open.
-                    CodeCard(cart: cart, model: model)
+                    BagSavingsCard(cart: cart)
                 }
                 PaymentMethods(cart: cart, model: model)
                 if let cart, !cart.isEmpty {
@@ -427,183 +427,6 @@ private struct PaymentMethods: View {
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.cardLine, lineWidth: chosen ? 2 : 1))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(chosen ? .isSelected : [])
-    }
-}
-
-/// A discount code or a gift card, in one field, and the points where the
-/// account has some — **open from the start, right before the ways to pay, on
-/// the owner's word** ("make the discount code section expanded by default so
-/// users can enter their code right away"); it can still be folded.
-private struct CodeCard: View {
-    let cart: Cart
-    @Bindable var model: CheckoutViewModel
-    @State private var open = true
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        let applied = !model.appliedCode.isEmpty
-        let shown = open || applied
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                open.toggle()
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "ticket").font(.system(size: 16, weight: .medium)).foregroundStyle(Brand.muted).accessibilityHidden(true)
-                    Text(l.t("checkout.voucherLabel")).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
-                    Spacer(minLength: 8)
-                    if model.quote?.ok == true {
-                        Text(model.appliedCode)
-                            .font(.inter(12, .bold))
-                            .foregroundStyle(Brand.success)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 3)
-                            .background(Capsule().fill(Brand.successFill))
-                    }
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Brand.muted)
-                        .rotationEffect(.degrees(shown ? 180 : 0))
-                        .accessibilityHidden(true)
-                }
-                .frame(minHeight: 48)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.tap)
-            if shown {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        TextField(l.t("checkout.voucherPlaceholder"), text: $model.codeInput)
-                            .textInputAutocapitalization(.characters)
-                            .autocorrectionDisabled()
-                            .textContentType(.oneTimeCode)
-                            .submitLabel(.go)
-                            .onSubmit { Task { await model.applyCode(cartId: cart.id) } }
-                            .environment(\.layoutDirection, .leftToRight)
-                            .padding(.horizontal, 12)
-                            .frame(minHeight: 44)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.pearl))
-                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
-                            .accessibilityLabel(l.t("checkout.voucherLabel"))
-                        Button(l.t("checkout.voucherApply")) { Task { await model.applyCode(cartId: cart.id) } }
-                            .buttonStyle(CompactPrimaryStyle())
-                            .disabled(model.codeInput.trimmingCharacters(in: .whitespaces).isEmpty || model.quoting)
-                    }
-                    if let refusal = model.codeRefusal {
-                        Text(l.t(refusal)).font(.inter(13, .semibold)).foregroundStyle(Brand.danger)
-                    } else if model.quote?.ok == true {
-                        Label(l.t("checkout.codeApplied"), systemImage: "checkmark")
-                            .font(.inter(13, .semibold))
-                            .foregroundStyle(Brand.success)
-                    }
-                }
-                .padding(.bottom, 12)
-            }
-            // Absent rather than disabled for a balance of nothing: a choice
-            // that can only be made to no effect is the dead control.
-            if model.balance > 0 {
-                Divider().overlay(Brand.cardLine)
-                let spendable = Till.pointsSpendable(model.balance, on: cart.total)
-                Toggle(isOn: $model.usePoints) {
-                    HStack(spacing: 8) {
-                        PointsCoin(size: 20)
-                        Text(l.t("checkout.usePoints", ["points": PointsFormat.count(spendable, l.current), "value": Till.spendValue(spendable).formatted(l.current)]))
-                            .font(.inter(14, .semibold))
-                    }
-                }
-                .tint(Brand.navy)
-                .frame(minHeight: 48)
-                .onChange(of: model.usePoints) { Haptics.tap() }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-    }
-}
-
-/// A dropdown's closed face: the choice, or what to choose, and a chevron.
-struct MenuField: View {
-    let text: String?
-    let placeholder: String
-    /// Filled by a dropped pin and not yet changed: pale orange, like `LabeledField`'s.
-    var fromPin = false
-
-    var body: some View {
-        HStack {
-            Text(text ?? placeholder)
-                .foregroundStyle(text == nil ? Brand.muted : Brand.ink)
-                .lineLimit(1)
-            Spacer()
-            Image(systemName: "chevron.up.chevron.down").font(.footnote).foregroundStyle(Brand.muted)
-        }
-        .padding(.horizontal, 14)
-        .frame(minHeight: 50)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fromPin ? Brand.fromPin : Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(fromPin ? Brand.fromPinRim : Brand.line, lineWidth: 1))
-        .animation(.easeOut(duration: 0.25), value: fromPin)
-    }
-}
-
-/// Place order: the brand orange with navy words (4.65:1), full width, with the total in it.
-struct OrderButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.body.weight(.bold))
-            .foregroundStyle(Brand.navy)
-            .frame(maxWidth: .infinity, minHeight: 56)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Brand.orange.opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.45))
-            )
-            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
-    }
-}
-
-/// The page an order lands on: its number, said to be read down a phone, and the way to it.
-struct OrderPlacedView: View {
-    let reference: String
-    let path: Binding<NavigationPath>?
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(Brand.success)
-                .accessibilityHidden(true)
-            Text(l.t("orders.reference"))
-                .font(.headline)
-                .foregroundStyle(Brand.muted)
-            Text(reference)
-                .font(.title2.monospaced().weight(.bold))
-                .foregroundStyle(Brand.navy)
-                .textSelection(.enabled)
-                .environment(\.layoutDirection, .leftToRight)
-            Text(l.t("checkout.placed", ["reference": reference]))
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Brand.ink)
-            Button(l.t("ios.order.view")) {
-                path?.wrappedValue = NavigationPath([Route.order(reference: reference)])
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            Button(l.t("header.continueShopping")) {
-                path?.wrappedValue = NavigationPath()
-                app.selectedTab = .home
-            }
-            .buttonStyle(SecondaryButtonStyle())
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Brand.ground.ignoresSafeArea())
-        .navigationBarBackButtonHidden()
-        .navigationTitle(l.t("checkout.heading"))
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

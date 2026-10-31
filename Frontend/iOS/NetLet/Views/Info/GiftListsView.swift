@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Finding somebody's wishlist by their phone number — the web's `/gifts`.
-/// "Nobody has that number" and "they publish nothing" are the same answer,
-/// so the lookup cannot be used to ask who shops here.
+/// Finding somebody's wishlist by their phone number or the name they show on
+/// it — the web's `/gifts`. "Nobody has that number" and "they publish
+/// nothing" are the same answer, so the lookup cannot be used to ask who
+/// shops here.
 struct GiftLookupView: View {
     @State private var typed = ""
     @State private var invalid = false
@@ -22,11 +23,13 @@ struct GiftLookupView: View {
                         LabeledField(
                             label: l.t("gift.lookupLabel"),
                             text: $typed,
-                            placeholder: "5012 3456",
-                            problem: invalid ? "wishlist.phoneInvalid" : nil,
-                            keyboard: .phonePad,
-                            leftToRight: true
+                            placeholder: l.t("gift.lookupPlaceholder"),
+                            problem: invalid ? "gift.lookupInvalid" : nil
                         )
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.search)
+                        .onSubmit { Task { await find() } }
                         Button {
                             Task { await find() }
                         } label: {
@@ -51,7 +54,7 @@ struct GiftLookupView: View {
     }
 
     private func find() async {
-        guard let phone = PhoneNumber.normalise(typed) else {
+        guard let query = GiftLookup.read(typed) else {
             invalid = true
             Haptics.refused()
             return
@@ -61,7 +64,10 @@ struct GiftLookupView: View {
         defer { searching = false }
         refusal = nil
         do {
-            found = try await app.services.api.call(API.giftListsByPhone, .init(phone: phone))
+            switch query {
+            case .phone(let phone): found = try await app.services.api.call(API.giftListsByPhone, .init(phone: phone))
+            case .name(let name): found = try await app.services.api.call(API.giftListsByName, .init(name: name))
+            }
         } catch {
             let key = APIError.from(error).messageKey(knownKey: l.phrasebook.has)
             refusal = key.hasPrefix("ios.") || key.hasPrefix("error.") ? "gift.loadFailed" : key

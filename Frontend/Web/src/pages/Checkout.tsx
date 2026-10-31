@@ -44,10 +44,7 @@ import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { formatPhone, normalisePhone } from "@shared/commerce/wishlist";
 import { useAuth } from "@/hooks/useAuth";
-import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
 import { sharerIdFromCode } from "@shared/commerce/affiliate";
-import { giftCardPayment, settle } from "@shared/commerce/vouchers";
-import { subtractMoney } from "@shared/money";
 import { trpc } from "@/lib/trpc";
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
@@ -57,13 +54,12 @@ import AuthDialog from "@/components/auth/AuthDialog";
 import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddress";
 import { heldClaims } from "@/lib/giftClaims";
 import { productLinks } from "@/lib/referral";
-import { formatCount } from "@/lib/format";
-import { PointsCoin } from "@/components/ui/PointsCoin";
+import { BagSavings, useSavingsBill } from "@/components/cart/BagSavings";
 import { pressHaptic } from "@/lib/haptics";
 import { bagGroups, type BagGroup } from "@/lib/bagGroups";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
-import { Banknote, Check, ChevronDown, CreditCard, Info, LoaderCircle, PackageCheck, RotateCcw, ShoppingBag, Smartphone, Store, Ticket, Truck, Wallet } from "lucide-react";
+import { Banknote, CreditCard, Info, LoaderCircle, PackageCheck, RotateCcw, ShoppingBag, Smartphone, Store, Truck, Wallet } from "lucide-react";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { cleanParts, hasParts, missingParts, partsProblems } from "@shared/commerce/kuwaitAddress";
 import { addressLineOf } from "@shared/commerce/addresses";
@@ -180,28 +176,13 @@ export default function Checkout() {
   const fixable = Boolean(blocker && blocker !== "checkout.needCod" && blocker !== "checkout.needItems");
 
   /*
-   * A discount code or a gift card, in one field (3.2.3): a shopper holding a
-   * code does not necessarily know which kind it is. Applied on a press rather
-   * than per keystroke, which would be a query per character and a refusal
-   * flashing at somebody halfway through typing. **Open from the start, right
-   * before the ways to pay, on the owner's word** ("make the discount code
-   * section expanded by default so users can enter their code right away");
-   * it can still be folded.
+   * A discount code, a gift card and points (3.2.3, 3.1.15), each its own
+   * row — the cart's own card (`BagSavings`), so what was chosen in the cart
+   * is here already and can still be changed. **Open, right before the ways to
+   * pay, on the owner's word.** `useSavingsBill` is the arithmetic, the order
+   * writer's own `settle`.
    */
-  const [codeOpen, setCodeOpen] = useState(true);
-  const [codeInput, setCodeInput] = useState("");
-  const [applied, setApplied] = useState<string>("");
-  const quote = trpc.orders.quoteVoucher.useQuery(
-    { cartId: cart?.id ?? "", code: applied },
-    /* Not on focus: a code that named nothing counts against the address's
-       ceiling on guesses each time it is asked, and switching tabs is not a
-       guess. */
-    { enabled: Boolean(cart?.id && applied), refetchOnWindowFocus: false },
-  );
-
-  /* Points (3.1.15), offered only to a balance that has some. The figure is a
-     display; the server reads the balance again and caps it at placement. */
-  const rewards = trpc.rewards.mine.useQuery(undefined, { enabled: isAuthenticated });
+  const bill = useSavingsBill();
   /* Whose links the bag's products came through (3.7), said before paying:
      paid promotion is disclosed to the shopper it reaches. Only a member
      whose link earns on it is named, and never this shopper's own. */
@@ -212,24 +193,6 @@ export default function Checkout() {
     .filter(code => !user || sharerIdFromCode(code) !== user.id);
   const via = trpc.affiliates.sharers.useQuery({ codes: linkCodes }, { enabled: linkCodes.length > 0, retry: false, staleTime: 5 * 60_000 });
   const sharerNames = (via.data ?? []).map(sharer => sharer.displayName);
-  const [usePoints, setUsePoints] = useState(false);
-  const balance = rewards.data?.balance ?? 0;
-  const orderTotal = cart?.total.amount ?? subtotal.amount;
-  /* The same `settle` the order writer uses, so the summary and the bill
-     cannot disagree about the order things come off in. */
-  const voucher = quote.data?.ok ? quote.data : null;
-  const discountOff = voucher?.kind === "discount" ? voucher.amount : "0.000";
-  const afterDiscount = subtractMoney(orderTotal, discountOff);
-  const pointsApplied = usePoints ? pointsSpendableOn(balance, afterDiscount) : 0;
-  const pointsOff = spendValue(pointsApplied);
-  const giftOff = voucher?.kind === "gift" ? giftCardPayment(voucher.remaining, subtractMoney(afterDiscount, pointsOff)) : "0.000";
-  const bill = settle({
-    goods: cart?.subtotal.amount ?? subtotal.amount,
-    delivery: cart?.delivery.total.amount ?? "0.000",
-    discount: discountOff,
-    points: pointsOff,
-    giftCard: giftOff,
-  });
   const payable = { amount: bill.payable, currencyCode: "KWD" };
 
   const placeNow = () => {
@@ -245,8 +208,9 @@ export default function Checkout() {
       addressNotes: address.addressNotes?.trim() || null,
       pin: address.pin ?? null,
       addressParts: cleanParts(parts),
-      usePoints,
-      voucherCode: applied || undefined,
+      usePoints: bill.usePoints,
+      voucherCode: bill.voucherCode,
+      giftCardCode: bill.giftCardCode,
       giftClaims: heldClaims(),
       /* Product links this browser arrived through (3.1.14, 3.7); the server
          keeps only those for products in this order, from members, and never
@@ -299,58 +263,10 @@ export default function Checkout() {
                 </div>
               ) : null}
               <OrderItems />
-              {/* A code, and points where the account has some — right before
-                  the ways to pay, open. */}
-              <section aria-label={t("checkout.voucherLabel")} className={`${CARD} px-4 py-1.5 sm:px-5`}>
-                <button
-                  type="button"
-                  aria-expanded={codeOpen || Boolean(applied)}
-                  aria-controls="checkout-code"
-                  onClick={() => setCodeOpen(value => !value)}
-                  className="flex min-h-12 w-full items-center gap-3 text-start"
-                >
-                  <Ticket className="size-[18px] shrink-0 text-[#536b8c]" aria-hidden />
-                  <span className="min-w-0 flex-1 text-[15px] font-bold">{t("checkout.voucherLabel")}</span>
-                  {voucher ? <span className="shrink-0 rounded-full bg-[#d8ead8] px-2.5 py-0.5 text-[12px] font-bold text-[#2f5d33]">{applied}</span> : null}
-                  <ChevronDown className={`size-4 shrink-0 text-[#536b8c] transition-transform ${codeOpen || applied ? "rotate-180" : ""}`} aria-hidden />
-                </button>
-                {codeOpen || applied ? (
-                  <div id="checkout-code" className="pb-3">
-                    <div className="flex gap-2">
-                      <input
-                        id="voucher-code"
-                        aria-label={t("checkout.voucherLabel")}
-                        dir="ltr"
-                        autoComplete="off"
-                        autoCorrect="off"
-                        autoCapitalize="characters"
-                        spellCheck={false}
-                        enterKeyHint="go"
-                        value={codeInput}
-                        onChange={event => setCodeInput(event.target.value)}
-                        onKeyDown={event => { if (event.key === "Enter" && codeInput.trim()) setApplied(codeInput.trim()); }}
-                        placeholder={t("checkout.voucherPlaceholder")}
-                        className={`${fieldClass} min-w-0 flex-1`}
-                      />
-                      <button type="button" onClick={() => setApplied(codeInput.trim())} disabled={!codeInput.trim() || quote.isFetching} className="h-11 shrink-0 rounded-xl bg-[#0a285a] px-4 text-[14px] font-bold text-white hover:bg-[#0d3372] disabled:opacity-50">
-                        {t("checkout.voucherApply")}
-                      </button>
-                    </div>
-                    {applied && quote.data && !quote.data.ok ? <p className="mt-2 text-[13px] font-semibold text-[#8c2f22]">{t(quote.data.reason)}</p>
-                      : applied && quote.error ? <p className="mt-2 text-[13px] font-semibold text-[#8c2f22]">{tError(quote.error.message)}</p>
-                      : voucher ? <p className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-[#2f5d33]"><Check className="size-4" aria-hidden />{t("checkout.codeApplied")}</p>
-                      : null}
-                  </div>
-                ) : null}
-                {/* Absent rather than disabled for a balance of nothing: a box
-                    that can only be ticked to no effect is the dead control. */}
-                {balance > 0 ? (
-                  <label className="flex min-h-12 cursor-pointer items-center gap-3 border-t border-[#eef1f5]">
-                    <input type="checkbox" checked={usePoints} onChange={event => setUsePoints(event.target.checked)} className="size-4 shrink-0 accent-[#0a285a]" />
-                    <PointsCoin size={20} />
-                    <span className="text-[14px] font-semibold">{t("checkout.usePoints", { points: formatCount(pointsSpendableOn(balance, orderTotal), locale), value: money({ amount: spendValue(pointsSpendableOn(balance, orderTotal)), currencyCode: "KWD" }) })}</span>
-                  </label>
-                ) : null}
+              {/* A code, a gift card and points — right before the ways to
+                  pay, open. */}
+              <section aria-label={t("cart.savingsHeading")} className={`${CARD} px-4 sm:px-5`}>
+                <BagSavings />
               </section>
               <PaymentMethods />
             </div>
@@ -360,9 +276,9 @@ export default function Checkout() {
               <dl className="mt-3 space-y-2 text-[14px]">
                 <Row label={<>{t("cart.subtotal")} <span className="ink-muted">({t("cart.itemCount", { count: cart?.itemCount ?? 0 })})</span></>} value={settling ? null : money(subtotal)} />
                 <Row label={t("cart.delivery")} value={settling ? null : cart ? (Number(cart.delivery.total.amount) > 0 ? money(cart.delivery.total) : t("cart.deliveryFree")) : null} faint={syncing} />
-                {voucher?.kind === "discount" && Number(discountOff) > 0 ? <Row label={t("checkout.discountRow")} value={`−${money({ amount: discountOff, currencyCode: "KWD" })}`} good /> : null}
-                {pointsApplied > 0 ? <Row label={t("checkout.pointsRow")} value={`−${money({ amount: pointsOff, currencyCode: "KWD" })}`} good /> : null}
-                {voucher?.kind === "gift" && Number(giftOff) > 0 ? <Row label={t("checkout.giftCardRow")} value={`−${money({ amount: giftOff, currencyCode: "KWD" })}`} good /> : null}
+                {Number(bill.discountOff) > 0 ? <Row label={t("checkout.discountRow")} value={`−${money({ amount: bill.discountOff, currencyCode: "KWD" })}`} good /> : null}
+                {Number(bill.pointsOff) > 0 ? <Row label={t("checkout.pointsRow")} value={`−${money({ amount: bill.pointsOff, currencyCode: "KWD" })}`} good /> : null}
+                {Number(bill.giftOff) > 0 ? <Row label={t("checkout.giftCardRow")} value={`−${money({ amount: bill.giftOff, currencyCode: "KWD" })}`} good /> : null}
               </dl>
               {/* A member's free delivery (4.1), said with what it saved. */}
               {cart?.delivery.memberWaived ? <p className="mt-2 text-[12px] font-bold text-[#2f5d33]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}

@@ -147,6 +147,8 @@ export type PlaceOrderDetails = {
    * worth is decided here, against the catalog, at the last moment.
    */
   voucherCode?: string | null;
+  /** A gift card from its own box, beside a discount in `voucherCode`. */
+  giftCardCode?: string | null;
 };
 
 /** Thrown with a message key, so the client says it in the shopper's language. */
@@ -644,20 +646,38 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
    * that order lives, so the checkout summary and this cannot disagree.
    */
   const typed = details.voucherCode?.trim() ?? "";
-  const quoted = typed
-    ? await quoteVoucher(db, typed, {
-        goods: draft.totals.itemsTotal,
-        owed: draft.totals.grandTotal,
-        userId: details.userId ?? null,
-      })
-    : null;
+  const typedGift = details.giftCardCode?.trim() ?? "";
+  const context = {
+    goods: draft.totals.itemsTotal,
+    owed: draft.totals.grandTotal,
+    userId: details.userId ?? null,
+  };
+  const quotedCode = typed ? await quoteVoucher(db, typed, context) : null;
+  const quotedGift = typedGift ? await quoteVoucher(db, typedGift, context) : null;
   /* A code that has stopped working between the page and the button refuses
      the order rather than quietly charging the full price — the same rule the
-     points take follows, and for the same reason. */
-  if (quoted && !quoted.ok) {
+     points take follows, and for the same reason. A gift card's own box holds
+     a gift card, and one card pays: a discount code typed there, or a second
+     card as well as the one in the code box, is refused the same way. */
+  const codeIsGift = quotedCode?.ok === true && quotedCode.kind === "gift";
+  if (
+    (quotedCode && !quotedCode.ok)
+    || (quotedGift && (!quotedGift.ok || quotedGift.kind !== "gift"))
+    || (codeIsGift && quotedGift)
+  ) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     throw new OrderRefused("order.voucherGone");
   }
+  /*
+   * A discount and a gift card are two things and both may be used (the
+   * cart's own boxes, on the owner's word): the code box's code is the
+   * discount, or — as checkout has always taken it — a gift card when it is
+   * one and the gift box is empty.
+   */
+  const discountQuote = quotedCode?.ok && quotedCode.kind === "discount" ? quotedCode : null;
+  const giftQuote = quotedGift?.ok && quotedGift.kind === "gift"
+    ? quotedGift
+    : quotedCode?.ok && quotedCode.kind === "gift" ? quotedCode : null;
   /*
    * The code's use is *taken* here, not recorded afterwards.
    *
@@ -667,15 +687,15 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
    * before the order exists — under a lock, like the points, and handed back
    * like the stock — is what makes the ceiling true.
    */
-  const claimId = quoted?.ok && quoted.kind === "discount"
-    ? await claimRedemption(db, quoted.code, { userId: details.userId ?? null, amount: quoted.amount })
+  const claimId = discountQuote
+    ? await claimRedemption(db, discountQuote.code, { userId: details.userId ?? null, amount: discountQuote.amount })
     : null;
-  if (quoted?.ok && quoted.kind === "discount" && claimId === null) {
+  if (discountQuote && claimId === null) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     throw new OrderRefused("order.voucherGone");
   }
 
-  const discountValue = claimId !== null && quoted?.ok ? quoted.amount : "0.000";
+  const discountValue = claimId !== null && discountQuote ? discountQuote.amount : "0.000";
   const afterDiscount = subtractMoney(draft.totals.grandTotal, discountValue);
 
   const wantedPoints = details.usePoints && details.userId
@@ -697,10 +717,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
    * with the predicate inside it, and handed back if anything later fails.
    */
   const owedBeforeCard = subtractMoney(afterDiscount, pointsValue);
-  const giftAsked =
-    quoted?.ok && quoted.kind === "gift" ? giftCardPayment(quoted.remaining, owedBeforeCard) : "0.000";
-  const giftTaken = toFils(giftAsked) > 0n && quoted?.ok && quoted.kind === "gift"
-    ? await spendGiftCard(db, quoted.code, giftAsked)
+  const giftAsked = giftQuote ? giftCardPayment(giftQuote.remaining, owedBeforeCard) : "0.000";
+  const giftTaken = toFils(giftAsked) > 0n && giftQuote
+    ? await spendGiftCard(db, giftQuote.code, giftAsked)
     : false;
   if (toFils(giftAsked) > 0n && !giftTaken) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
@@ -744,9 +763,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
           grandTotal: settled.payable,
           pointsSpent,
           pointsValue,
-          discountCode: toFils(discountValue) > 0n && quoted?.ok ? quoted.code : null,
+          discountCode: toFils(discountValue) > 0n && discountQuote ? discountQuote.code : null,
           discountValue,
-          giftCardCode: giftTaken && quoted?.ok ? quoted.code : null,
+          giftCardCode: giftTaken && giftQuote ? giftQuote.code : null,
           giftCardValue,
           commissionTotal: draft.totals.commissionTotal,
           /* Frozen beside the total, so an order from last year still says who
@@ -845,7 +864,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
          often a code has been used, so it had to exist before anybody else could
          be told the code was still good. This only attaches the order to it. */
       if (claimId !== null) await stampRedemption(w, claimId, order.id);
-      if (giftTaken && quoted?.ok) await recordGiftCardUse(w, quoted.code, order.id, giftCardValue);
+      if (giftTaken && giftQuote) await recordGiftCardUse(w, giftQuote.code, order.id, giftCardValue);
 
       // The basket has become the order; leaving it would let the same items be
       // bought twice from a stale tab.
@@ -888,7 +907,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     if (pointsEntryId !== null) await returnPoints(db, pointsEntryId);
     /* A card charged for an order that does not exist has to go back, the same
        as the stock and the points. */
-    if (giftTaken && quoted?.ok) await refundGiftCard(db, quoted.code, giftCardValue);
+    if (giftTaken && giftQuote) await refundGiftCard(db, giftQuote.code, giftCardValue);
     if (claimId !== null) await returnRedemption(db, claimId);
     throw error;
   }

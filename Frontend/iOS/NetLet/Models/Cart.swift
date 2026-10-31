@@ -62,6 +62,10 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     /// the bag's stepper stops there (`BagStock`). Nil from a bag read before
     /// the server sent it.
     var maxQuantity: Int? = nil
+    /// The list price, when something lowered this line's (3.1.13): an agreed
+    /// price, a subscriber's or a member's, which `priceReason` names.
+    var agreedFrom: Money? = nil
+    var priceReason: String? = nil
 
     struct FastDelivery: Decodable, Hashable, Sendable {
         let fee: Money

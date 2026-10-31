@@ -9,7 +9,7 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -902,6 +902,42 @@ describe("codes and gift cards", () => {
     await db.insert(giftCards).values({ code: "NLSPENT", initialBalance: "5.000", remaining: "0.000" });
     await expect(buy(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), "NLSPENT"))
       .rejects.toMatchObject({ reason: "order.voucherGone" });
+  });
+
+  /* The cart's own boxes (on the owner's word): a discount and a card on one
+     order, the code first and the card paying what is left. */
+  it("takes a discount code and a gift card together, the code first", async () => {
+    await db.insert(discountCodes).values({ code: "BOTHOFF", kind: "fixed", value: "4.375" });
+    await db.insert(giftCards).values({ code: "NLBOTH", initialBalance: "15.000", remaining: "15.000" });
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper, voucherCode: "BOTHOFF", giftCardCode: "nlboth" });
+
+    const [order] = await db.select().from(orders).where(eq(orders.id, placed.order.id));
+    // 24.375 less the code's 4.375 is 20.000, of which the card pays 15.000.
+    expect(order.discountCode).toBe("BOTHOFF");
+    expect(order.discountValue).toBe("4.375");
+    expect(order.giftCardCode).toBe("NLBOTH");
+    expect(order.giftCardValue).toBe("15.000");
+    expect(order.grandTotal).toBe("5.000");
+    const [card] = await db.select().from(giftCards).where(eq(giftCards.code, "NLBOTH"));
+    expect(card.remaining).toBe("0.000");
+  });
+
+  it("refuses a discount code in the gift card's box, and two cards at once", async () => {
+    await db.insert(discountCodes).values({ code: "NOTACARD", kind: "fixed", value: "1.000" });
+    await db.insert(giftCards).values([
+      { code: "NLONE", initialBalance: "5.000", remaining: "5.000" },
+      { code: "NLTWO", initialBalance: "5.000", remaining: "5.000" },
+    ]);
+    const place = async (voucherCode: string | undefined, giftCardCode: string) =>
+      ordersModule.placeOrder(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), {
+        ...DETAILS, userId: ids.shopper, voucherCode, giftCardCode,
+      });
+    await expect(place(undefined, "NOTACARD")).rejects.toMatchObject({ reason: "order.voucherGone" });
+    await expect(place("NLONE", "NLTWO")).rejects.toMatchObject({ reason: "order.voucherGone" });
+    /* Nothing was spent by either refusal. */
+    const cards = await db.select().from(giftCards).where(inArray(giftCards.code, ["NLONE", "NLTWO"]));
+    expect(cards.map(card => card.remaining)).toEqual(["5.000", "5.000"]);
   });
 
   it("refuses a code nobody has heard of", async () => {

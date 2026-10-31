@@ -279,9 +279,27 @@ private struct SizeGuideSheet: View {
 
 /// "Ask for a better price" — the web's `PriceOfferPanel`: one line until
 /// pressed; a request standing is drawn open, being something the shopper is
-/// waiting on, with Withdraw.
+/// waiting on, with Withdraw. `embedded` is the same panel inside the cart
+/// line's sheet (`LineDiscountButton`): always open, with no heading of its
+/// own, and a guest's Sign in handed to the sheet so it goes down first.
 struct PriceRequestPanel: View {
-    let variant: ProductVariant
+    let variantId: String
+    let listPrice: Money
+    var embedded = false
+    var onSignIn: (() -> Void)?
+
+    init(variant: ProductVariant) {
+        variantId = variant.id
+        listPrice = variant.price
+    }
+
+    init(variantId: String, listPrice: Money, embedded: Bool, onSignIn: (() -> Void)? = nil) {
+        self.variantId = variantId
+        self.listPrice = listPrice
+        self.embedded = embedded
+        self.onSignIn = onSignIn
+    }
+
     @State private var open: Bool?
     @State private var held: HeldPriceRequest?
     @State private var expanded = false
@@ -292,11 +310,14 @@ struct PriceRequestPanel: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
-    private var numericId: Int? { Int(variant.id) }
+    private var numericId: Int? { Int(variantId) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if open == true {
+            if open == true, embedded {
+                let settled = held.map { ["declined", "expired", "withdrawn", "used"].contains($0.state) } ?? true
+                content(standing: app.session.isSignedIn && !settled)
+            } else if open == true {
                 let settled = held.map { ["declined", "expired", "withdrawn", "used"].contains($0.state) } ?? true
                 let standing = app.session.isSignedIn && !settled
                 VStack(alignment: .leading, spacing: 12) {
@@ -327,7 +348,7 @@ struct PriceRequestPanel: View {
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             }
         }
-        .task(id: variant.id) { await load() }
+        .task(id: variantId) { await load() }
     }
 
     @ViewBuilder
@@ -336,7 +357,10 @@ struct PriceRequestPanel: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(l.t("offers.signInFirst")).font(.inter(14, .bold))
                 Text(l.t("offers.signInWhy")).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
-                Button(l.t("header.signIn")) { app.authPresented = true }.buttonStyle(SecondaryButtonStyle())
+                Button(l.t("header.signIn")) {
+                    if let onSignIn { onSignIn() } else { app.authPresented = true }
+                }
+                .buttonStyle(SecondaryButtonStyle())
             }
         } else if let held, standing {
             VStack(alignment: .leading, spacing: 6) {
@@ -361,8 +385,8 @@ struct PriceRequestPanel: View {
                 if let held {
                     Text(l.t(PriceRequestPanel.stateKey(held.state))).font(.inter(13, .semibold)).foregroundStyle(Brand.muted)
                 }
-                LabeledField(label: l.t("offers.yourPrice"), text: $price, placeholder: variant.price.amount,
-                             hint: l.t("offers.listPrice", ["price": variant.price.formatted(l.current)]), keyboard: .decimalPad, leftToRight: true)
+                LabeledField(label: l.t("offers.yourPrice"), text: $price, placeholder: listPrice.amount,
+                             hint: l.t("offers.listPrice", ["price": listPrice.formatted(l.current)]), keyboard: .decimalPad, leftToRight: true)
                 HStack {
                     Text(l.t("offers.quantity")).font(.subheadline.weight(.semibold))
                     Spacer()

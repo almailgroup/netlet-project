@@ -105,7 +105,7 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   /* The public surfaces close — the phone lookup above all, which is the one
      part of this feature with an abuse case — while an owner keeps their own
      lists. A claim already made still releases. */
-  wishlists: { entries: ["wishlists.create", "wishlists.addItem", "wishlists.wish", "wishlists.findByPhone", "wishlists.byToken", "wishlists.claim"], audience: "shopper", defaultOn: true },
+  wishlists: { entries: ["wishlists.create", "wishlists.addItem", "wishlists.wish", "wishlists.findByPhone", "wishlists.findByName", "wishlists.byToken", "wishlists.claim"], audience: "shopper", defaultOn: true },
   /* Issuing new cards. A card already sold is money somebody holds, and it
      goes on being spendable. */
   giftCards: { entries: ["orders.createGiftCard"], audience: "seller", defaultOn: true },

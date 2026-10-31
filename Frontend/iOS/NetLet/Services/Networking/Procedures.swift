@@ -243,8 +243,11 @@ enum API {
         var pin: Pin?
         /// Spend the referral balance on this order, capped at what it owes.
         var usePoints: Bool?
-        /// A discount code or a gift card, as typed and quoted.
+        /// A discount code (or a gift card, when the gift box is empty), as
+        /// typed and quoted.
         var voucherCode: String?
+        /// A gift card from its own box, beside a discount code.
+        var giftCardCode: String? = nil
     }
 
     /// What a code would do to this bag (`orders.quoteVoucher`): a discount

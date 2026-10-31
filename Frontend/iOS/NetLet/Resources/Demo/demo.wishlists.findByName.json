@@ -1,0 +1,36 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "token": "3Uw_z-D7MEV5zRx9dULTA3MyjvZLZnm9",
+          "title": "Noura's birthday",
+          "ownerName": null,
+          "items": [
+            {
+              "productId": "216",
+              "note": null,
+              "quantity": 1,
+              "state": "available",
+              "claimedByYou": false
+            },
+            {
+              "productId": "10",
+              "note": "Size M please",
+              "quantity": 1,
+              "state": "available",
+              "claimedByYou": false
+            },
+            {
+              "productId": "223",
+              "note": null,
+              "quantity": 1,
+              "state": "available",
+              "claimedByYou": false
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

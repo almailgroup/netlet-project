@@ -20,32 +20,22 @@ final class CheckoutViewModel {
     private(set) var accountPhone = ""
     /// The number typed here, when neither the address nor the account has one.
     var typedPhone = ""
-    /// Spend the referral balance on this order.
-    var usePoints = false
-    /// The code box as typed, and the code last asked about.
-    var codeInput = ""
-    private(set) var appliedCode = ""
-    private(set) var quote: API.VoucherQuote?
-    /// Why the code does nothing — a message key — once asked.
-    private(set) var codeRefusal: String?
-    private(set) var quoting = false
-    /// The referral balance, in points; zero hides the choice.
-    private(set) var balance = 0
-
     private(set) var placing = false
     private(set) var refusal: APIError?
 
     private let orders: OrderServicing
     private let account: AccountServicing
-    private let api: APICalling?
     private let defaults: UserDefaults
     let reference: ReferenceData
+    /// The code, the gift card and the points, chosen in the cart or here —
+    /// the one model both draw (`BagSavingsCard`).
+    let savings: SavingsModel?
     static let lastAddressKey = "netlet.lastAddressId"
 
-    init(orders: OrderServicing, account: AccountServicing, api: APICalling? = nil, defaults: UserDefaults = .standard, reference: ReferenceData = .shared) {
+    init(orders: OrderServicing, account: AccountServicing, savings: SavingsModel? = nil, defaults: UserDefaults = .standard, reference: ReferenceData = .shared) {
         self.orders = orders
         self.account = account
-        self.api = api
+        self.savings = savings
         self.defaults = defaults
         self.reference = reference
     }
@@ -53,7 +43,7 @@ final class CheckoutViewModel {
     /// The points to spend and the account's own number.
     func load(user: User?) async {
         guard user != nil else { return }
-        if let api, let rewards = try? await api.call(API.rewards) { balance = rewards.balance }
+        await savings?.loadBalance(signedIn: true)
         if let phone = try? await account.profileDetails().phone, !phone.isEmpty {
             accountPhone = PhoneNumber.display(phone)
         }
@@ -80,30 +70,9 @@ final class CheckoutViewModel {
         return (address.contactPhone ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && accountPhone.isEmpty
     }
 
-    /// Asks what a code would do to this bag. Only a code naming nothing
-    /// counts against the guesses' ceiling, and asking again about the same
-    /// wrong code counts again — so it is asked on the press, never on its own.
-    func applyCode(cartId: String) async {
-        let code = codeInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !code.isEmpty, let api else { return }
-        quoting = true
-        defer { quoting = false }
-        appliedCode = code
-        quote = nil
-        codeRefusal = nil
-        do {
-            let answer = try await api.call(API.quoteVoucher, .init(cartId: cartId, code: code))
-            quote = answer
-            if !answer.ok { codeRefusal = answer.reason ?? "voucher.unknown" }
-        } catch {
-            let failure = APIError.from(error)
-            if failure != .cancelled { codeRefusal = failure.messageKey(knownKey: Phrasebook.shared.has) }
-        }
-    }
-
     /// What this bag comes to with the code, the points and the card taken off.
     func bill(for cart: Cart) -> Till.Bill {
-        Till.bill(for: cart, quote: quote, balance: balance, usePoints: usePoints)
+        savings?.bill(for: cart) ?? Till.settle(goods: cart.subtotal, delivery: cart.delivery.total)
     }
 
     /// Why Place order cannot be pressed yet, first reason first — said under
@@ -140,6 +109,7 @@ final class CheckoutViewModel {
         let name = address.contactName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
             ?? accountName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
         let notes = (address.addressNotes ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let taken = savings?.orderFields(for: cart)
         let order = API.PlaceOrder(
             cartId: cart.id,
             paymentMethod: "cod",
@@ -152,8 +122,9 @@ final class CheckoutViewModel {
             addressLine: parts.isEmpty ? address.line(.en).nilIfEmpty : nil,
             giftClaims: HeldClaims.all(defaults).map { API.GiftClaim(token: $0.token, productId: $0.productId) }.nilIfEmpty,
             pin: address.pin,
-            usePoints: usePoints && balance > 0 ? true : nil,
-            voucherCode: appliedCode.isEmpty ? nil : appliedCode
+            usePoints: taken?.usePoints,
+            voucherCode: taken?.voucherCode,
+            giftCardCode: taken?.giftCardCode
         )
         do {
             let placed = try await orders.place(order)

@@ -423,7 +423,9 @@ private struct QuickViewContent: View {
                             Text(l.t("product.quantity"))
                                 .font(.inter(14, .semibold))
                                 .foregroundStyle(Brand.muted)
-                            QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title) { next in
+                            // The bag line's own control, on the owner's word: the number is a
+                            // box to type into, and it stops at one.
+                            QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title, compact: true, typed: true, removes: false) { next in
                                 model.quantity = min(max(1, next), room)
                             }
                         }

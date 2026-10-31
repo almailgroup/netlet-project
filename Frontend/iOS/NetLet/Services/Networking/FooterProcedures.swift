@@ -20,6 +20,10 @@ extension API {
         let phone: String
     }
 
+    struct ListName: Encodable, Sendable {
+        let name: String
+    }
+
     struct GiftClaim: Encodable, Sendable {
         let token: String
         let productId: String
@@ -76,6 +80,8 @@ extension API {
     static let guide = Procedure<GuideSlug, Guide?>(query: "guides.bySlug")
     static let giftList = Procedure<GiftToken, GiftList?>(query: "wishlists.byToken")
     static let giftListsByPhone = Procedure<Phone, [GiftList]>(query: "wishlists.findByPhone")
+    /// The name an owner shows on a public list, whole or its first word.
+    static let giftListsByName = Procedure<ListName, [GiftList]>(query: "wishlists.findByName")
     static let claimGift = Procedure<GiftClaim, Acknowledged>(mutation: "wishlists.claim")
     static let releaseGift = Procedure<GiftClaim, Acknowledged>(mutation: "wishlists.release")
     static let myApplication = Procedure<NoInput, StoreApplication?>(query: "inventory.applications.mine")

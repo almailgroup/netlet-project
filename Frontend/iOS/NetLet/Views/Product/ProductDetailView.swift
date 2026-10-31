@@ -406,7 +406,9 @@ private struct ProductPage: View {
                 // (`BagStock.room`): it offered the whole shelf over a bag
                 // that already held most of it, and checkout then refused.
                 let room = BagStock.room(variant.maxQuantity, inBag: inBag)
-                QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title) { next in
+                // The bag line's own control, on the owner's word: the number is a
+                // box to type into, and it stops at one.
+                QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title, compact: true, typed: true, removes: false) { next in
                     model.quantity = min(max(1, next), room)
                 }
                 .onChange(of: room, initial: true) { _, most in

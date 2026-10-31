@@ -351,6 +351,115 @@ struct LineDestinationButton: View {
     }
 }
 
+/// A better price for one line, on the owner's word ("a discount icon next
+/// to each individual product … applies exclusively to that row"): the web's
+/// `LineDiscount`. It is the price request (`PriceRequestPanel`, 3.1.13) asked
+/// from the line — what the seller agrees is this shopper's price for that
+/// variant, so it lowers that line alone. Drawn only where the seller takes
+/// requests on the variant and `priceOffers` is on; navy while an agreed price
+/// is on the line. A guest is shown it and signs in once the sheet is down.
+struct LineDiscountButton: View {
+    let item: CartItem
+    let title: String
+    @State private var taken = false
+    @State private var open = false
+    @State private var signIn = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let agreed = item.priceReason == "agreed" && item.agreedFrom != nil
+        VStack(spacing: 0) {
+            if taken {
+                Button {
+                    open = true
+                } label: {
+                    Image(systemName: agreed ? "tag.fill" : "tag")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(agreed ? Brand.navy : Brand.muted)
+                        .scaleEffect(x: l.current == .ar ? -1 : 1)
+                        .frame(width: 44, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressFillStyle(cornerRadius: 12))
+                .accessibilityLabel(l.t("offers.forLine", ["name": title]))
+                .sheet(isPresented: $open, onDismiss: {
+                    if signIn {
+                        signIn = false
+                        app.authPresented = true
+                    }
+                }) {
+                    LineDiscountSheet(item: item, title: title) {
+                        signIn = true
+                        open = false
+                    }
+                    .environment(\.layoutDirection, l.layoutDirection)
+                    .buttonStyle(HapticDefaultStyle())
+                }
+            }
+        }
+        .task(id: item.variantId) { await load() }
+    }
+
+    private func load() async {
+        guard app.features.isOn("priceOffers"), let id = Int(item.variantId), id > 0 else {
+            taken = false
+            return
+        }
+        taken = (try? await app.services.api.call(API.priceRequestsOpen, .init(variantIds: [id])))?.contains(id) ?? false
+    }
+}
+
+private struct LineDiscountSheet: View {
+    let item: CartItem
+    let title: String
+    let signIn: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let listed = item.agreedFrom ?? item.unitPrice
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Color.clear
+                            .frame(width: 48, height: 48)
+                            .overlay { RemoteImage(reference: item.image?.url) }
+                            .background(Brand.photo)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(title)
+                                .font(.inter(15, .heavy))
+                                .foregroundStyle(Brand.navy)
+                                .lineLimit(2)
+                            Text(l.t("offers.lineNote", ["price": listed.formatted(l.current)]))
+                                .font(.inter(12))
+                                .foregroundStyle(Brand.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    Divider().overlay(Brand.cardLine)
+                    PriceRequestPanel(variantId: item.variantId, listPrice: listed, embedded: true, onSignIn: signIn)
+                }
+                .padding(20)
+            }
+            .background(Color.white)
+            .navigationTitle(l.t("offers.heading"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    BarButton(l.t("common.close")) { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
 private struct LineDestinationSheet: View {
     let item: CartItem
     let title: String

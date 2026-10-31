@@ -3,6 +3,8 @@ import {
   CLAIM_HOLD_DAYS,
   claimStateFor,
   formatPhone,
+  giftLookup,
+  LOOKUP_NAME_MAX,
   giftableNow,
   normalisePhone,
   shareable,
@@ -131,5 +133,28 @@ describe("what can actually be bought", () => {
       { id: "b", title: "Here", sku: null, price: money("9.000"), compareAtPrice: null, availableForSale: true, selectedOptions: [] },
     ] });
     expect(giftableNow(mixed, {}, now)).toBe(true);
+  });
+});
+
+describe("giftLookup", () => {
+  it("reads a Kuwaiti number first, in any digits", () => {
+    expect(giftLookup("5012 3456")).toEqual({ phone: "5012 3456" });
+    expect(giftLookup("+965 5012 3456")).toEqual({ phone: "+965 5012 3456" });
+    expect(giftLookup("٥٠١٢٣٤٥٦")).toEqual({ phone: "٥٠١٢٣٤٥٦" });
+  });
+
+  it("reads anything else with a letter in it as a name, its spaces tidied", () => {
+    expect(giftLookup("  Noura   Al-Sabah ")).toEqual({ name: "Noura Al-Sabah" });
+    expect(giftLookup("نورة")).toEqual({ name: "نورة" });
+    expect(giftLookup("Noura2024")).toEqual({ name: "Noura2024" });
+  });
+
+  it("refuses a single letter, a short number and nothing at all", () => {
+    expect(giftLookup("N")).toBeNull();
+    expect(giftLookup("1234")).toBeNull();
+    expect(giftLookup("--")).toBeNull();
+    expect(giftLookup("")).toBeNull();
+    expect(giftLookup(undefined)).toBeNull();
+    expect(giftLookup("a".repeat(LOOKUP_NAME_MAX + 1))).toBeNull();
   });
 });

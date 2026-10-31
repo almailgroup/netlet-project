@@ -9,9 +9,9 @@
  *
  * Two pieces of honesty the page owes people:
  *
- * **"No published list for that number" never says why.** It cannot: the
- * server deliberately answers a number nobody has exactly as it answers a
- * number whose owner publishes nothing, so the lookup is not a way to ask who
+ * **"No published list for that number or name" never says why.** It
+ * cannot: the server deliberately answers a number nobody has exactly as it
+ * answers a number whose owner publishes nothing, and a name the same way, so the lookup is not a way to ask who
  * shops here. The copy says what to do instead — ask them for the link —
  * rather than inventing a reason.
  *
@@ -43,7 +43,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey } from "@shared/i18n/dictionary";
-import { normalisePhone } from "@shared/commerce/wishlist";
+import { giftLookup, type GiftLookup } from "@shared/commerce/wishlist";
 import type { Product } from "@shared/commerce/types";
 import { AlertTriangle, Check, Gift, Lock, RotateCw, Search, ShoppingBag } from "lucide-react";
 import { useId, useState } from "react";
@@ -97,21 +97,25 @@ function Lookup() {
   const { t } = useTranslation();
   const fieldId = useId();
   const [value, setValue] = useState("");
-  const [asked, setAsked] = useState<string | null>(null);
+  const [asked, setAsked] = useState<GiftLookup | null>(null);
   const [invalid, setInvalid] = useState(false);
 
   /*
-   * Every lookup counts against the address's hourly ceiling, so it is asked
-   * only when somebody presses Find — never again because the window took
-   * focus, which spent one each time a giver came back from their messages
-   * with the number.
+   * Every lookup counts against the address's hourly ceiling, by number or by
+   * name alike, so it is asked only when somebody presses Find — never again
+   * because the window took focus, which spent one each time a giver came
+   * back from their messages with the number.
    */
-  const found = trpc.wishlists.findByPhone.useQuery({ phone: asked ?? "" }, {
-    enabled: asked !== null,
-    retry: false,
-    refetchOnWindowFocus: false,
-    staleTime: 60_000,
-  });
+  const once = { retry: false, refetchOnWindowFocus: false, staleTime: 60_000 } as const;
+  const byPhone = trpc.wishlists.findByPhone.useQuery(
+    { phone: asked && "phone" in asked ? asked.phone : "" },
+    { ...once, enabled: asked !== null && "phone" in asked },
+  );
+  const byName = trpc.wishlists.findByName.useQuery(
+    { name: asked && "name" in asked ? asked.name : "" },
+    { ...once, enabled: asked !== null && "name" in asked },
+  );
+  const found = asked && "name" in asked ? byName : byPhone;
   /* A refusal we wrote — the ceiling, or a number the server cannot key — is
      said as it is; anything else is a read that failed. */
   const message = found.error?.message;
@@ -124,7 +128,8 @@ function Lookup() {
         noValidate
         onSubmit={event => {
           event.preventDefault();
-          if (normalisePhone(value.trim()) === null) {
+          const query = giftLookup(value);
+          if (query === null) {
             /* Said, not greyed out: a disabled Find with no sentence beside it
                leaves somebody guessing what the field wants. */
             setInvalid(true);
@@ -132,7 +137,7 @@ function Lookup() {
             return;
           }
           setInvalid(false);
-          setAsked(value.trim());
+          setAsked(query);
         }}
       >
         <label className="min-w-0 flex-1" htmlFor={fieldId}>
@@ -141,12 +146,15 @@ function Lookup() {
             id={fieldId}
             value={value}
             onChange={event => { setValue(event.target.value); if (invalid) setInvalid(false); }}
-            inputMode="tel"
-            type="tel"
+            type="search"
+            enterKeyHint="search"
             autoComplete="off"
-            /* dir on a form control sets the typing direction — allowed. */
-            dir="ltr"
-            placeholder="5012 3456"
+            autoCorrect="off"
+            spellCheck={false}
+            /* A number types left to right and a name in its own language, so
+               the box follows what is typed. */
+            dir="auto"
+            placeholder={t("gift.lookupPlaceholder")}
             aria-invalid={invalid || undefined}
             aria-describedby={invalid ? `${fieldId}-error` : undefined}
             className="glass-field mt-1 w-full rounded-full px-4 py-3 text-base"
@@ -160,7 +168,7 @@ function Lookup() {
         </button>
       </form>
       {invalid ? (
-        <p id={`${fieldId}-error`} className="mt-2 text-xs font-semibold text-[#8c2f22]">{t("wishlist.phoneInvalid")}</p>
+        <p id={`${fieldId}-error`} className="mt-2 text-xs font-semibold text-[#8c2f22]">{t("gift.lookupInvalid")}</p>
       ) : null}
 
       {asked === null ? null

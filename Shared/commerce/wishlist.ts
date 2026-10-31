@@ -92,6 +92,26 @@ export function formatPhone(canonical: string): string {
   return `${local.slice(0, 4)} ${local.slice(4)}`;
 }
 
+/** The longest name the gift lookup asks about — `findByName`'s own bound. */
+export const LOOKUP_NAME_MAX = 60;
+
+/**
+ * What a giver typed into the gift lookup, read as one of the two things it
+ * answers: a Kuwaiti mobile number, or the name an owner shows on a public
+ * list. A number is tried first, since "5012 3456" is a name nobody has;
+ * something with no letter in it that is not a number is neither, and nor is
+ * a single letter. The server matches a name whole or by its first word
+ * (`publicListsByName`), never by a piece, so this only says which to ask.
+ */
+export type GiftLookup = { phone: string } | { name: string };
+
+export function giftLookup(raw: string | null | undefined): GiftLookup | null {
+  const text = (raw ?? "").normalize("NFC").trim().replace(/\s+/g, " ");
+  if (normalisePhone(text) !== null) return { phone: text };
+  if (text.length >= 2 && text.length <= LOOKUP_NAME_MAX && /\p{L}/u.test(text)) return { name: text };
+  return null;
+}
+
 /* ------------------------------------------------------------ the rules --- */
 
 export const VISIBILITIES = ["private", "public"] as const;

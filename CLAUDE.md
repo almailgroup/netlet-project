@@ -1271,7 +1271,14 @@ otherwise, a line for one named variant, and nothing for a lone "Default".
 `QuantityStepper` stays the always-visible control for the product page and
 Quick View, where the product is the subject rather than one card in a rail.
 `MAX_QUANTITY` lives there and the card imports it, so the two cannot disagree
-about the ceiling.
+about the ceiling. **Its number is a box, and it is the bag's stepper, on the
+owner's word** ("match the unit selector on the cart page"): the same 40px
+minus and plus under a coarse pointer (28px under a mouse), and between them
+the bag's box — a press selects the number and opens the number keypad,
+`typedQuantity` reads it, over what there is is held to it with the bag's
+toast, and Escape puts it back. Zero changes nothing here (no line to take
+out), so the minus stops at one. The app's product page and preview draw the
+bag's `QuantityStepper` with `typed` and `removes: false`, the same rule.
 
 **Quick View is on every page that draws a card**, opened by the disc, by
 "Choose an option" and, on a phone, by **a long press on the photo**
@@ -1637,6 +1644,28 @@ Change that opens the address book, or the question when there is none — and
 Checkout pressed without one opens the book and goes on once one is chosen.
 It replaced the bar (`CartTopBar`) that named the address in a word; the heart
 to Saved items, counted, is at the end of the title's line.
+
+**The cart's three ways to pay less, on the owner's word** ("display three
+distinct options: a discount code input, a gift card input, a NetLet points
+redemption toggle"): `BagSavings` in the cart page's summary, over the figures,
+and the same card at checkout. What was chosen is kept for the tab and the bag
+(`lib/bagSavings.ts`, the session helpers), so checkout opens holding it and
+can still change it; the drawer's and the floating bar's totals follow it.
+**A discount and a gift card are two boxes, and one order may use both** —
+`orders.place` takes `giftCardCode` beside `voucherCode` now, and the order
+writer always had the columns and `settle`'s order: the code, then the points,
+then the card against what is left. Each box still asks the shop what a code
+is, since somebody holding one does not always know, so a card typed under
+Discount code is moved to Gift card and said so; one of each per order, and the
+server refuses a discount in the card's box or a second card. A code is asked
+about on the press, never per keystroke, and again when the goods change
+(a percentage and a minimum spend are of the goods). Points are a switch for a
+balance with some; a guest is offered the sign-in, and an account with none a
+line to how points are earned. The app's is `BagSavingsCard` over
+`SavingsModel`, held by `AppModel` so the cart and checkout share it. Measured
+at 320 and 390 in both languages and 1440: a card moved to its box, the two
+together taking 2.000 and 5.000 off 39.900 in the summary, the bar and
+checkout alike, axe clean with a refusal and an applied code on screen.
 
 **The number between a line's minus and plus is a box, on the owner's word**
 (`LineQuantity` in `BagDrawer.tsx`): a press selects the number and opens the
@@ -2989,6 +3018,17 @@ to go round and write it, and until that something runs the row claims a price
 is still good when it is not — the same decision the discount permit makes, and
 nothing has to run here either.
 
+**It can be asked from a line of the bag, on the owner's word** ("a discount
+icon next to each individual product … applies exclusively to that row"):
+`LineDiscount` is a tag under the line's delivery button that opens the panel
+`embedded` in a sheet (the app's `LineDiscountButton`), drawn only where the
+seller takes requests on that variant. An agreed price is this shopper's price
+for that variant, so it lowers that line and no other, and the line says
+"Your agreed price · listed at …". **A code that takes money off one product
+is not this**, and needs the schema to say so — a product on
+`discount_codes`, the code on the bag's line, what it took frozen on the order
+line so a refund stays exact — which waits on an approved migration.
+
 **An agreed price is a ceiling, never a floor.** If the catalog falls below what
 the seller agreed, the shopper pays the catalog price. Charging somebody more
 than the shelf says because they once asked for a discount is the single worst
@@ -3532,10 +3572,11 @@ card and each line's own is its delivery button (`LineDestination`, under "The
 bag is drawn by store"), so checkout is one column of cards with neither — the
 lines by store with each store's delivery and when it arrives (the seller's
 band, `deliverySpeed` on each bag line, `arrivalFor`, nothing where the seller
-stated none), **the code and points, open from the start and right before the
-ways to pay** (on the owner's word: "so users can enter their code right
-away"; it can still be folded), the payment list, and the summary with Place
-order. The order is placed from the address in use's own parts, name and
+stated none), **the code, the gift card and the points, open and right before
+the ways to pay** (on the owner's word: "so users can enter their code right
+away") — the cart's own card (`BagSavings`, see "The cart's three ways to pay
+less"), holding what was chosen there — the payment list, and the summary with
+Place order. The order is placed from the address in use's own parts, name and
 number; a saved address with no number on an account with none asks for it in
 one box, and an order with nowhere to go — Buy now arrives without passing the
 cart — says so under Place order, where the press opens the address book. A
@@ -4630,6 +4671,19 @@ gift page. The phone lookup is asked only on Find — never again on window
 focus, which spent one of the hourly sixty each time a giver came back from
 their messages — and the footer has the way in ("Find a wishlist"), which only
 a link somebody sent used to be.
+
+**A list can be found by the name it shows, too, on the owner's word** ("by
+either their phone number or their username"; NetLet has no usernames, and
+the owner chose the name on the list): `giftLookup` (`Shared/commerce/wishlist.ts`,
+the app's `GiftLookup`) reads what was typed as a Kuwaiti number first and
+otherwise as a name of two to sixty characters, and `wishlists.findByName`
+(`publicListsByName`) matches it against `owner_name` on public lists only,
+**whole or as its first word**, folded for case and spaces — "Noura" finds
+"Noura Al-Sabah" and "Nou" finds nothing, so it is not a way to list who
+shops here a letter at a time. It counts against the same sixty an hour per
+address as the number, and answers "nobody" the same way. A list with no name
+on it is found only by number or link, which is the owner's choice of what to
+show.
 
 **Unpublishing mints a new share token.** Otherwise "make this private" would
 only stop *new* people finding it by phone and would leave every link already
@@ -6306,8 +6360,9 @@ on its delivery button (`LineDestinationButton`, a sheet of the saved
 addresses under the line's "⋯") — and is a box for the driver's number only
 when neither the address nor the account has one, each store's lines with its
 delivery and the day it arrives (`DeliveryLine.arrival` and `.slowest`, the
-web's `arrivalFor` and `slowestSpeed`), the code with the points open before
-the payment list (cash chosen; KNET, a card and Apple Pay drawn as coming), and
+web's `arrivalFor` and `slowestSpeed`), the code, the gift card and the points
+(`BagSavingsCard`, the cart's own, over `SavingsModel`) open before the payment
+list (cash chosen; KNET, a card and Apple Pay drawn as coming), and
 the summary; Place order stays in the bar at the foot, disabled with the blocker
 above it, and a press on the blocker opens the book or focuses the number. The
 home page's departments and brands are sideways rows too
@@ -6855,6 +6910,15 @@ past the viewer and fades as the navy clears, so the shop comes up from behind
 it — about a second and a half, on a cold launch only, with the shop loading
 underneath the whole time. Under Reduce Motion it is the mark, faded; the UI
 tests and the screenshots (`-NetLetOpen`) open straight onto their screen.
+**It was made more dynamic and given a sound, on the owner's word** ("a more
+dynamic and premium intro … with a short UI sound synced to it"): a warm glow
+blooms, the mark springs out of a blur, two orange rings ripple out as it
+lands, a band of light sweeps across it, and the home page's line rises in
+under it a beat apart before it all zooms past. `launch-chime.wav` (made for
+it: a soft whoosh into two bells, E6 then B6, over a low thump) lands at
+300ms, `LaunchSplash.landing`, the instant the mark does, with the tap. It
+plays in the `.ambient` category, so the silent switch silences it and music
+playing keeps playing.
 
 **The empty search field offers the shop's own examples in turn, on the
 owner's word** (`CyclingExample`, in the header's field and the open sheet's):

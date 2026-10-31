@@ -42,6 +42,7 @@ import {
   phoneFor,
   publicListByToken,
   publicListsByPhone,
+  publicListsByName,
   releaseClaim,
   removeItem,
   setPhone,
@@ -212,6 +213,28 @@ export const wishlistsRouter = router({
       // publishes nothing. One answer, so the lookup cannot be used to ask
       // who shops here.
       return publicListsByPhone(input.phone, ctx.user?.id ?? null);
+    }),
+
+  /**
+   * Find published lists by the name their owner shows on them — the other
+   * half of "find a wishlist" (`publicListsByName`). The same ceiling as a
+   * phone, counted before anything is read and against the same address,
+   * since a name is a smaller space to walk than a number.
+   */
+  findByName: publicProcedure
+    .input(z.object({ name: z.string().trim().min(2).max(60) }))
+    .query(async ({ ctx, input }) => {
+      const address = ctx.req.ip ?? null;
+      const verdict = await checkLookupAllowed(address);
+      if (!verdict.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "wishlist.tooManyLookups",
+          cause: { retryAfterSeconds: verdict.retryAfterSeconds },
+        });
+      }
+      await recordLookup(address);
+      return publicListsByName(input.name, ctx.user?.id ?? null);
     }),
 
   /** One published list from a pasted link. Not throttled: a token is not guessable. */

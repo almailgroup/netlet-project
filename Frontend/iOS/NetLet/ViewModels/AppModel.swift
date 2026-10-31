@@ -156,6 +156,9 @@ final class AppModel {
     let signals: AccountSignals
     /// Where the shop delivers, for the header's location button.
     let delivery: DeliveryModel
+    /// The code, gift card and points chosen for the bag, in the cart or at
+    /// checkout (`BagSavingsCard`).
+    let savings: SavingsModel
     /// The header's "Deliver to" sheet.
     var deliveryOpen = false
     /// The product whose heart is asking Saved or a wishlist, and which
@@ -225,6 +228,7 @@ final class AppModel {
         shelf = HomeShelf(catalog: services.catalog, warm: HomeShelf.warmPhotos(resolve: services.configuration.resolve))
         signals = AccountSignals(api: services.api)
         delivery = DeliveryModel(api: services.api, account: services.account, defaults: cartDefaults)
+        savings = SavingsModel(api: services.api)
         let api = services.api
         let gateway = AIGateway(mint: { try await api.call(API.chatSession) })
         self.gateway = gateway

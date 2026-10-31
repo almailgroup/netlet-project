@@ -181,3 +181,22 @@ enum PhoneNumber {
         return "+\(countryCode)\(local)"
     }
 }
+
+/// What a giver typed into the gift lookup — `giftLookup` in
+/// `Shared/commerce/wishlist.ts`: a Kuwaiti number first, since "5012 3456"
+/// is a name nobody has, then the name an owner shows on a public list (two
+/// letters to sixty, with a letter in it), or neither.
+enum GiftLookup: Equatable {
+    case phone(String)
+    case name(String)
+
+    static let nameMax = 60
+
+    static func read(_ raw: String) -> GiftLookup? {
+        let text = raw.precomposedStringWithCanonicalMapping
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        if let phone = PhoneNumber.normalise(text) { return .phone(phone) }
+        if text.count >= 2, text.count <= nameMax, text.contains(where: \.isLetter) { return .name(text) }
+        return nil
+    }
+}

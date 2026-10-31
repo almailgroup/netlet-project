@@ -10,6 +10,9 @@ enum Till {
         let points: Money
         let giftCard: Money
         let payable: Money
+
+        /// Anything taken off at all, so a summary knows to draw the rows.
+        var reduced: Bool { !discount.isZero || !points.isZero || !giftCard.isZero }
     }
 
     private static var filsPerPoint: Int { ReferenceData.shared.rules.orderRules.filsPerPoint }
@@ -40,15 +43,21 @@ enum Till {
         return Bill(discount: discount, points: points, giftCard: giftCard, payable: afterPoints - giftCard)
     }
 
-    /// Checkout's whole bill from a bag, a quoted code and the points chosen.
+    /// The whole bill from a bag, a quoted code and the points chosen — one
+    /// box holding either kind, as checkout once took it.
     static func bill(for cart: Cart, quote: API.VoucherQuote?, balance: Int, usePoints: Bool) -> Bill {
-        let voucher = quote?.ok == true ? quote : nil
-        let discountOff = voucher?.kind == "discount" ? voucher?.amount ?? .zero : .zero
+        bill(for: cart, discount: quote, gift: quote, balance: balance, usePoints: usePoints)
+    }
+
+    /// The whole bill from a bag, a discount code's quote, a gift card's and
+    /// the points chosen — the web's `useSavingsBill`. A quote of the other
+    /// kind, or a refused one, takes nothing off.
+    static func bill(for cart: Cart, discount: API.VoucherQuote?, gift: API.VoucherQuote?, balance: Int, usePoints: Bool) -> Bill {
+        let discountOff = discount?.ok == true && discount?.kind == "discount" ? discount?.amount ?? .zero : .zero
         let afterDiscount = cart.total - discountOff
         let pointsOff = usePoints ? spendValue(pointsSpendable(balance, on: afterDiscount)) : .zero
-        let giftOff = voucher?.kind == "gift"
-            ? giftCardPayment(remaining: voucher?.remaining ?? voucher?.amount ?? .zero, owed: afterDiscount - pointsOff)
-            : .zero
+        let card = gift?.ok == true && gift?.kind == "gift" ? gift : nil
+        let giftOff = card.map { giftCardPayment(remaining: $0.remaining ?? $0.amount ?? .zero, owed: afterDiscount - pointsOff) } ?? .zero
         return settle(goods: cart.subtotal, delivery: cart.delivery.total, discount: discountOff, points: pointsOff, giftCard: giftOff)
     }
 

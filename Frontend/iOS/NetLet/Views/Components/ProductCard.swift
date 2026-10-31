@@ -63,6 +63,10 @@ struct QuantityStepper: View {
     var busy = false
     var compact = false
     var typed = false
+    /// The minus at one is the bin and zero takes the line out — the bag's
+    /// rule. A product page has nothing in the bag to take out, so there the
+    /// count stops at one and typing nought puts the number back.
+    var removes = true
     let change: (Int) -> Void
     @State private var draft = ""
     @FocusState private var typing: Bool
@@ -74,11 +78,12 @@ struct QuantityStepper: View {
             Button {
                 change(quantity - 1)
             } label: {
-                Image(systemName: quantity <= 1 ? "trash" : "minus")
+                Image(systemName: quantity <= 1 && removes ? "trash" : "minus")
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.action)
-            .accessibilityLabel(quantity <= 1 ? l.t("cart.remove", ["name": name]) : l.t("cart.decrease", ["name": name]))
+            .disabled(!removes && quantity <= 1)
+            .accessibilityLabel(quantity <= 1 && removes ? l.t("cart.remove", ["name": name]) : l.t("cart.decrease", ["name": name]))
             if typed {
                 TextField("\(quantity)", text: $draft)
                     .keyboardType(.numberPad)
@@ -130,7 +135,7 @@ struct QuantityStepper: View {
         draft = "\(quantity)"
         switch TypedQuantity.read(text, ceiling: maximum) {
         case .remove?:
-            change(0)
+            if removes { change(0) }
         case .set(let value, let capped)?:
             // Held to what there is, or to the line ceiling — each said as what it is.
             if capped {

@@ -86,6 +86,21 @@ describe("owning a list", () => {
     }
   });
 
+  it("is findable by the name it shows, whole or by its first word, and never by a fragment", async () => {
+    const noura = asShopper("noura");
+    const lists = await noura.wishlists.mine();
+    await noura.wishlists.update({ listId: lists[0].id, ownerName: "Noura Al-Sabah" });
+    for (const name of ["Noura Al-Sabah", "noura", "  NOURA  al-sabah "]) {
+      const found = await asStranger().wishlists.findByName({ name });
+      expect(found.map(list => list.title)).toEqual(["Birthday"]);
+    }
+    expect(await asStranger().wishlists.findByName({ name: "Nou" })).toEqual([]);
+    expect(await asStranger().wishlists.findByName({ name: "Sabah" })).toEqual([]);
+    // A wildcard typed is a character, never a pattern.
+    expect(await asStranger().wishlists.findByName({ name: "%" + "%" })).toEqual([]);
+    await noura.wishlists.update({ listId: lists[0].id, ownerName: "Noura" });
+  });
+
   /*
    * The answer for "nobody has that number" and "that person publishes
    * nothing" has to be the same answer, or the lookup becomes a way to ask

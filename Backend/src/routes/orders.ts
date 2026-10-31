@@ -235,6 +235,9 @@ export const ordersRouter = router({
       /* A discount code or a gift card, in one field (3.2.3): a shopper
          holding a code does not necessarily know which it is. */
       voucherCode: z.string().trim().max(40).optional(),
+      /* A gift card from the cart's own gift card box, beside a discount
+         code in `voucherCode`; the server checks it is a card. */
+      giftCardCode: z.string().trim().max(40).optional(),
       /* Presents claimed off a list on this device while signed out: marked
          bought if they are in the order and the hold still names nobody. */
       giftClaims: z.array(z.object({
@@ -266,6 +269,7 @@ export const ordersRouter = router({
           addressParts: input.addressParts ?? null,
           usePoints: input.usePoints ?? false,
           voucherCode: input.voucherCode ?? null,
+          giftCardCode: input.giftCardCode ?? null,
           giftClaims: input.giftClaims ?? [],
           productReferrals: input.productReferrals ?? [],
         });
