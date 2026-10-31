@@ -175,6 +175,12 @@ function resolve(path: string, rawInput: unknown): unknown {
       return null;
     case "auth.logout":
       return { success: true } as const;
+    /* The demo is a guest, so there is no account to delete: nothing stands in
+       the way, and pressing it is refused as a server with no account would. */
+    case "auth.deletionCheck":
+      return { blockers: [], points: 0 };
+    case "auth.deleteAccount":
+      throw new TRPCClientError("auth.noAccount");
     /* No Google box in the demo: there is no server to ask Google with. */
     case "auth.signupOptions":
       return { captchaSiteKey: null };

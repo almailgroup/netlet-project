@@ -1,8 +1,10 @@
 /**
  * "Your profile", drawn to the owner's reference (Noon's "Your profile"): the
  * name as a first and a last name side by side, then the phone, the gender,
- * the birthday and the nationality (`ProfileDetailCards`), then the two things
- * somebody signs in with.
+ * the birthday and the nationality (`ProfileDetailCards`), then the address
+ * somebody signs in with. **The password is Account security's, on the
+ * owner's word** (`SecurityCards`): that page is the password and deleting
+ * the account, and nothing else.
  *
  * Each card is its own decision with its own Save — or, for a choice made in
  * one press (a gender, a country), saved as it is pressed — because one Save
@@ -22,6 +24,7 @@ import { isMessageKey } from "@shared/i18n/dictionary";
 import { nameProblem, NAME_PART_MAX, splitName } from "@shared/commerce/profileDetails";
 import { ProfileDetailCards } from "@/components/account/ProfileDetailCards";
 import { FloatingField, ProfileCard, primary, secondary } from "@/components/account/profileParts";
+import { DeleteAccount } from "@/components/account/DeleteAccount";
 import { Check, Eye, EyeOff, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -41,7 +44,19 @@ export function ProfileManager({ user }: { user: PublicUser }) {
       <NameForm user={user} parts={details.data ? { first: details.data.firstName, last: details.data.lastName } : null} onSaved={refresh} onFail={fail} />
       <ProfileDetailCards details={details.data ?? null} onFail={fail} />
       <EmailForm user={user} onSaved={refresh} onFail={fail} />
+    </div>
+  );
+}
+
+/** Account security: the password, and deleting the account (`DeleteAccount`). */
+export function SecurityCards() {
+  const { t } = useTranslation();
+  const fail = (error: { message: string }) =>
+    toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.saveFailed"));
+  return (
+    <div className="space-y-3">
       <PasswordForm onFail={fail} />
+      <DeleteAccount />
     </div>
   );
 }

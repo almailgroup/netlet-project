@@ -160,6 +160,18 @@ enum API {
         let newPassword: String
     }
 
+    /// Deleting the account asks for the password again.
+    struct DeleteAccount: Encodable, Sendable {
+        let currentPassword: String
+    }
+
+    /// What stands between the shopper and deleting their account, and the
+    /// points that go with it.
+    struct DeletionCheck: Decodable, Sendable {
+        let blockers: [String]
+        let points: Int
+    }
+
     struct ChangeEmail: Encodable, Sendable {
         let email: String
         let currentPassword: String
@@ -199,6 +211,8 @@ enum API {
     static let profileDetails = Procedure<NoInput, ProfileDetails>(query: "customer.details.get")
     static let saveProfileDetails = Procedure<DetailsPatch, ProfileDetails>(mutation: "customer.details.save")
     static let changePassword = Procedure<ChangePassword, Acknowledged>(mutation: "auth.changePassword")
+    static let deletionCheck = Procedure<NoInput, DeletionCheck>(query: "auth.deletionCheck")
+    static let deleteAccount = Procedure<DeleteAccount, Acknowledged>(mutation: "auth.deleteAccount")
     static let changeEmail = Procedure<ChangeEmail, User>(mutation: "auth.changeEmail")
     static let profile = Procedure<NoInput, Profile>(query: "customer.profile.get")
     static let updateProfile = Procedure<ProfileUpdate, Profile>(mutation: "customer.profile.update")

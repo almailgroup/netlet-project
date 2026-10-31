@@ -27,6 +27,8 @@ enum Route: Hashable {
     case orders
     case order(reference: String)
     case profile
+    /// The password and deleting the account — the web's `/account/security`.
+    case security
     case listings
     case newListing
     // The account's sections, each the web's `/account/<section>`.
@@ -103,6 +105,7 @@ enum Route: Hashable {
             switch segments[1] {
             case "orders": return query["order"].map { .order(reference: $0) } ?? .orders
             case "details": return .profile
+            case "security": return .security
             case "addresses": return .addresses
             case "preferences": return .preferences
             case "notifications": return .notifications
@@ -366,6 +369,9 @@ final class AppModel {
         case "profile":
             selectedTab = .account
             accountPath = NavigationPath([Route.profile])
+        case "security":
+            selectedTab = .account
+            accountPath = NavigationPath([Route.security])
         case "sell":
             selectedTab = .account
             if session.seller?.inPortal == true { accountPath = NavigationPath([Route.portal("/admin")]) }

@@ -97,7 +97,7 @@ const CARDS: Row[][] = [
     { id: "selling", label: "account.sectionSelling", icon: Store },
   ],
   [
-    { id: "details", label: "account.security", icon: ShieldCheck },
+    { id: "security", label: "account.security", icon: ShieldCheck },
     { id: "signout", label: "header.signOut", icon: LogOut },
   ],
 ];

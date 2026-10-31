@@ -51,6 +51,7 @@ import { captchaSiteKey, checkCaptcha } from "../core/captcha.js";
 import { isCodeShaped, normaliseCode } from "../../../Shared/auth/emailCode.js";
 import { touchLastSignedIn } from "../services/db.js";
 import { loadUser, updateUserEmail, updateUserName } from "../services/profile.js";
+import { deleteAccount, deletionCheck } from "../services/accountDeletion.js";
 import { saveNameParts } from "../services/profileDetails.js";
 import { composeName, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
 import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type AttemptKind, type Caller } from "../services/rateLimit.js";
@@ -544,6 +545,40 @@ export const authRouter = router({
     await startSession(ctx, user, input.remember);
     return toPublicUser(user);
   }),
+
+  /**
+   * What stands between the shopper and deleting their account, and the
+   * points that would go with it — read by Account security before anybody
+   * presses Delete (`services/accountDeletion.ts`).
+   */
+  deletionCheck: protectedProcedure.query(({ ctx }) => deletionCheck(ctx.user)),
+
+  /**
+   * Deletes the signed-in account, for good, on the owner's word. Asks for
+   * the password again — a session left open on a shared machine must not be
+   * enough to erase somebody — checks what would refuse it again under a lock,
+   * and ends this session; every other session finds no account and is signed
+   * out with it.
+   */
+  deleteAccount: protectedProcedure
+    .input(z.object({ currentPassword: z.string().min(1).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const current = await loadUser(ctx.user.id);
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
+      await assertCurrentPassword(current, input.currentPassword);
+      let outcome;
+      try {
+        outcome = await deleteAccount(current);
+      } catch (error) {
+        console.error(`[auth] could not delete account ${current.id}: ${String(error)}`);
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "account.deleteFailed" });
+      }
+      if (!outcome.deleted) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: `account.deleteBlocked.${outcome.blockers[0] ?? "admin"}` });
+      }
+      ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
+      return { deleted: true } as const;
+    }),
 
   logout: publicProcedure.mutation(({ ctx }) => {
     ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });

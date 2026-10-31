@@ -1580,7 +1580,7 @@ an account), who else sees what (the stores and the carrier, Vercel, Supabase,
 Google's reCAPTCHA, the map chosen, a model provider for the assistants and
 photo search, the browser's own speech service), the profile's own details
 (kept on the account, never shown to a store), the one sign-in cookie, and
-asking through Help to close an account, since there is no button for it. A
+deleting the account from Account security (see "Deleting your account"). A
 paragraph about a service the deployment does not run — the analytics tool —
 is drawn only when the build configures it, and so are two more: email
 (Resend, only while it is configured) and the try-on (Google's image model,
@@ -1941,8 +1941,8 @@ the hearts read by id) or saying there is nothing yet; "NetLet points" with the
 balance in a pill; then every section as a row in white cards — an outline
 icon, the name, what is waiting, a chevron — with dashed lines between, the
 language as a two-way switch in its own row (each choice in its own language),
-"Account security" (the details) and signing out in red at the foot, still
-asking first. Cards follow what somebody came to do: shopping with, being told
+"Account security" (the password and deleting the account, `/account/security`)
+and signing out in red at the foot, still asking first. Cards follow what somebody came to do: shopping with, being told
 things, running something, the account itself. The tiles in four headed groups
 and the welcome heading went; the dates moved to the foot of "Your profile"
 (`AccountIdentity`), drawn as the home's rows — an icon, the words, the date at
@@ -1959,6 +1959,38 @@ assistant icon for all the pages"): it was left off these two for a while,
 having covered the ends of the rows — the owner's screenshot had it over
 "Help from NetLet" — and now the page keeps room under its last row for it
 (`pb-[11rem]`), and it folds to its mark while the tab bar is away.
+
+**Account security is the password and deleting the account, and nothing
+else, on the owner's word** (`SecurityCards` on the web, `AccountSecurityView`
+in the app); it and the name card's pencil had both opened "Your profile",
+which held the password among the name, phone and the rest. "Your profile"
+keeps everything else, the sign-in email included.
+
+**Deleting your account is a real delete, on the owner's word**
+(`Backend/src/services/accountDeletion.ts`, `auth.deletionCheck` and
+`auth.deleteAccount`; `DeleteAccount` and `DeleteAccountCard`). Deactivating was
+offered too and the owner chose delete alone, which needs no schema change:
+every table pointing at `users` already names its delete rule, so the
+shopper's own rows go with the row (the addresses, the profile's details, the
+hearts and the wishlists, the bag, the points, the reviews, the standing
+orders, the notices, the conversations with NetLet) and a record of business
+stays with the reference set to null — an order and its invoices keep every
+fact they froze and point at nobody, because a shop keeps its invoices. The
+password store goes first and inside the transaction (Supabase's user, or the
+local digest with the row), so a service that refuses leaves the account whole
+and the address can be registered afresh afterwards. A session on another
+device finds no row and is signed out (`authenticateRequest`). **What refuses
+it is what the row still holds up**, checked when the page asks and again under
+a lock on the row: an administrator (another removes them), a member of a
+store's or a delivery company's team or an employee with a grant, an order
+still on its way (a line pending, preparing or shipped on an order not
+cancelled or refunded), an open return, and a points cash-out NetLet has not
+paid — its `point_entries` row is the only record of the money owed, and it
+would cascade away. The card names each one rather than offering a press the
+server would refuse, says the points balance that goes, and asks for the
+password in the confirmation, the email form's rule. `accountDeletion.test.ts`
+deletes one and checks each refusal; the privacy policy says it, and
+`LEGAL_UPDATED` moved.
 
 **"Your profile" is drawn to the owner's second reference** (Noon's "Your
 profile"): white cards whose boxes carry their label inside the rim, small and

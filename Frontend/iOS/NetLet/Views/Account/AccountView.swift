@@ -46,7 +46,7 @@ struct AccountView: View {
         ["addresses", "wishlists", "offers", "reviews", "subscriptions", "language", "currency"],
         ["preferences", "help"],
         ["affiliate", "selling"],
-        ["details", "signout"],
+        ["security", "signout"],
     ]
 
     private func home(_ user: User) -> some View {
@@ -356,7 +356,7 @@ struct AccountView: View {
                 Button {
                     open(entry)
                 } label: {
-                    rowLabel(symbol: entry.symbol, title: l.t(id == "details" ? "account.security" : entry.label), waiting: badge(entry), iconColour: ProfileInk.icon)
+                    rowLabel(symbol: entry.symbol, title: l.t(entry.label), waiting: badge(entry), iconColour: ProfileInk.icon)
                 }
                 .buttonStyle(.tap)
             }
@@ -544,6 +544,7 @@ struct AccountEntry: Identifiable, Hashable {
         AccountEntry(id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards", symbol: "person.2", group: "account.groupRewards"),
         AccountEntry(id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate", symbol: "megaphone", group: "account.groupRewards"),
         AccountEntry(id: "details", label: "account.sectionProfile", hint: "account.hint.details", symbol: "person.crop.circle", group: "account.groupSettings"),
+        AccountEntry(id: "security", label: "account.security", hint: "account.hint.security", symbol: "lock.shield", group: "account.groupSettings"),
         AccountEntry(id: "addresses", label: "address.book", hint: "account.hint.addresses", symbol: "mappin.and.ellipse", group: "account.groupSettings"),
         AccountEntry(id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences", symbol: "slider.horizontal.3", group: "account.groupSettings"),
         AccountEntry(id: "selling", label: "account.sectionSelling", hint: "account.hint.selling", symbol: "storefront", group: "account.groupSettings"),
@@ -563,6 +564,7 @@ struct AccountEntry: Identifiable, Hashable {
         case "rewards": return .rewards
         case "affiliate": return .affiliate
         case "details": return .profile
+        case "security": return .security
         case "addresses": return .addresses
         case "preferences": return .preferences
         case "selling": return .portal("/admin")
@@ -581,33 +583,12 @@ struct AccountEntry: Identifiable, Hashable {
 struct ProfileView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
             ShopPage(header: false) {
                 VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 14) {
-                        // Back one screen, to wherever it was opened from.
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "chevron.backward")
-                                .font(.system(size: 17, weight: .semibold))
-                                .foregroundStyle(Brand.navy)
-                                .frame(width: 44, height: 44)
-                                .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
-                                .contentShape(Circle())
-                        }
-                        .buttonStyle(.tap)
-                        .accessibilityLabel(l.t("account.backToAccount"))
-                        Text(l.t("account.sectionProfile"))
-                            .font(.inter(22, .heavy))
-                            .foregroundStyle(Brand.navy)
-                            .accessibilityAddTraits(.isHeader)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .padding(.bottom, 4)
+                    RoundBackTitle(title: l.t("account.sectionProfile"))
                     ProfileForm(model: model)
                     if let user = app.session.user { AccountIdentityCard(user: user) }
                 }
@@ -621,21 +602,99 @@ struct ProfileView: View {
     }
 }
 
+/// A page's round way back beside its title — "Your profile" and "Account
+/// security", one screen back to wherever they were opened from.
+struct RoundBackTitle: View {
+    let title: String
+    @Environment(LanguageSettings.self) private var l
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Brand.navy)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.tap)
+            .accessibilityLabel(l.t("account.backToAccount"))
+            Text(title)
+                .font(.inter(22, .heavy))
+                .foregroundStyle(Brand.navy)
+                .accessibilityAddTraits(.isHeader)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.bottom, 4)
+    }
+}
+
+/// Account security, on the owner's word: the password, and deleting the
+/// account, and nothing else — the web's `/account/security`. The password is
+/// "Your profile"'s own card (`ProfileForm`'s `security`); the rest of the
+/// profile stays under the name's pencil.
+struct AccountSecurityView: View {
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
+            ShopPage(header: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    RoundBackTitle(title: l.t("account.security"))
+                    ProfileForm(model: model, security: true)
+                    DeleteAccountCard()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .padding(.bottom, 48)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+}
+
 /// "Your profile", drawn to the owner's reference (Noon's "Your profile") and
 /// card for card the web's `ProfileManager`: the name in two boxes side by
-/// side, the phone, the gender, the birthday and the nationality, then the two
-/// things somebody signs in with. Each card is its own decision — a gender or a
-/// country saves as it is pressed, the rest have a Save — because one Save
-/// across all of them would change a password somebody opened the page to
-/// correct a spelling in.
+/// side, the phone, the gender, the birthday and the nationality, then the
+/// address somebody signs in with. Each card is its own decision — a gender or
+/// a country saves as it is pressed, the rest have a Save. **The password is
+/// Account security's**, on the owner's word: `security` draws it alone.
 private struct ProfileForm: View {
     @Bindable var model: ProfileViewModel
+    /// Account security's card — the password — rather than the profile's.
+    var security = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var choosingBirthday = false
     @State private var listingCountries = false
 
     var body: some View {
+        if security {
+            passwordCard
+        } else {
+            profileCards
+        }
+    }
+
+    private var passwordCard: some View {
+        card(.password, title: "account.password", note: "account.passwordNote", done: "account.passwordChanged") {
+            FloatingField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
+            FloatingField(label: l.t("account.newPassword"), text: $model.newPassword, content: .newPassword, secure: true, leftToRight: true)
+            Text(l.t("auth.ruleLength"))
+                .font(.inter(12))
+                .foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        } action: {
+            saveButton(.password, enabled: true) { _ = await model.savePassword() }
+        }
+    }
+
+    private var profileCards: some View {
         VStack(spacing: 16) {
             card(.name, title: nil, note: model.problems[.name] == nil ? "profile.nameNote" : nil, done: "account.nameSaved") {
                 HStack(alignment: .top, spacing: 12) {
@@ -706,16 +765,6 @@ private struct ProfileForm: View {
                 saveButton(.email, enabled: true) {
                     if let user = await model.saveEmail() { app.session.updated(user) }
                 }
-            }
-            card(.password, title: "account.password", note: "account.passwordNote", done: "account.passwordChanged") {
-                FloatingField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
-                FloatingField(label: l.t("account.newPassword"), text: $model.newPassword, content: .newPassword, secure: true, leftToRight: true)
-                Text(l.t("auth.ruleLength"))
-                    .font(.inter(12))
-                    .foregroundStyle(Brand.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            } action: {
-                saveButton(.password, enabled: true) { _ = await model.savePassword() }
             }
         }
         .sheet(isPresented: $listingCountries) {

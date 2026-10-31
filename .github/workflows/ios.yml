@@ -180,6 +180,7 @@ jobs:
             shot 55-address-pin "$lang" address:pin shopper
             shot 56-address-confirm "$lang" address:confirm shopper
             shot 57-address-edit "$lang" address:edit shopper
+            shot 58-account-security "$lang" security shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is
