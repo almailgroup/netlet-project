@@ -16,14 +16,15 @@
  * next. Deals follows the grid only while the home page draws a Deals shelf
  * (`shelvesFor`), the rule every link to it keeps.
  *
- * **Shop by brand and the stores come first, on the owner's word** — they
- * left the home page for here, each the sideways row it was there
- * (`BrandShelf`, `StoreShelf`), and each drawn only from three.
+ * **Two boxes lead it, Shop by brand and Shop by stores, on the owner's
+ * word** ("two options at the top of shop by category … when you tap on any
+ * of them it lists the brands or stores"): each opens its own list, `/brands`
+ * and `/stores`. They were two sideways rows of the first dozen of each, which
+ * pushed the departments a screen down a phone.
  */
-import { ChevronRight, Tag } from "lucide-react";
+import { ChevronRight, Store, Tag, Tags } from "lucide-react";
+import type { ReactNode } from "react";
 import { Link } from "wouter";
-import { BrandShelf } from "@/components/home/BrandShelf";
-import { StoreShelf } from "@/components/home/StoreShelf";
 import { Breadcrumbs, CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { shelvesFor } from "@/content/homeLayout";
@@ -61,8 +62,10 @@ export default function Categories() {
     <PageBody>
       <Breadcrumbs trail={[{ label: t("nav.categories") }]} />
       <PageHeading title={t("nav.categories")} />
-      <BrandShelf embedded />
-      <StoreShelf embedded />
+      <ul className="mb-7 grid grid-cols-2 gap-3 sm:mb-9 sm:gap-4">
+        <li className="min-w-0"><WayIn href="/brands" icon={<Tags className="size-5" />} title={t("home.shopByBrand")} note={t("categories.byBrandNote")} /></li>
+        <li className="min-w-0"><WayIn href="/stores" icon={<Store className="size-5" />} title={t("categories.byStore")} note={t("categories.byStoreNote")} /></li>
+      </ul>
       <h2 id="departments-title" className="mb-4 text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{t("home.shopByCategory")}</h2>
       <ul aria-labelledby="departments-title" className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {TILES.map(tile => (
@@ -106,5 +109,24 @@ export default function Categories() {
         </Link>
       ) : null}
     </PageBody>
+  );
+}
+
+/** A box at the top of the page that opens a list: the brands or the stores. */
+function WayIn({ href, icon, title, note }: { href: string; icon: ReactNode; title: string; note: string }) {
+  return (
+    <Link
+      href={href}
+      className={`${CARD} flex h-full min-h-[92px] flex-col justify-between gap-3 p-3.5 shadow-[0_1px_2px_rgba(10,40,90,.06)] hover:border-[#d5dfeb] hover:bg-[#f0f2f5] sm:flex-row sm:items-center sm:p-4`}
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0a285a] text-white">{icon}</span>
+        <span className="min-w-0">
+          <span className="block text-[15px] font-extrabold leading-tight text-[#0a285a]">{title}</span>
+          <span className="mt-0.5 hidden text-[13px] leading-5 ink-muted sm:block">{note}</span>
+        </span>
+      </span>
+      <ChevronRight aria-hidden className="hidden size-5 shrink-0 text-[#0a285a] rtl:-scale-x-100 sm:block" />
+    </Link>
   );
 }

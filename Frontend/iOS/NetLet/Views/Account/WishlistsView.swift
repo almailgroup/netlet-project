@@ -18,6 +18,23 @@ struct WishlistsView: View {
                             .foregroundStyle(Brand.body)
                             .fixedSize(horizontal: false, vertical: true)
                         PhoneCard(model: model)
+                        // Somebody else's list, found by their number or the
+                        // name on it — here, on the owner's word, where the
+                        // account's own lists are.
+                        if app.features.isOn("wishlists") {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(l.t("gift.heading"))
+                                    .font(.inter(16, .heavy))
+                                    .foregroundStyle(Brand.navy)
+                                    .accessibilityAddTraits(.isHeader)
+                                Text(l.t("gift.intro"))
+                                    .font(.inter(13))
+                                    .foregroundStyle(Brand.muted)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                GiftFinder(inset: true).padding(.top, 6)
+                            }
+                            .card()
+                        }
                         LoadStateView(state: model.lists.state, retry: { await model.load() }) { lists in
                             VStack(alignment: .leading, spacing: 12) {
                                 // Public first and private second, each under a

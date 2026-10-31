@@ -162,12 +162,8 @@ struct CartView: View {
                 .card()
             }
             VStack(alignment: .leading, spacing: 14) {
-                // A discount code, a gift card and points, each its own row,
-                // on the owner's word — carried to checkout (`SavingsModel`).
-                BagSavingsCard(cart: cart, inset: true)
-                Divider().overlay(Brand.cardLine)
-                SummaryCard(cart: cart, grouped: groups != nil, updating: app.cart.syncing, bill: app.savings.bill(for: cart))
-                Text(l.t(app.savings.bill(for: cart).reduced ? "cart.savingsNote" : "cart.checkoutNote"))
+                SummaryCard(cart: cart, grouped: groups != nil, updating: app.cart.syncing)
+                Text(l.t("cart.checkoutNote"))
                     .font(.inter(12))
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -207,7 +203,7 @@ struct CartView: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(l.t("cart.total")).font(.inter(12)).foregroundStyle(Brand.muted)
-                Text(l.price(app.savings.bill(for: cart).payable)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
+                Text(l.price(cart.total)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
                     .opacity(app.cart.syncing ? 0.5 : 1)
             }
             Button(l.t("cart.checkoutShort")) { goToCheckout() }
@@ -510,9 +506,6 @@ struct SummaryCard: View {
     /// delivery and the total are the server's last and drawn faint until it
     /// answers — the web's `syncing`.
     var updating = false
-    /// What the code, the gift card and the points take off, when the cart
-    /// draws them (`SavingsModel`); nil leaves the server's total.
-    var bill: Till.Bill?
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
@@ -549,31 +542,16 @@ struct SummaryCard: View {
                     }
                 }
             }
-            if let bill {
-                if !bill.discount.isZero { saving(l.t("checkout.discountRow"), bill.discount) }
-                if !bill.points.isZero { saving(l.t("checkout.pointsRow"), bill.points) }
-                if !bill.giftCard.isZero { saving(l.t("checkout.giftCardRow"), bill.giftCard) }
-            }
             Divider()
-            let total = bill?.payable ?? cart.total
-            row(l.t("cart.total"), l.price(total), bold: true, faint: updating)
+            row(l.t("cart.total"), l.price(cart.total), bold: true, faint: updating)
             // Read in another currency, the figure charged is said too.
             if l.currency != CurrencyTable.shop {
-                Text(l.t("currency.paidInDinars", ["amount": total.formatted(l.current)]))
+                Text(l.t("currency.paidInDinars", ["amount": cart.total.formatted(l.current)]))
                     .font(.inter(12, .semibold))
                     .foregroundStyle(Brand.navy)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    private func saving(_ label: String, _ amount: Money) -> some View {
-        HStack {
-            Text(label).foregroundStyle(Brand.success)
-            Spacer()
-            Text("−" + l.price(amount)).fontWeight(.semibold).foregroundStyle(Brand.success)
-        }
-        .font(.subheadline)
     }
 
     private func row(_ label: String, _ value: String, bold: Bool = false, faint: Bool = false) -> some View {

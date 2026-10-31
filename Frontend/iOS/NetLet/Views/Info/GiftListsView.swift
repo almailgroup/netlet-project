@@ -3,8 +3,29 @@ import SwiftUI
 /// Finding somebody's wishlist by their phone number or the name they show on
 /// it — the web's `/gifts`. "Nobody has that number" and "they publish
 /// nothing" are the same answer, so the lookup cannot be used to ask who
-/// shops here.
+/// shops here. The form is `GiftFinder`, which the account's Wishlists and
+/// gifts draws too.
 struct GiftLookupView: View {
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        InfoPage(title: l.t("gift.heading"), note: l.t("gift.intro")) {
+            if !app.features.isOn("wishlists") {
+                Text(l.t("gift.switchedOff")).font(.inter(14)).foregroundStyle(Brand.muted)
+            } else {
+                GiftFinder()
+            }
+        }
+    }
+}
+
+/// The lookup's box and what it found — on `/gifts` and inside the account's
+/// Wishlists and gifts, on the owner's word ("finding a user for buying their
+/// wishlist should be in Wishlist and gifts itself"); the web's `GiftFinder`.
+struct GiftFinder: View {
+    /// Inside another card already: the box without a card of its own.
+    var inset = false
     @State private var typed = ""
     @State private var invalid = false
     @State private var searching = false
@@ -14,40 +35,34 @@ struct GiftLookupView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        InfoPage(title: l.t("gift.heading"), note: l.t("gift.intro")) {
-            if !app.features.isOn("wishlists") {
-                Text(l.t("gift.switchedOff")).font(.inter(14)).foregroundStyle(Brand.muted)
-            } else {
-                VStack(alignment: .leading, spacing: 14) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        LabeledField(
-                            label: l.t("gift.lookupLabel"),
-                            text: $typed,
-                            placeholder: l.t("gift.lookupPlaceholder"),
-                            problem: invalid ? "gift.lookupInvalid" : nil
-                        )
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.words)
-                        .submitLabel(.search)
-                        .onSubmit { Task { await find() } }
-                        Button {
-                            Task { await find() }
-                        } label: {
-                            if searching { ProgressView().tint(.white) } else { Label(l.t("gift.lookupSubmit"), systemImage: "magnifyingglass") }
-                        }
-                        .buttonStyle(PrimaryButtonStyle())
-                        .disabled(searching)
-                    }
-                    .card()
-                    if let refusal {
-                        Text(l.t(refusal)).font(.inter(14)).foregroundStyle(Brand.danger)
-                    } else if let found {
-                        if found.isEmpty {
-                            GiftNotFound()
-                        } else {
-                            ForEach(found) { list in GiftListCard(list: list) { await find() } }
-                        }
-                    }
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
+                LabeledField(
+                    label: l.t("gift.lookupLabel"),
+                    text: $typed,
+                    placeholder: l.t("gift.lookupPlaceholder"),
+                    problem: invalid ? "gift.lookupInvalid" : nil
+                )
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.words)
+                .submitLabel(.search)
+                .onSubmit { Task { await find() } }
+                Button {
+                    Task { await find() }
+                } label: {
+                    if searching { ProgressView().tint(.white) } else { Label(l.t("gift.lookupSubmit"), systemImage: "magnifyingglass") }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(searching)
+            }
+            .modifier(FinderCard(inset: inset))
+            if let refusal {
+                Text(l.t(refusal)).font(.inter(14)).foregroundStyle(Brand.danger)
+            } else if let found {
+                if found.isEmpty {
+                    GiftNotFound()
+                } else {
+                    ForEach(found) { list in GiftListCard(list: list) { await find() } }
                 }
             }
         }
@@ -72,6 +87,16 @@ struct GiftLookupView: View {
             let key = APIError.from(error).messageKey(knownKey: l.phrasebook.has)
             refusal = key.hasPrefix("ios.") || key.hasPrefix("error.") ? "gift.loadFailed" : key
         }
+    }
+}
+
+/// The finder's box as a card of its own, or bare inside another.
+private struct FinderCard: ViewModifier {
+    let inset: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if inset { content } else { content.card() }
     }
 }
 

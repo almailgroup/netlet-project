@@ -34,7 +34,6 @@
 import { BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
 import { DeliveryAddressCard, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { SavedForLater } from "@/components/cart/SavedForLater";
-import { useSavingsBill } from "@/components/cart/BagSavings";
 import { BUTTON_PRIMARY, CARD, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
 import { PhoneActionBar, TAB_BAR_REACH } from "@/components/layout/PhoneActionBar";
 import { CountBadge } from "@/components/ui/CountBadge";
@@ -64,8 +63,6 @@ export default function Cart() {
   const items = cart?.items.length ?? 0;
   const [checkoutRef, checkoutBelow] = useBeyondScreen("bottom", TAB_BAR_REACH);
   const delivery = useDeliveryAddress();
-  /* The floating bar's total is the summary's: less any code, card or points. */
-  const bill = useSavingsBill();
   const details = trpc.customer.details.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 60_000 });
 
   /*
@@ -127,7 +124,7 @@ export default function Cart() {
               />
               <BagLines layout="page" />
             </div>
-            <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading savings onCheckout={goToCheckout} /></aside>
+            <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading onCheckout={goToCheckout} /></aside>
             {/* Under Checkout, on the owner's word — on a phone after the
                 summary, on a wide screen under both columns — so the bag and
                 what it costs come first. It sat directly under the lines. */}
@@ -140,7 +137,7 @@ export default function Cart() {
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1 px-1.5 min-[360px]:px-2">
               <p className="text-[12px] font-semibold leading-4 ink-muted">{t("cart.total")}</p>
-              <p className="truncate text-[16px] font-extrabold leading-6 text-[#0a285a]">{money(bill.reduced ? { amount: bill.payable, currencyCode: cart.total.currencyCode } : cart.total)}</p>
+              <p className="truncate text-[16px] font-extrabold leading-6 text-[#0a285a]">{money(cart.total)}</p>
             </div>
             <button type="button" onClick={goToCheckout} className="glass glass-accent flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-[14px] font-bold min-[360px]:px-5">
               {t("cart.checkoutShort")} <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />

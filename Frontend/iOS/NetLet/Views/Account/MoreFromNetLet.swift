@@ -5,9 +5,12 @@ import SwiftUI
 /// of navy links under the home page's last shelf; most of them the app
 /// already has a better door to (the departments are a tab, the offers and
 /// the newest are shelves), and what it had alone is here: the help centre
-/// (where WhatsApp, the phone and the email are), the returns policy, the
-/// guides, finding somebody's wishlist, the stores, selling on NetLet, and the
-/// terms, the privacy policy and the seller agreement — then who the shop is.
+/// (where WhatsApp, the phone and the email are), the guides, the terms and
+/// the privacy policy — then who the shop is. **The returns policy, finding
+/// somebody's wishlist, the stores, selling on NetLet and the seller agreement
+/// left it, on the owner's word**: the stores are a box on Categories, the
+/// finder is in Wishlists and gifts, and the notifications are the bell at the
+/// top of the page.
 ///
 /// A guest's Profile tab is the sign-in form, and the footer was the only
 /// place a guest could change the language, so the guest's card leads with
@@ -29,17 +32,10 @@ struct MoreFromNetLet: View {
     private var helpRows: [Row] {
         var rows = [
             Row(id: "help", symbol: "lifepreserver", title: l.t("footer.helpCentre"), route: .helpCentre),
-            Row(id: "returns", symbol: "arrow.uturn.backward", title: l.t("footer.returns"), route: .returnsPolicy),
         ]
         if app.features.isOn("articles") {
             rows.append(Row(id: "guides", symbol: "book", title: l.t("guides.title"), route: .guides))
         }
-        // Finding somebody's list, while lists are switched on.
-        if app.features.isOn("wishlists") {
-            rows.append(Row(id: "gifts", symbol: "gift", title: l.t("gift.title"), route: .gifts))
-        }
-        rows.append(Row(id: "stores", symbol: "storefront", title: l.t("stores.title"), route: .stores))
-        rows.append(Row(id: "sell", symbol: "bag.badge.plus", title: l.t("footer.sellWithUs"), route: .sell))
         return rows
     }
 
@@ -47,7 +43,6 @@ struct MoreFromNetLet: View {
         [
             Row(id: "terms", symbol: "doc.text", title: l.t("footer.terms"), route: .legal(.terms)),
             Row(id: "privacy", symbol: "hand.raised", title: l.t("footer.privacy"), route: .legal(.privacy)),
-            Row(id: "sellers", symbol: "signature", title: l.t("footer.sellerAgreement"), route: .legal(.sellers)),
         ]
     }
 

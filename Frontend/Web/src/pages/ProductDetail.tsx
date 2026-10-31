@@ -39,7 +39,7 @@ import { descriptionBlocks } from "@shared/commerce/productDetail";
 import { EMPTY_FILTERS, categorySlug, searchPath, searchWithTerm } from "@shared/commerce/browse";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
-import { roomFor } from "@shared/commerce/typedQuantity";
+import { lineCeiling, roomFor } from "@shared/commerce/typedQuantity";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -1066,7 +1066,7 @@ export default function ProductDetail() {
   const handle = params?.handle ?? "";
   const { data: product, isLoading, error } = useProductByHandle(handle);
   const { data: catalog = [] } = useCatalog(24);
-  const { addItem, cart, openCart } = useCart();
+  const { addItem, cart, openCart, updateQuantity, removeItem } = useCart();
   const { heartedIds, toggleSaved, deliveryZone } = useCustomer();
   /* A member of the affiliate programme shares this page with their code on it (3.1.14, 3.7). */
   const memberCode = useMemberCode();
@@ -1155,6 +1155,26 @@ export default function ProductDetail() {
   const inBag = selectedVariant ? (cart?.items ?? []).filter(item => item.variantId === selectedVariant.id).reduce((total, item) => total + item.quantity, 0) : 0;
   const room = roomFor(selectedVariant?.maxQuantity ?? MAX_LINE_QUANTITY, inBag);
   useEffect(() => { setQuantity(current => Math.min(current, room)); }, [room]);
+  /*
+   * Once this option is in the bag as a plain line (no extras, no set), the
+   * stepper *is* that line, on the owner's word ("you cannot remove that
+   * product when you tap on the − icon"): it showed "how many more", stuck at
+   * one, so a product added from a card could not be taken out from its own
+   * page. A press changes the bag at once, the minus is the bin at one (the
+   * bag's rule), Add to cart becomes View cart and Buy now goes straight to
+   * checkout with the line — the card's own rule (`CardAction`). Ticking an
+   * extra makes a different line, so the stepper goes back to "how many".
+   */
+  const plainLine = selectedVariant && chosenAddons.length === 0
+    ? cart?.items.find(item => item.variantId === selectedVariant.id && !item.addons?.length && !item.bundleName) ?? null
+    : null;
+  const lineMax = plainLine ? lineCeiling(plainLine, cart?.items ?? [plainLine]) : 0;
+  const changeLine = (next: number) => {
+    if (!plainLine) return;
+    const failed = () => toast.error(t("cart.updateFailed"));
+    if (next <= 0) void removeItem(plainLine.lineId).catch(failed);
+    else if (next !== plainLine.quantity) void updateQuantity(plainLine.lineId, next).catch(failed);
+  };
   const related = useMemo(() => product ? relatedProducts(product, catalog) : [], [catalog, product]);
   const isSaved = product ? heartedIds.includes(product.id) : false;
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
@@ -1193,6 +1213,11 @@ export default function ProductDetail() {
    * the press lands on checkout with the item already in it.
    */
   const buyNow = async () => {
+    /* In the bag already: checkout with the line as it is, adding nothing. */
+    if (plainLine) {
+      navigate("/checkout");
+      return;
+    }
     if (!product || !selectedVariant?.availableForSale) return;
     const added = addItem(selectedVariant.id, quantity, { reveal: false, addonIds: chosenAddons, product });
     navigate("/checkout");
@@ -1202,6 +1227,9 @@ export default function ProductDetail() {
       toast.error(t("cart.buyFailed"));
     }
   };
+  const buyCount = plainLine ? plainLine.quantity : quantity;
+  const addLabel = plainLine ? t("product.viewCart") : t(buyLabelFor(selectedVariant));
+  const buyLabel = t(buyCount > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(buyCount) });
   // The cart drawer lives on the home route, and `isOpen` is held in the cart
   // context above the router — so opening it before navigating carries across.
 
@@ -1295,7 +1323,7 @@ export default function ProductDetail() {
 
             {rating ? <StarRating value={rating.value} scaleMax={rating.scaleMax} count={rating.count} /> : null}
 
-            {express ? <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#f2683a] px-3 py-1 text-xs font-bold text-white"><Zap className="size-3.5 fill-current" />{t("product.expressTitle")}</p> : null}
+            {express ? <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#f2683a] px-3 py-1 text-xs font-bold text-[#0a285a]"><Zap className="size-3.5 fill-current" />{t("product.expressTitle")}</p> : null}
 
             <div className="mt-5 flex flex-wrap items-baseline gap-3">
               <span className="text-[32px] font-extrabold tracking-[-.04em] text-[#1f2229]">{money(price)}</span>
@@ -1368,11 +1396,26 @@ export default function ProductDetail() {
               <span className="text-sm font-semibold ink-muted">{t("product.quantity")}:</span>
               {/* The shared control: the card grew the same thing, and two
                   copies is how one clamps at 1 and the other at 0. */}
-              <QuantityStepper value={quantity} onChange={setQuantity} max={room} />
+              {plainLine ? (
+                <QuantityStepper
+                  value={plainLine.quantity}
+                  onChange={next => changeLine(typeof next === "function" ? next(plainLine.quantity) : next)}
+                  max={lineMax}
+                  onRemove={() => changeLine(0)}
+                  removeLabel={t("cart.remove", { name: product.title })}
+                />
+              ) : (
+                <QuantityStepper value={quantity} onChange={setQuantity} max={room} />
+              )}
               {/* What the bag already holds of this option, in every line of it
                   (plain, with extras, in a set): the stepper is "how many more",
-                  and showing 1 beside a bag of 5 read as the bag being wrong. */}
-              {inBag > 0 ? (
+                  and showing 1 beside a bag of 5 read as the bag being wrong.
+                  Once the stepper is the bag's own line, it says so. */}
+              {plainLine ? (
+                <button type="button" onClick={openCart} className="text-[13px] font-semibold text-[#0a285a] underline underline-offset-4">
+                  {t("product.inYourCartNow")}
+                </button>
+              ) : inBag > 0 ? (
                 <button type="button" onClick={openCart} className="text-[13px] font-semibold text-[#0a285a] underline underline-offset-4">
                   {t(inBag === 1 ? "product.inYourCartOne" : "product.inYourCartMany", { count: inBag })}
                 </button>
@@ -1385,8 +1428,8 @@ export default function ProductDetail() {
                 white buttons and a heart were stacked. The heart is on the
                 photo's corner, as on the card. */}
             <div ref={buyRef} className="mt-6 flex gap-2.5">
-              <button onClick={() => void addToCart()} disabled={!inStock} className={`${PREVIEW_TONE.add} flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[380px]:text-[15px]`}><ShoppingBag className="hidden size-[18px] shrink-0 min-[360px]:block" aria-hidden /><span className="truncate">{t(buyLabelFor(selectedVariant))}</span></button>
-              <button onClick={() => void buyNow()} disabled={!inStock} className={`${PREVIEW_TONE.buy} flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[380px]:text-[15px]`}><Zap className="hidden size-[17px] shrink-0 fill-current min-[360px]:block" aria-hidden /><span className="truncate">{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</span></button>
+              <button onClick={plainLine ? openCart : () => void addToCart()} disabled={!plainLine && !inStock} className={`${PREVIEW_TONE.add} flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[380px]:text-[15px]`}><ShoppingBag className="hidden size-[18px] shrink-0 min-[360px]:block" aria-hidden /><span className="truncate">{addLabel}</span></button>
+              <button onClick={() => void buyNow()} disabled={!plainLine && !inStock} className={`${PREVIEW_TONE.buy} flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[380px]:text-[15px]`}><Zap className="hidden size-[17px] shrink-0 fill-current min-[360px]:block" aria-hidden /><span className="truncate">{buyLabel}</span></button>
             </div>
 
             {selectedVariant?.preorder
@@ -1481,10 +1524,10 @@ export default function ProductDetail() {
         shown={buyPassed}
         name={t("product.buyBar", { name: product.title })}
         price={money(price)}
-        addLabel={t(buyLabelFor(selectedVariant))}
-        buyLabel={t("product.buyNow")}
-        disabled={!inStock}
-        onAdd={() => void addToCart()}
+        addLabel={addLabel}
+        buyLabel={buyLabel}
+        disabled={!plainLine && !inStock}
+        onAdd={plainLine ? openCart : () => void addToCart()}
         onBuy={() => void buyNow()}
       />
     </>

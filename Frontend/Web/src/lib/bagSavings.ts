@@ -1,9 +1,6 @@
 /**
- * What the shopper chose to take off the bag — a discount code, a gift card
- * and whether to spend points — on the owner's word ("display three distinct
- * options … on the cart"). Chosen on the cart page and read again at checkout,
- * which draws the same card (`BagSavings`), so a code typed in the cart is the
- * code the order is placed with and can still be changed there.
+ * What the shopper chose to take off the bag at checkout — a discount code, a
+ * gift card and whether to spend points (`BagSavings`), on the owner's word.
  *
  * Kept for the tab (`browserStore`'s session helpers) and for one bag: a code
  * chosen for a bag that has since gone is not carried onto the next. Nothing

@@ -13,7 +13,7 @@
  */
 import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 import { quantityDraft, typedQuantity } from "@shared/commerce/typedQuantity";
@@ -21,7 +21,7 @@ import { quantityDraft, typedQuantity } from "@shared/commerce/typedQuantity";
 /** Nobody buys a hundred lamps from a product card; a typo could. The server's own ceiling. */
 export const MAX_QUANTITY = MAX_LINE_QUANTITY;
 
-export function QuantityStepper({ value, onChange, size = "regular", disabled = false, max = MAX_QUANTITY }: {
+export function QuantityStepper({ value, onChange, size = "regular", disabled = false, max = MAX_QUANTITY, onRemove, removeLabel }: {
   value: number;
   /*
    * A React setter, so a press can say "one more than whatever it is now"
@@ -42,6 +42,15 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
    * and checkout refused what the page had suggested.
    */
   max?: number;
+  /**
+   * Set when the number *is* a line of the bag (the product page once the
+   * product is in it, on the owner's word): at one the minus is the bin,
+   * and a typed zero takes the line out, the bag's own rule. Without it the
+   * minus stops at one, because nothing is in the bag to take out.
+   */
+  onRemove?: () => void;
+  /** The bin's name, which says what comes out. */
+  removeLabel?: string;
 }) {
   const { t } = useTranslation();
   const compact = size === "compact";
@@ -55,15 +64,27 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
 
   return (
     <div className={`inline-flex items-center rounded-full border border-[#d5dfeb] bg-white ${compact ? "h-9" : ""}`}>
-      <button
-        type="button"
-        onClick={() => onChange(current => Math.max(1, current - 1))}
-        disabled={disabled || value <= 1}
-        aria-label={t("product.decreaseQuantity")}
-        className={`${button} rounded-full text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-40`}
-      >
-        <Minus className={icon} aria-hidden />
-      </button>
+      {onRemove && value <= 1 ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={disabled}
+          aria-label={removeLabel ?? t("product.decreaseQuantity")}
+          className={`${button} rounded-full text-[#0a285a] hover:text-[#c2362a] disabled:cursor-not-allowed disabled:opacity-40`}
+        >
+          <Trash2 className={icon} aria-hidden />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onChange(current => Math.max(1, current - 1))}
+          disabled={disabled || value <= 1}
+          aria-label={t("product.decreaseQuantity")}
+          className={`${button} rounded-full text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-40`}
+        >
+          <Minus className={icon} aria-hidden />
+        </button>
+      )}
       {compact ? (
         /*
           The count is Latin digits in both languages — Gulf storefronts price in
@@ -74,7 +95,7 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
           <bdi dir="ltr">{value}</bdi>
         </span>
       ) : (
-        <TypedCount value={value} ceiling={ceiling} disabled={disabled} onChange={next => onChange(next)} />
+        <TypedCount value={value} ceiling={ceiling} disabled={disabled} onChange={next => onChange(next)} onRemove={onRemove} />
       )}
       <button
         type="button"
@@ -94,10 +115,11 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
  * (`LineQuantity` in `BagDrawer.tsx`): a press selects the number and opens the
  * number keypad, and what is typed is the count on Enter or on leaving the box,
  * read by `typedQuantity` (Arabic-Indic digits folded, over what there is held
- * to it and said). Here nothing is in the bag yet, so zero or nothing typed
- * puts the number back rather than taking a line out; Escape does the same.
+ * to it and said). Zero takes the line out when the number is a bag line
+ * (`onRemove`); otherwise nothing is in the bag yet, so zero or nothing typed
+ * puts the number back. Escape does the same.
  */
-function TypedCount({ value, ceiling, disabled, onChange }: { value: number; ceiling: number; disabled: boolean; onChange: (next: number) => void }) {
+function TypedCount({ value, ceiling, disabled, onChange, onRemove }: { value: number; ceiling: number; disabled: boolean; onChange: (next: number) => void; onRemove?: () => void }) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<string | null>(null);
   const cancelled = useRef(false);
@@ -110,7 +132,11 @@ function TypedCount({ value, ceiling, disabled, onChange }: { value: number; cei
       return;
     }
     const typed = typedQuantity(text, ceiling);
-    if (!typed || typed.kind === "remove") return;
+    if (!typed) return;
+    if (typed.kind === "remove") {
+      onRemove?.();
+      return;
+    }
     if (typed.capped) toast(ceiling < MAX_LINE_QUANTITY ? t("cart.onlyAvailable", { count: ceiling }) : t("cart.atMost", { count: String(MAX_QUANTITY) }));
     if (typed.quantity !== value) onChange(typed.quantity);
   };

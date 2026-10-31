@@ -11,9 +11,18 @@
  * page instead, because a size has to be chosen before "add" means anything,
  * and a sold-out one says so. One row that scrolls sideways, like the home
  * page's, and not drawn at all with nothing saved.
+ *
+ * **The Saved items page draws the same card in a grid, with Move to wishlist
+ * under Move to cart**, on the owner's word ("an option for moving the
+ * products that are in your saved products to wishlist or shopping cart"):
+ * the heart's second question — a private list or a public one
+ * (`chooseWishlist`) — and the product leaves Saved only once it is on a
+ * list. A guest has no lists and is not offered it (`useSavedMoves`).
  */
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useFeature } from "@/hooks/useFeature";
 import { Thumb } from "@/components/product/Thumb";
 import { ScrollArrows } from "@/components/ui/ScrollArrows";
 import { useProductsByIds } from "@/hooks/useCatalog";
@@ -21,29 +30,25 @@ import { useSideScroll } from "@/hooks/useSideScroll";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { pressHaptic, refusedHaptic } from "@/lib/haptics";
 import type { Product } from "@shared/commerce/types";
-import { ChevronRight, ShoppingBag, X } from "lucide-react";
+import { ChevronRight, Gift, ShoppingBag, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
 const SHOWN = 12;
 
-export function SavedForLater({ className = "" }: { className?: string }) {
+/**
+ * Moving a saved product out of Saved: into the bag as its plain line, or onto
+ * a wishlist once the heart's question is answered. Each says so in a polite
+ * live region (`said`), and a refused add puts the heart back.
+ */
+export function useSavedMoves() {
   const { t } = useTranslation();
-  const { savedIds, unsave, saveForLater } = useCustomer();
-  const { cart, addItem } = useCart();
-  const inBag = new Set((cart?.items ?? []).map(item => item.productId).filter(Boolean));
-  const ids = [...savedIds].reverse().filter(id => !inBag.has(id)).slice(0, SHOWN);
-  const { products, waiting } = useProductsByIds(ids);
-  const scroll = useSideScroll<HTMLUListElement>([products.length]);
+  const { unsave, saveForLater, chooseWishlist } = useCustomer();
+  const { addItem } = useCart();
+  const { isAuthenticated } = useAuth();
+  const wishlistsOn = useFeature("wishlists");
   const [said, setSaid] = useState("");
-  const title = t("cart.savedTitle");
-  /* Until the saved products are read, the row holds its place with outlines
-     of its cards; arriving a moment after the bag, it pushed the summary and
-     Checkout down a phone's screen. */
-  const outlined = !products.length && waiting;
-  if (!products.length && !outlined) return null;
-
   const move = (product: Product) => {
     const variant = product.variants.find(entry => entry.availableForSale);
     if (!variant) return;
@@ -56,6 +61,33 @@ export function SavedForLater({ className = "" }: { className?: string }) {
       toast.error(t("cart.addFailed"));
     });
   };
+  const wish = isAuthenticated && wishlistsOn
+    ? (product: Product) => {
+        pressHaptic();
+        chooseWishlist(product.id, () => {
+          unsave(product.id);
+          setSaid(t("saved.movedToWishlist", { name: product.title }));
+        });
+      }
+    : null;
+  return { move, wish, said, unsave };
+}
+
+export function SavedForLater({ className = "" }: { className?: string }) {
+  const { t } = useTranslation();
+  const { savedIds } = useCustomer();
+  const { cart } = useCart();
+  const inBag = new Set((cart?.items ?? []).map(item => item.productId).filter(Boolean));
+  const ids = [...savedIds].reverse().filter(id => !inBag.has(id)).slice(0, SHOWN);
+  const { products, waiting } = useProductsByIds(ids);
+  const scroll = useSideScroll<HTMLUListElement>([products.length]);
+  const { move, said, unsave } = useSavedMoves();
+  const title = t("cart.savedTitle");
+  /* Until the saved products are read, the row holds its place with outlines
+     of its cards; arriving a moment after the bag, it pushed the summary and
+     Checkout down a phone's screen. */
+  const outlined = !products.length && waiting;
+  if (!products.length && !outlined) return null;
 
   return (
     <section aria-labelledby="saved-later-title" className={className}>
@@ -93,14 +125,22 @@ function SavedCardOutline() {
   );
 }
 
-function SavedCard({ product, onMove, onRemove }: { product: Product; onMove: () => void; onRemove: () => void }) {
+export function SavedCard({ product, onMove, onRemove, onWish, grid = false }: {
+  product: Product;
+  onMove: () => void;
+  onRemove: () => void;
+  /** Move to wishlist, where the shopper has lists to move it to. */
+  onWish?: (() => void) | null;
+  /** The Saved page's grid, rather than the cart's sideways row. */
+  grid?: boolean;
+}) {
   const { t } = useTranslation();
   const money = useMoney();
   const href = `/products/${encodeURIComponent(product.handle)}`;
   const variant = product.variants.find(entry => entry.availableForSale);
   const choosing = product.variants.length > 1;
   return (
-    <li className="flex w-[152px] shrink-0 snap-start flex-col rounded-2xl border border-[#e6e9ef] bg-white p-2 sm:w-[168px]">
+    <li className={grid ? "flex min-w-0 flex-col rounded-2xl border border-[#e6e9ef] bg-white p-2 sm:p-3" : "flex w-[152px] shrink-0 snap-start flex-col rounded-2xl border border-[#e6e9ef] bg-white p-2 sm:w-[168px]"}>
       <div className="relative">
         <Link href={href} tabIndex={-1} aria-hidden className="block aspect-square overflow-hidden rounded-xl bg-[#f4f6f9]">
           <Thumb src={product.images[0]?.url} alt={product.images[0]?.altText ?? product.title} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} />
@@ -125,10 +165,15 @@ function SavedCard({ product, onMove, onRemove }: { product: Product; onMove: ()
             {t("product.chooseOption")}
           </Link>
         ) : (
-          <button type="button" onClick={onMove} aria-label={t("cart.moveToCartName", { name: product.title })} className="flex min-h-9 w-full items-center justify-center rounded-full bg-[#0a285a] text-[13px] font-bold text-white hover:bg-[#0d3372]">
-            {t("cart.moveToCart")}
+          <button type="button" onClick={onMove} aria-label={t("cart.moveToCartName", { name: product.title })} className={`flex w-full items-center justify-center gap-1.5 rounded-full bg-[#0a285a] text-[13px] font-bold text-white hover:bg-[#0d3372] ${grid ? "min-h-11" : "min-h-9"}`}>
+            {grid ? <ShoppingBag className="size-4 shrink-0" aria-hidden /> : null}{t("cart.moveToCart")}
           </button>
         )}
+        {onWish ? (
+          <button type="button" onClick={onWish} aria-label={t("saved.moveToWishlistName", { name: product.title })} className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-[#0a285a]/25 bg-white text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5] ${grid ? "min-h-11" : "min-h-9"}`}>
+            {grid ? <Gift className="size-4 shrink-0" aria-hidden /> : null}{t("cart.moveToWishlist")}
+          </button>
+        ) : null}
       </div>
     </li>
   );

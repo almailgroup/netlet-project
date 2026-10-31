@@ -29,7 +29,7 @@ import { isExpressEligible, productRating, savingsPercent } from "@shared/commer
 import { AvailabilityLine } from "@/components/product/Availability";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
-import { roomFor } from "@shared/commerce/typedQuantity";
+import { lineCeiling, roomFor } from "@shared/commerce/typedQuantity";
 import { ArrowRight, ShoppingBag, Star, X, Zap } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -41,7 +41,7 @@ import { Select } from "@/components/ui/Select";
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
   const money = useMoney();
-  const { addItem, cart } = useCart();
+  const { addItem, cart, openCart, updateQuantity, removeItem, proceedToCheckout } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [variantId, setVariantId] = useState("");
   const [imageIndex, setImageIndex] = useState(0);
@@ -83,10 +83,25 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const inBag = variant ? (cart?.items ?? []).filter(item => item.variantId === variant.id).reduce((total, item) => total + item.quantity, 0) : 0;
   const room = roomFor(variant?.maxQuantity ?? MAX_LINE_QUANTITY, inBag);
   const asked = Math.min(quantity, room);
+  /* In the bag already as a plain line, the stepper is that line and the
+     minus is the bin at one — the product page's rule, on the owner's word. */
+  const plainLine = variant ? cart?.items.find(item => item.variantId === variant.id && !item.addons?.length && !item.bundleName) ?? null : null;
+  const changeLine = (next: number) => {
+    if (!plainLine) return;
+    const failed = () => toast.error(t("cart.updateFailed"));
+    if (next <= 0) void removeItem(plainLine.lineId).catch(failed);
+    else if (next !== plainLine.quantity) void updateQuantity(plainLine.lineId, next).catch(failed);
+  };
   const image = product.images[imageIndex] ?? product.images[0];
   const fullHref = appPath(`/products/${encodeURIComponent(product.handle)}`);
 
   const add = async (thenCheckout: boolean) => {
+    if (plainLine) {
+      onClose();
+      if (thenCheckout) proceedToCheckout();
+      else openCart();
+      return;
+    }
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));
     /* Buy now goes through the shared path (3.2.9): no drawer, no reload. */
     if (thenCheckout) return buyNow(product, asked, variant.id);
@@ -206,7 +221,20 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                 {inStock ? (
                   <div className="flex items-center gap-3">
                     <span className="text-[13px] font-semibold ink-muted">{t("product.quantity")}</span>
-                    <QuantityStepper value={asked} onChange={next => setQuantity(current => (typeof next === "function" ? next(Math.min(current, room)) : next))} max={room} />
+                    {plainLine ? (
+                      <>
+                        <QuantityStepper
+                          value={plainLine.quantity}
+                          onChange={next => changeLine(typeof next === "function" ? next(plainLine.quantity) : next)}
+                          max={lineCeiling(plainLine, cart?.items ?? [plainLine])}
+                          onRemove={() => changeLine(0)}
+                          removeLabel={t("cart.remove", { name: product.title })}
+                        />
+                        <span className="text-[13px] font-semibold text-[#0a285a]">{t("product.inYourCartNow")}</span>
+                      </>
+                    ) : (
+                      <QuantityStepper value={asked} onChange={next => setQuantity(current => (typeof next === "function" ? next(Math.min(current, room)) : next))} max={room} />
+                    )}
                   </div>
                 ) : (
                   // Out of stock is the moment a back-in-stock alert is worth
@@ -219,18 +247,18 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                 <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
                   <button
                     onClick={() => void add(false)}
-                    disabled={!inStock}
+                    disabled={!plainLine && !inStock}
                     className={`${PREVIEW_TONE.add} flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1`}
                   >
                     <ShoppingBag className="size-[18px]" aria-hidden />
-                    {t(!inStock ? "product.unavailable" : variant?.preorder ? "product.preorderAction" : asked > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(asked) })}
+                    {plainLine ? t("product.viewCart") : t(!inStock ? "product.unavailable" : variant?.preorder ? "product.preorderAction" : asked > 1 ? "product.addToCartCount" : "product.addToCart", { count: String(asked) })}
                   </button>
                   <button
                     onClick={() => void add(true)}
-                    disabled={!inStock}
+                    disabled={!plainLine && !inStock}
                     className={`${PREVIEW_TONE.buy} flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-[15px] font-bold disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1`}
                   >
-                    <Zap className="size-[18px] fill-current" aria-hidden />{t(asked > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(asked) })}
+                    <Zap className="size-[18px] fill-current" aria-hidden />{t((plainLine?.quantity ?? asked) > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(plainLine?.quantity ?? asked) })}
                   </button>
                 </div>
               </div>

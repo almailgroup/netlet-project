@@ -35,6 +35,7 @@ import { PANEL } from "@/components/account/profileParts";
 import { MembershipCard } from "@/components/account/MembershipCard";
 import { Thumb } from "@/components/product/Thumb";
 import { PointsCoin } from "@/components/ui/PointsCoin";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { CurrencySelect } from "@/components/ui/CurrencySelect";
 import { useFeature } from "@/hooks/useFeature";
 import { formatCount } from "@/lib/format";
@@ -89,7 +90,6 @@ const CARDS: Row[][] = [
   ],
   [
     { id: "preferences", label: "account.sectionPreferences", icon: SlidersHorizontal },
-    { id: "notifications", label: "notices.title", icon: Bell },
     { id: "help", label: "support.section", icon: LifeBuoy },
   ],
   [
@@ -126,7 +126,22 @@ export function AccountHome({ user, has, badge, onSignOut }: {
 
   return (
     <div className="mx-auto max-w-2xl space-y-3">
-      <h1 className="sr-only">{t("account.yourWay")}</h1>
+      {/* The page's name and the notifications in its end corner, on the
+          owner's word — the bell replaced the Notifications row, so what is
+          unread is in sight before the first card. */}
+      <div className="flex items-center justify-between gap-3 pb-1">
+        <h1 className="text-[22px] font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-[26px]">{t("account.yourWay")}</h1>
+        <Link
+          href="/account/notifications"
+          onClick={() => pressHaptic()}
+          aria-label={signals.unreadNotices ? `${t("notices.menu")}, ${t("header.unreadCount", { count: signals.unreadNotices })}` : t("notices.menu")}
+          title={t("notices.menu")}
+          className="relative grid size-11 shrink-0 place-items-center rounded-full border border-[#e6e9ef] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"
+        >
+          <Bell className="size-[20px]" aria-hidden />
+          <CountBadge value={signals.unreadNotices} className="absolute -end-1 -top-1" />
+        </Link>
+      </div>
 
       <section aria-label={t("account.yourWay")} className={`${PANEL} flex items-center gap-4 p-4 sm:p-5`}>
         <span aria-hidden className="grid size-16 shrink-0 place-items-center rounded-full bg-[#f1f2f6] text-[22px] font-bold text-[#0a285a]">

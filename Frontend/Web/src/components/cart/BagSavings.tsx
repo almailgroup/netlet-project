@@ -1,9 +1,10 @@
 /**
- * The cart's three ways to pay less, on the owner's word ("display three
+ * Checkout's three ways to pay less, on the owner's word ("display three
  * distinct options: a discount code input, a gift card input, a NetLet points
- * redemption toggle"): each its own row on the cart page, and the same card at
- * checkout, where what was chosen in the cart is already in it
- * (`lib/bagSavings.ts`).
+ * redemption toggle") — at checkout only, on their word too ("the codes, gift
+ * cards and points should only be in the checkout page, not cart"). What is
+ * chosen is kept for the tab and the bag (`lib/bagSavings.ts`), so a reload
+ * of checkout keeps it.
  *
  * **A discount and a gift card are two boxes, and one order may use both.**
  * Checkout's one box asked "a discount code or a gift card", since somebody
@@ -46,7 +47,7 @@ const QUOTE_OPTIONS = { refetchOnWindowFocus: false, retry: false, staleTime: 60
 
 /**
  * What the chosen code, card and points take off this bag, and what is left
- * to pay — read by the card and by every summary that shows the total.
+ * to pay — read by the card and by checkout's summary.
  * `withBalance` asks for the points balance even when points are not on,
  * which only the card needs (to offer them).
  */
@@ -107,34 +108,13 @@ export function useSavingsBill({ withBalance = false }: { withBalance?: boolean 
   };
 }
 
-/** The rows under the subtotal and delivery: what each took off. */
-export function SavingsRows({ className = "", bill }: { className?: string; bill: ReturnType<typeof useSavingsBill> }) {
-  const { t } = useTranslation();
-  const money = useMoney();
-  const off = (amount: string) => `−${money({ amount, currencyCode: "KWD" })}`;
-  const rows: [MessageKey, string][] = [];
-  if (Number(bill.discountOff) > 0) rows.push(["checkout.discountRow", bill.discountOff]);
-  if (Number(bill.pointsOff) > 0) rows.push(["checkout.pointsRow", bill.pointsOff]);
-  if (Number(bill.giftOff) > 0) rows.push(["checkout.giftCardRow", bill.giftOff]);
-  return (
-    <>
-      {rows.map(([label, amount]) => (
-        <div key={label} className={`flex items-center justify-between gap-3 text-sm ${className}`}>
-          <span className="font-semibold text-[#2f5d33]">{t(label)}</span>
-          <span className="shrink-0 font-bold text-[#2f5d33]">{off(amount)}</span>
-        </div>
-      ))}
-    </>
-  );
-}
-
-export function BagSavings({ heading = false }: { heading?: boolean }) {
+export function BagSavings() {
   const { t } = useTranslation();
   const headingId = useId();
   const bill = useSavingsBill({ withBalance: true });
   return (
     <section aria-labelledby={headingId}>
-      <h3 id={headingId} className={heading ? "text-[15px] font-extrabold text-[#0a285a]" : "sr-only"}>{t("cart.savingsHeading")}</h3>
+      <h3 id={headingId} className="sr-only">{t("cart.savingsHeading")}</h3>
       <div className="divide-y divide-[#eef1f5]">
         <CodeBox kind="discount" bill={bill} />
         <CodeBox kind="gift" bill={bill} />

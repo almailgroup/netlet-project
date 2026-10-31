@@ -44,7 +44,7 @@ struct AccountView: View {
     /// "signout" are the two rows that are not sections.
     private static let cards: [[String]] = [
         ["addresses", "wishlists", "offers", "reviews", "subscriptions", "language", "currency"],
-        ["preferences", "notifications", "help"],
+        ["preferences", "help"],
         ["affiliate", "selling"],
         ["details", "signout"],
     ]
@@ -52,6 +52,7 @@ struct AccountView: View {
     private func home(_ user: User) -> some View {
         ShopPage(root: true, header: false, refresh: { await app.session.restore(); await loadPreviews() }) {
             VStack(alignment: .leading, spacing: 12) {
+                topRow
                 profileCard(user)
                 MembershipCard()
                 HStack(alignment: .top, spacing: 12) {
@@ -148,6 +149,38 @@ struct AccountView: View {
 
     /// Who is signed in: initials in a pale circle, the name as typed, the
     /// email, and a pencil to change them.
+    /// The page's name, and the notifications in its end corner, on the
+    /// owner's word — the bell replaced the Notifications row, with what is
+    /// unread counted on it (`CountBadge`), the header's own bell.
+    private var topRow: some View {
+        let unread = app.signals.unreadNotices
+        return HStack(spacing: 12) {
+            Text(l.t("account.yourWay"))
+                .font(.inter(24, .heavy))
+                .foregroundStyle(Brand.navy)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            Button {
+                app.push(.notifications)
+            } label: {
+                Image(systemName: "bell")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(Brand.navy)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.white))
+                    .overlay(Circle().strokeBorder(Brand.cardLine, lineWidth: 1))
+                    .overlay(alignment: .topTrailing) {
+                        CountBadge(value: unread).fixedSize().offset(x: 4, y: -2)
+                    }
+                    .contentShape(Circle())
+            }
+            .buttonStyle(PressFillStyle(cornerRadius: 22, strength: Haptics.actionStrength))
+            .accessibilityLabel(l.t("notices.menu"))
+            .accessibilityValue(unread == 0 ? "" : l.t("header.unreadCount", ["count": "\(unread)"]))
+        }
+        .padding(.top, 4)
+    }
+
     private func profileCard(_ user: User) -> some View {
         HStack(spacing: 16) {
             Text(AccountIdentityCard.initials(user))

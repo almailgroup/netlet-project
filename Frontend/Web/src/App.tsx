@@ -46,6 +46,7 @@ const AdminInvoices = lazyPage(() => import("@/pages/admin/Invoices"));
 const Category = lazyPage(() => import("@/pages/Category"));
 const Store = lazyPage(() => import("@/pages/Store"));
 const Stores = lazyPage(() => import("@/pages/Stores"));
+const Brands = lazyPage(() => import("@/pages/Brands"));
 const Categories = lazyPage(() => import("@/pages/Categories"));
 const Legal = lazyPage(() => import("@/pages/Legal"));
 const Guides = lazyPage(() => import("@/pages/Guides"));
@@ -281,6 +282,7 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/search", page: Category, frame: "shop" },
   { path: "/products/:handle", page: ProductDetail, frame: "shop" },
   { path: "/stores", page: Stores, frame: "shop" },
+  { path: "/brands", page: Brands, frame: "shop" },
   { path: "/stores/:slug", page: Store, frame: "shop" },
   { path: "/guides", page: Guides, frame: "shop" },
   { path: "/guides/:slug", page: Guide, frame: "shop" },

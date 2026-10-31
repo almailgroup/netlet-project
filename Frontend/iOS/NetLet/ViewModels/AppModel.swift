@@ -19,6 +19,8 @@ enum Route: Hashable {
     case store(slug: String)
     /// Every store with something on sale, the web's `/stores`.
     case stores
+    /// Every brand on the shelf, the web's `/brands`.
+    case brands
     case saved
     case checkout
     case orderPlaced(reference: String)
@@ -76,6 +78,7 @@ enum Route: Hashable {
             if let words = query["q"], !words.isEmpty { return .search(query: words, department: slug) }
             return .department(slug: slug)
         case ("stores"?, 1): return .stores
+        case ("brands"?, 1): return .brands
         case ("stores"?, 2): return .store(slug: segments[1])
         case ("search"?, _): return .search(query: query["q"] ?? "")
         case ("saved"?, _): return .saved

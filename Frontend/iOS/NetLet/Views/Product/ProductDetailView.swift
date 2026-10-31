@@ -406,15 +406,43 @@ private struct ProductPage: View {
                 // (`BagStock.room`): it offered the whole shelf over a bag
                 // that already held most of it, and checkout then refused.
                 let room = BagStock.room(variant.maxQuantity, inBag: inBag)
-                // The bag line's own control, on the owner's word: the number is a
-                // box to type into, and it stops at one.
-                QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title, compact: true, typed: true, removes: false) { next in
-                    model.quantity = min(max(1, next), room)
+                // Once this option is in the bag as a plain line, the stepper
+                // *is* that line, on the owner's word ("you cannot remove that
+                // product when you tap on the − icon"): a press changes the bag
+                // at once and the minus is the bin at one. Before that it is
+                // "how many", a box to type into that stops at one.
+                if let line = bagLine {
+                    let lines = app.cart.cart?.items ?? [line]
+                    QuantityStepper(quantity: line.quantity, maximum: BagStock.lineCeiling(line, in: lines), name: product.title, compact: true, typed: true) { next in
+                        let app = self.app
+                        let words = l.t("cart.updateFailed")
+                        Task {
+                            if !(await app.cart.setQuantity(lineId: line.lineId, to: next)) {
+                                Haptics.refused()
+                                app.toast(words)
+                            }
+                        }
+                    }
+                } else {
+                    QuantityStepper(quantity: min(model.quantity, room), maximum: room, name: product.title, compact: true, typed: true, removes: false) { next in
+                        model.quantity = min(max(1, next), room)
+                    }
+                    .onChange(of: room, initial: true) { _, most in
+                        if model.quantity > most { model.quantity = most }
+                    }
                 }
-                .onChange(of: room, initial: true) { _, most in
-                    if model.quantity > most { model.quantity = most }
-                }
-                if inBag > 0 {
+                if bagLine != nil {
+                    Button {
+                        app.select(.cart)
+                    } label: {
+                        Text(l.t("product.inYourCartNow"))
+                            .font(.inter(13, .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .underline()
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.tap)
+                } else if inBag > 0 {
                     Button {
                         app.select(.cart)
                     } label: {
@@ -435,7 +463,7 @@ private struct ProductPage: View {
     /// height, where two white buttons and a heart were stacked. The heart is
     /// on the photo's corner, as on the card.
     private var buttons: some View {
-        let ready = model.variant?.availableForSale == true
+        let ready = model.variant?.availableForSale == true || bagLine != nil
         return HStack(spacing: 10) {
             Button {
                 Task { await add(openCheckout: false) }
@@ -459,14 +487,23 @@ private struct ProductPage: View {
         .animation(still ? nil : .spring(duration: 0.3, bounce: 0.25), value: added)
     }
 
+    /// The bag's plain line for the option chosen, when no extra is ticked —
+    /// the line the stepper and the two buttons then speak for.
+    private var bagLine: CartItem? {
+        guard let variant = model.variant, model.addons.isEmpty else { return nil }
+        return app.cart.cart?.plainLine(for: variant.id)
+    }
+
     private var addLabel: String {
+        if bagLine != nil { return l.t("product.viewCart") }
         if model.variant == nil && product.isAvailable { return l.t("product.chooseOption") }
         if model.variant?.preorder != nil { return model.quantity > 1 ? l.t("product.preorderCount", ["count": "\(model.quantity)"]) : l.t("product.preorderAction") }
         return l.t("product.addToCart")
     }
 
     private var buyLabel: String {
-        model.quantity > 1 ? l.t("product.buyNowCount", ["count": "\(model.quantity)"]) : l.t("product.buyNow")
+        let count = bagLine?.quantity ?? model.quantity
+        return count > 1 ? l.t("product.buyNowCount", ["count": "\(count)"]) : l.t("product.buyNow")
     }
 
     /// The price and the same two buttons, over the tab bar once the page's
@@ -486,7 +523,7 @@ private struct ProductPage: View {
             Button {
                 Task { await add(openCheckout: false) }
             } label: {
-                AddToCartLabel(title: l.t("product.addToCart"), adding: model.adding, done: added, iconSize: 13)
+                AddToCartLabel(title: bagLine != nil ? l.t("product.viewCart") : l.t("product.addToCart"), adding: model.adding, done: added, iconSize: 13)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 42)
             }
@@ -494,13 +531,13 @@ private struct ProductPage: View {
             Button {
                 Task { await add(openCheckout: true) }
             } label: {
-                BuyNowLabel(title: l.t("product.buyNow"), iconSize: 12)
+                BuyNowLabel(title: buyLabel, iconSize: 12)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 42)
             }
             .buttonStyle(BuyNowStyle(size: 14))
         }
-        .disabled(model.variant?.availableForSale != true)
+        .disabled(model.variant?.availableForSale != true && bagLine == nil)
         .animation(still ? nil : .spring(duration: 0.3, bounce: 0.25), value: added)
         .padding(.leading, 18)
         .padding(.trailing, 7)
@@ -675,6 +712,12 @@ private struct ProductPage: View {
             // Nothing chosen yet: the first button says so, and pressing it
             // shows where the choice is.
             failure = "product.chooseOption"
+            return
+        }
+        // In the bag already as a plain line: Buy now goes straight to
+        // checkout and Add to cart has become View cart.
+        if bagLine != nil {
+            if openCheckout { app.openCheckout() } else { app.select(.cart) }
             return
         }
         // Buy now on an item already in the bag goes straight to checkout rather than adding it again.

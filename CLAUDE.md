@@ -1276,9 +1276,16 @@ owner's word** ("match the unit selector on the cart page"): the same 40px
 minus and plus under a coarse pointer (28px under a mouse), and between them
 the bag's box — a press selects the number and opens the number keypad,
 `typedQuantity` reads it, over what there is is held to it with the bag's
-toast, and Escape puts it back. Zero changes nothing here (no line to take
-out), so the minus stops at one. The app's product page and preview draw the
-bag's `QuantityStepper` with `typed` and `removes: false`, the same rule.
+toast, and Escape puts it back. **Once the product is in the bag it *is* the
+bag's line, on the owner's word** — a shopper who added from the home page
+could not take it out with the product page's minus, which stopped at one. While
+the variant chosen, with no extras ticked, has a plain line in the bag, the
+stepper changes that line at once (`updateQuantity`, a toast if refused), its
+minus is a bin at one (`onRemove`) and typing zero takes it out, "N in your
+cart" links to the bag, Add to cart reads "View cart" and Buy now goes to
+checkout without adding again; before then it is the quantity Add will put in,
+from one. The preview is the same, and the app's product page and preview bind
+`QuantityStepper` to `CartModel.setQuantity` on the same rule (`bagLine`).
 
 **Quick View is on every page that draws a card**, opened by the disc, by
 "Choose an option" and, on a phone, by **a long press on the photo**
@@ -1450,12 +1457,11 @@ of its own**: digits read left to right by themselves, and `direction: ltr` on
 it turned its `margin-inline-end` into a right margin on the Arabic page too,
 where the scroller then clipped the "1".
 
-**Stores on NetLet is the row that says this is a marketplace** — the one thing
-departments, shelves and a grid never said. **It and Shop by brand are at the
-top of `/categories`, not on the home page, on the owner's word** (see
-Browsing), each a row that scrolls sideways at every width with the shelves'
-arrows for a mouse (`useSideScroll`, `ScrollArrows`; `embedded` drops the home
-section's own container). `commerce.stores`
+**The stores are what says this is a marketplace** — the one thing
+departments, shelves and a grid never said. **They and the brands are a box
+each at the top of `/categories`, not rows on the home page, on the owner's
+word** (see Browsing): "Shop by stores" opens `/stores`, "Shop by brand"
+`/brands`. `commerce.stores`
 (`listStoreCards` in `Backend/src/services/catalog.ts`) is approved stores with something
 published, the busiest first and ties by id, named in the page's language by
 the same `pick` their products use. Each card opens the store's own page, and
@@ -1463,19 +1469,17 @@ the same `pick` their products use. Each card opens the store's own page, and
 card is measured: products on sale, a rating only from five visible reviews
 (the High Rating floor), the badges `badgesFor` grants. A logo when the store
 has one, otherwise its initial on the portal's pale navy (`StoreAvatar`'s
-look), not a palette of its own. Under three stores the row is not drawn, the
-brand row's rule.
+look), not a palette of its own.
 
 **Picked for you is drawn only when it is personal** (the rule under
 Recommendations), draws nothing while it loads, and on the home page is held to
 the shelves' floor — two cards in a row built for four read as a broken shelf;
 on `/saved` it is drawn from one. New arrivals is the one shelf exempt from the
-floor, on purpose (`homeLayout.ts` says why). **Shop by brand is the Brand rows
+floor, on purpose (`homeLayout.ts` says why). **The brands are the Brand rows
 sellers wrote** (`commerce.brands`, counted by the `brandOf` the Brand filter
-uses, so a tile reading "3 products" opens a page of three), from three brands
-up, an initial on each tile because NetLet holds no logos — one sideways row,
-on the owner's word (two to a row on a phone made twelve brands six rows of the
-page), at the top of `/categories` now. The paid home banners
+uses, so a tile reading "3 products" opens a page of three), an initial on each
+tile because NetLet holds no logos, listed on `/brands` (`pages/Brands.tsx`,
+`BrandTile`; the app's `BrandsView`), each opening its search. The paid home banners
 sit under the department cards (see Paid placements) and are absent when none
 is approved and running. The four lines on what shopping here involves
 (delivery, cash, returns, help) that closed the page went: their facts are the
@@ -1645,12 +1649,14 @@ Checkout pressed without one opens the book and goes on once one is chosen.
 It replaced the bar (`CartTopBar`) that named the address in a word; the heart
 to Saved items, counted, is at the end of the title's line.
 
-**The cart's three ways to pay less, on the owner's word** ("display three
-distinct options: a discount code input, a gift card input, a NetLet points
-redemption toggle"): `BagSavings` in the cart page's summary, over the figures,
-and the same card at checkout. What was chosen is kept for the tab and the bag
-(`lib/bagSavings.ts`, the session helpers), so checkout opens holding it and
-can still change it; the drawer's and the floating bar's totals follow it.
+**Codes, gift cards and points are checkout's alone, on the owner's word**
+("display three distinct options: a discount code input, a gift card input, a
+NetLet points redemption toggle", then "only in the checkout page, not cart"):
+`BagSavings` is a card at checkout, before the ways to pay, and the cart, its
+drawer and its floating bar show the bag's own total with a line saying codes,
+gift cards and points are taken at checkout (`cart.checkoutNote`). What was
+chosen is kept for the tab and the bag (`lib/bagSavings.ts`, the session
+helpers), so leaving checkout and coming back finds it held.
 **A discount and a gift card are two boxes, and one order may use both** —
 `orders.place` takes `giftCardCode` beside `voucherCode` now, and the order
 writer always had the columns and `settle`'s order: the code, then the points,
@@ -1662,10 +1668,10 @@ about on the press, never per keystroke, and again when the goods change
 (a percentage and a minimum spend are of the goods). Points are a switch for a
 balance with some; a guest is offered the sign-in, and an account with none a
 line to how points are earned. The app's is `BagSavingsCard` over
-`SavingsModel`, held by `AppModel` so the cart and checkout share it. Measured
-at 320 and 390 in both languages and 1440: a card moved to its box, the two
-together taking 2.000 and 5.000 off 39.900 in the summary, the bar and
-checkout alike, axe clean with a refusal and an applied code on screen.
+`SavingsModel`, held by `AppModel` so it outlives a visit to checkout, and is
+checkout's alone too. Measured at 320 and 390 in both languages and 1440: a
+card moved to its box, the two together taking 2.000 and 5.000 off 39.900 in
+checkout's summary, axe clean with a refusal and an applied code on screen.
 
 **The number between a line's minus and plus is a box, on the owner's word**
 (`LineQuantity` in `BagDrawer.tsx`): a press selects the number and opens the
@@ -1719,7 +1725,14 @@ you can easily add it back to cart"), which put it between the bag and what
 it costs (`SavedForLater`, which holds its place with outlines of its cards
 while the saved products are read): Saved, newest first, less what is in the
 bag, each with Move to cart, which takes it out of Saved alone (`unsave` — a
-list it is on keeps it), Choose an option for one with sizes, or Sold out. **The drawer is mounted after the pages** (`App`): its
+list it is on keeps it), Choose an option for one with sizes, or Sold out.
+**`/saved` is the same card in a grid, and each can be moved, on the owner's
+word** (`SavedCard` with `grid`, `useSavedMoves`): Move to cart, as above, and
+Move to wishlist for somebody signed in while `wishlists` is on — the heart's
+second question (`chooseWishlist`), out of Saved once it is on a list — with a
+cross on the photo taking it out of Saved, and a polite live region saying
+each move. The app's Saved is `SavedProductCard(grid: true)`, the cart row's
+own card, on the same rule. **The drawer is mounted after the pages** (`App`): its
 lines are links now, and before the pages they made the skip link not the
 first link on the page, which axe reported as content outside a landmark.
 
@@ -1918,7 +1931,10 @@ with a light rim for Cancel, "Change email" and "Change password", which were
 orange underlined words.
 
 **The home is drawn like the delivery apps', on the owner's word** (a picture
-of Noon's profile; `AccountHome`): a card with the initials in a pale circle,
+of Noon's profile; `AccountHome`): its name, "Your account", with the
+notifications as a bell in its end corner, the unread counted on it
+(`CountBadge`, also on the owner's word — it replaced the Notifications row);
+a card with the initials in a pale circle,
 the name, the email and a pencil to "Your profile"; two tiles, "My orders" and
 "Saved items", each showing the last four pictures (`orders.list`'s own photos,
 the hearts read by id) or saying there is nothing yet; "NetLet points" with the
@@ -3574,8 +3590,8 @@ lines by store with each store's delivery and when it arrives (the seller's
 band, `deliverySpeed` on each bag line, `arrivalFor`, nothing where the seller
 stated none), **the code, the gift card and the points, open and right before
 the ways to pay** (on the owner's word: "so users can enter their code right
-away") — the cart's own card (`BagSavings`, see "The cart's three ways to pay
-less"), holding what was chosen there — the payment list, and the summary with
+away") — `BagSavings`, see "Codes, gift cards and points are checkout's
+alone" — the payment list, and the summary with
 Place order. The order is placed from the address in use's own parts, name and
 number; a saved address with no number on an account with none asks for it in
 one box, and an order with nowhere to go — Buy now arrives without passing the
@@ -4670,7 +4686,11 @@ link in a box when the clipboard refuses; "See what visitors see" opens the
 gift page. The phone lookup is asked only on Find — never again on window
 focus, which spent one of the hourly sixty each time a giver came back from
 their messages — and the footer has the way in ("Find a wishlist"), which only
-a link somebody sent used to be.
+a link somebody sent used to be. **The finder is also in the account's
+Wishlists and gifts, on the owner's word** (`GiftFinder` in `GiftList.tsx`,
+drawn by `WishlistManager`; the app's `GiftFinder` in `GiftListsView.swift`,
+drawn by `WishlistsView`), so somebody looking for a relative's list looks
+where their own are.
 
 **A list can be found by the name it shows, too, on the owner's word** ("by
 either their phone number or their username"; NetLet has no usernames, and
@@ -5403,13 +5423,13 @@ rewrite) and it is in the sitemap. **`/categories` starts with `/category`**,
 so anything that reads a department page off the address asks for
 `/category/` with its slash — the footer's clearance for the department page's
 filter button does, or it would leave room for a button this page has not got.
-**Shop by brand and Stores on NetLet lead it, on the owner's word** — they
-left the home page for here, each the sideways row it was (`BrandShelf`,
-`StoreShelf` with `embedded`), each drawn from three, and the department cards
-follow under "Shop by category". Measured at 320, 390 and 1440 in both
-languages with brand rows on four local products: brands, then stores, then the
-departments, both rows scrolling sideways on a phone, axe clean, no sideways
-scroll of the page, and neither row left on the home page.
+**Two boxes lead it, "Shop by brand" and "Shop by stores", on the owner's
+word** — a press lists the brands (`/brands`, `pages/Brands.tsx`: every brand
+as a `BrandTile`, each opening a search for it) or the stores (`/stores`, see
+"A store has a page") — and the department cards follow under "Shop by
+category". They were the brand and store rows for a while, which left the home
+page for here first; two boxes side by side keep the departments in the first
+screen. The app's Categories is the same (`wayIn`, `BrandsView`).
 
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and
@@ -5428,8 +5448,7 @@ what it says about itself, where it is, how it delivers, how its customers
 rated it — and its whole live shelf. Sellers had no page of their own: "Sold
 by" was a line of text and the nearest thing to a store was the department
 page ticked to one seller. `/stores` lists every store with something on sale,
-from the Stores row's own read and cards (`components/store/StoreCard.tsx`, one
-copy for both), and says so when it reaches `STORE_INDEX_LIMIT`. "Sold by" on a
+from `commerce.stores` as `StoreCard`s (`components/store/StoreCard.tsx`), and says so when it reaches `STORE_INDEX_LIMIT`. "Sold by" on a
 product page is a link to the store now, through the `vendorSlug` products
 already carried, and the footer lists Stores.
 
@@ -6303,9 +6322,12 @@ departments, the shopping and service links, the contact block, the language,
 who the shop is — as screens of navy under the last shelf. What it carried that
 the app had no other door to is a card on the Profile tab now
 (`MoreFromNetLet`, "Help and information"): the help centre (where WhatsApp,
-the phone and the email are), the returns policy, the guides, Find a wishlist,
-the stores, Sell with us, then the terms, the privacy policy and the seller
-agreement, and the copyright and registration line. It sits before the card
+the phone and the email are), the guides, then the terms and the privacy
+policy, and the copyright and registration line. **The returns policy, Find a
+wishlist, the stores, Sell with us, the seller agreement and the Notifications
+row left the Profile tab, on the owner's word**: the stores are a box on
+Categories, the finder is in Wishlists and gifts, and the notifications are a
+bell at the top of the page (`AccountView.topRow`), the web's. It sits before the card
 that ends in Sign out, so signing out stays the page's last row; **a guest's
 Profile tab is the sign-in form, and the footer was the only place a guest could
 change the language**, so the card under the guest's form leads with the same
@@ -6361,13 +6383,13 @@ addresses under the line's "⋯") — and is a box for the driver's number only
 when neither the address nor the account has one, each store's lines with its
 delivery and the day it arrives (`DeliveryLine.arrival` and `.slowest`, the
 web's `arrivalFor` and `slowestSpeed`), the code, the gift card and the points
-(`BagSavingsCard`, the cart's own, over `SavingsModel`) open before the payment
+(`BagSavingsCard` over `SavingsModel`, checkout's alone) open before the payment
 list (cash chosen; KNET, a card and Apple Pay drawn as coming), and
 the summary; Place order stays in the bar at the foot, disabled with the blocker
 above it, and a press on the blocker opens the book or focuses the number. The
-home page's departments and brands are sideways rows too
-(`DepartmentCardGrid(row: true)`, `BrandShelf`), and its front door has no
-buttons, both the web's.
+home page's departments are a sideways row too
+(`DepartmentCardGrid(row: true)`), and its front door has no buttons, both the
+web's.
 
 **The Profile and Cart tabs have no header, the header's end is
 the saved location, the Profile page is the delivery apps' layout and the
@@ -6482,7 +6504,7 @@ opened for editing with its pin on a still map that opens the picker
 `shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
 four, New arrivals from one, each leaving out what a shelf above shows), under
 the hero slideshow, the six department cards, the Deals band, the ranked
-Bestsellers, the brands and stores rows from three, and the grid. The type is
+Bestsellers, and the grid. The type is
 Inter from the web's own variable file (`Typography.swift`); the logo, the
 department art and the hero pictures are the web's files, copied byte for byte
 by `pnpm ios:resources` with `assets.json` naming which is which, so the
@@ -6539,7 +6561,7 @@ keeps its Add to cart and Buy now. The dots sit at the photo's start.
 box (`QuantityStepper`'s `typed`, `TypedQuantity` — `typedQuantity.ts` on its
 own cases in `TypedQuantityTests`), empty with the count as its placeholder
 when a press opens the number pad, and read when the keyboard is put away;
-Shop by brand and the stores lead Categories and left Home; the bell follows
+Shop by brand and Shop by stores are two boxes leading Categories; the bell follows
 the heart in `LogoRow`, with `signals.unreadNotices`, the inbox for somebody
 signed in and the sign-in for a guest; and every badge is `CountBadge` or
 `NoticeDot` (`CountBadge.swift`). The system tab bar's own badge is the

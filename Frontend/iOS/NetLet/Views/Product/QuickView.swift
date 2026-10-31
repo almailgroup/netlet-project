@@ -80,8 +80,17 @@ private struct QuickViewContent: View {
         return BagStock.room(chosen.maxQuantity, inBag: inBag)
     }
 
-    /// The pair can add something: an option chosen, on sale, with room left.
-    private var ready: Bool { model.variant?.availableForSale == true && room > 0 }
+    /// The bag's plain line for the option chosen — the product page's rule:
+    /// once it exists the stepper is that line (the bin at one), Add to cart
+    /// is View cart and Buy now goes straight to checkout.
+    private var bagLine: CartItem? {
+        guard let chosen = model.variant else { return nil }
+        return app.cart.cart?.plainLine(for: chosen.id)
+    }
+
+    /// The pair can add something: an option chosen, on sale, with room left —
+    /// or, in the bag already, open it.
+    private var ready: Bool { bagLine != nil || (model.variant?.availableForSale == true && room > 0) }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -418,7 +427,28 @@ private struct QuickViewContent: View {
         if let chosen = model.variant {
             if chosen.availableForSale {
                 VStack(alignment: .leading, spacing: 8) {
-                    if room > 0 {
+                    if let line = bagLine {
+                        HStack(spacing: 12) {
+                            Text(l.t("product.quantity"))
+                                .font(.inter(14, .semibold))
+                                .foregroundStyle(Brand.muted)
+                            // In the bag already: the stepper is that line,
+                            // changed at once, the bin at one.
+                            QuantityStepper(quantity: line.quantity, maximum: BagStock.lineCeiling(line, in: app.cart.cart?.items ?? [line]), name: product.title, compact: true, typed: true) { next in
+                                let app = self.app
+                                let words = l.t("cart.updateFailed")
+                                Task {
+                                    if !(await app.cart.setQuantity(lineId: line.lineId, to: next)) {
+                                        Haptics.refused()
+                                        app.toast(words)
+                                    }
+                                }
+                            }
+                            Text(l.t("product.inYourCartNow"))
+                                .font(.inter(13, .semibold))
+                                .foregroundStyle(Brand.navy)
+                        }
+                    } else if room > 0 {
                         HStack(spacing: 12) {
                             Text(l.t("product.quantity"))
                                 .font(.inter(14, .semibold))
@@ -430,7 +460,7 @@ private struct QuickViewContent: View {
                             }
                         }
                     }
-                    if inBag > 0 {
+                    if inBag > 0 && bagLine == nil {
                         HStack(spacing: 8) {
                             Text(inBag == 1 ? l.t("product.inYourCartOne") : l.t("product.inYourCartMany", ["count": "\(inBag)"]))
                                 .font(.inter(13, .semibold))
@@ -476,7 +506,7 @@ private struct QuickViewContent: View {
             Button {
                 Task { await add(openCheckout: true, proxy: proxy) }
             } label: {
-                BuyNowLabel(title: model.quantity > 1 && ready ? l.t("product.buyNowCount", ["count": "\(min(model.quantity, room))"]) : l.t("product.buyNow"), iconSize: 15)
+                BuyNowLabel(title: buyLabel, iconSize: 15)
                     .padding(.horizontal, 10)
                     .frame(maxWidth: .infinity, minHeight: 50)
             }
@@ -491,7 +521,15 @@ private struct QuickViewContent: View {
         .background(Color.white.shadow(.drop(color: Brand.navy.opacity(0.08), radius: 10, y: -4)))
     }
 
+    private var buyLabel: String {
+        if let line = bagLine {
+            return line.quantity > 1 ? l.t("product.buyNowCount", ["count": "\(line.quantity)"]) : l.t("product.buyNow")
+        }
+        return model.quantity > 1 && ready ? l.t("product.buyNowCount", ["count": "\(min(model.quantity, room))"]) : l.t("product.buyNow")
+    }
+
     private var addLabel: String {
+        if bagLine != nil { return l.t("product.viewCart") }
         if model.variant == nil && product.isAvailable { return l.t("product.chooseOption") }
         if model.variant?.preorder != nil { return model.quantity > 1 ? l.t("product.preorderCount", ["count": "\(model.quantity)"]) : l.t("product.preorderAction") }
         return model.quantity > 1 ? l.t("product.addToCartCount", ["count": "\(min(model.quantity, max(room, 1)))"]) : l.t("product.addToCart")
@@ -514,6 +552,11 @@ private struct QuickViewContent: View {
             failure = "product.chooseOption"
             Haptics.refused()
             withAnimation(still ? nil : .easeInOut(duration: 0.3)) { proxy.scrollTo(QuickViewPlace.choices, anchor: .top) }
+            return
+        }
+        if bagLine != nil, !openCheckout {
+            app.previewing = nil
+            app.select(.cart)
             return
         }
         if openCheckout, app.cart.quantity(of: chosen.id) > 0 {

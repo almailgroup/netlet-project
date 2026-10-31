@@ -177,10 +177,9 @@ export default function Checkout() {
 
   /*
    * A discount code, a gift card and points (3.2.3, 3.1.15), each its own
-   * row — the cart's own card (`BagSavings`), so what was chosen in the cart
-   * is here already and can still be changed. **Open, right before the ways to
-   * pay, on the owner's word.** `useSavingsBill` is the arithmetic, the order
-   * writer's own `settle`.
+   * row (`BagSavings`) — here and not in the cart, on the owner's word. **Open,
+   * right before the ways to pay.** `useSavingsBill` is the arithmetic, the
+   * order writer's own `settle`.
    */
   const bill = useSavingsBill();
   /* Whose links the bag's products came through (3.7), said before paying:

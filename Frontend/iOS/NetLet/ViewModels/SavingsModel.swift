@@ -1,12 +1,10 @@
 import Foundation
 import Observation
 
-/// What the shopper chose to take off the bag — a discount code, a gift card
-/// and whether to spend points — the web's `lib/bagSavings.ts` and
-/// `useSavingsBill`, on the owner's word ("display three distinct options …
-/// on the cart"). The cart and checkout both draw `BagSavingsCard` from this
-/// one model, held by `AppModel`, so a code chosen in the cart is the code the
-/// order is placed with, and can still be changed at checkout.
+/// What the shopper chose to take off the bag at checkout — a discount code, a
+/// gift card and whether to spend points — the web's `lib/bagSavings.ts` and
+/// `useSavingsBill`. Checkout draws `BagSavingsCard` from this model, held by
+/// `AppModel` so leaving checkout and coming back keeps what was chosen.
 ///
 /// **A discount and a gift card are two boxes, and one order may use both.**
 /// Each box asks the shop what a code is, so a code typed in the wrong one is

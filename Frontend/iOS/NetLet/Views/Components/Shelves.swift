@@ -316,88 +316,47 @@ struct StoreBadges: View {
     }
 }
 
-/// The brands sellers wrote on their products, each a tile with its initial
-/// — NetLet holds no logos — and how many products; from three brands up.
-/// One row that scrolls sideways, like the departments, on the owner's word:
-/// two to a row made twelve brands six rows of the page.
-struct BrandShelf: View {
-    let brands: [BrandCount]
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    static let most = 12
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ShelfHeading(title: l.t("home.shopByBrand"))
-                .padding(.horizontal, 16)
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
-                    ForEach(brands.prefix(Self.most)) { brand in
-                        Button {
-                            app.push(.brand(name: brand.name))
-                        } label: {
-                            HStack(spacing: 12) {
-                                Text(brand.name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "·")
-                                    .font(.inter(18, .heavy))
-                                    .foregroundStyle(Brand.navy)
-                                    .frame(width: 44, height: 44)
-                                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
-                                    .accessibilityHidden(true)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(brand.name)
-                                        .font(.inter(14, .bold))
-                                        .foregroundStyle(Brand.navy)
-                                        .lineLimit(1)
-                                    Text(l.t(brand.count == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(brand.count)"]))
-                                        .font(.inter(12))
-                                        .foregroundStyle(Brand.muted)
-                                }
-                                Spacer(minLength: 0)
-                            }
-                            .padding(12)
-                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-                            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        }
-                        .buttonStyle(PressFillStyle(cornerRadius: 16))
-                        .frame(width: 176)
-                        .accessibilityElement(children: .combine)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .scrollTargetLayout()
-            }
-            .scrollTargetBehavior(.viewAligned)
-        }
-        .padding(.vertical, 24)
-    }
-}
-
-/// The stores a shopper can buy from — what says NetLet is a marketplace —
-/// as a row to swipe, each card most of the screen wide; from three stores up.
-struct StoreShelf: View {
-    let stores: [StoreCard]
+/// One brand, opening everything of it — the `Brands` page's tile, the web's
+/// `BrandTile`: the initial in the shop's colours (NetLet holds no logos), the
+/// name and how many of its products are on sale.
+struct BrandTile: View {
+    let brand: BrandCount
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ShelfHeading(title: l.t("home.storesTitle"), viewAllKey: "stores.seeAll") { app.push(.stores) }
-                .padding(.horizontal, 16)
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
-                    ForEach(stores) { store in
-                        StoreCardView(store: store)
-                            .containerRelativeFrame(.horizontal) { width, _ in (width - 32) * 0.82 }
-                    }
+        Button {
+            app.push(.brand(name: brand.name))
+        } label: {
+            HStack(spacing: 12) {
+                Text(brand.name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "·")
+                    .font(.inter(18, .heavy))
+                    .foregroundStyle(Brand.navy)
+                    .frame(width: 44, height: 44)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(brand.name)
+                        .font(.inter(14, .bold))
+                        .foregroundStyle(Brand.navy)
+                        .lineLimit(1)
+                    Text(l.t(brand.count == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(brand.count)"]))
+                        .font(.inter(12))
+                        .foregroundStyle(Brand.muted)
                 }
-                .padding(.horizontal, 16)
-                .scrollTargetLayout()
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Brand.muted)
+                    .accessibilityHidden(true)
             }
-            .scrollTargetBehavior(.viewAligned)
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .padding(.vertical, 24)
+        .buttonStyle(PressFillStyle(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
     }
 }
 

@@ -42,6 +42,8 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { DiscButton } from "@/components/ui/DiscButton";
+import { CARD } from "@/components/layout/Page";
+import { GiftFinder } from "@/pages/GiftList";
 
 export function WishlistManager() {
   const { t } = useTranslation();
@@ -62,6 +64,16 @@ export function WishlistManager() {
       <p className="max-w-prose text-sm leading-6 ink-muted">{t(on ? "wish.intro" : "wish.switchedOff")}</p>
 
       <PhoneCard current={phone.data ?? null} onSaved={() => void phone.refetch()} />
+
+      {/* Somebody else's list, found by their number or the name on it — here,
+          on the owner's word, where the account's own lists are. */}
+      {on ? (
+        <section aria-labelledby="find-a-list" className={`${CARD} p-4 sm:p-5`}>
+          <h3 id="find-a-list" className="text-base font-extrabold text-[#0a285a]">{t("gift.heading")}</h3>
+          <p className="mt-1 text-[13px] leading-5 ink-muted">{t("gift.intro")}</p>
+          <div className="mt-3"><GiftFinder /></div>
+        </section>
+      ) : null}
 
       <QueryGate audience="shopper" queries={[lists]}>
         {() => (

@@ -3,43 +3,71 @@ import SwiftUI
 /// The departments as a page, the phone's Categories tab — the home page's
 /// cards made the page's subject, each saying how many products it holds,
 /// and Today's deals under them only while the home page would draw them.
-/// Shop by brand and the stores lead it, the web's `/categories`.
+/// **Two boxes lead it, Shop by brand and Shop by stores, on the owner's
+/// word**: each opens its list (`BrandsView`, `StoresView`), the web's
+/// `/categories`. They were two sideways rows that pushed the departments
+/// down the screen.
 struct CategoriesView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        let brands = app.shelf.brands.count >= HomeShelf.minimumRow
-        let stores = app.shelf.stores.count >= HomeShelf.minimumRow
         ShopPage(root: true, logo: false, refresh: { await app.shelf.load(language: l.current, force: true) }) {
             VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Breadcrumbs(trail: [l.t("nav.categories")])
-                    Text(l.t("nav.categories")).pageTitle()
+                Breadcrumbs(trail: [l.t("nav.categories")])
+                Text(l.t("nav.categories")).pageTitle()
+                HStack(spacing: 12) {
+                    wayIn(symbol: "tag", title: l.t("home.shopByBrand")) { app.push(.brands) }
+                    wayIn(symbol: "storefront", title: l.t("categories.byStore")) { app.push(.stores) }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 24)
-                .padding(.bottom, brands || stores ? 0 : 24)
-                // Shop by brand and the stores come first, on the owner's
-                // word — they left the home page for here, each the sideways
-                // row it was there, reaching the screen's edges.
-                if brands { BrandShelf(brands: app.shelf.brands) }
-                if stores { StoreShelf(stores: app.shelf.stores) }
+                .padding(.top, 20)
+                .padding(.bottom, 28)
                 departments
-                    .padding(.horizontal, 16)
-                    .padding(.top, brands || stores ? 4 : 0)
                     .padding(.bottom, 48)
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 24)
         }
     }
 
-    /// The department cards under their own heading once the rows above
-    /// them are drawn, and Today's deals under them.
+    /// A box that opens a list: the brands or the stores.
+    private func wayIn(symbol: String, title: String, open: @escaping () -> Void) -> some View {
+        Button(action: open) {
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.navy))
+                    .accessibilityHidden(true)
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.inter(15, .heavy))
+                        .foregroundStyle(Brand.navy)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Brand.navy)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(PressFillStyle(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// The department cards under their own heading, and Today's deals under them.
     private var departments: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if app.shelf.brands.count >= HomeShelf.minimumRow || app.shelf.stores.count >= HomeShelf.minimumRow {
-                ShelfHeading(title: l.t("home.shopByCategory")).padding(.bottom, 16)
-            }
+            ShelfHeading(title: l.t("home.shopByCategory")).padding(.bottom, 16)
             DepartmentCardGrid(columns: 2, counted: true)
             if app.shelf.dealsDrawn {
                 Button {
@@ -107,7 +135,14 @@ struct SavedView: View {
                     switch catalogue {
                     case .idle, .loading: GridSkeleton(cards: min(ids.count, 4))
                     case .failed(let error): ErrorStateView(error: error) { await load() }
-                    case .loaded: ProductGrid(products: found)
+                    // Each to the cart or a wishlist, on the owner's word —
+                    // the cart's own saved card, two to a row.
+                    case .loaded:
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                            ForEach(found) { product in
+                                SavedProductCard(product: product, grid: true)
+                            }
+                        }
                     }
                 }
                 // Under the hearts it learns from, and only once it has learnt
@@ -131,6 +166,43 @@ struct SavedView: View {
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, catalogue.value == nil { catalogue = .failed(failure) }
+        }
+    }
+}
+
+/// Every brand on the shelf — what "Shop by brand" opens, the web's `/brands`:
+/// the same read the home shelf keeps (`HomeShelf.brands`), each tile opening
+/// everything of that brand.
+struct BrandsView: View {
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let brands = app.shelf.brands
+        ShopPage(refresh: { await app.shelf.load(language: l.current, force: true) }) {
+            VStack(alignment: .leading, spacing: 0) {
+                Breadcrumbs(trail: [l.t("nav.categories"), l.t("brands.title")])
+                Text(l.t("brands.title")).pageTitle()
+                Text(l.t("brands.note"))
+                    .font(.inter(15))
+                    .foregroundStyle(Brand.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
+                Group {
+                    if brands.isEmpty {
+                        EmptyStateView(systemImage: "tag", title: l.t("brands.empty"), note: l.t("brands.emptyNote"))
+                            .card(padding: 0)
+                    } else {
+                        LazyVStack(spacing: 10) {
+                            ForEach(brands) { brand in BrandTile(brand: brand) }
+                        }
+                    }
+                }
+                .padding(.top, 24)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 24)
+            .padding(.bottom, 48)
         }
     }
 }

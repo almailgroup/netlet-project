@@ -17,7 +17,6 @@ import { LineMenu } from "@/components/cart/LineMenu";
 import { useShownCurrency } from "@/hooks/useDisplayCurrency";
 import { LineDestination } from "@/components/cart/LineDestination";
 import { LineDiscount } from "@/components/cart/LineDiscount";
-import { BagSavings, SavingsRows, useSavingsBill } from "@/components/cart/BagSavings";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { useDinars, useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
@@ -359,24 +358,18 @@ function SpeedChoice({ item, title }: { item: CartItem; title: string }) {
  * on its way the delivery and the total are the server's last, so they are
  * drawn fainter and the region says it is busy until the answer lands.
  */
-export function BagSummary({ checkoutRef, heading = false, onCheckout, savings = false }: {
+export function BagSummary({ checkoutRef, heading = false, onCheckout }: {
   checkoutRef?: (node: HTMLButtonElement | null) => void;
   heading?: boolean;
   /** What Checkout does instead of going straight there — the cart page asks for an address first. */
   onCheckout?: () => void;
-  /** The cart page's code, gift card and points boxes (`BagSavings`) over the figures. */
-  savings?: boolean;
 } = {}) {
   const { cart, syncing, proceedToCheckout } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
   const dinars = useDinars();
   const shown = useShownCurrency();
-  /* What the code, card and points chosen on the cart page take off — in the
-     drawer too, so its total is the page's. */
-  const bill = useSavingsBill();
   if (!cart) return null;
-  const total = bill.reduced ? { amount: bill.payable, currencyCode: cart.total.currencyCode } : cart.total;
   const updating = syncing ? "opacity-50" : "";
   /* Drawn by store, each store's delivery is beside its lines already. */
   const perStore = bagGroups(cart) ? [] : cart.delivery.perVendor;
@@ -406,16 +399,14 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, savings =
           {row.destinationLabel ? t("address.toFreeAt", { amount: money(row.toFree!), name: storeName(row, isArabic), label: row.destinationLabel }) : t("cart.deliveryToFree", { amount: money(row.toFree!), name: storeName(row, isArabic) })}
         </p>
       ))}
-      {savings ? <div className="mb-4 border-b border-[#d5dfeb] pb-1"><BagSavings heading /></div> : null}
       <div className="flex items-center justify-between gap-3 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")} <span className="font-normal">({t("cart.itemCount", { count: cart.itemCount })})</span></span><span className="shrink-0 font-bold text-[#0a285a]">{money(cart.subtotal)}</span></div>
       <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.delivery")}</span><span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.delivery.total)}</span></div>
       {/* A member's free delivery (4.1), said with what it saved. */}
       {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
-      <SavingsRows bill={bill} className="mt-1" />
-      <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className={`text-lg font-extrabold text-[#0a285a] transition-opacity ${updating}`}>{money(total)}</span></div>
+      <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className={`text-lg font-extrabold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.total)}</span></div>
       {/* Read in another currency, the figure charged is said too. */}
-      {shown ? <p className="mt-2 text-[12px] font-semibold leading-5 text-[#0a285a]">{t("currency.paidInDinars", { amount: dinars(total) })}</p> : null}
-      <p className="mt-2 text-[12px] leading-5 ink-muted">{t(bill.reduced ? "cart.savingsNote" : "cart.checkoutNote")}</p>
+      {shown ? <p className="mt-2 text-[12px] font-semibold leading-5 text-[#0a285a]">{t("currency.paidInDinars", { amount: dinars(cart.total) })}</p> : null}
+      <p className="mt-2 text-[12px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
       <button ref={checkoutRef} onClick={onCheckout ?? proceedToCheckout} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold">
         {t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" />
       </button>

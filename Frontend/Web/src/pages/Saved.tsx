@@ -8,11 +8,16 @@
  *
  * Saves live in the customer context — localStorage for a guest, the account
  * once signed in — so the list survives a reload either way.
+ *
+ * **Each saved product can be moved, on the owner's word**: to the cart (its
+ * plain line, out of Saved) or to a wishlist (the heart's second question,
+ * out of Saved once it is on a list) — the cart's own saved card
+ * (`SavedCard`), drawn as a grid.
  */
 import { toastHeart } from "@/lib/heartToast";
 import { useProductsByIds } from "@/hooks/useCatalog";
-import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
+import { SavedCard, useSavedMoves } from "@/components/cart/SavedForLater";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { BUTTON_PRIMARY, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -31,6 +36,7 @@ export default function Saved() {
   const { savedIds, heartedIds, toggleSaved } = useCustomer();
   const { t } = useTranslation();
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
+  const moves = useSavedMoves();
   /* By id, so a heart on something older than the newest sixty products is
      still a card — it used to be counted as no longer available. */
   const saved = useProductsByIds(savedIds);
@@ -65,26 +71,28 @@ export default function Saved() {
         ) : null}
 
         {isLoading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} className="h-[420px] animate-pulse rounded-2xl border border-[#d5dfeb] bg-white/60" />
+              <div key={i} className="h-[330px] animate-pulse rounded-2xl border border-[#d5dfeb] bg-white/60" />
             ))}
           </div>
         ) : savedProducts.length ? (
           <>
           {/* The cards are h3s under the page's h1: the department grid's rung. */}
           <h2 className="sr-only">{t("browse.resultsRegion")}</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <p aria-live="polite" className="sr-only">{moves.said}</p>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {savedProducts.map((product) => (
-              <ProductCard
+              <SavedCard
                 key={product.id}
+                grid
                 product={product}
-                saved
-                onSave={() => toastHeart(toggleSaved(product.id), product.title, t)}
-                onQuickView={() => setQuickProduct(product)}
+                onMove={() => moves.move(product)}
+                onRemove={() => moves.unsave(product.id)}
+                onWish={moves.wish ? () => moves.wish?.(product) : null}
               />
             ))}
-          </div>
+          </ul>
           </>
         ) : (
           <EmptyState icon={<Heart className="size-6" />} title={t("saved.emptyTitle")} note={t("saved.emptyNote")}>

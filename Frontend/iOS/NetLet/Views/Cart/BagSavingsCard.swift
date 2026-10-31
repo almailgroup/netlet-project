@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// The cart's three ways to pay less — the web's `BagSavings`, on the owner's
+/// Checkout's three ways to pay less — the web's `BagSavings`, on the owner's
 /// word ("display three distinct options: a discount code input, a gift card
-/// input, a NetLet points redemption toggle"). The same card at checkout, over
-/// the same `SavingsModel`, so what was chosen in the cart is already there.
+/// input, a NetLet points redemption toggle"), at checkout only, on their word
+/// too ("only in the checkout page, not cart"), over `SavingsModel`.
 ///
 /// Each code is applied on the press and asked about then; a code in the
 /// wrong box is moved to the right one and said so. Points are a switch for a
@@ -12,8 +12,6 @@ import SwiftUI
 /// be turned on to no effect.
 struct BagSavingsCard: View {
     let cart: Cart
-    /// Drawn inside another card (the cart's summary) with no frame of its own.
-    var inset = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -24,7 +22,7 @@ struct BagSavingsCard: View {
                 .font(.inter(15, .heavy))
                 .foregroundStyle(Brand.navy)
                 .accessibilityAddTraits(.isHeader)
-                .padding(.top, inset ? 0 : 14)
+                .padding(.top, 14)
                 .padding(.bottom, 4)
             CodeBoxRow(cart: cart, box: .discount)
             Divider().overlay(Brand.cardLine)
@@ -32,15 +30,11 @@ struct BagSavingsCard: View {
             Divider().overlay(Brand.cardLine)
             PointsRow(cart: cart)
         }
-        .padding(.horizontal, inset ? 0 : 16)
-        .padding(.bottom, inset ? 0 : 4)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            if !inset { RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white) }
-        }
-        .overlay {
-            if !inset { RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1) }
-        }
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .task(id: cart.id) {
             savings.follow(cartId: cart.id)
             await savings.loadBalance(signedIn: app.session.isSignedIn)

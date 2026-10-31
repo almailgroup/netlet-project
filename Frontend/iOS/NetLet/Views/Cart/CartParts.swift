@@ -609,7 +609,7 @@ struct SavedForLaterRow: View {
                             ForEach(0..<min(ids.count, 3), id: \.self) { _ in placeholder }
                         } else {
                             ForEach(shown) { product in
-                                SavedCard(product: product)
+                                SavedProductCard(product: product)
                             }
                         }
                     }
@@ -656,8 +656,18 @@ struct SavedForLaterRow: View {
     }
 }
 
-private struct SavedCard: View {
+/// A saved product, as the cart's Saved for later row and the Saved items
+/// page draw it: the photo with an × that takes it out of Saved, the name,
+/// the price and Move to cart (or Choose an option, or Sold out). **The Saved
+/// page's grid also offers Move to wishlist, on the owner's word** ("an
+/// option for moving the products that are in your saved products to
+/// wishlist or shopping cart"): the heart's second question (`WishSheet` from
+/// `.lists`), and the product leaves Saved only once it is on a list. A guest
+/// has no lists and is not offered it — the web's `SavedCard`.
+struct SavedProductCard: View {
     let product: Product
+    /// The Saved page's grid, rather than the cart's sideways row.
+    var grid = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -737,11 +747,42 @@ private struct SavedCard: View {
                 .buttonStyle(.action)
                 .accessibilityLabel(l.t("cart.moveToCartName", ["name": product.title]))
             }
+            if grid, app.session.isSignedIn, app.features.isOn("wishlists") {
+                Button {
+                    wish()
+                } label: {
+                    Text(l.t("cart.moveToWishlist"))
+                        .font(.inter(13, .bold))
+                        .foregroundStyle(Brand.navy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .background(Capsule().fill(Color.white))
+                        .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.25), lineWidth: 1))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(PressFillStyle(cornerRadius: 20))
+                .accessibilityLabel(l.t("saved.moveToWishlistName", ["name": product.title]))
+            }
         }
-        .padding(8)
-        .frame(width: 152)
+        .padding(grid ? 10 : 8)
+        .frame(width: grid ? nil : 152)
+        .frame(maxWidth: grid ? .infinity : nil, maxHeight: grid ? .infinity : nil, alignment: .top)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+    }
+
+    /// Onto a wishlist, then out of Saved — only once it is on one.
+    private func wish() {
+        let app = self.app
+        let productId = product.id
+        let said = l.t("saved.movedToWishlist", ["name": product.title])
+        app.wishAsking = WishTarget(productId: productId, title: product.title, start: .lists, onWished: {
+            Task {
+                await app.saved.unsave(productId)
+                announce(said)
+            }
+        })
     }
 
     private func move(_ variant: ProductVariant) {

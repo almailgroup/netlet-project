@@ -93,6 +93,16 @@ function ByToken({ token }: { token: string }) {
   );
 }
 
+/**
+ * Finding somebody's public list by their number or the name on it — the
+ * `/gifts` page's form, and the same form inside the account's Wishlists and
+ * gifts, on the owner's word ("finding a user for buying their wishlist
+ * should be in Wishlist and gifts itself").
+ */
+export function GiftFinder() {
+  return <Lookup />;
+}
+
 function Lookup() {
   const { t } = useTranslation();
   const fieldId = useId();
