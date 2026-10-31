@@ -60,6 +60,9 @@ private struct ProductPage: View {
     @State private var member = false
     /// The governorate the account delivers to, named in "Get it by … to …".
     @State private var area: Governorate?
+    /// Add to cart has just worked: the button says so for a moment.
+    @State private var added = false
+    @State private var addedReset: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
@@ -126,6 +129,18 @@ private struct ProductPage: View {
 
     private var variant: ProductVariant? { model.variant ?? product.leadVariant }
 
+    /// The SKU and the department, said once each.
+    private var facts: [String] {
+        var said: [String] = []
+        if let sku = variant?.sku, !sku.isEmpty {
+            said.append(l.t("product.sku") + ": \u{2066}\(sku)\u{2069}")
+        }
+        if let type = product.productType, !type.isEmpty {
+            said.append(l.t("product.category") + ": " + (ReferenceData.shared.department(named: type).map { l.t($0.label) } ?? type))
+        }
+        return said
+    }
+
     // MARK: The card that decides the purchase
 
     private var buyBox: some View {
@@ -143,17 +158,13 @@ private struct ProductPage: View {
                     StoreBadges(badges: product.vendorBadges)
                 }
             }
-            if let sku = variant?.sku, !sku.isEmpty {
-                (Text(l.t("product.sku") + ": ") + Text("\u{2066}\(sku)\u{2069}"))
-                    .font(.inter(14, .medium))
+            // The SKU and the department on one quiet line rather than two.
+            if !facts.isEmpty {
+                Text(facts.joined(separator: "  ·  "))
+                    .font(.inter(13, .medium))
                     .foregroundStyle(Brand.muted)
-                    .padding(.top, 12)
-            }
-            if let type = product.productType, !type.isEmpty {
-                Text(l.t("product.category") + ": " + (ReferenceData.shared.department(named: type).map { l.t($0.label) } ?? type))
-                    .font(.inter(14, .medium))
-                    .foregroundStyle(Brand.muted)
-                    .padding(.top, 8)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 10)
             }
             Text(product.title)
                 .font(.inter(26, .heavy))
@@ -194,7 +205,7 @@ private struct ProductPage: View {
             }
             price.padding(.top, 20)
             priceNotes
-            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1).padding(.vertical, 24)
+            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1).padding(.vertical, 20)
             VStack(alignment: .leading, spacing: 8) {
                 availability
                 if variant?.preorder == nil {
@@ -218,9 +229,9 @@ private struct ProductPage: View {
             if let variant = model.variant ?? product.leadVariant {
                 BundlesPanel(variantId: variant.id)
             }
-            quantity.padding(.top, 24)
+            quantity.padding(.top, 20)
             buttons
-                .padding(.top, 24)
+                .padding(.top, 14)
                 .background {
                     GeometryReader { proxy in
                         Color.clear.onChange(of: proxy.frame(in: .global).maxY < 120) { _, gone in buttonsGone = gone }
@@ -258,7 +269,7 @@ private struct ProductPage: View {
                 ProductAssistantPanel(product: product)
             }
             .padding(.top, 16)
-            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1).padding(.vertical, 24)
+            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1).padding(.vertical, 20)
             information
         }
         .padding(24)
@@ -417,46 +428,33 @@ private struct ProductPage: View {
         }
     }
 
-    /// Add to cart beside the heart, Buy now under them — both the card's
-    /// white button, told apart by the bag and the bolt (`PURCHASE_TONE`).
+    /// Add to cart and Buy now side by side, the preview's pair
+    /// (`AddToCartStyle`, `BuyNowStyle`): one row of capsules a thumb's
+    /// height, where two white buttons and a heart were stacked. The heart is
+    /// on the photo's corner, as on the card.
     private var buttons: some View {
         let ready = model.variant?.availableForSale == true
-        return VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                Button {
-                    Task { await add(openCheckout: false) }
-                } label: {
-                    HStack(spacing: 8) {
-                        if model.adding { ProgressView().tint(Brand.navy) } else { Image(systemName: "bag").font(.system(size: 17, weight: .medium)) }
-                        Text(addLabel).lineLimit(1).minimumScaleFactor(0.8)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 56)
-                }
-                .buttonStyle(PurchaseButtonStyle())
-                Button {
-                    Task { await app.heart(product) }
-                } label: {
-                    Image(systemName: app.saved.isHearted(product.id) ? "heart.fill" : "heart")
-                        .font(.system(size: 19, weight: .medium))
-                        .foregroundStyle(Color(red: 230 / 255, green: 28 / 255, blue: 56 / 255))
-                        .frame(width: 56, height: 56)
-                }
-                .buttonStyle(PurchaseButtonStyle())
-                .accessibilityLabel(l.t(app.saved.isHearted(product.id) ? "product.removeSaved" : "product.save", ["name": product.title]))
+        return HStack(spacing: 10) {
+            Button {
+                Task { await add(openCheckout: false) }
+            } label: {
+                AddToCartLabel(title: addLabel, adding: model.adding, done: added)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity, minHeight: 50)
             }
+            .buttonStyle(AddToCartStyle(done: added))
             Button {
                 Task { await add(openCheckout: true) }
             } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "bolt.fill").font(.system(size: 16, weight: .medium))
-                    Text(buyLabel).lineLimit(1).minimumScaleFactor(0.8)
-                }
-                .frame(maxWidth: .infinity, minHeight: 56)
+                BuyNowLabel(title: buyLabel)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(PurchaseButtonStyle())
+            .buttonStyle(BuyNowStyle())
         }
         .disabled(!ready && model.variant != nil)
         .opacity(ready || model.variant == nil ? 1 : 0.5)
+        .animation(still ? nil : .spring(duration: 0.3, bounce: 0.25), value: added)
     }
 
     private var addLabel: String {
@@ -470,43 +468,41 @@ private struct ProductPage: View {
     }
 
     /// The price and the same two buttons, over the tab bar once the page's
-    /// own have gone up under the header (`StickyBuyBar`).
+    /// own have gone up under the header (`StickyBuyBar`) — the same pair,
+    /// a size smaller.
     private var stickyBar: some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(product.title).font(.inter(12)).foregroundStyle(Brand.muted).lineLimit(1)
                 if let variant {
                     Text(variant.price.formatted(l.current)).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button {
                 Task { await add(openCheckout: false) }
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "bag").font(.system(size: 14, weight: .medium))
-                    Text(l.t("product.addToCart")).lineLimit(1)
-                }
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
+                AddToCartLabel(title: l.t("product.addToCart"), adding: model.adding, done: added, iconSize: 13)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 42)
             }
-            .buttonStyle(PurchaseButtonStyle(radius: 12, size: 14))
+            .buttonStyle(AddToCartStyle(done: added, size: 14))
             Button {
                 Task { await add(openCheckout: true) }
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "bolt.fill").font(.system(size: 13, weight: .medium))
-                    Text(l.t("product.buyNow")).lineLimit(1)
-                }
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)
+                BuyNowLabel(title: l.t("product.buyNow"), iconSize: 12)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 42)
             }
-            .buttonStyle(PurchaseButtonStyle(radius: 12, size: 14))
+            .buttonStyle(BuyNowStyle(size: 14))
         }
         .disabled(model.variant?.availableForSale != true)
+        .animation(still ? nil : .spring(duration: 0.3, bounce: 0.25), value: added)
         .padding(.leading, 18)
-        .padding(.trailing, 8)
-        .padding(.vertical, 8)
+        .padding(.trailing, 7)
+        .padding(.vertical, 7)
         .background(GlassCapsule())
         .padding(.horizontal, 12)
         .padding(.bottom, 8)
@@ -694,9 +690,19 @@ private struct ProductPage: View {
             }
             return
         }
+        Haptics.succeeded()
         announce(l.t("cart.added", ["name": product.title]))
+        added = true
+        addedReset?.cancel()
+        addedReset = Task {
+            try? await Task.sleep(for: .seconds(1.6))
+            guard !Task.isCancelled else { return }
+            added = false
+        }
         if !(await model.add(to: app.cart, product: product)) {
             Haptics.refused()
+            addedReset?.cancel()
+            added = false
             failure = "cart.addFailed"
         }
     }

@@ -1,7 +1,7 @@
 /**
- * Saved for later: what the shopper keeps without buying yet, directly under
- * the bag's lines on the cart page (under its empty state when the bag is
- * empty), on the owner's word, with a way back into it.
+ * Saved for later: what the shopper keeps without buying yet, under the
+ * summary and Checkout on the cart page (under its empty state when the bag
+ * is empty), on the owner's word, with a way back into it.
  *
  * It is Saved — the hearts — newest first, less anything already in the bag;
  * the line menu's "Save for later" (`LineMenu`) puts a line here and takes it

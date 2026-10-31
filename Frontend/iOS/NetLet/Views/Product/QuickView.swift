@@ -466,35 +466,19 @@ private struct QuickViewContent: View {
             Button {
                 Task { await add(openCheckout: false, proxy: proxy) }
             } label: {
-                ZStack {
-                    if added {
-                        Label(l.t("ios.quick.added"), systemImage: "checkmark")
-                            .transition(.scale(scale: 0.8).combined(with: .opacity))
-                    } else {
-                        HStack(spacing: 8) {
-                            if model.adding { ProgressView().tint(.white) } else { Image(systemName: "bag").font(.system(size: 16, weight: .medium)) }
-                            Text(addLabel)
-                        }
-                        .transition(.scale(scale: 0.8).combined(with: .opacity))
-                    }
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 50)
+                AddToCartLabel(title: addLabel, adding: model.adding, done: added, iconSize: 16)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(PreviewAddStyle(done: added))
+            .buttonStyle(AddToCartStyle(done: added))
             Button {
                 Task { await add(openCheckout: true, proxy: proxy) }
             } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "bolt.fill").font(.system(size: 15, weight: .medium))
-                    Text(model.quantity > 1 && ready ? l.t("product.buyNowCount", ["count": "\(min(model.quantity, room))"]) : l.t("product.buyNow"))
-                }
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity, minHeight: 50)
+                BuyNowLabel(title: model.quantity > 1 && ready ? l.t("product.buyNowCount", ["count": "\(min(model.quantity, room))"]) : l.t("product.buyNow"), iconSize: 15)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity, minHeight: 50)
             }
-            .buttonStyle(PreviewBuyStyle())
+            .buttonStyle(BuyNowStyle())
         }
         .disabled(model.variant != nil && !ready)
         .opacity(model.variant != nil && !ready ? 0.5 : 1)
@@ -564,36 +548,4 @@ private struct QuickViewContent: View {
 
 private enum QuickViewPlace {
     static let choices = "quick-view-choices"
-}
-
-/// The preview's Add to cart: the brand's navy, white words (`PREVIEW_TONE.add`),
-/// a step darker under the finger; green for the moment it says it worked.
-private struct PreviewAddStyle: ButtonStyle {
-    var done = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.inter(15, .bold))
-            .foregroundStyle(.white)
-            .background(
-                Capsule().fill(done ? Brand.success : (configuration.isPressed ? Color(red: 13 / 255, green: 51 / 255, blue: 114 / 255) : Brand.navy))
-            )
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
-            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
-    }
-}
-
-/// The preview's Buy now: white, a navy rim and navy words (`PREVIEW_TONE.buy`).
-private struct PreviewBuyStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.inter(15, .bold))
-            .foregroundStyle(Brand.navy)
-            .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
-            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5))
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
-            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
-    }
 }

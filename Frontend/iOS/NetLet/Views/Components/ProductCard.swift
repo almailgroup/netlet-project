@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UIKit.UIGestureRecognizerSubclass
 
 /// A price, and the was-price beside it when the shop may advertise a saving.
 struct PriceView: View {
@@ -193,7 +194,7 @@ struct ProductCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .top) {
                 CardGallery(product: product, feature: feature)
-                    .modifier(CardHold(action: preview))
+                    .modifier(CardHold(open: open, action: preview))
                 HStack(alignment: .top) {
                     badges(variant)
                     Spacer(minLength: 0)
@@ -266,6 +267,12 @@ struct ProductCard: View {
         app.previewing = product
     }
 
+    /// A short press on the photo: the product's page.
+    private func open() {
+        Haptics.tap()
+        app.push(.product(handle: product.handle))
+    }
+
     @ViewBuilder
     private func badges(_ variant: ProductVariant?) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -305,22 +312,38 @@ struct ProductCard: View {
 }
 
 /// A hold previews the product without leaving the shelf (3.1.11), on the
-/// photo and the words. **It is UIKit's own long press from iOS 18**, the one
-/// every list on the phone uses, and never a SwiftUI gesture there: the shelves
-/// are mostly cards, and a SwiftUI `LongPressGesture` on what a scroll view
+/// photo and the words — the owner's "the product preview is not working in
+/// app". From iOS 18 it is `HoldWatcher`, a UIKit recogniser that watches the
+/// touch and never takes it; iOS 17 keeps the SwiftUI hold beside the photo's
+/// button.
+///
+/// **Why a watcher, and not a long press.** It was a SwiftUI
+/// `LongPressGesture` first, and a SwiftUI long press on what a scroll view
 /// holds is the known way iOS 18 and 26 stop the page scrolling under a finger
-/// that lands on it — the owner's "I can't scroll, it stops" on the home page.
-/// UIKit's hold fails the moment the finger travels, so the scroll has it, and
-/// otherwise fires once at 0.4s. iOS 17, which never had the fault, keeps the
-/// SwiftUI gesture beside the card's own buttons. `NetLetUITests` drags every
-/// long page from over its cards.
+/// that lands on it. Then it was UIKit's own `UILongPressGestureRecognizer`,
+/// and holding a card did nothing at all: `PreviewUITests` held the photo and
+/// the words and no preview came, while a tap still opened the product. A
+/// gesture inside a SwiftUI scroll view waits for the scroll's pan to fail,
+/// and a pan under a finger that stays still fails only when it lifts — by
+/// which time a hold has failed too, so it could never begin. The watcher
+/// never begins: it stays "possible", fires the preview from its own 0.4s
+/// clock, and gives up when the finger travels, lifts or a scroll takes the
+/// touch — so it waits on nothing and blocks nothing.
+///
+/// **On the photo it is the tap as well.** The photo was a SwiftUI `Button`,
+/// and a gesture on a view yields to the gestures of what it holds; the photo
+/// is a picture now, and a press lifted early without moving opens the
+/// product (`open`). The words keep their title link.
 struct CardHold: ViewModifier {
+    /// What a short press opens — given only where the view is no button of
+    /// its own (the photo).
+    var open: (() -> Void)? = nil
     let action: () -> Void
 
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 18, *) {
-            content.gesture(HoldRecognizer(action: action))
+            content.gesture(HoldRecognizer(action: action, tap: open))
         } else {
             content.simultaneousGesture(LongPressGesture(minimumDuration: 0.4).onEnded { _ in action() })
         }
@@ -330,15 +353,97 @@ struct CardHold: ViewModifier {
 @available(iOS 18, *)
 private struct HoldRecognizer: UIGestureRecognizerRepresentable {
     let action: () -> Void
+    var tap: (() -> Void)?
 
-    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
-        let hold = UILongPressGestureRecognizer()
-        hold.minimumPressDuration = 0.4
-        return hold
+    func makeUIGestureRecognizer(context: Context) -> HoldWatcher {
+        let watcher = HoldWatcher(target: nil, action: nil)
+        watcher.onHold = action
+        watcher.onTap = tap
+        return watcher
     }
 
-    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
-        if recognizer.state == .began { action() }
+    func updateUIGestureRecognizer(_ recognizer: HoldWatcher, context: Context) {
+        recognizer.onHold = action
+        recognizer.onTap = tap
+    }
+}
+
+/// Watches one finger: still for `holdAfter` is a hold, lifted sooner without
+/// travelling is a tap, anything else is nothing. It never leaves `.possible`
+/// on its own account — the hold fires from its own clock — so no failure it
+/// waits on can hold it back, and it recognises alongside everything, so it
+/// takes nothing from the scroll or the buttons.
+final class HoldWatcher: UIGestureRecognizer, UIGestureRecognizerDelegate {
+    var onHold: (() -> Void)?
+    var onTap: (() -> Void)?
+    static let holdAfter: TimeInterval = 0.4
+    /// How far a finger may drift and still be holding still — UIKit's own.
+    static let slop: CGFloat = 10
+
+    private var start: CGPoint?
+    private var pending: DispatchWorkItem?
+    private var held = false
+
+    override init(target: Any?, action: Selector?) {
+        super.init(target: target, action: action)
+        cancelsTouchesInView = false
+        delaysTouchesBegan = false
+        delaysTouchesEnded = false
+        delegate = self
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesBegan(touches, with: event)
+        guard start == nil, touches.count == 1, let touch = touches.first else {
+            giveUp()
+            return
+        }
+        start = touch.location(in: nil)
+        let fire = DispatchWorkItem { [weak self] in
+            guard let self, self.start != nil, !self.held else { return }
+            self.held = true
+            self.onHold?()
+        }
+        pending = fire
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.holdAfter, execute: fire)
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesMoved(touches, with: event)
+        guard let start, let touch = touches.first else { return }
+        let now = touch.location(in: nil)
+        if hypot(now.x - start.x, now.y - start.y) > Self.slop { giveUp() }
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesEnded(touches, with: event)
+        let tapped = start != nil && !held
+        giveUp()
+        if tapped, let onTap { DispatchQueue.main.async { onTap() } }
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+        super.touchesCancelled(touches, with: event)
+        giveUp()
+    }
+
+    override func reset() {
+        super.reset()
+        pending?.cancel()
+        pending = nil
+        start = nil
+        held = false
+    }
+
+    private func giveUp() {
+        pending?.cancel()
+        pending = nil
+        start = nil
+        if state == .possible { state = .failed }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        true
     }
 }
 
@@ -392,21 +497,34 @@ struct CardGallery: View {
             }
     }
 
+    /// One photo. From iOS 18 it is a picture and the card's hold reads a
+    /// short press on it as the tap (`CardHold`) — a button here kept the
+    /// touch from the hold. iOS 17 keeps the button.
+    @ViewBuilder
     private func frame(_ photo: ProductImage?) -> some View {
-        Button {
-            app.push(.product(handle: product.handle))
-        } label: {
-            (feature ? Color.white : Brand.photo)
-                .overlay {
-                    if let photo {
-                        RemoteImage(reference: photo.url, contentMode: feature ? .fit : .fill, label: photo.altText ?? product.title)
-                    }
-                }
-                .clipped()
-                .contentShape(Rectangle())
+        if #available(iOS 18, *) {
+            picture(photo)
+                .accessibilityHidden(true)
+        } else {
+            Button {
+                app.push(.product(handle: product.handle))
+            } label: {
+                picture(photo)
+            }
+            .buttonStyle(.tap)
+            .accessibilityHidden(true)
         }
-        .buttonStyle(.tap)
-        .accessibilityHidden(true)
+    }
+
+    private func picture(_ photo: ProductImage?) -> some View {
+        (feature ? Color.white : Brand.photo)
+            .overlay {
+                if let photo {
+                    RemoteImage(reference: photo.url, contentMode: feature ? .fit : .fill, label: photo.altText ?? product.title)
+                }
+            }
+            .clipped()
+            .contentShape(Rectangle())
     }
 
     private func dots(count: Int, at index: Int) -> some View {
