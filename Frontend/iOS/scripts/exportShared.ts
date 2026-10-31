@@ -22,6 +22,7 @@
  *     pnpm ios:resources            # write the files
  *     pnpm ios:resources --check    # fail when they are stale
  */
+import { DISPLAY_CURRENCIES, REFERENCE_RATES, RATES_AS_OF, minorDigits } from "../../../Shared/commerce/currency.js";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { en, ar } from "../../../Shared/i18n/dictionary.js";
@@ -264,6 +265,8 @@ export function buildResources(): Record<string, string> {
     /* `rankBySearch`'s folding and synonyms, for a search the app answers
        from what it holds — a store's own shelf — by the shop's one rule. */
     "search.json": json({ foldFrom: FOLD_FROM, foldTo: FOLD_TO, foldMarks: FOLD_MARKS, maxQueryWords: MAX_QUERY_WORDS, synonymGroups: SYNONYM_GROUPS }),
+    // The display currencies and the reference rates (`Shared/commerce/currency.ts`).
+    "currency.json": json({ currencies: DISPLAY_CURRENCIES, rates: REFERENCE_RATES, asOf: RATES_AS_OF, minorDigits: Object.fromEntries(DISPLAY_CURRENCIES.map(code => [code, minorDigits(code)])) }),
     "assets.json": json(buildAssets().manifest),
     "content.json": json(buildContent()),
     /* The portal's menu and the permission model it is filtered by

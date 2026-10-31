@@ -20,7 +20,7 @@ import { BundleOffer } from "@/components/product/BundleOffer";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { Thumb } from "@/components/product/Thumb";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
-import { PURCHASE_TONE } from "@/lib/purchaseStyle";
+import { PREVIEW_TONE } from "@/lib/purchaseStyle";
 import { useOverlay } from "@/hooks/useOverlay";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
@@ -1379,15 +1379,14 @@ export default function ProductDetail() {
               ) : null}
             </div>
 
-            <div ref={buyRef}>
-            <div className="mt-6 flex gap-3">
-              <button onClick={() => void addToCart()} disabled={!inStock} className={`${PURCHASE_TONE.add} pressable flex flex-1 items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}><ShoppingBag className="size-[18px]" />{t(buyLabelFor(selectedVariant))}</button>
-              <button onClick={() => toggleSaved(product.id)} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} aria-pressed={isSaved} className="glass pressable grid w-14 place-items-center rounded-[14px] text-[#e61c38]"><Heart className={`size-5 ${isSaved ? "fill-current" : ""}`} /></button>
-            </div>
-            {/* Under the bag button, in the shop's one Buy now: the orange the
-                card and the preview use, so "which button buys" has the same
-                answer everywhere (`PURCHASE_TONE`). */}
-            <button onClick={() => void buyNow()} disabled={!inStock} className={`${PURCHASE_TONE.buy} pressable mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] px-5 py-4 disabled:cursor-not-allowed disabled:opacity-50`}><Zap className="size-[18px] fill-current" aria-hidden />{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</button>
+            {/* Add to cart and Buy now side by side, the preview's pair
+                (`PREVIEW_TONE`) on the owner's word ("make the web product
+                page match" the app): one row of 48px capsules, where two
+                white buttons and a heart were stacked. The heart is on the
+                photo's corner, as on the card. */}
+            <div ref={buyRef} className="mt-6 flex gap-2.5">
+              <button onClick={() => void addToCart()} disabled={!inStock} className={`${PREVIEW_TONE.add} flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[380px]:text-[15px]`}><ShoppingBag className="hidden size-[18px] shrink-0 min-[360px]:block" aria-hidden /><span className="truncate">{t(buyLabelFor(selectedVariant))}</span></button>
+              <button onClick={() => void buyNow()} disabled={!inStock} className={`${PREVIEW_TONE.buy} flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[380px]:text-[15px]`}><Zap className="hidden size-[17px] shrink-0 fill-current min-[360px]:block" aria-hidden /><span className="truncate">{t(quantity > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(quantity) })}</span></button>
             </div>
 
             {selectedVariant?.preorder
@@ -1517,11 +1516,11 @@ function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, onAdd,
     <PhoneActionBar shown={shown} label={name}>
       <div className="flex items-center gap-2">
         <p className="min-w-0 flex-1 truncate px-1.5 text-[15px] font-extrabold text-[#0a285a] min-[360px]:px-2 min-[360px]:text-[16px]">{price}</p>
-        <button type="button" onClick={onAdd} disabled={disabled} className={`${PURCHASE_TONE.add} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
+        <button type="button" onClick={onAdd} disabled={disabled} className={`${PREVIEW_TONE.add} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
           <ShoppingBag className="hidden size-4 min-[380px]:block" aria-hidden />
           {addLabel}
         </button>
-        <button type="button" onClick={onBuy} disabled={disabled} className={`${PURCHASE_TONE.buy} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
+        <button type="button" onClick={onBuy} disabled={disabled} className={`${PREVIEW_TONE.buy} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
           <Zap className="hidden size-4 fill-current min-[380px]:block" aria-hidden />
           {buyLabel}
         </button>

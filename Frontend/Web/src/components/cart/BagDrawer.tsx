@@ -14,8 +14,10 @@ import { Thumb } from "@/components/product/Thumb";
 import { MeasureLabel } from "@/components/product/UnitPrice";
 import { MAX_QUANTITY } from "@/components/cart/QuantityStepper";
 import { LineMenu } from "@/components/cart/LineMenu";
+import { useShownCurrency } from "@/hooks/useDisplayCurrency";
+import { LineDestination } from "@/components/cart/LineDestination";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
-import { useMoney, useTranslation } from "@/hooks/useTranslation";
+import { useDinars, useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { ArrowRight, Check, ChevronRight, Minus, Plus, ShoppingBag, Store, Trash2, Truck, X } from "lucide-react";
 import { Link } from "wouter";
@@ -198,8 +200,7 @@ function BagLine({ item }: { item: CartItem }) {
                 figure with no explanation is one a shopper cannot check. */}
             {item.bundleName ? <p dir="auto" className="mt-0.5 text-[12px] ink-accent">{item.bundleName}</p> : null}
             {/* Where this one is going (3.2.6), when it is not going where the
-                rest is. Read-only here: the picker belongs at checkout,
-                beside the address it is an exception to. */}
+                rest is — chosen on the delivery button beside it. */}
             {item.destination ? <p dir="auto" className="mt-0.5 text-[12px] ink-muted">{t("address.sendingTo", { label: item.destination.label })}</p> : null}
             <p className="mt-1.5 text-[15px] font-extrabold text-[#0a285a]">{money(item.lineTotal)}</p>
             {/* What one costs, once there is more than one — the total alone
@@ -214,8 +215,13 @@ function BagLine({ item }: { item: CartItem }) {
             <MeasureLabel measure={item.measure} quantity={item.quantity} className="text-[12px] ink-muted" />
           </div>
           {/* What else can be done with the line — save it for later, move
-              it to a wishlist, share it, open it, take it out (`LineMenu`). */}
-          <LineMenu item={item} title={title} />
+              it to a wishlist, share it, open it, take it out (`LineMenu`) —
+              and under it where it goes (`LineDestination`), on the owner's
+              word. */}
+          <div className="flex shrink-0 flex-col items-center gap-1.5">
+            <LineMenu item={item} title={title} />
+            <LineDestination item={item} title={title} />
+          </div>
         </div>
         {/* Fast or regular (3.2.5), only where the store offers fast. */}
         {item.fastDelivery ? <SpeedChoice item={item} title={title} /> : null}
@@ -359,6 +365,8 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout }: {
   const { cart, syncing, proceedToCheckout } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
+  const dinars = useDinars();
+  const shown = useShownCurrency();
   if (!cart) return null;
   const updating = syncing ? "opacity-50" : "";
   /* Drawn by store, each store's delivery is beside its lines already. */
@@ -394,6 +402,8 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout }: {
       {/* A member's free delivery (4.1), said with what it saved. */}
       {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
       <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className={`text-lg font-extrabold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.total)}</span></div>
+      {/* Read in another currency, the figure charged is said too. */}
+      {shown ? <p className="mt-2 text-[12px] font-semibold leading-5 text-[#0a285a]">{t("currency.paidInDinars", { amount: dinars(cart.total) })}</p> : null}
       <p className="mt-2 text-[12px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
       <button ref={checkoutRef} onClick={onCheckout ?? proceedToCheckout} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold">
         {t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" />

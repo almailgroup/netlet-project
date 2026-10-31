@@ -61,6 +61,8 @@ struct RootView: View {
         .animation(.easeOut(duration: 0.2), value: app.searchOpen)
         .animation(.easeOut(duration: 0.25), value: app.toastMessage)
         .task(id: l.current) { await app.shelf.load(language: l.current) }
+        // The day's rates, once prices are read in another currency.
+        .task(id: l.currency) { await app.refreshRates() }
         .sheet(isPresented: $app.chatOpen) {
             ShopChatSheet()
                 .environment(\.layoutDirection, l.layoutDirection)

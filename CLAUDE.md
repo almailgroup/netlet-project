@@ -1236,9 +1236,12 @@ white button — a white surface, a light navy rim, navy words — told apart by
 bag icon on Add and the bolt on Buy. A navy-and-orange pair was tried first and
 the owner asked for the white back. The bundle's "add the set" wears it too, and
 the keys stay separate so the two can be coloured apart again in that one file.
-**The preview is the one exception, on the owner's word**: `PREVIEW_TONE`
-beside it, a navy Add to cart and Buy now in white with a navy rim (see Quick
-View, below).
+**The preview and the product page are the exception, on the owner's word**:
+`PREVIEW_TONE` beside it, a navy Add to cart and Buy now in white with a navy
+rim (see Quick View, below). The product page took it to match the app ("make
+the web product page match"): the two side by side as 48px capsules in one row,
+where a white Add to cart and a heart sat over a full-width white Buy now — the
+heart is the photo's own — and the phone's floating bar wears the same pair.
 
 **The photo and the title both open the product, and only the title is a link
 anybody hears.** The photo's link is `tabIndex={-1}` and `aria-hidden`: two
@@ -1597,6 +1600,21 @@ the whole app with `window.location.assign`, the fault Buy now had; the cart's
 provider wraps the router, so it navigates the browser's history with the base
 path on. **A delivery row names the store in the page's language**
 (`storeName`), from both names the bag carries, as a line carries both titles.
+
+**Each line can go to an address of its own, on the owner's word** ("add a
+delivery icon below the 3-dots menu for each product in the cart … to choose a
+specific delivery address for that individual product"). A delivery button
+sits under every line's "⋯" (`LineDestination`; `LineDestinationButton` in the
+app) and opens the saved addresses — "The order's main address" first, naming
+the address in use, then the rest, then "Add an address" — as the same menu the
+"⋯" opens (`LinePopover`, which both now draw: a sheet on a phone, a small menu
+from `sm`, the WAI-ARIA menu with `menuitemradio` rows). **Every line goes
+where the order goes until it is told otherwise**, which is the default the
+owner asked for. The choice is `commerce.setDestination`, stored on the bag's
+line and frozen on the order's — 3.2.6, which checkout offered behind "Deliver
+this elsewhere" until the address moved to the cart — and the line says
+"Going to …" under its name while it holds one, the button navy rather than
+muted. A guest has no book, so no button.
 
 **The bag is drawn by store, and on a phone it opens on where it is going —
 on the owner's word.** Each store's lines sit together under "Sold by …",
@@ -3506,19 +3524,23 @@ the driver, the cash, a return and the payout schedule, every page at 375 and
 **Checkout confirms; it does not ask, on the owner's word** ("you should only
 confirm your details such as your location and your preferred payment method
 and then you can place order"). The governorate, area, block, street, house,
-name, number and map were typed there on every order; the address is chosen in
-the cart now and checkout is one column of cards: the same address card with
-Change (Buy now arrives without passing the cart, so it asks when nothing is
-chosen), the lines by store with each store's delivery and when it arrives —
-the seller's band (`deliverySpeed`, now on each bag line, `arrivalFor`), and
-nothing where the seller stated none — the payment list, a code and points
-folded until wanted, and the summary with Place order. The order is placed
-from the saved address's own parts, name and number; a saved address with no
-number on an account with none asks for it in one box, and the sentence under
-Place order goes to whatever is missing (the address book, or that box). A
+name, number and map were typed there on every order. **And where it goes is
+the cart's alone, on the owner's word** ("remove the Deliver to and Deliver
+this elsewhere options from the checkout page entirely, since address selection
+is now handled directly in the cart"): the address in use is the cart's first
+card and each line's own is its delivery button (`LineDestination`, under "The
+bag is drawn by store"), so checkout is one column of cards with neither — the
+lines by store with each store's delivery and when it arrives (the seller's
+band, `deliverySpeed` on each bag line, `arrivalFor`, nothing where the seller
+stated none), **the code and points, open from the start and right before the
+ways to pay** (on the owner's word: "so users can enter their code right
+away"; it can still be folded), the payment list, and the summary with Place
+order. The order is placed from the address in use's own parts, name and
+number; a saved address with no number on an account with none asks for it in
+one box, and an order with nowhere to go — Buy now arrives without passing the
+cart — says so under Place order, where the press opens the address book. A
 book with no address in the area in use starts from the one used last here, as
-before. Sending some lines elsewhere (`ItemDestinations`) is folded behind one
-row. Signing in happens on the page and keeps the basket, because
+before. Signing in happens on the page and keeps the basket, because
 `CartContext` already adopts the guest bag on sign-in.
 
 **The browser fills what it knows, and only that.** The name and the number
@@ -5604,6 +5626,44 @@ and the role badge goes under the email on a phone so the name has the width.
 Measured at 320 and 390 in both languages and at 1440: no sideways scroll, axe
 clean on every page changed, the bars shown and hidden where they should be.
 
+## Display currency
+
+**A shopper can read prices in another currency, on the owner's word** ("add a
+currency option in the settings … USD, GBP, EUR, and all GCC currencies"):
+the dinar, the US dollar, the pound, the euro, and the Saudi and Qatari riyals,
+the UAE dirham, the Bahraini dinar and the Omani rial — the dirham added
+because the UAE is a GCC member too. `Shared/commerce/currency.ts` is the rule,
+pure and exported to the app (`currency.json`). The choice is a row under the
+language on the account page (`CurrencySelect`, the shop's own `Select`; the
+app's `CurrencyRow`, under the guest's sign-in form too) and a control in the
+footer for somebody signed out, each currency named by the browser or the
+phone in the page's language with its code; it is kept on the device, like the
+language before an account syncs it.
+
+**NetLet still sells in Kuwaiti dinars, and that is the whole design.** Every
+price is stored, charged, frozen on an order and printed on an invoice in KWD,
+and the driver collects dinars. So a converted price is a reading aid, marked
+"≈" (but never on a zero), and only where somebody is deciding what to buy:
+`useMoney` converts on shopping pages and leaves dinars on the account, an
+invoice, the portal, checkout, help, selling and returns (`convertsOn`); the
+app's shopping screens call `l.price` where records keep `formatted`. The
+price-request box and a department's price filter stay in dinars in the app,
+because those are typed and compared in KWD. **The cart says what is paid**
+under its converted total ("What you pay: KWD 39.900"), and **checkout keeps
+the dinar total and adds the converted one under it**, said as an estimate.
+
+**The rates are read once a day, from a feed that needs no account**
+(`Backend/src/services/currencyRates.ts`, `commerce.currencyRates`):
+ExchangeRate-API's open endpoint for one dinar, a four-second deadline, kept
+six hours per instance — rates are one figure for everybody and nothing is
+counted or charged by them. Every rate is held within 35% of the reference
+table (`ratesFromFeed`), so a feed answering in the wrong base or with a typo
+cannot misprice every card; any failure is the reference table, whose Gulf
+currencies follow their pegs to the dollar. The feed asks to be credited where
+its rates are used, and the currency row does. `EXCHANGE_RATES_URL` points it
+elsewhere and `off` keeps the reference alone. The sandbox this was built in
+cannot reach the feed, so its first live read is the deployment's.
+
 ## Languages
 
 The storefront ships in English and Arabic, from one dictionary in
@@ -6240,13 +6300,15 @@ the recorded demo bag has both.
 use (and a book with nothing in the area starts from the one used last,
 `CheckoutViewModel.fallback`), from its own parts, name and number
 (`Validation.savedAddressProblem`, the web checkout's blockers in their order,
-tested), with a line-only address sent as its line. The screen is the same
-card with Change, a box for the driver's number only when neither the address
-nor the account has one, the destinations folded, each store's lines with its
+tested), with a line-only address sent as its line. The screen has no "Deliver
+to" and no destinations, the web's rule — the cart chooses both, the line's own
+on its delivery button (`LineDestinationButton`, a sheet of the saved
+addresses under the line's "⋯") — and is a box for the driver's number only
+when neither the address nor the account has one, each store's lines with its
 delivery and the day it arrives (`DeliveryLine.arrival` and `.slowest`, the
-web's `arrivalFor` and `slowestSpeed`), the payment list (cash chosen; KNET, a
-card and Apple Pay drawn as coming), the code folded with the points, and the
-summary; Place order stays in the bar at the foot, disabled with the blocker
+web's `arrivalFor` and `slowestSpeed`), the code with the points open before
+the payment list (cash chosen; KNET, a card and Apple Pay drawn as coming), and
+the summary; Place order stays in the bar at the foot, disabled with the blocker
 above it, and a press on the blocker opens the book or focuses the number. The
 home page's departments and brands are sideways rows too
 (`DepartmentCardGrid(row: true)`, `BrandShelf`), and its front door has no

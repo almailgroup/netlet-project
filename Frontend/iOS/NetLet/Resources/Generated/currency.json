@@ -1,0 +1,36 @@
+{
+  "currencies": [
+    "KWD",
+    "USD",
+    "GBP",
+    "EUR",
+    "SAR",
+    "QAR",
+    "AED",
+    "BHD",
+    "OMR"
+  ],
+  "rates": {
+    "KWD": 1,
+    "USD": 3.26,
+    "GBP": 2.44,
+    "EUR": 2.8,
+    "SAR": 12.225,
+    "QAR": 11.866,
+    "AED": 11.972,
+    "BHD": 1.2258,
+    "OMR": 1.2535
+  },
+  "asOf": "2026-10-31",
+  "minorDigits": {
+    "KWD": 3,
+    "USD": 2,
+    "GBP": 2,
+    "EUR": 2,
+    "SAR": 2,
+    "QAR": 2,
+    "AED": 2,
+    "BHD": 3,
+    "OMR": 3
+  }
+}

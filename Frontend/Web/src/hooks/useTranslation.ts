@@ -8,6 +8,8 @@
  */
 import { useCustomer } from "@/contexts/CustomerContext";
 import { formatMoney } from "@/lib/format";
+import { useShownCurrency } from "@/hooks/useDisplayCurrency";
+import { SHOP_CURRENCY, convertFromDinars } from "@shared/commerce/currency";
 import { isMessageKey, translate, type MessageKey } from "@shared/i18n/dictionary";
 import { useCallback } from "react";
 
@@ -43,11 +45,40 @@ export type Translate = ReturnType<typeof useTranslation>["t"];
  * A price is copy as much as a sentence is: on the Arabic storefront the
  * currency should read د.ك, not the Latin letters KWD.
  */
+/**
+ * Money in the page's language — and, on a shopping page, in the currency the
+ * shopper chose to read prices in (`useShownCurrency`): a dinar amount
+ * converted at the day's rate and marked "≈", since it is not what is
+ * charged. Records and checkout keep their dinars.
+ */
 export function useMoney() {
   const { locale } = useTranslation();
+  const shown = useShownCurrency();
+  const code = shown?.code;
+  const rates = shown?.rates;
   return useCallback(
-    (value: Parameters<typeof formatMoney>[0], currencyCode?: string) =>
-      formatMoney(value, { currencyCode, locale }),
+    (value: Parameters<typeof formatMoney>[0], currencyCode?: string) => {
+      if (code && rates) {
+        const dinars = typeof value === "object" && value !== null && "amount" in value
+          ? (value.currencyCode === SHOP_CURRENCY ? Number.parseFloat(value.amount) : Number.NaN)
+          : (currencyCode ?? SHOP_CURRENCY) === SHOP_CURRENCY ? Number(value) : Number.NaN;
+        if (Number.isFinite(dinars)) {
+          const converted = formatMoney(convertFromDinars(dinars, code, rates), { currencyCode: code, locale });
+          /* Nothing is nothing in any currency: no "≈" on a zero. */
+          return dinars === 0 ? converted : `≈ ${converted}`;
+        }
+      }
+      return formatMoney(value, { currencyCode, locale });
+    },
+    [locale, code, rates],
+  );
+}
+
+/** Money in dinars whatever the shopper reads in — what is charged. */
+export function useDinars() {
+  const { locale } = useTranslation();
+  return useCallback(
+    (value: Parameters<typeof formatMoney>[0], currencyCode?: string) => formatMoney(value, { currencyCode, locale }),
     [locale],
   );
 }

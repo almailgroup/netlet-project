@@ -307,8 +307,8 @@ struct StoreView: View {
         // What checkout charges: no fee recorded is free delivery, never a number the store did not type.
         let delivery: String
         if let fee {
-            delivery = freeOver.map { l.t("stores.deliveryFeeFreeOver", ["fee": fee.formatted(l.current), "threshold": $0.formatted(l.current)]) }
-                ?? l.t("stores.deliveryFee", ["fee": fee.formatted(l.current)])
+            delivery = freeOver.map { l.t("stores.deliveryFeeFreeOver", ["fee": l.price(fee), "threshold": l.price($0)]) }
+                ?? l.t("stores.deliveryFee", ["fee": l.price(fee)])
         } else {
             delivery = l.t("stores.deliveryFree")
         }

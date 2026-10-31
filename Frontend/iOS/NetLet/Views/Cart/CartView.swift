@@ -203,7 +203,7 @@ struct CartView: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(l.t("cart.total")).font(.inter(12)).foregroundStyle(Brand.muted)
-                Text(cart.total.formatted(l.current)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
+                Text(l.price(cart.total)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
                     .opacity(app.cart.syncing ? 0.5 : 1)
             }
             Button(l.t("cart.checkoutShort")) { goToCheckout() }
@@ -310,7 +310,7 @@ private struct ParcelLine: View {
         let free = parcel.free || parcel.fee.isZero
         let cost = free
             ? l.t(fast ? "cart.storeFastDeliveryFree" : "cart.storeDeliveryFree")
-            : l.t(fast ? "cart.storeFastDelivery" : "cart.storeDelivery", ["fee": parcel.fee.formatted(l.current)])
+            : l.t(fast ? "cart.storeFastDelivery" : "cart.storeDelivery", ["fee": l.price(parcel.fee)])
         let door = parcel.destinationLabel.map { l.t("address.sendingTo", ["label": $0]) + " · " } ?? ""
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 6) {
@@ -323,7 +323,7 @@ private struct ParcelLine: View {
             }
             .foregroundStyle(free ? Brand.success : Brand.body)
             if let toFree = parcel.toFree, !toFree.isZero, let progress = BagGroup.freeProgress(parcel) {
-                Text(l.t("cart.storeToFree", ["amount": toFree.formatted(l.current)]))
+                Text(l.t("cart.storeToFree", ["amount": l.price(toFree)]))
                     .font(.inter(12, .bold))
                     .foregroundStyle(Brand.accentInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -371,9 +371,13 @@ struct CartLineRow: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.tap)
-                    LineMenuButton(item: item, title: title)
-                        .padding(.top, -8)
-                        .padding(.trailing, -10)
+                    // The menu, and under it where this line goes, on the owner's word.
+                    VStack(spacing: 0) {
+                        LineMenuButton(item: item, title: title)
+                        LineDestinationButton(item: item, title: title)
+                    }
+                    .padding(.top, -8)
+                    .padding(.trailing, -10)
                 }
                 if let variant = item.variantLabel {
                     Text(variant).font(.inter(12)).foregroundStyle(Brand.muted)
@@ -387,13 +391,13 @@ struct CartLineRow: View {
                 if let destination = item.destination {
                     Text(l.t("address.sendingTo", ["label": destination.label])).font(.inter(12)).foregroundStyle(Brand.muted)
                 }
-                Text(item.lineTotal.formatted(l.current))
+                Text(l.price(item.lineTotal))
                     .font(.inter(15, .heavy))
                     .foregroundStyle(Brand.navy)
                     .padding(.top, 2)
                 // What one costs, once there is more than one.
                 if item.quantity > 1 {
-                    Text(l.t("cart.each", ["price": item.unitPrice.formatted(l.current)]))
+                    Text(l.t("cart.each", ["price": l.price(item.unitPrice)]))
                         .font(.inter(12))
                         .foregroundStyle(Brand.muted)
                 }
@@ -451,7 +455,7 @@ private struct SpeedChoice: View {
             // A member's fast trip is NetLet's to carry too (4.1), so it says free.
             option(fast: true, label: app.cart.cart?.delivery.memberFree == true
                 ? l.t("delivery.fastFreeMember")
-                : l.t("delivery.fastFor", ["fee": fast.fee.formatted(l.current)]))
+                : l.t("delivery.fastFor", ["fee": l.price(fast.fee)]))
             if item.isFast, let speed = fast.speed, ListingRules.shared.deliverySpeeds.contains(speed) {
                 Text(l.t("speed.\(speed)")).font(.inter(11)).foregroundStyle(Brand.muted).padding(.horizontal, 4)
             }
@@ -503,12 +507,12 @@ struct SummaryCard: View {
                 .foregroundStyle(Brand.navy)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
-            row(l.t("cart.subtotal") + " (" + count + ")", cart.subtotal.formatted(l.current))
+            row(l.t("cart.subtotal") + " (" + count + ")", l.price(cart.subtotal))
             if grouped {
-                row(l.t("cart.delivery"), cart.delivery.total.formatted(l.current), faint: updating)
+                row(l.t("cart.delivery"), l.price(cart.delivery.total), faint: updating)
             }
             if let waived = cart.delivery.memberWaived, !waived.isZero {
-                Text(l.t("membership.deliveryWaived", ["amount": waived.formatted(l.current)]))
+                Text(l.t("membership.deliveryWaived", ["amount": l.price(waived)]))
                     .font(.inter(12, .bold))
                     .foregroundStyle(Brand.navy)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -518,19 +522,26 @@ struct SummaryCard: View {
                 VStack(alignment: .leading, spacing: 4) {
                     row(
                         line.label(l),
-                        line.free || line.fee.isZero ? l.t("cart.deliveryFree") : line.fee.formatted(l.current),
+                        line.free || line.fee.isZero ? l.t("cart.deliveryFree") : l.price(line.fee),
                         faint: updating
                     )
                     if let toFree = line.toFree, !toFree.isZero {
-                        Text(line.destinationLabel.map { l.t("address.toFreeAt", ["amount": toFree.formatted(l.current), "name": name, "label": $0]) }
-                            ?? l.t("cart.deliveryToFree", ["amount": toFree.formatted(l.current), "name": name]))
+                        Text(line.destinationLabel.map { l.t("address.toFreeAt", ["amount": l.price(toFree), "name": name, "label": $0]) }
+                            ?? l.t("cart.deliveryToFree", ["amount": l.price(toFree), "name": name]))
                             .font(.caption)
                             .foregroundStyle(Brand.accentInk)
                     }
                 }
             }
             Divider()
-            row(l.t("cart.total"), cart.total.formatted(l.current), bold: true, faint: updating)
+            row(l.t("cart.total"), l.price(cart.total), bold: true, faint: updating)
+            // Read in another currency, the figure charged is said too.
+            if l.currency != CurrencyTable.shop {
+                Text(l.t("currency.paidInDinars", ["amount": cart.total.formatted(l.current)]))
+                    .font(.inter(12, .semibold))
+                    .foregroundStyle(Brand.navy)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

@@ -51,6 +51,8 @@ enum API {
     static let contact = Procedure<NoInput, ShopContact>(query: "support.channels")
     static let product = Procedure<ProductHandle, Product?>(query: "commerce.products.byHandle")
     static let departmentCounts = Procedure<NoInput, [String: Int]>(query: "commerce.departmentCounts")
+    /// The day's rates for the display currency; prices are still charged in dinars.
+    static let currencyRates = Procedure<NoInput, CurrencyRatesAnswer>(query: "commerce.currencyRates")
     static let search = Procedure<Search, SearchResult>(query: "search.products")
 
     // MARK: Bag

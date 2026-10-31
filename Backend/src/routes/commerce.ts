@@ -12,6 +12,7 @@
 
 import { DELIVERY_CHOICES } from "../../../Shared/commerce/delivery.js";
 import { listBestsellers, listBrands } from "../services/homeShelves.js";
+import { currencyRates } from "../services/currencyRates.js";
 import { z } from "zod";
 import { rowId, rowIdText } from "../core/schemas.js";
 import {
@@ -99,6 +100,12 @@ export const commerceRouter = router({
   }),
   /** Products on sale per department, so the navigation can leave out an empty one. */
   departmentCounts: publicProcedure.query(() => publishedDepartmentCounts()),
+  /**
+   * The day's rates for the display currency (`Shared/commerce/currency.ts`):
+   * one figure for everybody, the reference table whenever the feed is not
+   * there. Prices are still charged in dinars.
+   */
+  currencyRates: publicProcedure.query(() => currencyRates()),
   /** The home page's Bestsellers: units sold over the last ninety days. */
   bestsellers: publicProcedure
     .input(z.object({ locale: localeSchema }).optional())

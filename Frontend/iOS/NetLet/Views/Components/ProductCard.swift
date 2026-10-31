@@ -16,18 +16,18 @@ struct PriceView: View {
         // Never broken inside an amount: the was-price goes to the next line
         // when both do not fit, the web's `flex-wrap`.
         return FlowLayout(spacing: 6) {
-            Text(price.formatted(l.current))
+            Text(l.price(price))
                 .font(.inter(size, .bold))
                 .foregroundStyle(Brand.navy)
                 .fixedSize()
             if let was, was > price {
-                Text(was.formatted(l.current))
+                Text(l.price(was))
                     .font(.inter(size >= 20 ? 14 : 12))
                     .strikethrough()
                     .foregroundStyle(Brand.muted)
                     .fixedSize()
                     .frame(minHeight: size * 1.2)
-                    .accessibilityLabel(l.t("browse.onOffer") + ", " + was.formatted(l.current))
+                    .accessibilityLabel(l.t("browse.onOffer") + ", " + l.price(was))
             }
         }
     }
@@ -237,7 +237,7 @@ struct ProductCard: View {
                         // The price per kilo or litre of something sold by weight (`UnitPrice`).
                         if let measure = variant.measure,
                            let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
-                            Text(l.t("unit.perUnit", ["price": per.price.formatted(l.current), "unit": l.t("unit.\(per.unit)")]))
+                            Text(l.t("unit.perUnit", ["price": l.price(per.price), "unit": l.t("unit.\(per.unit)")]))
                                 .font(.inter(12))
                                 .foregroundStyle(Brand.muted)
                                 .padding(.top, 2)

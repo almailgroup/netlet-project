@@ -38,11 +38,10 @@ import { Thumb } from "@/components/product/Thumb";
 import { Select } from "@/components/ui/Select";
 import { useCart } from "@/contexts/CartContext";
 import { claimedHere, rememberClaim } from "@/lib/giftClaims";
-import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { normalisePhone } from "@shared/commerce/wishlist";
 import type { Product } from "@shared/commerce/types";
@@ -299,6 +298,7 @@ function GiftRow({ item, product, waiting, token, signedIn, onChanged }: {
   onChanged: () => void;
 }) {
   const { t, locale } = useTranslation();
+  const money = useMoney();
   const { addItem } = useCart();
   const claim = trpc.wishlists.claim.useMutation();
   const release = trpc.wishlists.release.useMutation();
@@ -387,7 +387,7 @@ function GiftRow({ item, product, waiting, token, signedIn, onChanged }: {
         {/* The owner's note in full, never cut: "the blue one, size 42" is
             what the choice below is made by. */}
         {item.note ? <p dir="auto" className="mt-0.5 text-xs leading-5 text-[#2b3a55]">{item.note}</p> : null}
-        {price ? <p className="mt-0.5 text-sm font-extrabold text-[#0a285a]">{formatMoney(price, { locale })}</p> : null}
+        {price ? <p className="mt-0.5 text-sm font-extrabold text-[#0a285a]">{money(price)}</p> : null}
 
         {/* Text, then colour. A row of grey pills tells a colour-blind visitor
             nothing; every state here carries its own words. */}

@@ -507,7 +507,7 @@ private struct SearchSheet: View {
                             Text(l.t(department.label))
                             Text("·")
                         }
-                        Text(product.priceRange.min.formatted(l.current))
+                        Text(l.price(product.priceRange.min))
                             .font(.inter(13, .bold))
                             .foregroundStyle(Brand.navy)
                     }

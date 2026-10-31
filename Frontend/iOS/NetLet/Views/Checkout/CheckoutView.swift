@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// Checkout confirms — the web's `Checkout`, on a phone: where it goes (the
-/// address chosen in the cart, with Change beside it), what is coming from
-/// each store and when, how it is paid, a code, the total, and Place order
-/// under the thumb. Disabled, the button says what is still missing above
+/// Checkout confirms — the web's `Checkout`, on a phone: what is coming from
+/// each store and when, a code (open), how it is paid, the total, and Place
+/// order under the thumb. **Where it goes is the cart's alone, on the owner's
+/// word** ("remove the Deliver to and Deliver this elsewhere options from the
+/// checkout page entirely"): the address in use is the cart's first card and
+/// each line's own is its delivery button (`LineDestinationButton`). Disabled, the button says what is still missing above
 /// it, first reason first, and a press on the sentence goes to the fix.
 ///
 /// **It confirms; it does not ask, on the owner's word** — the governorate,
@@ -61,15 +63,17 @@ private struct CheckoutForm: View {
                     .font(.inter(14))
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                DeliveryAddressCard(accountPhone: model.accountPhone.nilIfEmpty)
+                // Where it goes was chosen in the cart, line by line, on the
+                // owner's word — no "Deliver to" here. An order with nowhere to
+                // go says so over Place order, and the press opens the book.
                 if model.asksPhone(for: address) { phoneCard }
-                if let cart { ItemDestinations(cart: cart) }
                 if let cart, !cart.isEmpty {
                     CheckoutItems(cart: cart) { editCart() }
+                    // The code right before the ways to pay, open.
+                    CodeCard(cart: cart, model: model)
                 }
                 PaymentMethods(cart: cart, model: model)
                 if let cart, !cart.isEmpty {
-                    CodeCard(cart: cart, model: model)
                     CheckoutSummary(cart: cart, model: model)
                 }
                 VStack(alignment: .leading, spacing: 6) {
@@ -426,12 +430,14 @@ private struct PaymentMethods: View {
     }
 }
 
-/// A discount code or a gift card, in one field, folded until it is wanted —
-/// most orders have none — and the points where the account has some.
+/// A discount code or a gift card, in one field, and the points where the
+/// account has some — **open from the start, right before the ways to pay, on
+/// the owner's word** ("make the discount code section expanded by default so
+/// users can enter their code right away"); it can still be folded.
 private struct CodeCard: View {
     let cart: Cart
     @Bindable var model: CheckoutViewModel
-    @State private var open = false
+    @State private var open = true
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
@@ -631,6 +637,16 @@ private struct CheckoutSummary: View {
                     .foregroundStyle(Brand.navy)
                     .opacity(app.cart.syncing ? 0.5 : 1)
             }
+            // Read in another currency: the total in it, marked as the
+            // estimate it is — the dinars above are what is collected.
+            if l.currency != CurrencyTable.shop {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(l.price(bill.payable)).font(.inter(13, .semibold))
+                    Text(l.t("currency.chargedNote")).font(.inter(12))
+                }
+                .foregroundStyle(Brand.muted)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
@@ -642,84 +658,5 @@ private struct CheckoutSummary: View {
             Spacer(minLength: 8)
             Text(value).font(.inter(14, .bold)).foregroundStyle(good ? Brand.success : Brand.navy).opacity(faint ? 0.5 : 1)
         }
-    }
-}
-
-/// Send part of the order to another saved door — the web's
-/// `ItemDestinations`, folded behind one row, since most orders go to one
-/// door. Drawn only with something to choose: an address book and more than
-/// one line; open from the start once a line is going elsewhere.
-private struct ItemDestinations: View {
-    let cart: Cart
-    @State private var open = false
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        let book = cart.addresses ?? []
-        let shown = open || cart.items.contains { $0.destination != nil }
-        if !book.isEmpty, cart.items.count > 1 {
-            VStack(alignment: .leading, spacing: 12) {
-                Button {
-                    open.toggle()
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "mappin.and.ellipse").font(.system(size: 16, weight: .medium)).foregroundStyle(Brand.muted).accessibilityHidden(true)
-                        Text(l.t("address.sendElsewhere")).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Brand.muted)
-                            .rotationEffect(.degrees(shown ? 180 : 0))
-                            .accessibilityHidden(true)
-                    }
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.tap)
-                if shown {
-                    Text(l.t("address.bookNote")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-                    ForEach(cart.items) { item in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(item.title(l.current)).font(.inter(14, .semibold)).foregroundStyle(Brand.ink).lineLimit(2)
-                            Menu {
-                                choice(item, nil, l.t("address.orderAddress"))
-                                ForEach(book) { address in choice(item, address.id, address.label) }
-                            } label: {
-                                MenuField(text: item.destination?.label ?? l.t("address.orderAddress"), placeholder: l.t("address.orderAddress"))
-                            }
-                            .disabled(app.cart.busyLine == item.lineId)
-                            .accessibilityLabel(l.t("address.forLine", ["name": item.title(l.current)]))
-                        }
-                    }
-                    if splitsASeller {
-                        Text(l.t("address.splitNote")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 4)
-            .padding(.bottom, shown ? 12 : 0)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-        }
-    }
-
-    private func choice(_ item: CartItem, _ addressId: Int?, _ label: String) -> some View {
-        Button {
-            Haptics.tap()
-            let refused = l.t("cart.updateFailed")
-            Task { if !(await app.cart.setDestination(lineId: item.lineId, addressId: addressId)) { app.toast(refused) } }
-        } label: {
-            if item.destination?.id == addressId { Label(label, systemImage: "checkmark") } else { Text(label) }
-        }
-    }
-
-    /// A seller going to two doors goes twice, which the shopper is told.
-    private var splitsASeller: Bool {
-        var seen: [String: Int] = [:]
-        for row in cart.delivery.perVendor { seen[row.vendorId.map(String.init) ?? row.vendorName, default: 0] += 1 }
-        return seen.values.contains { $0 > 1 }
     }
 }

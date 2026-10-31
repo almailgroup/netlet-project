@@ -43,7 +43,7 @@ struct AccountView: View {
     /// to them, what they run, and the account itself. "language" and
     /// "signout" are the two rows that are not sections.
     private static let cards: [[String]] = [
-        ["addresses", "wishlists", "offers", "reviews", "subscriptions", "language"],
+        ["addresses", "wishlists", "offers", "reviews", "subscriptions", "language", "currency"],
         ["preferences", "notifications", "help"],
         ["affiliate", "selling"],
         ["details", "signout"],
@@ -74,7 +74,7 @@ struct AccountView: View {
                     affiliatePromo
                 }
                 ForEach(Array(Self.cards.enumerated()), id: \.offset) { index, ids in
-                    let rows = ids.filter { id in id == "language" || id == "signout" || entries.contains { $0.id == id } }
+                    let rows = ids.filter { id in id == "language" || id == "currency" || id == "signout" || entries.contains { $0.id == id } }
                     if index == Self.cards.count - 1 {
                         // What the footer carried, before the account's own
                         // card, so signing out stays the last thing on the page.
@@ -309,6 +309,8 @@ struct AccountView: View {
         switch id {
         case "language":
             LanguageRow()
+        case "currency":
+            CurrencyRow()
         case "signout":
             Button {
                 confirmingSignOut = true

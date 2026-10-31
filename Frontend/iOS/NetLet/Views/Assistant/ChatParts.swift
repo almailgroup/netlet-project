@@ -201,7 +201,7 @@ private struct ShelfCard: View {
                         .overlay { RemoteImage(reference: product.images.first?.url) }
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     Text(product.title).font(.inter(12, .semibold)).foregroundStyle(Brand.ink).lineLimit(2).frame(width: 120, alignment: .leading)
-                    Text(product.priceRange.min.formatted(l.current)).font(.inter(12, .bold)).foregroundStyle(Brand.navy)
+                    Text(l.price(product.priceRange.min)).font(.inter(12, .bold)).foregroundStyle(Brand.navy)
                 }
             }
             .buttonStyle(.tap)

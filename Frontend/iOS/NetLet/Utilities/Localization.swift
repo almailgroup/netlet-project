@@ -117,14 +117,41 @@ final class Phrasebook: @unchecked Sendable {
 @MainActor
 final class LanguageSettings {
     private(set) var current: Language
+    /// The currency prices are read in on the shopping screens (`price`) —
+    /// a reading aid kept on the phone; everything is charged in dinars.
+    private(set) var currency: String
+    /// The day's rates once the server has said them; the reference until then.
+    var rates: [String: Double] = CurrencyTable.shared.rates
     let phrasebook: Phrasebook
     private let defaults: UserDefaults
     private static let key = "netlet.language"
+    private static let currencyKey = "netlet.currency"
 
     init(phrasebook: Phrasebook = .shared, defaults: UserDefaults = .standard) {
         self.phrasebook = phrasebook
         self.defaults = defaults
         current = Language(rawValue: defaults.string(forKey: Self.key) ?? "") ?? .preferred()
+        let stored = defaults.string(forKey: Self.currencyKey) ?? CurrencyTable.shop
+        currency = CurrencyTable.shared.knows(stored) ? stored : CurrencyTable.shop
+    }
+
+    func setCurrency(_ code: String) {
+        guard CurrencyTable.shared.knows(code) else { return }
+        currency = code
+        defaults.set(code, forKey: Self.currencyKey)
+    }
+
+    /// A price on a shopping screen: dinars as they are, or — once the
+    /// shopper reads prices in another currency — converted at the day's rate
+    /// and marked "≈", since it is not what is charged. The web's `useMoney`.
+    func price(_ money: Money) -> String {
+        guard currency != CurrencyTable.shop, money.currencyCode == CurrencyTable.shop,
+              let value = CurrencyTable.shared.convert(fils: money.fils, to: currency, rates: rates) else {
+            return money.formatted(current)
+        }
+        let converted = CurrencyTable.shared.format(value, code: currency, language: current)
+        // Nothing is nothing in any currency: no "≈" on a zero.
+        return money.fils == 0 ? converted : "≈ " + converted
     }
 
     func t(_ key: String, _ params: [String: String] = [:]) -> String {

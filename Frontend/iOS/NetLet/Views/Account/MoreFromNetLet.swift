@@ -63,6 +63,8 @@ struct MoreFromNetLet: View {
                 if language {
                     LanguageRow()
                     DashedRule()
+                    CurrencyRow()
+                    DashedRule()
                 }
                 rows(helpRows)
             }
@@ -159,6 +161,70 @@ struct LanguageRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
         }
+    }
+}
+
+/// The currency prices are read in, on the owner's word: the dinar, the US
+/// dollar, the pound, the euro and the Gulf's, each named by the phone in the
+/// page's language — the web's `CurrencySelect`. A line under it says it is a
+/// reading aid; everything is still paid in dinars.
+struct CurrencyRow: View {
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "banknote")
+                .font(.system(size: 20))
+                .foregroundStyle(ProfileInk.icon)
+                .frame(width: 26)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(l.t("currency.title"))
+                    .font(.inter(16, .medium))
+                    .foregroundStyle(Brand.ink)
+                Text(l.t("currency.note"))
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                // The feed asks to be credited where its rates are used.
+                Text(l.t("currency.source"))
+                    .font(.inter(11))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Menu {
+                ForEach(CurrencyTable.shared.currencies, id: \.self) { code in
+                    Button {
+                        Haptics.tap()
+                        l.setCurrency(code)
+                    } label: {
+                        if l.currency == code {
+                            Label(CurrencyTable.name(code, language: l.current), systemImage: "checkmark")
+                        } else {
+                            Text(CurrencyTable.name(code, language: l.current))
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(verbatim: l.currency)
+                        .font(.inter(15, .semibold))
+                        .foregroundStyle(Brand.ink)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(ProfileInk.icon)
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 40)
+                .background(Capsule().fill(ProfileInk.chip))
+                .fixedSize()
+            }
+            .accessibilityLabel(l.t("currency.title"))
+            .accessibilityValue(CurrencyTable.name(l.currency, language: l.current))
+        }
+        .padding(.vertical, 12)
+        .frame(minHeight: 64)
     }
 }
 

@@ -28,7 +28,7 @@ struct AddonPicker: View {
                                     .foregroundStyle(Brand.muted)
                             }
                             Spacer(minLength: 8)
-                            Text(l.t("product.addonPerUnit", ["price": addon.price.formatted(l.current)]))
+                            Text(l.t("product.addonPerUnit", ["price": l.price(addon.price)]))
                                 .font(.inter(13, .bold))
                                 .foregroundStyle(Brand.navy)
                         }
@@ -535,11 +535,11 @@ struct SubscribePanel: View {
                 .font(.inter(15, .heavy))
                 .foregroundStyle(Brand.navy)
             Text(percent > 0
-                 ? l.t("subscribe.priceSave", ["price": unit.formatted(l.current), "was": variant.price.formatted(l.current)])
-                 : l.t("subscribe.price", ["price": unit.formatted(l.current)]))
+                 ? l.t("subscribe.priceSave", ["price": l.price(unit), "was": l.price(variant.price)])
+                 : l.t("subscribe.price", ["price": l.price(unit)]))
                 .font(.inter(14))
                 .foregroundStyle(Brand.ink)
-            Text(l.t("subscribe.promise", ["price": unit.formatted(l.current)])).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            Text(l.t("subscribe.promise", ["price": l.price(unit)])).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             if !open {
                 Button(l.t(app.session.isSignedIn ? "subscribe.start" : "subscribe.signIn")) {
                     if app.session.isSignedIn { open = true } else { app.authPresented = true }
@@ -574,7 +574,7 @@ struct SubscribePanel: View {
                         .tint(Brand.navy)
                     }
                 }
-                Text(l.t("subscribe.summary", ["count": "\(count)", "total": (unit * count).formatted(l.current)])).font(.inter(13, .semibold))
+                Text(l.t("subscribe.summary", ["count": "\(count)", "total": l.price((unit * count))])).font(.inter(13, .semibold))
                 HStack(spacing: 10) {
                     Button(l.t("subscribe.confirm")) { Task { await subscribe(count: count) } }
                         .buttonStyle(PrimaryButtonStyle())
@@ -642,9 +642,9 @@ struct BundlesPanel: View {
                                     .foregroundStyle(Brand.body)
                             }
                             HStack(spacing: 8) {
-                                Text(bundle.bundlePrice.formatted(l.current)).font(.inter(17, .heavy)).foregroundStyle(Brand.ink)
-                                Text(bundle.separately.formatted(l.current)).font(.inter(13)).strikethrough().foregroundStyle(Brand.muted)
-                                Text(l.t("bundle.saving", ["amount": bundle.saving.formatted(l.current)])).font(.inter(12, .bold)).foregroundStyle(Brand.success)
+                                Text(l.price(bundle.bundlePrice)).font(.inter(17, .heavy)).foregroundStyle(Brand.ink)
+                                Text(l.price(bundle.separately)).font(.inter(13)).strikethrough().foregroundStyle(Brand.muted)
+                                Text(l.t("bundle.saving", ["amount": l.price(bundle.saving)])).font(.inter(12, .bold)).foregroundStyle(Brand.success)
                             }
                             Button {
                                 Task { await add(bundle) }

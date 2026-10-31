@@ -283,16 +283,16 @@ private struct ProductPage: View {
     private var price: some View {
         if let variant {
             FlowLayout(spacing: 12) {
-                Text(variant.price.formatted(l.current))
+                Text(l.price(variant.price))
                     .font(.inter(32, .heavy))
                     .tracking(-1.2)
                     .foregroundStyle(Brand.ink)
                 if let was = variant.compareAtPrice, variant.saving != nil {
-                    Text(was.formatted(l.current))
+                    Text(l.price(was))
                         .font(.inter(18))
                         .strikethrough()
                         .foregroundStyle(Brand.muted)
-                        .accessibilityLabel(l.t("browse.onOffer") + ", " + was.formatted(l.current))
+                        .accessibilityLabel(l.t("browse.onOffer") + ", " + l.price(was))
                 }
                 if let percent = variant.savingPercent, percent > 0 {
                     Text(l.t("product.savePercent", ["percent": "\(percent)"]))
@@ -313,7 +313,7 @@ private struct ProductPage: View {
     private var priceNotes: some View {
         if let variant {
             if member, let memberPrice = variant.memberPrice {
-                Label(l.t("membership.yourPrice", ["price": memberPrice.formatted(l.current)]), systemImage: "checkmark.seal.fill")
+                Label(l.t("membership.yourPrice", ["price": l.price(memberPrice)]), systemImage: "checkmark.seal.fill")
                     .font(.inter(13, .heavy))
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 12)
@@ -323,7 +323,7 @@ private struct ProductPage: View {
             }
             if let measure = variant.measure,
                let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
-                Text(l.t("unit.perUnit", ["price": per.price.formatted(l.current), "unit": l.t("unit.\(per.unit)")]))
+                Text(l.t("unit.perUnit", ["price": l.price(per.price), "unit": l.t("unit.\(per.unit)")]))
                     .font(.inter(14))
                     .foregroundStyle(Brand.muted)
                     .padding(.top, 4)
@@ -475,7 +475,7 @@ private struct ProductPage: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(product.title).font(.inter(12)).foregroundStyle(Brand.muted).lineLimit(1)
                 if let variant {
-                    Text(variant.price.formatted(l.current)).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
+                    Text(l.price(variant.price)).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }

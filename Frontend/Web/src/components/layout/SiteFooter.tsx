@@ -31,6 +31,7 @@
  * meet the footer in the order it is drawn. One structure at a time
  * (`useMediaQuery`), the product page's rule.
  */
+import { CurrencySelect } from "@/components/ui/CurrencySelect";
 import { Banknote, ChevronDown, Facebook, Ghost, Globe, Headset, Instagram, LifeBuoy, Mail, MapPin, MessageCircle, MessagesSquare, Phone, Truck, Youtube, type LucideIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { Link } from "wouter";
@@ -320,6 +321,9 @@ export function SiteFooter({ clearance = "tabs", assistant = false }: { clearanc
             <Globe className="size-4" aria-hidden />
             <span lang={isArabic ? "en" : "ar"}>{t("header.language")}</span>
           </button>
+          {/* The currency prices are read in — for a guest too, whose account
+              page is the sign-in form. */}
+          <CurrencySelect className="inline-flex h-11 w-fit items-center gap-2 rounded-full border border-white/25 px-4 text-[14px] font-semibold text-white hover:bg-white/[.12]" />
         </div>
 
         {/* Who the shop is, and the documents that bind it. */}

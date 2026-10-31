@@ -291,7 +291,7 @@ private struct QuickViewContent: View {
                     .animation(still ? nil : .snappy(duration: 0.25), value: variant.id)
                 if let measure = variant.measure,
                    let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
-                    Text(l.t("unit.perUnit", ["price": per.price.formatted(l.current), "unit": l.t("unit.\(per.unit)")]))
+                    Text(l.t("unit.perUnit", ["price": l.price(per.price), "unit": l.t("unit.\(per.unit)")]))
                         .font(.inter(13))
                         .foregroundStyle(Brand.muted)
                         .padding(.top, 2)

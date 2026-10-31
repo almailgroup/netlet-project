@@ -1,18 +1,20 @@
 /**
- * Checkout: confirm where it goes and how it is paid, then place it.
+ * Checkout: what is coming, a code, how it is paid, then place it.
  *
  * **It confirms; it does not ask.** On the owner's word ("in the checkout page
  * you should only confirm your details — your location and your preferred
  * payment method — and then you can place order") the long form went: the
  * governorate, area, block, street, house, name, number and map were typed
- * here on every order. The address is chosen in the cart now
- * (`DeliveryAddressCard`, the address book's own), and this page draws the
- * same card to confirm it with Change beside it — Buy now comes here without
- * passing the cart, so the card asks when nothing is chosen. What is left is
- * one column of cards: where it goes, what is coming from each store and
- * when, how it is paid, a code, and the total with Place order — on a phone
- * the total and Place order also float at the foot while the summary's own
- * button is below the screen.
+ * here on every order. **And where it goes is the cart's alone**, on the
+ * owner's word ("remove the Deliver to and Deliver this elsewhere options from
+ * the checkout page entirely"): the address in use is chosen on the cart's
+ * first card and each line's own on its delivery button (`LineDestination`),
+ * so this page draws neither. An order with nowhere to go — Buy now comes
+ * here without passing the cart — says so under Place order, and the press
+ * opens the address book. What is left is one column of cards: what is coming
+ * from each store and when, a code (open, right before paying), how it is
+ * paid, and the total with Place order — on a phone the total and Place order
+ * also float at the foot while the summary's own button is below the screen.
  *
  * **Cash on delivery is the one method that pays, and the others are drawn as
  * coming**, on the owner's word ("for now add multiple payment methods as a
@@ -35,7 +37,7 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { BareHeader } from "@/components/layout/BareHeader";
 import { CARD, PAGE_SPACE, PageHeading } from "@/components/layout/Page";
 import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
-import { DeliveryAddressCard, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
+import { DeliveryZoneDialog, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
 import { SHOP_TIME_ZONE } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -47,8 +49,10 @@ import { sharerIdFromCode } from "@shared/commerce/affiliate";
 import { giftCardPayment, settle } from "@shared/commerce/vouchers";
 import { subtractMoney } from "@shared/money";
 import { trpc } from "@/lib/trpc";
-import { ItemDestinations } from "@/components/cart/ItemDestinations";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
+import { formatMoney } from "@/lib/format";
+import { convertFromDinars } from "@shared/commerce/currency";
 import AuthDialog from "@/components/auth/AuthDialog";
 import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddress";
 import { heldClaims } from "@/lib/giftClaims";
@@ -75,6 +79,7 @@ export default function Checkout() {
   const { cart, refreshCart, settling, syncing } = useCart();
   const { t, tError, locale } = useTranslation();
   const money = useMoney();
+  const reading = useDisplayCurrency();
   const items = cart?.items ?? [];
   const subtotal = cart?.subtotal ?? { amount: "0", currencyCode: "KWD" };
   const { isAuthenticated, user, loading: sessionLoading } = useAuth();
@@ -178,10 +183,12 @@ export default function Checkout() {
    * A discount code or a gift card, in one field (3.2.3): a shopper holding a
    * code does not necessarily know which kind it is. Applied on a press rather
    * than per keystroke, which would be a query per character and a refusal
-   * flashing at somebody halfway through typing. Folded until it is wanted —
-   * most orders have no code.
+   * flashing at somebody halfway through typing. **Open from the start, right
+   * before the ways to pay, on the owner's word** ("make the discount code
+   * section expanded by default so users can enter their code right away");
+   * it can still be folded.
    */
-  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(true);
   const [codeInput, setCodeInput] = useState("");
   const [applied, setApplied] = useState<string>("");
   const quote = trpc.orders.quoteVoucher.useQuery(
@@ -276,17 +283,12 @@ export default function Checkout() {
           <PageHeading title={t("checkout.heading")} note={t("checkout.confirmNote")} />
           <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-5">
             <div className="min-w-0 space-y-3">
-              {isAuthenticated || sessionLoading ? (
-                <DeliveryAddressCard
-                  open={addressOpen}
-                  onOpen={() => setAddressOpen(true)}
-                  onClose={() => setAddressOpen(false)}
-                  accountName={user?.name}
-                  accountPhone={accountPhone || null}
-                />
-              ) : (
-                <SignInCard onSignIn={() => setAuthOpen(true)} />
-              )}
+              {/* Where it goes was chosen in the cart, line by line, on the
+                  owner's word, so there is no "Deliver to" here; a guest is
+                  asked to sign in, and an order with nowhere to go says so
+                  under Place order, whose press opens the address book. */}
+              {isAuthenticated || sessionLoading ? null : <SignInCard onSignIn={() => setAuthOpen(true)} />}
+              {addressOpen ? <Suspense fallback={null}><DeliveryZoneDialog open onClose={() => setAddressOpen(false)} /></Suspense> : null}
               {/* A saved address with no number, on an account with none: the
                   driver has to be able to ring the door. */}
               {askPhone ? (
@@ -296,10 +298,9 @@ export default function Checkout() {
                   <p className="mt-1.5 text-[12px] leading-5 ink-muted">{t("checkout.driverPhoneNote")}</p>
                 </div>
               ) : null}
-              <ItemDestinations />
               <OrderItems />
-              <PaymentMethods />
-              {/* A code, and points where the account has some. */}
+              {/* A code, and points where the account has some — right before
+                  the ways to pay, open. */}
               <section aria-label={t("checkout.voucherLabel")} className={`${CARD} px-4 py-1.5 sm:px-5`}>
                 <button
                   type="button"
@@ -351,6 +352,7 @@ export default function Checkout() {
                   </label>
                 ) : null}
               </section>
+              <PaymentMethods />
             </div>
 
             <aside aria-label={t("checkout.orderSummary")} aria-busy={settling || syncing} className={`${CARD} p-4 sm:p-5 lg:sticky lg:top-6`}>
@@ -368,6 +370,14 @@ export default function Checkout() {
                 <span className="text-[15px] font-bold">{t("cart.total")}</span>
                 <span className={`text-[20px] font-extrabold transition-opacity ${syncing ? "opacity-50" : ""}`}>{totalText ?? <span aria-hidden className="inline-block h-5 w-24 animate-pulse rounded bg-[#e7edf5] align-middle" />}</span>
               </div>
+              {/* Read in another currency: the total in it, marked as the
+                  estimate it is — the dinars above are what is collected. */}
+              {reading.code !== "KWD" && !settling ? (
+                <p className="mt-1 text-end text-[13px] font-semibold ink-muted">
+                  ≈ {formatMoney(convertFromDinars(Number(payable.amount), reading.code, reading.rates), { currencyCode: reading.code, locale })}
+                  <span className="block text-[12px] font-normal">{t("currency.chargedNote")}</span>
+                </p>
+              ) : null}
               {sharerNames.length ? <p className="mt-3 text-[12px] leading-5 ink-muted">{t("affiliate.viaDisclosure", { name: new Intl.ListFormat(locale, { type: "conjunction" }).format(sharerNames) })}</p> : null}
               {isAuthenticated || sessionLoading ? (
                 <button

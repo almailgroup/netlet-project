@@ -580,6 +580,14 @@ final class AppModel {
 
     /// Switches the language, and writes it to the account so the web and
     /// another device follow — a stored language is the shopper's choice.
+    /// The day's rates for the display currency (`commerce.currencyRates`);
+    /// the reference table stands until they come, and when they do not.
+    func refreshRates() async {
+        guard language.currency != CurrencyTable.shop,
+              let answer = try? await services.api.call(API.currencyRates) else { return }
+        language.rates.merge(answer.rates) { _, new in new }
+    }
+
     func setLanguage(_ next: Language) {
         language.set(next)
         guard session.isSignedIn else { return }

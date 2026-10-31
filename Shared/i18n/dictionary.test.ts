@@ -62,6 +62,8 @@ describe("dictionary completeness", () => {
       // The two maps a shopper chooses between, named as their makers name them
       // on an Arabic phone — "خرائط Google", with the company in Latin.
       "pin.google", "pin.apple", "pin.tryGoogle", "pin.tryApple",
+      // The rates' source, credited as its makers name it — the maps' reason.
+      "currency.source",
       // The address read from a pin says whose map data it is — OpenStreetMap
       // asks for that credit — and the policy says where the point goes.
       "pin.fromOsm", "pin.fromApple", "privacy.who.placeLookup",

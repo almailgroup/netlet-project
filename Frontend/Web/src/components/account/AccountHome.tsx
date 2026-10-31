@@ -35,6 +35,7 @@ import { PANEL } from "@/components/account/profileParts";
 import { MembershipCard } from "@/components/account/MembershipCard";
 import { Thumb } from "@/components/product/Thumb";
 import { PointsCoin } from "@/components/ui/PointsCoin";
+import { CurrencySelect } from "@/components/ui/CurrencySelect";
 import { useFeature } from "@/hooks/useFeature";
 import { formatCount } from "@/lib/format";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -47,6 +48,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   Bell,
   ChevronRight,
+  Coins,
   Gift,
   Languages,
   LifeBuoy,
@@ -83,6 +85,7 @@ const CARDS: Row[][] = [
     { id: "reviews", label: "account.sectionReviews", icon: Star },
     { id: "subscriptions", label: "subscriptions.section", icon: Repeat },
     { id: "language", label: "account.language", icon: Languages },
+    { id: "currency", label: "currency.title", icon: Coins },
   ],
   [
     { id: "preferences", label: "account.sectionPreferences", icon: SlidersHorizontal },
@@ -197,7 +200,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
 
       <nav aria-label={t("account.menu")} className="space-y-3">
         {CARDS.map((rows, index) => {
-          const shown = rows.filter(row => row.id === "language" || row.id === "signout" || has(row.id));
+          const shown = rows.filter(row => row.id === "language" || row.id === "currency" || row.id === "signout" || has(row.id));
           if (!shown.length) return null;
           return (
             <ul key={index} className={`${PANEL} divide-y divide-dashed divide-[#e3e6ec] px-5`}>
@@ -205,6 +208,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
                 <li key={row.id}>
                   {row.id === "language" ? (
                     <LanguageRow row={row} />
+                  ) : row.id === "currency" ? (
+                    <CurrencyRow row={row} />
                   ) : row.id === "signout" ? (
                     <button type="button" onClick={onSignOut} className="-mx-5 flex min-h-[64px] w-[calc(100%+2.5rem)] items-center gap-3.5 px-5 text-start hover:bg-[#fdf5f3]">
                       <LogOut className="size-[22px] shrink-0 text-[#c2362a]" strokeWidth={1.75} aria-hidden />
@@ -273,6 +278,28 @@ function LanguageRow({ row }: { row: Row }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The currency prices are read in, on the owner's word: the shop's own list
+ * (`CurrencySelect`), with a line saying it is a reading aid — the dinars are
+ * still what is paid.
+ */
+function CurrencyRow({ row }: { row: Row }) {
+  const { t } = useTranslation();
+  const Icon = row.icon;
+  return (
+    <div className="flex min-h-[64px] flex-wrap items-center gap-x-3.5 gap-y-2 py-3">
+      <Icon className={ICON} strokeWidth={1.75} aria-hidden />
+      <span className="min-w-0 flex-1">
+        <label htmlFor="account-currency" className="block text-[16px] font-medium text-[#1f2a44]">{t(row.label)}</label>
+        <span id="account-currency-note" className="block text-[12px] leading-4 ink-muted">{t("currency.note")}</span>
+        {/* The feed asks to be credited where its rates are used. */}
+        <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer" className="mt-0.5 inline-block text-[11px] leading-4 ink-muted underline underline-offset-2">{t("currency.source")}</a>
+      </span>
+      <CurrencySelect id="account-currency" describedBy="account-currency-note" className="glass-field flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-[14px] font-semibold text-[#1f2a44] min-[420px]:w-auto min-[420px]:min-w-52" />
     </div>
   );
 }

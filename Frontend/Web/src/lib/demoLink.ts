@@ -10,6 +10,7 @@
  * terminates in the browser, no superjson serialization is involved — the values
  * returned here are handed straight to React Query.
  */
+import { REFERENCE_RATES, RATES_AS_OF } from "@shared/commerce/currency";
 import { DEPARTMENTS } from "@shared/commerce/departments";
 import { correctionFor, productsInCategory, rankBySearch } from "@shared/commerce/browse";
 import { readStored, writeStored } from "@/lib/browserStore";
@@ -196,6 +197,10 @@ function resolve(path: string, rawInput: unknown): unknown {
       const ids: string[] = Array.isArray(input.ids) ? input.ids.map(String) : [];
       return ids.flatMap(id => demoCatalog.filter(product => product.id === id));
     }
+
+    case "commerce.currencyRates":
+      /* The reference table: a demo build reaches no feed. */
+      return { rates: { ...REFERENCE_RATES }, asOf: RATES_AS_OF, source: "reference" };
 
     case "commerce.departmentCounts": {
       /* Counted from the invented catalogue the same way the server counts its own. */

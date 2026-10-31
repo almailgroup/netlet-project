@@ -5,7 +5,7 @@
  * two agreed: a white Add on the card, a white Add beside an orange Buy now in
  * the preview, a navy Add over a white Buy now on the product page. A shopper
  * meeting three answers to "which button buys" reads all three as different
- * shops. One pair now, in the card's original white: a white surface, a light
+ * shops. The card and the bundle wear one pair, in the card's original white: a white surface, a light
  * navy rim and navy words, the bag icon telling Add from the bolt on Buy now.
  * The two keys stay separate so the pair can be told apart again by changing
  * this file alone.
@@ -18,9 +18,11 @@ export const PURCHASE_TONE = {
 } as const;
 
 /**
- * The product preview's pair, in the brand's navy on the owner's word: a navy
- * Add to cart, and Buy now in white with a navy rim, so the preview reads as
- * the shop's own panel over the page while the card under it keeps its white.
+ * The pair on the product page and in the preview, in the brand's navy on the
+ * owner's word: a navy Add to cart, and Buy now in white with a navy rim, side
+ * by side as capsules. The preview had it first, so it read as the shop's own
+ * panel over the page; the product page took it to match the app's ("make the
+ * web product page match"). The card keeps its white.
  */
 export const PREVIEW_TONE = {
   add: "bg-[#0a285a] text-white transition-colors enabled:hover:bg-[#0d3372]",

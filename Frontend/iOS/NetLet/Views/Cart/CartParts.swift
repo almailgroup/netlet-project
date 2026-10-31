@@ -285,8 +285,161 @@ private struct LineMenuSheet: View {
     }
 }
 
-/// Saved for later: what the shopper keeps without buying yet, directly under
-/// the bag's lines — under its empty state when the bag is empty — on the
+/// Where one line goes, on the owner's word ("add a delivery icon below the
+/// 3-dots menu for each product in the cart"): the web's `LineDestination`.
+/// Every line goes where the order goes — the address in use, the cart's first
+/// card — until it is told otherwise here; the choice is the line's own
+/// (`commerce.setDestination`, kept on the bag's line and frozen on the
+/// order's), said under its name as "Going to …". Navy while the line is going
+/// somewhere of its own. A guest has no book, so no button.
+struct LineDestinationButton: View {
+    let item: CartItem
+    let title: String
+    @State private var open = false
+    /// What the sheet chose, done once it has gone down.
+    @State private var chosen: Choice?
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    enum Choice: Equatable { case address(Int?), add }
+
+    var body: some View {
+        let main = app.delivery.inUse?.id
+        let current = item.destination?.id
+        let own = current != nil && current != main
+        if app.session.isSignedIn {
+            Button {
+                open = true
+            } label: {
+                Image(systemName: own ? "truck.box.fill" : "truck.box")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(own ? Brand.navy : Brand.muted)
+                    .scaleEffect(x: l.current == .ar ? -1 : 1)
+                    .frame(width: 44, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressFillStyle(cornerRadius: 12))
+            .accessibilityLabel(l.t("address.forLine", ["name": title]))
+            .accessibilityValue(item.destination?.label ?? l.t("address.orderAddress"))
+            .sheet(isPresented: $open, onDismiss: run) {
+                LineDestinationSheet(item: item, title: title) { choice in
+                    chosen = choice
+                    open = false
+                }
+                .environment(\.layoutDirection, l.layoutDirection)
+                .buttonStyle(HapticDefaultStyle())
+            }
+        }
+    }
+
+    private func run() {
+        guard let choice = chosen else { return }
+        chosen = nil
+        let app = self.app
+        let lineId = item.lineId
+        switch choice {
+        case .address(let id):
+            Task {
+                if !(await app.cart.setDestination(lineId: lineId, addressId: id)) {
+                    Haptics.refused()
+                    app.toast(l.t("cart.updateFailed"))
+                }
+            }
+        case .add:
+            app.push(.addresses)
+        }
+    }
+}
+
+private struct LineDestinationSheet: View {
+    let item: CartItem
+    let title: String
+    let choose: (LineDestinationButton.Choice) -> Void
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let main = app.delivery.inUse
+        let current = item.destination?.id
+        let others = (app.cart.cart?.addresses ?? []).filter { $0.id != main?.id }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top, spacing: 12) {
+                    Color.clear
+                        .frame(width: 48, height: 48)
+                        .overlay { RemoteImage(reference: item.image?.url) }
+                        .background(Brand.photo)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(.inter(15, .heavy))
+                            .foregroundStyle(Brand.navy)
+                            .lineLimit(2)
+                            .accessibilityAddTraits(.isHeader)
+                        Text(l.t("address.lineIntro"))
+                            .font(.inter(12))
+                            .foregroundStyle(Brand.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+                .padding(.bottom, 14)
+                Divider().overlay(Brand.cardLine)
+                VStack(spacing: 0) {
+                    row("house", l.t("address.orderAddress"), note: main?.label, checked: current == nil || current == main?.id) {
+                        choose(.address(nil))
+                    }
+                    ForEach(others) { address in
+                        row("mappin", address.label, checked: current == address.id) {
+                            choose(.address(address.id))
+                        }
+                    }
+                    row("plus", l.t("address.add"), checked: nil) { choose(.add) }
+                }
+                .padding(.vertical, 6)
+            }
+        }
+        .background(Color.white)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func row(_ symbol: String, _ text: String, note: String? = nil, checked: Bool?, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .medium))
+                    .frame(width: 24)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(text).font(.inter(15, .semibold))
+                    if let note, !note.isEmpty {
+                        Text(note).font(.inter(13)).foregroundStyle(Brand.muted)
+                    }
+                }
+                Spacer(minLength: 0)
+                if checked == true {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 15, weight: .bold))
+                        .accessibilityHidden(true)
+                }
+            }
+            .foregroundStyle(Brand.navy)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
+            .frame(minHeight: 52)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressFillStyle(cornerRadius: 0, strength: Haptics.actionStrength))
+        .accessibilityAddTraits(checked == true ? .isSelected : [])
+    }
+}
+
+/// Saved for later: what the shopper keeps without buying yet, under the
+/// summary and Checkout — under its empty state when the bag is empty — on the
 /// owner's word, with a way back into it: the web's `SavedForLater`.
 ///
 /// It is Saved, newest first, less anything already in the bag, read by id
@@ -440,7 +593,7 @@ private struct SavedCard: View {
                     .frame(maxWidth: .infinity, minHeight: 36, alignment: .topLeading)
             }
             .buttonStyle(.tap)
-            Text((variant?.price ?? product.priceRange.min).formatted(l.current))
+            Text(l.price((variant?.price ?? product.priceRange.min)))
                 .font(.inter(14, .heavy))
                 .foregroundStyle(Brand.navy)
             if variant == nil {
