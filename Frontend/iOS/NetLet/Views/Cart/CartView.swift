@@ -2,10 +2,10 @@ import SwiftUI
 
 /// The bag — the web's `/cart` on a phone: the title with a heart to Saved
 /// items at its end, where the order is going, each store's lines
-/// together under its name with that store's delivery beside them, what was
-/// saved for later directly under them (on the owner's word, so it is a press
-/// from going back in), the summary the server worked out, and Checkout under
-/// the thumb.
+/// together under its name with that store's delivery beside them, the
+/// summary the server worked out and Checkout, and what was saved for later
+/// under Checkout (on the owner's word — it was directly under the lines,
+/// between the bag and what it costs).
 ///
 /// **It asks where the order is going, on the owner's word** — checkout only
 /// confirms it. The first card is the address (`DeliveryAddressCard`, the
@@ -161,7 +161,6 @@ struct CartView: View {
                 }
                 .card()
             }
-            SavedForLaterRow(topPadding: 12)
             VStack(alignment: .leading, spacing: 14) {
                 SummaryCard(cart: cart, grouped: groups != nil, updating: app.cart.syncing)
                 Text(l.t("cart.checkoutNote"))
@@ -179,6 +178,10 @@ struct CartView: View {
                     }
             }
             .card()
+            // Under Checkout, on the owner's word: the bag and what it costs
+            // come first, and what was put aside follows for whoever wants it
+            // back.
+            SavedForLaterRow(topPadding: 12)
         }
     }
 

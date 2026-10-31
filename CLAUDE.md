@@ -733,9 +733,9 @@ fade to go: "make it high quality 2D sketch design". `CountBadge`
 and Profile, in the header and the phone's tab bar, and on a department's
 Filters; `NoticeDot` is the account control's dot, the account menu's and the
 assistant's. Each is the brand orange, flat, inside a 1.5px navy ink line, on a
-1.5px white sticker edge, with a hard navy shadow dropped 1.5px across and 2px
-down — no gradient and no blur anywhere (`.count-badge`, `.notice-dot` in
-`index.css`); the number is navy, 4.65:1 on the orange, read left to right on
+1.5px white sticker edge — no gradient, no blur and no shadow anywhere
+(`.count-badge`, `.notice-dot` in `index.css`): it had a hard navy shadow
+dropped 1.5px across and 2px down, and the owner asked for it gone; the number is navy, 4.65:1 on the orange, read left to right on
 either page. **It hops once and again every five seconds, on the owner's word**
 (it was ten): a jump, a squash as it lands and a spring back in the first 0.6s
 of a 5s loop (`.badge-hop`). The span is keyed by the number, so a new number
@@ -1664,12 +1664,13 @@ one can be put back from the toast's Undo. **Move to wishlist** asks the
 heart's question (`chooseWishlist`) and takes the line out only once it is on
 a list; a guest has no lists and is not offered it. Both need the line's
 product, so the bag now sends `productId`. **Saved for later** is a sideways
-row directly under the bag's lines, on the owner's word ("so that you can
-easily add it back to cart") — beside the summary from `lg`, not under the
-whole page, and under the empty state when the bag is empty
-(`SavedForLater`, which holds its place with outlines of its cards while the
-saved products are read, or it landed a moment after the bag and pushed the
-summary and Checkout down a phone's screen): Saved, newest first, less what is in the
+row under the summary and Checkout, on the owner's word ("move the saved for
+later section below the continue to checkout") — on a phone after the
+summary's card, from `lg` under both columns — and under the empty state when
+the bag is empty. It sat directly under the bag's lines for a while ("so that
+you can easily add it back to cart"), which put it between the bag and what
+it costs (`SavedForLater`, which holds its place with outlines of its cards
+while the saved products are read): Saved, newest first, less what is in the
 bag, each with Move to cart, which takes it out of Saved alone (`unsave` — a
 list it is on keeps it), Choose an option for one with sizes, or Sold out. **The drawer is mounted after the pages** (`App`): its
 lines are links now, and before the pages they made the skip link not the
@@ -6205,12 +6206,11 @@ number and line and a Change opening `DeliverySheet`, or the question), each
 store a card (`BagGroup.groups`, the web's `bagGroups`, tested on its cases)
 with "Sold by …" to the store's page and its parcels (`ParcelLine`: the fee,
 free in green, the way to free delivery as a bar), the line's price under its
-name, **Saved for later directly under the lines**, on the owner's word
+name, then the summary, the note and Checkout in one card, and **Saved for
+later under Checkout**, on the owner's word — it was directly under the lines
 (`SavedForLaterRow`: Saved newest first less what is in the bag, read by id, a
 sideways row with Move to cart, Choose an option or Sold out; under the empty
-state when the bag is empty; outlines of its cards while they are read, so the
-summary does not jump), then the summary, the note and Checkout in one
-card. **The cart was glitching, on the owner's report, and three things in it
+state when the bag is empty; outlines of its cards while they are read). **The cart was glitching, on the owner's report, and three things in it
 were the cause.** It kept the Checkout button's position as state, so every
 frame of a scroll drew the whole bag again; it keeps only whether the button
 is below the screen now (`checkoutBelow`, written only when it flips — the
@@ -6540,13 +6540,26 @@ the name in navy, the price, the stock and the delivery date
 "Full product details" as a navy link; the pair at the foot is the web's
 `PREVIEW_TONE`, Add to cart navy and Buy now white with a navy rim. **Add to
 cart says it worked where the finger is**: the button turns green with a tick
-and "Added to your cart" for a moment, and the line under the quantity says how
+and "Added" for a moment, and the line under the quantity says how
 many the bag holds, with View cart. A press with nothing chosen scrolls to the
 choice and says so there, rather than a line appearing out of sight; a bag that
 already holds every unit has no stepper and the pair is off; a sold-out choice
 offers the back-in-stock alert in the stepper's place, as the web's does. A
 colour chosen shows its photo, found among the stills by address — the model's
 index counts the gallery, which a video can sit in.
+
+**The product page buys with the preview's pair, side by side, on the owner's
+word** ("make the buttons for adding to cart and buying now better and
+compact"; `PurchaseButtons.swift`). It stacked two white buttons and a heart —
+Add to cart and the heart in a row, Buy now the width of the page under them,
+124 points of buttons — and the heart was the photo's own again. Now Add to
+cart (navy, `AddToCartStyle`) and Buy now (white with a navy rim,
+`BuyNowStyle`) share one row of 50-point capsules under the quantity, each
+giving under the finger and felt on the press, and Add to cart turns green
+with a tick and "Added" for a moment (`AddToCartLabel`), as the preview's does;
+the floating bar over the tab bar is the same pair a size smaller, 42 points.
+The SKU and the department are one quiet line under the store rather than two.
+The web's product page keeps its white pair (`PURCHASE_TONE`).
 
 **The home page is one block in the frame's lazy stack, and that is its
 scrolling, on the owner's word** ("I can't scroll, it stops"). Every shelf

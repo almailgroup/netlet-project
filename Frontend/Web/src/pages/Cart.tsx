@@ -13,7 +13,7 @@
  * confirms it. The first card is the address (`DeliveryAddressCard`): the one
  * in use with Change, or the question, and Checkout pressed without one opens
  * the address book first and goes on once one is chosen. The heart to Saved
- * items is at the end of the title's line. Under the bag, what was saved
+ * items is at the end of the title's line. Under Checkout, what was saved
  * for later (`SavedForLater`), each with a way back in; every line has a menu
  * (`LineMenu`) that puts it there.
  *
@@ -123,11 +123,12 @@ export default function Cart() {
                 accountPhone={details.data?.phone ? formatPhone(details.data.phone) : null}
               />
               <BagLines layout="page" />
-              {/* Directly under the lines, on the owner's word, so something
-                  kept for later is a press from going back in. */}
-              <SavedForLater className="pt-3" />
             </div>
             <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading onCheckout={goToCheckout} /></aside>
+            {/* Under Checkout, on the owner's word — on a phone after the
+                summary, on a wide screen under both columns — so the bag and
+                what it costs come first. It sat directly under the lines. */}
+            <SavedForLater className="min-w-0 pt-3 lg:col-span-2" />
           </div>
         )}
       </div>

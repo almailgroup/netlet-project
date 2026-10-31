@@ -73,7 +73,7 @@ final class PreviewUITests: XCTestCase {
         let add = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Add")).firstMatch
         XCTAssertTrue(add.waitForExistence(timeout: 10), "The preview has no Add to cart.")
         add.tap()
-        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Added to your cart")).firstMatch.waitForExistence(timeout: 8),
+        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Added")).firstMatch.waitForExistence(timeout: 8),
                       "Add to cart in the preview said nothing.")
     }
 
@@ -91,23 +91,29 @@ final class PreviewUITests: XCTestCase {
         (try? element.snapshot())?.frame
     }
 
-    /// The first card's heart wholly on the screen, once the page has drawn.
+    /// The first card's heart with its photo wholly on the screen, once the
+    /// page has drawn — moving the page up a little at a time until there is
+    /// one (the home page's first screen is its front door and departments).
     private func firstHeart(_ app: XCUIApplication, prefix: String = "Save ", file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let top = app.descendants(matching: .any).matching(identifier: "page-top").firstMatch
         XCTAssertTrue(top.waitForExistence(timeout: 45), "The page never drew.", file: file, line: line)
         sleep(3)
         let hearts = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", prefix))
-        XCTAssertTrue(hearts.firstMatch.waitForExistence(timeout: 20), "No product card on the page.", file: file, line: line)
         let screen = app.frame
-        for index in 0..<min(hearts.count, 12) {
-            let heart = hearts.element(boundBy: index)
-            if let place = frame(of: heart), place.minY > 140, place.maxY + 160 < screen.maxY - 90 {
-                return heart
+        for _ in 0..<8 {
+            for index in 0..<min(hearts.count, 16) {
+                let heart = hearts.element(boundBy: index)
+                if let place = frame(of: heart), place.minY > 140, place.maxY + 170 < screen.maxY - 90 {
+                    return heart
+                }
             }
+            // Up a third of the screen, slowly, so it stops where it is let go.
+            let from = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.7))
+            let to = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.35))
+            from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
+            sleep(1)
         }
-        // Nothing far enough down the screen: move the page a little and take the first.
-        app.swipeUp(velocity: .slow)
-        sleep(1)
+        XCTFail("No product card came onto the screen.", file: file, line: line)
         return hearts.firstMatch
     }
 

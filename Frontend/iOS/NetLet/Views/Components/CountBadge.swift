@@ -7,9 +7,10 @@ import SwiftUI
 /// its upper half — and the gloss was the fade the owner asked to lose. The
 /// web's `CountBadge`, the same drawing.
 ///
-/// The brand orange, flat, inside a navy ink line, on a white sticker edge,
-/// with a hard navy shadow dropped down and to the side — no gradient and no
-/// blur anywhere, so it reads as drawn rather than rendered. The number is
+/// The brand orange, flat, inside a navy ink line, on a white sticker edge —
+/// no gradient, no blur and no shadow (the hard navy one dropped down and to
+/// the side went too, on the owner's word), so it reads as drawn rather than
+/// rendered. The number is
 /// navy, 4.65:1 on the orange, and reads left to right in either language.
 /// **It hops when it has news and again every five seconds**, on the owner's
 /// word: a jump, a squash as it lands and a spring back, on a five-second
@@ -56,7 +57,6 @@ private struct BadgeSurface: View {
             .fill(Brand.orange)
             .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5))
             .background(Capsule().fill(Color.white).padding(-1.5))
-            .background(Capsule().fill(Brand.navy).padding(-1.5).offset(x: 1.5, y: 2))
     }
 }
 

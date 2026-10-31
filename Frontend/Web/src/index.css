@@ -1218,8 +1218,9 @@ html[dir="rtl"] .nav-progress {
  * make it high quality 2D sketch design"). It wore a 3D look for a while —
  * the orange lit from above with a gloss fading across its upper half — and
  * the gloss was the fade the owner asked to lose. Now: the brand orange, flat,
- * inside a navy ink line, on a white sticker edge, with a hard navy shadow
- * dropped down and to the side; no gradient and no blur. The number is navy
+ * inside a navy ink line, on a white sticker edge; no gradient, no blur and
+ * no shadow — the hard navy one dropped down and to the side went too, on
+ * the owner's word. The number is navy
  * (4.65:1 on the orange) and reads left to right on either page.
  *
  * It hops when it has news and again every five seconds, on the owner's
@@ -1240,9 +1241,7 @@ html[dir="rtl"] .nav-progress {
   border: 1.5px solid #0a285a;
   border-radius: 9999px;
   background: #f2683a;
-  box-shadow:
-    0 0 0 1.5px #fff,
-    1.5px 2px 0 1.5px #0a285a;
+  box-shadow: 0 0 0 1.5px #fff;
   transform-origin: 50% 100%;
 }
 .count-badge {

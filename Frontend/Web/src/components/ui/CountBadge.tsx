@@ -5,8 +5,8 @@
  * half, and before that pixel art.
  *
  * A count is a pill of the brand orange, flat, inside a navy ink line, on a
- * white sticker edge, with a hard navy shadow dropped down and to the side
- * (`.count-badge` in `index.css`); no gradient and no blur. The number is navy
+ * white sticker edge (`.count-badge` in `index.css`); no gradient, no blur
+ * and no shadow — the hard navy one went, on the owner's word. The number is navy
  * on the orange, never white: navy is 4.65:1 on `#f2683a`, white 3.08:1. It
  * is hidden from a screen reader, because the control it sits on already says
  * the count.
