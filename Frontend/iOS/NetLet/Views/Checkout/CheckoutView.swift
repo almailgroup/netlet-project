@@ -430,6 +430,90 @@ private struct PaymentMethods: View {
     }
 }
 
+/// A dropdown's closed face: the choice, or what to choose, and a chevron.
+struct MenuField: View {
+    let text: String?
+    let placeholder: String
+    /// Filled by a dropped pin and not yet changed: pale orange, like `LabeledField`'s.
+    var fromPin = false
+
+    var body: some View {
+        HStack {
+            Text(text ?? placeholder)
+                .foregroundStyle(text == nil ? Brand.muted : Brand.ink)
+                .lineLimit(1)
+            Spacer()
+            Image(systemName: "chevron.up.chevron.down").font(.footnote).foregroundStyle(Brand.muted)
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 50)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fromPin ? Brand.fromPin : Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(fromPin ? Brand.fromPinRim : Brand.line, lineWidth: 1))
+        .animation(.easeOut(duration: 0.25), value: fromPin)
+    }
+}
+
+/// Place order: the brand orange with navy words (4.65:1), full width, with the total in it.
+struct OrderButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.bold))
+            .foregroundStyle(Brand.navy)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Brand.orange.opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.45))
+            )
+            .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
+    }
+}
+
+/// The page an order lands on: its number, said to be read down a phone, and the way to it.
+struct OrderPlacedView: View {
+    let reference: String
+    let path: Binding<NavigationPath>?
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 56))
+                .foregroundStyle(Brand.success)
+                .accessibilityHidden(true)
+            Text(l.t("orders.reference"))
+                .font(.headline)
+                .foregroundStyle(Brand.muted)
+            Text(reference)
+                .font(.title2.monospaced().weight(.bold))
+                .foregroundStyle(Brand.navy)
+                .textSelection(.enabled)
+                .environment(\.layoutDirection, .leftToRight)
+            Text(l.t("checkout.placed", ["reference": reference]))
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Brand.ink)
+            Button(l.t("ios.order.view")) {
+                path?.wrappedValue = NavigationPath([Route.order(reference: reference)])
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            Button(l.t("header.continueShopping")) {
+                path?.wrappedValue = NavigationPath()
+                app.selectedTab = .home
+            }
+            .buttonStyle(SecondaryButtonStyle())
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Brand.ground.ignoresSafeArea())
+        .navigationBarBackButtonHidden()
+        .navigationTitle(l.t("checkout.heading"))
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 /// The order summary at checkout: what the goods and delivery come to, what
 /// the code, the points and a gift card take off, and what is left to pay at
 /// the door — the web's summary, its till the same `settle`.
