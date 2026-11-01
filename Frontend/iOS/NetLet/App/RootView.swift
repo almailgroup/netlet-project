@@ -7,7 +7,9 @@ import SwiftUI
 /// floating pill: a `TabView` built with the iOS 26 SDK is drawn in Liquid
 /// Glass on iOS 26 — floating, refracting what scrolls under it, the selected
 /// tab lit in the shop's navy — and as the standard tab bar on iOS 17 and 18,
-/// so it is the bar every other app on the phone has. Its badge is the
+/// so it is the bar every other app on the phone has. Its icons are the
+/// web's own drawing (`TabIcon`), an outline and a filled form for the tab
+/// that is showing, as template images the system tints. Its badge is the
 /// system's, its order follows the page's direction, and VoiceOver reads it
 /// as a tab bar. A press still ticks at the tab bar's strength, and pressing
 /// the tab you are on takes you to its top, both through the selection's own
@@ -26,20 +28,20 @@ struct RootView: View {
         @Bindable var app = app
         TabView(selection: selection) {
             NavigationStack(path: $app.homePath) { HomeView().routes() }
-                .tabItem { Label(l.t("nav.home"), systemImage: "house") }
+                .tabItem { Label { Text(l.t("nav.home")) } icon: { TabIcon.home.image(filled: app.selectedTab == .home) } }
                 .tag(AppModel.Tab.home)
             NavigationStack(path: $app.accountPath) { AccountView().routes() }
-                .tabItem { Label(l.t("nav.profile"), systemImage: "person") }
+                .tabItem { Label { Text(l.t("nav.profile")) } icon: { TabIcon.profile.image(filled: app.selectedTab == .account) } }
                 .badge(app.signals.total)
                 .tag(AppModel.Tab.account)
             NavigationStack(path: $app.cartPath) {
                 CartView(path: $app.cartPath).routes(path: $app.cartPath)
             }
-            .tabItem { Label(l.t("nav.cart"), systemImage: "cart") }
+            .tabItem { Label { Text(l.t("nav.cart")) } icon: { TabIcon.cart.image(filled: app.selectedTab == .cart) } }
             .badge(app.cart.itemCount)
             .tag(AppModel.Tab.cart)
             NavigationStack(path: $app.categoriesPath) { CategoriesView().routes() }
-                .tabItem { Label(l.t("nav.categories"), systemImage: "square.grid.2x2") }
+                .tabItem { Label { Text(l.t("nav.categories")) } icon: { TabIcon.categories.image(filled: app.selectedTab == .categories) } }
                 .tag(AppModel.Tab.categories)
         }
         .modifier(NoBottomEdge())
@@ -185,6 +187,8 @@ private struct RouteDestination: View {
         case .orderPlaced(let reference): OrderPlacedView(reference: reference, path: path)
         case .orders: OrdersView()
         case .order(let reference): OrderDetailView(reference: reference)
+        case .returns: ReturnsView()
+        case .payments: PaymentMethodsView()
         case .profile: ProfileView()
         case .security: AccountSecurityView()
         case .listings: SellerListingsView()

@@ -669,27 +669,6 @@
 }
 
 /*
- * A department opening onto its subcategories on the Categories page: the
- * panel under its row drops a few pixels into place as it fades in — a
- * transform and an opacity on a plain white card, with nothing behind it to
- * blur. The global motion guard makes it a cut for somebody who asked for
- * less motion.
- */
-.subcats-in {
-  animation: subcats-in 220ms var(--ease-out) both;
-}
-@keyframes subcats-in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/*
  * The voice panel's level meter. It is not reading a real signal — nothing is
  * listening yet — but it is what the meter has to do when something is: the
  * bars have to move independently, or a row that rises and falls as one block

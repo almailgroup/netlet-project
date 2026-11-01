@@ -37,7 +37,7 @@ import { violatesUnique } from "../core/describeError.js";
 import { getDb } from "./db.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
-import { takeUnits } from "./orders.js";
+import { firstPhotos, takeUnits } from "./orders.js";
 import { issueCreditNote, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, reverseAffiliateLine } from "./affiliates.js";
 import { reverseReferralLine } from "./referral.js";
@@ -173,6 +173,47 @@ export async function returnsForShopperOrder(userId: number, orderId: number) {
     .from(returnRequests)
     .where(and(eq(returnRequests.userId, userId), eq(returnRequests.orderId, orderId)))
     .orderBy(desc(returnRequests.id));
+}
+
+/** How many of the shopper's own returns the Returns page lists, newest first. */
+export const SHOPPER_RETURNS = 100;
+
+/**
+ * Every return this shopper has asked for, across all their orders, newest
+ * first — the account's Returns page. Their rows and nobody else's, scoped in
+ * the query by the account, the rule every order read follows; what is said
+ * about each is what the opened order already says (the item as frozen on the
+ * line, the state, the refund), with today's photo of the product to know it
+ * by (`firstPhotos`, the order list's own).
+ */
+export async function returnsForShopper(userId: number) {
+  const db = await handle();
+  const rows = await db
+    .select({
+      id: returnRequests.id,
+      orderItemId: returnRequests.orderItemId,
+      kind: returnRequests.kind,
+      reason: returnRequests.reason,
+      status: returnRequests.status,
+      declineReason: returnRequests.declineReason,
+      refundAmount: returnRequests.refundAmount,
+      refundPaidAt: returnRequests.refundPaidAt,
+      replacementReference: sql<string | null>`(select ${orders.reference} from ${orders} where ${orders.id} = ${outer(returnRequests.replacementOrderId)})`,
+      createdAt: returnRequests.createdAt,
+      orderReference: orders.reference,
+      productId: orderItems.productId,
+      productTitle: orderItems.productTitle,
+      variantTitle: orderItems.variantTitle,
+      quantity: orderItems.quantity,
+    })
+    .from(returnRequests)
+    .innerJoin(orderItems, eq(orderItems.id, returnRequests.orderItemId))
+    .innerJoin(orders, eq(orders.id, returnRequests.orderId))
+    .where(eq(returnRequests.userId, userId))
+    .orderBy(desc(returnRequests.id))
+    .limit(SHOPPER_RETURNS);
+  const photos = await firstPhotos(db, rows.map(row => row.productId));
+  return rows.map(({ productId, ...row }) => ({ ...row, photo: productId === null ? null : photos.get(productId) ?? null }));
 }
 
 /** Withdraw a request before the item has left the shopper. */

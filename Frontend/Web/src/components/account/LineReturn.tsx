@@ -41,7 +41,7 @@ export const REASON_LABEL: Record<ReturnReason, MessageKey> = {
   other: "returns.reasonOther",
 };
 
-const STATUS_LABEL: Record<string, MessageKey> = {
+export const STATUS_LABEL: Record<string, MessageKey> = {
   requested: "returns.statusRequested",
   review: "returns.statusReview",
   approved: "returns.statusApproved",

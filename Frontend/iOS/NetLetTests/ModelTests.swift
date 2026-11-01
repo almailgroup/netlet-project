@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import NetLet
 
 /// Money is held in whole fils, so a total equals its parts to the fil.
@@ -113,6 +114,47 @@ final class ReferenceDataTests: XCTestCase {
         XCTAssertEqual(type?.key, "type")
         XCTAssertEqual(type?.shownOption("Mobile phones", .ar), "الهواتف")
         XCTAssertEqual(type?.shownOption("Feature phone", .ar), "Feature phone")
+    }
+
+    /// Every subcategory's row on the Categories tab has a picture this iOS
+    /// draws, and no two in a department share one — the web's
+    /// `SubcategoryIcon` record, held by the type there and by this here.
+    func testEverySubcategoryHasAPictureThisIOSDraws() {
+        for department in reference.departments {
+            for entry in department.subs {
+                XCTAssertNotNil(entry.icon, "\(department.slug)/\(entry.slug) has no icon")
+                XCTAssertFalse(entry.symbolCandidates.isEmpty, "\(department.slug)/\(entry.slug): no SF Symbol for \(entry.icon ?? "nil")")
+                XCTAssertNotNil(UIImage(systemName: entry.symbol), "\(department.slug)/\(entry.slug)")
+                XCTAssertNotEqual(entry.symbol, "square.grid.2x2", "\(department.slug)/\(entry.slug) fell back to the grid")
+            }
+            XCTAssertEqual(Set(department.subs.compactMap(\.icon)).count, department.subs.count, department.slug)
+        }
+        XCTAssertNotNil(UIImage(systemName: "line.3.horizontal"), "View all's picture")
+    }
+
+    /// The tab bar draws the web's own icons: every tab in both forms, each
+    /// path read whole and inside the 24 grid.
+    func testTheTabBarDrawsTheWebsIcons() throws {
+        let file = try XCTUnwrap(TabIcon.file, "tabIcons.json is in the bundle")
+        XCTAssertEqual(Set(file.icons.keys), Set(TabIcon.allCases.map(\.rawValue)))
+        for icon in TabIcon.allCases {
+            let drawing = try XCTUnwrap(file.icons[icon.rawValue])
+            for paths in [drawing.outline, drawing.filled] {
+                XCTAssertFalse(paths.isEmpty, icon.rawValue)
+                for path in paths {
+                    let box = TabIcon.cgPath(path.d).boundingBoxOfPath
+                    XCTAssertGreaterThan(box.width + box.height, 0, "\(icon.rawValue): \(path.d)")
+                    XCTAssertTrue(CGRect(x: 0, y: 0, width: 24, height: 24).contains(box), "\(icon.rawValue) leaves the grid: \(box)")
+                }
+            }
+            let image = TabIcon.render(drawing.filled, stroke: file.strokeWidth)
+            XCTAssertEqual(image.size, CGSize(width: TabIcon.side, height: TabIcon.side))
+            XCTAssertEqual(image.renderingMode, .alwaysTemplate)
+        }
+        // A circle's four quarters come back round: its box is its diameter.
+        let ring = TabIcon.cgPath("M12 4 C14.209 4 16 5.791 16 8 C16 10.209 14.209 12 12 12 C9.791 12 8 10.209 8 8 C8 5.791 9.791 4 12 4 Z").boundingBoxOfPath
+        XCTAssertEqual(ring.width, 8, accuracy: 0.01)
+        XCTAssertEqual(ring.minY, 4, accuracy: 0.01)
     }
 
     func testKnowsEveryGovernorateAndItsAreas() {

@@ -238,6 +238,19 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(placed.reference.hasPrefix("NL-"))
     }
 
+    /// The account's Returns page: every return, newest first, with the
+    /// order it came from and the money where there is some.
+    func testTheShoppersReturnsDecode() async throws {
+        let returns = try await client.call(API.shopperReturns)
+        XCTAssertEqual(returns.map(\.status), ["approved", "refunded"])
+        XCTAssertEqual(returns.first?.orderReference, "NL-20261001-J7MWY")
+        XCTAssertNil(returns.first?.refundAmount)
+        XCTAssertEqual(returns.last?.refundAmount, Money(fils: 12_500))
+        XCTAssertNotNil(returns.last?.refundPaidAt)
+        XCTAssertNil(returns.last?.photo)
+        XCTAssertEqual(LineReturnPanel.statusKey(returns[1].status), "returns.statusRefunded")
+    }
+
     func testWhatCanBeDoneAboutAnOrder() async throws {
         let found = try await client.call(API.order, .init(reference: "NL-20261001-J7MWY"))
         let detail = try XCTUnwrap(found)

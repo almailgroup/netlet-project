@@ -42,6 +42,8 @@ import { AccountOffers } from "@/components/account/AccountOffers";
 import { AccountRewards } from "@/components/account/AccountRewards";
 import { SellerMode } from "@/components/account/SellerMode";
 import { AccountOrders } from "@/components/account/AccountOrders";
+import { AccountPayments } from "@/components/account/AccountPayments";
+import { AccountReturns } from "@/components/account/AccountReturns";
 import { AccountNotifications } from "@/components/account/AccountNotifications";
 import { WishlistManager } from "@/components/account/WishlistManager";
 import { AccountReviews } from "@/components/account/AccountReviews";
@@ -76,6 +78,7 @@ type Entry = {
  */
 const ENTRIES: Entry[] = [
   { id: "orders", label: "account.sectionOrders", hint: "account.hint.orders" },
+  { id: "returns", label: "account.sectionReturns", hint: "account.hint.returns" },
   { id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions" },
   { id: "saved", label: "footer.savedItems", hint: "account.hint.saved", href: "/saved" },
   { id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists" },
@@ -88,6 +91,7 @@ const ENTRIES: Entry[] = [
   { id: "details", label: "account.sectionProfile", hint: "account.hint.details" },
   { id: "security", label: "account.security", hint: "account.hint.security" },
   { id: "addresses", label: "address.book", hint: "account.hint.addresses" },
+  { id: "payments", label: "account.sectionPayments", hint: "account.hint.payments" },
   { id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences" },
   { id: "selling", label: "account.sectionSelling", hint: "account.hint.selling" },
 ];
@@ -99,6 +103,8 @@ const COLUMN = "mx-auto max-w-2xl";
 function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<typeof useAuth>["user"]> }) {
   switch (id) {
     case "orders": return <AccountOrders />;
+    case "returns": return <AccountReturns />;
+    case "payments": return <AccountPayments />;
     case "subscriptions": return <AccountSubscriptions />;
     case "wishlists": return <WishlistManager />;
     case "offers": return <AccountOffers />;
@@ -150,13 +156,24 @@ export default function Account() {
    */
   const subscriptionsOn = useFeature("subscriptions");
   const affiliatesOn = useFeature("affiliates");
-  const mySubscriptions = trpc.subscriptions.mine.useQuery(undefined, { enabled: isAuthenticated && !subscriptionsOn });
+  const mySubscriptions = trpc.subscriptions.mine.useQuery(undefined, { enabled: isAuthenticated });
   const myAffiliate = trpc.affiliates.mine.useQuery(undefined, { enabled: isAuthenticated && !affiliatesOn });
   const hidden = new Set<string>();
   if (!isSeller) hidden.add("selling");
   if (!subscriptionsOn && !(mySubscriptions.data?.length)) hidden.add("subscriptions");
   if (!affiliatesOn && !myAffiliate.data) hidden.add("affiliate");
   const entries = ENTRIES.filter(entry => !hidden.has(entry.id));
+  /*
+   * The home draws a row only where there is something behind it, on the
+   * owner's word: Price requests and Subscribe & Save open an empty page for
+   * anybody who has none, so they are rows only for somebody who has one.
+   * Their pages stay open to an address, since a notice may link there.
+   */
+  const myOffers = trpc.offers.list.useQuery(undefined, { enabled: isAuthenticated, staleTime: 60_000 });
+  const onHome = (id: string) =>
+    entries.some(entry => entry.id === id)
+    && (id !== "offers" || Boolean(myOffers.data?.length))
+    && (id !== "subscriptions" || Boolean(mySubscriptions.data?.length));
 
   /* What is waiting, said on the home's rows. */
   const badge = (id: string): string | null => {
@@ -253,7 +270,7 @@ export default function Account() {
             </div>
           </div>
         ) : (
-          <AccountHome user={user} has={id => entries.some(entry => entry.id === id)} badge={badge} onSignOut={() => setSignOutOpen(true)} />
+          <AccountHome user={user} has={onHome} badge={badge} onSignOut={() => setSignOutOpen(true)} />
         )}
     </PageBody>
   );

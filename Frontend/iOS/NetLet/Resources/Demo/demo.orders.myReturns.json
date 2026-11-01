@@ -1,0 +1,55 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 2,
+          "orderItemId": 2,
+          "kind": "refund",
+          "reason": "damaged",
+          "status": "approved",
+          "declineReason": null,
+          "refundAmount": null,
+          "refundPaidAt": null,
+          "replacementReference": null,
+          "createdAt": "2026-10-24T09:12:40.211Z",
+          "orderReference": "NL-20261001-J7MWY",
+          "productTitle": "USB-C charger 65W",
+          "variantTitle": "Default",
+          "quantity": 1,
+          "photo": "http://localhost:5000/brand/collection-tech.svg"
+        },
+        {
+          "id": 1,
+          "orderItemId": 1,
+          "kind": "refund",
+          "reason": "tooSmall",
+          "status": "refunded",
+          "declineReason": null,
+          "refundAmount": "12.500",
+          "refundPaidAt": "2026-10-12T14:03:05.000Z",
+          "replacementReference": null,
+          "createdAt": "2026-10-08T17:45:51.380Z",
+          "orderReference": "NL-20260928-K4WQZ",
+          "productTitle": "Leather sandals",
+          "variantTitle": "42",
+          "quantity": 1,
+          "photo": null
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ],
+          "1.createdAt": [
+            "Date"
+          ],
+          "1.refundPaidAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

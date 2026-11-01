@@ -28,6 +28,10 @@ enum Route: Hashable {
     case orderPlaced(reference: String)
     case orders
     case order(reference: String)
+    /// Every return the shopper asked for — the web's `/account/returns`.
+    case returns
+    /// How the shopper pays and the cards they save — the web's `/account/payments`.
+    case payments
     case profile
     /// The password and deleting the account — the web's `/account/security`.
     case security
@@ -107,6 +111,8 @@ enum Route: Hashable {
         case ("account"?, _):
             switch segments[1] {
             case "orders": return query["order"].map { .order(reference: $0) } ?? .orders
+            case "returns": return .returns
+            case "payments": return .payments
             case "details": return .profile
             case "security": return .security
             case "addresses": return .addresses

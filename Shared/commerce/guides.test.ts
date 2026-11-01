@@ -64,7 +64,7 @@ describe("the model's draft", () => {
       expect(system.length).toBeLessThanOrEqual(MAX_GENERATE_SYSTEM);
       expect(system).toContain("Never include a phone number");
     }
-    expect(guideDraftSystem("shopper", (key, params) => translate("en", key, params))).toContain("Orders and returns");
+    expect(guideDraftSystem("shopper", (key, params) => translate("en", key, params))).toContain("Payment methods");
     expect(guideDraftSystem("seller", (key, params) => translate("en", key, params))).toContain("/admin");
   });
 

@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// The departments as a page, the phone's Categories tab — the home page's
-/// cards made the page's subject, each saying how many products it holds,
-/// and Today's deals under them only while the home page would draw them.
+/// The departments as a page, the phone's Categories tab — the department
+/// tiles in a row and the chosen one's subcategories under them
+/// (`DepartmentBrowser`), and Today's deals under those only while the home
+/// page would draw them.
 /// **Two boxes lead it, Shop by brand and Shop by stores, on the owner's
 /// word**: each opens its list (`BrandsView`, `StoresView`), the web's
 /// `/categories`. They were two sideways rows that pushed the departments
@@ -68,7 +69,7 @@ struct CategoriesView: View {
     private var departments: some View {
         VStack(alignment: .leading, spacing: 0) {
             ShelfHeading(title: l.t("home.shopByCategory")).padding(.bottom, 16)
-            DepartmentCardGrid(columns: 2, counted: true, expandable: true)
+            DepartmentBrowser()
             if app.shelf.dealsDrawn {
                 Button {
                     app.push(.deals)

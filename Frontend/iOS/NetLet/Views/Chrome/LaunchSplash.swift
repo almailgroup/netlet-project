@@ -31,8 +31,14 @@ import SwiftUI
 /// clock above: a soft rising pop as the roof springs up, a warm bell and a
 /// low thump as it lands at 0.30s (the haptic tap's instant), a short breath
 /// in at 0.62s, a whoosh through the zoom that rises and widens as the roof
-/// rushes at the viewer, and a bright chord as the shop appears at 1.42s,
-/// ringing on for a second under it. It plays in the `.ambient` category, so
+/// rushes at the viewer, and a bright chord as the shop appears at 1.42s.
+/// **It rings on under the home page and fades slowly, on the owner's word**
+/// ("it cuts off at the end; let it continue and fade slowly while the app
+/// opens"): the chord's long tail over a soft low pad, five seconds in all,
+/// down to nothing over the last 1.6. It was cut at about 1.4s because the
+/// player was the splash's own state, and the splash leaves as the shop
+/// appears; `LaunchChime` holds it now, past the splash, until it has finished.
+/// It plays in the `.ambient` category, so
 /// the silent switch silences it — Apple's rule for a sound nobody needs — and
 /// somebody's music keeps playing under it.
 ///
@@ -59,7 +65,6 @@ struct LaunchSplash: View {
     @State private var gone = false
     /// The screen's size, read as it is laid out, for how far the zoom goes.
     @State private var screen: CGSize = .zero
-    @State private var player: AVAudioPlayer?
 
     /// Where the sound's landing is, and so where the roof's is.
     static let landing: Duration = .milliseconds(300)
@@ -86,23 +91,8 @@ struct LaunchSplash: View {
         .accessibilityHidden(true)
     }
 
-    /// The chime, ready before the clock starts, so the bell and the landing
-    /// are the same instant. Silent with the phone's switch, and mixed under
-    /// whatever else is playing.
-    private func prepareSound() {
-        guard let url = Bundle.main.url(forResource: "launch-chime", withExtension: "wav") else { return }
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.ambient, options: [.mixWithOthers])
-        try? session.setActive(true)
-        guard let sound = try? AVAudioPlayer(contentsOf: url) else { return }
-        sound.volume = 0.85
-        sound.prepareToPlay()
-        player = sound
-    }
-
     private func play() async {
-        prepareSound()
-        player?.play()
+        LaunchChime.shared.play()
         if still {
             zoom = 1
             withAnimation(.easeOut(duration: 0.35)) { shown = true }
@@ -226,5 +216,33 @@ private struct RoofCurtain: Shape {
             path.addPath(RoofMark.path.applying(RoofMark.placement(in: rect, width: width, zoom: zoom)))
         }
         return path
+    }
+}
+
+/// The opening's sound, held apart from the splash so it outlives it: the
+/// splash leaves as the shop appears, and a player that was its state went
+/// with it, cutting the chord off. This keeps the player until the sound has
+/// run to its end, then lets it go.
+final class LaunchChime {
+    static let shared = LaunchChime()
+    private var player: AVAudioPlayer?
+
+    /// Ready and playing at once, so the bell and the landing are the same
+    /// instant. Silent with the phone's switch, and mixed under whatever else
+    /// is playing.
+    func play() {
+        guard player == nil, let url = Bundle.main.url(forResource: "launch-chime", withExtension: "wav") else { return }
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.ambient, options: [.mixWithOthers])
+        try? session.setActive(true)
+        guard let sound = try? AVAudioPlayer(contentsOf: url) else { return }
+        sound.volume = 0.85
+        sound.prepareToPlay()
+        sound.play()
+        player = sound
+        DispatchQueue.main.asyncAfter(deadline: .now() + sound.duration + 0.5) { [weak self] in
+            self?.player?.stop()
+            self?.player = nil
+        }
     }
 }

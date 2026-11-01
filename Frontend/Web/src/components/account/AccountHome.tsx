@@ -3,9 +3,8 @@
  * theirs, on the owner's word (a picture of one): who is signed in with a
  * pencil to change it, two tiles showing the last things ordered and saved,
  * the points balance, then the sections as rows in white cards — an icon, a
- * name and a chevron, dashed lines between them — and the language as a
- * two-way switch in its own row. Signing out is the last row of the last
- * card, red, and still asks first.
+ * name and a chevron, dashed lines between them. Signing out is the last row
+ * of the last card, red, and still asks first.
  *
  * It was tiles in four headed groups, each with a line on what it held, under
  * a welcome heading and an identity card with the dates. The dates moved into
@@ -27,10 +26,12 @@
  * opens it too. The affiliate row went: the card above the rows offers
  * joining to somebody not in and opens the programme for a member.
  *
- * **The language is here because the phone's bar no longer carries it** — the
- * delivery location took its place — and it is a setting that follows the
- * account between devices. Two buttons, each written in its own language, so
- * whichever one somebody reads is legible to them.
+ * **Only the rows somebody needs, on the owner's word** ("I only want the
+ * options that are 100 percent needed"). Returns and Payment methods joined
+ * the first card; the language and the currency, which were two rows of their
+ * own, are inside Preferences, and its row names both ("English · KWD") so
+ * neither is out of sight; Price requests and Subscribe & Save are rows only
+ * for somebody who has one, since for everybody else they open an empty page.
  *
  * The tiles' pictures are what was ordered (`orders.list`'s own photos, the
  * newest orders first) and what was saved (`useProductsByIds`, the hearts in
@@ -43,7 +44,7 @@ import { MembershipCard } from "@/components/account/MembershipCard";
 import { Thumb } from "@/components/product/Thumb";
 import { PointsCoin } from "@/components/ui/PointsCoin";
 import { CountBadge } from "@/components/ui/CountBadge";
-import { CurrencySelect } from "@/components/ui/CurrencySelect";
+import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
 import { useFeature } from "@/hooks/useFeature";
 import { formatCount } from "@/lib/format";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -56,9 +57,8 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   Bell,
   ChevronRight,
-  Coins,
+  CreditCard,
   Gift,
-  Languages,
   LifeBuoy,
   LogOut,
   MapPin,
@@ -66,6 +66,7 @@ import {
   PackageSearch,
   Pencil,
   Repeat,
+  RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
   Star,
@@ -87,19 +88,21 @@ type Row = {
 };
 
 /*
- * The cards, top to bottom: what somebody shops with, what talks to them, what
- * they run, and the account itself. "language" and "signout" are the two rows
- * that are not sections.
+ * The cards, top to bottom: what somebody shops with, their settings and
+ * help, what they run, and the account itself. "signout" is the one row that
+ * is not a section. Price requests and Subscribe & Save are rows only while
+ * the shopper has one (`has`); the language and the currency are inside
+ * Preferences, whose row names both.
  */
 const CARDS: Row[][] = [
   [
+    { id: "returns", label: "account.sectionReturns", icon: RotateCcw },
     { id: "addresses", label: "address.book", icon: MapPin },
+    { id: "payments", label: "account.sectionPayments", icon: CreditCard },
     { id: "wishlists", label: "account.sectionWishlists", icon: Gift },
-    { id: "offers", label: "offers.mine", icon: Tag },
     { id: "reviews", label: "account.sectionReviews", icon: Star },
+    { id: "offers", label: "offers.mine", icon: Tag },
     { id: "subscriptions", label: "subscriptions.section", icon: Repeat },
-    { id: "language", label: "account.language", icon: Languages },
-    { id: "currency", label: "currency.title", icon: Coins },
   ],
   [
     { id: "preferences", label: "account.sectionPreferences", icon: SlidersHorizontal },
@@ -125,6 +128,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
   onSignOut: () => void;
 }) {
   const { t, locale } = useTranslation();
+  const currency = useDisplayCurrency();
   const signals = useAccountSignals();
   const { savedIds } = useCustomer();
   const orders = trpc.orders.list.useQuery({ pageSize: 4 }, { staleTime: 60_000 });
@@ -239,24 +243,24 @@ export function AccountHome({ user, has, badge, onSignOut }: {
 
       <nav aria-label={t("account.menu")} className="space-y-3">
         {CARDS.map((rows, index) => {
-          const shown = rows.filter(row => row.id === "language" || row.id === "currency" || row.id === "signout" || row.href || has(row.id));
+          const shown = rows.filter(row => row.id === "signout" || row.href || has(row.id));
           if (!shown.length) return null;
           return (
             <ul key={index} className={`${PANEL} divide-y divide-dashed divide-[#e3e6ec] px-5`}>
               {shown.map(row => (
                 <li key={row.id}>
-                  {row.id === "language" ? (
-                    <LanguageRow row={row} />
-                  ) : row.id === "currency" ? (
-                    <CurrencyRow row={row} />
-                  ) : row.id === "signout" ? (
+                  {row.id === "signout" ? (
                     <button type="button" onClick={onSignOut} className="-mx-5 flex min-h-[64px] w-[calc(100%+2.5rem)] items-center gap-3.5 px-5 text-start hover:bg-[#fdf5f3]">
                       <LogOut className="size-[22px] shrink-0 text-[#c2362a]" strokeWidth={1.75} aria-hidden />
                       <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t(row.label)}</span>
                       <ChevronRight className={CHEVRON} aria-hidden />
                     </button>
                   ) : (
-                    <RowLink row={row} waiting={badge(row.id)} />
+                    <RowLink
+                      row={row}
+                      waiting={badge(row.id)}
+                      value={row.id === "preferences" ? `${t(locale === "ar" ? "account.arabic" : "account.english")} · ${currency.code}` : null}
+                    />
                   )}
                 </li>
               ))}
@@ -268,8 +272,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
   );
 }
 
-/** One section: its icon, its name, what is waiting there, and the way in. */
-function RowLink({ row, waiting }: { row: Row; waiting: string | null }) {
+/** One section: its icon, its name, what is waiting there or what it is set to, and the way in. */
+function RowLink({ row, waiting, value = null }: { row: Row; waiting: string | null; value?: string | null }) {
   const { t } = useTranslation();
   const Icon = row.icon;
   return (
@@ -277,67 +281,9 @@ function RowLink({ row, waiting }: { row: Row; waiting: string | null }) {
       <Icon className={ICON} strokeWidth={1.75} aria-hidden />
       <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t(row.label)}</span>
       {waiting ? <span className="shrink-0 rounded-full bg-[#f2683a] px-2 py-0.5 text-[12px] font-bold text-[#0a285a]">{waiting}</span> : null}
+      {value ? <span className="shrink-0 text-[14px] ink-muted">{value}</span> : null}
       <ChevronRight className={CHEVRON} aria-hidden />
     </Link>
-  );
-}
-
-/**
- * The language, as a two-way switch: each choice written in its own language
- * and marked with it, so a screen reader says "العربية" in Arabic.
- */
-function LanguageRow({ row }: { row: Row }) {
-  const { t, locale } = useTranslation();
-  const { setLocale } = useCustomer();
-  const Icon = row.icon;
-  return (
-    <div className="flex min-h-[64px] items-center gap-3.5">
-      <Icon className={ICON} strokeWidth={1.75} aria-hidden />
-      <span id="account-language" className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t(row.label)}</span>
-      <div role="group" aria-labelledby="account-language" className="flex shrink-0 rounded-full bg-[#f1f2f6] p-1">
-        {(["en", "ar"] as const).map(code => {
-          const active = locale === code;
-          return (
-            <button
-              key={code}
-              type="button"
-              lang={code}
-              aria-pressed={active}
-              onClick={() => {
-                if (active) return;
-                pressHaptic();
-                setLocale(code);
-              }}
-              className={`min-h-10 rounded-full px-4 text-[15px] font-semibold transition-colors ${
-                active ? "bg-white text-[#1f2a44] shadow-[0_1px_3px_rgba(10,40,90,.14)]" : "text-[#5d6b82] hover:bg-transparent hover:text-[#1f2a44]"
-              }`}
-            >
-              {t(code === "en" ? "account.english" : "account.arabic")}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/**
- * The currency prices are read in, on the owner's word: the shop's own list
- * (`CurrencySelect`), and nothing under the name, also on their word — the
- * cart and checkout say what is paid in dinars, and the feed's credit is in
- * the footer beside the same control.
- */
-function CurrencyRow({ row }: { row: Row }) {
-  const { t } = useTranslation();
-  const Icon = row.icon;
-  return (
-    <div className="flex min-h-[64px] flex-wrap items-center gap-x-3.5 gap-y-2 py-3">
-      <Icon className={ICON} strokeWidth={1.75} aria-hidden />
-      <span className="min-w-0 flex-1">
-        <label htmlFor="account-currency" className="block text-[16px] font-medium text-[#1f2a44]">{t(row.label)}</label>
-      </span>
-      <CurrencySelect id="account-currency" className="glass-field flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-3 text-[14px] font-semibold text-[#1f2a44] min-[420px]:w-auto min-[420px]:min-w-52" />
-    </div>
   );
 }
 

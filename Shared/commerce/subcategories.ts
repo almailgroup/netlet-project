@@ -27,9 +27,28 @@
 import { DEPARTMENTS } from "./departments.js";
 import { searchWords } from "./search.js";
 
+/**
+ * What a subcategory's icon depicts — a name, never a component, the
+ * departments' rule (`DEPARTMENT_ICONS`): `Shared/` stays pure, and each
+ * client turns the name into its own drawing (lucide on the web, SF Symbols in
+ * the app) through a record the type makes exhaustive, so a subcategory added
+ * without a picture is a compile error rather than a blank tile. Named for the
+ * picture, so two subcategories sharing one is visible here.
+ */
+export const SUBCATEGORY_ICONS = [
+  "phone", "tablet", "laptop", "headphones", "watch", "tv", "camera", "gamepad", "cable",
+  "microwave", "dining", "sofa", "lamp", "bed", "washer", "spray",
+  "drop", "brush", "scissors", "sparkles", "bath",
+  "dress", "shirt", "baby", "shoe", "bag", "glasses", "dumbbell",
+  "produce", "wheat", "milk", "croissant", "cookie", "cup", "meat",
+] as const;
+export type SubcategoryIcon = (typeof SUBCATEGORY_ICONS)[number];
+
 export type Subcategory = {
   /** Stable, what `?sub=` carries. Unique within its department. */
   slug: string;
+  /** What its row on the Categories page shows beside its name. */
+  icon: SubcategoryIcon;
   name: string;
   nameAr: string;
   /** What its products are called, in either language; a phrase needs all its words. */
@@ -38,49 +57,49 @@ export type Subcategory = {
 
 export const SUBCATEGORIES: Record<string, Subcategory[]> = {
   electronics: [
-    { slug: "phones", name: "Mobile phones", nameAr: "الهواتف", words: ["phone", "smartphone", "mobile", "iphone", "galaxy", "pixel", "هاتف", "هواتف", "جوال", "جوالات", "موبايل", "ايفون"] },
-    { slug: "tablets", name: "Tablets", nameAr: "الأجهزة اللوحية", words: ["tablet", "ipad", "لوحي", "تابلت", "ايباد"] },
-    { slug: "computers", name: "Laptops & computers", nameAr: "الحواسيب", words: ["laptop", "notebook", "macbook", "computer", "desktop", "monitor", "keyboard", "mouse", "لابتوب", "حاسوب", "حاسب", "كمبيوتر", "كيبورد", "ماوس"] },
-    { slug: "audio", name: "Audio", nameAr: "الصوتيات", words: ["headphone", "headset", "earphone", "earbud", "airpod", "speaker", "soundbar", "سماعة", "سماعات", "مكبر"] },
-    { slug: "wearables", name: "Wearables", nameAr: "الأجهزة القابلة للارتداء", words: ["smartwatch", "watch", "band", "tracker", "ساعة", "ساعات", "سوار"] },
-    { slug: "tv", name: "TV & video", nameAr: "التلفزيون والفيديو", words: ["tv", "television", "projector", "streaming", "تلفزيون", "تلفاز", "بروجكتر"] },
-    { slug: "cameras", name: "Cameras", nameAr: "الكاميرات", words: ["camera", "lens", "gopro", "drone", "كاميرا", "كاميرات", "عدسة", "درون"] },
-    { slug: "gaming", name: "Gaming", nameAr: "الألعاب", words: ["playstation", "ps5", "xbox", "nintendo", "console", "controller", "gaming", "بلايستيشن", "العاب", "يد تحكم"] },
-    { slug: "accessories", name: "Accessories", nameAr: "الإكسسوارات", words: ["charger", "cable", "case", "cover", "adapter", "powerbank", "power bank", "battery", "screen protector", "شاحن", "كيبل", "كابل", "غطاء", "كفر", "حافظة", "بطارية", "باور بانك"] },
+    { slug: "phones", icon: "phone", name: "Mobile phones", nameAr: "الهواتف", words: ["phone", "smartphone", "mobile", "iphone", "galaxy", "pixel", "هاتف", "هواتف", "جوال", "جوالات", "موبايل", "ايفون"] },
+    { slug: "tablets", icon: "tablet", name: "Tablets", nameAr: "الأجهزة اللوحية", words: ["tablet", "ipad", "لوحي", "تابلت", "ايباد"] },
+    { slug: "computers", icon: "laptop", name: "Laptops & computers", nameAr: "الحواسيب", words: ["laptop", "notebook", "macbook", "computer", "desktop", "monitor", "keyboard", "mouse", "لابتوب", "حاسوب", "حاسب", "كمبيوتر", "كيبورد", "ماوس"] },
+    { slug: "audio", icon: "headphones", name: "Audio", nameAr: "الصوتيات", words: ["headphone", "headset", "earphone", "earbud", "airpod", "speaker", "soundbar", "سماعة", "سماعات", "مكبر"] },
+    { slug: "wearables", icon: "watch", name: "Wearables", nameAr: "الأجهزة القابلة للارتداء", words: ["smartwatch", "watch", "band", "tracker", "ساعة", "ساعات", "سوار"] },
+    { slug: "tv", icon: "tv", name: "TV & video", nameAr: "التلفزيون والفيديو", words: ["tv", "television", "projector", "streaming", "تلفزيون", "تلفاز", "بروجكتر"] },
+    { slug: "cameras", icon: "camera", name: "Cameras", nameAr: "الكاميرات", words: ["camera", "lens", "gopro", "drone", "كاميرا", "كاميرات", "عدسة", "درون"] },
+    { slug: "gaming", icon: "gamepad", name: "Gaming", nameAr: "الألعاب", words: ["playstation", "ps5", "xbox", "nintendo", "console", "controller", "gaming", "بلايستيشن", "العاب", "يد تحكم"] },
+    { slug: "accessories", icon: "cable", name: "Accessories", nameAr: "الإكسسوارات", words: ["charger", "cable", "case", "cover", "adapter", "powerbank", "power bank", "battery", "screen protector", "شاحن", "كيبل", "كابل", "غطاء", "كفر", "حافظة", "بطارية", "باور بانك"] },
   ],
   "home-and-kitchen": [
-    { slug: "kitchen-appliances", name: "Kitchen appliances", nameAr: "أجهزة المطبخ", words: ["blender", "mixer", "fryer", "airfryer", "kettle", "toaster", "microwave", "oven", "coffee", "espresso", "processor", "juicer", "خلاط", "قلاية", "غلاية", "محمصة", "ميكروويف", "فرن", "قهوة", "عصارة"] },
-    { slug: "cookware", name: "Cookware & dining", nameAr: "أواني الطبخ والمائدة", words: ["pan", "pot", "cookware", "knife", "plate", "bowl", "cup", "mug", "cutlery", "dinnerware", "مقلاة", "قدر", "سكين", "صحن", "صحون", "كوب", "اكواب", "فنجان"] },
-    { slug: "furniture", name: "Furniture", nameAr: "الأثاث", words: ["sofa", "couch", "chair", "table", "desk", "bed", "wardrobe", "shelf", "cabinet", "كنبة", "قنفة", "كرسي", "طاولة", "مكتب", "سرير", "خزانة", "رف"] },
-    { slug: "decor", name: "Decor & lighting", nameAr: "الديكور والإضاءة", words: ["lamp", "light", "lighting", "vase", "mirror", "rug", "carpet", "curtain", "frame", "candle", "planter", "مصباح", "اضاءة", "مزهرية", "مراة", "سجادة", "ستارة", "برواز", "شمعة"] },
-    { slug: "bedding", name: "Bedding & bath", nameAr: "المفروشات والحمّام", words: ["bedding", "sheet", "pillow", "duvet", "blanket", "towel", "bathrobe", "شرشف", "مخدة", "وسادة", "لحاف", "بطانية", "منشفة", "فوطة"] },
-    { slug: "home-appliances", name: "Home appliances", nameAr: "الأجهزة المنزلية", words: ["vacuum", "iron", "fan", "heater", "purifier", "humidifier", "washer", "fridge", "refrigerator", "مكنسة", "مكواة", "مروحة", "دفاية", "منقي", "ثلاجة", "غسالة"] },
-    { slug: "cleaning", name: "Cleaning & storage", nameAr: "التنظيف والتخزين", words: ["mop", "broom", "cleaner", "detergent", "laundry", "storage", "organiser", "organizer", "basket", "ممسحة", "منظف", "غسيل", "تخزين", "منظم", "سلة"] },
+    { slug: "kitchen-appliances", icon: "microwave", name: "Kitchen appliances", nameAr: "أجهزة المطبخ", words: ["blender", "mixer", "fryer", "airfryer", "kettle", "toaster", "microwave", "oven", "coffee", "espresso", "processor", "juicer", "خلاط", "قلاية", "غلاية", "محمصة", "ميكروويف", "فرن", "قهوة", "عصارة"] },
+    { slug: "cookware", icon: "dining", name: "Cookware & dining", nameAr: "أواني الطبخ والمائدة", words: ["pan", "pot", "cookware", "knife", "plate", "bowl", "cup", "mug", "cutlery", "dinnerware", "مقلاة", "قدر", "سكين", "صحن", "صحون", "كوب", "اكواب", "فنجان"] },
+    { slug: "furniture", icon: "sofa", name: "Furniture", nameAr: "الأثاث", words: ["sofa", "couch", "chair", "table", "desk", "bed", "wardrobe", "shelf", "cabinet", "كنبة", "قنفة", "كرسي", "طاولة", "مكتب", "سرير", "خزانة", "رف"] },
+    { slug: "decor", icon: "lamp", name: "Decor & lighting", nameAr: "الديكور والإضاءة", words: ["lamp", "light", "lighting", "vase", "mirror", "rug", "carpet", "curtain", "frame", "candle", "planter", "مصباح", "اضاءة", "مزهرية", "مراة", "سجادة", "ستارة", "برواز", "شمعة"] },
+    { slug: "bedding", icon: "bed", name: "Bedding & bath", nameAr: "المفروشات والحمّام", words: ["bedding", "sheet", "pillow", "duvet", "blanket", "towel", "bathrobe", "شرشف", "مخدة", "وسادة", "لحاف", "بطانية", "منشفة", "فوطة"] },
+    { slug: "home-appliances", icon: "washer", name: "Home appliances", nameAr: "الأجهزة المنزلية", words: ["vacuum", "iron", "fan", "heater", "purifier", "humidifier", "washer", "fridge", "refrigerator", "مكنسة", "مكواة", "مروحة", "دفاية", "منقي", "ثلاجة", "غسالة"] },
+    { slug: "cleaning", icon: "spray", name: "Cleaning & storage", nameAr: "التنظيف والتخزين", words: ["mop", "broom", "cleaner", "detergent", "laundry", "storage", "organiser", "organizer", "basket", "ممسحة", "منظف", "غسيل", "تخزين", "منظم", "سلة"] },
   ],
   beauty: [
-    { slug: "skincare", name: "Skincare", nameAr: "العناية بالبشرة", words: ["skin", "skincare", "cream", "serum", "moisturiser", "moisturizer", "cleanser", "sunscreen", "toner", "mask", "بشرة", "كريم", "سيروم", "مرطب", "غسول", "واقي", "قناع"] },
-    { slug: "makeup", name: "Makeup", nameAr: "المكياج", words: ["makeup", "lipstick", "mascara", "foundation", "eyeliner", "blush", "palette", "concealer", "مكياج", "روج", "ماسكارا", "كحل", "بلاشر"] },
-    { slug: "haircare", name: "Hair care", nameAr: "العناية بالشعر", words: ["hair", "shampoo", "conditioner", "straightener", "curler", "شعر", "شامبو", "بلسم", "مكواة شعر"] },
-    { slug: "fragrance", name: "Fragrance", nameAr: "العطور", words: ["perfume", "fragrance", "oud", "cologne", "musk", "bakhoor", "incense", "عطر", "عطور", "عود", "دهن", "مسك", "بخور"] },
-    { slug: "personal-care", name: "Personal care", nameAr: "العناية الشخصية", words: ["razor", "shaver", "trimmer", "toothbrush", "toothpaste", "deodorant", "soap", "lotion", "حلاقة", "ماكينة", "فرشاة", "معجون", "مزيل", "صابون", "لوشن"] },
+    { slug: "skincare", icon: "drop", name: "Skincare", nameAr: "العناية بالبشرة", words: ["skin", "skincare", "cream", "serum", "moisturiser", "moisturizer", "cleanser", "sunscreen", "toner", "mask", "بشرة", "كريم", "سيروم", "مرطب", "غسول", "واقي", "قناع"] },
+    { slug: "makeup", icon: "brush", name: "Makeup", nameAr: "المكياج", words: ["makeup", "lipstick", "mascara", "foundation", "eyeliner", "blush", "palette", "concealer", "مكياج", "روج", "ماسكارا", "كحل", "بلاشر"] },
+    { slug: "haircare", icon: "scissors", name: "Hair care", nameAr: "العناية بالشعر", words: ["hair", "shampoo", "conditioner", "straightener", "curler", "شعر", "شامبو", "بلسم", "مكواة شعر"] },
+    { slug: "fragrance", icon: "sparkles", name: "Fragrance", nameAr: "العطور", words: ["perfume", "fragrance", "oud", "cologne", "musk", "bakhoor", "incense", "عطر", "عطور", "عود", "دهن", "مسك", "بخور"] },
+    { slug: "personal-care", icon: "bath", name: "Personal care", nameAr: "العناية الشخصية", words: ["razor", "shaver", "trimmer", "toothbrush", "toothpaste", "deodorant", "soap", "lotion", "حلاقة", "ماكينة", "فرشاة", "معجون", "مزيل", "صابون", "لوشن"] },
   ],
   style: [
-    { slug: "women", name: "Women's clothing", nameAr: "ملابس نسائية", words: ["women", "woman", "ladies", "dress", "abaya", "skirt", "blouse", "نسائي", "نسائية", "فستان", "عباية", "تنورة", "بلوزة"] },
-    { slug: "men", name: "Men's clothing", nameAr: "ملابس رجالية", words: ["men", "mens", "man", "dishdasha", "thobe", "shirt", "trousers", "رجالي", "رجالية", "دشداشة", "ثوب", "قميص", "بنطلون"] },
-    { slug: "kids", name: "Kids", nameAr: "الأطفال", words: ["kids", "kid", "children", "child", "boys", "girls", "baby", "اطفال", "طفل", "ولادي", "بناتي", "مواليد"] },
-    { slug: "shoes", name: "Shoes", nameAr: "الأحذية", words: ["shoe", "sneaker", "trainer", "sandal", "boot", "heels", "slipper", "loafer", "حذاء", "احذية", "جوتي", "نعال", "صندل", "بوت"] },
-    { slug: "bags", name: "Bags", nameAr: "الحقائب", words: ["bag", "handbag", "backpack", "wallet", "purse", "tote", "luggage", "حقيبة", "حقائب", "شنطة", "محفظة"] },
-    { slug: "accessories", name: "Accessories", nameAr: "الإكسسوارات", words: ["jewellery", "jewelry", "ring", "necklace", "bracelet", "earring", "sunglasses", "belt", "scarf", "watch", "مجوهرات", "خاتم", "قلادة", "سوار", "حلق", "نظارة", "حزام", "شال", "ساعة"] },
-    { slug: "sportswear", name: "Sportswear", nameAr: "الملابس الرياضية", words: ["sport", "sportswear", "gym", "running", "training", "yoga", "رياضي", "رياضية", "جيم"] },
+    { slug: "women", icon: "dress", name: "Women's clothing", nameAr: "ملابس نسائية", words: ["women", "woman", "ladies", "dress", "abaya", "skirt", "blouse", "نسائي", "نسائية", "فستان", "عباية", "تنورة", "بلوزة"] },
+    { slug: "men", icon: "shirt", name: "Men's clothing", nameAr: "ملابس رجالية", words: ["men", "mens", "man", "dishdasha", "thobe", "shirt", "trousers", "رجالي", "رجالية", "دشداشة", "ثوب", "قميص", "بنطلون"] },
+    { slug: "kids", icon: "baby", name: "Kids", nameAr: "الأطفال", words: ["kids", "kid", "children", "child", "boys", "girls", "baby", "اطفال", "طفل", "ولادي", "بناتي", "مواليد"] },
+    { slug: "shoes", icon: "shoe", name: "Shoes", nameAr: "الأحذية", words: ["shoe", "sneaker", "trainer", "sandal", "boot", "heels", "slipper", "loafer", "حذاء", "احذية", "جوتي", "نعال", "صندل", "بوت"] },
+    { slug: "bags", icon: "bag", name: "Bags", nameAr: "الحقائب", words: ["bag", "handbag", "backpack", "wallet", "purse", "tote", "luggage", "حقيبة", "حقائب", "شنطة", "محفظة"] },
+    { slug: "accessories", icon: "glasses", name: "Accessories", nameAr: "الإكسسوارات", words: ["jewellery", "jewelry", "ring", "necklace", "bracelet", "earring", "sunglasses", "belt", "scarf", "watch", "مجوهرات", "خاتم", "قلادة", "سوار", "حلق", "نظارة", "حزام", "شال", "ساعة"] },
+    { slug: "sportswear", icon: "dumbbell", name: "Sportswear", nameAr: "الملابس الرياضية", words: ["sport", "sportswear", "gym", "running", "training", "yoga", "رياضي", "رياضية", "جيم"] },
   ],
   grocery: [
-    { slug: "fresh", name: "Fruit & vegetables", nameAr: "الفواكه والخضروات", words: ["fruit", "vegetable", "apple", "banana", "orange", "tomato", "potato", "onion", "cucumber", "فواكه", "فاكهة", "خضار", "خضروات", "تفاح", "موز", "برتقال", "طماطم", "بطاطا", "بصل", "خيار"] },
-    { slug: "pantry", name: "Pantry", nameAr: "المؤن", words: ["rice", "basmati", "pasta", "flour", "sugar", "oil", "salt", "spice", "sauce", "beans", "lentil", "عيش", "رز", "ارز", "معكرونة", "طحين", "سكر", "زيت", "ملح", "بهارات", "عدس"] },
-    { slug: "dairy", name: "Dairy & eggs", nameAr: "الألبان والبيض", words: ["milk", "cheese", "yoghurt", "yogurt", "laban", "butter", "cream cheese", "egg", "حليب", "جبن", "جبنة", "لبن", "زبادي", "زبدة", "بيض"] },
-    { slug: "bakery", name: "Bakery", nameAr: "المخبوزات", words: ["bread", "bakery", "croissant", "cake", "bun", "khubz", "خبز", "كعك", "كيك", "صمون"] },
-    { slug: "snacks", name: "Snacks, dates & sweets", nameAr: "الوجبات الخفيفة والتمور والحلويات", words: ["snack", "chips", "crisps", "chocolate", "biscuit", "cookie", "candy", "dates", "medjool", "nuts", "تمر", "تمور", "رطب", "شوكولاتة", "بسكويت", "حلويات", "مكسرات", "شيبس"] },
-    { slug: "beverages", name: "Beverages", nameAr: "المشروبات", words: ["water", "juice", "tea", "coffee", "soda", "drink", "ماء", "مياه", "عصير", "شاي", "قهوة", "مشروب", "مشروبات"] },
-    { slug: "meat", name: "Meat & seafood", nameAr: "اللحوم والمأكولات البحرية", words: ["meat", "chicken", "beef", "lamb", "mutton", "fish", "shrimp", "prawn", "لحم", "لحوم", "دجاج", "غنم", "سمك", "روبيان"] },
+    { slug: "fresh", icon: "produce", name: "Fruit & vegetables", nameAr: "الفواكه والخضروات", words: ["fruit", "vegetable", "apple", "banana", "orange", "tomato", "potato", "onion", "cucumber", "فواكه", "فاكهة", "خضار", "خضروات", "تفاح", "موز", "برتقال", "طماطم", "بطاطا", "بصل", "خيار"] },
+    { slug: "pantry", icon: "wheat", name: "Pantry", nameAr: "المؤن", words: ["rice", "basmati", "pasta", "flour", "sugar", "oil", "salt", "spice", "sauce", "beans", "lentil", "عيش", "رز", "ارز", "معكرونة", "طحين", "سكر", "زيت", "ملح", "بهارات", "عدس"] },
+    { slug: "dairy", icon: "milk", name: "Dairy & eggs", nameAr: "الألبان والبيض", words: ["milk", "cheese", "yoghurt", "yogurt", "laban", "butter", "cream cheese", "egg", "حليب", "جبن", "جبنة", "لبن", "زبادي", "زبدة", "بيض"] },
+    { slug: "bakery", icon: "croissant", name: "Bakery", nameAr: "المخبوزات", words: ["bread", "bakery", "croissant", "cake", "bun", "khubz", "خبز", "كعك", "كيك", "صمون"] },
+    { slug: "snacks", icon: "cookie", name: "Snacks, dates & sweets", nameAr: "الوجبات الخفيفة والتمور والحلويات", words: ["snack", "chips", "crisps", "chocolate", "biscuit", "cookie", "candy", "dates", "medjool", "nuts", "تمر", "تمور", "رطب", "شوكولاتة", "بسكويت", "حلويات", "مكسرات", "شيبس"] },
+    { slug: "beverages", icon: "cup", name: "Beverages", nameAr: "المشروبات", words: ["water", "juice", "tea", "coffee", "soda", "drink", "ماء", "مياه", "عصير", "شاي", "قهوة", "مشروب", "مشروبات"] },
+    { slug: "meat", icon: "meat", name: "Meat & seafood", nameAr: "اللحوم والمأكولات البحرية", words: ["meat", "chicken", "beef", "lamb", "mutton", "fish", "shrimp", "prawn", "لحم", "لحوم", "دجاج", "غنم", "سمك", "روبيان"] },
   ],
 };
 

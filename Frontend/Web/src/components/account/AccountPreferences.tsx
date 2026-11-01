@@ -1,5 +1,11 @@
 /**
- * The three settings a shopper actually changes, in one place.
+ * The settings a shopper actually changes, in one place: the language, the
+ * currency prices are read in, the delivery area and what NetLet tells them.
+ *
+ * **The language and the currency moved here from the account home, on the
+ * owner's word** ("only the options that are 100 percent needed"): they were
+ * two rows of their own there, and the Preferences row now says both
+ * ("English · KWD") so neither is out of sight.
  *
  * Language is here because it is a *stored* preference — it follows the
  * account between devices — and the only way to change it used to be the
@@ -18,7 +24,8 @@ import {
   type NotificationKind,
 } from "@shared/customer";
 import { SettingPanel } from "@/components/ui/SettingPanel";
-import { Bell, Globe, MapPin } from "lucide-react";
+import { Bell, Coins, Globe, MapPin } from "lucide-react";
+import { CurrencySelect } from "@/components/ui/CurrencySelect";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
 
@@ -58,6 +65,10 @@ export function AccountPreferences() {
             );
           })}
         </div>
+      </SettingPanel>
+
+      <SettingPanel icon={<Coins className="size-5" />} title={t("currency.title")} note={t("currency.chargedNote")}>
+        <CurrencySelect id="preferences-currency" className="glass-field flex min-h-11 w-full max-w-xs items-center justify-between gap-2 rounded-xl px-3 text-[14px] font-semibold text-[#1f2a44]" />
       </SettingPanel>
 
       <SettingPanel icon={<MapPin className="size-5" />} title={t("account.deliveryArea")} note={t("account.pricingUnconfigured")}>

@@ -5,15 +5,14 @@
  * The tab used to slide a sheet in from the side: a list of names over the
  * page the shopper was on, with no address, so Back did nothing useful and a
  * department could not be sent to anybody. The owner asked for a page, and it
- * is the home page's department cards made the page's subject: the same art
- * (`Frontend/Web/public/departments/<slug>.webp`), larger, two to a row on a phone,
- * each saying how many products it holds, so the press goes where something is.
+ * is the home page's department art made the page's subject
+ * (`Frontend/Web/public/departments/<slug>.webp`).
  *
  * **All six, always**, on the home cards' rule rather than the navigation's —
  * this page is the shop's shape, and a department with nothing on sale yet says
  * so in its count instead of vanishing from the one page that lists them all.
  * "All departments" comes last, where somebody who did not find theirs looks
- * next. Deals follows the grid only while the home page draws a Deals shelf
+ * next. Deals follows the list only while the home page draws a Deals shelf
  * (`shelvesFor`), the rule every link to it keeps.
  *
  * **Two boxes lead it, Shop by brand and Shop by stores, on the owner's
@@ -22,21 +21,26 @@
  * and `/stores`. They were two sideways rows of the first dozen of each, which
  * pushed the departments a screen down a phone.
  *
- * **A department opens onto its subcategories, on the owner's word** ("when
- * you tap on any category, it expands to show the subcategories"). Its card is
- * a disclosure button now, and the panel opens under the row it sits in —
- * the full width of the grid, with a small pointer at the card — so the row
- * keeps its shape at two, three or six to a row. The panel says "See all in
- * …" and every subcategory with its count (`commerce.subcategoryCounts`,
- * `Shared/commerce/subcategories.ts`), each opening the department narrowed
- * to it (`?sub=`). All of them, as the cards keep all six: an empty one says
- * so on the page it opens. One department open at a time; pressing it again
- * closes it. "All departments" has no subcategories and stays a link.
+ * **A department's subcategories are a list under a row of its pictures, on
+ * the owner's word** — drawn to a picture they sent of a shop's Categories
+ * screen. The departments are a row of picture tiles (a sideways row on a
+ * phone, all six across from `sm`), the chosen one outlined in navy; under
+ * them, the chosen department's subcategories as rows, each with its picture
+ * (`SubcategoryIcon`, from the name `Shared/commerce/subcategories.ts` gives
+ * it), its name and how many it holds (`commerce.subcategoryCounts`), opening
+ * the department narrowed to it (`?sub=`); a last row, "View all", opens the
+ * whole department. Every subcategory is listed, an empty one saying so, as
+ * the tiles keep all six. The choice is the address's (`?dept=`, replaced
+ * rather than pushed, so Back leaves the page rather than stepping through
+ * the departments), and the first department with none. "All departments"
+ * ends the row and is a link: it has no subcategories of its own. It
+ * replaced a panel that opened under the pressed card, which the owner
+ * found harder to read than a list.
  */
-import { ChevronDown, ChevronRight, Store, Tag, Tags } from "lucide-react";
-import { Fragment, useEffect, useRef, useState, type ReactNode, type Ref } from "react";
-import { Link } from "wouter";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { ChevronRight, Menu, Store, Tag, Tags } from "lucide-react";
+import { type ReactNode } from "react";
+import { Link, useLocation, useSearch } from "wouter";
+import { SubcategoryIcon } from "@/components/browse/SubcategoryIcon";
 import { subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
 import { Breadcrumbs, CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
@@ -48,15 +52,7 @@ import { appPath } from "@/lib/basePath";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
-import type { MessageKey } from "@shared/i18n/dictionary";
 import { categoriesMeta } from "@shared/seo";
-
-const TILES: { slug: string; query: string; label: MessageKey; counted: boolean }[] = [
-  ...DEPARTMENTS.map(department => ({ slug: department.slug, query: department.name, label: department.label, counted: true })),
-  /* "All" has no count of its own: a product a seller filed under a type of
-     their own is in it and in no department, so a sum would be short. */
-  { slug: "all", query: ALL_DEPARTMENTS.query, label: ALL_DEPARTMENTS.label, counted: false },
-];
 
 export default function Categories() {
   const { t, locale } = useTranslation();
@@ -67,31 +63,21 @@ export default function Categories() {
   const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = shelvesFor(shelf.data ?? []).deals.length > 0;
 
-  /* The grid's own columns — two, three or six — so the panel opens under
-     the row the pressed card is in, never in the middle of one. */
-  const wide = useMediaQuery("(min-width: 1024px)");
-  const medium = useMediaQuery("(min-width: 640px)");
-  const columns = wide ? 6 : medium ? 3 : 2;
-  const [open, setOpen] = useState<string | null>(null);
-  const openIndex = TILES.findIndex(tile => tile.slug === open);
-  const rowEnd = openIndex < 0 ? -1 : Math.min(Math.ceil((openIndex + 1) / columns) * columns, TILES.length) - 1;
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  /* An opened panel below the fold is brought up to meet the thumb, clear of
-     the phone's tab bar; one already on screen does not move the page. */
-  useEffect(() => {
-    const panel = panelRef.current;
-    if (!open || !panel) return;
-    const room = window.innerHeight - (medium ? 24 : 112);
-    const bottom = panel.getBoundingClientRect().bottom;
-    if (bottom > room) {
-      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      window.scrollBy({ top: bottom - room, behavior: still ? "instant" : "smooth" });
-    }
-  }, [open, medium]);
+  const [, navigate] = useLocation();
+  const asked = new URLSearchParams(useSearch()).get("dept");
+  const chosen = DEPARTMENTS.find(department => department.slug === asked) ?? DEPARTMENTS[0];
+  const choose = (slug: string) => {
+    if (slug !== chosen.slug) navigate(`/categories?dept=${slug}`, { replace: true });
+  };
 
   const countLine = (count: number) =>
     count === 0 ? t("browse.countNone") : count === 1 ? t("browse.countOne") : t("browse.countMany", { count });
+  const placeholder = <span aria-hidden className="inline-block h-3 w-16 animate-pulse rounded-full bg-[#e6e9ef] align-middle" />;
+
+  const name = t(chosen.label);
+  const department = `/category/${categorySlug(chosen.name)}`;
+  const arabic = locale === "ar";
+  const tile = "flex aspect-square w-full items-center justify-center rounded-2xl border-2 bg-white p-1.5 transition-colors";
 
   return (
     <PageBody>
@@ -101,75 +87,78 @@ export default function Categories() {
         <li className="min-w-0"><WayIn href="/brands" icon={<Tags className="size-5" />} title={t("home.shopByBrand")} note={t("categories.byBrandNote")} /></li>
         <li className="min-w-0"><WayIn href="/stores" icon={<Store className="size-5" />} title={t("categories.byStore")} note={t("categories.byStoreNote")} /></li>
       </ul>
-      <h2 id="departments-title" className="mb-4 text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{t("home.shopByCategory")}</h2>
-      <ul aria-labelledby="departments-title" className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
-        {TILES.map((tile, index) => {
-          const expanded = open === tile.slug;
-          const face = (
-            <>
-              <img
-                src={appPath(`/departments/${tile.slug}.webp`)}
-                alt=""
-                loading="eager"
-                decoding="async"
-                width={480}
-                height={360}
-                className="aspect-[4/3] w-full object-contain transition-transform duration-200 group-hover:scale-[1.04]"
-              />
-              <span className="mt-2 line-clamp-2 text-center text-[15px] font-bold leading-tight text-[#0a285a]">{t(tile.label)}</span>
-              {/* One line on every tile, so the row keeps one height while the counts arrive. */}
-              <span className="mt-1 flex h-5 items-center justify-center gap-1 text-center text-[13px] leading-5 ink-muted">
-                {!tile.counted
-                  ? t("browse.browseEverything")
-                  : counts.data
-                    ? countLine(counts.data[tile.slug] ?? 0)
-                    : <span aria-hidden className="inline-block h-3 w-16 animate-pulse rounded-full bg-[#e6e9ef] align-middle" />}
-                {tile.counted ? <ChevronDown aria-hidden className={`size-4 shrink-0 text-[#0a285a] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} /> : null}
-              </span>
-            </>
-          );
-          const look = `${CARD} group flex h-full w-full flex-col items-center px-3 pb-4 pt-3 shadow-[0_1px_2px_rgba(10,40,90,.06)] transition-colors hover:border-[#d5dfeb] hover:bg-[#f0f2f5]`;
-          return (
-            <Fragment key={tile.slug}>
-              <li className="min-w-0">
-                {tile.counted ? (
-                  <button
-                    id={`department-${tile.slug}`}
-                    type="button"
-                    aria-expanded={expanded}
-                    aria-controls={expanded ? `subcategories-${tile.slug}` : undefined}
-                    onClick={() => setOpen(expanded ? null : tile.slug)}
-                    className={`${look} ${expanded ? "border-[#0a285a] ring-1 ring-[#0a285a]" : ""}`}
-                  >
-                    {face}
-                  </button>
-                ) : (
-                  <Link href={`/category/${categorySlug(tile.query)}`} className={look}>{face}</Link>
-                )}
+      <h2 id="departments-title" className="mb-3 text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:mb-4 sm:text-2xl">{t("home.shopByCategory")}</h2>
+      {/* A sideways row on a phone, reaching the screen's edges so the tile cut
+          off there says there is more; all six across from sm, held to a
+          tile's size there so the list under them starts on the first screen. */}
+      <div role="group" aria-labelledby="departments-title">
+        <ul
+          className="hide-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 pt-0.5 sm:mx-0 sm:grid sm:max-w-3xl sm:grid-cols-6 sm:overflow-visible sm:px-0 lg:gap-4"
+        >
+          {DEPARTMENTS.map(entry => {
+            const pressed = entry.slug === chosen.slug;
+            return (
+              <li key={entry.slug} className="w-[5.5rem] shrink-0 snap-start min-[390px]:w-24 sm:w-auto">
+                <button
+                  type="button"
+                  aria-pressed={pressed}
+                  aria-controls="subcategory-list"
+                  onClick={() => choose(entry.slug)}
+                  className="group flex w-full flex-col items-center gap-1.5 rounded-2xl text-center"
+                >
+                  <span className={`${tile} ${pressed ? "border-[#0a285a] shadow-[0_2px_8px_rgba(10,40,90,.12)]" : "border-[#e6e9ef] group-hover:border-[#c9d3e1]"}`}>
+                    <TileArt slug={entry.slug} />
+                  </span>
+                  <span className={`line-clamp-2 text-[13px] leading-tight text-[#0a285a] sm:text-[14px] ${pressed ? "font-extrabold" : "font-semibold"}`}>{t(entry.label)}</span>
+                </button>
               </li>
-              {index === rowEnd && open ? (
-                <li className="col-span-full min-w-0">
-                  <SubcategoryPanel
-                    ref={panelRef}
-                    slug={open}
-                    label={t(TILES[openIndex].label)}
-                    query={TILES[openIndex].query}
-                    pointer={((openIndex % columns) + 0.5) / columns}
-                    counts={subCounts.data?.[open]}
-                    loading={!subCounts.data}
-                    arabic={locale === "ar"}
-                    countLine={countLine}
-                  />
-                </li>
-              ) : null}
-            </Fragment>
-          );
-        })}
-      </ul>
+            );
+          })}
+          <li className="w-[5.5rem] shrink-0 snap-start min-[390px]:w-24 sm:w-auto">
+            <Link href={`/category/${categorySlug(ALL_DEPARTMENTS.query)}`} className="group flex w-full flex-col items-center gap-1.5 rounded-2xl text-center">
+              <span className={`${tile} border-[#e6e9ef] group-hover:border-[#c9d3e1]`}><TileArt slug="all" /></span>
+              <span className="line-clamp-2 text-[13px] font-semibold leading-tight text-[#0a285a] sm:text-[14px]">{t(ALL_DEPARTMENTS.label)}</span>
+            </Link>
+          </li>
+        </ul>
+      </div>
+
+      <section id="subcategory-list" aria-labelledby="subcategory-title" className="mt-6 sm:mt-8">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <h3 id="subcategory-title" className="text-[18px] font-extrabold text-[#0a285a] sm:text-xl">{name}</h3>
+          <span className="text-[13px] ink-muted">{counts.data ? countLine(counts.data[chosen.slug] ?? 0) : placeholder}</span>
+        </div>
+        <ul aria-label={t("categories.subcategoriesOf", { name })} className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+          {subcategoriesOf(chosen.slug).map(entry => {
+            const label = subcategoryName(entry, arabic);
+            const count = subCounts.data?.[chosen.slug]?.[entry.slug] ?? 0;
+            return (
+              <li key={entry.slug} className="min-w-0">
+                <SubcategoryRow
+                  href={`${department}?sub=${entry.slug}`}
+                  icon={<SubcategoryIcon icon={entry.icon} />}
+                  title={label}
+                  note={subCounts.data ? countLine(count) : placeholder}
+                  quiet={Boolean(subCounts.data) && count === 0}
+                />
+              </li>
+            );
+          })}
+          <li className="min-w-0">
+            <SubcategoryRow
+              href={department}
+              icon={<Menu className="size-6" strokeWidth={1.75} aria-hidden />}
+              title={t("home.viewAll")}
+              note={t("categories.seeAllIn", { name })}
+            />
+          </li>
+        </ul>
+      </section>
+
       {dealsDrawn ? (
         <Link
           href="/category/all?offer=1"
-          className="glass glass-navy mt-4 flex min-h-14 items-center gap-3 rounded-2xl px-4 sm:mt-5"
+          className="glass glass-navy mt-6 flex min-h-14 items-center gap-3 rounded-2xl px-4"
         >
           <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-[#f2683a] text-[#0a285a]">
             <Tag className="size-[18px]" />
@@ -182,61 +171,42 @@ export default function Categories() {
   );
 }
 
-/**
- * A department's subcategories, under its row: "See all in …" and a chip for
- * each with how many it holds, the pointer over the card that opened it.
- */
-function SubcategoryPanel({ ref, slug, label, query, pointer, counts, loading, arabic, countLine }: {
-  ref: Ref<HTMLDivElement>;
-  slug: string;
-  label: string;
-  query: string;
-  /** Where the opening card's middle is across the grid, from its start edge, 0 to 1. */
-  pointer: number;
-  counts: Record<string, number> | undefined;
-  loading: boolean;
-  arabic: boolean;
-  countLine: (count: number) => string;
-}) {
-  const { t } = useTranslation();
-  const department = `/category/${categorySlug(query)}`;
+/** A department's picture in its tile, the home page's own art. */
+function TileArt({ slug }: { slug: string }) {
   return (
-    <div ref={ref} id={`subcategories-${slug}`} role="region" aria-labelledby={`department-${slug}`} className="subcats-in relative pt-2">
-      {/* The pointer up at the card: drawn, so it needs no side of its own. */}
-      <svg aria-hidden viewBox="0 0 20 10" className="absolute top-0 z-10 h-2.5 w-5" style={{ insetInlineStart: `calc(${pointer * 100}% - 10px)` }}>
-        <path d="M0 10 L10 0 L20 10" fill="#fff" stroke="#e6e9ef" strokeWidth="1" />
-        <path d="M1 10.5 H19" stroke="#fff" strokeWidth="2" />
-      </svg>
-      <div className={`${CARD} p-4 shadow-[0_6px_18px_rgba(10,40,90,.08)] sm:p-5`}>
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-          <h3 className="text-[16px] font-extrabold text-[#0a285a]">{label}</h3>
-          <Link href={department} className="inline-flex min-h-11 items-center gap-1 text-[14px] font-bold ink-accent hover:underline">
-            {t("categories.seeAllIn", { name: label })}
-            <ChevronRight aria-hidden className="size-4 rtl:-scale-x-100" />
-          </Link>
-        </div>
-        <ul aria-label={t("categories.subcategoriesOf", { name: label })} className="mt-2 flex flex-wrap gap-2">
-          {subcategoriesOf(slug).map(entry => {
-            const name = subcategoryName(entry, arabic);
-            const count = counts?.[entry.slug] ?? 0;
-            return (
-              <li key={entry.slug}>
-                <Link
-                  href={`${department}?sub=${entry.slug}`}
-                  aria-label={loading ? name : `${name}, ${countLine(count)}`}
-                  className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-[14px] font-semibold ${count || loading ? "border-[#d5dfeb] bg-white text-[#0a285a]" : "border-dashed border-[#d5dfeb] bg-white text-[#536b8c]"} hover:bg-[#f0f2f5]`}
-                >
-                  <span>{name}</span>
-                  {loading
-                    ? <span aria-hidden className="inline-block h-3 w-5 animate-pulse rounded-full bg-[#e6e9ef]" />
-                    : <span aria-hidden className="rounded-full bg-[#f1f2f6] px-2 py-0.5 text-[12px] font-bold text-[#404553]">{count}</span>}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </div>
+    <img
+      src={appPath(`/departments/${slug}.webp`)}
+      alt=""
+      loading="eager"
+      decoding="async"
+      width={480}
+      height={360}
+      className="max-h-full w-full object-contain transition-transform duration-200 group-hover:scale-[1.04]"
+    />
+  );
+}
+
+/** One row of the list: its picture in a pale tile, its name, what it holds. */
+function SubcategoryRow({ href, icon, title, note, quiet = false }: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  note: ReactNode;
+  /** Nothing in it yet: drawn lighter, still a link. */
+  quiet?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`${CARD} flex min-h-[4.5rem] items-center gap-3 p-3 shadow-[0_1px_2px_rgba(10,40,90,.06)] hover:border-[#d5dfeb] hover:bg-[#f0f2f5]`}
+    >
+      <span aria-hidden className={`grid size-12 shrink-0 place-items-center rounded-xl ${quiet ? "bg-[#f4f5f8] text-[#536b8c]" : "bg-[#eef1f6] text-[#0a285a]"}`}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-bold leading-tight text-[#0a285a]">{title}</span>
+        <span className="mt-0.5 block text-[13px] leading-5 ink-muted">{note}</span>
+      </span>
+      <ChevronRight aria-hidden className="size-5 shrink-0 text-[#0a285a] rtl:-scale-x-100" />
+    </Link>
   );
 }
 

@@ -128,10 +128,21 @@ not conditional.
 (`MobileTabBar`, `.glass-bar-surface` with `.glass-bar-round`), and is drawn to
 a picture the owner sent: **a floating pill of four tabs — Home, Profile, Cart,
 Categories** — the current one in a pale grey pill with its icon and word in
-navy and bold (the house filled), the rest near-black outlines. Saved left the
+navy and bold, the rest near-black outlines. Saved left the
 bar with that picture and is the Saved tile on the account page, one press
 under Profile; Categories opens `/categories`, the departments as a page (see
-Browsing). The words
+Browsing). **The four icons are one drawing, the web's and the app's, on the
+owner's word** ("improve the icon design for the menu at the bottom";
+`content/tabIcons.ts`): a house whose roof is the logo's own two bars meeting
+at a point, a person, a cart and the departments' grid, on one 24 grid at one
+line weight with round caps and joins, each an outline and a filled form —
+the current tab filled, every one of the four, where only the house used to
+fill. They were a hand-drawn house, lucide's person and cart at their own
+weight and a grid of our own, and SF Symbols in the app. The paths are
+absolute M, L, H, V, C and Z alone, so the app draws them from
+`tabIcons.json` (`TabIcon.swift`, a dozen-line parser) as template images the
+system tints; a filled shape is stroked at the same weight too, so it is the
+size of its outline and an icon does not shrink when chosen. The words
 are dark, not the muted ink they once were — the tint keeps dark ink at 4.5:1
 over the darkest thing that passes, and the muted ink would have needed nine
 parts white — and the current tab's pill is solid for the same reason.
@@ -1955,10 +1966,37 @@ the name, the email and a pencil to "Your profile"; two tiles, "My orders" and
 "Saved items", each showing the last four pictures (`orders.list`'s own photos,
 the hearts read by id) or saying there is nothing yet; "NetLet points" with the
 balance in a pill; then every section as a row in white cards — an outline
-icon, the name, what is waiting, a chevron — with dashed lines between, the
-language as a two-way switch in its own row (each choice in its own language),
+icon, the name, what is waiting, a chevron — with dashed lines between,
 "Account security" (the password and deleting the account, `/account/security`)
-and signing out in red at the foot, still asking first. **Help and the
+and signing out in red at the foot, still asking first.
+
+**Only the rows somebody needs, on the owner's word** ("I only want the
+options that are 100 percent needed in the profile page; combine or remove
+options if necessary"). The first card is Returns, Addresses, Payment methods,
+Wishlists and Reviews; Price requests and Subscribe & Save are rows only for
+somebody who has one (`offers.list`, `subscriptions.mine`), since for anybody
+else they open an empty page, and their pages stay open to a link. The
+language and the currency, which were rows of their own (the language a
+two-way switch), are **inside Preferences**, whose row names both ("English ·
+KWD") so neither is out of sight; Preferences holds the language, the
+currency, the delivery area and the notices. Then the help centre, selling for
+a seller, and the account itself. **Returns is its own page**
+(`/account/returns`, `AccountReturns`; the app's `ReturnsView`): a return is
+started from its order, and this is where somebody asks where their refund
+is — every request across their orders, newest first (`orders.myReturns`,
+`returnsForShopper`, scoped by account in the query, at most
+`SHOPPER_RETURNS`), each with today's photo, the item as the order froze it,
+refund or exchange, the state in the opened order's words, and the order to
+open; nothing yet says how to start one. The Orders section is "Orders" now,
+its line naming tracking, cancelling and the refund. **Payment methods
+(`/account/payments`, `AccountPayments`; `PaymentMethodsView`) says what is
+true today**: cash on delivery, the default and the only way to pay; KNET, a
+card and Apple Pay drawn as checkout draws them, coming; no saved cards, with
+"Add a card" drawn and not pressable, and a line that NetLet never stores a
+card number. Saving a card needs a payment provider that keeps it as a token
+(KNET's gateway, or a card processor) — a provider account and a table of
+tokens, a schema change shown first — and until then a card form would be a
+form that cannot do what it says. **Help and the
 affiliate programme are each on the page once, on the owner's word**: "Help
 from NetLet" left the rows, since the help centre's "Message NetLet" opens the
 same conversation and an answer from NetLet is a notice under the bell — on
@@ -2296,12 +2334,14 @@ omission: an order has to exist before a payment can reference it. `orders` and
 page reads its row count and nothing else. It should be folded into orders when
 tracking becomes real.
 
-**Orders and returns are one section of the account, not two.** A return is
-something you do *to* an order rather than a separate pile of things, and a
-Returns tab is empty for everybody who has never returned anything — which
-teaches people not to look. It is the *first* tile, ahead of the settings:
-somebody opening their account on a shop is usually asking where a parcel is,
-not changing a display name.
+**A return is started from its order, and listed on a page of its own.** A
+return is something you do *to* an order, so the order is where it is asked
+for; the account's Returns row, on the owner's word, is where somebody comes
+back to ask where their refund is, every order's returns together (see "Only
+the rows somebody needs" under The account), and it says how to start one
+while it is empty. Orders is the first tile, ahead of the settings: somebody
+opening their account on a shop is usually asking where a parcel is, not
+changing a display name.
 
 `Backend/src/services/orders.ts` had `listOrdersForUser` and `getOrderForUser` from the day
 the tables landed and **nothing could call them** — there was no router, so the
@@ -5539,44 +5579,61 @@ category". They were the brand and store rows for a while, which left the home
 page for here first; two boxes side by side keep the departments in the first
 screen. The app's Categories is the same (`wayIn`, `BrandsView`).
 
-**Each department has subcategories, and the Categories page opens onto
-them, on the owner's word** ("when you tap on any category, it expands to show
-the subcategories"). `Shared/commerce/subcategories.ts` is the list, in code
-beside the departments for their reason — five to nine a department, a stable
-slug, both names and the words its products are called by in both languages —
-and `subcategoryFor` the rule: **the seller's own "Type" first**, the first row
-of every department's schema now (`typeField`, its options the subcategories'
-names, `optionsAr` their Arabic, so the editor on both platforms and the
-catalogue drafter all ask, and the model's answer is kept only as one of them),
-**else the words**: the subcategory whose words a product's titles hold most,
-a title's word counting twice a tag's, the first listed on a tie, none with
-no word held — compared as search compares (`searchWords`), so "Headphones"
-and "سماعات" both count. A word belongs to one subcategory of a department
-(`subcategories.test.ts` holds that, and that every word files its own). **It
-is worked out on the server from both titles** (`Product.subcategory`, in
-`shape()`; `commerce.subcategoryCounts` counts by the same call over the
-published shelf), so a count and the page it opens agree whichever language
-the shopper reads. No schema change: a product's filing is a spec row it may
-carry and its words. On `/categories` a department's card is a disclosure
-button and its panel opens under the row it is in — the full width of a grid
-of two, three or six, a pointer over the card, `.subcats-in` dropping it into
-place — with "See all in …" and every subcategory with its count, an empty one
-dashed and still a link, as the cards keep all six; one open at a time, and an
-opened panel below the fold is scrolled up clear of the tab bar. A chip opens
-`/category/<slug>?sub=<sub>`: **the subcategory is the page, not a filter** —
-`BrowseFilters.sub`, not counted among the filters and kept by "Clear all",
-the heading its name and the breadcrumb through its department, facets over
-its own products, and not indexed. The department page draws its
-subcategories as a row of chips under the heading (those with something on
-the shelf and the one the address names), "All" first. The product page's
-"Type" row reads in Arabic on the Arabic page (`shownOption`; the app's
-`shownSpecifications`, which also gives a schema row its Arabic label there).
-The app is the same: `DepartmentCardGrid(expandable:)` and its
-`SubcategoryPanel`, `Route.subcategory`, the chips on `DepartmentView`, the
-names exported with the departments (`departments.json`). Measured at 320,
-390 and 1440 in both languages: the panel under its row, one open, the chip
-opening the narrowed page with its name and breadcrumb, axe clean, no sideways
-scroll.
+**Each department has subcategories, and the Categories page lists them
+under a row of the departments' pictures, on the owner's word** ("when you tap
+on any category, it expands to show the subcategories", then a picture of a
+shop's Categories screen: "do the subcategory in this way, with the icon of
+the subcategory being shown"). `Shared/commerce/subcategories.ts` is the list,
+in code beside the departments for their reason — five to nine a department,
+a stable slug, both names, **the icon it is drawn with** and the words its
+products are called by in both languages — and `subcategoryFor` the rule:
+**the seller's own "Type" first**, the first row of every department's schema
+now (`typeField`, its options the subcategories' names, `optionsAr` their
+Arabic, so the editor on both platforms and the catalogue drafter all ask, and
+the model's answer is kept only as one of them), **else the words**: the
+subcategory whose words a product's titles hold most, a title's word counting
+twice a tag's, the first listed on a tie, none with no word held — compared as
+search compares (`searchWords`), so "Headphones" and "سماعات" both count. A
+word belongs to one subcategory of a department (`subcategories.test.ts` holds
+that, and that every word files its own). **It is worked out on the server
+from both titles** (`Product.subcategory`, in `shape()`;
+`commerce.subcategoryCounts` counts by the same call over the published
+shelf), so a count and the page it opens agree whichever language the shopper
+reads. No schema change: a product's filing is a spec row it may carry and its
+words.
+
+**On `/categories` the departments are a row of picture tiles and the chosen
+one's subcategories are rows under them.** The tiles are the home page's art
+on white, a sideways row reaching the screen's edges on a phone and all six
+across from `sm`, the chosen one outlined in navy (`aria-pressed`, the portal's
+`Segmented` rule: it narrows a list, so it is not a tablist); "All departments"
+ends the row and is a link, having no subcategories. The choice is the
+address's `?dept=`, replaced rather than pushed, so Back leaves the page rather
+than stepping through departments, and the first department with none. Under
+the row, the department's name and count, then a row per subcategory — **its
+icon in a pale tile**, its name, how many it holds — and a last row, "View
+all" with a menu icon, opening the whole department; one column on a phone,
+two from `sm`, three from `lg`. An empty subcategory is still a row, drawn
+lighter, as the tiles keep all six. **The icon is a name on the subcategory
+(`SUBCATEGORY_ICONS`), the departments' rule**: each client turns it into a
+drawing through a record the type makes exhaustive — lucide on the web
+(`SubcategoryIcon`, with a dress drawn in lucide's hand, lucide having none),
+SF Symbols in the app (`Department.Subcategory.symbols`, the likeliest symbol
+first and a fallback after, since a symbol's first iOS is not always known;
+`ModelTests` holds that every one draws). It replaced a panel that opened under
+the pressed card with a pointer and chips, which the owner found harder to
+read than a list. A row opens `/category/<slug>?sub=<sub>`: **the subcategory
+is the page, not a filter** — `BrowseFilters.sub`, not counted among the
+filters and kept by "Clear all", the heading its name and the breadcrumb
+through its department, facets over its own products, and not indexed. The
+department page draws its subcategories as a row of chips under the heading
+(those with something on the shelf and the one the address names), "All"
+first. The product page's "Type" row reads in Arabic on the Arabic page
+(`shownOption`; the app's `shownSpecifications`, which also gives a schema row
+its Arabic label there). The app is the same: `DepartmentBrowser` (the tiles
+and the rows; `-NetLetOpen categories:<slug>` chooses one), `Route.subcategory`,
+the chips on `DepartmentView`, the names and icons exported with the
+departments (`departments.json`).
 
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and
@@ -6120,7 +6177,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, and is 813 KB (237 KB) now, the order page's track, cancel and refund words — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, and is 817 KB (239 KB) now, the Returns and Payment methods pages' words and the tab bar's own icons — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -6569,8 +6626,10 @@ at noon in Kuwait, so no time zone moves it a day), and the nationality's
 chips with "View all" as a searchable sheet (`CountrySheet`, the countries
 from `rules.json`'s `profile` block); the rules are `Validation`'s twins of
 `profileDetails.ts`, tested on its cases, and checkout's view model starts
-from the account's phone as the web's does. The language is its switch row (and the guest's, under
-the sign-in form), **each word whole on one line** — the switch is `fixedSize` and
+from the account's phone as the web's does. The language is inside
+Preferences for somebody signed in (the web's rule, its row naming the
+language and the currency) and a switch row under the guest's sign-in form,
+**each word whole on one line** — the switch is `fixedSize` and
 drops under its label (`ViewThatFits`) on a narrow screen or a large text
 size, where build 35 broke "English" into "Engl / ish". `ShopAssistantButton`
 carries "Need help?" beside the mark.
@@ -6606,8 +6665,8 @@ already choosing (`AppModel.searchStart`).
 **The tab bar is the one place it is not the web's, on the owner's word**: it
 was `FloatingTabBar`, a copy of `MobileTabBar`'s floating pill, and the owner
 asked for Apple's own Liquid Glass instead. It is a system `TabView` in
-`RootView` — Home, Profile, Cart and Categories, SF Symbols, the selected tab
-in navy, the cart's count the system's badge — which the iOS 26 SDK draws in
+`RootView` — Home, Profile, Cart and Categories, the web's own icons
+(`TabIcon`, an outline and the chosen tab filled), the selected tab in navy, the cart's count the system's badge — which the iOS 26 SDK draws in
 Liquid Glass on iOS 26 and as the standard tab bar on 17 and 18. **Over the
 navy footer the glass turned dark, and the selected tab vanished** in the
 first build (17): it is drawn in the tint, which the glass lightens a little
@@ -7110,11 +7169,18 @@ and the screenshots (`-NetLetOpen`) open straight onto their screen.
 lands at 300ms (`LaunchSplash.landing`, the haptic tap's instant), a short
 breath in at 0.62s, a whoosh through the zoom that rises and widens slow then
 fast, as the roof does, and a bright E major chord, arpeggiated up, as the
-shop appears at 1.42s, ringing on a second under it. The chime it replaced was
-written for the wordmark and was over before the zoom began. It plays in the
-`.ambient` category, so **the Ring/Silent switch silences it** — Apple's rule
-for a sound nobody needs, and the likeliest reason it was not heard — and
-music playing keeps playing.
+shop appears at 1.42s, **then rings on and fades slowly over the home page,
+on the owner's word** ("it cuts off at the end; let it continue and fade
+slowly while the app opens"): five seconds in all, the chord's tail falling
+by about ten decibels a second from 1.6s and silent at five. It was cut off
+because the player was the splash's own state, so it went the moment the
+splash did, at about 1.4s, whatever the file held; it belongs to
+`LaunchChime.shared` now, which outlives the splash and lets go of the player
+once the sound has played. The chime it replaced was written for the wordmark
+and was over before the zoom began. It plays in the `.ambient` category, so
+**the Ring/Silent switch silences it** — Apple's rule for a sound nobody
+needs, and the likeliest reason it was not heard — and music playing keeps
+playing.
 
 **It runs at the screen's own rate, up to 120 frames a second, on the owner's
 word** ("take full advantage of the 120 fps screen of an iPhone").

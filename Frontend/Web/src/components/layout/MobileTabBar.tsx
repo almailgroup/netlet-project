@@ -46,29 +46,29 @@ import { CountBadge } from "@/components/ui/CountBadge";
 import { useCart } from "@/contexts/CartContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useTranslation } from "@/hooks/useTranslation";
-import { ShoppingCart, UserRound } from "lucide-react";
+import { TAB_ICONS, TAB_ICON_STROKE, type TabIconName } from "@/content/tabIcons";
 import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { MAX_WAIT_MS } from "@/lib/readyNavigation";
 import { nextTabBar, SHOWN, type TabBarScroll } from "@/lib/tabBarScroll";
 import { Link, useLocation } from "wouter";
 
-/** A house, filled while it is the current tab — the picture's own mark. */
-function HomeIcon({ filled }: { filled: boolean }) {
+/**
+ * One of the bar's four icons, filled while it is the current tab — the one
+ * drawing the app draws too (`content/tabIcons.ts`).
+ */
+function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
+  const paths = TAB_ICONS[name][filled ? "filled" : "outline"];
   return (
-    <svg viewBox="0 0 24 24" aria-hidden className="size-[22px]" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 1.5 : 2} strokeLinejoin="round" strokeLinecap="round">
-      <path d="M12 3.2 2.9 11.2a.9.9 0 0 0 .6 1.6H5V20a1 1 0 0 0 1 1h4.3v-5.6h3.4V21H18a1 1 0 0 0 1-1v-7.2h1.5a.9.9 0 0 0 .6-1.6L12 3.2Z" />
-    </svg>
-  );
-}
-
-/** Three squares and a circle: the departments. */
-function CategoriesIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className="size-[22px]" fill="none" stroke="currentColor" strokeWidth={2} strokeLinejoin="round">
-      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
-      <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
-      <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
-      <circle cx="17" cy="17" r="3.5" />
+    <svg viewBox="0 0 24 24" aria-hidden className="size-[24px]" strokeLinejoin="round" strokeLinecap="round">
+      {paths.map((path, index) => (
+        <path
+          key={index}
+          d={path.d}
+          fill={path.mode === "stroke" ? "none" : "currentColor"}
+          stroke={path.mode === "fill" ? "none" : "currentColor"}
+          strokeWidth={TAB_ICON_STROKE}
+        />
+      ))}
     </svg>
   );
 }
@@ -130,14 +130,14 @@ export function MobileTabBar() {
     {
       key: "home",
       label: t("nav.home"),
-      icon: active => <HomeIcon filled={active} />,
+      icon: active => <TabIcon name="home" filled={active} />,
       active: location === "/",
       href: "/",
     },
     {
       key: "profile",
       label: t("nav.profile"),
-      icon: () => <UserRound className="size-[22px]" aria-hidden />,
+      icon: active => <TabIcon name="profile" filled={active} />,
       active: location === "/account" || location.startsWith("/account/"),
       /* Unread replies, from sellers and from NetLet: on a phone this tab is
          the only account control there is. */
@@ -147,7 +147,7 @@ export function MobileTabBar() {
     {
       key: "cart",
       label: t("nav.cart"),
-      icon: () => <ShoppingCart className="size-[22px]" aria-hidden />,
+      icon: active => <TabIcon name="cart" filled={active} />,
       active: location === "/cart",
       badge: itemCount,
       /* The page, not the drawer: on a phone a drawer is the whole screen
@@ -157,7 +157,7 @@ export function MobileTabBar() {
     {
       key: "categories",
       label: t("nav.categories"),
-      icon: () => <CategoriesIcon />,
+      icon: active => <TabIcon name="categories" filled={active} />,
       /* The page of departments, and every department page it leads to. */
       active: location === "/categories" || location.startsWith("/category/"),
       href: "/categories",

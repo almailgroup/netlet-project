@@ -152,6 +152,8 @@ jobs:
             shot 27-order "$lang" order:NL-20261001-J7MWY shopper
             shot 61-order-track "$lang" track:NL-20261001-J7MWY shopper
             shot 62-order-refund "$lang" refund:NL-20261001-J7MWY shopper
+            shot 63-returns "$lang" section:returns shopper
+            shot 64-payments "$lang" section:payments shopper
             shot 28-invoice "$lang" page:invoices/INV-2026-000002 shopper
             shot 29-assistant "$lang" chat ""
             shot 30-portal-products "$lang" portal:/admin/products shopper

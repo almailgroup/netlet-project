@@ -10,47 +10,56 @@
       {
         "slug": "phones",
         "name": "Mobile phones",
-        "nameAr": "الهواتف"
+        "nameAr": "الهواتف",
+        "icon": "phone"
       },
       {
         "slug": "tablets",
         "name": "Tablets",
-        "nameAr": "الأجهزة اللوحية"
+        "nameAr": "الأجهزة اللوحية",
+        "icon": "tablet"
       },
       {
         "slug": "computers",
         "name": "Laptops & computers",
-        "nameAr": "الحواسيب"
+        "nameAr": "الحواسيب",
+        "icon": "laptop"
       },
       {
         "slug": "audio",
         "name": "Audio",
-        "nameAr": "الصوتيات"
+        "nameAr": "الصوتيات",
+        "icon": "headphones"
       },
       {
         "slug": "wearables",
         "name": "Wearables",
-        "nameAr": "الأجهزة القابلة للارتداء"
+        "nameAr": "الأجهزة القابلة للارتداء",
+        "icon": "watch"
       },
       {
         "slug": "tv",
         "name": "TV & video",
-        "nameAr": "التلفزيون والفيديو"
+        "nameAr": "التلفزيون والفيديو",
+        "icon": "tv"
       },
       {
         "slug": "cameras",
         "name": "Cameras",
-        "nameAr": "الكاميرات"
+        "nameAr": "الكاميرات",
+        "icon": "camera"
       },
       {
         "slug": "gaming",
         "name": "Gaming",
-        "nameAr": "الألعاب"
+        "nameAr": "الألعاب",
+        "icon": "gamepad"
       },
       {
         "slug": "accessories",
         "name": "Accessories",
-        "nameAr": "الإكسسوارات"
+        "nameAr": "الإكسسوارات",
+        "icon": "cable"
       }
     ]
   },
@@ -65,37 +74,44 @@
       {
         "slug": "kitchen-appliances",
         "name": "Kitchen appliances",
-        "nameAr": "أجهزة المطبخ"
+        "nameAr": "أجهزة المطبخ",
+        "icon": "microwave"
       },
       {
         "slug": "cookware",
         "name": "Cookware & dining",
-        "nameAr": "أواني الطبخ والمائدة"
+        "nameAr": "أواني الطبخ والمائدة",
+        "icon": "dining"
       },
       {
         "slug": "furniture",
         "name": "Furniture",
-        "nameAr": "الأثاث"
+        "nameAr": "الأثاث",
+        "icon": "sofa"
       },
       {
         "slug": "decor",
         "name": "Decor & lighting",
-        "nameAr": "الديكور والإضاءة"
+        "nameAr": "الديكور والإضاءة",
+        "icon": "lamp"
       },
       {
         "slug": "bedding",
         "name": "Bedding & bath",
-        "nameAr": "المفروشات والحمّام"
+        "nameAr": "المفروشات والحمّام",
+        "icon": "bed"
       },
       {
         "slug": "home-appliances",
         "name": "Home appliances",
-        "nameAr": "الأجهزة المنزلية"
+        "nameAr": "الأجهزة المنزلية",
+        "icon": "washer"
       },
       {
         "slug": "cleaning",
         "name": "Cleaning & storage",
-        "nameAr": "التنظيف والتخزين"
+        "nameAr": "التنظيف والتخزين",
+        "icon": "spray"
       }
     ]
   },
@@ -110,27 +126,32 @@
       {
         "slug": "skincare",
         "name": "Skincare",
-        "nameAr": "العناية بالبشرة"
+        "nameAr": "العناية بالبشرة",
+        "icon": "drop"
       },
       {
         "slug": "makeup",
         "name": "Makeup",
-        "nameAr": "المكياج"
+        "nameAr": "المكياج",
+        "icon": "brush"
       },
       {
         "slug": "haircare",
         "name": "Hair care",
-        "nameAr": "العناية بالشعر"
+        "nameAr": "العناية بالشعر",
+        "icon": "scissors"
       },
       {
         "slug": "fragrance",
         "name": "Fragrance",
-        "nameAr": "العطور"
+        "nameAr": "العطور",
+        "icon": "sparkles"
       },
       {
         "slug": "personal-care",
         "name": "Personal care",
-        "nameAr": "العناية الشخصية"
+        "nameAr": "العناية الشخصية",
+        "icon": "bath"
       }
     ]
   },
@@ -145,37 +166,44 @@
       {
         "slug": "women",
         "name": "Women's clothing",
-        "nameAr": "ملابس نسائية"
+        "nameAr": "ملابس نسائية",
+        "icon": "dress"
       },
       {
         "slug": "men",
         "name": "Men's clothing",
-        "nameAr": "ملابس رجالية"
+        "nameAr": "ملابس رجالية",
+        "icon": "shirt"
       },
       {
         "slug": "kids",
         "name": "Kids",
-        "nameAr": "الأطفال"
+        "nameAr": "الأطفال",
+        "icon": "baby"
       },
       {
         "slug": "shoes",
         "name": "Shoes",
-        "nameAr": "الأحذية"
+        "nameAr": "الأحذية",
+        "icon": "shoe"
       },
       {
         "slug": "bags",
         "name": "Bags",
-        "nameAr": "الحقائب"
+        "nameAr": "الحقائب",
+        "icon": "bag"
       },
       {
         "slug": "accessories",
         "name": "Accessories",
-        "nameAr": "الإكسسوارات"
+        "nameAr": "الإكسسوارات",
+        "icon": "glasses"
       },
       {
         "slug": "sportswear",
         "name": "Sportswear",
-        "nameAr": "الملابس الرياضية"
+        "nameAr": "الملابس الرياضية",
+        "icon": "dumbbell"
       }
     ]
   },
@@ -190,37 +218,44 @@
       {
         "slug": "fresh",
         "name": "Fruit & vegetables",
-        "nameAr": "الفواكه والخضروات"
+        "nameAr": "الفواكه والخضروات",
+        "icon": "produce"
       },
       {
         "slug": "pantry",
         "name": "Pantry",
-        "nameAr": "المؤن"
+        "nameAr": "المؤن",
+        "icon": "wheat"
       },
       {
         "slug": "dairy",
         "name": "Dairy & eggs",
-        "nameAr": "الألبان والبيض"
+        "nameAr": "الألبان والبيض",
+        "icon": "milk"
       },
       {
         "slug": "bakery",
         "name": "Bakery",
-        "nameAr": "المخبوزات"
+        "nameAr": "المخبوزات",
+        "icon": "croissant"
       },
       {
         "slug": "snacks",
         "name": "Snacks, dates & sweets",
-        "nameAr": "الوجبات الخفيفة والتمور والحلويات"
+        "nameAr": "الوجبات الخفيفة والتمور والحلويات",
+        "icon": "cookie"
       },
       {
         "slug": "beverages",
         "name": "Beverages",
-        "nameAr": "المشروبات"
+        "nameAr": "المشروبات",
+        "icon": "cup"
       },
       {
         "slug": "meat",
         "name": "Meat & seafood",
-        "nameAr": "اللحوم والمأكولات البحرية"
+        "nameAr": "اللحوم والمأكولات البحرية",
+        "icon": "meat"
       }
     ]
   }

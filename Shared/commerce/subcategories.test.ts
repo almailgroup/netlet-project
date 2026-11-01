@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEPARTMENTS } from "./departments.js";
 import { searchWords } from "./search.js";
-import { findSubcategory, SUBCATEGORIES, subcategoriesOf, subcategoryFor, typeOptions } from "./subcategories.js";
+import { findSubcategory, SUBCATEGORIES, SUBCATEGORY_ICONS, subcategoriesOf, subcategoryFor, typeOptions } from "./subcategories.js";
 import { ATTRIBUTE_SCHEMA, fieldFor, shownOption } from "./attributeSchema.js";
 
 const file = (department: string, title: string, extra: { tags?: string[]; type?: string; titleAr?: string } = {}) =>
@@ -60,6 +60,13 @@ describe("the subcategory list", () => {
       expect(entries.every(entry => entry.name && entry.nameAr && entry.words.length)).toBe(true);
     }
     expect(Object.keys(SUBCATEGORIES).sort()).toEqual(DEPARTMENTS.map(department => department.slug).sort());
+  });
+
+  it("gives each subcategory of a department its own picture", () => {
+    for (const [department, entries] of Object.entries(SUBCATEGORIES)) {
+      expect(new Set(entries.map(entry => entry.icon)).size, department).toBe(entries.length);
+      for (const entry of entries) expect(SUBCATEGORY_ICONS, entry.slug).toContain(entry.icon);
+    }
   });
 
   it("never gives one word to two subcategories of a department, so a word files one place", () => {

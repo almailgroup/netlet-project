@@ -36,7 +36,7 @@ import { resolveActor } from "../services/inventory.js";
 import { fileClaim, parcelsForShopper, ParcelCareRefused, rateDelivery } from "../services/parcelCare.js";
 import { MAX_DELIVERY_COMMENT } from "../../../Shared/commerce/deliveryRatings.js";
 import { MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js";
-import { cancelReturn, requestReturn, returnsForShopperOrder, ReturnRefused } from "../services/returns.js";
+import { cancelReturn, requestReturn, returnsForShopper, returnsForShopperOrder, ReturnRefused } from "../services/returns.js";
 import { documentsForShopperOrder } from "../services/invoices.js";
 import { MAX_RETURN_NOTE, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
 import { fraudUnseen, markFraudSeen, referralWatch, reviewWatch, riskForOrders } from "../services/fraud.js";
@@ -199,6 +199,12 @@ export const ordersRouter = router({
         throw error;
       }
     }),
+
+  /**
+   * Every return this shopper has asked for, across their orders — the
+   * account's Returns page. Scoped by account in the query.
+   */
+  myReturns: protectedProcedure.query(({ ctx }) => returnsForShopper(ctx.user.id)),
 
   /** Withdraw a return before the item has been collected. */
   cancelReturn: protectedProcedure

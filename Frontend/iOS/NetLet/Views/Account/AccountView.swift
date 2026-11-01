@@ -9,15 +9,15 @@ import SwiftUI
 /// header — the page starts under the status bar — who is signed in with a
 /// pencil to change it, two tiles of the last things ordered and saved, the
 /// points, then every section as a row in white cards, dashed lines between
-/// them, with the language as a two-way switch in its own row and signing out
-/// red at the foot, still asking first. The dates and the role moved to "Your
+/// them — the language and the currency inside Preferences, whose row names
+/// both — and signing out red at the foot, still asking first. The dates and the role moved to "Your
 /// details" (`AccountIdentityCard`), where somebody checking their account looks.
 struct AccountView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var confirmingSignOut = false
-    /// Whether the shopper holds a standing order or an affiliate account,
-    /// asked only while that feature is switched off.
+    /// Whether the shopper holds a standing order, a price request or an
+    /// affiliate account — what decides whether those rows are drawn.
     @State private var holdings = Holdings()
     @State private var orderPhotos: [String]?
     @State private var savedPhotos: [String]?
@@ -25,6 +25,7 @@ struct AccountView: View {
 
     struct Holdings {
         var subscriptions = false
+        var offers = false
         var affiliate = false
     }
 
@@ -39,9 +40,9 @@ struct AccountView: View {
         }
     }
 
-    /// The cards of rows, top to bottom: what somebody shops with, what talks
-    /// to them, what they run, and the account itself. "language" and
-    /// "signout" are the two rows that are not sections.
+    /// The cards of rows, top to bottom: what somebody shops with, their
+    /// settings, what they run, and the account itself. "signout" is the one
+    /// row that is not a section.
     ///
     /// **"Help from NetLet" and the affiliate programme are not rows, on the
     /// owner's word** — each was on the page twice. The help centre
@@ -49,8 +50,14 @@ struct AccountView: View {
     /// conversation, and an answer from NetLet is a notice under the bell;
     /// the affiliate programme is the card above the rows, joining for
     /// somebody not in and opening the programme for a member.
+    ///
+    /// **Only the rows somebody needs, on the owner's word** — the web's
+    /// `CARDS`. Returns and Payment methods joined the first card; the
+    /// language and the currency are inside Preferences, whose row names
+    /// both; Price requests and Subscribe & Save are rows only for somebody
+    /// who has one (`holdings`).
     private static let cards: [[String]] = [
-        ["addresses", "wishlists", "offers", "reviews", "subscriptions", "language", "currency"],
+        ["returns", "addresses", "payments", "wishlists", "reviews", "offers", "subscriptions"],
         ["preferences"],
         ["selling"],
         ["security", "signout"],
@@ -93,7 +100,7 @@ struct AccountView: View {
                     affiliatePromo(offer)
                 }
                 ForEach(Array(Self.cards.enumerated()), id: \.offset) { index, ids in
-                    let rows = ids.filter { id in id == "language" || id == "currency" || id == "signout" || entries.contains { $0.id == id } }
+                    let rows = ids.filter(onHome)
                     if index == Self.cards.count - 1 {
                         // What the footer carried, before the account's own
                         // card, so signing out stays the last thing on the page.
@@ -119,9 +126,8 @@ struct AccountView: View {
         .task {
             await app.signals.refresh()
             await loadPreviews()
-            if !app.features.isOn("subscriptions") {
-                holdings.subscriptions = !((try? await app.services.api.call(API.standingOrders)) ?? []).isEmpty
-            }
+            holdings.subscriptions = !((try? await app.services.api.call(API.standingOrders)) ?? []).isEmpty
+            holdings.offers = !((try? await app.services.api.call(API.priceRequests)) ?? []).isEmpty
             if !app.features.isOn("affiliates") {
                 holdings.affiliate = ((try? await app.services.api.call(API.affiliate)) ?? nil) != nil
             }
@@ -358,10 +364,6 @@ struct AccountView: View {
     @ViewBuilder
     private func row(_ id: String) -> some View {
         switch id {
-        case "language":
-            LanguageRow()
-        case "currency":
-            CurrencyRow()
         case "signout":
             Button {
                 confirmingSignOut = true
@@ -374,7 +376,8 @@ struct AccountView: View {
                 Button {
                     open(entry)
                 } label: {
-                    rowLabel(symbol: entry.symbol, title: l.t(entry.label), waiting: badge(entry), iconColour: ProfileInk.icon)
+                    rowLabel(symbol: entry.symbol, title: l.t(entry.label), waiting: badge(entry), iconColour: ProfileInk.icon,
+                             value: entry.id == "preferences" ? "\(l.t(l.current == .ar ? "account.arabic" : "account.english")) · \(l.currency)" : nil)
                 }
                 .buttonStyle(.tap)
             }
@@ -389,7 +392,7 @@ struct AccountView: View {
             .accessibilityHidden(true)
     }
 
-    private func rowLabel(symbol: String, title: String, waiting: String?, iconColour: Color) -> some View {
+    private func rowLabel(symbol: String, title: String, waiting: String?, iconColour: Color, value: String? = nil) -> some View {
         HStack(spacing: 14) {
             rowIcon(symbol, colour: iconColour)
             Text(title)
@@ -403,6 +406,12 @@ struct AccountView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Brand.orange))
+            }
+            if let value {
+                Text(value)
+                    .font(.inter(14))
+                    .foregroundStyle(Brand.muted)
+                    .lineLimit(1)
             }
             Image(systemName: "chevron.forward")
                 .font(.system(size: 14, weight: .semibold))
@@ -424,6 +433,19 @@ struct AccountView: View {
             case "affiliate": return app.features.isOn("affiliates") || holdings.affiliate
             default: return true
             }
+        }
+    }
+
+    /// Whether the home draws a row: the account has the section, and for
+    /// Price requests and Subscribe & Save, the shopper has one — for anybody
+    /// else they open an empty page. Their screens stay open to a link.
+    private func onHome(_ id: String) -> Bool {
+        if id == "signout" { return true }
+        guard entries.contains(where: { $0.id == id }) else { return false }
+        switch id {
+        case "offers": return holdings.offers
+        case "subscriptions": return holdings.subscriptions
+        default: return true
         }
     }
 
@@ -551,6 +573,7 @@ struct AccountEntry: Identifiable, Hashable {
 
     static let all: [AccountEntry] = [
         AccountEntry(id: "orders", label: "account.sectionOrders", hint: "account.hint.orders", symbol: "shippingbox", group: "account.groupShopping"),
+        AccountEntry(id: "returns", label: "account.sectionReturns", hint: "account.hint.returns", symbol: "arrow.uturn.backward", group: "account.groupShopping"),
         AccountEntry(id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions", symbol: "repeat", group: "account.groupShopping"),
         AccountEntry(id: "saved", label: "footer.savedItems", hint: "account.hint.saved", symbol: "heart", group: "account.groupShopping"),
         AccountEntry(id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists", symbol: "gift", group: "account.groupShopping"),
@@ -563,6 +586,7 @@ struct AccountEntry: Identifiable, Hashable {
         AccountEntry(id: "details", label: "account.sectionProfile", hint: "account.hint.details", symbol: "person.crop.circle", group: "account.groupSettings"),
         AccountEntry(id: "security", label: "account.security", hint: "account.hint.security", symbol: "lock.shield", group: "account.groupSettings"),
         AccountEntry(id: "addresses", label: "address.book", hint: "account.hint.addresses", symbol: "mappin.and.ellipse", group: "account.groupSettings"),
+        AccountEntry(id: "payments", label: "account.sectionPayments", hint: "account.hint.payments", symbol: "creditcard", group: "account.groupSettings"),
         AccountEntry(id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences", symbol: "slider.horizontal.3", group: "account.groupSettings"),
         AccountEntry(id: "selling", label: "account.sectionSelling", hint: "account.hint.selling", symbol: "storefront", group: "account.groupSettings"),
     ]
@@ -571,6 +595,8 @@ struct AccountEntry: Identifiable, Hashable {
     var route: Route? {
         switch id {
         case "orders": return .orders
+        case "returns": return .returns
+        case "payments": return .payments
         case "subscriptions": return .subscriptions
         case "saved": return .saved
         case "wishlists": return .wishlists

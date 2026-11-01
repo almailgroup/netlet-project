@@ -188,6 +188,22 @@ describe("asking", () => {
     await expect(as("shopper").orders.cancelReturn({ requestId: again })).rejects.toMatchObject({ message: "returns.moved" });
     await expect(as("stranger").orders.cancelReturn({ requestId: again })).rejects.toMatchObject({ message: "returns.moved" });
   });
+
+  /* The account's Returns page: every order's returns, the asker's alone. */
+  it("lists the shopper's returns across their orders, newest first, and nobody else's", async () => {
+    const first = await delivered();
+    const second = await delivered();
+    const before = (await as("shopper").orders.myReturns()).length;
+    await ask("shopper", { reference: first.reference, orderItemId: first.sofa.id, kind: "refund", reason: "damaged" });
+    await ask("shopper", { reference: second.reference, orderItemId: second.tomatoes.id, kind: "refund", reason: "changedMind" });
+    const mine = await as("shopper").orders.myReturns();
+    expect(mine.length).toBe(before + 2);
+    expect(mine[0]).toMatchObject({ orderReference: second.reference, status: "declined", quantity: expect.any(Number) });
+    expect(mine[1]).toMatchObject({ orderReference: first.reference, status: "approved", productTitle: expect.any(String) });
+    expect(mine[0]).toHaveProperty("photo");
+    expect(mine[0]).not.toHaveProperty("decidedBy");
+    expect(await as("stranger").orders.myReturns()).toEqual([]);
+  });
 });
 
 describe("the desk", () => {

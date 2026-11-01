@@ -179,6 +179,9 @@ extension API {
     }
 
     static let priceRequests = Procedure<NoInput, [PriceRequest]>(query: "offers.list")
+    /// Every return the shopper asked for, across their orders — the
+    /// account's Returns page (`orders.myReturns`).
+    static let shopperReturns = Procedure<NoInput, [ShopperReturn]>(query: "orders.myReturns")
     static let withdrawPriceRequest = Procedure<OfferId, Acknowledged>(mutation: "offers.withdraw")
 
     // MARK: Reviews

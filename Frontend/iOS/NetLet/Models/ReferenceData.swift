@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 /// One of NetLet's departments (`Shared/commerce/departments.ts`).
 struct Department: Decodable, Identifiable, Hashable, Sendable {
@@ -17,9 +18,61 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
         let slug: String
         let name: String
         let nameAr: String
+        /// What its row on the Categories tab shows (`SUBCATEGORY_ICONS`), a
+        /// name the app turns into an SF Symbol.
+        let icon: String?
 
         var id: String { slug }
         func shown(_ language: Language) -> String { language == .ar ? nameAr : name }
+
+        /// The SF Symbols that stand for its icon, the likeliest first: the
+        /// first one this iOS has is drawn (`symbol`), and a test holds that
+        /// every icon has one.
+        var symbolCandidates: [String] { Self.symbols[icon ?? ""] ?? [] }
+
+        /// The first of `symbolCandidates` this iOS draws, or the grid.
+        var symbol: String {
+            symbolCandidates.first { UIImage(systemName: $0) != nil } ?? "square.grid.2x2"
+        }
+
+        /// The web's `SubcategoryIcon` drawings, in SF Symbols.
+        static let symbols: [String: [String]] = [
+            "phone": ["iphone"],
+            "tablet": ["ipad"],
+            "laptop": ["laptopcomputer"],
+            "headphones": ["headphones"],
+            "watch": ["applewatch"],
+            "tv": ["tv"],
+            "camera": ["camera"],
+            "gamepad": ["gamecontroller"],
+            "cable": ["cable.connector", "powerplug"],
+            "microwave": ["microwave", "oven"],
+            "dining": ["fork.knife"],
+            "sofa": ["sofa", "chair.lounge"],
+            "lamp": ["lamp.table", "lamp.desk", "lightbulb"],
+            "bed": ["bed.double"],
+            "washer": ["washer", "dryer"],
+            "spray": ["bubbles.and.sparkles", "sparkles"],
+            "drop": ["drop"],
+            "brush": ["paintbrush.pointed", "paintbrush"],
+            "scissors": ["scissors"],
+            "sparkles": ["sparkles"],
+            "bath": ["bathtub", "shower"],
+            "dress": ["figure.stand.dress", "hanger"],
+            "shirt": ["tshirt"],
+            "baby": ["figure.child", "stroller", "teddybear"],
+            "shoe": ["shoe", "shoeprints.fill", "figure.walk"],
+            "bag": ["handbag", "bag"],
+            "glasses": ["eyeglasses"],
+            "dumbbell": ["dumbbell", "figure.run"],
+            "produce": ["carrot", "leaf"],
+            "wheat": ["basket", "takeoutbag.and.cup.and.straw"],
+            "milk": ["waterbottle", "drop.halffull"],
+            "croissant": ["birthday.cake", "fork.knife"],
+            "cookie": ["popcorn", "gift"],
+            "cup": ["cup.and.saucer"],
+            "meat": ["fish", "fork.knife"],
+        ]
     }
 
     var id: String { slug }

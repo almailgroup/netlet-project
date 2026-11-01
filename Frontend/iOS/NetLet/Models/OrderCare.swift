@@ -32,6 +32,27 @@ struct ReturnRequest: Decodable, Identifiable, Hashable, Sendable {
     var mayWithdraw: Bool { status == "requested" || status == "review" || status == "approved" }
 }
 
+/// One of the shopper's returns as the account's Returns page lists it
+/// (`orders.myReturns`): the request, the item as its order froze it, the
+/// order it came from and today's photo of the product.
+struct ShopperReturn: Decodable, Identifiable, Hashable, Sendable {
+    let id: Int
+    let orderItemId: Int
+    let kind: String
+    let reason: String
+    let status: String
+    let declineReason: String?
+    let refundAmount: Money?
+    let refundPaidAt: Date?
+    let replacementReference: String?
+    let createdAt: Date
+    let orderReference: String
+    let productTitle: String
+    let variantTitle: String?
+    let quantity: Int
+    let photo: String?
+}
+
 /// What asking for a return answers: the request as written, its status
 /// already decided where a rule could decide it.
 struct RequestedReturn: Decodable, Sendable {
