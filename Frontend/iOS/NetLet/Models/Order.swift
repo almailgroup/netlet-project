@@ -67,8 +67,14 @@ struct OrderDetail: Decodable, Sendable {
     let parcels: [Parcel]
     let returns: [ReturnRequest]
     let documents: [OrderDocument]
+    /// Whether the shopper may cancel it themselves, and if not why — the
+    /// server's `shopperCancelState`.
+    let cancel: OrderCancelState
+    /// Each parcel as steps for "Track order" (`stepsForOrder`); nil from a
+    /// server older than tracking.
+    let steps: OrderSteps?
 
-    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents }
+    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -78,6 +84,19 @@ struct OrderDetail: Decodable, Sendable {
         parcels = try container.decodeIfPresent([Parcel].self, forKey: .parcels) ?? []
         returns = try container.decodeIfPresent([ReturnRequest].self, forKey: .returns) ?? []
         documents = try container.decodeIfPresent([OrderDocument].self, forKey: .documents) ?? []
+        cancel = try container.decodeIfPresent(OrderCancelState.self, forKey: .cancel) ?? OrderCancelState(cancellable: false, reason: nil)
+        steps = try container.decodeIfPresent(OrderSteps.self, forKey: .steps)
+    }
+
+    /// The lines that may be sent back for a refund now.
+    var refundable: [OrderLine] { lines.filter { mayAskReturn(for: $0) } }
+
+    /// Why the order can no longer be cancelled, said only while something in
+    /// it is still coming — an order that is over needs no sentence.
+    var cancelRefusal: String? {
+        guard !cancel.cancellable, let reason = cancel.reason, reason != "orders.cancelClosed", let steps, !steps.cancelled,
+              steps.parcels.contains(where: { $0.step != "delivered" }) else { return nil }
+        return reason
     }
 
     /// The newest return asked for on a line, if any.
@@ -96,6 +115,48 @@ struct OrderDetail: Decodable, Sendable {
     var caredFor: [Parcel] { parcels.filter { $0.arrivedAt != nil || $0.claim != nil } }
 
     var hasShipped: Bool { lines.contains { $0.fulfilment == "shipped" } }
+}
+
+/// `shopperCancelState`: cancellable, or the message key saying why not.
+struct OrderCancelState: Decodable, Hashable, Sendable {
+    let cancellable: Bool
+    let reason: String?
+}
+
+/// The order's parcels as steps — placed, being prepared, on the way,
+/// delivered — `stepsForOrder` on the server.
+struct OrderSteps: Decodable, Hashable, Sendable {
+    let placedAt: Date
+    let cancelled: Bool
+    let parcels: [ParcelSteps]
+
+    static let order = ["placed", "preparing", "onTheWay", "delivered"]
+}
+
+struct ParcelSteps: Decodable, Hashable, Identifiable, Sendable {
+    let key: String
+    let vendorName: String?
+    let destinationLabel: String?
+    let fast: Bool
+    let lineIds: [Int]
+    let step: String
+    let deliveredAt: Date?
+    let promise: Promise?
+
+    var id: String { key }
+
+    /// What the seller said about when: a window of days, made to order, or a
+    /// pre-order's release date.
+    struct Promise: Decodable, Hashable, Sendable {
+        let kind: String
+        let from: Date?
+        let to: Date?
+        let late: Bool?
+        let at: Date?
+    }
+
+    /// How far along the four steps it is, 0 to 3.
+    var reached: Int { OrderSteps.order.firstIndex(of: step) ?? 0 }
 }
 
 struct OrderRecord: Decodable, Hashable, Sendable {

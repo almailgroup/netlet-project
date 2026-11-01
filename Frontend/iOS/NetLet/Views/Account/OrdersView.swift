@@ -225,6 +225,7 @@ struct OrderDetailView: View {
                     } else {
                         LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
                             VStack(alignment: .leading, spacing: 16) {
+                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() })
                                 lines(detail, reload: { await model.load() })
                                 OrderDocumentsList(documents: detail.documents)
                                 if detail.hasShipped { TrackingPanel(reference: reference) }

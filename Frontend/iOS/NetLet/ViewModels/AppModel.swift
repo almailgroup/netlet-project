@@ -195,6 +195,9 @@ final class AppModel {
     /// A department the Categories tab opens onto its subcategories when it
     /// first appears — the screenshots' `-NetLetOpen categories:<slug>`.
     var categoriesOpen: String?
+    /// The order screen opens with this sheet up — "track" or "refund" — for
+    /// the screenshots' `track:` and `refund:` hooks.
+    var orderSheet: String?
     private(set) var memberCode: String?
     /// Whether this account has joined the affiliate programme, a suspended
     /// member included — what decides whether "Join" is offered. Nil until
@@ -377,9 +380,11 @@ final class AppModel {
         case "orders":
             selectedTab = .account
             accountPath = NavigationPath([Route.orders])
-        case "order":
+        case "order", "track", "refund":
+            // `track:` and `refund:` open the order with that sheet up.
             guard let value else { return }
             selectedTab = .account
+            orderSheet = parts[0] == "order" ? nil : parts[0]
             accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
         case "profile":
             selectedTab = .account

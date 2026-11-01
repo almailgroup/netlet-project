@@ -26,11 +26,11 @@ import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Select } from "@/components/ui/Select";
 
-type Detail = NonNullable<inferRouterOutputs<AppRouter>["orders"]["get"]>;
+export type Detail = NonNullable<inferRouterOutputs<AppRouter>["orders"]["get"]>;
 type Line = Detail["lines"][number];
 type Request = Detail["returns"][number];
 
-const REASON_LABEL: Record<ReturnReason, MessageKey> = {
+export const REASON_LABEL: Record<ReturnReason, MessageKey> = {
   damaged: "returns.reasonDamaged",
   defective: "returns.reasonDefective",
   wrongItem: "returns.reasonWrongItem",
@@ -51,6 +51,16 @@ const STATUS_LABEL: Record<string, MessageKey> = {
   exchanged: "returns.statusExchanged",
   cancelled: "returns.statusCancelled",
 };
+
+/**
+ * Whether a line may be sent back now: the window is open, nothing is in
+ * motion on it, and it has not already been refunded or swapped — the rule
+ * the server holds too. The order's "Request a refund" asks the same.
+ */
+export function mayRequestReturn(line: Pick<Line, "id" | "returnState">, requests: Request[]): boolean {
+  return line.returnState.returnable && !requests.some(request =>
+    request.orderItemId === line.id && (isOpenReturn(request.status) || request.status === "refunded" || request.status === "exchanged"));
+}
 
 export function LineReturn({ reference, currency, line, requests }: { reference: string; currency: string; line: Line; requests: Request[] }) {
   const { t, tError, locale } = useTranslation();
@@ -113,11 +123,7 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
     </div>
   ) : null;
 
-  /* Another request only when the window is open, nothing is in motion, and
-     the line has not already been refunded or swapped — the rule the server
-     holds too. */
-  const mayAsk = on && line.returnState.returnable && !requests.some(request =>
-    request.orderItemId === line.id && (isOpenReturn(request.status) || request.status === "refunded" || request.status === "exchanged"));
+  const mayAsk = on && mayRequestReturn(line, requests);
   if (!mayAsk) return status;
 
   if (!open) {

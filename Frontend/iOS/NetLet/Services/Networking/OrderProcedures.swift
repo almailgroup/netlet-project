@@ -39,6 +39,12 @@ extension API {
         let number: String
     }
 
+    /// How many lines the shopper's own cancel took back.
+    struct CancelledOrder: Decodable, Sendable {
+        let cancelled: Int
+    }
+
+    static let cancelOrder = Procedure<Reference, CancelledOrder>(mutation: "orders.cancel")
     static let requestReturn = Procedure<AskReturn, RequestedReturn>(mutation: "orders.requestReturn")
     static let cancelReturn = Procedure<ReturnId, Acknowledged>(mutation: "orders.cancelReturn")
     static let rateDelivery = Procedure<RateParcel, Acknowledged>(mutation: "orders.rateDelivery")

@@ -15,6 +15,7 @@
 import { z } from "zod";
 import { addressPartsInput, lastDay, pinInput, rowId } from "../core/schemas.js";
 import {
+  cancelOrderForShopper,
   FulfilmentRefused,
   getOrderFor,
   getOrderForUser,
@@ -22,6 +23,8 @@ import {
   lineForShopper,
   listOrdersForUser,
   orderForShopper,
+  OrderCancelRefused,
+  orderStepsFor,
   OrderRefused,
   placeOrder,
   ordersOnTheWay,
@@ -48,6 +51,7 @@ import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
 import { trackOrder, TrackingError } from "../services/tracking.js";
 import { checkVoucherAllowed, recordVoucherMiss } from "../services/rateLimit.js";
 import { returnStateFor, RETURN_WINDOW_DAYS } from "../../../Shared/commerce/returns.js";
+import { shopperCancelState } from "../../../Shared/commerce/orderCancel.js";
 
 export const ordersRouter = router({
   /**
@@ -112,6 +116,11 @@ export const ordersRouter = router({
         /* The invoice and any credit notes (3.6.6), issued here if a write
            at collection or refund missed them. */
         documents: await documentsForShopperOrder(ctx.user.id, input.reference),
+        /* Whether the shopper may take it back themselves, and if not why —
+           the rule `orders.cancel` asks again under a lock. */
+        cancel: shopperCancelState(found.order, found.lines),
+        /* Each parcel as steps for "Track order", with the store's estimate. */
+        steps: await orderStepsFor(found.order, found.lines),
         lines: found.lines.map(line => ({
           ...lineForShopper(line),
           /*
@@ -172,6 +181,24 @@ export const ordersRouter = router({
       note: z.string().max(MAX_RETURN_NOTE + 100).nullish(),
     }))
     .mutation(async ({ ctx, input }) => returnGuard(() => requestReturn(ctx.user.id, input))),
+
+  /**
+   * Cancel the whole order while nothing in it has started (on the owner's
+   * word). Scoped by account in the data layer, so another shopper's
+   * reference is not found; refused with the reason once a store has begun.
+   */
+  cancel: protectedProcedure
+    .input(z.object({ reference: z.string().min(1).max(64) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await cancelOrderForShopper(ctx.user.id, input.reference);
+      } catch (error) {
+        if (error instanceof OrderCancelRefused) {
+          throw new TRPCError({ code: error.reason === "orders.detailMissing" ? "NOT_FOUND" : "CONFLICT", message: error.reason });
+        }
+        throw error;
+      }
+    }),
 
   /** Withdraw a return before the item has been collected. */
   cancelReturn: protectedProcedure

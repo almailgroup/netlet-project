@@ -42,6 +42,9 @@ import {
 import type { Pool } from "../../../Shared/commerce/preorder.js";
 import { nextStates } from "../../../Shared/commerce/fulfilment.js";
 import { orderProgress, type OrderProgress } from "../../../Shared/commerce/orderProgress.js";
+import { shopperCancelState, type CancelRefusal } from "../../../Shared/commerce/orderCancel.js";
+import { stepsForOrder, type OrderTrack } from "../../../Shared/commerce/orderTracking.js";
+import { isDeliverySpeed, speedForLine } from "../../../Shared/commerce/deliverySpeed.js";
 import { mayMoveLine } from "../../../Shared/commerce/netletFulfilment.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
@@ -1510,6 +1513,133 @@ export async function closeIfNothingLeft(db: Db, orderId: number): Promise<boole
     await tx.update(priceOffers).set({ usedOnOrderId: null }).where(eq(priceOffers.usedOnOrderId, orderId));
     return true;
   });
+}
+
+/** Why the shopper's own cancel was refused, said as a message key. */
+export class OrderCancelRefused extends Error {
+  constructor(public readonly reason: CancelRefusal | "orders.detailMissing") {
+    super(reason);
+    this.name = "OrderCancelRefused";
+  }
+}
+
+/**
+ * The shopper cancels their own order while nothing in it has started
+ * (`shopperCancelState`), on the owner's word.
+ *
+ * **One transaction, under a lock on the order's lines.** A store moving a
+ * line to "preparing" at the same moment waits for this to finish and then
+ * finds the line cancelled (`orders.lineMoved`); the other way round, this
+ * reads the moved line and refuses with `orders.cancelStarted` — never half a
+ * basket cancelled. Every pending line goes back to the pool it was sold from,
+ * the seller's cancel's own `returnUnits`, and `closeIfNothingLeft` gives back
+ * the points, the gift card, the code and an agreed price inside the same
+ * transaction, so a cancel that fails half-way hands nothing back twice.
+ *
+ * Nobody is told by a notice: the shopper pressed it and the page says so, and
+ * a store has no notice kind for it yet (the enum is the schema's), so the
+ * store's desk shows the lines as cancelled.
+ */
+export async function cancelOrderForShopper(userId: number, reference: string): Promise<{ cancelled: number }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const [order] = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(and(eq(orders.reference, reference), eq(orders.userId, userId)))
+    .limit(1);
+  if (!order) throw new OrderCancelRefused("orders.detailMissing");
+  const products = await db.select({ productId: orderItems.productId }).from(orderItems).where(eq(orderItems.orderId, order.id));
+
+  /* A cancelled line puts its units back, which can bring a sold-out product
+     back for somebody waiting on it. */
+  return withProductAlerts(products.map(row => row.productId), () => db.transaction(async tx => {
+    const [locked] = await tx.select({ status: orders.status }).from(orders).where(eq(orders.id, order.id)).for("update");
+    const lines = await tx
+      .select({
+        id: orderItems.id,
+        fulfilment: orderItems.fulfilment,
+        variantId: orderItems.variantId,
+        quantity: orderItems.quantity,
+        preordered: orderItems.preordered,
+        centreId: orderItems.centreId,
+      })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, order.id))
+      .for("update");
+    const state = shopperCancelState(locked, lines);
+    if (!state.cancellable) throw new OrderCancelRefused(state.reason);
+
+    const pending = lines.filter(line => line.fulfilment === "pending");
+    const moved = await tx
+      .update(orderItems)
+      .set({ fulfilment: "cancelled", deliveredAt: null })
+      .where(and(eq(orderItems.orderId, order.id), eq(orderItems.fulfilment, "pending")))
+      .returning({ id: orderItems.id });
+    if (moved.length !== pending.length) throw new OrderCancelRefused("orders.cancelStarted");
+
+    for (const line of pending) {
+      if (line.variantId !== null) {
+        await returnUnits(tx as unknown as Db, line.variantId, line.quantity, line.preordered ? "preorder" : "stock", line.centreId);
+      }
+    }
+    await closeIfNothingLeft(tx as unknown as Db, order.id);
+    return { cancelled: moved.length };
+  }));
+}
+
+/**
+ * The order's parcels as steps (`stepsForOrder`), with each line's band read
+ * the way the bag reads it: the product's own over its store's, the store's
+ * fast band for a fast trip, nothing for a pre-order.
+ *
+ * The bands are today's, not frozen at the sale — an order stores no band —
+ * so the page says the date is the store's estimate rather than a promise.
+ */
+export async function orderStepsFor(
+  order: { placedAt: Date; status: string },
+  lines: (typeof orderItems.$inferSelect)[],
+): Promise<OrderTrack> {
+  const db = await getDb();
+  const productIds = [...new Set(lines.map(line => line.productId).filter((id): id is number => id !== null))];
+  const vendorIds = [...new Set(lines.map(line => line.vendorId).filter((id): id is number => id !== null))];
+  const productSpeeds = new Map<number, string | null>();
+  const vendorSpeeds = new Map<number, { regular: string | null; fast: string | null }>();
+  if (db && productIds.length > 0) {
+    for (const row of await db.select({ id: products.id, speed: products.deliverySpeed }).from(products).where(inArray(products.id, productIds))) {
+      productSpeeds.set(row.id, row.speed);
+    }
+  }
+  if (db && vendorIds.length > 0) {
+    for (const row of await db.select({ id: vendors.id, regular: vendors.deliverySpeed, fast: vendors.fastDeliverySpeed }).from(vendors).where(inArray(vendors.id, vendorIds))) {
+      vendorSpeeds.set(row.id, { regular: row.regular, fast: row.fast });
+    }
+  }
+
+  return stepsForOrder(order, lines.map(line => {
+    const store = line.vendorId === null ? undefined : vendorSpeeds.get(line.vendorId);
+    const fast = line.deliveryChoice === "fast";
+    const speed = fast
+      ? (isDeliverySpeed(store?.fast) ? store.fast : null)
+      : speedForLine({ preordered: line.preordered }, store?.regular, line.productId === null ? null : productSpeeds.get(line.productId));
+    return {
+      lineId: line.id,
+      vendorId: line.vendorId,
+      vendorName: line.vendorName,
+      productTitle: line.productTitle,
+      variantTitle: line.variantTitle,
+      quantity: line.quantity,
+      fulfilment: line.fulfilment,
+      destination: line.destination,
+      centreId: line.centreId,
+      deliveryChoice: line.deliveryChoice,
+      deliveredAt: line.deliveredAt,
+      preordered: line.preordered,
+      preorderReleaseAt: line.preorderReleaseAt,
+      speed,
+    };
+  }));
 }
 
 /**

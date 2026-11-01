@@ -32,6 +32,18 @@ export function useDateFormat() {
     });
 }
 
+/** "Wed 14 Oct": a day somebody plans around, in Kuwait's calendar. */
+export function useShortDayFormat() {
+  const { isArabic } = useTranslation();
+  return (value: string | Date) =>
+    new Date(value).toLocaleDateString(isArabic ? "ar-KW-u-nu-latn" : "en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      timeZone: SHOP_TIME_ZONE,
+    });
+}
+
 /**
  * A moment rather than a day — a stock movement, an audit row, a message —
  * on the same rules, with the time on Kuwait's clock.

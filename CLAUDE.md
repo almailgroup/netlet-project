@@ -2450,6 +2450,59 @@ last one. An order closed under the old code stays `pending_payment` with every
 line cancelled — owed reads zero, so nobody collects on it, but its stored
 value was not returned.
 
+### What the shopper can do about an order
+
+**An opened order leads with Track order, Request a refund and Cancel order,
+on the owner's word** (`OrderActions` on the web, `OrderActionsBar` in the
+app), each drawn only where it does something.
+
+**Cancelling is the shopper's while nothing has started**
+(`Shared/commerce/orderCancel.ts`, `shopperCancelState`): an unpaid order whose
+every line still coming is `pending`. A line a store already cancelled does not
+hold the rest back; once a store has moved one to preparing, the button is gone
+and a sentence says why and that a refund follows arrival. `orders.cancel`
+(`cancelOrderForShopper`) asks the rule again **under a lock on the order's
+lines**, in one transaction, so a store pressing "preparing" at the same moment
+either waits and finds the line cancelled or wins and the cancel refuses whole —
+never half a basket. Every pending line goes back to its pool (`returnUnits`)
+and `closeIfNothingLeft` hands back the points, the gift card, the code and an
+agreed price inside the same transaction. It asks first, `ConfirmDialog` with
+"Keep order" as the safe answer and focus on it. **Nobody is told by a notice
+yet**: a store has no notice kind for it, and adding one is a value on the
+`notification_kind` enum — a migration, shown to the owner first — so the
+store's desk shows the lines cancelled. A gift claim an order marked bought
+stays bought after a cancel, because `wishlist_items` records no order.
+
+**Request a refund is the per-item return, gathered**: it lists the items
+`mayRequestReturn` allows (the return window open, nothing open, refunded or
+swapped on it — the rule `LineReturn` now exports), asks which, why and a note,
+and sends one `orders.requestReturn` with the refund chosen per item, decided
+as the per-item form's is. "Choose at least one item." comes with the press and
+goes with the tick. The per-item "Return or exchange" stays for an exchange.
+
+**Track order is each parcel as four steps** — placed, being prepared, on the
+way, delivered (`Shared/commerce/orderTracking.ts`, `stepsForOrder`, on
+`orders.get` as `steps`) — one card per parcel, the parcels `parcelsOf` makes,
+so the page and the driver's board name the same boxes. A parcel is at its
+least advanced line; a cancelled line leaves it; a returned one still arrived.
+**Only facts are dated**: when the order was placed and when a parcel arrived,
+because the days a parcel was packed and sent are not recorded (two timestamp
+columns on `order_items` would record them — a migration, shown first). What
+is still to come is the seller's word, said as theirs: the store's band (the
+product's own over the store's, the fast trip's for a fast line) counted in
+business days from the order, "made to order", or a pre-order's release date;
+a window that has passed with the parcel still coming says it is later than
+the estimate. The bands are today's — an order stores none — which the panel
+says ("Dates to come are the store's own estimate."). The live map
+(`TrackParcels`) is inside the panel now, and the panel opens by itself while a
+parcel is on the road, or from `/account/orders?order=…&track=1`. In the app
+both are sheets (`TrackOrderSheet`, `RefundSheet`) and Cancel is the system's
+alert. Measured on a production build against a local Postgres seeded with a
+pending, a part-way and a delivered order, at 320, 390 and 1440 in both
+languages: tracking open on the moving order with its sentence, the refund
+approved automatically, the cancel returning every unit and closing the order,
+axe clean on all three, no sideways scroll.
+
 ## The finance panel
 
 `/admin/finance` reports what the orders already froze. Almost none of this was
@@ -6067,7 +6120,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, and is 799 KB (233 KB) now, account security and deleting an account, and the cards' stars — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, and is 813 KB (237 KB) now, the order page's track, cancel and refund words — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

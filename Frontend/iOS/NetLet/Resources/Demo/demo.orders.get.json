@@ -74,6 +74,29 @@
             "issuedAt": "2026-10-02T11:49:17.598Z"
           }
         ],
+        "cancel": {
+          "cancellable": false,
+          "reason": "orders.cancelPaid"
+        },
+        "steps": {
+          "placedAt": "2026-10-01T18:22:28.239Z",
+          "cancelled": false,
+          "parcels": [
+            {
+              "key": "v2|dorder",
+              "vendorName": "Acme Electronics",
+              "destinationLabel": null,
+              "fast": false,
+              "lineIds": [
+                2
+              ],
+              "items": 3,
+              "step": "delivered",
+              "deliveredAt": "2026-10-17T22:33:45.311Z",
+              "promise": null
+            }
+          ]
+        },
         "lines": [
           {
             "id": 2,

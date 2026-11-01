@@ -413,6 +413,9 @@ function resolve(path: string, rawInput: unknown): unknown {
       return onePage([]);
     case "orders.get":
       return null;
+    /* The demo holds no orders, so there is none to cancel. */
+    case "orders.cancel":
+      throw new Error("orders.detailMissing");
     case "orders.onTheWay":
       return { count: 0, latest: null };
 

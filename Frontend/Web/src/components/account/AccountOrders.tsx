@@ -33,7 +33,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronDown, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Truck, type LucideIcon } from "lucide-react";
 import { Link, useSearch } from "wouter";
 import { useState } from "react";
-import { TrackParcels } from "@/components/account/TrackParcels";
+import { OrderActions } from "@/components/account/OrderActions";
 
 /**
  * The words for each state, and its colour.
@@ -127,6 +127,9 @@ export function AccountOrders() {
   /* Checkout lands here with `?order=` on the order it just placed, open. */
   const search = useSearch();
   const [openRef, setOpenRef] = useState<string | null>(() => new URLSearchParams(search).get("order"));
+  /* `&track=1` opens the order on its tracking — where a link about a parcel
+     on its way should land. */
+  const [trackRef] = useState<string | null>(() => (new URLSearchParams(search).get("track") === "1" ? new URLSearchParams(search).get("order") : null));
   const formatDate = useDateFormat();
 
   const list = trpc.orders.list.useQuery({ page });
@@ -145,7 +148,7 @@ export function AccountOrders() {
             <h3 id="linked-order" className="mb-3 text-[15px] font-bold text-[#0a285a]">
               {t("orders.orderHeading", { reference: openRef })}
             </h3>
-            <OrderLines reference={openRef} />
+            <OrderLines reference={openRef} trackFirst={trackRef === openRef} />
           </section>
         ) : null;
         if (!data || data.total === 0) return <>{linked}<EmptyOrders /></>;
@@ -206,7 +209,7 @@ export function AccountOrders() {
                     </button>
 
                     <div id={`order-${order.id}-lines`} hidden={!open} className="border-t border-[#e7edf5] px-5 py-4">
-                      {open ? <OrderLines reference={order.reference} /> : null}
+                      {open ? <OrderLines reference={order.reference} trackFirst={trackRef === order.reference} /> : null}
                     </div>
                   </li>
                 );
@@ -258,7 +261,7 @@ function OrderTotal({ order }: {
  * per line against the server's clock and a list of fifty orders would resolve
  * fifty windows nobody has asked to see.
  */
-function OrderLines({ reference }: { reference: string }) {
+function OrderLines({ reference, trackFirst = false }: { reference: string; trackFirst?: boolean }) {
   const { t, locale } = useTranslation();
   const returnsOn = useFeature("returns");
   const detail = trpc.orders.get.useQuery({ reference });
@@ -272,6 +275,7 @@ function OrderLines({ reference }: { reference: string }) {
 
         return (
           <>
+          <OrderActions reference={reference} detail={data} trackFirst={trackFirst} />
           <ul className="space-y-4">
             {data.lines.map(line => {
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;
@@ -342,8 +346,6 @@ function OrderLines({ reference }: { reference: string }) {
               </ul>
             </section>
           ) : null}
-          {/* Live tracking (3.4.3), while anything is on the road. */}
-          {data.lines.some(line => line.fulfilment === "shipped") ? <TrackParcels reference={reference} /> : null}
           <ParcelCare reference={reference} currency={data.order.currency} parcels={data.parcels} />
           </>
         );

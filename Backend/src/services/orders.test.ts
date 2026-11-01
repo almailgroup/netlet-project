@@ -1671,3 +1671,95 @@ describe("an address as its parts", () => {
       .rejects.toThrow("address.badPaci");
   });
 });
+
+/* The shopper takes back their own order while nothing in it has started
+   (on the owner's word). */
+describe("cancelOrderForShopper", () => {
+  async function shopperOrder(lines: { variantId: number; quantity: number }[], extra: Record<string, unknown> = {}) {
+    const placed = await ordersModule.placeOrder(await basket(lines, ids.shopper), { ...DETAILS, userId: ids.shopper, ...extra });
+    const rows = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    return { placed, rows };
+  }
+  const statusOf = async (orderId: number) => (await db.select().from(orders).where(eq(orders.id, orderId)))[0].status;
+
+  it("cancels every line, puts the units back and closes the order", async () => {
+    const { placed } = await shopperOrder([{ variantId: ids.lampVariant, quantity: 2 }, { variantId: ids.kettleVariant, quantity: 1 }]);
+    expect(await stockOf(ids.lampVariant)).toBe(8);
+
+    expect(await ordersModule.cancelOrderForShopper(ids.shopper, placed.order.reference)).toEqual({ cancelled: 2 });
+    expect(await statusOf(placed.order.id)).toBe("cancelled");
+    expect(await stockOf(ids.lampVariant)).toBe(10);
+    expect(await stockOf(ids.kettleVariant)).toBe(4);
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(lines.every(line => line.fulfilment === "cancelled")).toBe(true);
+  });
+
+  it("gives the points back, as the seller's cancel of the last line does", async () => {
+    await db.delete(pointEntries);
+    await db.insert(pointEntries).values({ userId: ids.shopper, points: 500, reason: "admin_adjustment" });
+    const { placed } = await shopperOrder([{ variantId: ids.lampVariant, quantity: 1 }], { usePoints: true });
+    expect(placed.order.pointsSpent).toBeGreaterThan(0);
+
+    await ordersModule.cancelOrderForShopper(ids.shopper, placed.order.reference);
+    const total = (await db.select().from(pointEntries).where(eq(pointEntries.userId, ids.shopper))).reduce((sum, row) => sum + row.points, 0);
+    expect(total).toBe(500);
+  });
+
+  it("hands a pre-order back to the pre-order allowance", async () => {
+    const { placed } = await shopperOrder([{ variantId: ids.pressVariant, quantity: 1 }]);
+    expect(await preorderStockOf(ids.pressVariant)).toBe(2);
+    await ordersModule.cancelOrderForShopper(ids.shopper, placed.order.reference);
+    expect(await preorderStockOf(ids.pressVariant)).toBe(3);
+    expect(await stockOf(ids.pressVariant)).toBe(0);
+  });
+
+  it("is not held back by a line the store already cancelled", async () => {
+    const { placed, rows } = await shopperOrder([{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }]);
+    await ordersModule.setLineFulfilment(otherActor(), rows.find(row => row.vendorId === ids.other)!.id, "cancelled");
+    expect(await ordersModule.cancelOrderForShopper(ids.shopper, placed.order.reference)).toEqual({ cancelled: 1 });
+    expect(await statusOf(placed.order.id)).toBe("cancelled");
+    expect(await stockOf(ids.kettleVariant)).toBe(4);
+  });
+
+  it("refuses once a store has started, and changes nothing", async () => {
+    const { placed, rows } = await shopperOrder([{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }]);
+    await ordersModule.setLineFulfilment(acmeActor(), rows.find(row => row.vendorId === ids.acme)!.id, "preparing");
+
+    await expect(ordersModule.cancelOrderForShopper(ids.shopper, placed.order.reference)).rejects.toMatchObject({ reason: "orders.cancelStarted" });
+    expect(await statusOf(placed.order.id)).toBe("pending_payment");
+    expect(await stockOf(ids.kettleVariant)).toBe(3);
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(lines.map(line => line.fulfilment).sort()).toEqual(["pending", "preparing"]);
+  });
+
+  it("refuses a second press, a collected order and somebody else's", async () => {
+    const { placed } = await shopperOrder([{ variantId: ids.lampVariant, quantity: 1 }]);
+    await ordersModule.cancelOrderForShopper(ids.shopper, placed.order.reference);
+    await expect(ordersModule.cancelOrderForShopper(ids.shopper, placed.order.reference)).rejects.toMatchObject({ reason: "orders.cancelClosed" });
+    expect(await stockOf(ids.lampVariant)).toBe(10);
+
+    const paid = await shopperOrder([{ variantId: ids.lampVariant, quantity: 1 }]);
+    await db.update(orders).set({ status: "paid" }).where(eq(orders.id, paid.placed.order.id));
+    await expect(ordersModule.cancelOrderForShopper(ids.shopper, paid.placed.order.reference)).rejects.toMatchObject({ reason: "orders.cancelPaid" });
+
+    const theirs = await shopperOrder([{ variantId: ids.lampVariant, quantity: 1 }]);
+    await expect(ordersModule.cancelOrderForShopper(ids.admin, theirs.placed.order.reference)).rejects.toMatchObject({ reason: "orders.detailMissing" });
+    expect(await statusOf(theirs.placed.order.id)).toBe("pending_payment");
+  });
+
+  it("tracks each store's parcel with the store's band, the fast trip's for a fast line", async () => {
+    await db.update(vendors).set({ deliverySpeed: "two_to_four" }).where(eq(vendors.id, ids.acme));
+    try {
+      const { placed, rows } = await shopperOrder([{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }]);
+      const steps = await ordersModule.orderStepsFor(placed.order, rows);
+      const acmeParcel = steps.parcels.find(parcel => parcel.vendorName === "Acme")!;
+      const otherParcel = steps.parcels.find(parcel => parcel.vendorName === "Other")!;
+      expect(acmeParcel.step).toBe("placed");
+      expect(acmeParcel.promise).toMatchObject({ kind: "window" });
+      /* A store that named no band is promised nothing. */
+      expect(otherParcel.promise).toBeNull();
+    } finally {
+      await db.update(vendors).set({ deliverySpeed: null }).where(eq(vendors.id, ids.acme));
+    }
+  });
+});
