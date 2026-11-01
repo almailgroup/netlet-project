@@ -25,12 +25,13 @@ import { Thumb } from "@/components/product/Thumb";
 import { appPath } from "@/lib/basePath";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
-import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
+import { isExpressEligible, productStars, savingsPercent } from "@shared/commerce/productDetail";
 import { AvailabilityLine } from "@/components/product/Availability";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
 import { lineCeiling, roomFor } from "@shared/commerce/typedQuantity";
-import { ArrowRight, ShoppingBag, Star, X, Zap } from "lucide-react";
+import { StarRow } from "@/components/ui/StarRow";
+import { ArrowRight, ShoppingBag, X, Zap } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { FollowProduct } from "@/components/product/FollowProduct";
@@ -75,7 +76,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const price = variant?.price ?? product.priceRange.min;
   const compareAt = variant?.compareAtPrice ?? null;
   const savings = savingsPercent(price, compareAt);
-  const rating = productRating(product.attributes);
+  const rating = productStars(product);
   const inStock = Boolean(variant?.availableForSale);
   /* What is left of this option once the bag's own is counted — the product
      page's rule: the stepper stops there, and a number chosen for another
@@ -169,10 +170,14 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
               <h2 id={titleId} dir="auto" className="mt-1 text-[22px] font-extrabold leading-tight tracking-[-.02em] text-[#0a285a] lg:text-[28px]">{product.title}</h2>
 
               {rating ? (
-                <div className="mt-2.5 flex items-center gap-1.5 text-[14px]">
-                  <Star className="size-4 fill-[#ffb800] text-[#ffb800]" aria-hidden />
-                  <strong className="font-extrabold text-[#1f2229]">{rating.value}</strong>
-                  {rating.count ? <span className="ink-muted">({rating.count})</span> : null}
+                <div
+                  role="img"
+                  className="mt-2.5 flex items-center gap-1.5 text-[14px]"
+                  aria-label={rating.count ? t("product.ratingAriaCount", { value: rating.value, max: rating.scaleMax, count: rating.count }) : t("product.ratingAria", { value: rating.value, max: rating.scaleMax })}
+                >
+                  <StarRow value={rating.value} scaleMax={rating.scaleMax} size={15} />
+                  <strong aria-hidden className="font-extrabold text-[#1f2229]">{rating.value.toFixed(1)}</strong>
+                  {rating.count ? <span aria-hidden className="ink-muted">({rating.count})</span> : null}
                 </div>
               ) : null}
 

@@ -20,6 +20,13 @@
  * itself. What is waiting is said on the row ("2 unread"), from
  * `useAccountSignals`, the header's own reader.
  *
+ * **Help is the help centre's row, and the affiliate programme is the card
+ * at the top, on the owner's word** — each was on the page twice. "Help from
+ * NetLet" went: the help centre's "Message NetLet" opens the same
+ * conversation, and an answer from NetLet is a notice under the bell, which
+ * opens it too. The affiliate row went: the card above the rows offers
+ * joining to somebody not in and opens the programme for a member.
+ *
  * **The language is here because the phone's bar no longer carries it** — the
  * delivery location took its place — and it is a setting that follows the
  * account between devices. Two buttons, each written in its own language, so
@@ -71,7 +78,13 @@ import { Link } from "wouter";
 type User = { name: string | null; email: string };
 
 /** A row's look: what it opens, its icon and its name. */
-type Row = { id: string; label: MessageKey; icon: ComponentType<{ className?: string; strokeWidth?: number }> };
+type Row = {
+  id: string;
+  label: MessageKey;
+  icon: ComponentType<{ className?: string; strokeWidth?: number }>;
+  /** Where the row goes when it is not a section of the account. */
+  href?: string;
+};
 
 /*
  * The cards, top to bottom: what somebody shops with, what talks to them, what
@@ -90,10 +103,9 @@ const CARDS: Row[][] = [
   ],
   [
     { id: "preferences", label: "account.sectionPreferences", icon: SlidersHorizontal },
-    { id: "help", label: "support.section", icon: LifeBuoy },
+    { id: "helpCentre", label: "footer.helpCentre", icon: LifeBuoy, href: "/help" },
   ],
   [
-    { id: "affiliate", label: "affiliate.section", icon: Megaphone },
     { id: "selling", label: "account.sectionSelling", icon: Store },
   ],
   [
@@ -120,6 +132,16 @@ export function AccountHome({ user, has, badge, onSignOut }: {
   const rewards = trpc.rewards.mine.useQuery(undefined, { staleTime: 60_000 });
   const affiliatesOn = useFeature("affiliates");
   const member = trpc.affiliates.code.useQuery(undefined, { enabled: affiliatesOn, staleTime: 5 * 60_000 });
+
+  // Join for somebody the server says is not in; open for a member, or for
+  // somebody whose account the page keeps while the switch is off.
+  const affiliate: "join" | "open" | null = !has("affiliate")
+    ? null
+    : !affiliatesOn || member.data?.joined
+      ? "open"
+      : member.isSuccess
+        ? "join"
+        : null;
 
   const orderPhotos = [...new Set((orders.data?.rows ?? []).flatMap(row => row.summary?.photos ?? []))].slice(0, 4);
   const savedPhotos = saved.products.map(product => product.images[0]?.url ?? null).slice(0, 4);
@@ -197,25 +219,27 @@ export function AccountHome({ user, has, badge, onSignOut }: {
         </span>
       </Link>
 
-      {/* Affiliate marketing, offered here to somebody who has not joined, on
-          the owner's word: the profile is where they asked for it to be
-          found, and a row three cards down is where nobody would. */}
-      {affiliatesOn && member.isSuccess && !member.data?.joined ? (
+      {/* Affiliate marketing is this card and no row, on the owner's word:
+          joining for somebody not in, the programme for a member — or for
+          somebody who holds an account while the switch is off, since a
+          switch closes the door and never locks anybody in. Drawn once the
+          server has answered, so it never says Join to a member. */}
+      {affiliate ? (
         <Link href="/account/affiliate" className="flex items-center gap-4 overflow-hidden rounded-[1.35rem] bg-[#0a285a] p-4 text-white hover:bg-[#0d3372] sm:p-5">
           <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10">
             <Megaphone className="size-6 text-[#ffab85]" />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[16px] font-bold">{t("affiliate.section")}</span>
-            <span className="mt-0.5 block text-[13px] leading-5 text-[#d6deea]">{t("affiliate.promoBody")}</span>
+            <span className="mt-0.5 block text-[13px] leading-5 text-[#d6deea]">{t(affiliate === "join" ? "affiliate.promoBody" : "affiliate.promoMemberBody")}</span>
           </span>
-          <span className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[#0a285a]">{t("affiliate.promoJoin")}</span>
+          <span className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[#0a285a]">{t(affiliate === "join" ? "affiliate.promoJoin" : "affiliate.promoOpen")}</span>
         </Link>
       ) : null}
 
       <nav aria-label={t("account.menu")} className="space-y-3">
         {CARDS.map((rows, index) => {
-          const shown = rows.filter(row => row.id === "language" || row.id === "currency" || row.id === "signout" || has(row.id));
+          const shown = rows.filter(row => row.id === "language" || row.id === "currency" || row.id === "signout" || row.href || has(row.id));
           if (!shown.length) return null;
           return (
             <ul key={index} className={`${PANEL} divide-y divide-dashed divide-[#e3e6ec] px-5`}>
@@ -249,7 +273,7 @@ function RowLink({ row, waiting }: { row: Row; waiting: string | null }) {
   const { t } = useTranslation();
   const Icon = row.icon;
   return (
-    <Link href={`/account/${row.id}`} className="-mx-5 flex min-h-[64px] items-center gap-3.5 px-5 hover:bg-[#f0f2f5]">
+    <Link href={row.href ?? `/account/${row.id}`} className="-mx-5 flex min-h-[64px] items-center gap-3.5 px-5 hover:bg-[#f0f2f5]">
       <Icon className={ICON} strokeWidth={1.75} aria-hidden />
       <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t(row.label)}</span>
       {waiting ? <span className="shrink-0 rounded-full bg-[#f2683a] px-2 py-0.5 text-[12px] font-bold text-[#0a285a]">{waiting}</span> : null}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { descriptionBlocks, isExpressEligible, productRating, savingsPercent, specifications, withUnit } from "./productDetail.js";
+import { descriptionBlocks, isExpressEligible, productRating, productStars, savingsPercent, specifications, starFills, withUnit } from "./productDetail.js";
 import type { ProductAttribute } from "./types.js";
 
 const kwd = (amount: string) => ({ amount, currencyCode: "KWD" });
@@ -64,6 +64,44 @@ describe("productRating", () => {
       attribute("reviews", "rating_count", "lots"),
     ]);
     expect(rating?.count).toBeNull();
+  });
+});
+
+describe("productStars", () => {
+  const typed: ProductAttribute[] = [
+    { namespace: "reviews", key: "rating", value: "3.2", type: "number" },
+    { namespace: "reviews", key: "rating_count", value: "9", type: "number" },
+  ] as ProductAttribute[];
+
+  it("draws the shop's own reviews ahead of a score the listing carries", () => {
+    expect(productStars({ attributes: typed, reviewSummary: { average: 4.6, count: 12 } })).toEqual({ value: 4.6, scaleMax: 5, count: 12 });
+  });
+
+  it("falls back to the listing's own score only with no review", () => {
+    expect(productStars({ attributes: typed, reviewSummary: null })).toEqual({ value: 3.2, scaleMax: 5, count: 9 });
+    expect(productStars({ attributes: typed, reviewSummary: { average: 0, count: 0 } })).toEqual({ value: 3.2, scaleMax: 5, count: 9 });
+    expect(productStars({ attributes: typed })).toEqual({ value: 3.2, scaleMax: 5, count: 9 });
+  });
+
+  it("draws nothing for a product with neither", () => {
+    expect(productStars({ attributes: [], reviewSummary: null })).toBeNull();
+  });
+});
+
+describe("starFills", () => {
+  it("rounds to the nearest half star", () => {
+    expect(starFills(4.6)).toEqual(["full", "full", "full", "full", "half"]);
+    expect(starFills(4.2)).toEqual(["full", "full", "full", "full", "empty"]);
+    expect(starFills(4.3)).toEqual(["full", "full", "full", "full", "half"]);
+    expect(starFills(4.8)).toEqual(["full", "full", "full", "full", "full"]);
+    expect(starFills(1)).toEqual(["full", "empty", "empty", "empty", "empty"]);
+  });
+
+  it("puts another scale out of five and holds the row to its ends", () => {
+    expect(starFills(9, 10)).toEqual(["full", "full", "full", "full", "half"]);
+    expect(starFills(7, 5)).toEqual(["full", "full", "full", "full", "full"]);
+    expect(starFills(-1)).toEqual(["empty", "empty", "empty", "empty", "empty"]);
+    expect(starFills(3, 0)).toEqual(["empty", "empty", "empty", "empty", "empty"]);
   });
 });
 

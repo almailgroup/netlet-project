@@ -18,6 +18,7 @@
           "deliveryProvider": "Aramex",
           "tags": [],
           "attributes": [],
+          "reviewSummary": null,
           "media": [
             {
               "url": "/departments/electronics.webp",
@@ -89,6 +90,7 @@
           "deliveryProvider": "Aramex",
           "tags": [],
           "attributes": [],
+          "reviewSummary": null,
           "media": [],
           "images": [],
           "priceRange": {
@@ -293,6 +295,7 @@
           "deliveryProvider": null,
           "tags": [],
           "attributes": [],
+          "reviewSummary": null,
           "media": [
             {
               "url": "/departments/beauty.webp",
@@ -359,6 +362,7 @@
             "fresh"
           ],
           "attributes": [],
+          "reviewSummary": null,
           "media": [
             {
               "url": "http://localhost:5000/brand/collection-home.svg",

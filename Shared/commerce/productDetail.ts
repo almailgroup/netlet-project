@@ -106,6 +106,44 @@ export function productRating(attributes: ProductAttribute[]): ProductRating | n
 }
 
 /**
+ * The score a product's stars draw, wherever they are drawn — the card, the
+ * preview, the product page, the rating filter and the search preview's
+ * structured data — so no two of them can disagree.
+ *
+ * **The shop's own reviews first**: the visible reviews of this product,
+ * measured on the read (`reviewSummary`), out of five with their count. Only
+ * a product nobody has reviewed falls back to a score its listing carries
+ * (`productRating`), which is what every card showed before reviews were
+ * counted for it.
+ */
+export function productStars(product: Pick<Product, "attributes" | "reviewSummary">): ProductRating | null {
+  const measured = product.reviewSummary;
+  if (measured && measured.count > 0 && Number.isFinite(measured.average)) {
+    return { value: measured.average, scaleMax: 5, count: measured.count };
+  }
+  return productRating(product.attributes);
+}
+
+export type StarFill = "full" | "half" | "empty";
+
+/** How many stars a row draws. */
+export const STAR_COUNT = 5;
+
+/**
+ * Five stars for a score, each full, half or empty: the score put out of five
+ * and rounded to the nearest half, the way a row of stars is read. 4.3 draws
+ * four and a half, 4.2 four. The app's `StarFill.row` is the same rule.
+ */
+export function starFills(value: number, scaleMax = 5): StarFill[] {
+  const outOfFive = scaleMax > 0 ? (value / scaleMax) * STAR_COUNT : 0;
+  const halves = Math.round(Math.min(Math.max(outOfFive, 0), STAR_COUNT) * 2);
+  return Array.from({ length: STAR_COUNT }, (_, index) => {
+    const left = halves - index * 2;
+    return left >= 2 ? "full" : left === 1 ? "half" : "empty";
+  });
+}
+
+/**
  * Whether the product is flagged for NetLet Express.
  *
  * Keyed off a tag because tags are free-form: a vendor flags a product for

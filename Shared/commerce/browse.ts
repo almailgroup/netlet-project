@@ -13,7 +13,7 @@
  * carries a count, because a filter that leads to an empty page is worse than
  * no filter at all.
  */
-import { isExpressEligible, productRating } from "./productDetail.js";
+import { isExpressEligible, productStars } from "./productDetail.js";
 import type { Product } from "./types.js";
 import { withPlacement } from "./placement.js";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "./deliverySpeed.js";
@@ -157,7 +157,7 @@ function discountOf(product: Product): number {
 }
 
 function ratingOf(product: Product): number {
-  const rating = productRating(product.attributes);
+  const rating = productStars(product);
   if (!rating) return 0;
   // Normalised to five, so a store publishing out of ten still sorts sanely.
   return (rating.value / rating.scaleMax) * 5;

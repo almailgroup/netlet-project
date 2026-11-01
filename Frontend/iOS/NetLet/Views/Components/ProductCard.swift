@@ -577,17 +577,17 @@ struct HeartButton: View {
     }
 }
 
-/// A star, the score and how many said so.
+/// The product's stars, on the owner's word: five, full, half or empty
+/// (`StarRow`), the score and how many said so — the web card's own row.
 struct RatingLine: View {
     let rating: Product.Rating
+    var starSize: CGFloat = 12
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "star.fill")
-                .font(.system(size: 11))
-                .foregroundStyle(Brand.star)
-            Text(rating.value.formatted(.number.precision(.fractionLength(0...1))))
+            StarRow(value: rating.value, scaleMax: rating.scaleMax, size: starSize)
+            Text(rating.value.formatted(.number.precision(.fractionLength(1))))
                 .font(.inter(12, .semibold))
                 .foregroundStyle(Brand.ink)
             if let count = rating.count {
@@ -867,9 +867,62 @@ struct ProductGrid: View {
     }
 }
 
+/// Five stars for a score, each full, half or empty — the web's `StarRow`
+/// over `starFills` (`StarFill.row`): gold for what the score reaches and a
+/// pale grey for the rest, a half cut down its middle from the leading edge,
+/// so the Arabic page fills from the right. For the eye alone: the line that
+/// holds it says the score.
+struct StarRow: View {
+    let value: Double
+    var scaleMax: Double = 5
+    var size: CGFloat = 12
+
+    var body: some View {
+        HStack(spacing: 1) {
+            ForEach(Array(StarFill.row(value, scaleMax: scaleMax).enumerated()), id: \.offset) { _, fill in
+                ZStack {
+                    star.foregroundStyle(Brand.starEmpty)
+                    if fill != .empty {
+                        star.foregroundStyle(Brand.star)
+                            .mask(alignment: .leading) {
+                                Rectangle().frame(width: fill == .full ? size : size / 2)
+                            }
+                    }
+                }
+                .frame(width: size, height: size)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var star: some View {
+        Image(systemName: "star.fill")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+    }
+}
+
+/// How each of five stars is drawn for a score — `starFills`: the score put
+/// out of five and rounded to the nearest half.
+enum StarFill: Equatable {
+    case full, half, empty
+
+    static func row(_ value: Double, scaleMax: Double = 5) -> [StarFill] {
+        let outOfFive = scaleMax > 0 ? value / scaleMax * 5 : 0
+        let halves = Int((min(max(outOfFive, 0), 5) * 2).rounded(.toNearestOrAwayFromZero))
+        return (0..<5).map { index in
+            let left = halves - index * 2
+            return left >= 2 ? .full : left == 1 ? .half : .empty
+        }
+    }
+}
+
 extension Product {
-    /// The review score, from the `reviews` namespace — `productRating`: a
-    /// number or `{ value, scale_max }`, and how many reviews when known.
+    /// The review score — `productStars`: the shop's own visible reviews
+    /// first, out of five with their count, and only without any the score a
+    /// listing carries in its `reviews` namespace (`productRating`: a number
+    /// or `{ value, scale_max }`, and how many reviews when known).
     struct Rating: Hashable, Sendable {
         let value: Double
         let scaleMax: Double
@@ -877,6 +930,9 @@ extension Product {
     }
 
     var rating: Rating? {
+        if let score = reviewSummary, score.count > 0, score.average.isFinite {
+            return Rating(value: score.average, scaleMax: 5, count: score.count)
+        }
         guard let raw = attributes.first(where: { $0.namespace == "reviews" && $0.key == "rating" })?.value else { return nil }
         var value: Double?
         var scaleMax = 5.0

@@ -124,6 +124,12 @@ final class FixtureDecodingTests: XCTestCase {
         let products = try await client.call(API.products, .init(first: 24))
         XCTAssertFalse(products.isEmpty)
         XCTAssertTrue(products.allSatisfy { !$0.variants.isEmpty })
+        // A card's stars are the shop's own reviews (`reviewSummary`), and a
+        // product nobody has reviewed draws none.
+        let rice = try XCTUnwrap(products.first { $0.handle == "basmati-rice-5kg" })
+        XCTAssertEqual(rice.rating, Product.Rating(value: 4.6, scaleMax: 5, count: 128))
+        let sandals = try XCTUnwrap(products.first { $0.handle == "leather-sandals" })
+        XCTAssertNil(sandals.reviewSummary)
         let product = try await client.call(API.product, .init(handle: products[0].handle, locale: "en"))
         XCTAssertNotNil(product)
         let counts = try await client.call(API.departmentCounts)

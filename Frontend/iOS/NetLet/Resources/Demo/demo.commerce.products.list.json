@@ -16,6 +16,10 @@
           "deliveryProvider": "Aramex",
           "tags": [],
           "attributes": [],
+          "reviewSummary": {
+            "average": 4.6,
+            "count": 128
+          },
           "media": [
             {
               "url": "/departments/grocery.webp",
@@ -80,6 +84,10 @@
           "deliveryProvider": "Aramex",
           "tags": [],
           "attributes": [],
+          "reviewSummary": {
+            "average": 4.8,
+            "count": 64
+          },
           "media": [
             {
               "url": "/departments/grocery.webp",
@@ -147,6 +155,10 @@
           "deliveryProvider": null,
           "tags": [],
           "attributes": [],
+          "reviewSummary": {
+            "average": 4.2,
+            "count": 17
+          },
           "media": [
             {
               "url": "/departments/style.webp",
@@ -211,6 +223,7 @@
           "deliveryProvider": null,
           "tags": [],
           "attributes": [],
+          "reviewSummary": null,
           "media": [
             {
               "url": "/departments/style.webp",

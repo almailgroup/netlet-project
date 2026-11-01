@@ -1168,6 +1168,22 @@ arrow or swipe, the first photo the only one fetched before the card is
 reached, an up or down swipe over the photo still scrolls the page, a tap still
 opens the product, and axe finds nothing.
 
+**A card carries the product's stars, on the owner's word** — five, each
+full, half or empty (`StarRow`, over `starFills`: the score out of five,
+rounded to the nearest half), the score to one decimal and how many said so,
+gold on a pale grey, a half filled from the inline start so the Arabic page
+fills from the right; one sentence to a screen reader (`role="img"`). **The
+score is the shop's own reviews, measured on the read** (`reviewSummary` on
+`Product`, one grouped query per shelf in `contextFor` — `reviewScores`, the
+visible reviews' average rounded as the product page's `summarise` rounds it),
+from the first review, since the count is drawn beside it; only a product
+nobody has reviewed falls back to a score its listing carries in the
+`reviews` namespace, which is all a card showed before. `productStars` is that
+one rule for the card, the preview, the product page, the rating filter and
+sort, and the structured data, so none of them can disagree; the app's
+`Product.rating` and `StarRow` are the same, `StarFill.row` tested on
+`starFills`' cases.
+
 **A card's photo runs to its edges and is taller than it is wide (4:5)**, on
 the owner's word: inset in a square it was a third of a phone card, the rest
 being words and buttons, and it is half the card now — 171 × 214 at 390 where
@@ -1942,7 +1958,14 @@ balance in a pill; then every section as a row in white cards — an outline
 icon, the name, what is waiting, a chevron — with dashed lines between, the
 language as a two-way switch in its own row (each choice in its own language),
 "Account security" (the password and deleting the account, `/account/security`)
-and signing out in red at the foot, still asking first. Cards follow what somebody came to do: shopping with, being told
+and signing out in red at the foot, still asking first. **Help and the
+affiliate programme are each on the page once, on the owner's word**: "Help
+from NetLet" left the rows, since the help centre's "Message NetLet" opens the
+same conversation and an answer from NetLet is a notice under the bell — on
+the web the help centre is a row in its place (the app has it under "Help and
+information") — and the affiliate row went, leaving the card above the rows,
+which offers joining to somebody not in and opens the programme ("Open") for
+a member, or for somebody holding an account while the switch is off. Cards follow what somebody came to do: shopping with, being told
 things, running something, the account itself. The tiles in four headed groups
 and the welcome heading went; the dates moved to the foot of "Your profile"
 (`AccountIdentity`), drawn as the home's rows — an icon, the words, the date at
@@ -6005,7 +6028,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, and is 786 KB (230 KB) now, the bag's stock ceiling and its words — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, and is 799 KB (233 KB) now, account security and deleting an account, and the cards' stars — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -6989,9 +7012,16 @@ far edge of the screen, read as the splash is laid out; rendered frame by frame
 at 390 × 844, 430 × 932 and an iPad's 1024 × 1366, the last frame is all window.
 Under Reduce Motion the roof fades in and the curtain fades away; the UI tests
 and the screenshots (`-NetLetOpen`) open straight onto their screen.
-`launch-chime.wav` (made for it: a soft whoosh into two bells, E6 then B6,
-over a low thump) lands at 300ms, `LaunchSplash.landing`, the instant the roof
-does. It plays in the `.ambient` category, so the silent switch silences it and
+**The sound is the animation's own, beat for beat, on the owner's word**
+("add a sound effect for the opening"): `launch-chime.wav`, made for this zoom
+— a soft rising pop as the roof springs up, a warm bell and a low thump as it
+lands at 300ms (`LaunchSplash.landing`, the haptic tap's instant), a short
+breath in at 0.62s, a whoosh through the zoom that rises and widens slow then
+fast, as the roof does, and a bright E major chord, arpeggiated up, as the
+shop appears at 1.42s, ringing on a second under it. The chime it replaced was
+written for the wordmark and was over before the zoom began. It plays in the
+`.ambient` category, so **the Ring/Silent switch silences it** — Apple's rule
+for a sound nobody needs, and the likeliest reason it was not heard — and
 music playing keeps playing.
 
 **It runs at the screen's own rate, up to 120 frames a second, on the owner's

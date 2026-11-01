@@ -28,7 +28,7 @@ import { trpc } from "@/lib/trpc";
 import { canUseGalleryKeyboard, galleryIndex, galleryOf } from "@shared/commerce/gallery";
 import {
   isExpressEligible,
-  productRating,
+  productStars,
   savingsPercent,
   merchantWarranty,
   specifications,
@@ -41,7 +41,8 @@ import { categoryMessageKey } from "@/content/homeLayout";
 import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
 import { lineCeiling, roomFor } from "@shared/commerce/typedQuantity";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
-import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Star, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { StarRow } from "@/components/ui/StarRow";
+import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
@@ -908,10 +909,10 @@ function StarRating({ value, scaleMax, count }: { value: number; scaleMax: numbe
     ? t("product.ratingAria", { value, max: scaleMax })
     : t("product.ratingAriaCount", { value, max: scaleMax, count });
   return (
-    <div className="mt-3 flex items-center gap-2 text-sm" aria-label={label}>
-      <Star className="size-4 fill-[#ffb800] text-[#ffb800]" aria-hidden />
-      <strong className="font-extrabold text-[#1f2229]">{value}</strong>
-      {count === null ? null : <span className="ink-muted">({count === 1 ? t("product.reviewOne") : t("product.reviews", { count })})</span>}
+    <div role="img" className="mt-3 flex items-center gap-2 text-sm" aria-label={label}>
+      <StarRow value={value} scaleMax={scaleMax} size={16} />
+      <strong aria-hidden className="font-extrabold text-[#1f2229]">{value.toFixed(1)}</strong>
+      {count === null ? null : <span aria-hidden className="ink-muted">({count === 1 ? t("product.reviewOne") : t("product.reviews", { count })})</span>}
     </div>
   );
 }
@@ -1260,7 +1261,7 @@ export default function ProductDetail() {
     </PageBody>
   );
 
-  const rating = productRating(product.attributes);
+  const rating = productStars(product);
   const express = isExpressEligible(product);
   const price = selectedVariant?.price ?? product.priceRange.min;
   const compareAtPrice = selectedVariant?.compareAtPrice ?? null;

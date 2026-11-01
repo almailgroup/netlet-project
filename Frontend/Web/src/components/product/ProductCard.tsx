@@ -29,7 +29,7 @@
  * split `.reveal-control` and `.pill-step` make, read here with
  * `useMediaQuery` because it changes what is drawn rather than how.
  */
-import { isExpressEligible, productRating, savingsPercent } from "@shared/commerce/productDetail";
+import { isExpressEligible, productStars, savingsPercent } from "@shared/commerce/productDetail";
 import { appPath } from "@/lib/basePath";
 import { cardCeiling } from "@shared/commerce/typedQuantity";
 import { CardGallery } from "@/components/product/CardGallery";
@@ -38,7 +38,9 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { PreorderBadge } from "@/components/product/Availability";
 import type { Product } from "@shared/commerce/types";
-import { Eye, Heart, Minus, Plus, ShoppingBag, Star, Trash2, Zap } from "lucide-react";
+import { Eye, Heart, Minus, Plus, ShoppingBag, Trash2, Zap } from "lucide-react";
+import { StarRow } from "@/components/ui/StarRow";
+import { formatCount } from "@/lib/format";
 import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
@@ -333,14 +335,14 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
    */
   note?: ReactNode;
 }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const money = useMoney();
   const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0];
   const price = variant?.price ?? product.priceRange.min;
   const compareAt = variant?.compareAtPrice;
   const canBuy = Boolean(variant?.availableForSale);
   const savings = savingsPercent(price, compareAt);
-  const rating = productRating(product.attributes);
+  const rating = productStars(product);
   const express = isExpressEligible(product);
   const href = `/products/${encodeURIComponent(product.handle)}`;
   /* The CSS's own line between a mouse and a finger (`.reveal-control`). */
@@ -421,11 +423,19 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           <Link href={href} dir="auto" className="line-clamp-2 hover:underline">{product.title}</Link>
         </h3>
 
+        {/* The product's own stars, on the owner's word: five, full, half or
+            empty (`StarRow`), the score and how many said so — the shop's
+            reviews first, a listing's own score only without them
+            (`productStars`). Said as one sentence to a screen reader. */}
         {rating ? (
-          <div className="mt-1 flex items-center gap-1" aria-label={rating.count ? t("product.ratingAriaCount", { value: rating.value, max: rating.scaleMax, count: rating.count }) : t("product.ratingAria", { value: rating.value, max: rating.scaleMax })}>
-            <Star className="size-3 fill-[#ffb800] text-[#ffb800]" aria-hidden />
-            <span className="text-[12px] font-semibold text-[#1f2229]">{rating.value}</span>
-            {rating.count ? <span className="text-[12px] ink-muted">({rating.count})</span> : null}
+          <div
+            role="img"
+            className="mt-1 flex items-center gap-1"
+            aria-label={rating.count ? t("product.ratingAriaCount", { value: rating.value, max: rating.scaleMax, count: rating.count }) : t("product.ratingAria", { value: rating.value, max: rating.scaleMax })}
+          >
+            <StarRow value={rating.value} scaleMax={rating.scaleMax} size={feature ? 14 : 12} />
+            <span aria-hidden className="text-[12px] font-semibold text-[#1f2229]">{rating.value.toFixed(1)}</span>
+            {rating.count ? <span aria-hidden className="text-[12px] ink-muted">({formatCount(rating.count, locale)})</span> : null}
           </div>
         ) : null}
 

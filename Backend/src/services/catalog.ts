@@ -86,28 +86,60 @@ type VendorNamed = Named & {
 
 /**
  * Vendor and category names for a set of products, in two queries rather than
- * two per product.
+ * two per product — and each product's review score, in one more.
  */
 async function contextFor(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
-  rows: { vendorId: number; categoryId: number | null }[],
+  rows: { id: number; vendorId: number; categoryId: number | null }[],
 ) {
   const vendorIds = [...new Set(rows.map(row => row.vendorId))];
   const categoryIds = [...new Set(rows.map(row => row.categoryId).filter((id): id is number => id !== null))];
 
-  const [vendorRows, categoryRows] = await Promise.all([
+  const [vendorRows, categoryRows, scoreById] = await Promise.all([
     vendorIds.length
       ? db.select({ id: vendors.id, slug: vendors.slug, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt, deliverySpeed: vendors.deliverySpeed, deliveryProvider: vendors.deliveryProvider, subscriptionPercent: vendors.subscriptionPercent }).from(vendors).where(inArray(vendors.id, vendorIds))
       : Promise.resolve([] as VendorNamed[]),
     categoryIds.length
       ? db.select({ id: categories.id, name: categories.name, nameAr: categories.nameAr }).from(categories).where(inArray(categories.id, categoryIds))
       : Promise.resolve([] as Named[]),
+    reviewScores(db, rows.map(row => row.id)),
   ]);
 
   const badgesById = await badgesFor(db, vendorRows);
   const vendorById = new Map(vendorRows.map(row => [row.id, { ...row, badges: badgesById.get(row.id) ?? [] }]));
   const categoryById = new Map(categoryRows.map(row => [row.id, row]));
-  return { vendorById, categoryById };
+  return { vendorById, categoryById, scoreById };
+}
+
+/** A product's visible reviews as its stars draw them. */
+type ReviewScore = { average: number; count: number };
+
+/**
+ * Each product's score over its visible reviews, for a whole shelf in one
+ * grouped query — a grid of twenty-four cards asking one at a time is the
+ * N+1 that makes a page slow on a phone. From the first review, unlike a
+ * store's: the count is drawn beside the stars, so "4.0 (1)" says what it
+ * stands on, where a store's rating is a claim about the whole store. The
+ * average is to one decimal, rounded the way `summarise` rounds the product
+ * page's own, so the card and the page say one figure.
+ */
+async function reviewScores(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  productIds: number[],
+): Promise<Map<number, ReviewScore>> {
+  if (!productIds.length) return new Map();
+  const rows = await db
+    .select({ productId: reviews.productId, count: sql<number>`count(*)::int`, total: sql<number>`sum(${reviews.rating})::int` })
+    .from(reviews)
+    .where(and(inArray(reviews.productId, [...new Set(productIds)]), isNull(reviews.hiddenAt)))
+    .groupBy(reviews.productId);
+  const scored = new Map<number, ReviewScore>();
+  for (const row of rows) {
+    const count = Number(row.count);
+    if (row.productId === null || count <= 0) continue;
+    scored.set(row.productId, { average: Math.round((Number(row.total) / count) * 10) / 10, count });
+  }
+  return scored;
 }
 
 /**
@@ -328,7 +360,7 @@ export async function getStorePage(slug: string, locale: LocalePick = "en"): Pro
     storeRatings(db, [row.id]),
     recentReviewsForStore(row.id),
   ]);
-  const { vendorById, categoryById } = await contextFor(db, shelf);
+  const { vendorById, categoryById, scoreById } = await contextFor(db, shelf);
 
   /* Either language rather than none: a store that wrote only Arabic still
      says something on the English page. */
@@ -351,7 +383,7 @@ export async function getStorePage(slug: string, locale: LocalePick = "en"): Pro
         cashOnDelivery: row.acceptsCod,
       },
     },
-    products: shelf.map(product => shape(product, vendorById, categoryById, locale)),
+    products: shelf.map(product => shape(product, vendorById, categoryById, locale, scoreById)),
     reviews: recent,
   };
 }
@@ -363,10 +395,11 @@ function shape(
   vendorById: Map<number, VendorNamed>,
   categoryById: Map<number, Named>,
   locale: LocalePick,
+  scoreById: Map<number, ReviewScore> = new Map(),
 ): Product {
   const vendor = vendorById.get(row.vendorId);
   const category = row.categoryId === null ? undefined : categoryById.get(row.categoryId);
-  return toStorefrontProduct(
+  const product = toStorefrontProduct(
     row,
     {
       vendorName: vendor?.name,
@@ -386,6 +419,7 @@ function shape(
     },
     locale,
   );
+  return { ...product, reviewSummary: scoreById.get(row.id) ?? null };
 }
 
 /**
@@ -413,8 +447,8 @@ export async function listProducts(
   }
 
   const rows = await publishedCatalog({ limit: options.first, categoryId });
-  const { vendorById, categoryById } = await contextFor(db, rows);
-  return rows.map(row => shape(row, vendorById, categoryById, options.locale ?? "en"));
+  const { vendorById, categoryById, scoreById } = await contextFor(db, rows);
+  return rows.map(row => shape(row, vendorById, categoryById, options.locale ?? "en", scoreById));
 }
 
 /**
@@ -425,11 +459,11 @@ export async function listProductsByIds(ids: number[], locale: LocalePick = "en"
   const db = await getDb();
   if (!db || ids.length === 0) return [];
   const rows = await publishedCatalog({ ids, limit: ids.length });
-  const { vendorById, categoryById } = await contextFor(db, rows);
+  const { vendorById, categoryById, scoreById } = await contextFor(db, rows);
   const byId = new Map(rows.map(row => [row.id, row]));
   return ids.flatMap(id => {
     const row = byId.get(id);
-    return row ? [shape(row, vendorById, categoryById, locale)] : [];
+    return row ? [shape(row, vendorById, categoryById, locale, scoreById)] : [];
   });
 }
 
@@ -442,8 +476,8 @@ export async function getProductByHandle(
   if (!db) return null;
   const row = await publishedProduct(handle);
   if (!row) return null;
-  const { vendorById, categoryById } = await contextFor(db, [row]);
-  return shape(row, vendorById, categoryById, locale);
+  const { vendorById, categoryById, scoreById } = await contextFor(db, [row]);
+  return shape(row, vendorById, categoryById, locale, scoreById);
 }
 
 /* ------------------------------------------------------------ departments --- */

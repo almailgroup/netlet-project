@@ -176,8 +176,8 @@ private struct ProductPage: View {
                 .padding(.top, 8)
             if let rating = product.rating {
                 HStack(spacing: 8) {
-                    Image(systemName: "star.fill").font(.system(size: 14)).foregroundStyle(Brand.star)
-                    Text(rating.value.formatted(.number.precision(.fractionLength(0...1))))
+                    StarRow(value: rating.value, scaleMax: rating.scaleMax, size: 15)
+                    Text(rating.value.formatted(.number.precision(.fractionLength(1))))
                         .font(.inter(14, .heavy))
                         .foregroundStyle(Brand.ink)
                     if let count = rating.count {

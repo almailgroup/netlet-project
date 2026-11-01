@@ -5,7 +5,7 @@
  * WhatsApp is testable rather than something you discover after sharing it.
  * The client applies the result to the document; nothing here touches the DOM.
  */
-import { isExpressEligible, productRating } from "./commerce/productDetail.js";
+import { isExpressEligible, productStars } from "./commerce/productDetail.js";
 import type { Product } from "./commerce/types.js";
 import { categorySlug } from "./commerce/browse.js";
 
@@ -220,7 +220,7 @@ export function productJsonLd(product: Product, siteUrl: string): Record<string,
      engines the whole product was out of stock. */
   const variant = product.variants.find(entry => entry.availableForSale) ?? product.variants[0];
   const price = variant?.price ?? product.priceRange.min;
-  const rating = productRating(product.attributes);
+  const rating = productStars(product);
 
   return {
     "@context": "https://schema.org",

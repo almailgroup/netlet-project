@@ -828,3 +828,21 @@ final class TypedQuantityTests: XCTestCase {
         XCTAssertEqual(TypedQuantity.draft("123456"), "1234")
     }
 }
+
+/// `StarFill.row` is `starFills` in `Shared/commerce/productDetail.ts`, on its own cases.
+final class StarFillTests: XCTestCase {
+    func testItRoundsToTheNearestHalfStar() {
+        XCTAssertEqual(StarFill.row(4.6), [.full, .full, .full, .full, .half])
+        XCTAssertEqual(StarFill.row(4.2), [.full, .full, .full, .full, .empty])
+        XCTAssertEqual(StarFill.row(4.3), [.full, .full, .full, .full, .half])
+        XCTAssertEqual(StarFill.row(4.8), [.full, .full, .full, .full, .full])
+        XCTAssertEqual(StarFill.row(1), [.full, .empty, .empty, .empty, .empty])
+    }
+
+    func testItPutsAnotherScaleOutOfFiveAndHoldsTheRowToItsEnds() {
+        XCTAssertEqual(StarFill.row(9, scaleMax: 10), [.full, .full, .full, .full, .half])
+        XCTAssertEqual(StarFill.row(7, scaleMax: 5), [.full, .full, .full, .full, .full])
+        XCTAssertEqual(StarFill.row(-1), [.empty, .empty, .empty, .empty, .empty])
+        XCTAssertEqual(StarFill.row(3, scaleMax: 0), [.empty, .empty, .empty, .empty, .empty])
+    }
+}

@@ -15,6 +15,9 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     let vendorBadges: [String]
     let tags: [String]
     let attributes: [ProductAttribute]
+    /// The product's own visible reviews, measured on the read — their
+    /// average and how many; absent with none, and from an older server.
+    let reviewSummary: ReviewScore?
     let images: [ProductImage]
     /// The photographs with any video between them; absent from an older server.
     let media: [ProductMedia]?
@@ -27,6 +30,11 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     let addons: [ProductAddon]?
     let sizeChart: SizeChart?
     let subscription: SubscriptionOffer?
+
+    struct ReviewScore: Decodable, Hashable, Sendable {
+        let average: Double
+        let count: Int
+    }
 
     struct SubscriptionOffer: Decodable, Hashable, Sendable {
         /// Already zero when the store's discount permit is not valid.

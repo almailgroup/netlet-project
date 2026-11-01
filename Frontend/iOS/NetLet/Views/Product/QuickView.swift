@@ -291,7 +291,7 @@ private struct QuickViewContent: View {
             .buttonStyle(.tap)
             .padding(.top, 4)
             if let rating = product.rating {
-                RatingLine(rating: rating).padding(.top, 8)
+                RatingLine(rating: rating, starSize: 14).padding(.top, 8)
             }
             if let variant {
                 PriceView(price: variant.price, was: variant.saving == nil ? nil : variant.compareAtPrice, large: true)

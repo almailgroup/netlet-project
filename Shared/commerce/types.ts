@@ -160,6 +160,13 @@ export type Product = {
    */
   attributes: ProductAttribute[];
   /**
+   * The product's own visible reviews, measured on the read: their average
+   * to one decimal and how many. Null with none. A card's stars are this
+   * first (`productStars`) and a score the listing carries only without it.
+   * Optional because a demo catalogue and a cart line's snapshot carry none.
+   */
+  reviewSummary?: { average: number; count: number } | null;
+  /**
    * The photographs, and only the photographs.
    *
    * Every card, rail, thumbnail and saved-item tile reads this, and each of

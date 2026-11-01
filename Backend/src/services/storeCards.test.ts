@@ -110,6 +110,39 @@ describe("listStoreCards", () => {
   });
 });
 
+describe("a product's stars", () => {
+  it("carries the average of its visible reviews and how many, and null with none", async () => {
+    const [shopper] = await db.insert(users).values({ email: "stars@netlet.test", name: "Star Gazer" }).returning();
+    const [rated] = await db.select({ id: products.id }).from(products).where(eq(products.vendorId, ids.busy)).limit(1);
+    const [order] = await db.insert(orders).values({
+      reference: `NL-STARS-${++sequence}`, email: "s@example.test", status: "paid",
+      itemsTotal: "5.000", deliveryTotal: "0.000", grandTotal: "5.000", commissionTotal: "0.000",
+    }).returning();
+    /* 5, 4 and 4 visible, and a hidden 1 that must not pull the average down. */
+    for (const [rating, hidden] of [[5, false], [4, false], [4, false], [1, true]] as const) {
+      const [line] = await db.insert(orderItems).values({
+        orderId: order.id, vendorId: ids.busy, productId: rated.id, vendorName: "Store", productTitle: "Thing",
+        unitPrice: "5.000", quantity: 1, lineTotal: "5.000", commissionAmount: "0.000", vendorNet: "5.000", fulfilment: "delivered",
+      }).returning();
+      await db.insert(reviews).values({
+        orderItemId: line.id, userId: shopper.id, vendorId: ids.busy, productId: rated.id, productTitle: "Thing", rating,
+        ...(hidden ? { hiddenAt: new Date() } : {}),
+      });
+    }
+
+    const shelf = await catalog.listProducts({ first: 50 });
+    const stars = shelf.find(product => product.id === String(rated.id));
+    expect(stars?.reviewSummary).toEqual({ average: 4.3, count: 3 });
+    /* Every other product on the shelf has none, and says so. */
+    expect(shelf.filter(product => product.id !== String(rated.id)).every(product => product.reviewSummary === null)).toBe(true);
+    /* The same figure on every read a card is drawn from. */
+    const [byId] = await catalog.listProductsByIds([rated.id]);
+    expect(byId.reviewSummary).toEqual({ average: 4.3, count: 3 });
+    const page = await catalog.getStorePage("busy", "en");
+    expect(page?.products.find(product => product.id === String(rated.id))?.reviewSummary).toEqual({ average: 4.3, count: 3 });
+  });
+});
+
 describe("getStorePage", () => {
   it("answers only for an approved store", async () => {
     expect(await catalog.getStorePage("suspended", "en")).toBeNull();

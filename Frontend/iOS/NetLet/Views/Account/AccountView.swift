@@ -42,12 +42,32 @@ struct AccountView: View {
     /// The cards of rows, top to bottom: what somebody shops with, what talks
     /// to them, what they run, and the account itself. "language" and
     /// "signout" are the two rows that are not sections.
+    ///
+    /// **"Help from NetLet" and the affiliate programme are not rows, on the
+    /// owner's word** — each was on the page twice. The help centre
+    /// (`MoreFromNetLet`) has "Message NetLet", which opens the same
+    /// conversation, and an answer from NetLet is a notice under the bell;
+    /// the affiliate programme is the card above the rows, joining for
+    /// somebody not in and opening the programme for a member.
     private static let cards: [[String]] = [
         ["addresses", "wishlists", "offers", "reviews", "subscriptions", "language", "currency"],
-        ["preferences", "help"],
-        ["affiliate", "selling"],
+        ["preferences"],
+        ["selling"],
         ["security", "signout"],
     ]
+
+    /// What the affiliate card offers: joining, or the programme itself.
+    private enum AffiliateOffer { case join, open }
+
+    /// Join for somebody the server says is not in; open for a member, or for
+    /// somebody whose account the page keeps while the switch is off — a
+    /// switch closes the door and never locks anybody in. Nothing until the
+    /// server has answered, so it never says Join to a member.
+    private var affiliateOffer: AffiliateOffer? {
+        guard entries.contains(where: { $0.id == "affiliate" }) else { return nil }
+        if !app.features.isOn("affiliates") || app.affiliateJoined == true { return .open }
+        return app.affiliateJoined == false ? .join : nil
+    }
 
     private func home(_ user: User) -> some View {
         ShopPage(root: true, header: false, refresh: { await app.session.restore(); await loadPreviews() }) {
@@ -67,12 +87,10 @@ struct AccountView: View {
                     }
                 }
                 pointsRow
-                // Affiliate marketing, offered here to somebody who has not
-                // joined, on the owner's word — the web's join card. Only once
-                // the server has said so, so it never flashes for a member,
-                // and never to a suspended one.
-                if app.features.isOn("affiliates") && app.affiliateJoined == false {
-                    affiliatePromo
+                // Affiliate marketing, on the owner's word — the web's card,
+                // and the programme's only way in on this page.
+                if let offer = affiliateOffer {
+                    affiliatePromo(offer)
                 }
                 ForEach(Array(Self.cards.enumerated()), id: \.offset) { index, ids in
                     let rows = ids.filter { id in id == "language" || id == "currency" || id == "signout" || entries.contains { $0.id == id } }
@@ -306,7 +324,7 @@ struct AccountView: View {
         .panel()
     }
 
-    private var affiliatePromo: some View {
+    private func affiliatePromo(_ offer: AffiliateOffer) -> some View {
         Button { app.push(.affiliate) } label: {
             HStack(spacing: 14) {
                 Image(systemName: "megaphone")
@@ -316,13 +334,13 @@ struct AccountView: View {
                     .background(Circle().fill(Color.white.opacity(0.1)))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(l.t("affiliate.section")).font(.inter(16, .bold)).foregroundStyle(.white)
-                    Text(l.t("affiliate.promoBody"))
+                    Text(l.t(offer == .join ? "affiliate.promoBody" : "affiliate.promoMemberBody"))
                         .font(.inter(13))
                         .foregroundStyle(Color(red: 214 / 255, green: 222 / 255, blue: 234 / 255))
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Text(l.t("affiliate.promoJoin"))
+                Text(l.t(offer == .join ? "affiliate.promoJoin" : "affiliate.promoOpen"))
                     .font(.inter(13, .bold))
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 14)
@@ -415,7 +433,6 @@ struct AccountView: View {
         switch entry.id {
         case "orders" where signals.onTheWay > 0: return l.t("header.onTheWay", ["count": "\(signals.onTheWay)"])
         case "notifications" where signals.unreadNotices > 0: return l.t("header.unreadCount", ["count": "\(signals.unreadNotices)"])
-        case "help" where signals.unreadSupport > 0: return l.t("header.unreadCount", ["count": "\(signals.unreadSupport)"])
         default: return nil
         }
     }

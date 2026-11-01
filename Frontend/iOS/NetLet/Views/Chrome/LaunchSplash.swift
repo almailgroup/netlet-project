@@ -26,10 +26,15 @@ import SwiftUI
 /// path — the screen with the roof cut out of it, even-odd — so growing it
 /// is redrawing a few curves a frame, never a mask over the whole screen.
 ///
-/// **The sound is `launch-chime.wav`** — a soft whoosh into two bells — and
-/// its landing is at 0.30s, the moment the roof lands. It plays in the
-/// `.ambient` category, so the silent switch silences it and somebody's music
-/// keeps playing under it.
+/// **The sound is `launch-chime.wav`, made for this animation, on the owner's
+/// word** ("add a sound effect for the opening"), beat for beat with the
+/// clock above: a soft rising pop as the roof springs up, a warm bell and a
+/// low thump as it lands at 0.30s (the haptic tap's instant), a short breath
+/// in at 0.62s, a whoosh through the zoom that rises and widens as the roof
+/// rushes at the viewer, and a bright chord as the shop appears at 1.42s,
+/// ringing on for a second under it. It plays in the `.ambient` category, so
+/// the silent switch silences it — Apple's rule for a sound nobody needs — and
+/// somebody's music keeps playing under it.
 ///
 /// A cold launch only: coming back from the background finds the app where it
 /// was. The shop loads underneath the whole time, so the wait is the
@@ -86,9 +91,11 @@ struct LaunchSplash: View {
     /// whatever else is playing.
     private func prepareSound() {
         guard let url = Bundle.main.url(forResource: "launch-chime", withExtension: "wav") else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.ambient, options: [.mixWithOthers])
+        try? session.setActive(true)
         guard let sound = try? AVAudioPlayer(contentsOf: url) else { return }
-        sound.volume = 0.7
+        sound.volume = 0.85
         sound.prepareToPlay()
         player = sound
     }
