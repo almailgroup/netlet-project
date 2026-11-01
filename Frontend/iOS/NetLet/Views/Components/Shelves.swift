@@ -171,7 +171,7 @@ struct DepartmentCardGrid: View {
         let departments = ReferenceData.shared.departments
         let slugs = departments.map(\.slug) + ["all"]
         let rows = stride(from: 0, to: slugs.count, by: columns).map { Array(slugs[$0..<min($0 + columns, slugs.count)]) }
-        return VStack(spacing: 12) {
+        return ScrollViewReader { proxy in VStack(spacing: 12) {
             ForEach(rows, id: \.self) { slugsInRow in
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(slugsInRow, id: \.self) { slug in
@@ -191,6 +191,7 @@ struct DepartmentCardGrid: View {
                 .fixedSize(horizontal: false, vertical: true)
                 if let open, let column = slugsInRow.firstIndex(of: open), let department = departments.first(where: { $0.slug == open }) {
                     SubcategoryPanel(department: department, column: column, columns: columns, counts: subCounts?[open], loading: subCounts == nil)
+                        .id(Self.panelID(open))
                         .transition(still ? .opacity : .opacity.combined(with: .offset(y: -8)))
                 }
             }
@@ -202,7 +203,21 @@ struct DepartmentCardGrid: View {
             }
             if let counts = try? await app.services.api.call(API.subcategoryCounts) { subCounts = counts }
         }
+        .onChange(of: open) { _, now in
+            // A department low on the page opens below the screen; its panel
+            // is brought up into view, by as little as that takes, the web's
+            // rule. A panel already in view does not move the page.
+            guard let now else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(still ? 30 : 300))
+                guard open == now else { return }
+                withAnimation(still ? nil : .easeInOut(duration: 0.3)) { proxy.scrollTo(Self.panelID(now)) }
+            }
+        }
+        }
     }
+
+    private static func panelID(_ slug: String) -> String { "subcategories-\(slug)" }
 
     private func countLine(_ slug: String) -> String {
         // One line on every tile, so the row keeps its height while the counts arrive.
