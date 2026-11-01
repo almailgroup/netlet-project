@@ -542,7 +542,10 @@ final class FixtureDecodingTests: XCTestCase {
 
     func testTheEditorsRulesAreTheShopsOwn() throws {
         let rules = ListingRules.shared
-        XCTAssertEqual(rules.fields("electronics").map(\.key), ["brand", "model", "ram", "storage", "warranty"])
+        XCTAssertEqual(rules.fields("electronics").map(\.key), ["type", "brand", "model", "ram", "storage", "warranty"])
+        let type = try XCTUnwrap(rules.fields("electronics").first)
+        XCTAssertEqual(type.optionsAr?.count, type.options?.count, "the Type row offers each subcategory in both languages")
+        XCTAssertEqual(type.shownOption("Mobile phones", .ar), "الهواتف")
         let existing = [
             ProductAttribute(namespace: "spec", key: "brand", label: "Brand", value: "Old"),
             ProductAttribute(namespace: "spec", key: "colourway", label: "Colourway", value: "Teal"),
