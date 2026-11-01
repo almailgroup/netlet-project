@@ -19,6 +19,7 @@
           "tags": [],
           "attributes": [],
           "reviewSummary": null,
+          "subcategory": "audio",
           "media": [
             {
               "url": "/departments/electronics.webp",
@@ -91,6 +92,7 @@
           "tags": [],
           "attributes": [],
           "reviewSummary": null,
+          "subcategory": null,
           "media": [],
           "images": [],
           "priceRange": {
@@ -296,6 +298,7 @@
           "tags": [],
           "attributes": [],
           "reviewSummary": null,
+          "subcategory": "fragrance",
           "media": [
             {
               "url": "/departments/beauty.webp",
@@ -363,6 +366,7 @@
           ],
           "attributes": [],
           "reviewSummary": null,
+          "subcategory": "fresh",
           "media": [
             {
               "url": "http://localhost:5000/brand/collection-home.svg",

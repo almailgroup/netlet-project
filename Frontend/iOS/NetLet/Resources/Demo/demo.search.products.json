@@ -41,6 +41,7 @@
               }
             ],
             "reviewSummary": null,
+            "subcategory": "wearables",
             "media": [
               {
                 "url": "http://localhost:5000/brand/collection-tech.svg",

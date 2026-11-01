@@ -130,6 +130,15 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(rice.rating, Product.Rating(value: 4.6, scaleMax: 5, count: 128))
         let sandals = try XCTUnwrap(products.first { $0.handle == "leather-sandals" })
         XCTAssertNil(sandals.reviewSummary)
+        // Filed by the server: what the Categories page counts and a subcategory page narrows to.
+        XCTAssertEqual(rice.subcategory, "pantry")
+        XCTAssertEqual(sandals.subcategory, "shoes")
+        var pantry = BrowseFilters()
+        pantry.sub = "pantry"
+        XCTAssertEqual(products.filter(pantry.admits).map(\.handle), ["basmati-rice-5kg"])
+        XCTAssertEqual(pantry.activeCount, 0)
+        let subCounts = try await client.call(API.subcategoryCounts)
+        XCTAssertEqual(subCounts["grocery"]?["pantry"], 2)
         let product = try await client.call(API.product, .init(handle: products[0].handle, locale: "en"))
         XCTAssertNotNil(product)
         let counts = try await client.call(API.departmentCounts)
@@ -465,6 +474,9 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(Route.from(link: "/products/basmati-rice-5kg"), .product(handle: "basmati-rice-5kg"))
         XCTAssertEqual(Route.from(link: "/category/all"), .department(slug: nil))
         XCTAssertEqual(Route.from(link: "/category/style?q=shirt"), .search(query: "shirt", department: "style"))
+        // A subcategory is its department narrowed — the Categories page's chips.
+        XCTAssertEqual(Route.from(link: "/category/grocery?sub=pantry"), .subcategory(department: "grocery", sub: "pantry"))
+        XCTAssertEqual(Route.from(link: "/category/all?sub=pantry"), .department(slug: nil))
         XCTAssertEqual(Route.from(link: "/search?q=kettle"), .search(query: "kettle"))
         XCTAssertNil(Route.from(link: "/somewhere/else"))
     }

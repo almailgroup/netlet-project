@@ -53,6 +53,7 @@ import type { Product } from "@shared/commerce/types";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { departmentMeta, privatePageMeta } from "@shared/seo";
+import { findSubcategory, subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ArrowUpDown, PackageOpen, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -132,7 +133,12 @@ export default function Category() {
   // otherwise ticking "Sony" would remove every other brand from the list you
   // used to tick it. On a search, what is in it is what the search found.
   const inCategory = useMemo(() => productsInCategory(catalog, category), [catalog, category]);
-  const facets = useMemo(() => facetsFor(searching ? matched : inCategory), [searching, matched, inCategory]);
+  /* A subcategory is the page rather than a facet, so its facets are its own products'. */
+  const inPage = useMemo(
+    () => (filters.sub ? inCategory.filter(product => product.subcategory === filters.sub) : inCategory),
+    [inCategory, filters.sub],
+  );
+  const facets = useMemo(() => facetsFor(searching ? matched : inPage), [searching, matched, inPage]);
 
   /*
    * The server has already ranked the matches, corrected a misspelling when the
@@ -153,6 +159,9 @@ export default function Category() {
 
   // Translated where NetLet knows the department, shown as the merchant typed
   // it otherwise — a product type is their words, not ours.
+  /* A department NetLet keeps, by the slug in the address — its subcategories are the chips under the heading. */
+  const knownDepartment = DEPARTMENTS.find(entry => entry.slug === slug);
+  const activeSub = onSearchPage ? null : findSubcategory(knownDepartment?.slug, filters.sub);
   const translatedName = category === "all" ? null : categoryMessageKey(category);
   const departmentName = category === "all"
     ? t("browse.allProducts")
@@ -170,17 +179,25 @@ export default function Category() {
     : null;
   const title = searched
     ? category === "all" ? t("browse.searchTitle", { query: searched }) : t("browse.searchInTitle", { query: searched, name: departmentName })
-    : viewName ?? departmentName;
+    : viewName ?? (activeSub ? subcategoryName(activeSub, locale === "ar") : departmentName);
 
   /* A department page is a page to be found; a search or a filtered view is not. */
-  const knownDepartment = DEPARTMENTS.find(entry => entry.slug === slug);
   usePageMeta(
-    !onSearchPage && !searched && !activeFilterCount(filters) && knownDepartment
+    !onSearchPage && !searched && !activeFilterCount(filters) && !filters.sub && knownDepartment
       ? departmentMeta(knownDepartment.name, knownDepartment.slug, SITE_URL)
       : privatePageMeta(title),
   );
 
   const activeCount = activeFilterCount(filters);
+  /* How many of this shelf's products each subcategory holds, and the chips worth a press. */
+  const subCounts = useMemo(() => {
+    const counted = new Map<string, number>();
+    for (const product of inCategory) if (product.subcategory) counted.set(product.subcategory, (counted.get(product.subcategory) ?? 0) + 1);
+    return counted;
+  }, [inCategory]);
+  const subChips = knownDepartment && !searching && !onSearchPage
+    ? subcategoriesOf(knownDepartment.slug).filter(entry => (subCounts.get(entry.slug) ?? 0) > 0 || entry.slug === filters.sub)
+    : [];
   const currency = catalog[0]?.priceRange.min.currencyCode ?? "KWD";
 
   /** Writes the filters into the URL, which is the only place they live. */
@@ -205,7 +222,8 @@ export default function Category() {
 
   /* Clears the facets and keeps what was searched for: "Clear all" sits beside the filters, not the search box. */
   const clearAll = () => {
-    const query = searchWithTerm(EMPTY_FILTERS, term);
+    /* The subcategory is the page, not a filter, so it stays. */
+    const query = searchWithTerm({ ...EMPTY_FILTERS, sub: filters.sub }, term);
     navigate(`${basePath}${query}`, { replace: true });
     setQueryString(query);
   };
@@ -293,7 +311,13 @@ export default function Category() {
   return (
     <>
       <PageBody>
-        <Breadcrumbs trail={[{ label: onSearchPage ? t("browse.searchCrumb") : departmentName }]} />
+        <Breadcrumbs
+          trail={onSearchPage
+            ? [{ label: t("browse.searchCrumb") }]
+            : activeSub
+              ? [{ label: departmentName, href: basePath }, { label: subcategoryName(activeSub, locale === "ar") }]
+              : [{ label: departmentName }]}
+        />
         {/* The count under the name rather than as the heading: "No results for Beauty"
             read as a search that failed, for a department that simply has nothing yet. */}
         <PageHeading
@@ -317,6 +341,36 @@ export default function Category() {
             </label>
           ) : undefined}
         />
+
+        {/* The department's subcategories, on the owner's word: the ones with
+            something on this shelf, and the one the address names — a press
+            narrows the page to it and "All" widens it again. */}
+        {subChips.length ? (
+          <div
+            role="group"
+            aria-label={t("categories.subcategories")}
+            className="-mx-4 -mt-2 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+          >
+            {[null, ...subChips].map(entry => {
+              const pressed = (entry?.slug ?? null) === (filters.sub ?? null);
+              const count = entry ? subCounts.get(entry.slug) ?? 0 : inCategory.length;
+              return (
+                <button
+                  key={entry?.slug ?? "all"}
+                  type="button"
+                  aria-pressed={pressed}
+                  onClick={() => setFilters({ sub: entry?.slug ?? null })}
+                  className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-[14px] font-semibold ${
+                    pressed ? "border-[#0a285a] bg-[#0a285a] text-white hover:bg-[#0d3372]" : "border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"
+                  }`}
+                >
+                  {entry ? subcategoryName(entry, locale === "ar") : t("categories.allSub")}
+                  <span className={pressed ? "text-white/80" : "ink-muted"}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         {!wide ? (
           <div className="-mt-2 mb-5 grid grid-cols-2 gap-2">

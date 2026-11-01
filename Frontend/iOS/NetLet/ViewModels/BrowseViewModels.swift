@@ -71,6 +71,9 @@ struct BrowseFilters: Equatable {
     var inStock = false
     var onOffer = false
     var express = false
+    /// One of the department's subcategories, by slug — the page it names
+    /// rather than a filter, so it is not counted and clearing keeps it.
+    var sub: String?
 
     /// How many are on, for "Filters (3)" and the corner button's badge.
     var activeCount: Int {
@@ -100,6 +103,7 @@ struct BrowseFilters: Equatable {
         if inStock && !product.isAvailable { return false }
         if onOffer && !product.isOnOffer { return false }
         if express && !product.isExpress { return false }
+        if let sub, product.subcategory != sub { return false }
         return true
     }
 }
@@ -205,9 +209,10 @@ final class BrowseModel {
     static let pageSize = 100
     static let searchLimit = 60
 
-    init(source: Source, catalog: CatalogServicing) {
+    init(source: Source, catalog: CatalogServicing, sub: String? = nil) {
         self.source = source
         self.catalog = catalog
+        filters.sub = sub
         if case .shelf(_, let view) = source {
             switch view {
             case .all: break
@@ -259,10 +264,25 @@ final class BrowseModel {
         sort.apply(to: (products.value ?? []).filter(filters.admits))
     }
 
-    var facets: Facets { Facets(products.value ?? []) }
+    /// A subcategory is the page, so its facets are its own products'.
+    var facets: Facets {
+        let all = products.value ?? []
+        guard let sub = filters.sub else { return Facets(all) }
+        return Facets(all.filter { $0.subcategory == sub })
+    }
+
+    /// How many of the shelf's products each subcategory holds — the chips under the title.
+    var subcategoryCounts: [String: Int] {
+        var counts: [String: Int] = [:]
+        for product in products.value ?? [] {
+            if let sub = product.subcategory { counts[sub, default: 0] += 1 }
+        }
+        return counts
+    }
 
     func clearFilters() {
-        filters = BrowseFilters()
+        // The subcategory is the page, not a filter, so it stays.
+        filters = BrowseFilters(sub: filters.sub)
     }
 }
 

@@ -195,7 +195,7 @@ describe("POST /api/ai/catalog-assist", () => {
     expect(body.ok).toBe(true);
     expect(body.data.department).toBe("home-and-kitchen");
     expect(body.data.attributes).toEqual([{ key: "brand", value: "Philips" }, { key: "capacity", value: "4.1" }]);
-    expect(body.data.missing).toEqual(["material", "power"]);
+    expect(body.data.missing).toEqual(["type", "material", "power"]);
     expect(sent[0].url).toMatch(/:generateContent$/);
     expect(sent[0].body.generationConfig).toMatchObject({ responseMimeType: "application/json" });
     const parts = (sent[0].body.contents as { parts: Record<string, unknown>[] }[])[0].parts;

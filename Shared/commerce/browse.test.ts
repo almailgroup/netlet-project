@@ -243,6 +243,7 @@ describe("filters in the URL", () => {
       inStock: true,
       onOffer: true,
       express: true,
+      sub: "phones",
       sort: "price-high",
     };
     const restored = filtersFromSearch(searchFromFilters(filters), "Electronics");
@@ -263,6 +264,24 @@ describe("filters in the URL", () => {
     expect(restored.minPrice).toBeNull();
     expect(restored.maxPrice).toBeNull();
     expect(restored.minRating).toBeNull();
+  });
+});
+
+describe("a subcategory", () => {
+  it("narrows to the products filed under it, and only a slug is read from the address", () => {
+    const phone = product({ id: "phone", subcategory: "phones" });
+    const case_ = product({ id: "case", subcategory: "accessories" });
+    const unfiled = product({ id: "unfiled", subcategory: null });
+    const only = (sub: string | null) => [phone, case_, unfiled].filter(product => applyFilters([product], { ...EMPTY_FILTERS, sub }).length);
+    expect(only("phones")).toEqual([phone]);
+    expect(only(null)).toEqual([phone, case_, unfiled]);
+    expect(filtersFromSearch("?sub=phones").sub).toBe("phones");
+    expect(filtersFromSearch("?sub=<script>").sub).toBeNull();
+    expect(searchFromFilters({ ...EMPTY_FILTERS, sub: "phones", sort: "newest" })).toBe("?sub=phones&sort=newest");
+  });
+
+  it("is the page, not a filter: it is not counted", () => {
+    expect(activeFilterCount({ ...EMPTY_FILTERS, sub: "phones" })).toBe(0);
   });
 });
 

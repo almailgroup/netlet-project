@@ -122,11 +122,19 @@ struct DepartmentCardGrid: View {
     var counted = false
     /// One sideways row of tiles, the home page's.
     var row = false
+    /// The Categories tab's: a department opens onto its subcategories in
+    /// place, under its row, on the owner's word — the web's `/categories`.
+    var expandable = false
+    @State private var open: String?
+    @State private var subCounts: [String: [String: Int]]?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        if row {
+        if expandable {
+            expandingGrid
+        } else if row {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(alignment: .top, spacing: 10) {
                     tiles(width: 112)
@@ -156,13 +164,53 @@ struct DepartmentCardGrid: View {
         }
     }
 
+    /// The tiles in rows of `columns`, with the open department's panel under
+    /// its own row, so the grid keeps its shape. One open at a time; pressing
+    /// it again closes it. "All departments" has none and opens its page.
+    private var expandingGrid: some View {
+        let departments = ReferenceData.shared.departments
+        let slugs = departments.map(\.slug) + ["all"]
+        let rows = stride(from: 0, to: slugs.count, by: columns).map { Array(slugs[$0..<min($0 + columns, slugs.count)]) }
+        return VStack(spacing: 12) {
+            ForEach(rows, id: \.self) { slugsInRow in
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(slugsInRow, id: \.self) { slug in
+                        if let department = departments.first(where: { $0.slug == slug }) {
+                            tile(slug: slug, title: l.t(department.label), count: countLine(slug), width: nil, expanded: open == slug) {
+                                withAnimation(still ? nil : .snappy(duration: 0.28)) { open = open == slug ? nil : slug }
+                            }
+                            .accessibilityHint(l.t("ios.categories.showsSubcategories"))
+                        } else {
+                            tile(slug: "all", title: l.t("nav.allDepartments"), count: l.t("browse.browseEverything"), width: nil) {
+                                app.push(.department(slug: nil))
+                            }
+                        }
+                    }
+                    ForEach(0..<(columns - slugsInRow.count), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity) }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                if let open, let column = slugsInRow.firstIndex(of: open), let department = departments.first(where: { $0.slug == open }) {
+                    SubcategoryPanel(department: department, column: column, columns: columns, counts: subCounts?[open], loading: subCounts == nil)
+                        .transition(still ? .opacity : .opacity.combined(with: .offset(y: -8)))
+                }
+            }
+        }
+        .task {
+            if let preset = app.categoriesOpen {
+                open = preset
+                app.categoriesOpen = nil
+            }
+            if let counts = try? await app.services.api.call(API.subcategoryCounts) { subCounts = counts }
+        }
+    }
+
     private func countLine(_ slug: String) -> String {
         // One line on every tile, so the row keeps its height while the counts arrive.
         guard let counts = app.shelf.counts else { return " " }
         return l.productCount(counts[slug] ?? 0)
     }
 
-    private func tile(slug: String, title: String, count: String?, width: CGFloat?, open: @escaping () -> Void) -> some View {
+    private func tile(slug: String, title: String, count: String?, width: CGFloat?, expanded: Bool? = nil, open: @escaping () -> Void) -> some View {
         Button(action: open) {
             VStack(spacing: 0) {
                 BundledImage(image: WebAssets.department(slug))
@@ -176,11 +224,21 @@ struct DepartmentCardGrid: View {
                     .lineLimit(2, reservesSpace: width != nil)
                     .padding(.top, 6)
                 if let count {
-                    Text(count)
-                        .font(.inter(13))
-                        .foregroundStyle(Brand.muted)
-                        .lineLimit(1)
-                        .padding(.top, 4)
+                    HStack(spacing: 4) {
+                        Text(count)
+                            .font(.inter(13))
+                            .foregroundStyle(Brand.muted)
+                            .lineLimit(1)
+                        // A department that opens says so: its chevron turns as it does.
+                        if let expanded {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(Brand.navy)
+                                .rotationEffect(.degrees(expanded ? 180 : 0))
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .padding(.top, 4)
                 }
             }
             .padding(.horizontal, columns == 3 ? 8 : 12)
@@ -195,7 +253,9 @@ struct DepartmentCardGrid: View {
                     .shadow(color: Brand.navy.opacity(0.06), radius: 1, x: 0, y: 1)
             )
             .overlay {
-                if columns != 3 {
+                if expanded == true {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.navy, lineWidth: 1.5)
+                } else if columns != 3 {
                     RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1)
                 }
             }
@@ -204,6 +264,129 @@ struct DepartmentCardGrid: View {
         .buttonStyle(PressFillStyle(cornerRadius: 16))
         .frame(width: width)
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(expanded == true ? .isSelected : [])
+    }
+}
+
+/// A department's subcategories, under its row on the Categories tab: "See
+/// all in …" and a chip for each with how many it holds, each opening the
+/// department narrowed to it — the web's panel, the pointer over the card
+/// that opened it. All of them, as the cards keep all six: an empty one says
+/// so on the page it opens.
+private struct SubcategoryPanel: View {
+    let department: Department
+    let column: Int
+    let columns: Int
+    let counts: [String: Int]?
+    let loading: Bool
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let name = l.t(department.label)
+        VStack(spacing: 0) {
+            // A column per card, so the pointer follows the row's direction.
+            HStack(spacing: 12) {
+                ForEach(0..<columns, id: \.self) { index in
+                    ZStack {
+                        if index == column {
+                            PanelPointer()
+                                .fill(Color.white)
+                                .overlay(PanelPointer(open: true).stroke(Brand.cardLine, lineWidth: 1))
+                                .frame(width: 20, height: 10)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .offset(y: 1)
+            .zIndex(1)
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 8) {
+                    Text(name)
+                        .font(.inter(16, .heavy))
+                        .foregroundStyle(Brand.navy)
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 8)
+                    Button {
+                        app.push(.department(slug: department.slug))
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(l.t("categories.seeAllIn", ["name": name])).lineLimit(1).minimumScaleFactor(0.85)
+                            Image(systemName: "chevron.forward").font(.system(size: 12, weight: .bold))
+                        }
+                        .font(.inter(14, .bold))
+                        .foregroundStyle(Brand.accentInk)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.tap)
+                }
+                FlowLayout(spacing: 8) {
+                    ForEach(department.subs) { entry in
+                        chip(entry)
+                    }
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: Brand.navy.opacity(0.08), radius: 9, x: 0, y: 6)
+            )
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        }
+    }
+
+    private func chip(_ entry: Department.Subcategory) -> some View {
+        let count = counts?[entry.slug] ?? 0
+        let title = entry.shown(l.current)
+        return Button {
+            app.push(.subcategory(department: department.slug, sub: entry.slug))
+        } label: {
+            HStack(spacing: 8) {
+                Text(title).lineLimit(1)
+                Group {
+                    if loading {
+                        Capsule().fill(Brand.photo).frame(width: 20, height: 12)
+                    } else {
+                        Text("\(count)")
+                            .font(.inter(12, .bold))
+                            .foregroundStyle(Brand.body)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Brand.photo))
+                    }
+                }
+                .accessibilityHidden(true)
+            }
+            .font(.inter(14, .semibold))
+            .foregroundStyle(count > 0 || loading ? Brand.navy : Brand.muted)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(Capsule().fill(Color.white))
+            .overlay(Capsule().strokeBorder(Brand.line, style: StrokeStyle(lineWidth: 1, dash: count > 0 || loading ? [] : [4, 3])))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.tap)
+        .accessibilityLabel(loading ? title : "\(title), \(l.productCount(count))")
+    }
+}
+
+/// The panel's pointer: a small triangle, its base left open when stroked so
+/// it meets the card's edge without a line.
+private struct PanelPointer: Shape {
+    var open = false
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        if !open { path.closeSubpath() }
+        return path
     }
 }
 

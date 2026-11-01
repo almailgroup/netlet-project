@@ -29,6 +29,7 @@ import { en, ar } from "../../../Shared/i18n/dictionary.js";
 import { PLURAL_FORMS } from "../../../Shared/i18n/plurals.js";
 import { MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
+import { subcategoriesOf } from "../../../Shared/commerce/subcategories.js";
 import { AREAS, PART_KEYS, PART_LABEL_AR, PART_LABEL_EN, PART_MAX, REQUIRED_PARTS } from "../../../Shared/commerce/kuwaitAddress.js";
 import { GOVERNORATE_CENTRES, KUWAIT_BOUNDS, KUWAIT_CENTRE } from "../../../Shared/commerce/geo.js";
 import { kuwaitDeliveryZones } from "../../../Shared/customer.js";
@@ -166,7 +167,12 @@ export function buildResources(): Record<string, string> {
     "dictionary.json": json({ en, ar }),
     "plurals.json": json(PLURAL_FORMS),
     "departments.json": json(
-      DEPARTMENTS.map(({ slug, name, nameAr, position, label, icon }) => ({ slug, name, nameAr, position, label, icon })),
+      /* Each with its subcategories by name — the Categories tab's panel; the
+         server files the products (`Product.subcategory`), so their words stay on the web side. */
+      DEPARTMENTS.map(({ slug, name, nameAr, position, label, icon }) => ({
+        slug, name, nameAr, position, label, icon,
+        subcategories: subcategoriesOf(slug).map(entry => ({ slug: entry.slug, name: entry.name, nameAr: entry.nameAr })),
+      })),
     ),
     "kuwait.json": json({
       governorates: kuwaitDeliveryZones.map(({ id, label, labelAr }) => ({ id, label, labelAr })),

@@ -5486,6 +5486,45 @@ category". They were the brand and store rows for a while, which left the home
 page for here first; two boxes side by side keep the departments in the first
 screen. The app's Categories is the same (`wayIn`, `BrandsView`).
 
+**Each department has subcategories, and the Categories page opens onto
+them, on the owner's word** ("when you tap on any category, it expands to show
+the subcategories"). `Shared/commerce/subcategories.ts` is the list, in code
+beside the departments for their reason — five to nine a department, a stable
+slug, both names and the words its products are called by in both languages —
+and `subcategoryFor` the rule: **the seller's own "Type" first**, the first row
+of every department's schema now (`typeField`, its options the subcategories'
+names, `optionsAr` their Arabic, so the editor on both platforms and the
+catalogue drafter all ask, and the model's answer is kept only as one of them),
+**else the words**: the subcategory whose words a product's titles hold most,
+a title's word counting twice a tag's, the first listed on a tie, none with
+no word held — compared as search compares (`searchWords`), so "Headphones"
+and "سماعات" both count. A word belongs to one subcategory of a department
+(`subcategories.test.ts` holds that, and that every word files its own). **It
+is worked out on the server from both titles** (`Product.subcategory`, in
+`shape()`; `commerce.subcategoryCounts` counts by the same call over the
+published shelf), so a count and the page it opens agree whichever language
+the shopper reads. No schema change: a product's filing is a spec row it may
+carry and its words. On `/categories` a department's card is a disclosure
+button and its panel opens under the row it is in — the full width of a grid
+of two, three or six, a pointer over the card, `.subcats-in` dropping it into
+place — with "See all in …" and every subcategory with its count, an empty one
+dashed and still a link, as the cards keep all six; one open at a time, and an
+opened panel below the fold is scrolled up clear of the tab bar. A chip opens
+`/category/<slug>?sub=<sub>`: **the subcategory is the page, not a filter** —
+`BrowseFilters.sub`, not counted among the filters and kept by "Clear all",
+the heading its name and the breadcrumb through its department, facets over
+its own products, and not indexed. The department page draws its
+subcategories as a row of chips under the heading (those with something on
+the shelf and the one the address names), "All" first. The product page's
+"Type" row reads in Arabic on the Arabic page (`shownOption`; the app's
+`shownSpecifications`, which also gives a schema row its Arabic label there).
+The app is the same: `DepartmentCardGrid(expandable:)` and its
+`SubcategoryPanel`, `Route.subcategory`, the chips on `DepartmentView`, the
+names exported with the departments (`departments.json`). Measured at 320,
+390 and 1440 in both languages: the panel under its row, one open, the chip
+opening the narrowed page with its name and breadcrumb, axe clean, no sideways
+scroll.
+
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and
 `matchesSearch` — every word somewhere in what the shopper can see — is the one

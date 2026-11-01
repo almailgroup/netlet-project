@@ -11,8 +11,19 @@ struct ListingRules: Decodable, Sendable {
         let labelAr: String
         let unit: String?
         let options: [String]?
+        /// The same answers in Arabic, in the same order; the English is stored.
+        let optionsAr: [String]?
 
         func shown(_ language: Language) -> String { language == .ar ? labelAr : label }
+
+        /// A recorded answer in the page's language — `shownOption`: the
+        /// Arabic of one of the field's own options, else as it was written.
+        func shownOption(_ value: String, _ language: Language) -> String {
+            guard language == .ar, let options, let optionsAr,
+                  let index = options.firstIndex(where: { $0.lowercased() == value.trimmingCharacters(in: .whitespaces).lowercased() }),
+                  index < optionsAr.count else { return value }
+            return optionsAr[index]
+        }
     }
 
     struct Bounds: Decodable, Hashable, Sendable {

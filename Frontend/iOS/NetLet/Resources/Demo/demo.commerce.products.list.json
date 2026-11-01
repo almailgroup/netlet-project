@@ -20,6 +20,7 @@
             "average": 4.6,
             "count": 128
           },
+          "subcategory": "pantry",
           "media": [
             {
               "url": "/departments/grocery.webp",
@@ -88,6 +89,7 @@
             "average": 4.8,
             "count": 64
           },
+          "subcategory": "snacks",
           "media": [
             {
               "url": "/departments/grocery.webp",
@@ -159,6 +161,7 @@
             "average": 4.2,
             "count": 17
           },
+          "subcategory": "men",
           "media": [
             {
               "url": "/departments/style.webp",
@@ -224,6 +227,7 @@
           "tags": [],
           "attributes": [],
           "reviewSummary": null,
+          "subcategory": "shoes",
           "media": [
             {
               "url": "/departments/style.webp",

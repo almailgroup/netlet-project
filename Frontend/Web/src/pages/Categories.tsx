@@ -21,10 +21,23 @@
  * of them it lists the brands or stores"): each opens its own list, `/brands`
  * and `/stores`. They were two sideways rows of the first dozen of each, which
  * pushed the departments a screen down a phone.
+ *
+ * **A department opens onto its subcategories, on the owner's word** ("when
+ * you tap on any category, it expands to show the subcategories"). Its card is
+ * a disclosure button now, and the panel opens under the row it sits in —
+ * the full width of the grid, with a small pointer at the card — so the row
+ * keeps its shape at two, three or six to a row. The panel says "See all in
+ * …" and every subcategory with its count (`commerce.subcategoryCounts`,
+ * `Shared/commerce/subcategories.ts`), each opening the department narrowed
+ * to it (`?sub=`). All of them, as the cards keep all six: an empty one says
+ * so on the page it opens. One department open at a time; pressing it again
+ * closes it. "All departments" has no subcategories and stays a link.
  */
-import { ChevronRight, Store, Tag, Tags } from "lucide-react";
-import type { ReactNode } from "react";
+import { ChevronDown, ChevronRight, Store, Tag, Tags } from "lucide-react";
+import { Fragment, useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { Link } from "wouter";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
 import { Breadcrumbs, CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { shelvesFor } from "@/content/homeLayout";
@@ -46,17 +59,39 @@ const TILES: { slug: string; query: string; label: MessageKey; counted: boolean 
 ];
 
 export default function Categories() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   usePageMeta(categoriesMeta(SITE_URL));
   usePageChrome({ activeDepartment: null });
   const counts = trpc.commerce.departmentCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
+  const subCounts = trpc.commerce.subcategoryCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = shelvesFor(shelf.data ?? []).deals.length > 0;
 
-  const countLine = (slug: string) => {
-    const count = counts.data?.[slug] ?? 0;
-    return count === 0 ? t("browse.countNone") : count === 1 ? t("browse.countOne") : t("browse.countMany", { count });
-  };
+  /* The grid's own columns — two, three or six — so the panel opens under
+     the row the pressed card is in, never in the middle of one. */
+  const wide = useMediaQuery("(min-width: 1024px)");
+  const medium = useMediaQuery("(min-width: 640px)");
+  const columns = wide ? 6 : medium ? 3 : 2;
+  const [open, setOpen] = useState<string | null>(null);
+  const openIndex = TILES.findIndex(tile => tile.slug === open);
+  const rowEnd = openIndex < 0 ? -1 : Math.min(Math.ceil((openIndex + 1) / columns) * columns, TILES.length) - 1;
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  /* An opened panel below the fold is brought up to meet the thumb, clear of
+     the phone's tab bar; one already on screen does not move the page. */
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!open || !panel) return;
+    const room = window.innerHeight - (medium ? 24 : 112);
+    const bottom = panel.getBoundingClientRect().bottom;
+    if (bottom > room) {
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollBy({ top: bottom - room, behavior: still ? "instant" : "smooth" });
+    }
+  }, [open, medium]);
+
+  const countLine = (count: number) =>
+    count === 0 ? t("browse.countNone") : count === 1 ? t("browse.countOne") : t("browse.countMany", { count });
 
   return (
     <PageBody>
@@ -68,12 +103,10 @@ export default function Categories() {
       </ul>
       <h2 id="departments-title" className="mb-4 text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{t("home.shopByCategory")}</h2>
       <ul aria-labelledby="departments-title" className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
-        {TILES.map(tile => (
-          <li key={tile.slug} className="min-w-0">
-            <Link
-              href={`/category/${categorySlug(tile.query)}`}
-              className={`${CARD} group flex h-full flex-col items-center px-3 pb-4 pt-3 shadow-[0_1px_2px_rgba(10,40,90,.06)] transition-colors hover:border-[#d5dfeb] hover:bg-[#f0f2f5]`}
-            >
+        {TILES.map((tile, index) => {
+          const expanded = open === tile.slug;
+          const face = (
+            <>
               <img
                 src={appPath(`/departments/${tile.slug}.webp`)}
                 alt=""
@@ -85,16 +118,53 @@ export default function Categories() {
               />
               <span className="mt-2 line-clamp-2 text-center text-[15px] font-bold leading-tight text-[#0a285a]">{t(tile.label)}</span>
               {/* One line on every tile, so the row keeps one height while the counts arrive. */}
-              <span className="mt-1 h-5 text-center text-[13px] leading-5 ink-muted">
+              <span className="mt-1 flex h-5 items-center justify-center gap-1 text-center text-[13px] leading-5 ink-muted">
                 {!tile.counted
                   ? t("browse.browseEverything")
                   : counts.data
-                    ? countLine(tile.slug)
+                    ? countLine(counts.data[tile.slug] ?? 0)
                     : <span aria-hidden className="inline-block h-3 w-16 animate-pulse rounded-full bg-[#e6e9ef] align-middle" />}
+                {tile.counted ? <ChevronDown aria-hidden className={`size-4 shrink-0 text-[#0a285a] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} /> : null}
               </span>
-            </Link>
-          </li>
-        ))}
+            </>
+          );
+          const look = `${CARD} group flex h-full w-full flex-col items-center px-3 pb-4 pt-3 shadow-[0_1px_2px_rgba(10,40,90,.06)] transition-colors hover:border-[#d5dfeb] hover:bg-[#f0f2f5]`;
+          return (
+            <Fragment key={tile.slug}>
+              <li className="min-w-0">
+                {tile.counted ? (
+                  <button
+                    id={`department-${tile.slug}`}
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={expanded ? `subcategories-${tile.slug}` : undefined}
+                    onClick={() => setOpen(expanded ? null : tile.slug)}
+                    className={`${look} ${expanded ? "border-[#0a285a] ring-1 ring-[#0a285a]" : ""}`}
+                  >
+                    {face}
+                  </button>
+                ) : (
+                  <Link href={`/category/${categorySlug(tile.query)}`} className={look}>{face}</Link>
+                )}
+              </li>
+              {index === rowEnd && open ? (
+                <li className="col-span-full min-w-0">
+                  <SubcategoryPanel
+                    ref={panelRef}
+                    slug={open}
+                    label={t(TILES[openIndex].label)}
+                    query={TILES[openIndex].query}
+                    pointer={((openIndex % columns) + 0.5) / columns}
+                    counts={subCounts.data?.[open]}
+                    loading={!subCounts.data}
+                    arabic={locale === "ar"}
+                    countLine={countLine}
+                  />
+                </li>
+              ) : null}
+            </Fragment>
+          );
+        })}
       </ul>
       {dealsDrawn ? (
         <Link
@@ -109,6 +179,64 @@ export default function Categories() {
         </Link>
       ) : null}
     </PageBody>
+  );
+}
+
+/**
+ * A department's subcategories, under its row: "See all in …" and a chip for
+ * each with how many it holds, the pointer over the card that opened it.
+ */
+function SubcategoryPanel({ ref, slug, label, query, pointer, counts, loading, arabic, countLine }: {
+  ref: Ref<HTMLDivElement>;
+  slug: string;
+  label: string;
+  query: string;
+  /** Where the opening card's middle is across the grid, from its start edge, 0 to 1. */
+  pointer: number;
+  counts: Record<string, number> | undefined;
+  loading: boolean;
+  arabic: boolean;
+  countLine: (count: number) => string;
+}) {
+  const { t } = useTranslation();
+  const department = `/category/${categorySlug(query)}`;
+  return (
+    <div ref={ref} id={`subcategories-${slug}`} role="region" aria-labelledby={`department-${slug}`} className="subcats-in relative pt-2">
+      {/* The pointer up at the card: drawn, so it needs no side of its own. */}
+      <svg aria-hidden viewBox="0 0 20 10" className="absolute top-0 z-10 h-2.5 w-5" style={{ insetInlineStart: `calc(${pointer * 100}% - 10px)` }}>
+        <path d="M0 10 L10 0 L20 10" fill="#fff" stroke="#e6e9ef" strokeWidth="1" />
+        <path d="M1 10.5 H19" stroke="#fff" strokeWidth="2" />
+      </svg>
+      <div className={`${CARD} p-4 shadow-[0_6px_18px_rgba(10,40,90,.08)] sm:p-5`}>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <h3 className="text-[16px] font-extrabold text-[#0a285a]">{label}</h3>
+          <Link href={department} className="inline-flex min-h-11 items-center gap-1 text-[14px] font-bold ink-accent hover:underline">
+            {t("categories.seeAllIn", { name: label })}
+            <ChevronRight aria-hidden className="size-4 rtl:-scale-x-100" />
+          </Link>
+        </div>
+        <ul aria-label={t("categories.subcategoriesOf", { name: label })} className="mt-2 flex flex-wrap gap-2">
+          {subcategoriesOf(slug).map(entry => {
+            const name = subcategoryName(entry, arabic);
+            const count = counts?.[entry.slug] ?? 0;
+            return (
+              <li key={entry.slug}>
+                <Link
+                  href={`${department}?sub=${entry.slug}`}
+                  aria-label={loading ? name : `${name}, ${countLine(count)}`}
+                  className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-[14px] font-semibold ${count || loading ? "border-[#d5dfeb] bg-white text-[#0a285a]" : "border-dashed border-[#d5dfeb] bg-white text-[#536b8c]"} hover:bg-[#f0f2f5]`}
+                >
+                  <span>{name}</span>
+                  {loading
+                    ? <span aria-hidden className="inline-block h-3 w-5 animate-pulse rounded-full bg-[#e6e9ef]" />
+                    : <span aria-hidden className="rounded-full bg-[#f1f2f6] px-2 py-0.5 text-[12px] font-bold text-[#404553]">{count}</span>}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
   );
 }
 

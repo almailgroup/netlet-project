@@ -68,7 +68,7 @@ struct CategoriesView: View {
     private var departments: some View {
         VStack(alignment: .leading, spacing: 0) {
             ShelfHeading(title: l.t("home.shopByCategory")).padding(.bottom, 16)
-            DepartmentCardGrid(columns: 2, counted: true)
+            DepartmentCardGrid(columns: 2, counted: true, expandable: true)
             if app.shelf.dealsDrawn {
                 Button {
                     app.push(.deals)

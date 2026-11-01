@@ -100,6 +100,21 @@ final class ReferenceDataTests: XCTestCase {
         XCTAssertEqual(reference.department(named: "electronics")?.slug, "electronics")
     }
 
+    /// Each department carries its subcategories by name, exported from `subcategories.ts`.
+    func testEveryDepartmentHasItsSubcategories() {
+        for department in reference.departments {
+            XCTAssertGreaterThanOrEqual(department.subs.count, 4, department.slug)
+        }
+        let electronics = reference.department(slug: "electronics")
+        XCTAssertEqual(electronics?.sub("phones")?.shown(.ar), "الهواتف")
+        XCTAssertNil(electronics?.sub("shoes"))
+        // The editor's "Type" row offers them, in Arabic on the Arabic page.
+        let type = ListingRules.shared.attributeSchema["electronics"]?.first
+        XCTAssertEqual(type?.key, "type")
+        XCTAssertEqual(type?.shownOption("Mobile phones", .ar), "الهواتف")
+        XCTAssertEqual(type?.shownOption("Feature phone", .ar), "Feature phone")
+    }
+
     func testKnowsEveryGovernorateAndItsAreas() {
         XCTAssertEqual(reference.governorates.count, 6)
         XCTAssertEqual(reference.governorate(ofArea: "Salmiya"), "hawalli")

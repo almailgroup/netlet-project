@@ -58,6 +58,8 @@ import { memberPriceFor, waiveDelivery } from "../../../Shared/commerce/membersh
 import { discountAllowed } from "../../../Shared/inventory/discountLicence.js";
 import { isDeliverySpeed, speedForLine, type DeliverySpeed } from "../../../Shared/commerce/deliverySpeed.js";
 import { recentReviewsForStore, type StoreReview } from "./reviews.js";
+import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
+import { valueOf } from "../../../Shared/commerce/attributeSchema.js";
 import { featureOn } from "./features.js";
 import {
   awardedBadges,
@@ -419,7 +421,16 @@ function shape(
     },
     locale,
   );
-  return { ...product, reviewSummary: scoreById.get(row.id) ?? null };
+  return {
+    ...product,
+    reviewSummary: scoreById.get(row.id) ?? null,
+    subcategory: subcategoryFor({
+      department: product.productType,
+      titles: [row.title, row.titleAr],
+      tags: row.tags,
+      type: valueOf(row.attributes ?? [], "type"),
+    }),
+  };
 }
 
 /**

@@ -25,7 +25,8 @@ describe("draftFromModel", () => {
     expect(draft.department).toBe("electronics");
     /* The unit belongs to the field; a row the department does not ask for goes; a repeat goes. */
     expect(draft.attributes).toEqual([{ key: "brand", value: "Samsung" }, { key: "storage", value: "256" }]);
-    expect(draft.missing).toEqual(["model", "ram", "warranty"]);
+    /* "Type" is asked first in every department — the subcategory it is filed under. */
+    expect(draft.missing).toEqual(["type", "model", "ram", "warranty"]);
     expect(draft.tags).toEqual(["phone", "samsung", "جوال"]);
     expect(draft.description.en).toBe("A large phone with a bright screen.\n\n- Storage: 256 GB\n- Colour: black\nBox\nCharger not included");
   });
@@ -48,6 +49,13 @@ describe("draftFromModel", () => {
     expect(draft.attributes).toEqual([{ key: "fit", value: "Slim" }, { key: "material", value: "Cotton" }]);
     const odd = draftFromModel({ ...answer, department: "style", attributes: [{ key: "fit", value: "baggy" }] }, { department: null })!;
     expect(odd.attributes).toEqual([]);
+  });
+
+  it("keeps the model's Type only as one of the department's subcategories", () => {
+    const filed = draftFromModel({ ...answer, attributes: [{ key: "type", value: "mobile phones" }] }, { department: null })!;
+    expect(filed.attributes).toEqual([{ key: "type", value: "Mobile phones" }]);
+    const invented = draftFromModel({ ...answer, attributes: [{ key: "type", value: "Smart rings" }] }, { department: null })!;
+    expect(invented.attributes).toEqual([]);
   });
 
   it("removes contact details wherever they land, and keeps a barcode", () => {

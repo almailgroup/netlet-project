@@ -290,6 +290,33 @@
     "attributeSchema": {
       "electronics": [
         {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Mobile phones",
+            "Tablets",
+            "Laptops & computers",
+            "Audio",
+            "Wearables",
+            "TV & video",
+            "Cameras",
+            "Gaming",
+            "Accessories"
+          ],
+          "optionsAr": [
+            "الهواتف",
+            "الأجهزة اللوحية",
+            "الحواسيب",
+            "الصوتيات",
+            "الأجهزة القابلة للارتداء",
+            "التلفزيون والفيديو",
+            "الكاميرات",
+            "الألعاب",
+            "الإكسسوارات"
+          ]
+        },
+        {
           "key": "brand",
           "label": "Brand",
           "labelAr": "العلامة التجارية"
@@ -319,6 +346,29 @@
       ],
       "home-and-kitchen": [
         {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Kitchen appliances",
+            "Cookware & dining",
+            "Furniture",
+            "Decor & lighting",
+            "Bedding & bath",
+            "Home appliances",
+            "Cleaning & storage"
+          ],
+          "optionsAr": [
+            "أجهزة المطبخ",
+            "أواني الطبخ والمائدة",
+            "الأثاث",
+            "الديكور والإضاءة",
+            "المفروشات والحمّام",
+            "الأجهزة المنزلية",
+            "التنظيف والتخزين"
+          ]
+        },
+        {
           "key": "brand",
           "label": "Brand",
           "labelAr": "العلامة التجارية"
@@ -343,6 +393,25 @@
       ],
       "beauty": [
         {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Skincare",
+            "Makeup",
+            "Hair care",
+            "Fragrance",
+            "Personal care"
+          ],
+          "optionsAr": [
+            "العناية بالبشرة",
+            "المكياج",
+            "العناية بالشعر",
+            "العطور",
+            "العناية الشخصية"
+          ]
+        },
+        {
           "key": "brand",
           "label": "Brand",
           "labelAr": "العلامة التجارية"
@@ -360,6 +429,29 @@
         }
       ],
       "style": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Women's clothing",
+            "Men's clothing",
+            "Kids",
+            "Shoes",
+            "Bags",
+            "Accessories",
+            "Sportswear"
+          ],
+          "optionsAr": [
+            "ملابس نسائية",
+            "ملابس رجالية",
+            "الأطفال",
+            "الأحذية",
+            "الحقائب",
+            "الإكسسوارات",
+            "الملابس الرياضية"
+          ]
+        },
         {
           "key": "brand",
           "label": "Brand",
@@ -383,6 +475,29 @@
         }
       ],
       "grocery": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Fruit & vegetables",
+            "Pantry",
+            "Dairy & eggs",
+            "Bakery",
+            "Snacks, dates & sweets",
+            "Beverages",
+            "Meat & seafood"
+          ],
+          "optionsAr": [
+            "الفواكه والخضروات",
+            "المؤن",
+            "الألبان والبيض",
+            "المخبوزات",
+            "الوجبات الخفيفة والتمور والحلويات",
+            "المشروبات",
+            "اللحوم والمأكولات البحرية"
+          ]
+        },
         {
           "key": "brand",
           "label": "Brand",

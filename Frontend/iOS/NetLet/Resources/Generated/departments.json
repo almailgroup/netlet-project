@@ -5,7 +5,54 @@
     "nameAr": "إلكترونيات",
     "position": 1,
     "label": "category.electronics",
-    "icon": "plug"
+    "icon": "plug",
+    "subcategories": [
+      {
+        "slug": "phones",
+        "name": "Mobile phones",
+        "nameAr": "الهواتف"
+      },
+      {
+        "slug": "tablets",
+        "name": "Tablets",
+        "nameAr": "الأجهزة اللوحية"
+      },
+      {
+        "slug": "computers",
+        "name": "Laptops & computers",
+        "nameAr": "الحواسيب"
+      },
+      {
+        "slug": "audio",
+        "name": "Audio",
+        "nameAr": "الصوتيات"
+      },
+      {
+        "slug": "wearables",
+        "name": "Wearables",
+        "nameAr": "الأجهزة القابلة للارتداء"
+      },
+      {
+        "slug": "tv",
+        "name": "TV & video",
+        "nameAr": "التلفزيون والفيديو"
+      },
+      {
+        "slug": "cameras",
+        "name": "Cameras",
+        "nameAr": "الكاميرات"
+      },
+      {
+        "slug": "gaming",
+        "name": "Gaming",
+        "nameAr": "الألعاب"
+      },
+      {
+        "slug": "accessories",
+        "name": "Accessories",
+        "nameAr": "الإكسسوارات"
+      }
+    ]
   },
   {
     "slug": "home-and-kitchen",
@@ -13,7 +60,44 @@
     "nameAr": "المنزل والمطبخ",
     "position": 2,
     "label": "category.homeKitchen",
-    "icon": "cooking-pot"
+    "icon": "cooking-pot",
+    "subcategories": [
+      {
+        "slug": "kitchen-appliances",
+        "name": "Kitchen appliances",
+        "nameAr": "أجهزة المطبخ"
+      },
+      {
+        "slug": "cookware",
+        "name": "Cookware & dining",
+        "nameAr": "أواني الطبخ والمائدة"
+      },
+      {
+        "slug": "furniture",
+        "name": "Furniture",
+        "nameAr": "الأثاث"
+      },
+      {
+        "slug": "decor",
+        "name": "Decor & lighting",
+        "nameAr": "الديكور والإضاءة"
+      },
+      {
+        "slug": "bedding",
+        "name": "Bedding & bath",
+        "nameAr": "المفروشات والحمّام"
+      },
+      {
+        "slug": "home-appliances",
+        "name": "Home appliances",
+        "nameAr": "الأجهزة المنزلية"
+      },
+      {
+        "slug": "cleaning",
+        "name": "Cleaning & storage",
+        "nameAr": "التنظيف والتخزين"
+      }
+    ]
   },
   {
     "slug": "beauty",
@@ -21,7 +105,34 @@
     "nameAr": "الجمال",
     "position": 3,
     "label": "category.beauty",
-    "icon": "flower"
+    "icon": "flower",
+    "subcategories": [
+      {
+        "slug": "skincare",
+        "name": "Skincare",
+        "nameAr": "العناية بالبشرة"
+      },
+      {
+        "slug": "makeup",
+        "name": "Makeup",
+        "nameAr": "المكياج"
+      },
+      {
+        "slug": "haircare",
+        "name": "Hair care",
+        "nameAr": "العناية بالشعر"
+      },
+      {
+        "slug": "fragrance",
+        "name": "Fragrance",
+        "nameAr": "العطور"
+      },
+      {
+        "slug": "personal-care",
+        "name": "Personal care",
+        "nameAr": "العناية الشخصية"
+      }
+    ]
   },
   {
     "slug": "style",
@@ -29,7 +140,44 @@
     "nameAr": "الأزياء",
     "position": 4,
     "label": "category.style",
-    "icon": "shirt"
+    "icon": "shirt",
+    "subcategories": [
+      {
+        "slug": "women",
+        "name": "Women's clothing",
+        "nameAr": "ملابس نسائية"
+      },
+      {
+        "slug": "men",
+        "name": "Men's clothing",
+        "nameAr": "ملابس رجالية"
+      },
+      {
+        "slug": "kids",
+        "name": "Kids",
+        "nameAr": "الأطفال"
+      },
+      {
+        "slug": "shoes",
+        "name": "Shoes",
+        "nameAr": "الأحذية"
+      },
+      {
+        "slug": "bags",
+        "name": "Bags",
+        "nameAr": "الحقائب"
+      },
+      {
+        "slug": "accessories",
+        "name": "Accessories",
+        "nameAr": "الإكسسوارات"
+      },
+      {
+        "slug": "sportswear",
+        "name": "Sportswear",
+        "nameAr": "الملابس الرياضية"
+      }
+    ]
   },
   {
     "slug": "grocery",
@@ -37,6 +185,43 @@
     "nameAr": "البقالة",
     "position": 5,
     "label": "category.grocery",
-    "icon": "carrot"
+    "icon": "carrot",
+    "subcategories": [
+      {
+        "slug": "fresh",
+        "name": "Fruit & vegetables",
+        "nameAr": "الفواكه والخضروات"
+      },
+      {
+        "slug": "pantry",
+        "name": "Pantry",
+        "nameAr": "المؤن"
+      },
+      {
+        "slug": "dairy",
+        "name": "Dairy & eggs",
+        "nameAr": "الألبان والبيض"
+      },
+      {
+        "slug": "bakery",
+        "name": "Bakery",
+        "nameAr": "المخبوزات"
+      },
+      {
+        "slug": "snacks",
+        "name": "Snacks, dates & sweets",
+        "nameAr": "الوجبات الخفيفة والتمور والحلويات"
+      },
+      {
+        "slug": "beverages",
+        "name": "Beverages",
+        "nameAr": "المشروبات"
+      },
+      {
+        "slug": "meat",
+        "name": "Meat & seafood",
+        "nameAr": "اللحوم والمأكولات البحرية"
+      }
+    ]
   }
 ]

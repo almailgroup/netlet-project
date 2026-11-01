@@ -217,6 +217,17 @@ function resolve(path: string, rawInput: unknown): unknown {
       }
       return counts;
     }
+    case "commerce.subcategoryCounts": {
+      /* The same rule over the invented catalogue: each product's own filing. */
+      const counts: Record<string, Record<string, number>> = {};
+      for (const product of demoCatalog) {
+        const department = DEPARTMENTS.find(entry => entry.name === product.productType);
+        if (!department || !product.subcategory) continue;
+        const inDepartment = (counts[department.slug] ??= {});
+        inDepartment[product.subcategory] = (inDepartment[product.subcategory] ?? 0) + 1;
+      }
+      return counts;
+    }
     /* The invented catalogue has sold nothing, so the demo draws no
        Bestsellers shelf rather than inventing a ranking. */
     /* No orders and no model behind the demo: the lookup finds nothing and

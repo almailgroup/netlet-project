@@ -7,6 +7,8 @@ import SwiftUI
 enum Route: Hashable {
     case product(handle: String)
     case department(slug: String?)
+    /// A department narrowed to one of its subcategories, the web's `/category/<slug>?sub=`.
+    case subcategory(department: String, sub: String)
     /// The shelf a department view narrows to: what is on offer, deepest first.
     case deals
     /// The newest products, the home page's "View all" under New arrivals.
@@ -78,6 +80,7 @@ enum Route: Hashable {
         case ("category"?, 2):
             let slug = segments[1] == "all" ? nil : segments[1]
             if let words = query["q"], !words.isEmpty { return .search(query: words, department: slug) }
+            if let slug, let sub = query["sub"], !sub.isEmpty { return .subcategory(department: slug, sub: sub) }
             return .department(slug: slug)
         case ("stores"?, 1): return .stores
         case ("brands"?, 1): return .brands
@@ -189,6 +192,9 @@ final class AppModel {
     /// The code a member of the affiliate programme shares on a product's
     /// address (3.7), or nil for anybody whose links would earn nothing — the
     /// web's `useMemberCode`. Asked on sign-in and after joining.
+    /// A department the Categories tab opens onto its subcategories when it
+    /// first appears — the screenshots' `-NetLetOpen categories:<slug>`.
+    var categoriesOpen: String?
     private(set) var memberCode: String?
     /// Whether this account has joined the affiliate programme, a suspended
     /// member included — what decides whether "Join" is offered. Nil until
@@ -306,7 +312,16 @@ final class AppModel {
             }
             openChat()
         case "categories":
+            // `categories:grocery` opens that department onto its subcategories.
             selectedTab = .categories
+            categoriesOpen = value
+        case "subcategory":
+            // `subcategory:grocery/pantry`, the department narrowed to it.
+            let pieces = (value ?? "").split(separator: "/").map(String.init)
+            if pieces.count == 2 {
+                selectedTab = .categories
+                categoriesPath = NavigationPath([Route.subcategory(department: pieces[0], sub: pieces[1])])
+            }
         case "stores":
             selectedTab = .home
             homePath = NavigationPath([Route.stores])

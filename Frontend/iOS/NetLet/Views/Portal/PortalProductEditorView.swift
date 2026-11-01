@@ -725,7 +725,7 @@ private struct ShippingSection: View {
                 ForEach(fields, id: \.key) { field in
                     if let options = field.options {
                         ChoiceField(label: field.shown(l.current), current: specs[field.key].flatMap { $0.isEmpty ? nil : $0 }, placeholder: l.t("admin.sizeUnset"),
-                                    options: [("", l.t("admin.sizeUnset"))] + options.map { ($0, $0) }, enabled: mayEdit) { specs[field.key] = $0 ?? "" }
+                                    options: [("", l.t("admin.sizeUnset"))] + options.map { ($0, field.shownOption($0, l.current)) }, enabled: mayEdit) { specs[field.key] = $0 ?? "" }
                     } else {
                         LabeledField(label: field.shown(l.current), text: Binding(get: { specs[field.key] ?? "" }, set: { specs[field.key] = $0 }), hint: field.unit)
                     }

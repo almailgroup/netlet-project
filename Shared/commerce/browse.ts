@@ -45,6 +45,12 @@ export type BrowseFilters = {
   inStock: boolean;
   onOffer: boolean;
   express: boolean;
+  /**
+   * One of the department's subcategories, by slug (`?sub=`), or null for
+   * the whole department. The page it names rather than a facet that narrows
+   * it, so it is not counted among the filters and "Clear all" keeps it.
+   */
+  sub: string | null;
   sort: BrowseSort;
 };
 
@@ -60,6 +66,7 @@ export const EMPTY_FILTERS: BrowseFilters = {
   inStock: false,
   onOffer: false,
   express: false,
+  sub: null,
   sort: "relevance",
 };
 
@@ -295,6 +302,7 @@ export function applyFilters(products: Product[], filters: BrowseFilters): Produ
     if (filters.inStock && !isAvailable(product)) return false;
     if (filters.onOffer && !isOnOffer(product)) return false;
     if (filters.express && !isExpressEligible(product)) return false;
+    if (filters.sub && product.subcategory !== filters.sub) return false;
 
     return true;
   });
@@ -400,6 +408,8 @@ export function filtersFromSearch(search: string, category = "all"): BrowseFilte
     inStock: params.get("stock") === "1",
     onOffer: params.get("offer") === "1",
     express: params.get("express") === "1",
+    /* A slug and nothing else: it is matched against the product's own, never shown. */
+    sub: /^[a-z0-9-]{1,40}$/.test(params.get("sub") ?? "") ? params.get("sub") : null,
     sort: BROWSE_SORTS.includes(sort as BrowseSort) ? (sort as BrowseSort) : "relevance",
   };
 }
@@ -412,6 +422,7 @@ export function filtersFromSearch(search: string, category = "all"): BrowseFilte
  */
 export function searchFromFilters(filters: BrowseFilters): string {
   const params = new URLSearchParams();
+  if (filters.sub) params.set("sub", filters.sub);
   if (filters.brands.length) params.set("brand", filters.brands.join(","));
   if (filters.sellers.length) params.set("seller", filters.sellers.join(","));
   if (filters.speeds.length) params.set("speed", filters.speeds.join(","));

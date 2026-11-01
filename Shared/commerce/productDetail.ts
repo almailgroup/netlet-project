@@ -9,7 +9,7 @@
  * without holes.
  */
 import { DEPARTMENTS } from "./departments.js";
-import { fieldFor } from "./attributeSchema.js";
+import { fieldFor, shownOption } from "./attributeSchema.js";
 import type { Money, Product, ProductAttribute } from "./types.js";
 
 /** Attributes that describe the product rather than the review score. */
@@ -168,7 +168,8 @@ export function specifications(
            seller typing the number into a field whose unit is GB. */
         const field = fieldFor(department, attribute.key);
         const label = field ? (options.arabic ? field.labelAr : field.label) : attribute.label;
-        return { label, value: withUnit(attribute.value, field?.unit ?? null) };
+        /* A chosen answer in the page's language: "Type: الهواتف". */
+        return { label, value: withUnit(shownOption(field, attribute.value, Boolean(options.arabic)), field?.unit ?? null) };
       }),
     text: product.description.trim(),
   };

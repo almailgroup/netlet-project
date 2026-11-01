@@ -68,6 +68,8 @@ export function prefetchRouteData(
     if (term && path.startsWith("/search")) ask(utils.search.products.prefetch({ q: term, department: null, locale, limit: SEARCH_LIMIT }));
     return;
   }
+  /* The Categories page opens each department onto its subcategories' counts. */
+  if (/^\/categories\/?$/.test(path)) ask(utils.commerce.subcategoryCounts.prefetch());
   const store = /^\/stores\/([^/?#]+)\/?$/.exec(path);
   if (store) ask(utils.commerce.store.prefetch({ slug: decodeURIComponent(store[1]), locale }));
   /* The guides list is the help page's too. */

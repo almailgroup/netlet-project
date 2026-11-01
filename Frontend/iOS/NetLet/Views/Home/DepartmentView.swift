@@ -5,10 +5,12 @@ import SwiftUI
 struct DepartmentView: View {
     let slug: String?
     var view: ShelfView = .all
+    /// One of the department's subcategories to open on, the web's `?sub=`.
+    var sub: String? = nil
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        ModelHost(make: { BrowseModel(source: .shelf(slug: slug, view: view), catalog: app.services.catalog) }) { model in
+        ModelHost(make: { BrowseModel(source: .shelf(slug: slug, view: view), catalog: app.services.catalog, sub: sub) }) { model in
             BrowsePage(model: model)
         }
     }
@@ -45,7 +47,7 @@ private struct BrowsePage: View {
         // The assistant steps aside while Filters floats in its corner.
         ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: !rowGone, searchTerm: model.searchTerm) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: [crumb])
+                Breadcrumbs(trail: activeSub.map { [departmentName, $0.shown(l.current)] } ?? [crumb])
                 Text(title)
                     .pageTitle()
                     .fixedSize(horizontal: false, vertical: true)
@@ -54,6 +56,7 @@ private struct BrowsePage: View {
                     .foregroundStyle(Brand.body)
                     .padding(.top, 8)
                     .accessibilityAddTraits(.updatesFrequently)
+                subcategoryRow
                 controls
                     .padding(.top, 16)
                     .padding(.bottom, 20)
@@ -86,8 +89,14 @@ private struct BrowsePage: View {
         model.query == nil ? departmentName : l.t("browse.searchCrumb")
     }
 
+    /// The subcategory the page is narrowed to, by its department.
+    private var activeSub: Department.Subcategory? {
+        model.query == nil ? model.department?.sub(model.filters.sub) : nil
+    }
+
     private var title: String {
         if let query = model.query { return l.t("browse.searchTitle", ["query": query]) }
+        if let activeSub { return activeSub.shown(l.current) }
         guard model.department == nil, case .shelf(_, let view) = model.source else { return departmentName }
         // The view's own name while it is exactly that view and nothing more.
         switch view {
@@ -238,6 +247,52 @@ private struct BrowsePage: View {
         if let low, let high { return "\(low) – \(high)" }
         if let low { return l.t("browse.priceFrom", ["min": low]) }
         return l.t("browse.priceUpTo", ["max": high ?? "0"])
+    }
+
+    /// The department's subcategories, on the owner's word — the web's chips
+    /// under the title: those with something on this shelf and the one the
+    /// page is narrowed to; a press narrows it and "All" widens it again.
+    @ViewBuilder
+    private var subcategoryRow: some View {
+        let counts = model.subcategoryCounts
+        let subs = (model.query == nil ? model.department?.subs ?? [] : [])
+            .filter { (counts[$0.slug] ?? 0) > 0 || $0.slug == model.filters.sub }
+        if !subs.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    subChip(title: l.t("categories.allSub"), count: model.products.value?.count ?? 0, slug: nil)
+                    ForEach(subs) { entry in
+                        subChip(title: entry.shown(l.current), count: counts[entry.slug] ?? 0, slug: entry.slug)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.horizontal, -16)
+            .padding(.top, 16)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(l.t("categories.subcategories"))
+        }
+    }
+
+    private func subChip(title: String, count: Int, slug: String?) -> some View {
+        let pressed = model.filters.sub == slug
+        return Button {
+            withAnimation(still ? nil : .snappy(duration: 0.2)) { model.filters.sub = slug }
+        } label: {
+            HStack(spacing: 6) {
+                Text(title).lineLimit(1)
+                Text("\(count)").foregroundStyle(pressed ? Color.white.opacity(0.8) : Brand.muted)
+            }
+            .font(.inter(14, .semibold))
+            .foregroundStyle(pressed ? Color.white : Brand.navy)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 40)
+            .background(Capsule().fill(pressed ? Brand.navy : Color.white))
+            .overlay(Capsule().strokeBorder(pressed ? Brand.navy : Brand.line, lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.tap)
+        .accessibilityAddTraits(pressed ? .isSelected : [])
     }
 
     @ViewBuilder

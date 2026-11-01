@@ -20,6 +20,7 @@
             ],
             "attributes": [],
             "reviewSummary": null,
+            "subcategory": "fresh",
             "media": [
               {
                 "url": "http://localhost:5000/brand/collection-home.svg",
@@ -92,6 +93,7 @@
             ],
             "attributes": [],
             "reviewSummary": null,
+            "subcategory": "pantry",
             "media": [
               {
                 "url": "http://localhost:5000/brand/collection-home.svg",

@@ -9,8 +9,24 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
     /// The dictionary key of its name, so it reads the way the web spells it.
     let label: String
     let icon: String
+    /// Its subcategories by name, in the order the Categories tab lists them
+    /// (`Shared/commerce/subcategories.ts`); the server files each product.
+    let subcategories: [Subcategory]?
+
+    struct Subcategory: Decodable, Identifiable, Hashable, Sendable {
+        let slug: String
+        let name: String
+        let nameAr: String
+
+        var id: String { slug }
+        func shown(_ language: Language) -> String { language == .ar ? nameAr : name }
+    }
 
     var id: String { slug }
+
+    /// Its subcategories, none for a department exported without them.
+    var subs: [Subcategory] { subcategories ?? [] }
+    func sub(_ slug: String?) -> Subcategory? { subs.first { $0.slug == slug } }
 
     /// An SF Symbol standing in for the web's icon of the same name.
     var symbol: String {

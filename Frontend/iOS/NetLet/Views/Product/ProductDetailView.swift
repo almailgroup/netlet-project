@@ -637,7 +637,7 @@ private struct ProductPage: View {
     @ViewBuilder
     private var specifications: some View {
         let blocks = DescriptionBlock.parse(product.description)
-        let specs = product.specifications
+        let specs = product.shownSpecifications(l.current)
         VStack(alignment: .leading, spacing: 12) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {

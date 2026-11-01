@@ -11,6 +11,7 @@
  * image host to go down, rate-limit, or need licensing for.
  */
 import type { SizeChart } from "@shared/commerce/sizeGuide";
+import { subcategoryFor } from "@shared/commerce/subcategories";
 import { DEFAULT_VARIANT_TITLE } from "@shared/commerce/fromInventory";
 import type { Product } from "@shared/commerce/types";
 
@@ -472,6 +473,8 @@ function toProduct(seed: Seed, index: number): Product {
     // delivery times, and an invented seller has none of the three.
     vendorBadges: [],
     tags: seed.tags,
+    /* Filed by the server's own rule, from the invented title and tags. */
+    subcategory: subcategoryFor({ department: seed.productType, titles: [seed.title], tags: seed.tags }),
     attributes: [
       {
         namespace: "demo",

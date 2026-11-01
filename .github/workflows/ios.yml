@@ -181,6 +181,8 @@ jobs:
             shot 56-address-confirm "$lang" address:confirm shopper
             shot 57-address-edit "$lang" address:edit shopper
             shot 58-account-security "$lang" security shopper
+            shot 59-categories-open "$lang" categories:grocery ""
+            shot 60-subcategory "$lang" subcategory:grocery/pantry ""
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

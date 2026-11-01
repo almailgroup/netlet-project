@@ -18,6 +18,9 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     /// The product's own visible reviews, measured on the read — their
     /// average and how many; absent with none, and from an older server.
     let reviewSummary: ReviewScore?
+    /// Which of its department's subcategories it is in, by slug — filed by
+    /// the server (`subcategoryFor`); absent outside a department.
+    let subcategory: String?
     let images: [ProductImage]
     /// The photographs with any video between them; absent from an older server.
     let media: [ProductMedia]?
@@ -66,6 +69,19 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     /// draws them, with any row left blank dropped.
     var specifications: [ProductAttribute] {
         attributes.filter { $0.namespace == "spec" && !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    /// The specification rows as a page reads them — `specifications()` on the
+    /// web: a row the department's schema knows takes its label in the page's
+    /// language and a chosen answer in it too ("النوع: الهواتف"); anything else
+    /// is shown as the seller wrote it.
+    func shownSpecifications(_ language: Language) -> [(label: String, value: String)] {
+        let department = ReferenceData.shared.department(named: productType ?? "")?.slug
+        let fields = department.flatMap { ListingRules.shared.attributeSchema[$0] } ?? []
+        return specifications.map { row in
+            guard let field = fields.first(where: { $0.key == row.key }) else { return (row.label, row.value) }
+            return (field.shown(language), field.shownOption(row.value, language))
+        }
     }
 }
 

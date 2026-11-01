@@ -57,6 +57,7 @@ import { modelReviewAvailable, modelScreen } from "./productReview.js";
 import { takeHourlyAllowance } from "./rateLimit.js";
 import { MAX_LISTING_SCREENS_PER_HOUR, reviewProduct as triageListing } from "../../../Shared/inventory/productReview.js";
 import { kuwaitDay } from "../../../Shared/kuwaitDay.js";
+import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -327,6 +328,51 @@ export async function publishedDepartmentCounts(): Promise<Record<string, number
     .groupBy(categories.slug);
   return Object.fromEntries(rows.map(row => [row.slug, Number(row.count)]));
 }
+
+/**
+ * How many products are on sale in each department's subcategories, by the
+ * department's slug and then the subcategory's — what the Categories page
+ * says beside each one when a department opens.
+ *
+ * Counted by the rule the products carry (`subcategoryFor`, from both titles,
+ * the tags and the seller's "Type"), over the `publishedCatalog` shelf, so a
+ * count and the page it opens cannot disagree. A product filed under no
+ * subcategory counts toward none; "All" is the department's own count.
+ */
+export async function publishedSubcategoryCounts(): Promise<Record<string, Record<string, number>>> {
+  const db = await getDb();
+  if (!db) return {};
+  const rows = await db
+    .select({
+      slug: categories.slug,
+      department: categories.name,
+      title: products.title,
+      titleAr: products.titleAr,
+      tags: products.tags,
+      attributes: products.attributes,
+    })
+    .from(products)
+    .innerJoin(vendors, eq(products.vendorId, vendors.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
+    .where(and(eq(products.status, "published"), eq(vendors.status, "approved")))
+    .limit(SUBCATEGORY_COUNT_CEILING);
+  const counts: Record<string, Record<string, number>> = {};
+  for (const row of rows) {
+    const sub = subcategoryFor({
+      department: row.department,
+      titles: [row.title, row.titleAr],
+      tags: row.tags ?? [],
+      type: (row.attributes ?? []).find(attribute => attribute.namespace === "spec" && attribute.key === "type")?.value ?? null,
+    });
+    if (!sub) continue;
+    const department = (counts[row.slug] ??= {});
+    department[sub] = (department[sub] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** How many products the subcategory counts read at most — a ceiling on one read, far above this shop's shelf. */
+const SUBCATEGORY_COUNT_CEILING = 20_000;
 
 /** One published product by its slug, for the product page. */
 export async function publishedProduct(handle: string) {

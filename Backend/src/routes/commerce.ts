@@ -34,7 +34,7 @@ import {
 import { publicProcedure, router } from "../core/trpc.js";
 import { MAX_LINE_QUANTITY, MAX_PRODUCTS_BY_ID } from "../../../Shared/commerce/types.js";
 import { bundlesForVariant } from "../services/bundles.js";
-import { publishedDepartmentCounts } from "../services/inventory.js";
+import { publishedDepartmentCounts, publishedSubcategoryCounts } from "../services/inventory.js";
 import { AddressError, setLineDestination } from "../services/addresses.js";
 import { TRPCError } from "@trpc/server";
 
@@ -100,6 +100,8 @@ export const commerceRouter = router({
   }),
   /** Products on sale per department, so the navigation can leave out an empty one. */
   departmentCounts: publicProcedure.query(() => publishedDepartmentCounts()),
+  /** Each department's subcategories' counts, for the Categories page. */
+  subcategoryCounts: publicProcedure.query(() => publishedSubcategoryCounts()),
   /**
    * The day's rates for the display currency (`Shared/commerce/currency.ts`):
    * one figure for everybody, the reference table whenever the feed is not

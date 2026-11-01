@@ -30,6 +30,8 @@
  * the value, so both record `16`.
  */
 
+import { typeOptions } from "./subcategories.js";
+
 /** One row a department expects. */
 export type AttributeField = {
   /** Stable, lower-case, what a facet groups on. Never shown. */
@@ -40,7 +42,22 @@ export type AttributeField = {
   unit?: string;
   /** When the answer is one of a few, so two sellers cannot spell it apart. */
   options?: string[];
+  /**
+   * The same answers in Arabic, in the same order — what an Arabic page and
+   * an Arabic editor show. The English is what is stored, a stable key.
+   */
+  optionsAr?: string[];
 };
+
+/**
+ * The department's "Type": which of its subcategories a product is, chosen
+ * from their names (`Shared/commerce/subcategories.ts`). First in every
+ * department's rows, because it is what files the product on the Categories
+ * page — and a product nobody has set it for is filed by its words.
+ */
+function typeField(departmentSlug: string): AttributeField {
+  return { key: "type", label: "Type", labelAr: "النوع", ...typeOptions(departmentSlug) };
+}
 
 /**
  * The rows each department expects, by slug.
@@ -51,6 +68,7 @@ export type AttributeField = {
  */
 export const ATTRIBUTE_SCHEMA: Record<string, AttributeField[]> = {
   electronics: [
+    typeField("electronics"),
     { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
     { key: "model", label: "Model", labelAr: "الطراز" },
     { key: "ram", label: "Memory", labelAr: "الذاكرة", unit: "GB" },
@@ -58,27 +76,41 @@ export const ATTRIBUTE_SCHEMA: Record<string, AttributeField[]> = {
     { key: "warranty", label: "Warranty", labelAr: "الضمان" },
   ],
   "home-and-kitchen": [
+    typeField("home-and-kitchen"),
     { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
     { key: "material", label: "Material", labelAr: "الخامة" },
     { key: "capacity", label: "Capacity", labelAr: "السعة", unit: "L" },
     { key: "power", label: "Power", labelAr: "القدرة", unit: "W" },
   ],
   beauty: [
+    typeField("beauty"),
     { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
     { key: "volume", label: "Volume", labelAr: "الحجم", unit: "ml" },
     { key: "skintype", label: "Skin type", labelAr: "نوع البشرة" },
   ],
   style: [
+    typeField("style"),
     { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
     { key: "material", label: "Material", labelAr: "الخامة" },
     { key: "fit", label: "Fit", labelAr: "القَصّة", options: ["Regular", "Slim", "Relaxed", "Oversized"] },
   ],
   grocery: [
+    typeField("grocery"),
     { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
     { key: "origin", label: "Country of origin", labelAr: "بلد المنشأ" },
     { key: "storage", label: "Storage", labelAr: "طريقة الحفظ", options: ["Ambient", "Chilled", "Frozen"] },
   ],
 };
+
+/**
+ * A recorded answer as a page reads it: the Arabic of one of the field's own
+ * options on an Arabic page, and anything else as the seller wrote it.
+ */
+export function shownOption(field: AttributeField | null | undefined, value: string, arabic: boolean): string {
+  if (!arabic || !field?.options || !field.optionsAr) return value;
+  const index = field.options.findIndex(option => option.toLowerCase() === value.trim().toLowerCase());
+  return index >= 0 ? field.optionsAr[index] ?? value : value;
+}
 
 /** The namespace a schema row lives in, so it cannot collide with the score. */
 export const SPEC_NAMESPACE = "spec";

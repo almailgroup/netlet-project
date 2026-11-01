@@ -167,6 +167,12 @@ export type Product = {
    */
   reviewSummary?: { average: number; count: number } | null;
   /**
+   * Which of its department's subcategories the product is in, by slug
+   * (`subcategoryFor`: the seller's "Type", else its words), worked out on
+   * the server from both titles. Null outside a department or matching none.
+   */
+  subcategory?: string | null;
+  /**
    * The photographs, and only the photographs.
    *
    * Every card, rail, thumbnail and saved-item tile reads this, and each of
