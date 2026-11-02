@@ -247,6 +247,7 @@ final class FakeCatalogService: CatalogServicing, @unchecked Sendable {
     func product(handle: String, language: Language) async throws -> Product? { nil }
     func departmentCounts() async throws -> [String: Int] { [:] }
     func bestsellers(language: Language) async throws -> [Product] { [] }
+    func trending(language: Language) async throws -> [Product] { [] }
     func stores(language: Language) async throws -> [StoreCard] { [] }
     func store(slug: String, language: Language) async throws -> StorePage? { nil }
     func brands() async throws -> [BrandCount] { [] }

@@ -1168,6 +1168,7 @@ final class RememberingCatalog: CatalogServicing, @unchecked Sendable {
     func product(handle: String, language: Language) async throws -> Product? { nil }
     func departmentCounts() async throws -> [String: Int] { throw URLError(.notConnectedToInternet) }
     func bestsellers(language: Language) async throws -> [Product] { throw URLError(.notConnectedToInternet) }
+    func trending(language: Language) async throws -> [Product] { throw URLError(.notConnectedToInternet) }
     func stores(language: Language) async throws -> [StoreCard] { throw URLError(.notConnectedToInternet) }
     func store(slug: String, language: Language) async throws -> StorePage? { nil }
     func brands() async throws -> [BrandCount] { throw URLError(.notConnectedToInternet) }
