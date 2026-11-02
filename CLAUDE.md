@@ -6634,16 +6634,27 @@ form rules asked early (`Validation.swift`) mirror `productDraft.ts`,
 `kuwaitAddress.ts` and `normalisePhone` so the app never offers what the API
 refuses.
 
-**Every field has "Hide keyboard" above the keyboard, on the owner's word**
-(`KeyboardBar`): a number pad has no return key, a box of several lines turns
-return into a new line, and a sheet's form does not always have a scroll to
-drag the keyboard down by. It is each field's `inputAccessoryView`, set as
-editing begins from one listener installed at launch, rather than a SwiftUI
-keyboard toolbar — one of those per field draws its button once per field on
-the screen, and one per screen misses the sheets, the search and the portal.
-A field that brings its own bar keeps it; the words and the direction are the
-page's. The web needs none: Safari on an iPhone has its own Done above the
-keyboard, and Android's back gesture puts it away.
+**Every field has Done above the keyboard, on the owner's word** (`KeyboardBar`),
+twice: first so the keyboard could be put away (a number pad has no return
+key, a box of several lines turns return into a new line), then — with a
+screenshot of the product page's quantity box over a bare number pad — "add
+an enter button for setting a value … for all the input fields so that the
+number applies". Done puts the keyboard away, and every quantity box applies
+what was typed as it loses focus, so Done is the Enter the number pad lacks.
+**The first version never showed**: it set each field's `inputAccessoryView`
+as editing began, but only where the field had none, and SwiftUI gives every
+field one of its own, so the bar was skipped everywhere — the CI's picture of
+the search with its keyboard up had nothing over the keys, and nobody had
+looked. Now the getter of `inputAccessoryView` on the field's own class
+answers with the bar the field was handed as it began editing (the method is
+added to that class, or replaced where the class has its own), so nothing set
+afterwards can displace it; nothing in the app brings a keyboard bar of its
+own. One listener installed at launch covers every field, the sheets, the
+search and the portal included; the words and the direction are the page's.
+`KeyboardUITests` types 3 into a product's quantity box, presses Done, and
+checks the keyboard went and the box reads 3. The web needs none: Safari on
+an iPhone has its own Done above the keyboard, and every quantity box asks
+for a Done key (`enterKeyHint`) and applies on Enter.
 
 **The app has no footer, on the owner's word** ("there is no need for a
 footer in app"). The home page drew the web's phone footer for a while — the
