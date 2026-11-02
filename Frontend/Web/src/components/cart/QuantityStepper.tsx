@@ -17,6 +17,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 import { quantityDraft, typedQuantity } from "@shared/commerce/typedQuantity";
+import { useStockLimit } from "@/hooks/useStockLimit";
 
 /** Nobody buys a hundred lamps from a product card; a typo could. The server's own ceiling. */
 export const MAX_QUANTITY = MAX_LINE_QUANTITY;
@@ -55,6 +56,7 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
   const { t } = useTranslation();
   const compact = size === "compact";
   const ceiling = Math.max(1, Math.min(MAX_QUANTITY, max));
+  const sayLimit = useStockLimit();
   /* The product page's is the cart line's control, on the owner's word
      ("match the unit selector on the cart page"): the same pill, a 40px
      minus and plus under a thumb (28px under a mouse), and the number a box
@@ -99,10 +101,12 @@ export function QuantityStepper({ value, onChange, size = "regular", disabled = 
       )}
       <button
         type="button"
-        onClick={() => onChange(current => Math.min(ceiling, current + 1))}
-        disabled={disabled || value >= ceiling}
+        /* Faint at the limit, never dead: pressed, it says why (`useStockLimit`). */
+        onClick={() => (value >= ceiling ? sayLimit(ceiling) : onChange(current => Math.min(ceiling, current + 1)))}
+        disabled={disabled}
+        aria-disabled={value >= ceiling || undefined}
         aria-label={t("product.increaseQuantity")}
-        className={`${button} rounded-full text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-40`}
+        className={`${button} rounded-full text-[#0a285a] disabled:cursor-not-allowed disabled:opacity-40 ${value >= ceiling ? "opacity-40" : ""}`}
       >
         <Plus className={icon} aria-hidden />
       </button>

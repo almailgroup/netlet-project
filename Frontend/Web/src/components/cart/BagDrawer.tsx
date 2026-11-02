@@ -20,6 +20,7 @@ import { LineDiscount } from "@/components/cart/LineDiscount";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { useDinars, useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
+import { useStockLimit } from "@/hooks/useStockLimit";
 import { ArrowRight, Check, ChevronRight, Minus, Plus, ShoppingBag, Store, Trash2, Truck, X } from "lucide-react";
 import { Link } from "wouter";
 import { useRef, useState } from "react";
@@ -180,6 +181,7 @@ function BagLine({ item }: { item: CartItem }) {
   const left = shortLines(lines).get(item.lineId);
   /* The line goes back to the server's answer on a refusal; this says why. */
   const failed = () => toast.error(t("cart.updateFailed"));
+  const sayLimit = useStockLimit();
   const href = `/products/${encodeURIComponent(item.productHandle)}`;
   return (
     <div className="flex gap-3 py-4">
@@ -238,7 +240,8 @@ function BagLine({ item }: { item: CartItem }) {
             <button onClick={() => void removeItem(item.lineId).catch(failed)} aria-label={t("cart.remove", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] hover:text-[#c2362a] pointer-fine:size-7"><Trash2 className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
           )}
           <LineQuantity item={item} title={title} ceiling={ceiling} />
-          <button disabled={item.quantity >= ceiling} onClick={() => void updateQuantity(item.lineId, item.quantity + 1).catch(failed)} aria-label={t("cart.increase", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+          {/* Faint at the limit, never dead: pressed, it says why (`useStockLimit`). */}
+          <button aria-disabled={item.quantity >= ceiling || undefined} onClick={() => (item.quantity >= ceiling ? sayLimit(ceiling) : void updateQuantity(item.lineId, item.quantity + 1).catch(failed))} aria-label={t("cart.increase", { name: title })} className={`grid size-10 place-items-center rounded-full text-[#0a285a] pointer-fine:size-7 ${item.quantity >= ceiling ? "opacity-40" : ""}`}><Plus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
         </div>
         {left !== undefined ? (
           <p role="status" className="mt-2 text-[12px] font-bold text-[#b42318]">

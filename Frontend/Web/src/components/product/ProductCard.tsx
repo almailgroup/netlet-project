@@ -35,6 +35,7 @@ import { cardCeiling } from "@shared/commerce/typedQuantity";
 import { CardGallery } from "@/components/product/CardGallery";
 import { PhotoCartControl } from "@/components/product/PhotoCartControl";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useStockLimit } from "@/hooks/useStockLimit";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { PreorderBadge } from "@/components/product/Availability";
 import type { Product } from "@shared/commerce/types";
@@ -132,7 +133,8 @@ function BuyPill({ tone, label, children, onPress, href, step, always = false, p
         </button>
       )}
       {step ? (
-        <button ref={plusRef} type="button" onClick={step.more} disabled={!step.canMore} aria-label={t("cart.increase", { name: step.name })} className={stepClass}>
+        /* Faint at the limit, never dead: pressed, it says why (`useStockLimit`). */
+        <button ref={plusRef} type="button" onClick={step.more} aria-disabled={!step.canMore || undefined} aria-label={t("cart.increase", { name: step.name })} className={`${stepClass} ${step.canMore ? "" : "opacity-40"}`}>
           <Plus className="size-4" aria-hidden />
         </button>
       ) : null}
@@ -193,6 +195,7 @@ function CardAction({ product, onChoose, onPhoto = false }: {
   /* No more than there is (`lineCeiling`, `roomFor`): the card offered
      ninety-nine whatever the shelf held. */
   const ceiling = cardCeiling(variant, line, cart?.items ?? []);
+  const sayLimit = useStockLimit();
 
   useEffect(() => {
     const target = focusNext.current === "add" ? addRef.current : focusNext.current === "plus" ? plusRef.current : null;
@@ -221,7 +224,7 @@ function CardAction({ product, onChoose, onPhoto = false }: {
   const shared = {
     name,
     less: () => setQuantity(quantity - 1),
-    more: () => setQuantity(quantity + 1),
+    more: () => (quantity >= ceiling ? sayLimit(ceiling) : setQuantity(quantity + 1)),
     canLess: quantity > 1,
     canMore: quantity < ceiling,
   };

@@ -114,13 +114,14 @@ struct QuantityStepper: View {
                 .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(quantity)"]))
             }
             Button {
-                change(quantity + 1)
+                if quantity >= maximum { sayStockLimit(maximum, app: app, l: l) } else { change(quantity + 1) }
             } label: {
                 Image(systemName: "plus")
                     .frame(width: 44, height: 44)
+                    // Faint at the limit, never dead: pressed, it says why.
+                    .opacity(quantity >= maximum ? 0.4 : 1)
             }
             .buttonStyle(.action)
-            .disabled(quantity >= maximum)
             .accessibilityLabel(l.t("cart.increase", ["name": name]))
         }
         .foregroundStyle(Brand.navy)
@@ -138,16 +139,27 @@ struct QuantityStepper: View {
             if removes { change(0) }
         case .set(let value, let capped)?:
             // Held to what there is, or to the line ceiling — each said as what it is.
-            if capped {
-                app.toast(maximum < BagStock.ceiling
-                    ? l.t("cart.onlyAvailable", ["count": "\(maximum)"])
-                    : l.t("cart.atMost", ["count": "\(maximum)"]))
-            }
+            if capped { sayStockLimit(maximum, app: app, l: l) }
             if value != quantity { change(value) }
         case nil:
             break
         }
     }
+}
+
+/// What a plus says when there is no more to add — the web's
+/// `useStockLimit`. On the owner's report that "the plus doesn't let me add
+/// more": every stepper stopped at what the shelf holds by greying its plus,
+/// and most of the live shop's pieces are one of a kind, so the plus went
+/// grey after one, without a word, which read as a broken button. It stays
+/// pressable; at the limit it is felt as a refusal and says the limit — what
+/// there is, or the line's ceiling, each as what it is.
+@MainActor
+func sayStockLimit(_ ceiling: Int, app: AppModel, l: LanguageSettings) {
+    Haptics.refused()
+    app.toast(ceiling < BagStock.ceiling
+        ? l.t("cart.onlyAvailable", ["count": "\(ceiling)"])
+        : l.t("cart.atMost", ["count": "\(BagStock.ceiling)"]))
 }
 
 /// A product in a grid or on a shelf — the web's `ProductCard` on a phone.
@@ -784,18 +796,25 @@ struct PhotoCartControl: View {
                 .contentTransition(.numericText(value: Double(count)))
                 .frame(maxWidth: .infinity)
                 .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(count)"]))
+            // What there is, less the bag's other lines of it (`BagStock`).
+            let ceiling = BagStock.cardCeiling(variant, line: line, in: app.cart.cart?.items ?? [])
             Button {
-                change(line, to: count + 1)
+                if count >= ceiling {
+                    settleLater()
+                    sayStockLimit(ceiling, app: app, l: l)
+                } else {
+                    change(line, to: count + 1)
+                }
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color.white)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
+                    // Faint at the limit, never dead: pressed, it says why.
+                    .opacity(count >= ceiling ? 0.4 : 1)
             }
             .buttonStyle(.action)
-            // What there is, less the bag's other lines of it (`BagStock`).
-            .disabled(count >= BagStock.cardCeiling(variant, line: line, in: app.cart.cart?.items ?? []))
             .accessibilityLabel(l.t("cart.increase", ["name": product.title]))
         }
         .transition(.opacity)

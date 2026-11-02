@@ -1734,6 +1734,19 @@ order while a line is short (`checkout.needFewer`, which goes to the bag),
 rather than refusing it after the press. The app is the same, rule for rule
 (`BagStock` in `TypedQuantity.swift`, tested on the same cases).
 
+**A plus at the limit says so; it is never a dead button.** Every plus
+stopped there by greying out, and the owner reported "the plus doesn't let
+me add more" — most of the live shop's pieces are one of a kind (the live
+check prints each variant's ceiling), so the plus went grey after one with
+no word, which read as broken. Now the plus at the limit is drawn faint,
+marked `aria-disabled`, and stays pressable. Pressed, it buzzes as a refusal
+and says "Only 1 available." (or the line ceiling's "At most 99"), the typed
+box's own words. This holds on the photo's stepper, the card's pill, the
+product page's and the preview's stepper, and the bag's line.
+`useStockLimit` on the web, `sayStockLimit` in the app. A browser test needs
+`click({ force: true })` on it: Playwright counts `aria-disabled` as not
+enabled, which a real browser does not.
+
 **Every line has a menu, on the owner's word** (`LineMenu`, a "⋯" where the bin
 was; the stepper's minus is the bin at one, the app's rule): Save for later,
 Move to wishlist, Share, View product, Remove from cart — a sheet from the foot

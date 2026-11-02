@@ -35,6 +35,7 @@
  */
 import { cardCeiling } from "@shared/commerce/typedQuantity";
 import { useCart } from "@/contexts/CartContext";
+import { useStockLimit } from "@/hooks/useStockLimit";
 import { useTranslation } from "@/hooks/useTranslation";
 import { pressHaptic, refusedHaptic } from "@/lib/haptics";
 import type { Product } from "@shared/commerce/types";
@@ -63,6 +64,9 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
   const quantity = line?.quantity ?? 0;
   const name = product.title;
   const stepping = open && Boolean(line);
+  const sayLimit = useStockLimit();
+  /* What there is, less the bag's other lines of it: the plus is faint there. */
+  const atLimit = Boolean(line) && quantity >= cardCeiling(variant, line, cart?.items ?? []);
 
   /* Folds into the count once the presses stop — the timer starts again with
      every change — unless the keyboard is inside it, which would be pulled out
@@ -147,8 +151,13 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
       removeItem(line.lineId).catch(failed);
       return;
     }
-    const clamped = Math.min(cardCeiling(variant, line, cart?.items ?? []), next);
-    if (clamped === line.quantity) return;
+    const ceiling = cardCeiling(variant, line, cart?.items ?? []);
+    const clamped = Math.min(ceiling, next);
+    if (clamped === line.quantity) {
+      /* A plus at the limit says why rather than doing nothing (`useStockLimit`). */
+      if (next > line.quantity) sayLimit(ceiling);
+      return;
+    }
     setSaid(t("cart.quantityShort", { count: String(clamped) }));
     updateQuantity(line.lineId, clamped).catch(failed);
   };
@@ -194,9 +203,9 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
           type="button"
           data-focus="step"
           onClick={event => change(event, quantity + 1)}
-          disabled={quantity >= cardCeiling(variant, line, cart?.items ?? [])}
+          aria-disabled={atLimit || undefined}
           aria-label={t("cart.increase", { name })}
-          className={step}
+          className={`${step} ${atLimit ? "opacity-40" : ""}`}
         >
           <Plus className="size-5" aria-hidden />
         </button>
