@@ -5,8 +5,10 @@ import {
   browse,
   categoryFromSlug,
   categorySlug,
+  clearFilterGroup,
   EMPTY_FILTERS,
   facetsFor,
+  filterGroups,
   filtersFromSearch,
   productsInCategory,
   searchFromFilters,
@@ -353,5 +355,49 @@ describe("brand, seller and delivery speed", () => {
 
   it("drops a speed a hand-edited URL invented", () => {
     expect(filtersFromSearch("?speed=same_day,teleport").speeds).toEqual(["same_day"]);
+  });
+});
+
+describe("filter groups — the phone's chip row", () => {
+  it("names each group that can narrow, offers, brand, price and department first", () => {
+    const groups = filterGroups(facetsFor(catalog), EMPTY_FILTERS);
+    expect(groups.map(group => group.key)).toEqual(["offers", "price", "category", "rating", "seller", "option:Colour"]);
+    expect(groups.every(group => group.active === 0)).toBe(true);
+  });
+
+  it("leaves out a group that could change nothing", () => {
+    /* One kettle: one seller, one colour, no saving, nothing to rate. */
+    const keys = filterGroups(facetsFor([catalog[1]]), EMPTY_FILTERS).map(group => group.key);
+    expect(keys).not.toContain("seller");
+    expect(keys).not.toContain("offers");
+    expect(keys).not.toContain("option:Colour");
+  });
+
+  it("counts what is ticked in each, and keeps a ticked group whatever the facets say", () => {
+    const filters: BrowseFilters = {
+      ...EMPTY_FILTERS,
+      onOffer: true,
+      express: true,
+      sellers: ["Brew"],
+      minPrice: 5,
+      brands: ["Gone"],
+      options: { Size: ["M"] },
+    };
+    const groups = filterGroups(facetsFor([catalog[1]]), filters);
+    expect(groups).toEqual(expect.arrayContaining([
+      { key: "offers", active: 2 },
+      { key: "brand", active: 1 },
+      { key: "price", active: 1 },
+      { key: "seller", active: 1 },
+      { key: "option:Size", active: 1 },
+    ]));
+  });
+
+  it("clears one group and leaves the rest", () => {
+    const filters: BrowseFilters = { ...EMPTY_FILTERS, onOffer: true, inStock: true, sellers: ["Brew"], options: { Colour: ["Black"], Size: ["M"] } };
+    expect(clearFilterGroup(filters, "offers")).toEqual({ ...filters, onOffer: false, inStock: false });
+    expect(clearFilterGroup(filters, "option:Colour").options).toEqual({ Size: ["M"] });
+    expect(clearFilterGroup(filters, "seller").sellers).toEqual([]);
+    expect(activeFilterCount(clearFilterGroup(filters, "price"))).toBe(activeFilterCount(filters));
   });
 });

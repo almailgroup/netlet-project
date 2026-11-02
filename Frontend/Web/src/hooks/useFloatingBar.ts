@@ -1,6 +1,7 @@
 /**
  * Says that a floating control of the page's own is on screen: the product
- * page's buy bar, the cart's Checkout, the department page's corner Filters.
+ * page's buy bar and the cart's Checkout. (The department page's Sort | Filter
+ * pill shares the foot of the screen instead: `useAssistantMark`.)
  *
  * The shop assistant's button sits in the same corner on a phone, over the
  * tab bar, and steps aside while any of these is showing (`data-floating-bar`

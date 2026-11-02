@@ -165,8 +165,8 @@ lands centred on the tab every time, and the labels stay drawn above it
 mid-slide. **It floats above the home
 indicator** (`bottom: max(0.75rem, safe area)`) rather than padding over it,
 so an iPhone gets the same pill lifted rather than a pill with a thick foot;
-the department page's filter button and the footer's clearance add the safe
-area to match. **A rounded bar's blur keeps to its own
+the department page's Sort | Filter pill and the footer's clearance add the
+safe area to match. **A rounded bar's blur keeps to its own
 corners** (`border-radius: inherit`, `inset: 0`) rather than trusting the bar's
 clip, which Safari has not always applied to a backdrop filter; it reaches past
 them only for the warp, under a fine pointer, which no phone has.
@@ -185,7 +185,7 @@ alone, 380ms on the sheets' curve — an opacity would make the bar a backdrop
 root and drain its glass to white for as long as the fade ran — keeps it up
 while focus is inside it, and is a cut under reduced motion. **What floats
 over it rides it down** into the room it left (`.rides-tab-bar`: a page's
-`PhoneActionBar` and a department's Filters button; and the assistant's
+`PhoneActionBar` and a department's Sort | Filter pill; and the assistant's
 button), so nothing hangs over an empty strip. **The assistant's button folds
 to its mark while the bar is away, on the owner's word** (`.assistant-label`):
 "Need help?" narrows to nothing and fades, and since the pill is held at the
@@ -193,8 +193,8 @@ screen's end edge it goes out that way — the right in English, the left in
 Arabic — and comes back with the bar; a width and an opacity on the words
 alone, never on the glass pill. Measured at 390 in both
 languages: still there 152px down from the top, away at 160, back after 15px
-up, there at the foot; the Filters button and the product page's buy bar land
-72px lower, where the bar was. The app follows the same numbers
+up, there at the foot; the department's filters and the product page's buy bar
+land 72px lower, where the bar was. The app follows the same numbers
 (`TabBarScroll.swift`, see "iOS app").
 
 **The search panel wears it too, on the owner's word** — see "The dropdown
@@ -2980,11 +2980,14 @@ fade, because an opacity on the panel would make it a backdrop root and drain
 the glass to white for as long as the fade ran.
 
 **On a phone it steps aside for the page's own floating control.** The product
-page's buy bar, the cart's Checkout and a department's corner Filters sit in
-that corner; each says so through `useFloatingBar` (`data-floating-bar` on
-`<html>`, a count, so two at once and one leaving does not bring the button
-back early), and the button fades out while any of them shows. The thing a
-page is for wins the corner. On a wide screen the footer leaves room under it.
+page's buy bar and the cart's Checkout sit in that corner; each says so
+through `useFloatingBar` (`data-floating-bar` on `<html>`, a count, so two at
+once and one leaving does not bring the button back early), and the button
+fades out while any of them shows. The thing a page is for wins the corner.
+**A department's and a search's Sort | Filter pill shares the foot of the
+screen instead**: the button folds to its mark beside it (`useAssistantMark`,
+`data-assistant-mark`), the owner's reference's round button beside its pill,
+so the assistant stays on those pages too (see Browsing). On a wide screen the footer leaves room under it.
 **It is on every page, the header-less account and cart included, and folds
 to its mark on a scroll down** — both on the owner's word; see the tab bar's
 slide under Buttons and "The account".
@@ -5573,7 +5576,7 @@ writes its head like the stores index's (`categoriesMeta`, a `vercel.json`
 rewrite) and it is in the sitemap. **`/categories` starts with `/category`**,
 so anything that reads a department page off the address asks for
 `/category/` with its slash — the footer's clearance for the department page's
-filter button does, or it would leave room for a button this page has not got.
+Sort | Filter pill does, or it would leave room for a pill this page has not got.
 **Two boxes lead it, "Shop by brand" and "Shop by stores", on the owner's
 word** — a press lists the brands (`/brands`, `pages/Brands.tsx`: every brand
 as a `BrandTile`, each opening a search for it) or the stores (`/stores`, see
@@ -5662,6 +5665,40 @@ that is still. The app is the same (`DepartmentBrowser`): 108-point art, the
 chosen tile at 1.08 on a spring, scrolled to the middle as it is chosen, the
 rows rising in by `RiseIn` 40ms apart, every press `SpringPressStyle`, and
 Reduce Motion drawing each in place.
+
+**On a phone, sort and filter are the owner's reference: a row of filter
+chips and a floating Sort | Filter pill** (a picture of a shop's results page:
+"Let the sort and filter option for the products be like this"). Under the
+title, one chip per group that can narrow the page — Offers, Brand, Price and
+Department first, as the picture has them, then Rating, Seller, Delivery speed
+and the merchants' own options — each with its picture, its name and a
+chevron, opening a sheet of that group alone; a chip with something ticked is
+navy-rimmed on the pale tint with the count in a navy disc. `filterGroups`
+(`Shared/commerce/browse.ts`, tested) is which groups and how many are ticked
+— a group is there when ticking it could change something or when something
+in it is ticked, so a chip never vanishes from under a shopper who has just
+used it — and the sidebar asks the same question, so a chip never names a
+group its sheet does not draw (`FilterSidebar`'s `only`). Over the tab bar
+floats a navy pill, Sort and Filter either side of a hairline, with the
+orange dot on Filter while anything is ticked: Sort opens the orders as a
+sheet, the current one ticked, and a press sorts and puts it away; Filter
+opens every group. It is always in reach — a Filters row in the page went up
+under the header with the first scroll, and the corner button that stood in
+for it covered the grid's end. It rides down with the tab bar
+(`.rides-tab-bar`) and **sits beside the assistant's mark rather than
+displacing it** (`useAssistantMark` folds "Need help?" away on these pages),
+centred in what the mark leaves, which is the picture's own pair of a pill and
+a round button. A sheet's dim fades in as it rises (`.sheet-scrim`,
+`.sheet-rise`), a chip gives under the finger, and focus goes into a sheet's
+Close and back to what opened it. A wide screen keeps its sidebar and its sort
+beside the title. The app is the same (`BrowsePage` in `DepartmentView.swift`:
+`FilterGroups`, the twin of `filterGroups` tested on the recorded catalogue;
+`FilterSheet`'s `only`; `SortSheet`; `ShopPage`'s `assistantFolded`), and the
+CI photographs the sort and the price sheets (`browseSheet:`, `68`, `69`).
+Measured at 320 and 390 in both languages and 1440: the chips opening their
+own group with focus on its Close, a ticked seller counting on its chip and
+lighting the dot, Sort writing `?sort=` and closing, the pill 12px over the
+tab bar, axe clean with each sheet open, no sideways scroll.
 
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and
@@ -5908,17 +5945,15 @@ across still fires, and `inset` pulls the bottom edge up by the tab bar
   field has focus**, because with the keyboard up a bar at the foot of what is
   left of the screen sits over the field being typed in. Signed out, its button
   is "Sign in to order".
-- **A department or a search.** Filters were only a navy pill floating over
-  the grid, which covered the first row's Buy now the moment the page opened.
-  On a phone, Filters and Sort are one row under the title, a thumb's width
-  each (the wide screen keeps its sort beside the title, one structure at a
-  time); once that row has gone up under the header, a round button in the
-  end corner above the tab bar stands in for it, with the active filters'
-  count as a pixel badge — at the edge it covers the end of one card's button
-  rather than the middle of two. **It never appeared until the tab bar's
-  round found it**: `useBeyondScreen` asked "above the screen?" of a row that
-  had only crossed the inset line under the header — still on screen — and the
-  observer never spoke again; it asks against the watched edge now.
+- **A department or a search.** Its sort and filter are the owner's
+  reference now — a row of filter chips under the title and a Sort | Filter
+  pill floating over the tab bar (see Browsing). They were a Filters and Sort
+  row under the title, a round corner button standing in once the row had
+  gone up under the header, and before that a navy pill over the grid. **The
+  corner button never appeared until the tab bar's round found it**:
+  `useBeyondScreen` asked "above the screen?" of a row that had only crossed
+  the inset line under the header — still on screen — and the observer never
+  spoke again; it asks against the watched edge now.
 
 And the targets that were under a thumb's size are a thumb's size under a
 coarse pointer, keeping what they were under a mouse (`pointer-fine:`): the
@@ -6205,7 +6240,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, and is 820 KB (240 KB) now, the app tutorial's words in both languages — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, and is 821 KB (240 KB) now, the filter chips and the Sort | Filter pill — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -6726,10 +6761,11 @@ view's own `transform`, since UIKit lays the bar out by its frame and a frame
 set under a transform is undefined — and takes no touches while away. An iPad,
 whose bar is along the top, still hides it the system's way. What floats over
 the page rides down with it (`AppModel.tabBarRide`: the assistant's button,
-the cart's Checkout bar, the product page's buy bar, a department's Filters),
-the assistant's button folds to its mark while it is away ("Need help?" moving
-out toward the end edge), and the button steps aside for the cart's and a
-department's floating control as it does on the web. A cut under Reduce
+the cart's Checkout bar, the product page's buy bar, a department's Sort |
+Filter pill), the assistant's button folds to its mark while it is away
+("Need help?" moving out toward the end edge) and beside a department's pill
+(`ShopPage`'s `assistantFolded`), and it steps aside for the cart's floating
+control as it does on the web. A cut under Reduce
 Motion, never under VoiceOver, which reads the bar as the way round the app.
 Every page starts with it shown, and a page leaving puts it back. **Whether
 the slide moves the bar on a given iOS is a picture, not a reading**: if the

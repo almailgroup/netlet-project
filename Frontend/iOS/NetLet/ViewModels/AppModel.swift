@@ -201,6 +201,9 @@ final class AppModel {
     /// A department the Categories tab opens onto its subcategories when it
     /// first appears — the screenshots' `-NetLetOpen categories:<slug>`.
     var categoriesOpen: String?
+    /// A department opens with its sort or one filter group's sheet up — the
+    /// screenshots' `-NetLetOpen browseSheet:<slug>/<sort|all|group>`.
+    var browseSheetStart: String?
     /// The tutorial is over the app (`AppTutorial`): on a new install's first
     /// launch, or opened again from Help and information.
     var tutorialShowing = false
@@ -366,6 +369,14 @@ final class AppModel {
                 selectedTab = .categories
                 categoriesPath = NavigationPath([Route.subcategory(department: pieces[0], sub: pieces[1])])
             }
+        case "browseSheet":
+            // `browseSheet:all/sort`, `browseSheet:grocery/price` — a shelf with
+            // its sort, every filter ("all") or one group's sheet up.
+            let pieces = (value ?? "").split(separator: "/").map(String.init)
+            guard pieces.count == 2 else { return }
+            selectedTab = .categories
+            browseSheetStart = pieces[1]
+            categoriesPath = NavigationPath([Route.department(slug: pieces[0] == "all" ? nil : pieces[0])])
         case "stores":
             selectedTab = .home
             homePath = NavigationPath([Route.stores])

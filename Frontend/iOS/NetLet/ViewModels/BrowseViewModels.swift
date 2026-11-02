@@ -182,6 +182,100 @@ struct Facets {
     func narrows(_ count: Int) -> Bool { count > 0 && count < total }
 }
 
+/// A group of filters: what one chip in the phone's row names and its sheet
+/// draws — the web's `FilterGroupKey`, less the department, which the app's
+/// pages never narrow by.
+enum FilterGroupKey: Hashable, Identifiable {
+    case offers, brand, price, rating, seller, speed
+    case option(String)
+
+    /// A key from its `id`, the screenshots' hook names a group by.
+    init?(id: String) {
+        switch id {
+        case "offers": self = .offers
+        case "brand": self = .brand
+        case "price": self = .price
+        case "rating": self = .rating
+        case "seller": self = .seller
+        case "speed": self = .speed
+        default:
+            guard id.hasPrefix("option:") else { return nil }
+            self = .option(String(id.dropFirst("option:".count)))
+        }
+    }
+
+    var id: String {
+        switch self {
+        case .offers: return "offers"
+        case .brand: return "brand"
+        case .price: return "price"
+        case .rating: return "rating"
+        case .seller: return "seller"
+        case .speed: return "speed"
+        case .option(let name): return "option:" + name
+        }
+    }
+}
+
+/// The groups that can narrow a page, in the chip row's order, each with how
+/// many of its values are ticked — the web's `filterGroups`, rule for rule:
+/// a group is there when ticking it could change something, or when
+/// something in it is already ticked, so a chip never vanishes from under a
+/// shopper who has just used it.
+enum FilterGroups {
+    struct Group: Identifiable, Equatable {
+        let key: FilterGroupKey
+        let active: Int
+        var id: String { key.id }
+    }
+
+    static func of(_ facets: Facets, _ filters: BrowseFilters) -> [Group] {
+        var groups: [Group] = []
+        let offers = (filters.inStock ? 1 : 0) + (filters.onOffer ? 1 : 0) + (filters.express ? 1 : 0)
+        if offers > 0 || facets.narrows(facets.inStock) || facets.narrows(facets.onOffer) || facets.narrows(facets.express) {
+            groups.append(Group(key: .offers, active: offers))
+        }
+        if !filters.brands.isEmpty || facets.narrows(facets.brands) {
+            groups.append(Group(key: .brand, active: filters.brands.count))
+        }
+        let priced = filters.minPrice != nil || filters.maxPrice != nil
+        if priced || facets.priceBounds != nil { groups.append(Group(key: .price, active: priced ? 1 : 0)) }
+        if filters.minRating != nil || !facets.ratings.isEmpty {
+            groups.append(Group(key: .rating, active: filters.minRating == nil ? 0 : 1))
+        }
+        if !filters.sellers.isEmpty || facets.narrows(facets.sellers) {
+            groups.append(Group(key: .seller, active: filters.sellers.count))
+        }
+        if !filters.speeds.isEmpty || facets.narrows(facets.speeds) {
+            groups.append(Group(key: .speed, active: filters.speeds.count))
+        }
+        var names = facets.options.filter { facets.narrows($0.values) || !(filters.options[$0.name] ?? []).isEmpty }.map(\.name)
+        for (name, values) in filters.options.sorted(by: { $0.key < $1.key }) where !values.isEmpty && !names.contains(name) {
+            names.append(name)
+        }
+        for name in names { groups.append(Group(key: .option(name), active: filters.options[name]?.count ?? 0)) }
+        return groups
+    }
+
+    /// One group's values taken off — its sheet's Clear.
+    static func clear(_ key: FilterGroupKey, in filters: inout BrowseFilters) {
+        switch key {
+        case .offers:
+            filters.inStock = false
+            filters.onOffer = false
+            filters.express = false
+        case .brand: filters.brands = []
+        case .price:
+            filters.minPrice = nil
+            filters.maxPrice = nil
+        case .rating: filters.minRating = nil
+        case .seller: filters.sellers = []
+        case .speed: filters.speeds = []
+        case .option(let name): filters.options[name] = nil
+        }
+    }
+}
+
 /// A shelf page — a department, the whole catalogue, a view of it, or a
 /// search's results — with the filters and the sort a phone draws.
 @Observable

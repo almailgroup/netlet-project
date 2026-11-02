@@ -18,7 +18,6 @@
 import { toastHeart } from "@/lib/heartToast";
 import { useCatalog } from "@/hooks/useCatalog";
 import { DEPARTMENT_SHELF, SEARCH_LIMIT } from "@/lib/routeData";
-import { useFloatingBar } from "@/hooks/useFloatingBar";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -46,8 +45,11 @@ import {
   filtersFromSearch,
   productsInCategory,
   BROWSE_SORTS,
+  clearFilterGroup,
+  filterGroups,
   type BrowseFilters,
   type BrowseSort,
+  type FilterGroupKey,
 } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
@@ -55,14 +57,17 @@ import { categoryMessageKey } from "@/content/homeLayout";
 import { departmentMeta, privatePageMeta } from "@shared/seo";
 import { findSubcategory, subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowUpDown, PackageOpen, SlidersHorizontal, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowUpDown, BadgePercent, Banknote, Check, ChevronDown, LayoutGrid, ListFilter, PackageOpen, SlidersHorizontal, Star, Store, Tag, Truck, X,
+  type LucideIcon,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
-import { CountBadge } from "@/components/ui/CountBadge";
-import { useBeyondScreen } from "@/hooks/useBeyondScreen";
+import { NoticeDot } from "@/components/ui/CountBadge";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useAssistantMark } from "@/hooks/useAssistantMark";
 
 const SORT_LABELS: Record<BrowseSort, MessageKey> = {
   relevance: "browse.sort.relevance",
@@ -73,6 +78,21 @@ const SORT_LABELS: Record<BrowseSort, MessageKey> = {
   newest: "browse.sort.newest",
 };
 
+/* Each filter group's picture on its chip, after the owner's reference: a
+   tag for brands, a note for price, a badge for offers. */
+const GROUP_ICONS: Record<Exclude<FilterGroupKey, `option:${string}`>, LucideIcon> = {
+  offers: BadgePercent,
+  brand: Tag,
+  price: Banknote,
+  category: LayoutGrid,
+  rating: Star,
+  seller: Store,
+  speed: Truck,
+};
+
+/** Which sheet a phone has open: every filter, one group of them, or the sort. */
+type Sheet = { kind: "filters"; group: FilterGroupKey | null } | { kind: "sort" };
+
 export default function Category() {
   const [, params] = useRoute("/category/:slug");
   const [onSearchPage] = useRoute("/search");
@@ -82,9 +102,13 @@ export default function Category() {
   const shelf = useCatalog(DEPARTMENT_SHELF);
   const catalog = shelf.data ?? [];
 
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheet, setSheet] = useState<Sheet | null>(null);
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
-  useOverlay(sheetOpen, () => setSheetOpen(false));
+  useOverlay(sheet !== null, () => setSheet(null));
+  /* Focus goes into a sheet as it opens — after `useOverlay`, which records
+     the opener to hand it back to. */
+  const sheetClose = useRef<HTMLButtonElement>(null);
+  useEffect(() => { if (sheet) sheetClose.current?.focus(); }, [sheet]);
 
   const slug = onSearchPage ? "all" : params?.slug ?? "all";
   const basePath = onSearchPage ? "/search" : `/category/${slug}`;
@@ -212,7 +236,7 @@ export default function Category() {
     // Switching department drops the old one's filters: a brand that existed in
     // Electronics rarely exists in Grocery, and carrying it over lands the
     // shopper on an empty page they did not ask for.
-    setSheetOpen(false);
+    setSheet(null);
     const target = nextCategory === "all" ? "all" : categorySlug(nextCategory);
     /* The search term survives a change of department; the facets do not. */
     const query = searchWithTerm({ ...EMPTY_FILTERS, sort: filters.sort }, term);
@@ -273,20 +297,39 @@ export default function Category() {
   ];
 
   /*
-   * On a phone, Filters and Sort are one row under the title, a thumb's
-   * width each. The filters used to be only a navy pill floating over the
-   * grid, which covered the first row's Buy now the moment the page opened;
-   * the row is where somebody arriving looks for them. Once it has scrolled
-   * up under the header, a round button in the corner above the tab bar
-   * stands in for it — at the edge, where it covers the end of one card's
-   * button rather than the middle of two. One structure at a time: the wide
-   * screen's sort sits beside the title instead, never both with one hidden.
+   * On a phone, sort and filter are the owner's reference: a row of chips
+   * under the title, one per group that can narrow the page (`filterGroups`),
+   * each opening that group alone; and a navy "Sort | Filter" pill floating
+   * over the tab bar, with a dot while anything is ticked — always in reach,
+   * where a Filters button in the page went up under the header with the
+   * first scroll. The assistant folds to its mark beside the pill
+   * (`useAssistantMark`), the reference's round button, rather than leaving
+   * these pages. A wide screen keeps its sidebar and its sort beside the
+   * title — one structure at a time, never both with one hidden.
    */
   const wide = useMediaQuery("(min-width: 1024px)");
-  const [filtersRef, filtersPassed] = useBeyondScreen("top", 64);
-  /* The corner is the filters' while they float there; the assistant's button steps aside. */
-  useFloatingBar(!wide && filtersPassed);
+  const groups = useMemo(() => filterGroups(facets, filters), [facets, filters]);
+  useAssistantMark(!wide);
+  /* The pill leaves the assistant's mark its corner, centred in what is left. */
+  const assistantOn = trpc.ai.available.useQuery(undefined, { staleTime: 5 * 60_000 }).data?.chat === true;
   const filtersLabel = activeCount ? t("browse.filtersWithCount", { count: activeCount }) : t("browse.filters");
+  const chipLabel = (key: FilterGroupKey) => {
+    switch (key) {
+      case "offers": return t("browse.chipOffers");
+      case "brand": return t("browse.brand");
+      case "price": return t("browse.price");
+      case "category": return t("browse.category");
+      case "rating": return t("browse.chipRating");
+      case "seller": return t("browse.seller");
+      case "speed": return t("browse.deliverySpeed");
+      default: return key.slice("option:".length);
+    }
+  };
+  /* A sheet's title is the group's full name where the chip's is short. */
+  const groupTitle = (key: FilterGroupKey) =>
+    key === "offers" ? t("browse.offers") : key === "rating" ? t("browse.rating") : chipLabel(key);
+  const openGroup = sheet?.kind === "filters" ? sheet.group : null;
+  const openGroupActive = openGroup ? groups.find(group => group.key === openGroup)?.active ?? 0 : 0;
   const sortSelect = (className: string) => (
     <Select
       aria-label={t("browse.sortBy")}
@@ -298,13 +341,14 @@ export default function Category() {
     </Select>
   );
 
-  const sidebar = (
+  const sidebar = (only?: FilterGroupKey) => (
     <FilterSidebar
       facets={facets}
       filters={filters}
       currency={currency}
       onChange={setFilters}
       onSelectCategory={selectCategory}
+      only={only}
     />
   );
 
@@ -372,16 +416,36 @@ export default function Category() {
           </div>
         ) : null}
 
-        {!wide ? (
-          <div className="-mt-2 mb-5 grid grid-cols-2 gap-2">
-            <button ref={filtersRef} type="button" onClick={() => setSheetOpen(true)} className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[14px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
-              <SlidersHorizontal className="size-4 shrink-0" aria-hidden />
-              <span className="truncate">{filtersLabel}</span>
-            </button>
-            <label className="flex h-11 min-w-0 cursor-pointer items-center gap-1.5 rounded-xl border border-[#d5dfeb] bg-white ps-3 text-[#536b8c] hover:bg-[#f0f2f5] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#f2683a]">
-              <ArrowUpDown className="size-4 shrink-0" aria-hidden />
-              {sortSelect("h-full min-w-0 flex-1 bg-transparent pe-3 text-[14px] font-bold text-[#0a285a] outline-none hover:bg-transparent")}
-            </label>
+        {/* The filter groups as chips, the owner's reference: each opens its
+            own group, and one with something ticked says how many. */}
+        {!wide && groups.length ? (
+          <div
+            role="group"
+            aria-label={t("browse.filterBy")}
+            className="-mx-4 -mt-1 mb-1 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]"
+          >
+            {groups.map(group => {
+              const Icon = group.key.startsWith("option:") ? SlidersHorizontal : GROUP_ICONS[group.key as keyof typeof GROUP_ICONS];
+              const on = group.active > 0;
+              return (
+                <button
+                  key={group.key}
+                  type="button"
+                  aria-haspopup="dialog"
+                  onClick={() => setSheet({ kind: "filters", group: group.key })}
+                  className={`filter-chip flex h-11 shrink-0 items-center gap-2 rounded-full border ps-3.5 pe-3 text-[14px] text-[#0a285a] ${
+                    on ? "border-[#0a285a] bg-[#eef2f8] font-bold hover:bg-[#0a285a]/[.06]" : "border-[#d5dfeb] bg-white font-semibold hover:bg-[#f0f2f5]"
+                  }`}
+                >
+                  <Icon className="size-4 shrink-0" aria-hidden />
+                  <span dir="auto" className="whitespace-nowrap">{chipLabel(group.key)}</span>
+                  {on ? (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[#0a285a] px-1.5 text-[12px] font-bold text-white">{group.active}</span>
+                  ) : null}
+                  <ChevronDown className="size-4 shrink-0 ink-muted" aria-hidden />
+                </button>
+              );
+            })}
           </div>
         ) : null}
 
@@ -390,7 +454,7 @@ export default function Category() {
               independently scrollable so a long facet list cannot trap the page. */}
           <aside className="hidden lg:block">
             <div className="hide-scrollbar sticky top-[92px] max-h-[calc(100vh-112px)] overflow-y-auto rounded-2xl border border-[#e6e9ef] bg-white px-4 py-1">
-              {sidebar}
+              {sidebar()}
             </div>
           </aside>
 
@@ -480,7 +544,7 @@ export default function Category() {
                     <button type="button" onClick={clearAll} className={BUTTON_PRIMARY}>{t("browse.clearAll")}</button>
                   ) : (
                     /* Everything means everything: the search term goes as well. */
-                    <button type="button" onClick={() => { setSheetOpen(false); navigate("/category/all"); setQueryString(""); }} className={BUTTON_PRIMARY}>
+                    <button type="button" onClick={() => { setSheet(null); navigate("/category/all"); setQueryString(""); }} className={BUTTON_PRIMARY}>
                       {t("browse.browseEverything")}
                     </button>
                   )}
@@ -491,50 +555,113 @@ export default function Category() {
         </div>
       </PageBody>
 
-      {/* The phone's filters once the row under the title has gone up under
-          the header: round, at the end, just above the tab bar (which floats
-          at max(0.75rem, safe area) and is 64px tall). */}
+      {/* Sort and Filter, one navy pill over the tab bar — the owner's
+          reference — riding down with the bar when it slides away. Centred
+          in what the assistant's mark leaves of the foot of the screen. */}
       {!wide ? (
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          aria-label={filtersLabel}
-          aria-hidden={!filtersPassed}
-          inert={!filtersPassed}
-          className={`glass glass-navy rides-tab-bar fixed end-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 grid size-13 place-items-center rounded-full shadow-[0_10px_30px_rgba(10,40,90,.25)] ${filtersPassed ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0"}`}
+        <div
+          className={`rides-tab-bar pointer-events-none fixed start-4 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.75rem)] z-30 flex justify-center ${assistantOn ? "end-[5.25rem]" : "end-4"}`}
         >
-          <SlidersHorizontal className="size-5" aria-hidden />
-          <CountBadge value={activeCount} className="absolute -end-1 -top-1" />
-        </button>
+          <div className="pointer-events-auto flex h-[52px] items-center rounded-full bg-[#0a285a] text-white shadow-[0_10px_30px_rgba(10,40,90,.28)]">
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              aria-label={`${t("browse.sortBy")}: ${t(SORT_LABELS[filters.sort])}`}
+              onClick={() => setSheet({ kind: "sort" })}
+              className="flex h-full items-center gap-2 rounded-s-full ps-5 pe-4 text-[15px] font-bold hover:bg-white/[.12]"
+            >
+              {t("browse.sort")}
+              <ArrowUpDown className="size-4" aria-hidden />
+            </button>
+            <span aria-hidden className="h-6 w-px bg-white/30" />
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              aria-label={filtersLabel}
+              onClick={() => setSheet({ kind: "filters", group: null })}
+              className="relative flex h-full items-center gap-2 rounded-e-full ps-4 pe-5 text-[15px] font-bold hover:bg-white/[.12]"
+            >
+              {t("browse.filter")}
+              <ListFilter className="size-4" aria-hidden />
+              {activeCount ? <NoticeDot className="absolute end-3.5 top-2.5" /> : null}
+            </button>
+          </div>
+        </div>
       ) : null}
 
-      {sheetOpen ? (
-        <div className="fixed inset-0 z-[70] bg-[#061b3b]/35 lg:hidden" onClick={() => setSheetOpen(false)}>
-          <aside
+      {sheet?.kind === "sort" ? (
+        <div className="sheet-scrim fixed inset-0 z-[70] bg-[#061b3b]/35 lg:hidden" onClick={() => setSheet(null)}>
+          <div
             role="dialog"
             aria-modal="true"
-            aria-label={t("browse.filters")}
-            className="absolute inset-x-0 bottom-0 flex max-h-[86vh] flex-col rounded-t-[1.5rem] bg-background"
+            aria-labelledby="sort-sheet-title"
+            className="sheet-rise absolute inset-x-0 bottom-0 rounded-t-[1.5rem] bg-background pb-[max(1rem,env(safe-area-inset-bottom))]"
             onClick={event => event.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[#e6e9ef] px-5 py-4">
-              <h2 className="text-sm font-extrabold">{t("browse.filters")}</h2>
-              <div className="flex items-center gap-3">
-                {activeCount ? (
-                  <button onClick={clearAll} className="text-[12px] font-extrabold ink-accent underline underline-offset-4">
+              <h2 id="sort-sheet-title" className="text-[16px] font-extrabold text-[#0a285a]">{t("browse.sortBy")}</h2>
+              <button ref={sheetClose} type="button" onClick={() => setSheet(null)} aria-label={t("common.close")} className="grid size-11 place-items-center rounded-full hover:bg-[#f0f2f5]">
+                <X className="size-5 text-[#0a285a]" aria-hidden />
+              </button>
+            </div>
+            <div role="radiogroup" aria-labelledby="sort-sheet-title" className="px-3 py-2">
+              {BROWSE_SORTS.map(sort => {
+                const chosen = filters.sort === sort;
+                return (
+                  <button
+                    key={sort}
+                    type="button"
+                    role="radio"
+                    aria-checked={chosen}
+                    onClick={() => { setFilters({ sort }); setSheet(null); }}
+                    className={`flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl px-3 text-start text-[15px] text-[#0a285a] hover:bg-[#f0f2f5] ${chosen ? "font-bold" : "font-medium"}`}
+                  >
+                    {t(SORT_LABELS[sort])}
+                    {chosen ? <Check className="size-5 shrink-0 text-[#0a285a]" aria-hidden /> : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {sheet?.kind === "filters" ? (
+        <div className="sheet-scrim fixed inset-0 z-[70] bg-[#061b3b]/35 lg:hidden" onClick={() => setSheet(null)}>
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="filter-sheet-title"
+            className={`sheet-rise absolute inset-x-0 bottom-0 flex flex-col rounded-t-[1.5rem] bg-background ${openGroup ? "max-h-[75vh]" : "max-h-[86vh]"}`}
+            onClick={event => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-[#e6e9ef] px-5 py-3">
+              <h2 id="filter-sheet-title" dir="auto" className="min-w-0 truncate text-[16px] font-extrabold text-[#0a285a]">
+                {openGroup ? groupTitle(openGroup) : t("browse.filters")}
+              </h2>
+              <div className="flex shrink-0 items-center gap-1">
+                {openGroup ? (
+                  openGroupActive ? (
+                    <button type="button" onClick={() => setFilters(clearFilterGroup(filters, openGroup))} className="min-h-11 px-2 text-[13px] font-extrabold ink-accent underline underline-offset-4">
+                      {t("browse.clearGroup")}
+                    </button>
+                  ) : null
+                ) : activeCount ? (
+                  <button type="button" onClick={clearAll} className="min-h-11 px-2 text-[13px] font-extrabold ink-accent underline underline-offset-4">
                     {t("browse.clearAll")}
                   </button>
                 ) : null}
-                <button onClick={() => setSheetOpen(false)} aria-label={t("browse.closeFilters")} className="glass pressable grid size-8 place-items-center rounded-full">
-                  <X className="size-4" />
+                <button ref={sheetClose} type="button" onClick={() => setSheet(null)} aria-label={t("browse.closeFilters")} className="grid size-11 place-items-center rounded-full hover:bg-[#f0f2f5]">
+                  <X className="size-5 text-[#0a285a]" aria-hidden />
                 </button>
               </div>
             </div>
-            <div className="hide-scrollbar flex-1 overflow-y-auto px-5">{sidebar}</div>
+            <div className="hide-scrollbar flex-1 overflow-y-auto px-5">{sidebar(openGroup ?? undefined)}</div>
             <div className="border-t border-[#e6e9ef] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <button
-                onClick={() => setSheetOpen(false)}
-                className="glass glass-accent pressable h-12 w-full rounded-full text-xs font-extrabold"
+                type="button"
+                onClick={() => setSheet(null)}
+                className="h-12 w-full rounded-full bg-[#0a285a] text-[15px] font-bold text-white hover:bg-[#0d3372]"
               >
                 {t("browse.showResults", { count: results.length })}
               </button>

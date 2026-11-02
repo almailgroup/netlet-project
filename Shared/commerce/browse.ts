@@ -361,6 +361,75 @@ export function activeFilterCount(filters: BrowseFilters): number {
   );
 }
 
+/* --------------------------------------------------------------- groups --- */
+
+/** A group of filters: what one chip in the phone's row names and its sheet draws. */
+export type FilterGroupKey = "offers" | "brand" | "price" | "category" | "rating" | "seller" | "speed" | `option:${string}`;
+
+export type FilterGroup = { key: FilterGroupKey; active: number };
+
+/**
+ * The groups that can narrow this page, in the phone's chip order — offers,
+ * brand, price and department first, as the owner's reference has them, then
+ * rating, seller, delivery speed and the merchants' own options — each with
+ * how many of its values are ticked. A group is there when ticking it could
+ * change something (`facetNarrows`, the sidebar's rule) or when something in
+ * it is already ticked, so a chip never vanishes from under a shopper who has
+ * just used it. The sidebar asks the same question, so a chip never names a
+ * group its sheet does not draw. The app's `FilterGroups` is this, rule for
+ * rule.
+ */
+export function filterGroups(facets: Facets, filters: BrowseFilters): FilterGroup[] {
+  const narrows = (count: number) => count > 0 && count < facets.total;
+  const groups: FilterGroup[] = [];
+  const offers = Number(filters.inStock) + Number(filters.onOffer) + Number(filters.express);
+  if (offers || narrows(facets.inStock) || narrows(facets.onOffer) || narrows(facets.express)) {
+    groups.push({ key: "offers", active: offers });
+  }
+  if (filters.brands.length || facetNarrows(facets.brands, facets.total)) {
+    groups.push({ key: "brand", active: filters.brands.length });
+  }
+  const priced = filters.minPrice !== null || filters.maxPrice !== null;
+  if (priced || facets.priceBounds) groups.push({ key: "price", active: priced ? 1 : 0 });
+  if (facets.categories.length > 1) groups.push({ key: "category", active: 0 });
+  if (filters.minRating !== null || facets.ratings.length) {
+    groups.push({ key: "rating", active: filters.minRating !== null ? 1 : 0 });
+  }
+  if (filters.sellers.length || facetNarrows(facets.sellers, facets.total)) {
+    groups.push({ key: "seller", active: filters.sellers.length });
+  }
+  if (filters.speeds.length || facetNarrows(facets.speeds, facets.total)) {
+    groups.push({ key: "speed", active: filters.speeds.length });
+  }
+  const optionNames = [...facets.options.map(option => option.name)];
+  for (const name of Object.keys(filters.options)) {
+    if (filters.options[name].length && !optionNames.includes(name)) optionNames.push(name);
+  }
+  for (const name of optionNames) {
+    groups.push({ key: `option:${name}`, active: filters.options[name]?.length ?? 0 });
+  }
+  return groups;
+}
+
+/** The filters with one group's values taken off — its sheet's Clear. */
+export function clearFilterGroup(filters: BrowseFilters, key: FilterGroupKey): BrowseFilters {
+  switch (key) {
+    case "offers": return { ...filters, inStock: false, onOffer: false, express: false };
+    case "brand": return { ...filters, brands: [] };
+    case "price": return { ...filters, minPrice: null, maxPrice: null };
+    case "category": return filters;
+    case "rating": return { ...filters, minRating: null };
+    case "seller": return { ...filters, sellers: [] };
+    case "speed": return { ...filters, speeds: [] };
+    default: {
+      const name = key.slice("option:".length);
+      const options = { ...filters.options };
+      delete options[name];
+      return { ...filters, options };
+    }
+  }
+}
+
 /* ------------------------------------------------------------------ url --- */
 
 /*

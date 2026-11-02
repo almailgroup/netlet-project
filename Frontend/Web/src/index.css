@@ -1268,13 +1268,46 @@ html[dir="rtl"] .nav-progress {
     opacity 240ms ease;
 }
 @media (max-width: 1023.98px) {
-  html[data-tab-bar="away"] .assistant-launcher {
+  html[data-tab-bar="away"] .assistant-launcher,
+  html[data-assistant-mark] .assistant-launcher {
     gap: 0;
     padding-inline-end: 0.375rem;
   }
-  html[data-tab-bar="away"] .assistant-label {
+  html[data-tab-bar="away"] .assistant-label,
+  html[data-assistant-mark] .assistant-label {
     max-width: 0;
     opacity: 0;
+  }
+}
+
+/*
+ * Sort and filter on a phone's department and search pages, after the
+ * owner's reference: the assistant folds to its mark beside the Sort | Filter
+ * pill (`useAssistantMark`, above), a filter chip gives under the finger, and
+ * a sheet's dim fades in as the sheet rises (`.sheet-rise`).
+ */
+.filter-chip {
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 120ms var(--ease-out),
+    border-color 120ms var(--ease-out);
+}
+.filter-chip:active {
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet-scrim {
+    animation: sheet-scrim-in 240ms ease both;
+  }
+}
+@keyframes sheet-scrim-in {
+  from {
+    background-color: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-chip:active {
+    transform: none;
   }
 }
 

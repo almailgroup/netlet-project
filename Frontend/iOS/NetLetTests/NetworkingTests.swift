@@ -147,6 +147,40 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(found.total, found.products.count)
     }
 
+    /// The chip row's groups are the web's `filterGroups`: each one that can
+    /// narrow the shelf, with how many are ticked; a ticked group stays
+    /// whatever the shelf holds; Clear takes off that group alone.
+    func testTheFilterChipsFollowTheWebRule() async throws {
+        let products = try await client.call(API.products, .init(first: 24))
+        let facets = Facets(products)
+        let groups = FilterGroups.of(facets, BrowseFilters())
+        XCTAssertFalse(groups.isEmpty)
+        XCTAssertTrue(groups.allSatisfy { $0.active == 0 })
+        XCTAssertEqual(groups.first { $0.key == .price }?.active, 0, "a priced shelf can be narrowed by price")
+        let order: [FilterGroupKey] = [.offers, .brand, .price, .rating, .seller, .speed]
+        let fixed = groups.map(\.key).filter { order.contains($0) }
+        XCTAssertEqual(fixed, order.filter { fixed.contains($0) }, "offers, brand and price lead, as the owner's reference has them")
+
+        var filters = BrowseFilters()
+        filters.onOffer = true
+        filters.express = true
+        filters.sellers = ["Nobody here"]
+        filters.options["Size"] = ["M"]
+        filters.minPrice = 2
+        let ticked = FilterGroups.of(Facets([products[0]]), filters)
+        XCTAssertEqual(ticked.first { $0.key == .offers }?.active, 2)
+        XCTAssertEqual(ticked.first { $0.key == .seller }?.active, 1, "a ticked group stays, though one product cannot be narrowed")
+        XCTAssertEqual(ticked.first { $0.key == .option("Size") }?.active, 1)
+        XCTAssertEqual(ticked.first { $0.key == .price }?.active, 1)
+
+        FilterGroups.clear(.offers, in: &filters)
+        XCTAssertFalse(filters.onOffer || filters.express)
+        XCTAssertEqual(filters.sellers, ["Nobody here"], "Clear takes off its own group alone")
+        FilterGroups.clear(.option("Size"), in: &filters)
+        XCTAssertNil(filters.options["Size"])
+        XCTAssertEqual(filters.activeCount, 2)
+    }
+
     /// The pieces the PDF audit added: fraud watch, the placement calendar,
     /// the model's import filing, past sizes and "Find similar".
     func testTheRequirementFixesDecode() async throws {

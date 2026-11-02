@@ -61,6 +61,10 @@ struct ShopPage<Content: View>: View {
     var assistant = true
     /// The product on screen, so the conversation starts about it.
     var assistantProduct: Product?
+    /// The assistant as its mark alone, beside a page's own floating pill —
+    /// a department's Sort | Filter, after the owner's reference, which sets
+    /// a pill beside a round button. The web's `useAssistantMark`.
+    var assistantFolded = false
     /// The words a results page is for. The field shows them there and
     /// nothing on any other page — the web's header starting each page from
     /// the address's `q` — so a product opened from a search does not go on
@@ -141,7 +145,7 @@ struct ShopPage<Content: View>: View {
             // content included — along with it.
             ZStack(alignment: .bottomTrailing) {
                 if showsAssistant {
-                    ShopAssistantButton(product: assistantProduct, folded: barAway)
+                    ShopAssistantButton(product: assistantProduct, folded: barAway || assistantFolded)
                         .padding(.trailing, 16)
                         .padding(.bottom, 16)
                         .offset(y: app.tabBarRide)
