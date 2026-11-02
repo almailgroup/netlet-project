@@ -240,7 +240,8 @@ final class AppModel {
         tutorialShowing = true
     }
     /// The order screen opens with this sheet up — "track" or "refund" — for
-    /// the screenshots' `track:` and `refund:` hooks.
+    /// the list row's "Request a refund" and the screenshots' `track:` and
+    /// `refund:` hooks.
     var orderSheet: String?
     private(set) var memberCode: String?
     /// Whether this account has joined the affiliate programme, a suspended

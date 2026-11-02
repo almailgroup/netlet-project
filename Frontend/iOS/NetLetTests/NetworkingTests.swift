@@ -264,6 +264,8 @@ final class FixtureDecodingTests: XCTestCase {
     func testOrders() async throws {
         let page = try await client.call(API.orders, .init(page: 1, pageSize: 20))
         XCTAssertFalse(page.rows.isEmpty)
+        // The list says which orders have something to refund, for its row's button.
+        XCTAssertEqual(page.rows.filter { ($0.summary.refundable ?? 0) > 0 }.map(\.reference), ["NL-20261001-J7MWY"])
         let found = try await client.call(API.order, .init(reference: page.rows[0].reference))
         let detail = try XCTUnwrap(found)
         XCTAssertFalse(detail.lines.isEmpty)

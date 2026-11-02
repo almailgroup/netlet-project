@@ -21,7 +21,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useFeature } from "@/hooks/useFeature";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { isOpenReturn, MAX_RETURN_NOTE, RETURN_REASONS, type ReturnKind, type ReturnReason } from "@shared/commerce/returnRequests";
+import { blocksNewReturn, MAX_RETURN_NOTE, RETURN_REASONS, type ReturnKind, type ReturnReason } from "@shared/commerce/returnRequests";
 import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Select } from "@/components/ui/Select";
@@ -58,8 +58,7 @@ export const STATUS_LABEL: Record<string, MessageKey> = {
  * the server holds too. The order's "Request a refund" asks the same.
  */
 export function mayRequestReturn(line: Pick<Line, "id" | "returnState">, requests: Request[]): boolean {
-  return line.returnState.returnable && !requests.some(request =>
-    request.orderItemId === line.id && (isOpenReturn(request.status) || request.status === "refunded" || request.status === "exchanged"));
+  return line.returnState.returnable && !requests.some(request => request.orderItemId === line.id && blocksNewReturn(request.status));
 }
 
 export function LineReturn({ reference, currency, line, requests }: { reference: string; currency: string; line: Line; requests: Request[] }) {

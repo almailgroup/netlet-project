@@ -22,6 +22,10 @@ struct OrderSummary: Decodable, Identifiable, Hashable, Sendable {
         let first: FirstLine?
         let photos: [String]
         let progress: OrderProgress
+        /// How many of its items may be sent back for a refund now — the list
+        /// row's "Request a refund", drawn only where it leads somewhere.
+        /// Absent from a server older than the count, which draws none.
+        let refundable: Int?
     }
 
     let id: Int

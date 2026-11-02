@@ -22,17 +22,37 @@ struct OrdersView: View {
                         } else {
                             LazyVStack(spacing: 10) {
                                 ForEach(orders) { order in
-                                    Button {
-                                        app.push(.order(reference: order.reference))
-                                    } label: {
-                                        OrderRow(order: order)
-                                            .padding(16)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-                                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-                                            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        Button {
+                                            app.push(.order(reference: order.reference))
+                                        } label: {
+                                            OrderRow(order: order)
+                                                .padding(16)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                        }
+                                        .buttonStyle(PressFillStyle(cornerRadius: 16))
+                                        // Request a refund from the list, on the owner's word:
+                                        // on an order with something that can still go back,
+                                        // opening it with its refund sheet up — the web's row.
+                                        if app.features.isOn("returns"), (order.summary.refundable ?? 0) > 0 {
+                                            HStack {
+                                                Spacer(minLength: 0)
+                                                Button {
+                                                    app.orderSheet = "refund"
+                                                    app.push(.order(reference: order.reference))
+                                                } label: {
+                                                    Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward")
+                                                }
+                                                .buttonStyle(OrderActionStyle())
+                                                .accessibilityLabel(l.t("orders.requestRefund") + ": " + (order.summary.first?.title ?? order.reference))
+                                            }
+                                            .padding(.horizontal, 16)
+                                            .padding(.bottom, 14)
+                                        }
                                     }
-                                    .buttonStyle(PressFillStyle(cornerRadius: 16))
+                                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                                 }
                                 if model.canLoadMore {
                                     ProgressView()

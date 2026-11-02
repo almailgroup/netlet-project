@@ -20,7 +20,7 @@
  *   window, then why, and sends one return request per item, the per-item
  *   form's own call with the refund chosen.
  */
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { Check, CircleX, PackageSearch, RotateCcw, Truck, Zap } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -48,16 +48,30 @@ const isolate = (text: string) => `⁨${text}⁩`;
 
 const ACTION = "glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9";
 
-export function OrderActions({ reference, detail, trackFirst = false }: { reference: string; detail: Detail; trackFirst?: boolean }) {
+export function OrderActions({ reference, detail, trackFirst = false, refundFirst = false }: {
+  reference: string;
+  detail: Detail;
+  trackFirst?: boolean;
+  /** Opened from the list row's "Request a refund", or `&refund=1`: the form is open, in view and focused. */
+  refundFirst?: boolean;
+}) {
   const { t, tError } = useTranslation();
   const utils = trpc.useUtils();
   const returnsOn = useFeature("returns");
   const ids = useId();
   const [tracking, setTracking] = useState(() => trackFirst || detail.steps.parcels.some(parcel => parcel.step === "onTheWay"));
-  const [refunding, setRefunding] = useState(false);
+  const [refunding, setRefunding] = useState(refundFirst);
   const [asking, setAsking] = useState(false);
 
   const refundable = returnsOn ? detail.lines.filter(line => mayRequestReturn(line, detail.returns)) : [];
+  /* Opened for the refund: the form is brought into view with its first box
+     focused, since the press that asked for it is on the list above. */
+  useEffect(() => {
+    if (!refundFirst) return;
+    const panel = document.getElementById(`${ids}-refund`);
+    panel?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    panel?.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
+  }, [refundFirst, ids]);
   const refresh = () => {
     void utils.orders.get.invalidate({ reference });
     void utils.orders.list.invalidate();
@@ -119,8 +133,8 @@ export function OrderActions({ reference, detail, trackFirst = false }: { refere
       <div id={`${ids}-track`} hidden={!tracking}>
         {tracking ? <OrderTracking reference={reference} detail={detail} /> : null}
       </div>
-      <div id={`${ids}-refund`} hidden={!refunding}>
-        {refunding ? (
+      <div id={`${ids}-refund`} hidden={!refunding || refundable.length === 0}>
+        {refunding && refundable.length > 0 ? (
           <RefundForm
             reference={reference}
             lines={refundable}

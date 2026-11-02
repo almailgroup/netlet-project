@@ -76,6 +76,15 @@ export function isOpenReturn(status: string): boolean {
   return (OPEN_RETURN_STATUSES as readonly string[]).includes(status);
 }
 
+/**
+ * A request on a line that rules out asking again: one still in motion, or one
+ * that already refunded or swapped it. The order list's "Request a refund",
+ * the opened order's and each item's own button all ask this, with the window.
+ */
+export function blocksNewReturn(status: string): boolean {
+  return isOpenReturn(status) || status === "refunded" || status === "exchanged";
+}
+
 /** Departments whose goods spoil: no change-of-mind returns. */
 export const PERISHABLE_DEPARTMENTS: ReadonlySet<string> = new Set(["grocery"]);
 

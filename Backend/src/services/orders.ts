@@ -29,8 +29,11 @@ import {
   productImages,
   productVariants,
   products,
+  returnRequests,
   vendors,
 } from "../../database/schema.js";
+import { returnStateFor } from "../../../Shared/commerce/returns.js";
+import { blocksNewReturn } from "../../../Shared/commerce/returnRequests.js";
 import {
   draftOrder,
   orderReference,
@@ -968,6 +971,12 @@ export type OrderSummary = {
   /** Today's first photograph of the first few products, in line order. */
   photos: string[];
   progress: OrderProgress;
+  /**
+   * How many of its items may be sent back for a refund now — delivered,
+   * inside the return window, with nothing open, refunded or swapped on them:
+   * the list row's "Request a refund", drawn only where it leads somewhere.
+   */
+  refundable: number;
 };
 
 /**
@@ -994,6 +1003,7 @@ async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promi
   if (rows.length === 0) return new Map();
   const lines = await db
     .select({
+      id: orderItems.id,
       orderId: orderItems.orderId,
       productId: orderItems.productId,
       productTitle: orderItems.productTitle,
@@ -1006,6 +1016,15 @@ async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promi
     .where(inArray(orderItems.orderId, rows.map(row => row.id)))
     .orderBy(orderItems.orderId, orderItems.id);
   const photos = await firstPhotos(db, lines.map(line => line.productId));
+  /* The lines a request already holds: one in motion, or one that refunded or swapped it. */
+  const asked = lines.length
+    ? await db
+      .select({ orderItemId: returnRequests.orderItemId, status: returnRequests.status })
+      .from(returnRequests)
+      .where(inArray(returnRequests.orderItemId, lines.map(line => line.id)))
+    : [];
+  const held = new Set(asked.filter(request => blocksNewReturn(request.status)).map(request => request.orderItemId));
+  const now = new Date();
 
   const byOrder = new Map<number, typeof lines>();
   for (const line of lines) byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), line]);
@@ -1021,6 +1040,7 @@ async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promi
       first: lead ? { title: lead.productTitle, variant: lead.variantTitle } : null,
       photos: [...new Set(pictured.map(line => (line.productId === null ? undefined : photos.get(line.productId))).filter((url): url is string => Boolean(url)))].slice(0, PREVIEW_PHOTOS),
       progress: orderProgress(row, own),
+      refundable: own.filter(line => !held.has(line.id) && returnStateFor(row, line, now).returnable).length,
     }];
   }));
 }

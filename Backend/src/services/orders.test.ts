@@ -31,6 +31,7 @@ import {
   productImages,
   productVariants,
   products,
+  returnRequests,
   users,
   vendorMembers,
   vendors,
@@ -480,6 +481,36 @@ describe("reading orders back", () => {
     } finally {
       await db.delete(productImages).where(eq(productImages.productId, photo.productId));
     }
+  });
+
+  /* The list's "Request a refund" (on the owner's word) is drawn from this
+     count, by the opened order's own rule: paid, delivered, in the window,
+     nothing asked on the line already. */
+  it("counts what each listed order can still send back for a refund", async () => {
+    const placed = await twoVendorOrder();
+    const count = async () => (await ordersModule.listOrdersForUser(ids.shopper)).rows[0].summary?.refundable;
+    expect(await count()).toBe(0);
+
+    const [kettleLine] = await db.select().from(orderItems)
+      .where(and(eq(orderItems.orderId, placed.order.id), eq(orderItems.productId, ids.kettle)));
+    await db.update(orderItems).set({ fulfilment: "delivered", deliveredAt: new Date(Date.now() - 86_400_000) }).where(eq(orderItems.id, kettleLine.id));
+    /* Arrived, but a cash order is not paid until the driver has the money. */
+    expect(await count()).toBe(0);
+    await db.update(orders).set({ status: "paid" }).where(eq(orders.id, placed.order.id));
+    expect(await count()).toBe(1);
+
+    /* Asked about already: nothing more to ask for on that line. */
+    const [request] = await db.insert(returnRequests).values({
+      orderId: placed.order.id, orderItemId: kettleLine.id, kind: "refund", reason: "damaged", status: "requested",
+    }).returning();
+    expect(await count()).toBe(0);
+    /* Turned down, it may be asked again. */
+    await db.update(returnRequests).set({ status: "declined" }).where(eq(returnRequests.id, request.id));
+    expect(await count()).toBe(1);
+
+    /* Out of the window, it is over. */
+    await db.update(orderItems).set({ deliveredAt: new Date(Date.now() - 30 * 86_400_000) }).where(eq(orderItems.id, kettleLine.id));
+    expect(await count()).toBe(0);
   });
 
   it("shows an admin every order", async () => {

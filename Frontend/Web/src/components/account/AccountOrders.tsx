@@ -132,6 +132,10 @@ export function AccountOrders() {
   const [trackRef] = useState<string | null>(() => (new URLSearchParams(search).get("track") === "1" ? new URLSearchParams(search).get("order") : null));
   const formatDate = useDateFormat();
 
+  /* `&refund=1`, or the row's "Request a refund": the order opens on its refund form. */
+  const [refundRef, setRefundRef] = useState<string | null>(() => (new URLSearchParams(search).get("refund") === "1" ? new URLSearchParams(search).get("order") : null));
+  const returnsOn = useFeature("returns");
+
   const list = trpc.orders.list.useQuery({ page });
 
   return (
@@ -148,7 +152,7 @@ export function AccountOrders() {
             <h3 id="linked-order" className="mb-3 text-[15px] font-bold text-[#0a285a]">
               {t("orders.orderHeading", { reference: openRef })}
             </h3>
-            <OrderLines reference={openRef} trackFirst={trackRef === openRef} />
+            <OrderLines reference={openRef} trackFirst={trackRef === openRef} refundFirst={refundRef === openRef} />
           </section>
         ) : null;
         if (!data || data.total === 0) return <>{linked}<EmptyOrders /></>;
@@ -173,7 +177,7 @@ export function AccountOrders() {
                     </h3>
                     <button
                       type="button"
-                      onClick={() => setOpenRef(open ? null : order.reference)}
+                      onClick={() => { setRefundRef(null); setOpenRef(open ? null : order.reference); }}
                       aria-expanded={open}
                       aria-controls={`order-${order.id}-lines`}
                       className="pressable flex w-full items-start gap-4 rounded-[1.35rem] p-4 text-start sm:p-5"
@@ -208,8 +212,35 @@ export function AccountOrders() {
                       <ChevronDown className={`mt-1 size-5 shrink-0 ink-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
                     </button>
 
+                    {/* Request a refund from the list, on the owner's word: on an
+                        order with something that can still go back — delivered,
+                        in the window, nothing asked on it (`summary.refundable`,
+                        the server's count by the opened order's own rule). It
+                        opens the order on its refund form; open, the order's
+                        own button is the one. */}
+                    {!open && returnsOn && (summary?.refundable ?? 0) > 0 ? (
+                      <div className="-mt-1 flex justify-end px-4 pb-4 sm:px-5">
+                        <button
+                          type="button"
+                          onClick={() => { setRefundRef(order.reference); setOpenRef(order.reference); }}
+                          className="glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
+                        >
+                          <RotateCcw className="size-4 rtl:-scale-x-100" aria-hidden />
+                          {t("orders.requestRefund")}
+                          <span className="sr-only">: <bdi>{summary?.first?.title ?? order.reference}</bdi></span>
+                        </button>
+                      </div>
+                    ) : null}
+
                     <div id={`order-${order.id}-lines`} hidden={!open} className="border-t border-[#e7edf5] px-5 py-4">
-                      {open ? <OrderLines reference={order.reference} trackFirst={trackRef === order.reference} /> : null}
+                      {open ? (
+                        <OrderLines
+                          key={refundRef === order.reference ? "refund" : "plain"}
+                          reference={order.reference}
+                          trackFirst={trackRef === order.reference}
+                          refundFirst={refundRef === order.reference}
+                        />
+                      ) : null}
                     </div>
                   </li>
                 );
@@ -261,7 +292,7 @@ function OrderTotal({ order }: {
  * per line against the server's clock and a list of fifty orders would resolve
  * fifty windows nobody has asked to see.
  */
-function OrderLines({ reference, trackFirst = false }: { reference: string; trackFirst?: boolean }) {
+function OrderLines({ reference, trackFirst = false, refundFirst = false }: { reference: string; trackFirst?: boolean; refundFirst?: boolean }) {
   const { t, locale } = useTranslation();
   const returnsOn = useFeature("returns");
   const detail = trpc.orders.get.useQuery({ reference });
@@ -275,7 +306,7 @@ function OrderLines({ reference, trackFirst = false }: { reference: string; trac
 
         return (
           <>
-          <OrderActions reference={reference} detail={data} trackFirst={trackFirst} />
+          <OrderActions reference={reference} detail={data} trackFirst={trackFirst} refundFirst={refundFirst} />
           <ul className="space-y-4">
             {data.lines.map(line => {
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;

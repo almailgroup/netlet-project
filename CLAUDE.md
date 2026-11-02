@@ -2518,10 +2518,27 @@ stays bought after a cancel, because `wishlist_items` records no order.
 
 **Request a refund is the per-item return, gathered**: it lists the items
 `mayRequestReturn` allows (the return window open, nothing open, refunded or
-swapped on it — the rule `LineReturn` now exports), asks which, why and a note,
-and sends one `orders.requestReturn` with the refund chosen per item, decided
-as the per-item form's is. "Choose at least one item." comes with the press and
-goes with the tick. The per-item "Return or exchange" stays for an exchange.
+swapped on it — `blocksNewReturn` in `Shared/commerce/returnRequests.ts`, which
+the server asks too), asks which, why and a note, and sends one
+`orders.requestReturn` with the refund chosen per item, decided as the
+per-item form's is. "Choose at least one item." comes with the press and goes
+with the tick. The per-item "Return or exchange" stays for an exchange.
+
+**It is on the My orders list too, on the owner's word** ("add request for
+refund for the products that you ordered in the my orders page"): an order
+with something that can still go back carries "Request a refund" under its
+row, and the press opens the order on its refund form, in view with its first
+box focused (`refundFirst`, or `&refund=1` in the address). The list knows
+which orders by the server's count, `summary.refundable` on `orders.list` —
+paid, delivered, inside the window and nothing asked on the line, by
+`returnStateFor` and `blocksNewReturn`, one grouped read of the page's
+requests — so the button is drawn only where the form has something in it;
+open, the order's own button is the one. `orders.test.ts` walks the count
+through payment, a request, a declined one and the window closing. In the app
+the row's button opens the order with its refund sheet up (`app.orderSheet`).
+Measured at 320, 390 in both languages and 1440: one button on the one
+order with a returnable item, the form open on it with focus inside, axe
+clean, no sideways scroll.
 
 **Track order is each parcel as four steps** — placed, being prepared, on the
 way, delivered (`Shared/commerce/orderTracking.ts`, `stepsForOrder`, on
