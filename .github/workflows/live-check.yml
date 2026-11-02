@@ -40,6 +40,10 @@ jobs:
           jq -r '.result.data.json[] | [.id, .handle, (.productType // "-"), (.variants | length | tostring) + " variants",
             (if any(.variants[]; .compareAtPrice != null) then "on offer" else "-" end), (.images | length | tostring) + " photos",
             (.images[0].url // "no photo")] | @tsv' catalogue-en.json
+          # How many of each a shopper may put in the bag (the larger of the
+          # shelf and a pre-order allowance), which is where every plus stops.
+          echo "Stock per variant:"
+          jq -r '.result.data.json[] | .handle as $h | .variants[] | [$h, .id, (.availableForSale | tostring), "max " + (.maxQuantity | tostring)] | @tsv' catalogue-en.json
 
       - name: The other shelves
         run: |
