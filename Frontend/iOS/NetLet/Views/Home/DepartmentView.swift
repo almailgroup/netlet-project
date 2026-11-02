@@ -102,7 +102,7 @@ private struct BrowsePage: View {
                     .pageTitle()
                     .fixedSize(horizontal: false, vertical: true)
                     // What the UI tests read the page by.
-                    .accessibilityIdentifier("browse.title")
+                    .accessibilityIdentifier("page-title")
                 Text(countLine)
                     .font(.inter(15))
                     .foregroundStyle(Brand.body)

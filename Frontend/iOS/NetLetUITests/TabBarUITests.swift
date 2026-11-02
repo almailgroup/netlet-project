@@ -27,7 +27,7 @@ final class TabBarUITests: XCTestCase {
         // The page's own heading, by its identifier: "Deals" is also the
         // tab's name and the home page's band, so the word alone proves
         // nothing.
-        let title = app.staticTexts["browse.title"]
+        let title = app.staticTexts["page-title"]
         XCTAssertTrue(title.waitForExistence(timeout: 8), "Deals did not open a shelf page.")
         XCTAssertEqual(title.label, "Deals", "Deals opened another page.")
         // On offer is the page, not a filter on it: never a chip to clear.
