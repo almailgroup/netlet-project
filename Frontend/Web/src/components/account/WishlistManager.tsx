@@ -36,7 +36,7 @@ import { useFeature } from "@/hooks/useFeature";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useProductsByIds } from "@/hooks/useCatalog";
 import { formatPhone, normalisePhone } from "@shared/commerce/wishlist";
-import { ArrowLeft, Check, Eye, Gift, Link2, Lock, Plus, Share2, ShoppingBag, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Eye, Gift, Heart, Link2, Lock, Plus, Share2, ShoppingBag, Trash2 } from "lucide-react";
 import type { Product } from "@shared/commerce/types";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -413,8 +413,32 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
   const detail = trpc.wishlists.get.useQuery({ listId });
   const add = trpc.wishlists.addItem.useMutation();
   const drop = trpc.wishlists.removeItem.useMutation();
+  const move = trpc.wishlists.moveItem.useMutation();
   /* What is on a list fills its heart everywhere (`wishedIds`). */
   const utils = trpc.useUtils();
+  /* The bin asks first, on the owner's word: it took an item off at once. */
+  const [removing, setRemoving] = useState<{ id: number; name: string } | null>(null);
+  /* The kind of list this is not — where "Move to …" sends one item. */
+  const other = detail.data?.list.visibility === "public" ? "private" : "public";
+  /* A merchant's name inside our sentence keeps its own direction. */
+  const isolated = (text: string) => `\u2068${text}\u2069`;
+
+  /*
+   * One item to the shopper's other kind of list (made if there is none, under
+   * the heart's own title) or to Saved items, on the owner's word: the whole
+   * list could change kind, and no single item could.
+   */
+  const moveTo = (itemId: number, to: "public" | "private" | "saved") =>
+    move.mutate({ listId, itemId, to, title: t(to === "public" ? "wish.defaultPublic" : "wish.defaultPrivate") }, {
+      onSuccess: answer => {
+        void detail.refetch();
+        void utils.wishlists.mine.invalidate();
+        void utils.wishlists.wishedIds.invalidate();
+        void utils.customer.saved.list.invalidate();
+        toast.success(answer.to === "saved" ? t("wish.movedToSaved") : t("wish.movedTo", { list: answer.title ?? "" }));
+      },
+      onError: error => toast.error(t(error.message as "wishlist.listFull")),
+    });
 
   /*
    * Saved is a list of ids, and so is the list. Both are read by id, in one
@@ -471,11 +495,33 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                               onSaved={() => void detail.refetch()}
                             />
                           ) : item.note ? <p dir="auto" className="mt-1 text-xs ink-muted">{item.note}</p> : null}
+                          {on ? (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                disabled={move.isPending}
+                                onClick={() => moveTo(item.id, other)}
+                                aria-label={`${t(other === "public" ? "wish.moveToPublic" : "wish.moveToPrivate")}: ${nameOf(item.productId) || item.productId}`}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 text-[12px] font-extrabold text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-50 pointer-fine:min-h-8"
+                              >
+                                {other === "public" ? <Gift className="size-3.5" aria-hidden /> : <Lock className="size-3.5" aria-hidden />}
+                                {t(other === "public" ? "wish.moveToPublic" : "wish.moveToPrivate")}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={move.isPending}
+                                onClick={() => moveTo(item.id, "saved")}
+                                aria-label={`${t("wish.moveToSaved")}: ${nameOf(item.productId) || item.productId}`}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-3 text-[12px] font-extrabold text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-50 pointer-fine:min-h-8"
+                              >
+                                <Heart className="size-3.5" aria-hidden />
+                                {t("wish.moveToSaved")}
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
                         <DiscButton
-                          onClick={() => drop.mutate({ listId, itemId: item.id }, {
-                            onSuccess: () => { void detail.refetch(); void utils.wishlists.wishedIds.invalidate(); toast.success(t("wish.removed")); },
-                          })}
+                          onClick={() => setRemoving({ id: item.id, name: nameOf(item.productId) || item.productId })}
                           aria-label={t("wish.removeItem", { name: nameOf(item.productId) || item.productId })}
                           className="-m-1.5"
                         >
@@ -534,6 +580,29 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
           </>
         )}
       </QueryGate>
+
+      <ConfirmDialog
+        open={removing !== null}
+        tone="danger"
+        title={t("wish.removeAsk")}
+        body={t("wish.removeAskBody", { name: isolated(removing?.name ?? ""), list: isolated(detail.data?.list.title ?? "") })}
+        confirmLabel={t("wish.removeConfirm")}
+        pending={drop.isPending}
+        onConfirm={() => {
+          if (!removing) return;
+          drop.mutate({ listId, itemId: removing.id }, {
+            onSuccess: () => {
+              setRemoving(null);
+              void detail.refetch();
+              void utils.wishlists.mine.invalidate();
+              void utils.wishlists.wishedIds.invalidate();
+              toast.success(t("wish.removed"));
+            },
+            onError: error => toast.error(t(error.message as "wishlist.listFull")),
+          });
+        }}
+        onClose={() => setRemoving(null)}
+      />
     </div>
   );
 }

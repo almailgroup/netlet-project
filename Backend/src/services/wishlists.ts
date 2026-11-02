@@ -347,6 +347,98 @@ export async function wishProduct(
   });
 }
 
+/** Where one item can go from a list: the shopper's list of the other kind, or Saved. */
+export type MoveTarget = Visibility | "saved";
+
+/**
+ * One item moved off a list, on the owner's word ("I cannot … transfer only
+ * one product from public to private or private to public, it forced you to
+ * transfer all the list; there is no option to transfer from wishlist to
+ * saved"). To a kind of list, it goes on the shopper's oldest list of that
+ * kind — made under `titleIfNew` when there is none, the heart's own rule
+ * (`wishProduct`), under the same lock so a move and a heart cannot make two
+ * lists — keeping its note; to "saved", it goes in Saved items. Either way it
+ * comes off this list, in the same transaction, so it is never on both or on
+ * neither. A product already on the other list stays there once: the note it
+ * has is kept, or this one's where it had none. The row itself moves, so a
+ * claim a giver holds on it goes with it; the owner is never shown claims,
+ * and moving cannot tell them one exists. Moving to the kind it is already
+ * on changes nothing.
+ */
+export async function moveItem(
+  userId: number,
+  listId: number,
+  itemId: number,
+  to: MoveTarget,
+  titleIfNew: string,
+): Promise<{ to: MoveTarget; listId: number | null; title: string | null; created: boolean }> {
+  return (await db()).transaction(async tx => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${WISH_LOCK}, ${userId})`);
+    const [item] = await tx
+      .select({
+        id: wishlistItems.id,
+        productId: wishlistItems.productId,
+        note: wishlistItems.note,
+        visibility: wishlists.visibility,
+        title: wishlists.title,
+      })
+      .from(wishlistItems)
+      .innerJoin(wishlists, eq(wishlists.id, wishlistItems.wishlistId))
+      .where(and(eq(wishlistItems.id, itemId), eq(wishlistItems.wishlistId, listId), eq(wishlists.userId, userId)));
+    if (!item) throw new WishlistError("notFound");
+
+    if (to === "saved") {
+      await tx
+        .insert(savedProducts)
+        .values({ userId, productId: item.productId })
+        .onConflictDoNothing({ target: [savedProducts.userId, savedProducts.productId] });
+      await tx.delete(wishlistItems).where(eq(wishlistItems.id, item.id));
+      return { to, listId: null, title: null, created: false };
+    }
+    if (to === item.visibility) return { to, listId, title: item.title, created: false };
+
+    const [found] = await tx
+      .select({ id: wishlists.id, title: wishlists.title })
+      .from(wishlists)
+      .where(and(eq(wishlists.userId, userId), eq(wishlists.visibility, to)))
+      .orderBy(wishlists.createdAt, wishlists.id)
+      .limit(1);
+    let list = found;
+    let created = false;
+    if (!list) {
+      const [{ n }] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(wishlists)
+        .where(eq(wishlists.userId, userId));
+      if (n >= MAX_LISTS_PER_SHOPPER) throw new WishlistError("tooManyLists");
+      [list] = await tx
+        .insert(wishlists)
+        .values({ userId, title: titleIfNew, visibility: to, shareToken: newToken() })
+        .returning({ id: wishlists.id, title: wishlists.title });
+      created = true;
+    }
+
+    const [already] = await tx
+      .select({ id: wishlistItems.id, note: wishlistItems.note })
+      .from(wishlistItems)
+      .where(and(eq(wishlistItems.wishlistId, list.id), eq(wishlistItems.productId, item.productId)));
+    if (already) {
+      if (!already.note && item.note) {
+        await tx.update(wishlistItems).set({ note: item.note }).where(eq(wishlistItems.id, already.id));
+      }
+      await tx.delete(wishlistItems).where(eq(wishlistItems.id, item.id));
+    } else {
+      const [{ n }] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(wishlistItems)
+        .where(eq(wishlistItems.wishlistId, list.id));
+      if (n >= MAX_ITEMS_PER_LIST) throw new WishlistError("listFull");
+      await tx.update(wishlistItems).set({ wishlistId: list.id }).where(eq(wishlistItems.id, item.id));
+    }
+    return { to, listId: list.id, title: list.title, created };
+  });
+}
+
 /**
  * Every product on any of the shopper's wishlists, once each — what fills a
  * heart beside Saved, now that the two are kept apart.

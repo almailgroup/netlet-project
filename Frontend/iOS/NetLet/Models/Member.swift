@@ -152,6 +152,15 @@ struct WishlistDetail: Decodable, Sendable {
     let items: [Item]
 }
 
+/// Where one moved item went (`wishlists.moveItem`): a list, by its title, or
+/// Saved items (`to` "saved", no list).
+struct WishMoveAnswer: Decodable, Sendable {
+    let to: String
+    let listId: Int?
+    let title: String?
+    let created: Bool
+}
+
 /// What creating a list answers: its id.
 /// Where a heart's product went (`wishlists.wish`).
 struct WishAnswer: Decodable, Sendable {

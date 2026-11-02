@@ -4960,6 +4960,27 @@ same words: public lists, then private, each under a heading saying who can
 see them, with a line on how to start one. A list can still be filled from
 Saved and made public or private afterwards.
 
+**One item moves on its own, and the bin asks first — both on the owner's
+word** (a reviewer's two comments on the private list: the bin took an item
+off at once, and nothing moved a single product between public and private,
+or back to Saved). Under each item's note on the owner's list are "Move to
+public list" (or private, whichever this list is not) and "Move to Saved
+items". `wishlists.moveItem` (`moveItem` in `services/wishlists.ts`) puts the
+product on the shopper's oldest list of the other kind — made under the
+heart's own title if there is none, under the heart's lock so a move and a
+heart cannot make two — or in Saved. It takes the product off this list in
+the same transaction and keeps its note. A product already on the other list
+stays there once, keeping its note or taking this one's. The row itself moves,
+so a giver's claim goes with it; the owner is never shown claims, and moving
+cannot reveal one. The bin opens `ConfirmDialog` on the web (danger tone,
+naming the product and the list) and the system's alert in the app. The app's
+list page now says who can see it under its name: it said "Lists to share
+with family and friends" over a private list. `wishlists.test.ts` moves from
+private to public (making the list), into a list that already holds the
+product, into Saved, and is refused another shopper's item. Seen at 390 in
+both languages: the dialog clean in axe, Escape keeping the item, each move
+saying where it went.
+
 ## Admin portal
 
 `/admin` is one application for admins and vendors both, not two. The pages

@@ -54,6 +54,13 @@ final class SavedModel {
         await refreshWished()
     }
 
+    /// Saved read again from the account — after something went into it
+    /// somewhere other than the heart (a wishlist item moved there).
+    func refreshSaved() async {
+        guard signedIn, let stored = try? await account.savedProducts() else { return }
+        ids = stored
+    }
+
     /// The lists read again — after an item is added to or taken off one
     /// somewhere other than the heart.
     func refreshWished() async {

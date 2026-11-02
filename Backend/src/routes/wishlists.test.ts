@@ -468,3 +468,56 @@ describe("the heart's question", () => {
     await expect(asStranger().wishlists.wish({ productId: "1", visibility: "private", title: "x" })).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });
 });
+
+describe("moving one item", () => {
+  let shopper: User;
+  const caller = () => appRouter.createCaller(contextFor(shopper));
+  const itemsOn = async (listId: number) =>
+    (await caller().wishlists.get({ listId })).items.map((item: { productId: string; note: string | null }) => [item.productId, item.note]);
+
+  beforeAll(async () => {
+    [shopper] = await db.insert(users).values({ email: "mover@example.test" }).returning();
+  });
+
+  it("moves one item from private to public, making the public list, with its note and nothing else", async () => {
+    const { listId: mine } = await caller().wishlists.wish({ productId: "61", visibility: "private", title: "My private wishlist" });
+    await caller().wishlists.wish({ productId: "62", visibility: "private", title: "My private wishlist" });
+    await caller().wishlists.addItem({ listId: mine, productId: "61", note: "The blue one" });
+    const [item] = (await caller().wishlists.get({ listId: mine })).items.filter((row: { productId: string }) => row.productId === "61");
+
+    const moved = await caller().wishlists.moveItem({ listId: mine, itemId: item.id, to: "public", title: "My public wishlist" });
+    expect(moved).toMatchObject({ to: "public", title: "My public wishlist", created: true });
+    expect(await itemsOn(mine)).toEqual([["62", null]]);
+    expect(await itemsOn(moved.listId!)).toEqual([["61", "The blue one"]]);
+  });
+
+  it("moves into a list that already has it without making two, keeping a note", async () => {
+    const lists = await caller().wishlists.mine();
+    const privateList = lists.find((list: { visibility: string }) => list.visibility === "private")!;
+    const publicList = lists.find((list: { visibility: string }) => list.visibility === "public")!;
+    await caller().wishlists.addItem({ listId: privateList.id, productId: "61" });
+    const [item] = (await caller().wishlists.get({ listId: privateList.id })).items.filter((row: { productId: string }) => row.productId === "61");
+
+    const moved = await caller().wishlists.moveItem({ listId: privateList.id, itemId: item.id, to: "public", title: "Unused" });
+    expect(moved).toMatchObject({ listId: publicList.id, created: false });
+    expect(await itemsOn(publicList.id)).toEqual([["61", "The blue one"]]);
+    expect(await itemsOn(privateList.id)).toEqual([["62", null]]);
+  });
+
+  it("moves one item into Saved items, off the list", async () => {
+    const [privateList] = (await caller().wishlists.mine()).filter((list: { visibility: string }) => list.visibility === "private");
+    const [item] = (await caller().wishlists.get({ listId: privateList.id })).items;
+    expect(await caller().wishlists.moveItem({ listId: privateList.id, itemId: item.id, to: "saved", title: "x" })).toMatchObject({ to: "saved" });
+    expect(await itemsOn(privateList.id)).toEqual([]);
+    const saved = await db.select().from(savedProducts).where(eq(savedProducts.userId, shopper.id));
+    expect(saved.map(row => row.productId)).toEqual(["62"]);
+  });
+
+  it("refuses to move another shopper's item", async () => {
+    const hers = await asShopper("noura").wishlists.create({ title: "Hers to keep" });
+    await asShopper("noura").wishlists.addItem({ listId: hers, productId: "71" });
+    const [item] = (await asShopper("noura").wishlists.get({ listId: hers })).items;
+    await expect(caller().wishlists.moveItem({ listId: hers, itemId: item.id, to: "saved", title: "x" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect((await asShopper("noura").wishlists.get({ listId: hers })).items).toHaveLength(1);
+  });
+});

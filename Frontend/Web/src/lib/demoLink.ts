@@ -943,6 +943,8 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { listId: 1, title: "", created: false };
     case "wishlists.unwish":
       return { lists: 0 };
+    case "wishlists.moveItem":
+      return { to: "saved", listId: null, title: null, created: false };
     case "wishlists.setPhone":
       return null;
     case "wishlists.update":

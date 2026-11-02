@@ -333,7 +333,9 @@ struct WishlistDetailView: View {
     var body: some View {
         ModelHost(make: { WishlistDetailModel(listId: listId, api: app.services.api, account: app.services.account, language: l.current) }) { model in
             ShopPage(header: false, refresh: { await model.load() }) {
-                AccountSection(title: model.detail.value?.list.title ?? l.t("account.sectionWishlists"), hint: l.t("account.hint.wishlists")) {
+                // Who can see this list, under its name: a private list read
+                // "Lists to share with family and friends", the section's line.
+                AccountSection(title: model.detail.value?.list.title ?? l.t("account.sectionWishlists"), hint: model.detail.value.map { l.t($0.list.visibility == "public" ? "wish.publicNote" : "wish.privateNote") } ?? l.t("account.hint.wishlists")) {
                     LoadStateView(state: model.detail.state, retry: { await model.load() }) { detail in
                         WishlistDetailBody(detail: detail, model: model)
                     }
@@ -387,6 +389,15 @@ final class WishlistDetailModel {
         await detail.load()
     }
 
+    /// One item to the shopper's other kind of list (made under `title` if
+    /// there is none) or to Saved items; answers where it went.
+    func move(_ item: WishlistDetail.Item, to target: String, title: String) async throws -> WishMoveAnswer {
+        let answer = try await api.call(API.moveWishItem, .init(listId: listId, itemId: item.id, to: target, title: title))
+        await detail.load()
+        if target == "saved" { savedIds = (try? await account.savedProducts()) ?? savedIds }
+        return answer
+    }
+
     func saveNote(_ item: WishlistDetail.Item, note: String) async throws {
         let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         _ = try await api.call(API.addToWishlist, .init(listId: listId, productId: item.productId, note: trimmed.isEmpty ? nil : trimmed))
@@ -403,6 +414,9 @@ private struct WishlistDetailBody: View {
     let detail: WishlistDetail
     let model: WishlistDetailModel
     @State private var shownAs = ""
+    /// The item the bin asks about — it took an item off at once, on the
+    /// owner's report, so it asks first.
+    @State private var removing: WishlistDetail.Item?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -445,6 +459,49 @@ private struct WishlistDetailBody: View {
                 .card()
             }
         }
+        .alert(l.t("wish.removeAsk"), isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), presenting: removing) { item in
+            Button(l.t("wish.removeConfirm"), role: .destructive) {
+                Task { await app.attempt(done: "wish.removed") { try await model.remove(item) } }
+            }
+            Button(l.t("common.cancel"), role: .cancel) {}
+        } message: { item in
+            Text(l.t("wish.removeAskBody", ["name": displayName(item), "list": detail.list.title]))
+        }
+    }
+
+    private func displayName(_ item: WishlistDetail.Item) -> String {
+        model.products[item.productId]?.title ?? item.productId
+    }
+
+    /// The kind of list this is not — where "Move to …" sends one item.
+    private var otherKind: String { detail.list.visibility == "public" ? "private" : "public" }
+
+    /// One item to the other kind of list or to Saved items, on the owner's
+    /// word: the whole list could change kind, and no single item could.
+    private func move(_ item: WishlistDetail.Item, to target: String) {
+        let title = l.t(target == "public" ? "wish.defaultPublic" : "wish.defaultPrivate")
+        Task {
+            var answer: WishMoveAnswer?
+            await app.attempt { answer = try await model.move(item, to: target, title: title) }
+            guard let answer else { return }
+            app.toast(answer.to == "saved" ? l.t("wish.movedToSaved") : l.t("wish.movedTo", ["list": answer.title ?? ""]))
+            await app.saved.refreshWished()
+            if answer.to == "saved" { await app.saved.refreshSaved() }
+        }
+    }
+
+    private func moveButton(_ label: String, symbol: String, name: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(label, systemImage: symbol)
+                .font(.inter(13, .bold))
+                .foregroundStyle(Brand.navy)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 40)
+                .background(Capsule().fill(Color.white))
+                .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
+        }
+        .buttonStyle(.action)
+        .accessibilityLabel("\(label): \(name)")
     }
 
     private func itemRow(_ item: WishlistDetail.Item, editable: Bool) -> some View {
@@ -469,11 +526,20 @@ private struct WishlistDetailBody: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 IconButton(symbol: "trash", label: l.t("wish.removeItem", ["name": name.isEmpty ? item.productId : name]), role: .destructive) {
-                    Task { await app.attempt(done: "wish.removed") { try await model.remove(item) } }
+                    removing = item
                 }
             }
             if editable {
                 NoteField(item: item, model: model)
+                FlowLayout(spacing: 8) {
+                    let other = otherKind
+                    moveButton(l.t(other == "public" ? "wish.moveToPublic" : "wish.moveToPrivate"), symbol: other == "public" ? "gift" : "lock", name: name) {
+                        move(item, to: other)
+                    }
+                    moveButton(l.t("wish.moveToSaved"), symbol: "heart", name: name) {
+                        move(item, to: "saved")
+                    }
+                }
             } else if let note = item.note, !note.isEmpty {
                 Text(note).font(.inter(13)).foregroundStyle(Brand.body)
             }

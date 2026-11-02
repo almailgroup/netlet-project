@@ -140,6 +140,16 @@ extension API {
     static let removeWishlist = Procedure<ListId, Acknowledged>(mutation: "wishlists.remove")
     static let addToWishlist = Procedure<ListItem, Acknowledged>(mutation: "wishlists.addItem")
     static let removeFromWishlist = Procedure<ListItemId, Acknowledged>(mutation: "wishlists.removeItem")
+    /// One item off a list, onto the shopper's other kind of list (made, under
+    /// `title`, if there is none) or into Saved items — `to` is "public",
+    /// "private" or "saved".
+    struct MoveWishItem: Encodable, Sendable {
+        let listId: Int
+        let itemId: Int
+        let to: String
+        let title: String
+    }
+    static let moveWishItem = Procedure<MoveWishItem, WishMoveAnswer>(mutation: "wishlists.moveItem")
     /// The heart's answer: a private or a public wishlist (made if there is
     /// none, under `title`), and Saved.
     struct Wish: Encodable, Sendable {

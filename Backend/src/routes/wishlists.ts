@@ -39,6 +39,7 @@ import {
   deleteList,
   itemsForOwner,
   listMine,
+  moveItem,
   phoneFor,
   publicListByToken,
   publicListsByPhone,
@@ -164,6 +165,18 @@ export const wishlistsRouter = router({
       title: z.string().trim().min(1).max(120),
     }))
     .mutation(({ ctx, input }) => guard(() => wishProduct(ctx.user.id, input.productId, input.visibility, input.title))),
+
+  /**
+   * One item off this list, onto the shopper's list of the other kind (made,
+   * under `title`, if there is none) or into Saved items. See `moveItem`.
+   */
+  moveItem: protectedProcedure
+    .input(listId.extend({
+      itemId: rowId,
+      to: z.enum([...VISIBILITIES, "saved"]),
+      title: z.string().trim().min(1).max(120),
+    }))
+    .mutation(({ ctx, input }) => guard(() => moveItem(ctx.user.id, input.listId, input.itemId, input.to, input.title))),
 
   /** The products on any of the shopper's lists, which fill a heart beside Saved. */
   wishedIds: protectedProcedure.query(({ ctx }) => wishedProductIds(ctx.user.id)),
