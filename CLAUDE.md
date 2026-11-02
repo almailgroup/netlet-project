@@ -1989,11 +1989,14 @@ is — every request across their orders, newest first (`orders.myReturns`,
 refund or exchange, the state in the opened order's words, and the order to
 open; nothing yet says how to start one. The Orders section is "Orders" now,
 its line naming tracking, cancelling and the refund. **Payment methods
-(`/account/payments`, `AccountPayments`; `PaymentMethodsView`) says what is
-true today**: cash on delivery, the default and the only way to pay; KNET, a
-card and Apple Pay drawn as checkout draws them, coming; no saved cards, with
-"Add a card" drawn and not pressable, and a line that NetLet never stores a
-card number. Saving a card needs a payment provider that keeps it as a token
+(`/account/payments`, `AccountPayments`; `PaymentMethodsView`) is the saved
+cards and a way to add one, and nothing else, on the owner's word** ("remove
+the ways to pay … only saved cards; you can only add payment methods"): it
+listed cash on delivery as the default and KNET, a card and Apple Pay as
+coming, and how an order is paid is checkout's question, not the account's.
+It says what is true today — no saved cards, "Add a payment method" drawn and
+not pressable, marked as coming, and a line that NetLet never stores a card
+number. Saving a card needs a payment provider that keeps it as a token
 (KNET's gateway, or a card processor) — a provider account and a table of
 tokens, a schema change shown first — and until then a card form would be a
 form that cannot do what it says. **Help and the

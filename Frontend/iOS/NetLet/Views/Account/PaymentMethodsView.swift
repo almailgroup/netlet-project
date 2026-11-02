@@ -1,72 +1,24 @@
 import SwiftUI
 
-/// How the shopper pays, and the cards they save — the web's
-/// `AccountPayments`, on the owner's word ("add a manage card for payment
-/// methods saved").
+/// The cards a shopper has saved — the web's `AccountPayments`, on the
+/// owner's word ("add a manage card for payment methods saved", then "remove
+/// the ways to pay … only saved cards; you can only add payment methods").
 ///
-/// It says what is true today: every order is cash on delivery, so cash is
-/// the default and the only way to pay; KNET, a card and Apple Pay are drawn
-/// as checkout draws them, marked as coming. There are no saved cards, and
-/// "Add a card" cannot be pressed: saving one needs a payment provider that
-/// holds it as a token, and NetLet integrates none yet. NetLet never stores a
-/// card number, and the screen says so.
+/// The saved cards and one way to add one, nothing else: the ways to pay
+/// (cash on delivery, KNET, a card, Apple Pay) are checkout's question, and
+/// left this screen. There are no saved cards yet, and "Add a payment method"
+/// cannot be pressed: saving one needs a payment provider that holds it as a
+/// token, and NetLet integrates none yet. NetLet never stores a card number,
+/// and the screen says so.
 struct PaymentMethodsView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         ShopPage(header: false) {
             AccountSection(title: l.t("account.sectionPayments"), hint: l.t("account.hint.payments")) {
-                VStack(spacing: 12) {
-                    ways
-                    cards
-                }
+                cards
             }
         }
-    }
-
-    private var ways: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(l.t("payments.waysTitle"))
-                .font(.inter(16, .heavy))
-                .foregroundStyle(Brand.navy)
-                .accessibilityAddTraits(.isHeader)
-                .padding(.top, 16)
-            way(icon: AnyView(Image(systemName: "banknote")), title: "checkout.payCod", note: "checkout.payCodNote", chosen: true)
-            DashedRule()
-            way(icon: AnyView(Text(verbatim: "KNET").font(.inter(10, .heavy))), title: "checkout.payKnet", note: "checkout.payKnetNote", chosen: false)
-            DashedRule()
-            way(icon: AnyView(Image(systemName: "creditcard")), title: "checkout.payCard", note: "checkout.payCardNote", chosen: false)
-            DashedRule()
-            way(icon: AnyView(Image(systemName: "apple.logo")), title: "checkout.payApple", note: "checkout.payAppleNote", chosen: false)
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 4)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .panel()
-    }
-
-    private func way(icon: AnyView, title: String, note: String, chosen: Bool) -> some View {
-        HStack(spacing: 14) {
-            icon
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(chosen ? Color.white : Brand.muted)
-                .frame(width: 44, height: 44)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(chosen ? Brand.navy : Brand.photo))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(l.t(title)).font(.inter(15, .bold)).foregroundStyle(chosen ? Brand.navy : Brand.body)
-                Text(l.t(note)).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Text(l.t(chosen ? "payments.default" : "checkout.paySoon"))
-                .font(.inter(12, .bold))
-                .foregroundStyle(chosen ? Brand.success : Brand.muted)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(Capsule().fill(chosen ? Brand.successFill : Brand.photo))
-        }
-        .frame(minHeight: 72)
-        .accessibilityElement(children: .combine)
     }
 
     private var cards: some View {
