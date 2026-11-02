@@ -201,6 +201,8 @@ extension API {
         let rating: Int
         var title: String?
         var body: String?
+        /// The whole set in its order, as `/media/…` paths this shopper uploaded.
+        var photos: [String] = []
     }
 
     struct EditReview: Encodable, Sendable {
@@ -208,6 +210,7 @@ extension API {
         let rating: Int
         var title: String?
         var body: String?
+        var photos: [String] = []
     }
 
     struct ReviewId: Encodable, Sendable {
@@ -215,8 +218,8 @@ extension API {
     }
 
     static let reviewableLines = Procedure<NoInput, [ReviewableLine]>(query: "reviews.mine")
-    static let writeReview = Procedure<WriteReview, Acknowledged>(mutation: "reviews.write")
-    static let editReview = Procedure<EditReview, Acknowledged>(mutation: "reviews.edit")
+    static let writeReview = Procedure<WriteReview, ReviewOutcome>(mutation: "reviews.write")
+    static let editReview = Procedure<EditReview, ReviewOutcome>(mutation: "reviews.edit")
     static let removeReview = Procedure<ReviewId, Acknowledged>(mutation: "reviews.remove")
 
     // MARK: Help
@@ -302,6 +305,8 @@ extension API {
     struct ProductReviewsInput: Encodable, Sendable {
         let productId: String
         let limit: Int
+        /// `newest`, `highest` or `lowest` (`REVIEW_SORTS`).
+        var sort: String = "newest"
     }
 
     struct ProductId: Encodable, Sendable {

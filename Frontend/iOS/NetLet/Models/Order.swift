@@ -26,6 +26,9 @@ struct OrderSummary: Decodable, Identifiable, Hashable, Sendable {
         /// row's "Request a refund", drawn only where it leads somewhere.
         /// Absent from a server older than the count, which draws none.
         let refundable: Int?
+        /// How many of its items may be rated now — delivered, paid for and
+        /// not yet reviewed (`eligibilityFor`): the row's "Rate your items".
+        let reviewable: Int?
     }
 
     let id: Int
@@ -194,6 +197,13 @@ struct OrderLine: Decodable, Identifiable, Hashable, Sendable {
     let photo: String?
     var returnState: ReturnState? = nil
     var destination: Destination? = nil
+    /// The shopper's own review of this line, and whether it may be rated
+    /// now — the rule `reviews.write` refuses with. Absent from an older server.
+    var review: MyReview? = nil
+    var reviewEligibility: ReviewableLine.Eligibility? = nil
+
+    /// "Rate this item" is drawn for a line with no review that may be rated.
+    var mayRate: Bool { review == nil && reviewEligibility?.allowed == true }
 
     /// Where a line went when the order went to more than one door.
     struct Destination: Decodable, Hashable, Sendable {

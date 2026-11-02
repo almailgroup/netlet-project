@@ -74,7 +74,8 @@
                 "kind": "received",
                 "preordered": false
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           },
           {
@@ -139,7 +140,8 @@
                 "kind": "received",
                 "preordered": false
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           },
           {
@@ -205,7 +207,8 @@
                 "kind": "received",
                 "preordered": false
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           },
           {
@@ -264,7 +267,8 @@
               "progress": {
                 "kind": "preparing"
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           },
           {
@@ -323,7 +327,8 @@
               "progress": {
                 "kind": "preparing"
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           },
           {
@@ -383,7 +388,8 @@
                 "kind": "received",
                 "preordered": false
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           },
           {
@@ -442,7 +448,8 @@
               "progress": {
                 "kind": "preparing"
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           },
           {
@@ -500,7 +507,8 @@
                 "kind": "received",
                 "preordered": false
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           },
           {
@@ -560,7 +568,8 @@
                 "kind": "delivered",
                 "at": "2026-10-17T22:33:45.311Z"
               },
-              "refundable": 1
+              "refundable": 1,
+              "reviewable": 1
             }
           },
           {
@@ -617,7 +626,8 @@
               "progress": {
                 "kind": "returned"
               },
-              "refundable": 0
+              "refundable": 0,
+              "reviewable": 0
             }
           }
         ],

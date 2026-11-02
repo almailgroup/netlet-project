@@ -98,10 +98,13 @@ struct PriceRequestsView: View {
 }
 
 /// The delivered lines the shopper can review — the web's `AccountReviews`:
-/// write one, change it, or take it down after asking.
+/// write one, change it, or take it down after asking, in `ReviewSheet`, the
+/// sheet an order's "Rate this item" opens too. A review already written says
+/// where it stands: on the product page, waiting for its check, or taken down.
 struct ReviewsView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @State private var writing: ReviewTarget?
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.reviewableLines) } }) { lines in
@@ -113,55 +116,59 @@ struct ReviewsView: View {
                                 .card(padding: 0)
                         } else {
                             VStack(spacing: 10) {
-                                ForEach(rows) { line in ReviewableRow(line: line) { Task { await lines.load() } } }
+                                ForEach(rows) { line in
+                                    ReviewableRow(line: line) {
+                                        writing = ReviewTarget(orderItemId: line.orderItemId, productTitle: line.productTitle, review: line.review)
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
             .task { await lines.load() }
+            .sheet(item: $writing) { target in
+                ReviewSheet(target: target) { Task { await lines.load() } }
+            }
         }
     }
 }
 
 private struct ReviewableRow: View {
     let line: ReviewableLine
-    let changed: () -> Void
-    @State private var open = false
+    let open: () -> Void
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         let canWrite = line.eligibility.allowed
-        let written = !canWrite && line.eligibility.reason == "alreadyReviewed"
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(line.productTitle).font(.inter(15, .bold)).foregroundStyle(Brand.ink)
-                    Text("\u{2066}\(line.orderReference)\u{2069}").font(.inter(12)).foregroundStyle(Brand.muted)
-                    if let rating = line.myRating { StarsView(rating: rating).padding(.top, 2) }
-                }
-                Spacer(minLength: 8)
-                if canWrite || written {
-                    Button(l.t(written ? "review.edit" : "review.write")) { open.toggle() }
-                        .font(.inter(13, .bold))
-                        .foregroundStyle(Brand.navy)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 40)
-                        .background(Capsule().fill(Brand.tint))
-                        .buttonStyle(.tap)
-                } else if let reason = line.eligibility.reason {
-                    Text(l.t("review.\(reason)"))
-                        .font(.inter(12))
-                        .foregroundStyle(Brand.muted)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 150, alignment: .trailing)
+        let written = line.review != nil || line.eligibility.reason == "alreadyReviewed"
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(line.productTitle).font(.inter(15, .bold)).foregroundStyle(Brand.ink)
+                Text("\u{2066}\(line.orderReference)\u{2069}").font(.inter(12)).foregroundStyle(Brand.muted)
+                if let rating = line.review?.rating ?? line.myRating {
+                    HStack(spacing: 8) {
+                        StarsView(rating: rating)
+                        if let state = line.review?.state { ReviewStatePill(state: state) }
+                    }
+                    .padding(.top, 4)
                 }
             }
-            if open {
-                ReviewForm(line: line, editing: written) {
-                    open = false
-                    changed()
-                }
+            Spacer(minLength: 8)
+            if canWrite || written {
+                Button(l.t(written ? "review.edit" : "review.write")) { open() }
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 40)
+                    .background(Capsule().fill(Brand.tint))
+                    .buttonStyle(.tap)
+            } else if let reason = line.eligibility.reason {
+                Text(l.t("review.\(reason)"))
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 150, alignment: .trailing)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -188,85 +195,3 @@ struct StarsView: View {
     }
 }
 
-private struct ReviewForm: View {
-    let line: ReviewableLine
-    let editing: Bool
-    let done: () -> Void
-    @State private var rating = 0
-    @State private var title = ""
-    @State private var reviewBody = ""
-    @State private var confirming = false
-    @State private var sending = false
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        let rules = ReferenceData.shared.rules.accountRules
-        VStack(alignment: .leading, spacing: 12) {
-            Text(l.t("review.yourRating")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
-            HStack(spacing: 6) {
-                ForEach(1...rules.ratingMax, id: \.self) { star in
-                    Button {
-                        rating = star
-                    } label: {
-                        Image(systemName: star <= rating ? "star.fill" : "star")
-                            .font(.system(size: 26))
-                            .foregroundStyle(star <= rating ? Brand.star : Brand.line)
-                            .frame(width: 44, height: 44)
-                    }
-                    .buttonStyle(.tap)
-                    .accessibilityLabel(star == 1 ? l.t("review.starsOne") : l.t("review.stars", ["count": "\(star)"]))
-                    .accessibilityAddTraits(rating == star ? .isSelected : [])
-                }
-            }
-            LabeledField(label: l.t("review.titleLabel"), text: $title, placeholder: l.t("review.titlePlaceholder"))
-            LabeledField(label: l.t("review.bodyLabel"), text: $reviewBody, placeholder: l.t("review.bodyPlaceholder"), axis: .vertical)
-            HStack(spacing: 10) {
-                Button(l.t("review.submit")) { Task { await submit() } }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .disabled(sending || title.count > rules.maxReviewTitle || reviewBody.count > rules.maxReviewBody)
-                if editing {
-                    Button(role: .destructive) { confirming = true } label: {
-                        Label(l.t("review.delete"), systemImage: "trash")
-                    }
-                    .buttonStyle(SecondaryButtonStyle())
-                }
-            }
-        }
-        .onAppear { rating = line.myRating ?? 0 }
-        .confirmationDialog(l.t("review.deleteWarning", ["name": line.productTitle]), isPresented: $confirming, titleVisibility: .visible) {
-            Button(l.t("review.delete"), role: .destructive) {
-                guard let id = line.reviewId else { return }
-                Task {
-                    if await app.attempt(done: "review.deleted", { _ = try await app.services.api.call(API.removeReview, .init(reviewId: id)) }) { done() }
-                }
-            }
-            Button(l.t("common.cancel"), role: .cancel) {}
-        } message: {
-            Text(l.t("review.deleteBody"))
-        }
-    }
-
-    private func submit() async {
-        guard rating > 0 else {
-            Haptics.refused()
-            app.toast(l.t("review.ratingRequired"))
-            return
-        }
-        sending = true
-        defer { sending = false }
-        let heading = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        let words = reviewBody.trimmingCharacters(in: .whitespacesAndNewlines)
-        let worked: Bool
-        if editing, let id = line.reviewId {
-            worked = await app.attempt(done: "review.updated") {
-                _ = try await app.services.api.call(API.editReview, .init(reviewId: id, rating: rating, title: heading.isEmpty ? nil : heading, body: words.isEmpty ? nil : words))
-            }
-        } else {
-            worked = await app.attempt(done: "review.saved") {
-                _ = try await app.services.api.call(API.writeReview, .init(orderItemId: line.orderItemId, rating: rating, title: heading.isEmpty ? nil : heading, body: words.isEmpty ? nil : words))
-            }
-        }
-        if worked { done() }
-    }
-}

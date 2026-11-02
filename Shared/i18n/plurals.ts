@@ -148,14 +148,24 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
     en: { one: "1 review" },
     ar: { one: "تقييم واحد", two: "تقييمان", many: "{count} تقييماً", other: "{count} تقييم" },
   },
-  "product.reviews": {
+  "review.ratingsCount": {
+    param: "count",
+    en: { one: "1 rating" },
+    ar: { one: "تقييم واحد", two: "تقييمان", many: "{count} تقييماً", other: "{count} تقييم" },
+  },
+  "review.writtenCount": {
     param: "count",
     en: { one: "1 review" },
+    ar: { one: "مراجعة واحدة", two: "مراجعتان", many: "{count} مراجعةً", other: "{count} مراجعة" },
+  },
+  "product.reviews": {
+    param: "count",
+    en: { one: "1 rating" },
     ar: { one: "تقييم واحد", two: "تقييمان", many: "{count} تقييماً", other: "{count} تقييم" },
   },
   "product.ratingAriaCount": {
     param: "count",
-    en: { one: "Rated {value} out of {max} from 1 review" },
+    en: { one: "Rated {value} out of {max} from 1 rating" },
     ar: {
       one: "التقييم {value} من {max} بناءً على تقييم واحد",
       two: "التقييم {value} من {max} بناءً على تقييمين",

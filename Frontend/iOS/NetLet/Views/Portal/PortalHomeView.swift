@@ -105,6 +105,7 @@ struct PortalHomeView: View {
         add("support.waitingTile", waiting["support"], "/admin/support")
         add("fraud.ordersTile", waiting["fraudOrders"], "/admin/orders")
         add("fraud.watchTile", waiting["fraudWatch"], "/admin/fraud")
+        add("review.waitingTile", waiting["reviewsWaiting"], "/admin/fraud?view=waiting")
         add("fulfilment.toReceiveTile", waiting["toReceive"], "/admin/fulfilment", urgent: false)
         add("fulfilment.toPickTile", waiting["toPick"], "/admin/fulfilment")
         return tiles
@@ -145,6 +146,8 @@ struct PortalHomeView: View {
             async let support = count("support.answer") { try await api.call(API.supportWaiting) }
             async let centres = asked(who.can("fulfilment.operate")) { try await api.call(API.centreWaiting) }
             async let fraud = asked(who.can("platform.viewAll")) { try await api.call(API.fraudUnseen) }
+            /* Product reviews the automatic check left for a person — an administrator's desk. */
+            async let heldReviews = count("platform.manageUsers") { try await api.call(API.waitingReviewCount) }
             counts = await overview
             health = await score ?? nil
             sales = await summary
@@ -156,6 +159,7 @@ struct PortalHomeView: View {
                 "banners": await banners, "support": await support,
                 "toReceive": floor?.toReceive, "toPick": floor?.toPick,
                 "fraudOrders": alerts?.orders, "fraudWatch": alerts?.watch,
+                "reviewsWaiting": await heldReviews,
             ].compactMapValues { $0 }
         } catch {
             let failure = APIError.from(error)

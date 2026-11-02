@@ -40,6 +40,7 @@ import { cancelReturn, requestReturn, returnsForShopper, returnsForShopperOrder,
 import { documentsForShopperOrder } from "../services/invoices.js";
 import { MAX_RETURN_NOTE, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
 import { fraudUnseen, markFraudSeen, referralWatch, reviewWatch, riskForOrders } from "../services/fraud.js";
+import { lineEligibility, myReviewsForLines } from "../services/reviews.js";
 import { createGiftCard, listVouchers, saveDiscountCode } from "../services/vouchers.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { PAYMENT_METHODS } from "../../../Shared/commerce/payment.js";
@@ -103,6 +104,9 @@ export const ordersRouter = router({
       if (!found) return null;
 
       const now = new Date();
+      /* The shopper's own reviews of these lines, so each says "Rate this
+         item" or what was written and whether it is shown yet. */
+      const reviewed = await myReviewsForLines(ctx.user.id, found.lines.map(line => line.id));
       return {
         order: orderForShopper(found.order),
         windowDays: RETURN_WINDOW_DAYS,
@@ -139,6 +143,9 @@ export const ordersRouter = router({
             { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt },
             now,
           ),
+          review: reviewed.get(line.id) ?? null,
+          /* Whether it may be rated now — `eligibilityFor`, the rule `reviews.write` refuses with. */
+          reviewEligibility: lineEligibility(found.order, line, reviewed.has(line.id)),
         })),
       };
     }),

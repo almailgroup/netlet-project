@@ -10,8 +10,9 @@ import { drizzle } from "drizzle-orm/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { mediaFiles, users, vendors } from "../../database/schema.js";
+import { authAttempts, mediaFiles, orderItems, orders, users, vendors } from "../../database/schema.js";
 import { MAX_UPLOADS_PER_HOUR } from "../../../Shared/commerce/media.js";
+import { MAX_REVIEW_PHOTOS_PER_HOUR } from "../../../Shared/commerce/reviews.js";
 import type { Actor } from "../../../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
@@ -88,5 +89,33 @@ describe("storing a photo", () => {
     await expect(media.saveUpload(manager(), JPEG, "image/jpeg")).rejects.toMatchObject({ reason: "media.tooMany" });
     /* An hour later the window has moved on. */
     expect(await media.saveUpload(manager(), JPEG, "image/jpeg", null, new Date(Date.now() + 61 * 60_000))).toMatchObject({ width: 1200 });
+  });
+});
+
+describe("a shopper's photo for a review", () => {
+  it("is refused to somebody nothing was ever delivered to, and stored for somebody it was", async () => {
+    await expect(media.saveReviewPhoto(ids.shopper, JPEG, "image/jpeg")).rejects.toMatchObject({ reason: "media.notAllowed" });
+
+    const [order] = await db.insert(orders).values({
+      userId: ids.shopper, reference: "NL-2026-PHOTO", status: "paid", email: "shopper@shop.test",
+      itemsTotal: "5.000", grandTotal: "5.000", currency: "KWD",
+    }).returning();
+    await db.insert(orderItems).values({
+      orderId: order.id, vendorId: ids.acme, productTitle: "Mug", unitPrice: "5.000", quantity: 1, lineTotal: "5.000",
+      fulfilment: "delivered", deliveredAt: new Date(),
+    });
+
+    const saved = await media.saveReviewPhoto(ids.shopper, JPEG, "image/jpeg");
+    expect(saved.url).toMatch(/^\/media\/[A-Za-z0-9_-]{24}\.jpg$/);
+    const [row] = await db.select().from(mediaFiles);
+    /* No store's, and the uploader's: only they may put it on a review. */
+    expect(row).toMatchObject({ vendorId: null, uploadedBy: ids.shopper });
+    await expect(media.saveReviewPhoto(ids.shopper, JPEG, "image/webp")).rejects.toMatchObject({ reason: "media.wrongType" });
+  });
+
+  it("stops at the hour's ceiling", async () => {
+    await db.delete(authAttempts);
+    for (let i = 0; i < MAX_REVIEW_PHOTOS_PER_HOUR; i++) await media.saveReviewPhoto(ids.shopper, JPEG, "image/jpeg");
+    await expect(media.saveReviewPhoto(ids.shopper, JPEG, "image/jpeg")).rejects.toMatchObject({ reason: "media.tooMany" });
   });
 });

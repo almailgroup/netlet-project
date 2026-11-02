@@ -60,8 +60,8 @@ struct OrderActionsBar: View {
                 RefundSheet(reference: reference, lines: refundable, done: { Task { await reload() } })
             }
             .onAppear {
-                // The screenshots' `track:` and `refund:` hooks.
-                guard let sheet = app.orderSheet else { return }
+                // The screenshots' `track:` and `refund:` hooks; `rate` is the order's own.
+                guard let sheet = app.orderSheet, sheet == "track" || sheet == "refund" else { return }
                 app.orderSheet = nil
                 if sheet == "track" && trackable { tracking = true }
                 if sheet == "refund" && !refundable.isEmpty { refunding = true }

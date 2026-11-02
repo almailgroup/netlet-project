@@ -35,17 +35,34 @@ struct OrdersView: View {
                                         // Request a refund from the list, on the owner's word:
                                         // on an order with something that can still go back,
                                         // opening it with its refund sheet up — the web's row.
-                                        if app.features.isOn("returns"), (order.summary.refundable ?? 0) > 0 {
-                                            HStack {
+                                        // Rate what arrived, from the list too (the owner's "rate
+                                        // and review … from the My Orders section"): opening it with
+                                        // the first item to rate in its sheet.
+                                        let refundable = app.features.isOn("returns") && (order.summary.refundable ?? 0) > 0
+                                        let rateable = (order.summary.reviewable ?? 0) > 0
+                                        if refundable || rateable {
+                                            HStack(spacing: 8) {
                                                 Spacer(minLength: 0)
-                                                Button {
-                                                    app.orderSheet = "refund"
-                                                    app.push(.order(reference: order.reference))
-                                                } label: {
-                                                    Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward")
+                                                if rateable {
+                                                    Button {
+                                                        app.orderSheet = "rate"
+                                                        app.push(.order(reference: order.reference))
+                                                    } label: {
+                                                        Label(l.t("orders.rateItems"), systemImage: "star")
+                                                    }
+                                                    .buttonStyle(OrderActionStyle())
+                                                    .accessibilityLabel(l.t("orders.rateItems") + ": " + (order.summary.first?.title ?? order.reference))
                                                 }
-                                                .buttonStyle(OrderActionStyle())
-                                                .accessibilityLabel(l.t("orders.requestRefund") + ": " + (order.summary.first?.title ?? order.reference))
+                                                if refundable {
+                                                    Button {
+                                                        app.orderSheet = "refund"
+                                                        app.push(.order(reference: order.reference))
+                                                    } label: {
+                                                        Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward")
+                                                    }
+                                                    .buttonStyle(OrderActionStyle())
+                                                    .accessibilityLabel(l.t("orders.requestRefund") + ": " + (order.summary.first?.title ?? order.reference))
+                                                }
                                             }
                                             .padding(.horizontal, 16)
                                             .padding(.bottom, 14)
@@ -227,6 +244,8 @@ struct OrderDetailView: View {
     let reference: String
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    /// The line being rated in `ReviewSheet`.
+    @State private var rating: ReviewTarget?
 
     var body: some View {
         ModelHost(make: { OrderDetailViewModel(reference: reference, service: app.services.orders) }) { model in
@@ -262,7 +281,14 @@ struct OrderDetailView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .task { await model.load() }
+            .sheet(item: $rating) { target in
+                ReviewSheet(target: target) { Task { await model.load() } }
+            }
         }
+    }
+
+    private func target(_ line: OrderLine) -> ReviewTarget {
+        ReviewTarget(orderItemId: line.id, productTitle: line.productTitle, photo: line.photo, review: line.review)
     }
 
     private func lines(_ detail: OrderDetail, reload: @escaping () async -> Void) -> some View {
@@ -295,6 +321,7 @@ struct OrderDetailView: View {
                         Spacer()
                         Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
                     }
+                    LineReviewRow(line: line) { rating = target(line) }
                     LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload)
                 }
                 Divider()
@@ -308,6 +335,12 @@ struct OrderDetailView: View {
             }
         }
         .card()
+        .onAppear {
+            // The orders list's "Rate your items": the first item to rate, in its sheet.
+            guard app.orderSheet == "rate" else { return }
+            app.orderSheet = nil
+            if let line = detail.lines.first(where: \.mayRate) { rating = target(line) }
+        }
     }
 
     /// Whether the line can still go back, and until when — or why not.
@@ -370,6 +403,42 @@ struct OrderDetailView: View {
             Text(label).font(.subheadline).foregroundStyle(Brand.muted)
             Spacer()
             Text(amount.formatted(l.current)).font(.subheadline).foregroundStyle(Brand.ink)
+        }
+    }
+}
+
+/// Rate one item from the opened order — the web's `LineReview`: "Rate this
+/// item" while it may be rated, or the stars given and where the review
+/// stands, with a way to change it. Nothing for an item not yet delivered or
+/// paid for; the return line above it already says why.
+struct LineReviewRow: View {
+    let line: OrderLine
+    let open: () -> Void
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        if let review = line.review {
+            HStack(spacing: 8) {
+                StarsView(rating: review.rating)
+                ReviewStatePill(state: review.state)
+                Button(l.t("review.edit"), action: open)
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .underline()
+                    .frame(minHeight: 44)
+                    .buttonStyle(.tap)
+                    .accessibilityLabel(l.t("review.edit") + ": " + line.productTitle)
+            }
+        } else if line.mayRate {
+            Button(action: open) {
+                Label {
+                    Text(l.t("review.rateItem"))
+                } icon: {
+                    Image(systemName: "star.fill").foregroundStyle(Brand.star)
+                }
+            }
+            .buttonStyle(OrderActionStyle())
+            .accessibilityLabel(l.t("review.rateItem") + ": " + line.productTitle)
         }
     }
 }

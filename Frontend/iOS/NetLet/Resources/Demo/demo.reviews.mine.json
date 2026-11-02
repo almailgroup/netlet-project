@@ -13,7 +13,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 48,
@@ -26,7 +28,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 47,
@@ -39,7 +43,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 46,
@@ -52,7 +58,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 45,
@@ -65,7 +73,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 34,
@@ -78,7 +88,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 18,
@@ -91,7 +103,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 17,
@@ -104,7 +118,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 16,
@@ -117,7 +133,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 15,
@@ -130,7 +148,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notPaid"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 6,
@@ -143,7 +163,9 @@
           "eligibility": {
             "allowed": false,
             "reason": "notDelivered"
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 2,
@@ -155,7 +177,9 @@
           "myRating": null,
           "eligibility": {
             "allowed": true
-          }
+          },
+          "variantTitle": null,
+          "review": null
         },
         {
           "orderItemId": 1,
@@ -168,6 +192,15 @@
           "eligibility": {
             "allowed": false,
             "reason": "alreadyReviewed"
+          },
+          "variantTitle": null,
+          "review": {
+            "id": 2,
+            "rating": 1,
+            "title": null,
+            "body": null,
+            "photos": [],
+            "state": "published"
           }
         }
       ]

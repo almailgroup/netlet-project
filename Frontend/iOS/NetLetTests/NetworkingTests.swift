@@ -224,6 +224,14 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(alerts.orders + alerts.watch, 3)
         let maps = try await client.call(API.mapAvailability)
         XCTAssertEqual(maps.drivingTimes, false)
+        // Reviews the automatic check left for a person, recorded off a real server.
+        let waiting = try await client.call(API.waitingReviews)
+        XCTAssertEqual(waiting.total, waiting.items.count)
+        XCTAssertEqual(waiting.items.first?.reason, "photos")
+        XCTAssertFalse(waiting.items.first?.photos.isEmpty ?? true)
+        XCTAssertTrue(Phrasebook.shared.has(WaitingReview.reasonKey(waiting.items.first?.reason ?? "")))
+        let held = try await client.call(API.waitingReviewCount)
+        XCTAssertEqual(held, waiting.total)
     }
 
     /// The approved round (A–H): the commission desk and its proposals, a
@@ -288,10 +296,13 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(page.rows.isEmpty)
         // The list says which orders have something to refund, for its row's button.
         XCTAssertEqual(page.rows.filter { ($0.summary.refundable ?? 0) > 0 }.map(\.reference), ["NL-20261001-J7MWY"])
+        // And which have something to rate, for "Rate your items".
+        XCTAssertEqual(page.rows.filter { ($0.summary.reviewable ?? 0) > 0 }.map(\.reference), ["NL-20261001-J7MWY"])
         let found = try await client.call(API.order, .init(reference: page.rows[0].reference))
         let detail = try XCTUnwrap(found)
         XCTAssertFalse(detail.lines.isEmpty)
         XCTAssertEqual(detail.lines.reduce(Money.zero) { $0 + $1.lineTotal }, detail.order.itemsTotal)
+        XCTAssertTrue(detail.lines.contains(where: \.mayRate), "a delivered, paid line nobody has rated offers Rate this item")
         let placed = try await client.call(API.placeOrder, .init(cartId: "x", paymentMethod: "cod"))
         XCTAssertTrue(placed.reference.hasPrefix("NL-"))
     }
@@ -425,6 +436,8 @@ final class FixtureDecodingTests: XCTestCase {
 
         let reviewable = try await client.call(API.reviewableLines)
         XCTAssertFalse(reviewable.isEmpty)
+        // A line already reviewed carries the whole review, so editing starts from it.
+        XCTAssertTrue(reviewable.filter { $0.reviewId != nil }.allSatisfy { $0.review?.id == $0.reviewId })
 
         let help = try await client.call(API.supportConversations)
         let opened = try await client.call(API.supportThread, .init(id: try XCTUnwrap(help.first).id))
@@ -481,6 +494,7 @@ final class FixtureDecodingTests: XCTestCase {
     func testTheProductPagesPanels() async throws {
         let reviews = try await client.call(API.productReviews, .init(productId: "1", limit: 20))
         XCTAssertEqual(reviews.summary?.distribution["5"], reviews.total)
+        XCTAssertTrue(reviews.items.allSatisfy { $0.photos != nil }, "the server says each review's photos, none included")
         let together = try await client.call(API.boughtTogether, .init(productId: "2", limit: 4, locale: "en"))
         XCTAssertFalse(together.isEmpty)
         let open = try await client.call(API.priceRequestsOpen, .init(variantIds: [2]))

@@ -14,9 +14,12 @@ import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import {
   customerAddresses,
+  mediaFiles,
   orderItems,
   orders,
   pointEntries,
+  reviewPhotos,
+  reviews,
   savedProducts,
   users,
   vendorMembers,
@@ -104,6 +107,12 @@ describe("deleting your account", () => {
     await db.insert(savedProducts).values({ userId: user.id, productId: "17" });
     await db.insert(pointEntries).values({ userId: user.id, points: 800, reason: "admin_adjustment" });
     const orderId = await orderFor(user, "delivered");
+    /* A review with a photo on it: the review cascades, and the file goes with it. */
+    const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+    const [review] = await db.insert(reviews).values({ orderItemId: line.id, userId: user.id, productTitle: "Lamp", rating: 4 }).returning();
+    const photoId = `leaverphoto${serial}xxxxxx`;
+    await db.insert(mediaFiles).values({ id: photoId, uploadedBy: user.id, contentType: "image/webp", bytes: new Uint8Array([1]), width: 400, height: 400, byteSize: 1 });
+    await db.insert(reviewPhotos).values({ reviewId: review.id, mediaId: photoId });
 
     const cleared: string[] = [];
     const me = appRouter.createCaller(contextFor(user, cleared));
@@ -115,6 +124,8 @@ describe("deleting your account", () => {
     expect(await db.select().from(customerAddresses).where(eq(customerAddresses.userId, user.id))).toEqual([]);
     expect(await db.select().from(savedProducts).where(eq(savedProducts.userId, user.id))).toEqual([]);
     expect(await db.select().from(pointEntries).where(eq(pointEntries.userId, user.id))).toEqual([]);
+    expect(await db.select().from(reviews).where(eq(reviews.id, review.id))).toEqual([]);
+    expect(await db.select().from(mediaFiles).where(eq(mediaFiles.id, photoId))).toEqual([]);
     // The order is a record of business: it stays, pointing at nobody.
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
     expect(order).toMatchObject({ userId: null, grandTotal: "5.000" });

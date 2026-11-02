@@ -160,6 +160,7 @@ describe("the alerts (3.6.5)", () => {
 
   it("answers nothing, and throws nothing, for something it cannot find", async () => {
     await expect(fraud.alertIfRiskyOrder(-1)).resolves.toBeUndefined();
-    await expect(fraud.alertIfRiskyReview(-1)).resolves.toBeUndefined();
+    /* A review it cannot find has no risk to report back to the review's own check. */
+    await expect(fraud.alertIfRiskyReview(-1)).resolves.toBeNull();
   });
 });

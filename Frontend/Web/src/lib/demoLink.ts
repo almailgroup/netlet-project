@@ -919,8 +919,13 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "reviews.mine":
       return [];
     case "reviews.write":
-      return 1;
+      return { id: 1, state: "published" };
     case "reviews.edit":
+      return { state: "published" };
+    case "reviews.waiting":
+      return { items: [], total: 0 };
+    case "reviews.waitingCount":
+      return 0;
     case "reviews.remove":
     case "reviews.reply":
     case "reviews.setHidden":

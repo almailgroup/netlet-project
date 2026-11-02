@@ -9,8 +9,16 @@
  * at before its cash-out is paid. A high-risk one is also a notice to every
  * administrator as it happens (`alertIfRiskyReview`, `alertIfRiskyReferral`),
  * and opening this page reads those.
+ *
+ * **"Waiting" is the product reviews the automatic check left for a person**
+ * (`reviews.waiting`): NetLet AI raised a concern, fraud watch judged one
+ * high-risk, it carries photos nobody could look at, or it was changed after
+ * being taken down. Publish puts it on the product page; Keep it off takes it
+ * down with a reason, like Hide. The overview's tile opens this view
+ * (`?view=waiting`), and it is first whenever anything waits.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -21,6 +29,9 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAlertsRead } from "@/hooks/useAlertsRead";
 import { trpc } from "@/lib/trpc";
+import { Thumb } from "@/components/product/Thumb";
+import { StarRow } from "@/components/product/ProductReviews";
+import { holdOf, type HoldReason } from "@shared/commerce/reviews";
 import type { ReferralSignal, ReviewSignal, RiskLevel } from "@shared/commerce/fraudSignals";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
@@ -38,6 +49,14 @@ const SIGNAL_LABEL: Record<ReviewSignal | ReferralSignal, MessageKey> = {
   referralBurst: "fraud.referralBurst",
 };
 
+const HOLD_LABEL: Record<HoldReason, MessageKey> = {
+  checking: "review.holdChecking",
+  suspicious: "review.holdSuspicious",
+  flagged: "review.holdFlagged",
+  photos: "review.holdPhotos",
+  edited: "review.holdEdited",
+};
+
 type Flagged = { signal: ReviewSignal | ReferralSignal; serious: boolean; detail: Record<string, number | string> };
 
 export default function AdminFraud() {
@@ -48,8 +67,14 @@ export default function AdminFraud() {
 function FraudWatch() {
   const { t } = useTranslation();
   useAlertsRead("watch");
-  const [view, setView] = useState<"reviews" | "referrals">("reviews");
+  const search = useSearch();
+  const waitingCount = trpc.reviews.waitingCount.useQuery(undefined, { staleTime: 15_000 });
+  const [view, setView] = useState<"waiting" | "reviews" | "referrals">(() => (new URLSearchParams(search).get("view") === "waiting" ? "waiting" : "reviews"));
+  const [chosen, setChosen] = useState(false);
   const [onlyFlagged, setOnlyFlagged] = useState(true);
+  /* The reviews waiting for a person come first whenever any wait, until somebody picks a view. */
+  const anyWaiting = (waitingCount.data ?? 0) > 0;
+  useEffect(() => { if (anyWaiting && !chosen) setView("waiting"); }, [anyWaiting, chosen]);
   return (
     <>
       <PageHeader title={t("fraud.title")} description={t("fraud.intro")} />
@@ -57,15 +82,21 @@ function FraudWatch() {
         <Segmented
           label={t("fraud.title")}
           value={view}
-          onChange={setView}
-          options={[{ value: "reviews", label: t("fraud.tabReviews") }, { value: "referrals", label: t("fraud.tabReferrals") }]}
+          onChange={next => { setChosen(true); setView(next); }}
+          options={[
+            { value: "waiting", label: t("review.waitingTile"), count: waitingCount.data ?? null },
+            { value: "reviews", label: t("fraud.tabReviews") },
+            { value: "referrals", label: t("fraud.tabReferrals") },
+          ]}
         />
-        <label className="flex items-center gap-2 text-[14px] font-semibold text-[#0a285a]">
-          <input type="checkbox" checked={onlyFlagged} onChange={event => setOnlyFlagged(event.target.checked)} className="size-4 accent-[#0a285a]" />
-          {t("fraud.onlyFlagged")}
-        </label>
+        {view === "waiting" ? null : (
+          <label className="flex items-center gap-2 text-[14px] font-semibold text-[#0a285a]">
+            <input type="checkbox" checked={onlyFlagged} onChange={event => setOnlyFlagged(event.target.checked)} className="size-4 accent-[#0a285a]" />
+            {t("fraud.onlyFlagged")}
+          </label>
+        )}
       </div>
-      {view === "reviews" ? <Reviews onlyFlagged={onlyFlagged} /> : <Referrals onlyFlagged={onlyFlagged} />}
+      {view === "waiting" ? <Waiting /> : view === "reviews" ? <Reviews onlyFlagged={onlyFlagged} /> : <Referrals onlyFlagged={onlyFlagged} />}
     </>
   );
 }
@@ -137,7 +168,11 @@ function Reviews({ onlyFlagged }: { onlyFlagged: boolean }) {
                     </p>
                   ) : null}
                   <Flags flags={row.flags} />
-                  {row.hidden && row.hiddenReason ? <p className="mt-2 text-[13px] ink-muted">{t("fraud.hiddenBecause", { reason: row.hiddenReason })}</p> : null}
+                  {row.hidden && row.hiddenReason ? (
+                    <p className="mt-2 text-[13px] ink-muted">
+                      {t("fraud.hiddenBecause", { reason: holdOf(row.hiddenReason) ? t(HOLD_LABEL[holdOf(row.hiddenReason)!.reason]) : row.hiddenReason })}
+                    </p>
+                  ) : null}
                   <div className="mt-3">
                     {row.hidden ? (
                       <button type="button" disabled={setHidden.isPending} onClick={() => setHidden.mutate({ reviewId: row.id, hidden: false })} className={smallButtonClass.secondary}>
@@ -161,6 +196,105 @@ function Reviews({ onlyFlagged }: { onlyFlagged: boolean }) {
               pending={setHidden.isPending}
               onClose={() => { setHiding(null); setReason(""); }}
               onConfirm={() => hiding !== null && setHidden.mutate({ reviewId: hiding, hidden: true, reason: reason.trim() || undefined })}
+            >
+              <label className="mt-3 block text-[13px] font-semibold text-[#0a285a]">
+                {t("fraud.hideReason")}
+                <input dir="auto" value={reason} maxLength={200} onChange={event => setReason(event.target.value)} className={`${fieldClass} mt-1.5`} />
+              </label>
+            </ConfirmDialog>
+          </>
+        );
+      }}
+    </QueryGate>
+  );
+}
+
+/** The reviews waiting for a person, oldest first, with Publish and Keep it off. */
+function Waiting() {
+  const { t, tError } = useTranslation();
+  const when = useDateTimeFormat();
+  const utils = trpc.useUtils();
+  const waiting = trpc.reviews.waiting.useQuery(undefined, { staleTime: 15_000 });
+  const [keeping, setKeeping] = useState<number | null>(null);
+  const [reason, setReason] = useState("");
+  const refresh = () => {
+    void utils.reviews.waiting.invalidate();
+    void utils.reviews.waitingCount.invalidate();
+    void utils.orders.reviewWatch.invalidate();
+  };
+  const setHidden = trpc.reviews.setHidden.useMutation({
+    onSuccess: (_reply, input) => {
+      toast.success(t(input.hidden ? "review.keptOffToast" : "review.publishedToast"));
+      setKeeping(null);
+      setReason("");
+      refresh();
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
+
+  if (waiting.isLoading) return <SkeletonRows rows={3} label={t("admin.loading")} />;
+  return (
+    <QueryGate queries={[waiting]}>
+      {() => {
+        const items = waiting.data?.items ?? [];
+        if (!items.length) return <EmptyState title={t("review.waitingNone")} />;
+        return (
+          <>
+            <p className="mb-3 max-w-prose text-[13px] leading-5 ink-muted">{t("review.waitingIntro")}</p>
+            <ul className="space-y-3">
+              {items.map(item => (
+                <li key={item.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[14px] font-bold text-[#0a285a]">
+                        {item.productHandle ? (
+                          <Link href={`/products/${item.productHandle}`} className="underline underline-offset-2"><bdi>{item.productTitle}</bdi></Link>
+                        ) : <bdi>{item.productTitle}</bdi>}
+                      </p>
+                      <p className="mt-0.5 text-[13px] text-[#536b8c]">
+                        {t("review.byReviewer", { email: isolate(item.reviewerEmail ?? "") })} · {when(item.createdAt)}
+                      </p>
+                    </div>
+                    <Pill tone="warning">{t(HOLD_LABEL[item.reason])}</Pill>
+                  </div>
+                  <div className="mt-2"><StarRow value={item.rating} /></div>
+                  {item.concern ? <p dir="auto" className="mt-2 text-[13px] font-semibold text-[#8c2f22]">{item.concern}</p> : null}
+                  {item.title || item.body ? (
+                    <p dir="auto" className="mt-2 whitespace-pre-line text-[13px] leading-5 text-[#0a285a]">
+                      {item.title ? <strong>{item.title} </strong> : null}{item.body}
+                    </p>
+                  ) : null}
+                  {item.photos.length ? (
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {item.photos.map((photo, index) => (
+                        <li key={photo}>
+                          <a href={photo} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-[#e1e7ef]">
+                            <Thumb src={photo} alt={t("review.photoOf", { index: String(index + 1), count: String(item.photos.length), author: item.reviewerEmail ?? "" })} className="size-24 object-cover" />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" disabled={setHidden.isPending} onClick={() => setHidden.mutate({ reviewId: item.id, hidden: false })} className={smallButtonClass.primary}>
+                      {t("review.publish")}
+                    </button>
+                    <button type="button" onClick={() => setKeeping(item.id)} className={smallButtonClass.quietDanger}>
+                      {t("review.keepOff")}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <ConfirmDialog
+              open={keeping !== null}
+              title={t("fraud.hideTitle")}
+              body={t("fraud.hideBody")}
+              confirmLabel={t("review.keepOff")}
+              tone="danger"
+              pending={setHidden.isPending}
+              onClose={() => { setKeeping(null); setReason(""); }}
+              onConfirm={() => keeping !== null && setHidden.mutate({ reviewId: keeping, hidden: true, reason: reason.trim() || undefined })}
             >
               <label className="mt-3 block text-[13px] font-semibold text-[#0a285a]">
                 {t("fraud.hideReason")}

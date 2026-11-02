@@ -1922,6 +1922,24 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0071_review_photos.sql =====
+CREATE TABLE IF NOT EXISTS "review_photos" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"review_id" integer NOT NULL,
+	"media_id" varchar(64) NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "review_photos" ADD CONSTRAINT "review_photos_review_id_reviews_id_fk" FOREIGN KEY ("review_id") REFERENCES "public"."reviews"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "review_photos" ADD CONSTRAINT "review_photos_media_id_media_files_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media_files"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "review_photos_review_idx" ON "review_photos" USING btree ("review_id","position");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1965,6 +1983,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  71 AS migrations_in_this_file,
+  72 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

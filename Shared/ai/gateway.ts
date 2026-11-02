@@ -54,7 +54,7 @@ export const GATEWAY_ROUTES = { chat: "/api/ai/chat", catalog: "/api/ai/catalog-
  * token's subject is `s:<task>`, so the Worker's ceiling and its log count
  * each feature apart, and a runaway loop in one cannot starve the others.
  */
-export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "arabicName", "makerPage", "photoCleanup", "tryOn", "guideDraft", "guideImage", "categorise", "returnRead"] as const;
+export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "reviewScreen", "arabicName", "makerPage", "photoCleanup", "tryOn", "guideDraft", "guideImage", "categorise", "returnRead"] as const;
 export type ServerTask = (typeof SERVER_TASKS)[number];
 
 /**
@@ -404,8 +404,8 @@ export const MAX_GENERATE_OUTPUT = 4096;
  * A drawing takes longer than a sentence, so the ceiling is a drawing's.
  */
 export const MAX_GENERATE_MS = 45_000;
-/** Pictures beside `image`: a try-on is the shopper's photo and the product's. */
-export const MAX_GENERATE_IMAGES = 2;
+/** Pictures beside `image`: a try-on is the shopper's photo and the product's; a review's four photos are `image` and three more. */
+export const MAX_GENERATE_IMAGES = 3;
 export const MAX_GENERATE_BODY_BYTES = (1 + MAX_GENERATE_IMAGES) * MAX_IMAGE_BASE64 + 64 * 1024;
 
 /**

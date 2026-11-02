@@ -193,6 +193,7 @@ jobs:
             shot 68-browse-sort "$lang" browseSheet:all/sort ""
             shot 69-browse-price "$lang" browseSheet:all/price ""
             shot 70-deals "$lang" deals ""
+            shot 71-order-rate "$lang" rate:NL-20261001-J7MWY shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

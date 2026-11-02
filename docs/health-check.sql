@@ -18,7 +18,7 @@
 -- docs/schema-audit.sql is its companion: that one says whether every migration
 -- landed, this one whether the shop works on top of them.
 --
--- 42 checks, 69 tables, 5 departments.
+-- 43 checks, 70 tables, 5 departments.
 
 -- (Not "found": inside PL/pgSQL that name is the built-in FOUND flag.)
 CREATE OR REPLACE FUNCTION pg_temp.netlet_measure(query text, OUT reading text, OUT flagged boolean, OUT problem text)
@@ -53,7 +53,7 @@ checks (position, area, name, kind, query, advice) AS (VALUES
    $q$SELECT count(*)::text, count(*) > 0 FROM pg_stat_activity WHERE state = 'active' AND pid <> pg_backend_pid() AND query_start < now() - interval '5 minutes'$q$,
    'Look at them in pg_stat_activity; end one with SELECT pg_cancel_backend(pid).'),
   (7, 'Schema', 'Tables the code expects', 'fail',
-   $q$SELECT count(*) FILTER (WHERE to_regclass(format('public.%I', t)) IS NOT NULL) || ' of ' || count(*), bool_or(to_regclass(format('public.%I', t)) IS NULL) FROM unnest(string_to_array('ad_bookings,affiliates,application_documents,audit_log,auth_attempts,bundle_items,bundles,cart_item_addons,cart_items,carts,categories,commission_proposals,courier_members,couriers,customer_addresses,customer_notification_preferences,customer_preferences,customer_profiles,damage_claims,delivery_ratings,discount_codes,discount_redemptions,driver_positions,feature_switches,followed_products,fulfilment_centres,fulfilment_charges,gift_card_uses,gift_cards,guides,inbound_lines,inbound_shipments,invoice_counters,invoices,media_files,membership_terms,memberships,notification_deliveries,notifications,order_item_addons,order_items,order_tracking_events,orders,payout_files,payout_run_items,payout_runs,platform_settings,point_entries,price_offers,product_addons,product_images,product_variants,products,referrals,return_requests,reviews,saved_products,staff_grants,stock_movements,subscriptions,support_conversations,support_messages,users,vendor_applications,vendor_members,vendor_warnings,vendors,wishlist_items,wishlists', ',')) t$q$,
+   $q$SELECT count(*) FILTER (WHERE to_regclass(format('public.%I', t)) IS NOT NULL) || ' of ' || count(*), bool_or(to_regclass(format('public.%I', t)) IS NULL) FROM unnest(string_to_array('ad_bookings,affiliates,application_documents,audit_log,auth_attempts,bundle_items,bundles,cart_item_addons,cart_items,carts,categories,commission_proposals,courier_members,couriers,customer_addresses,customer_notification_preferences,customer_preferences,customer_profiles,damage_claims,delivery_ratings,discount_codes,discount_redemptions,driver_positions,feature_switches,followed_products,fulfilment_centres,fulfilment_charges,gift_card_uses,gift_cards,guides,inbound_lines,inbound_shipments,invoice_counters,invoices,media_files,membership_terms,memberships,notification_deliveries,notifications,order_item_addons,order_items,order_tracking_events,orders,payout_files,payout_run_items,payout_runs,platform_settings,point_entries,price_offers,product_addons,product_images,product_variants,products,referrals,return_requests,review_photos,reviews,saved_products,staff_grants,stock_movements,subscriptions,support_conversations,support_messages,users,vendor_applications,vendor_members,vendor_warnings,vendors,wishlist_items,wishlists', ',')) t$q$,
    'Run docs/supabase-bootstrap.sql again, in full, then docs/schema-audit.sql for the detail.'),
   (8, 'Schema', 'Tables a later migration removed', 'fail',
    $q$SELECT count(*) FILTER (WHERE to_regclass(format('public.%I', t)) IS NOT NULL)::text, bool_or(to_regclass(format('public.%I', t)) IS NOT NULL) FROM unnest(string_to_array('conversation_messages,conversations', ',')) t$q$,
@@ -127,37 +127,40 @@ checks (position, area, name, kind, query, advice) AS (VALUES
   (31, 'Waiting on you', 'Products waiting for review', 'todo',
    $q$SELECT count(*)::text, count(*) > 0 FROM products WHERE status = 'pending_review'$q$,
    '/admin/review'),
-  (32, 'Waiting on you', 'Seller applications to decide', 'todo',
+  (32, 'Waiting on you', 'Product reviews waiting for a look', 'todo',
+   $q$SELECT count(*)::text, count(*) > 0 FROM reviews WHERE hidden_at IS NOT NULL AND hidden_reason LIKE 'held:%'$q$,
+   'The automatic check was unsure, or they carry photos nobody could look at: /admin/fraud'),
+  (33, 'Waiting on you', 'Seller applications to decide', 'todo',
    $q$SELECT count(*)::text, count(*) > 0 FROM vendor_applications WHERE status = 'submitted'$q$,
    '/admin/applications'),
-  (33, 'Waiting on you', 'Returns waiting for NetLet''s decision', 'todo',
+  (34, 'Waiting on you', 'Returns waiting for NetLet''s decision', 'todo',
    $q$SELECT count(*)::text, count(*) > 0 FROM return_requests WHERE status = 'review'$q$,
    '/admin/returns'),
-  (34, 'Waiting on you', 'Refunds owed to shoppers', 'todo',
+  (35, 'Waiting on you', 'Refunds owed to shoppers', 'todo',
    $q$SELECT count(*)::text, count(*) > 0 FROM return_requests WHERE status = 'refunded' AND refund_paid_at IS NULL$q$,
    'The item came back and the money has not: /admin/returns'),
-  (35, 'Waiting on you', 'Help conversations waiting for a reply', 'todo',
+  (36, 'Waiting on you', 'Help conversations waiting for a reply', 'todo',
    $q$SELECT count(*)::text, count(*) > 0 FROM support_conversations WHERE status = 'open'$q$,
    '/admin/support'),
-  (36, 'Waiting on you', 'Home banners to approve', 'todo',
+  (37, 'Waiting on you', 'Home banners to approve', 'todo',
    $q$SELECT count(*)::text, count(*) > 0 FROM ad_bookings WHERE banner_status = 'pending' AND cancelled_on IS NULL AND ends_on >= (now() AT TIME ZONE 'Asia/Kuwait')::date$q$,
    '/admin/ads — a day it waits is a day it does not run'),
-  (37, 'Waiting on you', 'Commission proposals', 'todo',
+  (38, 'Waiting on you', 'Commission proposals', 'todo',
    $q$SELECT count(*)::text, count(*) > 0 FROM commission_proposals WHERE status = 'pending'$q$,
    '/admin/commission'),
-  (38, 'Waiting on you', 'Damage claims open', 'todo',
+  (39, 'Waiting on you', 'Damage claims open', 'todo',
    $q$SELECT count(*)::text, count(*) > 0 FROM damage_claims WHERE status = 'open'$q$,
    '/admin/claims'),
-  (39, 'Daily jobs', 'Emails that gave up', 'warn',
+  (40, 'Daily jobs', 'Emails that gave up', 'warn',
    $q$SELECT count(*)::text, count(*) > 0 FROM notification_deliveries WHERE status = 'failed'$q$,
    'Check RESEND_API_KEY and NOTIFY_EMAIL_FROM in Vercel; each row''s last_error says why it failed.'),
-  (40, 'Daily jobs', 'Emails waiting more than two days', 'warn',
+  (41, 'Daily jobs', 'Emails waiting more than two days', 'warn',
    $q$SELECT count(*)::text, count(*) > 0 FROM notification_deliveries WHERE status = 'pending' AND next_attempt_at < now() - interval '2 days'$q$,
    'The daily job is not running: set CRON_SECRET in Vercel''s environment variables (vercel.json schedules it), then redeploy.'),
-  (41, 'Daily jobs', 'Standing orders overdue', 'warn',
+  (42, 'Daily jobs', 'Standing orders overdue', 'warn',
    $q$SELECT count(*)::text, count(*) > 0 FROM subscriptions WHERE status = 'active' AND next_run_on < (now() AT TIME ZONE 'Asia/Kuwait')::date - 1$q$,
    'The daily job is not running: set CRON_SECRET in Vercel''s environment variables (vercel.json schedules it), then redeploy.'),
-  (42, 'Security', 'Tables the anon key can read', 'warn',
+  (43, 'Security', 'Tables the anon key can read', 'warn',
    $q$SELECT count(*)::text, count(*) > 0 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r' AND NOT c.relrowsecurity AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') AND has_table_privilege('anon', c.oid, 'SELECT')$q$,
    'Row-level security is off on these, so Supabase''s Data API serves them to anybody holding the anon key. docs/SUPABASE-AUTH.md, "One thing to check while you are in the dashboard", has the two ways to close it.')
 ),
@@ -184,7 +187,7 @@ SELECT "#", area, "check", result, status, "what to do" FROM (
     END AS "what to do"
   FROM judged
   UNION ALL
-  SELECT 43, 'Result', 'Overall',
+  SELECT 44, 'Result', 'Overall',
     coalesce(nullif(concat_ws(', ',
       nullif(count(*) FILTER (WHERE status = 'fail') || ' failing', '0 failing'),
       nullif(count(*) FILTER (WHERE status = 'not run') || ' not run', '0 not run'),

@@ -14,12 +14,14 @@
  * `MAX_UPLOADS_PER_HOUR`, counted in Postgres for the reason sign-in is.
  */
 import { randomBytes } from "node:crypto";
-import { and, eq, gt, sql } from "drizzle-orm";
-import { mediaFiles } from "../../database/schema.js";
+import { and, eq, gt, isNotNull, sql } from "drizzle-orm";
+import { mediaFiles, orderItems, orders } from "../../database/schema.js";
 import { MAX_UPLOADS_PER_HOUR, mediaPath, sniffImage, uploadProblem, type StoredType, type UploadProblem } from "../../../Shared/commerce/media.js";
 import { urlProblem } from "../../../Shared/commerce/manufacturerImages.js";
 import { can, type Actor } from "../../../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
+import { takeHourlyAllowance } from "./rateLimit.js";
+import { MAX_REVIEW_PHOTOS_PER_HOUR } from "../../../Shared/commerce/reviews.js";
 
 export class MediaError extends Error {
   constructor(readonly reason: UploadProblem | "media.notAllowed" | "media.tooMany") {
@@ -61,6 +63,47 @@ export async function saveUpload(actor: Actor, bytes: Uint8Array, declared: stri
     height: info.height,
     byteSize: bytes.length,
     sourceUrl: source && !urlProblem(source) ? source.trim() : null,
+  });
+  return { url: mediaPath(id, info.type), width: info.width, height: info.height };
+}
+
+/**
+ * Store one photo for a review (a shopper's, not a catalogue act).
+ *
+ * The same checks as a seller's photo — its own bytes decide what it is, and
+ * only a JPEG or a WebP of a sensible size is kept — with two of its own: the
+ * account must have had something delivered, since only a delivered line can
+ * be reviewed and NetLet is not an image host for anybody with an account;
+ * and `MAX_REVIEW_PHOTOS_PER_HOUR`, counted in Postgres. The photo is no
+ * review's until a review names it (`ownPhotos`), and only its uploader may.
+ */
+export async function saveReviewPhoto(userId: number, bytes: Uint8Array, declared: string) {
+  const problem = uploadProblem(bytes, declared);
+  if (problem) throw new MediaError(problem);
+  const info = sniffImage(bytes)!;
+
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [received] = await db
+    .select({ id: orderItems.id })
+    .from(orderItems)
+    .innerJoin(orders, eq(orders.id, orderItems.orderId))
+    .where(and(eq(orders.userId, userId), isNotNull(orderItems.deliveredAt)))
+    .limit(1);
+  if (!received) throw new MediaError("media.notAllowed");
+  if (!(await takeHourlyAllowance(userId, "reviewPhoto", MAX_REVIEW_PHOTOS_PER_HOUR))) throw new MediaError("media.tooMany");
+
+  const id = randomBytes(18).toString("base64url");
+  await db.insert(mediaFiles).values({
+    id,
+    vendorId: null,
+    uploadedBy: userId,
+    contentType: info.type,
+    bytes,
+    width: info.width,
+    height: info.height,
+    byteSize: bytes.length,
+    sourceUrl: null,
   });
   return { url: mediaPath(id, info.type), width: info.width, height: info.height };
 }

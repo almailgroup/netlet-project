@@ -442,8 +442,8 @@ final class AppModel {
         case "orders":
             selectedTab = .account
             accountPath = NavigationPath([Route.orders])
-        case "order", "track", "refund":
-            // `track:` and `refund:` open the order with that sheet up.
+        case "order", "track", "refund", "rate":
+            // `track:`, `refund:` and `rate:` open the order with that sheet up.
             guard let value else { return }
             selectedTab = .account
             orderSheet = parts[0] == "order" ? nil : parts[0]

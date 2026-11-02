@@ -91,3 +91,18 @@ export function violatesUnique(error: unknown, constraint: string): boolean {
   }
   return false;
 }
+
+/**
+ * Postgres's "relation does not exist" (`42P01`), wherever Drizzle wrapped it.
+ *
+ * What a new table looks like in the minutes between a deploy and the owner
+ * pasting the bootstrap: a feature that reads one answers "nothing yet"
+ * rather than failing the page round it (`customer_profiles`, `review_photos`).
+ */
+export function isMissingTable(error: unknown): boolean {
+  for (let step: unknown = error, depth = 0; step && depth < 6; depth++) {
+    if ((step as { code?: unknown }).code === "42P01") return true;
+    step = (step as { cause?: unknown }).cause;
+  }
+  return false;
+}

@@ -402,13 +402,20 @@ export async function alertIfRiskyOrder(orderId: number): Promise<void> {
   });
 }
 
-/** After a review is written. */
-export async function alertIfRiskyReview(reviewId: number): Promise<void> {
+/**
+ * After a review is written, answering how risky it was judged — the review's
+ * own check (`moderate` in `reviews.ts`) keeps a high-risk one for a person,
+ * which is the review's rule acting on this judgement, not this file acting.
+ */
+export async function alertIfRiskyReview(reviewId: number): Promise<RiskLevel | null> {
+  const found: { risk: RiskLevel | null } = { risk: null };
   await quietly(`review ${reviewId}`, async db => {
     const [judged] = await judgeReviews(db, { limit: 1, reviewId });
+    found.risk = judged?.risk ?? null;
     if (judged?.risk !== "high") return;
     await notifyStaff({ kind: "staff_fraud_review", params: { product: judged.productTitle }, link: "/admin/fraud", dedupe: `fraud:review:${reviewId}` });
   });
+  return found.risk;
 }
 
 /** After a referral pays out, which is when there is an order to compare. */

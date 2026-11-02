@@ -426,6 +426,39 @@ struct ReferralWatchRow: Decodable, Identifiable, Hashable, Sendable {
     let flags: [OrderRisk.Flag]
 }
 
+/// A product review the automatic check left for a person (`reviews.waiting`):
+/// why it waits, NetLet AI's words when it raised the concern, and its photos.
+struct WaitingReview: Decodable, Identifiable, Hashable, Sendable {
+    let id: Int
+    let productTitle: String
+    var productHandle: String? = nil
+    let rating: Int
+    var title: String? = nil
+    var body: String? = nil
+    let photos: [String]
+    /// `checking`, `suspicious`, `flagged`, `photos` or `edited` (`HOLD_REASONS`).
+    let reason: String
+    var concern: String? = nil
+    var reviewerEmail: String? = nil
+    let createdAt: Date
+
+    /// The words for why it waits.
+    static func reasonKey(_ reason: String) -> String {
+        switch reason {
+        case "suspicious": "review.holdSuspicious"
+        case "flagged": "review.holdFlagged"
+        case "photos": "review.holdPhotos"
+        case "edited": "review.holdEdited"
+        default: "review.holdChecking"
+        }
+    }
+}
+
+struct WaitingReviews: Decodable, Sendable {
+    let items: [WaitingReview]
+    let total: Int
+}
+
 /// Fraud watch's alerts this administrator has not looked at (`orders.fraudUnseen`),
 /// per desk: high-risk orders, and reviews and referrals (3.6.5).
 struct FraudUnseen: Decodable, Sendable {
@@ -436,6 +469,8 @@ struct FraudUnseen: Decodable, Sendable {
 extension API {
     static let reviewWatch = Procedure<NoInput, [ReviewWatchRow]>(query: "orders.reviewWatch")
     static let fraudUnseen = Procedure<NoInput, FraudUnseen>(query: "orders.fraudUnseen")
+    static let waitingReviews = Procedure<NoInput, WaitingReviews>(query: "reviews.waiting")
+    static let waitingReviewCount = Procedure<NoInput, Int>(query: "reviews.waitingCount")
 
     struct FraudDesk: Encodable, Sendable {
         /// `orders` or `watch` — the desk being opened, whose alerts it reads.

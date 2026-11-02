@@ -30,10 +30,12 @@ import {
   productVariants,
   products,
   returnRequests,
+  reviews,
   vendors,
 } from "../../database/schema.js";
 import { returnStateFor } from "../../../Shared/commerce/returns.js";
 import { blocksNewReturn } from "../../../Shared/commerce/returnRequests.js";
+import { eligibilityFor } from "../../../Shared/commerce/reviews.js";
 import {
   draftOrder,
   orderReference,
@@ -977,6 +979,11 @@ export type OrderSummary = {
    * the list row's "Request a refund", drawn only where it leads somewhere.
    */
   refundable: number;
+  /**
+   * How many of its items may be rated now — delivered, paid for, and not
+   * yet reviewed (`eligibilityFor`): the list row's "Rate your items".
+   */
+  reviewable: number;
 };
 
 /**
@@ -1024,6 +1031,9 @@ async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promi
       .where(inArray(returnRequests.orderItemId, lines.map(line => line.id)))
     : [];
   const held = new Set(asked.filter(request => blocksNewReturn(request.status)).map(request => request.orderItemId));
+  const reviewed = new Set(lines.length
+    ? (await db.select({ orderItemId: reviews.orderItemId }).from(reviews).where(inArray(reviews.orderItemId, lines.map(line => line.id)))).map(row => row.orderItemId)
+    : []);
   const now = new Date();
 
   const byOrder = new Map<number, typeof lines>();
@@ -1041,6 +1051,7 @@ async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promi
       photos: [...new Set(pictured.map(line => (line.productId === null ? undefined : photos.get(line.productId))).filter((url): url is string => Boolean(url)))].slice(0, PREVIEW_PHOTOS),
       progress: orderProgress(row, own),
       refundable: own.filter(line => !held.has(line.id) && returnStateFor(row, line, now).returnable).length,
+      reviewable: own.filter(line => eligibilityFor({ orderStatus: row.status, deliveredAt: line.deliveredAt, reviewed: reviewed.has(line.id) }).allowed).length,
     }];
   }));
 }

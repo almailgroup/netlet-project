@@ -712,50 +712,129 @@ struct BundlesPanel: View {
 // MARK: - Reviews
 
 /// Every published review of the product, with the summary over all of them
-/// — the web's `ProductReviews`.
+/// — the web's `ProductReviews`: the average and both counts ("12 ratings ·
+/// 5 reviews"; a rating with no words or photos counts in the stars and is not
+/// listed), each star's share in whole percentages that add up to a hundred
+/// (`ReviewMath.percent`, `distributionPercent`'s twin), the line saying every
+/// review is a verified purchase, the order (newest, highest, lowest, asked of
+/// the server), the reviews with their photos, and Show more.
 struct ReviewsSection: View {
     let product: Product
     @State private var page: ProductReviewsPage?
+    @State private var sort = "newest"
+    @State private var shown = ReferenceData.shared.rules.accountRules.reviewPage
+    @State private var loadingMore = false
+    @State private var viewing: ReviewPhotos?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+
+    private static let sorts = ["newest", "highest", "lowest"]
+    private static func sortKey(_ sort: String) -> String {
+        switch sort {
+        case "highest": "review.sortHighest"
+        case "lowest": "review.sortLowest"
+        default: "review.sortNewest"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(l.t("review.heading")).shelfTitle()
             if let page {
-                if page.total == 0 {
+                if let summary = page.summary {
+                    summaryCard(summary, written: page.total)
+                    Label(l.t("review.verifiedNote"), systemImage: "checkmark.seal.fill")
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.success)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if page.total == 0 {
+                        Text(l.t("review.noWritten")).font(.inter(14)).foregroundStyle(Brand.muted)
+                    } else {
+                        HStack {
+                            Text(l.t("review.writtenCount", ["count": "\(page.total)"])).font(.inter(15, .bold)).foregroundStyle(Brand.ink)
+                            Spacer()
+                            Menu {
+                                ForEach(Self.sorts, id: \.self) { option in
+                                    Button {
+                                        Haptics.tap()
+                                        sort = option
+                                        shown = ReferenceData.shared.rules.accountRules.reviewPage
+                                    } label: {
+                                        if sort == option { Label(l.t(Self.sortKey(option)), systemImage: "checkmark") } else { Text(l.t(Self.sortKey(option))) }
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.up.arrow.down").font(.system(size: 12, weight: .semibold))
+                                    Text(l.t(Self.sortKey(sort))).font(.inter(13, .bold))
+                                }
+                                .foregroundStyle(Brand.navy)
+                                .padding(.horizontal, 12)
+                                .frame(minHeight: 36)
+                                .background(Capsule().fill(Color.white))
+                                .overlay(Capsule().stroke(Brand.line, lineWidth: 1))
+                            }
+                            .accessibilityLabel("\(l.t("review.sortLabel")): \(l.t(Self.sortKey(sort)))")
+                        }
+                        ForEach(page.items) { review in reviewCard(review) }
+                        if page.items.count < page.total {
+                            Button {
+                                shown += ReferenceData.shared.rules.accountRules.reviewPage
+                            } label: {
+                                HStack(spacing: 8) {
+                                    if loadingMore { ProgressView().tint(Brand.navy) }
+                                    Text(l.t("review.showMore"))
+                                }
+                            }
+                            .buttonStyle(SecondaryButtonStyle())
+                            .disabled(loadingMore)
+                        }
+                    }
+                } else {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(l.t("review.none")).font(.inter(15, .bold)).foregroundStyle(Brand.ink)
                         Text(l.t("review.noneNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .card()
-                } else {
-                    if let summary = page.summary { summaryCard(summary) }
-                    ForEach(page.items) { review in reviewCard(review) }
                 }
             } else {
                 ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 80)
             }
         }
-        .task(id: product.id) { page = try? await app.services.api.call(API.productReviews, .init(productId: product.id, limit: 20)) }
+        .task(id: "\(product.id)|\(sort)|\(shown)") {
+            loadingMore = page != nil
+            defer { loadingMore = false }
+            if let next = try? await app.services.api.call(API.productReviews, .init(productId: product.id, limit: shown, sort: sort)) {
+                page = next
+            }
+        }
+        .sheet(item: $viewing) { photos in ReviewPhotoViewer(photos: photos) }
     }
 
-    private func summaryCard(_ summary: ProductReviewsPage.Summary) -> some View {
+    private func summaryCard(_ summary: ProductReviewsPage.Summary, written: Int) -> some View {
         let maxStars = ReferenceData.shared.rules.accountRules.ratingMax
-        return HStack(alignment: .top, spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(String(format: "%.1f", summary.average)).font(.inter(34, .heavy)).foregroundStyle(Brand.ink)
-                StarsView(rating: Int(summary.average.rounded()), size: 15)
-                Text(summary.count == 1 ? l.t("review.countOne") : l.t("review.count", ["count": "\(summary.count)"]))
-                    .font(.inter(12))
-                    .foregroundStyle(Brand.muted)
+        let percent = ReviewMath.percent(summary.distribution, count: summary.count)
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(String(format: "%.1f", summary.average)).font(.inter(40, .heavy)).foregroundStyle(Brand.ink)
+                VStack(alignment: .leading, spacing: 4) {
+                    StarRow(value: summary.average, size: 18)
+                    Text("\(l.t("review.ratingsCount", ["count": "\(summary.count)"])) · \(l.t("review.writtenCount", ["count": "\(written)"]))")
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.muted)
+                }
             }
-            VStack(spacing: 4) {
+            .accessibilityElement(children: .combine)
+            VStack(spacing: 6) {
                 ForEach((1...maxStars).reversed(), id: \.self) { star in
                     let count = summary.distribution["\(star)"] ?? 0
                     HStack(spacing: 8) {
-                        Text("\(star)").font(.inter(12, .semibold)).foregroundStyle(Brand.muted).frame(width: 14)
+                        HStack(spacing: 2) {
+                            Text("\(star)").font(.inter(13, .bold)).foregroundStyle(Brand.ink)
+                            Image(systemName: "star.fill").font(.system(size: 11)).foregroundStyle(Brand.star)
+                        }
+                        .frame(width: 30, alignment: .leading)
                         GeometryReader { proxy in
                             ZStack(alignment: .leading) {
                                 Capsule().fill(Brand.tint)
@@ -763,32 +842,54 @@ struct ReviewsSection: View {
                             }
                         }
                         .frame(height: 8)
-                        Text("\(count)").font(.inter(12)).foregroundStyle(Brand.muted).frame(width: 24, alignment: .trailing)
+                        Text("\(percent[star] ?? 0)%").font(.inter(13)).monospacedDigit().foregroundStyle(Brand.muted).frame(width: 40, alignment: .trailing)
                     }
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(star == 1 ? l.t("review.starsOne") : l.t("review.stars", ["count": "\(star)"])): \(count)")
+                    .accessibilityLabel(l.t("review.shareOf", ["stars": l.t("review.stars", ["count": "\(star)"]), "percent": "\(percent[star] ?? 0)"]))
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .card()
     }
 
     private func reviewCard(_ review: ProductReviewsPage.Review) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let author = review.author.flatMap { $0.isEmpty ? nil : $0 } ?? l.t("review.anonymous")
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 StarsView(rating: review.rating)
-                Text(l.t("review.verified")).font(.inter(11, .bold)).foregroundStyle(Brand.success)
+                Label(l.t("review.verified"), systemImage: "checkmark.seal.fill")
+                    .font(.inter(11, .bold))
+                    .foregroundStyle(Brand.success)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Brand.success.opacity(0.12)))
                 Spacer()
             }
-            Text("\(review.author ?? l.t("review.anonymous")) · \(OrderWording.date(review.createdAt, language: l.current))")
-                .font(.inter(12))
-                .foregroundStyle(Brand.muted)
             if let title = review.title, !title.isEmpty {
                 Text(title).font(.inter(15, .bold)).foregroundStyle(Brand.ink)
             }
             if let body = review.body, !body.isEmpty {
                 Text(body).font(.inter(14)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
             }
+            if !review.pictures.isEmpty {
+                HStack(spacing: 8) {
+                    ForEach(Array(review.pictures.enumerated()), id: \.element) { index, photo in
+                        Button {
+                            viewing = ReviewPhotos(photos: review.pictures, start: index, author: author)
+                        } label: {
+                            RemoteImage(reference: photo)
+                                .frame(width: 72, height: 72)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                        .buttonStyle(.tap)
+                        .accessibilityLabel(l.t("review.photoOf", ["index": "\(index + 1)", "count": "\(review.pictures.count)", "author": author]))
+                    }
+                }
+            }
+            Text("\(author) · \(OrderWording.date(review.createdAt, language: l.current))")
+                .font(.inter(12))
+                .foregroundStyle(Brand.muted)
             if let reply = review.vendorReply, !reply.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(l.t("review.vendorReply")).font(.inter(12, .bold)).foregroundStyle(Brand.navy)
@@ -800,6 +901,72 @@ struct ReviewsSection: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
+    }
+}
+
+/// A review's photos, opened from one of them.
+struct ReviewPhotos: Identifiable, Hashable {
+    let photos: [String]
+    let start: Int
+    let author: String
+    var id: String { "\(start)|\(photos.joined(separator: ","))" }
+}
+
+/// A review's photos, large, one at a time — swiped the page's way, with the count.
+struct ReviewPhotoViewer: View {
+    let photos: ReviewPhotos
+    @State private var index = 0
+    @Environment(LanguageSettings.self) private var l
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            TabView(selection: $index) {
+                ForEach(Array(photos.photos.enumerated()), id: \.offset) { offset, photo in
+                    RemoteImage(reference: photo, contentMode: .fit)
+                        .padding(12)
+                        .tag(offset)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: photos.photos.count > 1 ? .always : .never))
+            .indexViewStyle(.page(backgroundDisplayMode: .always))
+            .background(Color.white)
+            .navigationTitle(l.t("review.photoOf", ["index": "\(index + 1)", "count": "\(photos.photos.count)", "author": photos.author]))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    BarButton(l.t("common.close")) { dismiss() }
+                }
+            }
+        }
+        .onAppear { index = photos.start }
+        .presentationDragIndicator(.visible)
+    }
+}
+
+/// The breakdown's arithmetic — the Swift twin of `distributionPercent`.
+enum ReviewMath {
+    /// Each star's share as a whole percentage, summing to 100 (largest remainder).
+    static func percent(_ distribution: [String: Int], count: Int) -> [Int: Int] {
+        var out: [Int: Int] = [1: 0, 2: 0, 3: 0, 4: 0, 5: 0]
+        guard count > 0 else { return out }
+        let exact = (1...5).map { star in (star: star, value: Double(distribution["\(star)"] ?? 0) * 100 / Double(count)) }
+        var given = 0
+        for entry in exact {
+            out[entry.star] = Int(entry.value.rounded(.down))
+            given += out[entry.star] ?? 0
+        }
+        let order = exact.sorted { a, b in
+            let left = a.value - a.value.rounded(.down), right = b.value - b.value.rounded(.down)
+            return left != right ? left > right : a.star > b.star
+        }
+        var index = 0
+        while given < 100 && index < order.count {
+            out[order[index].star, default: 0] += 1
+            given += 1
+            index += 1
+        }
+        return out
     }
 }
 

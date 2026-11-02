@@ -24,11 +24,13 @@ import {
   reviewsForProduct,
   ReviewRefused,
   setReviewHidden,
+  waitingReviewCount,
+  waitingReviews,
   writeReview,
 } from "../services/reviews.js";
 import { resolveActor } from "../services/inventory.js";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../core/trpc.js";
-import { MAX_REVIEW_BODY, MAX_REVIEW_TITLE, RATING_MAX, RATING_MIN } from "../../../Shared/commerce/reviews.js";
+import { MAX_REVIEW_BODY, MAX_REVIEW_PHOTOS, MAX_REVIEW_TITLE, RATING_MAX, RATING_MIN, REVIEW_SORTS } from "../../../Shared/commerce/reviews.js";
 
 /** A refusal becomes a 4xx carrying a message key the page translates. */
 const guard = async <T>(run: () => Promise<T>): Promise<T> => {
@@ -48,6 +50,8 @@ const guard = async <T>(run: () => Promise<T>): Promise<T> => {
 const rating = z.number().int().min(RATING_MIN).max(RATING_MAX);
 const title = z.string().trim().max(MAX_REVIEW_TITLE).nullable().optional();
 const body = z.string().trim().max(MAX_REVIEW_BODY).nullable().optional();
+/* The whole set in its order, as `/media/…` paths the shopper uploaded; the data layer checks they are theirs. */
+const photos = z.array(z.string().max(120)).max(MAX_REVIEW_PHOTOS).optional();
 
 export const reviewsRouter = router({
   /** Every published review of one product, plus the summary over all of them. */
@@ -55,7 +59,8 @@ export const reviewsRouter = router({
     .input(z.object({
       productId: z.string().max(191),
       limit: z.number().int().min(1).max(100).optional(),
-      offset: z.number().int().min(0).optional(),
+      offset: z.number().int().min(0).max(100_000).optional(),
+      sort: z.enum(REVIEW_SORTS).optional(),
     }))
     .query(({ input }) => {
       // A handle rather than an id is not an error, it is simply no reviews —
@@ -66,7 +71,7 @@ export const reviewsRouter = router({
       const parsed = rowIdText.safeParse(input.productId);
       if (!parsed.success) return { items: [], summary: null, total: 0 };
       const id = Number(parsed.data);
-      return reviewsForProduct(id, { limit: input.limit, offset: input.offset });
+      return reviewsForProduct(id, { limit: input.limit, offset: input.offset, sort: input.sort });
     }),
 
   /**
@@ -79,7 +84,7 @@ export const reviewsRouter = router({
   mine: protectedProcedure.query(({ ctx }) => reviewableLinesFor(ctx.user.id)),
 
   write: protectedProcedure
-    .input(z.object({ orderItemId: rowId, rating, title, body }))
+    .input(z.object({ orderItemId: rowId, rating, title, body, photos }))
     .mutation(({ ctx, input }) => guard(() => writeReview(ctx.user.id, input))),
 
   edit: protectedProcedure
@@ -88,6 +93,7 @@ export const reviewsRouter = router({
       rating: rating.optional(),
       title,
       body,
+      photos,
     }))
     .mutation(({ ctx, input }) => guard(() => {
       const { reviewId, ...patch } = input;
@@ -114,6 +120,16 @@ export const reviewsRouter = router({
       if (actor.kind !== "vendor") throw new TRPCError({ code: "FORBIDDEN", message: "review.notYours" });
       return guard(() => replyToReview(actor.vendorId, input.reviewId, input.reply));
     }),
+
+  /**
+   * The reviews waiting for a person (the check was unsure, fraud watch judged
+   * one high-risk, or photos nobody could look at), oldest first, with how
+   * many there are. Publishing one is `setHidden` with `hidden: false`.
+   */
+  waiting: adminProcedure.query(() => waitingReviews()),
+
+  /** How many wait, for the overview's tile. */
+  waitingCount: adminProcedure.query(() => waitingReviewCount()),
 
   /** Moderation. Hides rather than deletes; see `setReviewHidden`. */
   setHidden: adminProcedure

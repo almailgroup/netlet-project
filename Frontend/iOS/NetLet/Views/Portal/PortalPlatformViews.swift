@@ -199,22 +199,42 @@ private struct AuditRow: View {
 /// the counts behind it; nothing acts by itself. A review is hidden by a
 /// person's press, with a reason, and shown again the same way.
 struct PortalFraudView: View {
-    @State private var showReferrals = false
+    /// `waiting` (the reviews the automatic check left for a person), `reviews` or `referrals`.
+    @State private var view: String
     @State private var onlyFlagged = true
     @State private var reviews: [ReviewWatchRow]?
     @State private var referrals: [ReferralWatchRow]?
+    @State private var waiting: WaitingReviews?
     @State private var failed: APIError?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
+    init() {
+        _view = State(initialValue: "reviews")
+    }
+
+    private var showReferrals: Bool { view == "referrals" }
+
     var body: some View {
         PortalScreen(title: l.t("fraud.title"), intro: l.t("fraud.intro"), refresh: { await load() }) {
-            PortalSegmented(label: l.t("fraud.title"), value: $showReferrals, options: [
-                (false, l.t("fraud.tabReviews")),
-                (true, l.t("fraud.tabReferrals")),
+            PortalSegmented(label: l.t("fraud.title"), value: $view, options: [
+                ("waiting", l.t("review.waitingTile") + (waiting.map { $0.total > 0 ? " (\($0.total))" : "" } ?? "")),
+                ("reviews", l.t("fraud.tabReviews")),
+                ("referrals", l.t("fraud.tabReferrals")),
             ])
-            Toggle(l.t("fraud.onlyFlagged"), isOn: $onlyFlagged).font(.inter(14, .semibold)).foregroundStyle(Brand.navy).tint(Brand.navy)
-            if showReferrals {
+            if view != "waiting" {
+                Toggle(l.t("fraud.onlyFlagged"), isOn: $onlyFlagged).font(.inter(14, .semibold)).foregroundStyle(Brand.navy).tint(Brand.navy)
+            }
+            if view == "waiting" {
+                if let waiting {
+                    if waiting.items.isEmpty {
+                        PortalEmpty(text: l.t("review.waitingNone"))
+                    } else {
+                        Text(l.t("review.waitingIntro")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                        ForEach(waiting.items) { WaitingReviewCard(item: $0) { Task { await load() } } }
+                    }
+                } else { pending }
+            } else if showReferrals {
                 if let referrals {
                     let rows = onlyFlagged ? referrals.filter { !$0.flags.isEmpty } : referrals
                     if rows.isEmpty {
@@ -237,9 +257,14 @@ struct PortalFraudView: View {
         .task {
             // Opening the desk reads the alerts that sent somebody here (3.6.5).
             _ = try? await app.services.api.call(API.fraudSeen, .init(desk: "watch"))
-            await load()
+            // The reviews waiting for a person come first whenever any wait.
+            if view == "reviews", let count = try? await app.services.api.call(API.waitingReviewCount), count > 0 {
+                view = "waiting"
+            } else {
+                await load()
+            }
         }
-        .onChange(of: showReferrals) { Task { await load() } }
+        .onChange(of: view) { Task { await load() } }
     }
 
     @ViewBuilder
@@ -254,7 +279,9 @@ struct PortalFraudView: View {
     private func load() async {
         do {
             let api = app.services.api
-            if showReferrals {
+            if view == "waiting" {
+                waiting = try await api.call(API.waitingReviews)
+            } else if showReferrals {
                 referrals = try await api.call(API.referralWatch)
             } else {
                 reviews = try await api.call(API.reviewWatch)
@@ -334,7 +361,9 @@ private struct ReviewWatchCard: View {
             }
             FraudFlags(flags: row.flags)
             if row.hidden, let why = row.hiddenReason, !why.isEmpty {
-                Text(l.t("fraud.hiddenBecause", ["reason": why])).font(.inter(13)).foregroundStyle(Brand.muted)
+                // A review waiting for its check carries `held:<reason>`; said in words.
+                let held = why.hasPrefix("held:") ? l.t(WaitingReview.reasonKey(String(why.dropFirst(5).split(separator: " ").first ?? ""))) : why
+                Text(l.t("fraud.hiddenBecause", ["reason": held])).font(.inter(13)).foregroundStyle(Brand.muted)
             }
             if row.hidden {
                 Button(l.t("fraud.show")) { Task { await setHidden(false) } }
@@ -371,6 +400,87 @@ private struct ReviewWatchCard: View {
             _ = try await app.services.api.call(API.setReviewHidden, input)
         }) {
             hiding = false
+            reason = ""
+            changed()
+        }
+    }
+}
+
+/// One review waiting for a person: Publish puts it on the product page, Keep
+/// it off takes it down with a reason, like Hide — the web's "Waiting" view.
+private struct WaitingReviewCard: View {
+    let item: WaitingReview
+    let changed: () -> Void
+    @State private var keeping = false
+    @State private var reason = ""
+    @State private var busy = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        PortalCard {
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(item.productTitle).font(.inter(14, .bold)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
+                    Text(l.t("review.byReviewer", ["email": latin(item.reviewerEmail ?? "")]) + " · " + OrderWording.dateTime(item.createdAt, language: l.current))
+                        .font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 6)
+                StatusPill(label: l.t(WaitingReview.reasonKey(item.reason)), tone: .portal("warning"))
+            }
+            StarsView(rating: item.rating)
+            if let concern = item.concern, !concern.isEmpty {
+                Text(concern).font(.inter(13, .semibold)).foregroundStyle(Brand.danger).fixedSize(horizontal: false, vertical: true)
+            }
+            if (item.title ?? "").isEmpty == false || (item.body ?? "").isEmpty == false {
+                (Text(item.title.map { $0 + " " } ?? "").fontWeight(.bold) + Text(item.body ?? ""))
+                    .font(.inter(13)).foregroundStyle(Brand.ink).fixedSize(horizontal: false, vertical: true)
+            }
+            if !item.photos.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(item.photos.enumerated()), id: \.element) { index, photo in
+                            RemoteImage(reference: photo, label: l.t("review.photoOf", ["index": "\(index + 1)", "count": "\(item.photos.count)", "author": item.reviewerEmail ?? ""]))
+                                .frame(width: 96, height: 96)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        }
+                    }
+                }
+            }
+            if keeping {
+                VStack(alignment: .leading, spacing: 8) {
+                    Divider()
+                    Text(l.t("fraud.hideTitle")).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
+                    Text(l.t("fraud.hideBody")).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                    LabeledField(label: l.t("fraud.hideReason"), text: Binding(get: { reason }, set: { reason = String($0.prefix(200)) }))
+                    HStack(spacing: 8) {
+                        Spacer()
+                        Button(l.t("common.cancel")) { keeping = false; reason = "" }.buttonStyle(PortalSmallButtonStyle())
+                        Button(l.t("review.keepOff")) { Task { await decide(publish: false) } }
+                            .buttonStyle(PortalSmallButtonStyle(kind: .danger))
+                            .disabled(busy)
+                    }
+                }
+            } else {
+                HStack(spacing: 8) {
+                    Button(l.t("review.publish")) { Task { await decide(publish: true) } }
+                        .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                        .disabled(busy)
+                    Button(l.t("review.keepOff")) { keeping = true }.buttonStyle(PortalSmallButtonStyle(kind: .danger))
+                }
+            }
+        }
+    }
+
+    private func decide(publish: Bool) async {
+        busy = true
+        defer { busy = false }
+        let why = reason.trimmingCharacters(in: .whitespaces)
+        let input = API.HideReview(reviewId: item.id, hidden: !publish, reason: !publish && !why.isEmpty ? why : nil)
+        if await app.attempt(done: publish ? "review.publishedToast" : "review.keptOffToast", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.setReviewHidden, input)
+        }) {
+            keeping = false
             reason = ""
             changed()
         }

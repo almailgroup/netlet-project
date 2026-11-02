@@ -231,9 +231,27 @@ struct ReviewableLine: Decodable, Identifiable, Hashable, Sendable {
     let deliveredAt: Date?
     let reviewId: Int?
     let myRating: Int?
+    /// The whole review, so changing it starts from what was written.
+    var review: MyReview? = nil
     let eligibility: Eligibility
 
     var id: Int { orderItemId }
+}
+
+/// A shopper's own review, as their account and their orders show it.
+struct MyReview: Decodable, Hashable, Sendable {
+    let id: Int
+    let rating: Int
+    let title: String?
+    let body: String?
+    let photos: [String]
+    /// `published`, `waiting` (for its quick check) or `removed`.
+    let state: String
+}
+
+/// What writing or changing a review answers: where it stands now.
+struct ReviewOutcome: Decodable, Sendable {
+    let state: String
 }
 
 // MARK: Talking to NetLet

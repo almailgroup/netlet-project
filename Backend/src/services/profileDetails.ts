@@ -14,6 +14,7 @@
 import { eq, sql } from "drizzle-orm";
 import { customerProfiles } from "../../database/schema.js";
 import { getDb } from "./db.js";
+import { isMissingTable } from "../core/describeError.js";
 import {
   birthdayProblem,
   isCountryCode,
@@ -28,15 +29,6 @@ export class ProfileDetailsError extends Error {
   constructor(readonly key: string) {
     super(key);
   }
-}
-
-/** Postgres's "relation does not exist", wherever Drizzle wrapped it. */
-function isMissingTable(error: unknown): boolean {
-  for (let step: unknown = error, depth = 0; step && depth < 5; depth++) {
-    if ((step as { code?: unknown }).code === "42P01") return true;
-    step = (step as { cause?: unknown }).cause;
-  }
-  return false;
 }
 
 async function db() {

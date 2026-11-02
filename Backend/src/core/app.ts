@@ -28,7 +28,7 @@ import { robotsTxt, sitemapXml } from "../../../Shared/sitemap.js";
 import { timingSafeEqual } from "node:crypto";
 import { ENV } from "./env.js";
 import { runDueSubscriptions } from "../services/subscriptions.js";
-import { MediaError, readMedia, saveUpload } from "../services/media.js";
+import { MediaError, readMedia, saveReviewPhoto, saveUpload } from "../services/media.js";
 import { attachContract, DocumentRefused, readDocument, uploadDocument } from "../services/applicationDocuments.js";
 import { can } from "../../../Shared/inventory/permissions.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, type DocumentKind } from "../../../Shared/inventory/applicationDocuments.js";
@@ -162,6 +162,27 @@ export function createApp(): Express {
         return;
       }
       console.error(`[media] upload failed: ${describeError(error)}`);
+      res.status(500).json({ error: "media.failed" });
+    }
+  });
+
+  /**
+   * A shopper's photo for a review — the upload above's rules, for somebody
+   * who has had something delivered (`saveReviewPhoto`). The review that
+   * names it is checked before it is shown.
+   */
+  app.post("/api/media/review", express.raw({ type: ["image/webp", "image/jpeg"], limit: "1600kb" }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "media.notAnImage" }); return; }
+      res.status(201).json(await saveReviewPhoto(user.id, new Uint8Array(req.body), req.headers["content-type"] ?? ""));
+    } catch (error) {
+      if (error instanceof MediaError) {
+        res.status(error.reason === "media.notAllowed" ? 403 : error.reason === "media.tooMany" ? 429 : 400).json({ error: error.reason });
+        return;
+      }
+      console.error(`[media] review photo failed: ${describeError(error)}`);
       res.status(500).json({ error: "media.failed" });
     }
   });

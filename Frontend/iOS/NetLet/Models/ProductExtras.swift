@@ -212,8 +212,14 @@ struct ProductReviewsPage: Decodable, Sendable {
         let author: String?
         let createdAt: Date
         let vendorReply: String?
+        /// The reviewer's photos, as `/media/…` paths. Absent from an older server.
+        let photos: [String]?
+
+        var pictures: [String] { photos ?? [] }
     }
 
+    /// How many reviews are listed — ratings with words or photos; the
+    /// summary's `count` is every rating (`isWritten`).
     let total: Int
     let summary: Summary?
     let items: [Review]

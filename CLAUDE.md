@@ -2904,9 +2904,10 @@ has (`isClaims`), so neither can stand in for the other; `Backend/src/services/g
 runs `askModel` through the Worker's real handler. **The feature's deadline is
 the server's**, and the Worker is given 300ms less for Gemini, so a slow answer
 is refused there rather than abandoned here.
-Five tasks have joined the six since — `makerPage` (finding a maker's page,
+Six tasks have joined the six since — `makerPage` (finding a maker's page,
 with search grounding), `photoCleanup`, `tryOn`, `guideImage` (all three
-drawn, see "Drawing") and `guideDraft` — each in `SERVER_TASKS`, which the
+drawn, see "Drawing"), `guideDraft` and `reviewScreen` (a product review's
+check, see "Ratings and reviews") — each in `SERVER_TASKS`, which the
 Worker's `isClaims` reads, so a task the shop does not have cannot ride a
 server token. `askModelFor` returns the whole answer (words, a picture, the
 pages searched); `askModel` stays the words alone.
@@ -4402,7 +4403,10 @@ drops a `+tag` and trailing digits, and Gmail's dots), a qualifying order taken
 back, a burst of invitations. **It flags and never acts** — a review is hidden
 by a person's press with a reason (`reviews.setHidden`), and a referral is
 something to look at before its cash-out is paid. Admin-only, because the
-signals describe other accounts.
+signals describe other accounts. A new product review is the one place its
+judgement is acted on, and by the review's own rule rather than here: a
+high-risk one waits for a person before it is shown (see "Ratings and
+reviews").
 
 **And it alerts as it happens** (3.6.5): an order placed, a review written and
 a referral paid out are each judged then, by the function the pages use
@@ -5914,6 +5918,106 @@ in more than one, each with its count. The read carries the newest
 written by `pageShell.ts` through the `vercel.json` rewrites) and are in the
 sitemap while the store has something on sale.
 
+## Ratings and reviews
+
+**A review is anchored to an order line, so every one is a verified
+purchase** (`Shared/commerce/reviews.ts`, the pure half; `Backend/src/services/reviews.ts`
+the database half): the line is the proof and the unique key, a shopper who
+bought a thing twice has two opinions, and "Verified purchase" is said on
+every review because nothing else can be in the table. Delivered is a date,
+so a line sent back still keeps its review.
+
+**Ratings and reviews are two figures, and every page says both** — "6
+ratings · 5 reviews", on the owner's word ("the total number of ratings and
+reviews"). Every visible rating counts in the average, the stars on a card
+and the breakdown; a review is a rating with words or photos (`isWritten`),
+and only those are listed, because a page of bare star rows is a list nobody
+learns anything from. `reviews.forProduct` answers `summary.count` (ratings)
+and `total` (reviews, the pager's figure). The breakdown is each star's share
+in whole percentages that add up to a hundred (`distributionPercent`, largest
+remainder; the app's `ReviewMath.percent`, tested on the same cases), five
+stars first, one sentence per row to a screen reader. The order is the
+server's (`REVIEW_SORTS`: newest, highest rated, lowest rated, ties to the
+newer), so "Lowest rated" is the lowest of all of them; "Show more" asks for
+`REVIEW_PAGE` more. The card's stars and "(12)" are `productStars`, unchanged.
+A review's words take their own direction and the page's alignment
+(`align-parent`), or an English review sat at the far edge of the Arabic
+column.
+
+**A review is written from My orders, on the owner's word** ("rate and review
+products they have purchased directly from the My Orders section"): an opened
+order's line says "Rate this item" while `reviewEligibility` (on
+`orders.get`, `eligibilityFor`, the rule `reviews.write` refuses with) allows
+it, or its stars and where the review stands with "Edit your review"; the
+list row says "Rate your items" while `summary.reviewable` counts something,
+and opens the order with the first one focused (the app: `rate:` and
+`app.orderSheet`). The account's Reviews section is the same list across
+orders. All three open one form — `ReviewDialog` on the web, `ReviewSheet` in
+the app: stars (a radio group), a headline, the words, up to
+`MAX_REVIEW_PHOTOS` (4) photos. **Editing starts from what was written**:
+`reviews.mine` sends the whole review now; it sent only the stars, and the
+old form saved its empty boxes over the words.
+
+**A shopper's photo is stored like a seller's and named by the review**
+(migration 0071, `review_photos`, shown to the owner first). It is shrunk and
+re-encoded on the device (`preparePhoto` without the seller's fixes;
+`ImagePreparation`), posted to `POST /api/media/review` (`saveReviewPhoto`:
+the bytes decide the type, only for an account with something delivered,
+`MAX_REVIEW_PHOTOS_PER_HOUR`), and becomes the review's only when a review
+names it — and only its uploader's (`ownPhotos`), never one on another review.
+A photo taken off a review, a review deleted and an account deleted take
+their files with them (`dropFiles`, `deleteAccount`), since a photo somebody
+took back should not go on being served. **`review_photos` is a table and
+not a column** for the paste window: a missing table reads as no photos
+(`photosFor` catches `42P01`, `isMissingTable` in `describeError.ts`, now
+shared with the profile's details), where a missing column on `reviews` would
+have taken every star on the shop down.
+
+**Every review is checked before it is shown, and a person decides when the
+check is unsure** — the owner's choice of "automatic, a person if unsure".
+Words carrying a phone number, an email or a link are refused before
+anything is stored (`review.offPlatform`, the contact filter, said under the
+box as the form's errors are). Then the review is stored *waiting*
+(`held:checking`) and `moderate` decides: fraud watch's judgement
+(`alertIfRiskyReview`, which now answers the risk) high is held; otherwise
+NetLet AI reads the words and photos (`reviewScreen` in `SERVER_TASKS`, the
+photos as images — `MAX_GENERATE_IMAGES` is 3 now, for four — at most
+`MAX_REVIEW_SCREENS_PER_HOUR` per account) and is asked for a concern, never
+a verdict, told in so many words that **a low rating or a complaint is never
+a concern**; `moderationVerdict` is the rule, pure: suspicious waits,
+a concern waits with the model's words, **photos nobody could look at wait**
+(no gateway, `ai` off, the hour spent, no answer), and words alone with no
+model are shown, the contact filter having been asked. A check that fails
+half-way leaves it waiting, never shown unchecked, and finishing late never
+overrules an administrator (the update names `held:checking` in its
+predicate). Changed words or photos are checked again; stars alone are not;
+a review an administrator took down and its author changed waits for a person
+(`held:edited`), never for the check.
+
+**Waiting is a hidden review with a `held:` reason** (`HOLD_REASONS`), no
+schema change: every public read already leaves hidden rows out — the
+product page, the card's stars, a store's average — so a review not yet
+checked cannot reach any of them by a query somebody forgets to change. Its
+author sees "Waiting for a quick check" (`reviewState`: published, waiting,
+removed), and the toast after Publish says which it came out as. A person's
+own reason can never start `held:` (`setReviewHidden` strips it).
+**Administrators work them on the Fraud watch page's first view**, "Reviews
+waiting for a look" (`reviews.waiting`, oldest first, why it waits, the
+model's words, the photos, the reviewer's address; Publish is `setHidden`
+false, Keep it off takes it down with a reason), which it opens on whenever
+any wait; the overview's tile and `docs/health-check.sql` count them. The app's
+portal is the same (`PortalFraudView`'s waiting view, the overview's tile).
+
+Measured on a production build against a local Postgres, through the real
+API and Playwright at 320, 390 and 1440 in both languages: the breakdown
+summing to a hundred, highest and lowest sorting all of them, a photo opening
+large and Escape returning, "Rate your items" focusing the first item, Publish
+with no stars and with a phone number each saying why under its box and the
+line leaving with the fix, a photo uploaded and the review waiting for a look,
+Edit opening on the stars and words written, the desk publishing it, axe clean
+throughout and no sideways scroll. The account's own language overrides the
+device's, so a walk in Arabic sets the account's first.
+
 ## The product page
 
 **What decides the purchase sits above the fold on a wide screen.** The tabs
@@ -6404,7 +6508,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, and is 832 KB (244 KB) now, the home page's shelves with their department tabs, the occasions' calendar and their words in both languages — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, then 832 KB (244 KB), the home page's shelves with their department tabs, the occasions' calendar and their words in both languages, and is 837 KB (245 KB) now, the reviews' words in both languages — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

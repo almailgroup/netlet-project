@@ -1601,6 +1601,33 @@ export const reviews = pgTable(
 );
 
 /**
+ * The photos a shopper added to a review, in their order — at most
+ * `MAX_REVIEW_PHOTOS`, each an upload of the reviewer's own in `media_files`.
+ *
+ * A table of its own rather than a column on `reviews`, for the minutes
+ * between a deploy and the owner pasting the bootstrap: every read of
+ * `reviews` names its columns, so a missing column would have taken every
+ * star on the shop down with it, where a missing table reads as "no photos"
+ * (`photosFor` catches `42P01`). Both references cascade: a photo outlives
+ * neither its review nor its file.
+ */
+export const reviewPhotos = pgTable(
+  "review_photos",
+  {
+    id: serial("id").primaryKey(),
+    reviewId: integer("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    mediaId: varchar("media_id", { length: 64 })
+      .notNull()
+      .references(() => mediaFiles.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("review_photos_review_idx").on(table.reviewId, table.position)],
+);
+
+/**
  * A return or an exchange, asked for one order line (3.2.8, 3.5.2).
  *
  * The rules are `Shared/commerce/returnRequests.ts`. The row is the operation:

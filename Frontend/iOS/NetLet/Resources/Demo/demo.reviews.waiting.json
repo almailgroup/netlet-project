@@ -1,0 +1,26 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "total": 1,
+        "items": [
+          {
+            "id": 5,
+            "productTitle": "4K monitor",
+            "productHandle": "walk-4k-monitor",
+            "rating": 5,
+            "title": "Worth it for photo editing",
+            "body": "Colours match my phone and the matte screen kills reflections from the window.",
+            "photos": [
+              "/media/qKxoQKOqowYg0AUixHZq7Qpb.jpg"
+            ],
+            "reason": "photos",
+            "concern": null,
+            "reviewerEmail": "noura@example.test",
+            "createdAt": "2026-11-02T18:44:44.851Z"
+          }
+        ]
+      }
+    }
+  }
+}

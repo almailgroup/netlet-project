@@ -30,9 +30,12 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import type { OrderProgress } from "@shared/commerce/orderProgress";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ChevronDown, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Truck, type LucideIcon } from "lucide-react";
+import { ChevronDown, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Star, Truck, type LucideIcon } from "lucide-react";
 import { Link, useSearch } from "wouter";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
+import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
+import { StarRow } from "@/components/product/ProductReviews";
 import { OrderActions } from "@/components/account/OrderActions";
 
 /**
@@ -135,6 +138,8 @@ export function AccountOrders() {
   /* `&refund=1`, or the row's "Request a refund": the order opens on its refund form. */
   const [refundRef, setRefundRef] = useState<string | null>(() => (new URLSearchParams(search).get("refund") === "1" ? new URLSearchParams(search).get("order") : null));
   const returnsOn = useFeature("returns");
+  /* The row's "Rate your items": the order opens with its first "Rate this item" focused. */
+  const [rateRef, setRateRef] = useState<string | null>(null);
 
   const list = trpc.orders.list.useQuery({ page });
 
@@ -177,7 +182,7 @@ export function AccountOrders() {
                     </h3>
                     <button
                       type="button"
-                      onClick={() => { setRefundRef(null); setOpenRef(open ? null : order.reference); }}
+                      onClick={() => { setRefundRef(null); setRateRef(null); setOpenRef(open ? null : order.reference); }}
                       aria-expanded={open}
                       aria-controls={`order-${order.id}-lines`}
                       className="pressable flex w-full items-start gap-4 rounded-[1.35rem] p-4 text-start sm:p-5"
@@ -218,27 +223,45 @@ export function AccountOrders() {
                         the server's count by the opened order's own rule). It
                         opens the order on its refund form; open, the order's
                         own button is the one. */}
-                    {!open && returnsOn && (summary?.refundable ?? 0) > 0 ? (
-                      <div className="-mt-1 flex justify-end px-4 pb-4 sm:px-5">
-                        <button
-                          type="button"
-                          onClick={() => { setRefundRef(order.reference); setOpenRef(order.reference); }}
-                          className="glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
-                        >
-                          <RotateCcw className="size-4 rtl:-scale-x-100" aria-hidden />
-                          {t("orders.requestRefund")}
-                          <span className="sr-only">: <bdi>{summary?.first?.title ?? order.reference}</bdi></span>
-                        </button>
+                    {/* Rate what arrived, from the list (the owner's "rate and
+                        review from My Orders"): drawn while the order has an
+                        item delivered, paid for and not yet rated
+                        (`summary.reviewable`, `eligibilityFor`'s count). */}
+                    {!open && ((returnsOn && (summary?.refundable ?? 0) > 0) || (summary?.reviewable ?? 0) > 0) ? (
+                      <div className="-mt-1 flex flex-wrap justify-end gap-2 px-4 pb-4 sm:px-5">
+                        {(summary?.reviewable ?? 0) > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => { setRefundRef(null); setRateRef(order.reference); setOpenRef(order.reference); }}
+                            className="glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
+                          >
+                            <Star className="size-4" aria-hidden />
+                            {t("orders.rateItems")}
+                            <span className="sr-only">: <bdi>{summary?.first?.title ?? order.reference}</bdi></span>
+                          </button>
+                        ) : null}
+                        {returnsOn && (summary?.refundable ?? 0) > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => { setRateRef(null); setRefundRef(order.reference); setOpenRef(order.reference); }}
+                            className="glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
+                          >
+                            <RotateCcw className="size-4 rtl:-scale-x-100" aria-hidden />
+                            {t("orders.requestRefund")}
+                            <span className="sr-only">: <bdi>{summary?.first?.title ?? order.reference}</bdi></span>
+                          </button>
+                        ) : null}
                       </div>
                     ) : null}
 
                     <div id={`order-${order.id}-lines`} hidden={!open} className="border-t border-[#e7edf5] px-5 py-4">
                       {open ? (
                         <OrderLines
-                          key={refundRef === order.reference ? "refund" : "plain"}
+                          key={refundRef === order.reference ? "refund" : rateRef === order.reference ? "rate" : "plain"}
                           reference={order.reference}
                           trackFirst={trackRef === order.reference}
                           refundFirst={refundRef === order.reference}
+                          rateFirst={rateRef === order.reference}
                         />
                       ) : null}
                     </div>
@@ -292,11 +315,23 @@ function OrderTotal({ order }: {
  * per line against the server's clock and a list of fifty orders would resolve
  * fifty windows nobody has asked to see.
  */
-function OrderLines({ reference, trackFirst = false, refundFirst = false }: { reference: string; trackFirst?: boolean; refundFirst?: boolean }) {
+function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFirst = false }: { reference: string; trackFirst?: boolean; refundFirst?: boolean; rateFirst?: boolean }) {
   const { t, locale } = useTranslation();
   const returnsOn = useFeature("returns");
   const detail = trpc.orders.get.useQuery({ reference });
   const formatDate = useDateFormat();
+  const utils = trpc.useUtils();
+  const [rating, setRating] = useState<ReviewTarget | null>(null);
+  /* Opened from the row's "Rate your items": the first item to rate, in view and focused. */
+  const firstRate = useRef<HTMLButtonElement>(null);
+  const loaded = Boolean(detail.data);
+  useEffect(() => {
+    if (!rateFirst || !loaded) return;
+    const button = firstRate.current;
+    if (!button) return;
+    button.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior });
+    button.focus({ preventScroll: true });
+  }, [rateFirst, loaded]);
 
   return (
     <QueryGate audience="shopper" queries={[detail]}>
@@ -348,6 +383,11 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false }: { re
                         <span className="text-[12px] font-semibold ink-muted">{t(line.returnState.reason)}</span>
                       )}
                     </div>
+                    <LineReview
+                      line={line}
+                      buttonRef={line.id === data.lines.find(entry => !entry.review && entry.reviewEligibility.allowed)?.id ? firstRate : undefined}
+                      onOpen={() => setRating({ orderItemId: line.id, productTitle: line.productTitle, photo: line.photo ?? null, review: line.review })}
+                    />
                     <LineReturn reference={reference} currency={data.order.currency} line={line} requests={data.returns} />
                   </div>
                 </li>
@@ -378,6 +418,13 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false }: { re
             </section>
           ) : null}
           <ParcelCare reference={reference} currency={data.order.currency} parcels={data.parcels} />
+          {rating ? (
+            <ReviewDialog
+              target={rating}
+              onClose={() => setRating(null)}
+              onDone={() => { setRating(null); void detail.refetch(); void utils.orders.list.invalidate(); void utils.reviews.mine.invalidate(); }}
+            />
+          ) : null}
           </>
         );
       }}
@@ -404,5 +451,46 @@ function EmptyOrders() {
       <p className="mt-2 max-w-prose text-sm leading-6 ink-muted">{t("orders.emptyBody")}</p>
       <p className="mt-4 max-w-prose text-xs leading-5 ink-muted">{t("returns.emptyNote", { days: String(RETURN_WINDOW_DAYS) })}</p>
     </div>
+  );
+}
+
+/**
+ * Rate one item from the opened order (the owner's "rate and review products
+ * … directly from the My Orders section"): "Rate this item" while it may be
+ * rated (`reviewEligibility`, the rule `reviews.write` refuses with), or the
+ * stars given and where the review stands, with a way to change it. Nothing
+ * for an item not yet delivered or paid for — the return line beside it
+ * already says why.
+ */
+function LineReview({ line, buttonRef, onOpen }: {
+  line: { productTitle: string; review: MyReview | null; reviewEligibility: { allowed: boolean } };
+  buttonRef?: React.Ref<HTMLButtonElement>;
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+  if (line.review) {
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <StarRow value={line.review.rating} />
+        <ReviewStatePill state={line.review.state} />
+        <button type="button" onClick={onOpen} className="pressable inline-flex min-h-11 items-center rounded-full px-2 text-[12px] font-extrabold text-[#0a285a] underline underline-offset-2 pointer-fine:min-h-8">
+          {t("review.edit")}
+          <span className="sr-only">: <bdi>{line.productTitle}</bdi></span>
+        </button>
+      </div>
+    );
+  }
+  if (!line.reviewEligibility.allowed) return null;
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={onOpen}
+      className="glass type-control pressable mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
+    >
+      <Star className="size-4 fill-[#ffb800] text-[#ffb800]" aria-hidden />
+      {t("review.rateItem")}
+      <span className="sr-only">: <bdi>{line.productTitle}</bdi></span>
+    </button>
   );
 }

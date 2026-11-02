@@ -8,6 +8,9 @@ protocol SellerServicing: Sendable {
     func create(_ listing: API.NewListing) async throws -> CreatedListing
     func publish(id: Int) async throws -> String
     func upload(jpeg: Data) async throws -> UploadedPhoto
+    /// A shopper's photo for a review (`POST /api/media/review`): the same
+    /// checks as a store's, for somebody who has had something delivered.
+    func uploadReviewPhoto(jpeg: Data) async throws -> UploadedPhoto
     func uploadDocument(kind: String, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument
     func downloadDocument(id: Int, fileName: String) async throws -> URL
     /// NetLet's final contract attached to an application, for the applicant to sign (3.3.1).
@@ -15,6 +18,11 @@ protocol SellerServicing: Sendable {
 }
 
 extension SellerServicing {
+    /// A stand-in that takes no review photos refuses, as the server would a shopper with nothing delivered.
+    func uploadReviewPhoto(jpeg: Data) async throws -> UploadedPhoto {
+        throw APIError.server(code: "FORBIDDEN", message: "media.notAllowed", status: 403)
+    }
+
     /// A stand-in with no contract step refuses, as the server would a store.
     func attachContract(applicationId: Int, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument {
         throw APIError.server(code: "FORBIDDEN", message: "documents.notFound", status: 403)
@@ -49,6 +57,15 @@ struct SellerService: SellerServicing {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = jpeg
         return try await send(request, fallback: "media.failed")
+    }
+
+    func uploadReviewPhoto(jpeg: Data) async throws -> UploadedPhoto {
+        var request = URLRequest(url: client.configuration.url(path: "/api/media/review"))
+        request.httpMethod = "POST"
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = jpeg
+        return try await send(request, fallback: "review.photoFailed")
     }
 
     /// A paper for a store application goes up on its own route too

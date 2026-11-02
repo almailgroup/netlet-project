@@ -164,6 +164,9 @@ const checks = [
 
   ["Waiting on you", "Products waiting for review", "todo",
     `SELECT count(*)::text, count(*) > 0 FROM products WHERE status = 'pending_review'`, "/admin/review"],
+  ["Waiting on you", "Product reviews waiting for a look", "todo",
+    `SELECT count(*)::text, count(*) > 0 FROM reviews WHERE hidden_at IS NOT NULL AND hidden_reason LIKE 'held:%'`,
+    "The automatic check was unsure, or they carry photos nobody could look at: /admin/fraud"],
   ["Waiting on you", "Seller applications to decide", "todo",
     `SELECT count(*)::text, count(*) > 0 FROM vendor_applications WHERE status = 'submitted'`, "/admin/applications"],
   ["Waiting on you", "Returns waiting for NetLet's decision", "todo",

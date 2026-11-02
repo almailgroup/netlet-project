@@ -137,6 +137,17 @@ export async function deleteAccount(user: User): Promise<DeletionOutcome> {
     const blockers = await blockersFor(tx, user);
     if (blockers.length > 0) return { deleted: false, blockers } as const;
     if (storeFor(user) === "supabase") await deleteSupabaseUser(user.supabaseUid!);
+    /* The photos on the shopper's reviews are theirs and go with them: the
+       reviews cascade away, and a file nothing shows should not go on being
+       served. Asked of the table only where the bootstrap has made it. */
+    const [photosTable] = await tx
+      .select({ present: sql<boolean>`to_regclass('public.review_photos') is not null` })
+      .from(users)
+      .where(eq(users.id, user.id));
+    if (photosTable?.present) {
+      await tx.execute(sql`delete from media_files where uploaded_by = ${user.id} and id in (
+        select rp.media_id from review_photos rp join reviews r on r.id = rp.review_id where r.user_id = ${user.id})`);
+    }
     await tx.delete(users).where(eq(users.id, user.id));
     return { deleted: true } as const;
   });

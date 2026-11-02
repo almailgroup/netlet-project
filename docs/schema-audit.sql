@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 69 tables, 743 columns, 129 indexes, 156 foreign keys, 20 enums, what later migrations dropped, and the seed rows.
+-- Checks 70 tables, 748 columns, 130 indexes, 158 foreign keys, 20 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -79,6 +79,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('products', 'accepts_offers,affiliate_percent,attributes:nd,category_id,commission_fixed,commission_percent,created_at:nd,delivery_speed,description,description_ar,handle:n,id:pnd,review_note,size_chart,size_class,status:nd,tags:nd,title:n,title_ar,updated_at:nd,vendor_id:n', 'products_affiliate_idx:w,products_category_id_idx,products_handle_unique:u,products_status_idx,products_vendor_id_idx', 'category_id>categories:n,vendor_id>vendors:c'),
   ('referrals', 'created_at:nd,id:pnd,qualified_at,qualified_order_id,referred_id:n,referrer_id:n', 'referrals_referred_unique:u,referrals_referrer_idx', 'qualified_order_id>orders:n,referred_id>users:c,referrer_id>users:c'),
   ('return_requests', 'ai_suggestion,ai_summary,collected_at,confirmed_at,confirmed_by,created_at:nd,decided_at,decided_by,decline_reason,id:pnd,kind:n,note,order_id:n,order_item_id:n,reason:n,received_at,refund_amount,refund_paid_at,replacement_order_id,restocked:nd,status:nd,updated_at:nd,user_id,vendor_id,vendor_responded_at,vendor_response', 'return_requests_open_unique:uw,return_requests_user_idx,return_requests_vendor_idx', 'confirmed_by>users:n,order_id>orders:c,order_item_id>order_items:c,replacement_order_id>orders:n,user_id>users:n,vendor_id>vendors:n'),
+  ('review_photos', 'created_at:nd,id:pnd,media_id:n,position:nd,review_id:n', 'review_photos_review_idx', 'media_id>media_files:c,review_id>reviews:c'),
   ('reviews', 'body,created_at:nd,hidden_at,hidden_reason,id:pnd,order_item_id:n,product_id,product_title:n,rating:n,title,updated_at:nd,user_id:n,vendor_id,vendor_replied_at,vendor_reply', 'reviews_order_item_unique:u,reviews_product_idx,reviews_user_idx,reviews_vendor_idx', 'order_item_id>order_items:c,product_id>products:n,user_id>users:c,vendor_id>vendors:n'),
   ('saved_products', 'created_at:nd,id:pnd,product_id:n,user_id:n', 'saved_products_user_id_idx,saved_products_user_product_unique:u', 'user_id>users:c'),
   ('staff_grants', 'capability:n,created_at:nd,granted_by,user_id:n', '', 'granted_by>users:n,user_id>users:c'),
@@ -240,7 +241,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 69 tables' AS object,
+    count(*) || ' of 70 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -254,7 +255,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 69 tables, 743 columns, 129 indexes, 156 foreign keys, 20 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 70 tables, 748 columns, 130 indexes, 158 foreign keys, 20 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

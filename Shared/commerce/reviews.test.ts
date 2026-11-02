@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  distributionPercent,
   distributionShare,
   eligibilityFor,
+  heldAs,
+  holdOf,
   isValidRating,
+  isWritten,
+  moderationVerdict,
   RATING_MAX,
   RATING_MIN,
+  reviewState,
   summarise,
 } from "./reviews.js";
 
@@ -106,5 +112,74 @@ describe("the histogram", () => {
     expect(share[1]).toBeCloseTo(0.25);
     expect(share[3]).toBe(0);
     expect(Object.values(share).reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+  });
+});
+
+describe("the breakdown's percentages", () => {
+  it("are whole numbers that add up to one hundred", () => {
+    const summary = summarise([5, 5, 4])!;
+    const percent = distributionPercent(summary);
+    expect(percent[5] + percent[4]).toBe(100);
+    expect(percent).toEqual({ 1: 0, 2: 0, 3: 0, 4: 33, 5: 67 });
+  });
+
+  it("gives a star nobody chose nothing, however the rest round", () => {
+    const summary = summarise([5, 4, 3])!;
+    const percent = distributionPercent(summary);
+    expect(Object.values(percent).reduce((a, b) => a + b, 0)).toBe(100);
+    expect(percent[1]).toBe(0);
+    expect(percent[2]).toBe(0);
+  });
+
+  it("reads one rating as all of it", () => {
+    expect(distributionPercent(summarise([2])!)).toEqual({ 1: 0, 2: 100, 3: 0, 4: 0, 5: 0 });
+  });
+});
+
+describe("moderation", () => {
+  const quiet = { answered: true, concern: null };
+  const silent = { answered: false, concern: null };
+
+  it("shows a clean review at once", () => {
+    expect(moderationVerdict({ suspicious: false, hasPhotos: false, model: quiet })).toEqual({ publish: true });
+    expect(moderationVerdict({ suspicious: false, hasPhotos: true, model: quiet })).toEqual({ publish: true });
+  });
+
+  it("shows words with no model to read them, since the contact filter has already been asked", () => {
+    expect(moderationVerdict({ suspicious: false, hasPhotos: false, model: silent })).toEqual({ publish: true });
+  });
+
+  it("keeps photos nobody looked at for a person", () => {
+    expect(moderationVerdict({ suspicious: false, hasPhotos: true, model: silent })).toEqual({ publish: false, reason: "photos", concern: null });
+  });
+
+  it("keeps what the model raised, with its words, and what fraud watch judged high-risk", () => {
+    expect(moderationVerdict({ suspicious: false, hasPhotos: false, model: { answered: true, concern: "An insult." } }))
+      .toEqual({ publish: false, reason: "flagged", concern: "An insult." });
+    expect(moderationVerdict({ suspicious: true, hasPhotos: false, model: quiet })).toEqual({ publish: false, reason: "suspicious", concern: null });
+  });
+
+  it("writes and reads a hold back through the hidden reason", () => {
+    expect(holdOf(heldAs("flagged", "  Shows  a card. "))).toEqual({ reason: "flagged", concern: "Shows a card." });
+    expect(holdOf(heldAs("photos"))).toEqual({ reason: "photos", concern: null });
+    expect(holdOf("Spam")).toBeNull();
+    expect(holdOf(null)).toBeNull();
+    expect(heldAs("flagged", "x".repeat(400)).length).toBe(200);
+  });
+
+  it("tells its author whether it is shown, waiting or taken down", () => {
+    expect(reviewState({ hiddenAt: null, hiddenReason: null })).toBe("published");
+    expect(reviewState({ hiddenAt: new Date(), hiddenReason: heldAs("checking") })).toBe("waiting");
+    expect(reviewState({ hiddenAt: new Date(), hiddenReason: "Not about the product" })).toBe("removed");
+    expect(reviewState({ hiddenAt: new Date(), hiddenReason: null })).toBe("removed");
+  });
+});
+
+describe("what is listed", () => {
+  it("lists words or photos, and counts a bare rating only in the stars", () => {
+    expect(isWritten({ title: null, body: null })).toBe(false);
+    expect(isWritten({ title: "  ", body: null, photos: [] })).toBe(false);
+    expect(isWritten({ title: "Good", body: null })).toBe(true);
+    expect(isWritten({ title: null, body: null, photos: ["/media/x.webp"] })).toBe(true);
   });
 });

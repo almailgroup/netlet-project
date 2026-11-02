@@ -903,3 +903,23 @@ final class StarFillTests: XCTestCase {
         XCTAssertEqual(StarFill.row(3, scaleMax: 0), [.empty, .empty, .empty, .empty, .empty])
     }
 }
+
+/// `ReviewMath.percent` is `distributionPercent` in `Shared/commerce/reviews.ts`, on its own cases.
+final class ReviewMathTests: XCTestCase {
+    func testThePercentagesAreWholeAndAddUpToAHundred() {
+        let percent = ReviewMath.percent(["1": 0, "2": 0, "3": 0, "4": 1, "5": 2], count: 3)
+        XCTAssertEqual(percent, [1: 0, 2: 0, 3: 0, 4: 33, 5: 67])
+    }
+
+    func testAStarNobodyChoseGetsNothing() {
+        let percent = ReviewMath.percent(["3": 1, "4": 1, "5": 1], count: 3)
+        XCTAssertEqual(percent.values.reduce(0, +), 100)
+        XCTAssertEqual(percent[1], 0)
+        XCTAssertEqual(percent[2], 0)
+    }
+
+    func testOneRatingIsAllOfIt() {
+        XCTAssertEqual(ReviewMath.percent(["2": 1], count: 1), [1: 0, 2: 100, 3: 0, 4: 0, 5: 0])
+        XCTAssertEqual(ReviewMath.percent([:], count: 0), [1: 0, 2: 0, 3: 0, 4: 0, 5: 0])
+    }
+}
