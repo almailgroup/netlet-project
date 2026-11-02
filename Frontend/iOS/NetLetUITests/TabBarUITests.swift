@@ -24,7 +24,15 @@ final class TabBarUITests: XCTestCase {
         let deals = app.tabBars.buttons["Deals"]
         XCTAssertTrue(deals.waitForExistence(timeout: 8), "No Deals tab.")
         deals.tap()
-        XCTAssertTrue(app.staticTexts["On offer"].waitForExistence(timeout: 8), "Deals did not open the on-offer shelf.")
+        // The page's own heading, by its identifier: "Deals" is also the
+        // tab's name and the home page's band, so the word alone proves
+        // nothing.
+        let title = app.staticTexts["browse.title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 8), "Deals did not open a shelf page.")
+        XCTAssertEqual(title.label, "Deals", "Deals opened another page.")
+        // On offer is the page, not a filter on it: never a chip to clear.
+        let offerChip = app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "On offer")).firstMatch
+        XCTAssertFalse(offerChip.exists, "On offer is drawn as a filter on the Deals page.")
     }
 
     func testTheTabsAreNamedInArabic() {
