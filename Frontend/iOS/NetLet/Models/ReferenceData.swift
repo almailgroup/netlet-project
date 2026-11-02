@@ -97,6 +97,74 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
     var artPath: String { "/departments/\(slug).webp" }
 }
 
+/// A season or an occasion — Ramadan, Back to school, the New Year — and
+/// which products are for it (`Shared/commerce/occasions.ts`, exported to
+/// `occasions.json`): a name in both languages, the words a store tags a
+/// product with for it, and a window by the Gregorian calendar or the Umm
+/// al-Qura one, drawn as the shopping for it happens.
+struct Occasion: Decodable, Identifiable, Hashable, Sendable {
+    struct Window: Decodable, Hashable, Sendable {
+        /// "gregorian" or "hijri".
+        let calendar: String
+        /// A month and a day; `to` earlier than `from` wraps the year's end.
+        let from: [Int]
+        let to: [Int]
+    }
+
+    let slug: String
+    /// The dictionary key of its name.
+    let label: String
+    let tags: [String]
+    let window: Window
+    var id: String { slug }
+
+    /// A tag as a store might type it, reduced to what it means (`foldTag`):
+    /// lower case, spaces and punctuation gone, the Arabic letters keyboards
+    /// disagree on made one and the vowel marks dropped.
+    nonisolated static func fold(_ tag: String) -> String {
+        let marks = Set<UInt32>(0x064B...0x0652).union([0x0640])
+        var out = ""
+        for scalar in tag.precomposedStringWithCanonicalMapping.lowercased().unicodeScalars {
+            if marks.contains(scalar.value) { continue }
+            switch scalar {
+            case "أ", "إ", "آ": out.append("ا")
+            case "ة": out.append("ه")
+            case "ى": out.append("ي")
+            default:
+                if CharacterSet.alphanumerics.contains(scalar) { out.unicodeScalars.append(scalar) }
+            }
+        }
+        return out
+    }
+
+    /// Every folded word that puts a product on the occasion; the slug counts too.
+    var keys: Set<String> { Set(([slug] + tags).map(Self.fold)) }
+
+    func matches(_ product: Product) -> Bool { matches(tags: product.tags) }
+
+    func matches(tags: [String]) -> Bool {
+        let keys = keys
+        return tags.contains { keys.contains(Self.fold($0)) }
+    }
+
+    /// Whether the occasion's shopping is on at this moment, on Kuwait's day.
+    func isOn(_ date: Date) -> Bool {
+        var calendar = Calendar(identifier: window.calendar == "hijri" ? .islamicUmmAlQura : .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Kuwait") ?? calendar.timeZone
+        let parts = calendar.dateComponents([.month, .day], from: date)
+        guard let month = parts.month, let day = parts.day, window.from.count == 2, window.to.count == 2 else { return false }
+        return Self.inWindow(month: month, day: day, from: window.from, to: window.to)
+    }
+
+    /// Whether a month and day fall inside a window, which may wrap the year's end (`inWindow`).
+    nonisolated static func inWindow(month: Int, day: Int, from: [Int], to: [Int]) -> Bool {
+        let here = month * 100 + day
+        let start = from[0] * 100 + from[1]
+        let end = to[0] * 100 + to[1]
+        return start <= end ? (here >= start && here <= end) : (here >= start || here <= end)
+    }
+}
+
 /// A governorate the shop delivers to (`kuwaitDeliveryZones` in `Shared/customer.ts`).
 struct Governorate: Decodable, Identifiable, Hashable, Sendable {
     let id: String
@@ -310,6 +378,8 @@ struct ReferenceData: Sendable {
     }
 
     let departments: [Department]
+    /// The seasons and the occasions, in the order they are drawn (`OCCASIONS`).
+    let occasions: [Occasion]
     let governorates: [Governorate]
     let areas: [String: [Area]]
     let requiredParts: [String]
@@ -326,6 +396,7 @@ struct ReferenceData: Sendable {
     static func load(from bundle: Bundle) -> ReferenceData {
         let decoder = JSONDecoder()
         let departments = (try? decoder.decode([Department].self, from: bundle.resource("departments", "json"))) ?? []
+        let occasions = (try? decoder.decode([Occasion].self, from: bundle.resource("occasions", "json"))) ?? []
         let kuwait = try? decoder.decode(Kuwait.self, from: bundle.resource("kuwait", "json"))
         let rules = (try? decoder.decode(Rules.self, from: bundle.resource("rules", "json"))) ?? Rules(
             sessionCookie: "app_session_id",
@@ -340,6 +411,7 @@ struct ReferenceData: Sendable {
         )
         return ReferenceData(
             departments: departments.sorted { $0.position < $1.position },
+            occasions: occasions,
             governorates: kuwait?.governorates ?? [],
             areas: kuwait?.areas ?? [:],
             requiredParts: kuwait?.requiredParts ?? ["area", "block", "street", "building"],
@@ -354,6 +426,16 @@ struct ReferenceData: Sendable {
 
     func department(slug: String?) -> Department? {
         departments.first { $0.slug == slug }
+    }
+
+    func occasion(slug: String?) -> Occasion? {
+        guard let slug else { return nil }
+        return occasions.first { $0.slug == slug }
+    }
+
+    /// The occasions whose shopping is on at this moment, in the table's order (`occasionsOn`).
+    func occasionsOn(_ date: Date = Date()) -> [Occasion] {
+        occasions.filter { $0.isOn(date) }
     }
 
     /// A product's department, by the catalogue name it carries (`productType`).

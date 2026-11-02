@@ -6,17 +6,22 @@ import UIKit
 /// — the web's `useCatalog(24)`, which the header, the home page and the
 /// categories page all read, so the header asks nothing new on Home.
 ///
-/// The shelves are `shelvesFor` in `content/homeLayout.ts`, rule for rule:
-/// Deals is what is actually discounted, deepest first; Bestsellers is what
-/// sold, from the server; New arrivals is the newest. Each leaves out what a
-/// shelf above it shows, a strip under four products is not drawn, and what a
-/// hidden shelf did not show is free for the next — so every live product is
-/// on the home page somewhere and a small shop is one honest grid.
+/// The shelves are `shelvesFor` in `content/homeLayout.ts`, rule for rule,
+/// in the owner's order: Mega deals is the deepest savings, from
+/// `megaPercent` off; Deals is every other saving, deepest first; Trending is
+/// what shoppers reached for this week and Bestsellers what sold over ninety
+/// days, both from the server; New arrivals is the newest. Each leaves out
+/// what a shelf above it shows, a strip under four products is not drawn,
+/// and what a hidden shelf did not show is free for the next — so every live
+/// product is on the home page somewhere and a small shop is one honest grid.
+/// A shelf narrowed by department tabs keeps two dozen (`tabbed`), so a
+/// department's tab is a shelf and not a pair.
 @Observable
 @MainActor
 final class HomeShelf {
     private(set) var catalogue: LoadState<[Product]> = .idle
     private(set) var bestsellers: [Product] = []
+    private(set) var trending: [Product] = []
     private(set) var stores: [StoreCard] = []
     private(set) var brands: [BrandCount] = []
     /// Products on sale per department; nil until the server has answered.
@@ -37,8 +42,16 @@ final class HomeShelf {
     nonisolated static let size = 24
     /// A strip below this is a broken shelf, not a short one (`MIN_SHELF_PRODUCTS`).
     nonisolated static let floor = 4
-    /// The most one shelf carries; "View all" is the rest (`MAX_SHELF_PRODUCTS`).
+    /// The most one strip carries; "View all" is the rest (`MAX_SHELF_PRODUCTS`).
     nonisolated static let most = 12
+    /// The most a shelf with department tabs holds (`MAX_TABBED_PRODUCTS`).
+    nonisolated static let tabbed = 24
+    /// A saving this deep is a mega deal (`MEGA_DEAL_PERCENT`).
+    nonisolated static let megaPercent = 30
+    /// A department is a tab only with this many on the shelf (`MIN_TAB_PRODUCTS`).
+    nonisolated static let minTab = 2
+    /// The most occasions drawn on one day (`MAX_OCCASIONS`).
+    nonisolated static let mostOccasions = 2
     /// The stores row and the brands row are drawn from three up.
     nonisolated static let minimumRow = 3
 
@@ -59,16 +72,36 @@ final class HomeShelf {
         }
     }
 
+    /// An occasion whose shopping is on, with the products the stores tagged for it.
+    struct OccasionShelf: Equatable, Identifiable {
+        let occasion: Occasion
+        let products: [Product]
+        var id: String { occasion.slug }
+    }
+
     struct Shelves: Equatable {
+        var mega: [Product] = []
         var deals: [Product] = []
+        var occasions: [OccasionShelf] = []
+        var trending: [Product] = []
         var bestsellers: [Product] = []
         var newest: [Product] = []
     }
 
-    var shelves: Shelves { Self.shelves(catalogue.value ?? [], bestsellers: bestsellers) }
+    /// A shelf cut by department, for the row of tabs over it (`departmentTabs`).
+    struct DepartmentTab: Identifiable, Equatable {
+        let slug: String
+        /// The dictionary key of its name.
+        let label: String
+        let products: [Product]
+        var id: String { slug }
+    }
 
-    /// Whether the home page draws a Deals shelf — the rule every link to deals keeps.
-    var dealsDrawn: Bool { !shelves.deals.isEmpty }
+    var shelves: Shelves { Self.shelves(catalogue.value ?? [], bestsellers: bestsellers, trending: trending) }
+
+    /// Whether the home page draws a deals shelf — Mega deals or Deals — the
+    /// rule every link to deals keeps (`dealsDrawn`).
+    var dealsDrawn: Bool { !shelves.mega.isEmpty || !shelves.deals.isEmpty }
 
     /// Reads it all for this language, or nothing when it already has.
     func load(language: Language, force: Bool = false) async {
@@ -79,14 +112,16 @@ final class HomeShelf {
             drewEarlier = true
             catalogue = .loaded(kept)
             bestsellers = catalog.rememberedBestsellers(language: language) ?? []
+            trending = catalog.rememberedTrending(language: language) ?? []
             stores = catalog.rememberedStores(language: language) ?? []
             brands = catalog.rememberedBrands() ?? brands
             counts = catalog.rememberedDepartmentCounts() ?? counts
-            warm(kept + bestsellers)
+            warm(kept + bestsellers + trending)
         }
         if catalogue.value == nil { catalogue = .loading }
         async let counted = try? catalog.departmentCounts()
         async let sold = try? catalog.bestsellers(language: language)
+        async let hot = try? catalog.trending(language: language)
         async let storeCards = try? catalog.stores(language: language)
         async let brandRows = try? catalog.brands()
         async let channels = try? catalog.contact()
@@ -102,7 +137,8 @@ final class HomeShelf {
             if failure != .cancelled, drewEarlier || showingEarlier { showingEarlier = true }
         }
         bestsellers = await sold ?? bestsellers
-        warm(bestsellers)
+        trending = await hot ?? trending
+        warm(bestsellers + trending)
         stores = await storeCards ?? stores
         brands = await brandRows ?? brands
         counts = await counted ?? counts
@@ -110,20 +146,43 @@ final class HomeShelf {
     }
 
     /// `shelvesFor`, pure.
-    nonisolated static func shelves(_ catalogue: [Product], bestsellers: [Product]) -> Shelves {
+    nonisolated static func shelves(_ catalogue: [Product], bestsellers: [Product], trending: [Product] = [], now: Date = Date(), occasions calendar: [Occasion] = ReferenceData.shared.occasions) -> Shelves {
         var shown = Set<String>()
-        func pick(_ candidates: [Product], floor: Int) -> [Product] {
+        func pick(_ candidates: [Product], floor: Int, most: Int = Self.most) -> [Product] {
             let fresh = candidates.filter { !shown.contains($0.id) }
             guard fresh.count >= floor else { return [] }
             let chosen = Array(fresh.prefix(most))
             for product in chosen { shown.insert(product.id) }
             return chosen
         }
-        let deals = pick(byDiscount(catalogue.filter(\.isOnOffer)), floor: Self.floor)
-        let sold = pick(bestsellers, floor: Self.floor)
+        let offers = byDiscount(catalogue.filter(\.isOnOffer))
+        let mega = pick(offers.filter { $0.bestSaving >= megaPercent }, floor: Self.floor)
+        let deals = pick(offers, floor: Self.floor, most: tabbed)
+        // The seasons and the occasions whose shopping is on today, each from
+        // the products the stores tagged for it — after the deals, before Trending.
+        var occasions: [OccasionShelf] = []
+        for occasion in calendar where occasion.isOn(now) && occasions.count < mostOccasions {
+            let chosen = pick(catalogue.filter { occasion.matches($0) }, floor: Self.floor)
+            if !chosen.isEmpty { occasions.append(OccasionShelf(occasion: occasion, products: chosen)) }
+        }
+        let hot = pick(trending, floor: Self.floor, most: tabbed)
+        let sold = pick(bestsellers, floor: Self.floor, most: tabbed)
         // The catalogue arrives oldest first, so the newest is its end.
-        let newest = pick(Array(catalogue.reversed()), floor: 1)
-        return Shelves(deals: deals, bestsellers: sold, newest: newest)
+        let newest = pick(Array(catalogue.reversed()), floor: 1, most: tabbed)
+        return Shelves(mega: mega, deals: deals, occasions: occasions, trending: hot, bestsellers: sold, newest: newest)
+    }
+
+    /// A shelf cut by department (`departmentTabs`): each department with
+    /// `minTab` of the shelf in it, in the departments' own order, keeping the
+    /// shelf's order — and none when a row could change nothing, one
+    /// department holding the whole shelf being the "All" tab said twice.
+    nonisolated static func departmentTabs(_ products: [Product], departments: [Department] = ReferenceData.shared.departments) -> [DepartmentTab] {
+        let tabs = departments.map { department in
+            DepartmentTab(slug: department.slug, label: department.label, products: products.filter { $0.productType == department.name || $0.tags.contains(department.name) })
+        }
+        .filter { $0.products.count >= minTab }
+        if tabs.count == 1, tabs[0].products.count == products.count { return [] }
+        return tabs
     }
 
     /// Deepest saving first, then the cheaper — `sortProducts(…, "discount")`.

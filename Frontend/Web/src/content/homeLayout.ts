@@ -8,7 +8,9 @@
  */
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
-import { browse, EMPTY_FILTERS } from "@shared/commerce/browse";
+import { browse, EMPTY_FILTERS, productsInCategory } from "@shared/commerce/browse";
+import { savingPercentOf } from "@shared/commerce/placement";
+import { occasionsOn, productsForOccasion, type Occasion } from "@shared/commerce/occasions";
 import type { Product } from "@shared/commerce/types";
 
 /**
@@ -31,24 +33,36 @@ export const categoryRail: readonly { key: MessageKey; query: string; color: str
 ];
 
 /**
- * The home page's shelves, each with its own reason to exist.
+ * The home page's computed shelves, in page order, each with its own reason
+ * to exist — on the owner's word, who asked for the page as a list: Mega
+ * deals, the deals picked for the shopper, the deals for everybody, Picked
+ * for you, the seasons and occasions, Trending, Bestsellers, Previously
+ * viewed. The two personal rails and Previously viewed are not here: they
+ * are about one shopper (`RecommendedRail`, `RecentlyViewedRail`) and keep
+ * their own rule, never recommending back what the shopper already has.
  *
- * There were five once — Deals, Popular right now, Bestsellers, Most popular
- * and Newest — and on a catalog of a dozen products they were the same dozen
- * in a different order, five times down one page. A shelf earns its place by
- * what selects it: **Deals** is what is actually discounted (a compare-at
- * price the permit allows, which `fromInventory` has already checked),
- * deepest saving first; **Bestsellers** is what sold, by units over ninety
- * days, from the server (`commerce.bestsellers`) — it came back once there
- * were orders to count, and it is a different list from the newest rather
- * than the same one reordered; **New arrivals** is what was added most
- * recently. Each leaves out what a shelf above already shows.
+ * There were five shelves once — Deals, Popular right now, Bestsellers, Most
+ * popular and Newest — and on a catalog of a dozen products they were the
+ * same dozen in a different order, five times down one page. A shelf earns
+ * its place by what selects it: **Mega deals** is the deepest savings, from
+ * `MEGA_DEAL_PERCENT` off (a compare-at price the permit allows, which
+ * `fromInventory` has already checked); **Deals** is every other saving,
+ * deepest first; **Trending** is what shoppers reached for this week, from
+ * the server (`commerce.trending`: bought, bagged, hearted and wished for,
+ * weighed); **Bestsellers** is what sold, by units over ninety days
+ * (`commerce.bestsellers`) — a different list from the newest rather than the
+ * same one reordered; **New arrivals** is what was added most recently. Each
+ * leaves out what a shelf above already shows.
  */
 export const homeRailDefinitions = [
+  { id: "mega", title: "rail.mega.title", select: "offers", layout: "band" },
   { id: "deals", title: "rail.deals.title", select: "offers", layout: "rail" },
+  { id: "trending", title: "rail.trending.title", select: "trending", layout: "rail" },
   { id: "bestsellers", title: "rail.bestsellers.title", select: "bestsellers", layout: "rail" },
   { id: "newest", title: "rail.newest.title", select: "newest", layout: "grid" },
-] as const satisfies readonly { id: string; title: MessageKey; select: "offers" | "bestsellers" | "newest"; layout: "rail" | "grid" }[];
+] as const satisfies readonly { id: string; title: MessageKey; select: "offers" | "trending" | "bestsellers" | "newest"; layout: "band" | "rail" | "grid" }[];
+
+export type HomeShelfId = (typeof homeRailDefinitions)[number]["id"];
 
 /**
  * Fewer than this and a strip — Deals, Bestsellers — is not drawn: two cards
@@ -61,28 +75,92 @@ export const homeRailDefinitions = [
  * telling the truth.
  */
 export const MIN_SHELF_PRODUCTS = 4;
-/** The most one shelf carries; "View all" is the rest. */
+/** The most one strip carries; "View all" is the rest. */
 export const MAX_SHELF_PRODUCTS = 12;
+/**
+ * The most a shelf with department tabs holds. A shelf is cut by department
+ * on the page (`departmentTabs`), and twelve cut five ways is a tab of two,
+ * so a tabbed shelf keeps two dozen and its "All" tab draws the first twelve.
+ */
+export const MAX_TABBED_PRODUCTS = 24;
+/**
+ * A saving this deep is a mega deal. Thirty per cent, because that is where
+ * a shopper stops reading a strikethrough as a nudge and starts reading it as
+ * a reason to buy today; below it the saving is still advertised, on the
+ * Deals shelf.
+ */
+export const MEGA_DEAL_PERCENT = 30;
+/** A department is a tab only with this many on the shelf: one product is not a department's view. */
+export const MIN_TAB_PRODUCTS = 2;
+/** The most occasions drawn on one day: the end of the year has three, and the page is not a calendar. */
+export const MAX_OCCASIONS = 2;
+
+/** An occasion whose shopping is on, with the products the stores tagged for it. */
+export type OccasionShelf = { occasion: Occasion; products: Product[] };
+export type HomeShelves = Record<HomeShelfId, Product[]> & { occasions: OccasionShelf[] };
 
 /**
- * What each shelf shows, in page order, given the catalog. Deals below its
- * floor comes back empty, and what it did not show is free for New arrivals —
+ * What each shelf shows, in page order, given the catalog. A strip below its
+ * floor comes back empty, and what it did not show is free for the next —
  * so every product the shop has live is on the home page somewhere, and a
  * small shop is one honest grid rather than an empty page.
  */
-export function shelvesFor(catalog: Product[], bestsellers: Product[] = []): Record<(typeof homeRailDefinitions)[number]["id"], Product[]> {
+export function shelvesFor(catalog: Product[], bestsellers: Product[] = [], trending: Product[] = [], now = new Date()): HomeShelves {
   const shown = new Set<string>();
-  const pick = (candidates: Product[], floor: number) => {
+  const pick = (candidates: Product[], floor: number, most = MAX_SHELF_PRODUCTS) => {
     const fresh = candidates.filter(product => !shown.has(product.id));
     if (fresh.length < floor) return [];
-    const chosen = fresh.slice(0, MAX_SHELF_PRODUCTS);
+    const chosen = fresh.slice(0, most);
     for (const product of chosen) shown.add(product.id);
     return chosen;
   };
-  const deals = pick(browse(catalog, { ...EMPTY_FILTERS, onOffer: true, sort: "discount" }), MIN_SHELF_PRODUCTS);
-  const best = pick(bestsellers, MIN_SHELF_PRODUCTS);
-  const newest = pick(browse(catalog, { ...EMPTY_FILTERS, sort: "newest" }), 1);
-  return { deals, bestsellers: best, newest };
+  const offers = browse(catalog, { ...EMPTY_FILTERS, onOffer: true, sort: "discount" });
+  const mega = pick(offers.filter(product => savingPercentOf(product) >= MEGA_DEAL_PERCENT), MIN_SHELF_PRODUCTS);
+  const deals = pick(offers, MIN_SHELF_PRODUCTS, MAX_TABBED_PRODUCTS);
+  /* The seasons and the occasions whose shopping is on today, each from the
+     products the stores tagged for it — after the deals, since a saving is
+     the stronger reason to show a product, and before Trending. */
+  const occasions: OccasionShelf[] = [];
+  for (const occasion of occasionsOn(now)) {
+    if (occasions.length >= MAX_OCCASIONS) break;
+    const products = pick(productsForOccasion(catalog, occasion), MIN_SHELF_PRODUCTS);
+    if (products.length) occasions.push({ occasion, products });
+  }
+  const hot = pick(trending, MIN_SHELF_PRODUCTS, MAX_TABBED_PRODUCTS);
+  const best = pick(bestsellers, MIN_SHELF_PRODUCTS, MAX_TABBED_PRODUCTS);
+  const newest = pick(browse(catalog, { ...EMPTY_FILTERS, sort: "newest" }), 1, MAX_TABBED_PRODUCTS);
+  return { mega, deals, occasions, trending: hot, bestsellers: best, newest };
+}
+
+/**
+ * Whether the home page draws a deals shelf at all — Mega deals or Deals —
+ * which is the rule every link to the Deals page keeps, so a link never leads
+ * to the half-empty shelf the home page refuses to draw.
+ */
+export function dealsDrawn(shelves: Pick<Record<HomeShelfId, Product[]>, "mega" | "deals">): boolean {
+  return shelves.mega.length > 0 || shelves.deals.length > 0;
+}
+
+export type DepartmentTab = { slug: string; label: MessageKey; products: Product[] };
+
+/**
+ * A shelf cut by department, for the row of tabs over it — Noon's
+ * bestsellers, on the owner's word ("category tabs at the top … allowing
+ * customers to switch between categories without leaving the section").
+ *
+ * A department is a tab with `MIN_TAB_PRODUCTS` of the shelf in it, in the
+ * departments' own order, and each tab keeps the shelf's order — so a
+ * bestseller is still ranked inside its department. No row is offered when
+ * it could change nothing: one department holding the whole shelf is the
+ * "All" tab said twice, and a control that changes nothing is worse than no
+ * control.
+ */
+export function departmentTabs(products: Product[]): DepartmentTab[] {
+  const tabs = DEPARTMENTS
+    .map(department => ({ slug: department.slug, label: department.label, products: productsInCategory(products, department.name) }))
+    .filter(tab => tab.products.length >= MIN_TAB_PRODUCTS);
+  if (tabs.length === 1 && tabs[0].products.length === products.length) return [];
+  return tabs;
 }
 
 /**

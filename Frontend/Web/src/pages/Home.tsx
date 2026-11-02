@@ -1,31 +1,34 @@
 /**
  * The home page: the front door (`HomeHero`), the departments as cards, the
- * paid placements, Deals as a navy band led by the deepest one, Bestsellers
- * ranked, the shopper's own picks, the new arrivals as a grid, and the footer.
- * Every shelf after the departments is drawn only when it has something true
- * to show. The brands and the stores are at the top of `/categories` now, on
- * the owner's word.
+ * paid placements, and then the shelves in the order the owner asked for —
+ * Mega deals as a navy band led by the deepest saving, the deals picked for
+ * the shopper, the deals for everybody, Picked for you, Trending, Bestsellers
+ * ranked, what this device looked at before, the new arrivals as a grid, the
+ * newest guides — and the footer. Every shelf after the departments is drawn
+ * only when it has something true to show; most carry a row of department
+ * tabs (`TabbedShelf`), and the seasons and occasions whose shopping is on
+ * today sit after Picked for you, from the products the stores tagged for
+ * them (`OccasionBand`). The brands and the stores are at the top of
+ * `/categories` now, on the owner's word.
  */
 import { toastHeart } from "@/lib/heartToast";
 import { useCatalog } from "@/hooks/useCatalog";
 import { HEADER_SHELF } from "@/lib/routeData";
-import { homeRailDefinitions, shelvesFor } from "@/content/homeLayout";
+import { homeRailDefinitions, shelvesFor, type HomeShelfId } from "@/content/homeLayout";
 import { useFeature } from "@/hooks/useFeature";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
-import { Fragment, lazy, Suspense, useDeferredValue, useMemo, useState } from "react";
-import { ChevronRight } from "lucide-react";
-import { ProductCard } from "@/components/product/ProductCard";
+import { lazy, Suspense, useDeferredValue, useMemo, useState } from "react";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
 import { HomeBanners } from "@/components/home/HomeBanners";
 import { HomeHero } from "@/components/home/HomeHero";
 import { GuideShelf } from "@/components/home/GuideShelf";
+import { DEALS_PATH, DealsBand, OccasionBand, TabbedShelf } from "@/components/home/ProductShelf";
+import { RecentlyViewedRail } from "@/components/home/RecentlyViewedRail";
 import { Later } from "@/components/layout/Later";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
-import { ScrollArrows } from "@/components/ui/ScrollArrows";
-import { useSideScroll } from "@/hooks/useSideScroll";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 
 /* Fetched on the first preview, not with the page: most visits open none. */
 const QuickView = lazy(() => import("@/components/product/QuickView").then(module => ({ default: module.QuickView })));
@@ -35,161 +38,13 @@ import { homeMeta } from "@shared/seo";
 import { logoImage } from "@/lib/brandAssets";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
-import type { MessageKey } from "@shared/i18n/dictionary";
-
-function CatalogSkeleton() {
-  return <div className="hide-scrollbar mt-4 flex gap-3 overflow-hidden">{[0, 1, 2, 3].map((item) => <div key={item} className="min-w-[164px] animate-pulse rounded-2xl border border-[#e6e9ef] bg-white p-3 sm:min-w-[195px] lg:min-w-0 lg:flex-1"><div className="aspect-square rounded-xl bg-[#eef1f5]" /><div className="mt-4 h-4 w-2/3 rounded bg-[#eef1f5]" /><div className="mt-2 h-3 w-1/3 rounded bg-[#eef1f5]" /></div>)}</div>;
-}
-
-type RailProps = {
-  id: string;
-  title: MessageKey;
-  products: Product[];
-  catalogLoading: boolean;
-  catalogError: boolean;
-  saved: string[];
-  onSave: (id: string, title: string) => void;
-  onQuickView: (product: Product) => void;
-  /** Absent where the shelf is the whole list — Bestsellers has no page of its own. */
-  onViewAll?: () => void;
-  /**
-   * Each card beside its place — 1, 2, 3 — in large outlined figures. Only for
-   * a shelf whose order *is* a ranking: Bestsellers, by units sold.
-   */
-  ranked?: boolean;
-};
-
-/**
- * A shelf's title and its way to everything else. A plain heading and a "View
- * all" link: the shelves used to carry a display-face headline, a sentence of
- * description under it and an uppercase pill, which is three ways of saying
- * the title.
- */
-function ShelfHeading({ id, title, onViewAll, children }: { id: string; title: string; onViewAll?: () => void; children?: React.ReactNode }) {
-  const { t } = useTranslation();
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <h2 id={`${id}-title`} className="text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-2xl">{title}</h2>
-      <div className="flex items-center gap-2">
-        {children}
-        {onViewAll ? (
-          <button onClick={onViewAll} className="pressable -me-2 inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-bold ink-accent hover:underline">
-            {t("home.viewAll")}<ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-/**
- * One shelf of products, scrolled sideways. The arrows scroll it a screenful at
- * a time and appear only when there is something off-screen to reach.
- */
-function ProductRail({ id, title, products, catalogLoading, catalogError, saved, onSave, onQuickView, onViewAll, ranked = false }: RailProps) {
-  const { t } = useTranslation();
-  const railProducts = products.slice(0, 12);
-  const railTitle = t(title);
-  const scroll = useSideScroll<HTMLDivElement>([railProducts.length, catalogLoading]);
-
-  return (
-    <section id={id} className="py-6 sm:py-8" aria-labelledby={`${id}-title`}>
-      <div className="container">
-        <ShelfHeading id={id} title={railTitle} onViewAll={onViewAll}>
-          <ScrollArrows scroll={scroll} previousLabel={t("home.previousProducts", { title: railTitle })} nextLabel={t("home.nextProducts", { title: railTitle })} />
-        </ShelfHeading>
-        {catalogLoading ? <CatalogSkeleton /> : catalogError ? (
-          <div className="mt-4 rounded-2xl border border-[#f2b69e] bg-white px-6 py-10 text-center text-[#0a285a]"><p className="text-sm font-bold">{t("home.catalogSlow")}</p></div>
-        ) : (
-          <div ref={scroll.trackRef} className="hide-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto scroll-smooth pb-1">
-            {railProducts.map((product, index) => (
-              /* Four to a row from lg up, whatever the container's width, so a shelf fills its row. */
-              <div key={`${id}-${product.id}`} className={`shrink-0 snap-start ${ranked ? "flex w-[200px] items-end sm:w-[235px]" : "w-[164px] sm:w-[195px]"} lg:w-[calc((100%-2.25rem)/4)]`}>
-                {/* Drawn, not said: the list's own order is the ranking for a
-                    screen reader, and "1" read before every card is noise. */}
-                {ranked ? <span aria-hidden className="rank-figure" data-digits={String(index + 1).length}>{index + 1}</span> : null}
-                <div className="relative min-w-0 flex-1">
-                  <ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onQuickView={() => onQuickView(product)} />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/**
- * The new arrivals, as a grid to browse rather than a second strip to scroll.
- * Two to a row on a phone, up to five on a wide screen.
- */
-function ProductGrid({ id, title, products, catalogLoading, catalogError, saved, onSave, onQuickView, onViewAll }: RailProps) {
-  const { t } = useTranslation();
-  if (catalogLoading || catalogError) return null;
-  return (
-    <section id={id} className="py-6 sm:py-8" aria-labelledby={`${id}-title`}>
-      <div className="container">
-        <ShelfHeading id={id} title={t(title)} onViewAll={onViewAll} />
-        <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {products.slice(0, 15).map(product => (
-            <li key={`${id}-${product.id}`} className="min-w-0">
-              <ProductCard compact product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onQuickView={() => onQuickView(product)} />
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
-}
-
-/**
- * Deals, as a navy band across the page rather than one more white shelf.
- *
- * The deepest saving leads, two columns wide (`ProductCard`'s `feature`), and
- * three more sit beside it — the shelf `shelvesFor` already decided, deepest
- * first, so the band is drawn exactly when the home page's Deals shelf would
- * be, from four products up, and a saving is only ever one the store's
- * discount permit allows (`fromInventory` drops the rest on the read). No
- * "ends on" date: a permit's period is when a saving *may* be advertised, not
- * when this one stops, and saying it would be the shop promising for a seller.
- */
-function DealsBand({ products, saved, onSave, onQuickView }: Pick<RailProps, "products" | "saved" | "onSave" | "onQuickView">) {
-  const { t } = useTranslation();
-  const [lead, ...rest] = products;
-  if (!lead) return null;
-  const card = (product: Product, feature = false) => (
-    <ProductCard compact={!feature} feature={feature} product={product} saved={saved.includes(product.id)} onSave={() => onSave(product.id, product.title)} onQuickView={() => onQuickView(product)} />
-  );
-  return (
-    <section id="deals" aria-labelledby="deals-title" className="mt-6 bg-[#0a285a] py-8 sm:mt-10 sm:py-11">
-      <div className="container">
-        <div className="flex items-center justify-between gap-4">
-          <h2 id="deals-title" className="text-xl font-extrabold tracking-[-.01em] text-white sm:text-2xl">{t("rail.deals.title")}</h2>
-          <Link href="/category/all?offer=1&sort=discount" className="pressable -me-2 inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-bold ink-accent-on-dark hover:underline">
-            {t("home.viewAll")}<ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
-          </Link>
-        </div>
-        {/* The lead is the whole row on a phone and a tablet, two of five
-            columns on a wide screen. A phone shows two beside nothing, not
-            three with one left alone on a row. */}
-        <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          <li className="col-span-2 min-w-0 sm:col-span-3 lg:col-span-2">{card(lead, true)}</li>
-          {rest.slice(0, 3).map((product, index) => (
-            <li key={product.id} className={`min-w-0 ${index === 2 ? "hidden sm:block" : ""}`}>{card(product)}</li>
-          ))}
-        </ul>
-      </div>
-    </section>
-  );
-}
 
 /* One empty list, so "nothing yet" is the same value from render to render. */
 const NO_PRODUCTS: Product[] = [];
 
 export default function Home() {
-  // One dialog for the whole page: three rails and the deals surface all open
-  // the same overlay, the way the drawer is mounted once in `App`.
+  // One dialog for the whole page: every shelf and the deals band open the
+  // same overlay, the way the drawer is mounted once in `App`.
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   const [, navigate] = useLocation();
   usePageMeta(homeMeta(SITE_URL));
@@ -203,38 +58,32 @@ export default function Home() {
   /* Still loading while the deferred copy catches up, so a shelf keeps its
      outline for that moment rather than vanishing and coming back. */
   const catalogLoading = catalogFetching || catalog !== catalogNow;
+  const failed = Boolean(catalogError);
+  const ready = !catalogLoading && !failed;
+  /* The two shelves the server counts: what sold over ninety days, and what
+     was reached for this week. */
   const bestsellers = trpc.commerce.bestsellers.useQuery({ locale }, { staleTime: 5 * 60 * 1000 });
+  const trending = trpc.commerce.trending.useQuery({ locale }, { staleTime: 5 * 60 * 1000 });
 
   /* The header search goes to the results page on Enter; the shelves are the shop's, not the search's. */
-  const shelves = useMemo(() => shelvesFor(catalog, bestsellers.data ?? []), [catalog, bestsellers.data]);
+  const shelves = useMemo(() => shelvesFor(catalog, bestsellers.data ?? [], trending.data ?? []), [catalog, bestsellers.data, trending.data]);
   const articlesOn = useFeature("articles");
   const appBannerOn = useFeature("appBanner");
 
   const toggleSaved = (id: string, title: string) => toastHeart(togglePersistentSaved(id), title, t);
+  const cards = { saved, onSave: toggleSaved, onQuickView: setQuickProduct };
 
-  const renderRail = (rail: (typeof homeRailDefinitions)[number], index: number) => {
-      const products = shelves[rail.id];
-      const viewAll = rail.select === "offers" ? () => navigate("/category/all?offer=1&sort=discount")
-        : rail.select === "newest" ? () => navigate("/category/all?sort=newest")
-        : undefined;
-      const shared = { id: rail.id, title: rail.title, products, catalogLoading, catalogError: Boolean(catalogError), saved, onSave: toggleSaved, onQuickView: setQuickProduct, onViewAll: viewAll, ranked: rail.id === "bestsellers" };
-      /* What is about this shopper sits between what sold and what is new —
-         drawn only when it is personal. */
-      const before = rail.id === "newest" ? (
-        <RecommendedRail quiet saved={saved} onSave={toggleSaved} onQuickView={setQuickProduct} />
-      ) : null;
-      if ((catalogLoading || catalogError) && index > 0) return <Fragment key={rail.id}>{before}</Fragment>;
-      if (!catalogLoading && !catalogError && products.length === 0) return <Fragment key={rail.id}>{before}</Fragment>;
-      /* A shelf scrolls sideways; the new arrivals are a grid, so the page
-         ends on products laid out to browse rather than on a second strip. */
-      return (
-        <Fragment key={rail.id}>
-          {before}
-          {rail.id === "deals" && !catalogLoading && !catalogError
-            ? <DealsBand {...shared} />
-            : rail.layout === "grid" ? <ProductGrid {...shared} /> : <ProductRail {...shared} />}
-        </Fragment>
-      );
+  /* One of the computed shelves, as `homeRailDefinitions` describes it, or
+     nothing while it has nothing true to show. */
+  const shelf = (id: HomeShelfId) => {
+    const rail = homeRailDefinitions.find(entry => entry.id === id);
+    const products = shelves[id];
+    if (!rail || !ready || products.length === 0) return null;
+    const onViewAll = rail.select === "offers" ? () => navigate(DEALS_PATH)
+      : rail.select === "newest" ? () => navigate("/category/all?sort=newest")
+      : undefined;
+    if (rail.layout === "band") return <DealsBand id={id} title={rail.title} products={products} {...cards} />;
+    return <TabbedShelf id={id} title={rail.title} products={products} layout={rail.layout} ranked={id === "bestsellers"} onViewAll={onViewAll} {...cards} />;
   };
 
   /* The header, the footer and the tab bar are the shop's frame
@@ -266,10 +115,24 @@ export default function Home() {
         onQuickView={setQuickProduct}
       />
 
-      {/* Deals, drawn from four discounted products up, then every other live
-          product as New arrivals (`shelvesFor`). While the catalog loads the
-          first draws its skeleton, so the page does not jump. */}
-      {homeRailDefinitions.map((rail, index) => renderRail(rail, index))}
+      {/* While the catalog loads, one shelf's outline stands where the deals
+          will be, so the page does not jump; failed, it is the one line. */}
+      {!ready ? <TabbedShelf id="deals" title="rail.deals.title" products={NO_PRODUCTS} layout="rail" tabs={false} loading={catalogLoading} failed={failed} {...cards} /> : null}
+
+      {/* The shelves, in the owner's order (`shelvesFor`): each computed one
+          leaves out what a shelf above shows, and the two personal rails and
+          Previously viewed keep their own rule. */}
+      {shelf("mega")}
+      <RecommendedRail deals quiet {...cards} />
+      {shelf("deals")}
+      <RecommendedRail quiet {...cards} />
+      {/* The seasons and the occasions whose shopping is on today, from the
+          products the stores tagged for them. */}
+      {ready ? shelves.occasions.map(entry => <OccasionBand key={entry.occasion.slug} occasion={entry.occasion} products={entry.products} {...cards} />) : null}
+      {shelf("trending")}
+      {shelf("bestsellers")}
+      <RecentlyViewedRail {...cards} />
+      {shelf("newest")}
       {articlesOn ? <GuideShelf /> : null}
     </Later>
 

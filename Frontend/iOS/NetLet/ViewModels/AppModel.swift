@@ -9,6 +9,8 @@ enum Route: Hashable {
     case department(slug: String?)
     /// A department narrowed to one of its subcategories, the web's `/category/<slug>?sub=`.
     case subcategory(department: String, sub: String)
+    /// An occasion's shelf — the products the stores tagged for it — the web's `/category/all?occasion=`.
+    case occasion(slug: String)
     /// The shelf a department view narrows to: what is on offer, deepest first.
     case deals
     /// One department's deals, or one kind's within it — a Deals shelf's View all.
@@ -87,6 +89,7 @@ enum Route: Hashable {
             let slug = segments[1] == "all" ? nil : segments[1]
             if let words = query["q"], !words.isEmpty { return .search(query: words, department: slug) }
             if let slug, let sub = query["sub"], !sub.isEmpty { return .subcategory(department: slug, sub: sub) }
+            if slug == nil, let occasion = query["occasion"], !occasion.isEmpty { return .occasion(slug: occasion) }
             return .department(slug: slug)
         case ("stores"?, 1): return .stores
         case ("brands"?, 1): return .brands
@@ -145,6 +148,8 @@ final class AppModel {
     let session: SessionModel
     let cart: CartModel
     let saved: SavedModel
+    /// What this phone looked at lately, for the home page's "Previously viewed" and the picks.
+    let viewed: RecentlyViewed
     /// The home page's catalogue and shelves, shared with the header and the categories page.
     let shelf: HomeShelf
     let isDemo: Bool
@@ -288,6 +293,7 @@ final class AppModel {
         session = SessionModel(account: services.account)
         cart = CartModel(service: services.cart, defaults: cartDefaults)
         saved = SavedModel(account: services.account, defaults: cartDefaults)
+        viewed = RecentlyViewed(defaults: cartDefaults)
         shelf = HomeShelf(catalog: services.catalog, warm: HomeShelf.warmPhotos(resolve: services.configuration.resolve))
         signals = AccountSignals(api: services.api)
         delivery = DeliveryModel(api: services.api, account: services.account, defaults: cartDefaults)

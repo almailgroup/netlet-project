@@ -49,7 +49,7 @@ import { SubcategoryIcon } from "@/components/browse/SubcategoryIcon";
 import { subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
 import { Breadcrumbs, CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
-import { shelvesFor } from "@/content/homeLayout";
+import { dealsDrawn as drawsDeals, shelvesFor } from "@/content/homeLayout";
 import { useCatalog } from "@/hooks/useCatalog";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -66,7 +66,7 @@ export default function Categories() {
   const counts = trpc.commerce.departmentCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const subCounts = trpc.commerce.subcategoryCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
-  const dealsDrawn = shelvesFor(shelf.data ?? []).deals.length > 0;
+  const dealsDrawn = drawsDeals(shelvesFor(shelf.data ?? []));
 
   const [, navigate] = useLocation();
   const asked = new URLSearchParams(useSearch()).get("dept");

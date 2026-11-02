@@ -242,6 +242,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "ai.catalogSession":
       return { available: false };
     case "commerce.bestsellers":
+    case "commerce.trending":
       return [];
     case "commerce.brands": {
       const counts = new Map<string, number>();

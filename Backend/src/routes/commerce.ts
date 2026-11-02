@@ -11,7 +11,7 @@
  */
 
 import { DELIVERY_CHOICES } from "../../../Shared/commerce/delivery.js";
-import { listBestsellers, listBrands } from "../services/homeShelves.js";
+import { listBestsellers, listBrands, listTrending } from "../services/homeShelves.js";
 import { currencyRates } from "../services/currencyRates.js";
 import { z } from "zod";
 import { rowId, rowIdText } from "../core/schemas.js";
@@ -112,6 +112,10 @@ export const commerceRouter = router({
   bestsellers: publicProcedure
     .input(z.object({ locale: localeSchema }).optional())
     .query(({ input }) => listBestsellers(input?.locale ?? "en")),
+  /** The home page's Trending: what was bought, bagged, hearted and wished for this week. */
+  trending: publicProcedure
+    .input(z.object({ locale: localeSchema }).optional())
+    .query(({ input }) => listTrending(input?.locale ?? "en")),
   /** The home page's Shop by brand: the Brand rows of the live catalogue, counted. */
   brands: publicProcedure.query(() => listBrands()),
   /** Stores with something on sale, the busiest first: the home page's row, and every one on `/stores`. */

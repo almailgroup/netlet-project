@@ -14,6 +14,7 @@
  * no filter at all.
  */
 import { isExpressEligible, productStars } from "./productDetail.js";
+import { isOccasionProduct, occasionFromSlug } from "./occasions.js";
 import type { Product } from "./types.js";
 import { withPlacement } from "./placement.js";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "./deliverySpeed.js";
@@ -51,6 +52,13 @@ export type BrowseFilters = {
    * it, so it is not counted among the filters and "Clear all" keeps it.
    */
   sub: string | null;
+  /**
+   * An occasion's shelf, by slug (`?occasion=`): the products the stores
+   * tagged for it (`Shared/commerce/occasions.ts`). The page it names, like a
+   * subcategory, so it is not counted among the filters and "Clear all"
+   * keeps it.
+   */
+  occasion: string | null;
   sort: BrowseSort;
 };
 
@@ -67,6 +75,7 @@ export const EMPTY_FILTERS: BrowseFilters = {
   onOffer: false,
   express: false,
   sub: null,
+  occasion: null,
   sort: "relevance",
 };
 
@@ -148,7 +157,12 @@ function isAvailable(product: Product): boolean {
   return product.variants.some((variant) => variant.availableForSale);
 }
 
-function isOnOffer(product: Product): boolean {
+/**
+ * A saving the shop may advertise on any variant. Exported because the home
+ * page's deal shelves and the personal deals rail ask the same question, and
+ * `compareAtPrice` is already null unless the store's permit allows it now.
+ */
+export function isOnOffer(product: Product): boolean {
   return product.variants.some((variant) => variant.compareAtPrice !== null);
 }
 
@@ -303,6 +317,11 @@ export function applyFilters(products: Product[], filters: BrowseFilters): Produ
     if (filters.onOffer && !isOnOffer(product)) return false;
     if (filters.express && !isExpressEligible(product)) return false;
     if (filters.sub && product.subcategory !== filters.sub) return false;
+    if (filters.occasion) {
+      const occasion = occasionFromSlug(filters.occasion);
+      /* A slug naming no occasion narrows to nothing, never to everything. */
+      if (!occasion || !isOccasionProduct(product, occasion)) return false;
+    }
 
     return true;
   });
@@ -479,6 +498,7 @@ export function filtersFromSearch(search: string, category = "all"): BrowseFilte
     express: params.get("express") === "1",
     /* A slug and nothing else: it is matched against the product's own, never shown. */
     sub: /^[a-z0-9-]{1,40}$/.test(params.get("sub") ?? "") ? params.get("sub") : null,
+    occasion: /^[a-z0-9-]{1,40}$/.test(params.get("occasion") ?? "") ? params.get("occasion") : null,
     sort: BROWSE_SORTS.includes(sort as BrowseSort) ? (sort as BrowseSort) : "relevance",
   };
 }
@@ -492,6 +512,7 @@ export function filtersFromSearch(search: string, category = "all"): BrowseFilte
 export function searchFromFilters(filters: BrowseFilters): string {
   const params = new URLSearchParams();
   if (filters.sub) params.set("sub", filters.sub);
+  if (filters.occasion) params.set("occasion", filters.occasion);
   if (filters.brands.length) params.set("brand", filters.brands.join(","));
   if (filters.sellers.length) params.set("seller", filters.sellers.join(","));
   if (filters.speeds.length) params.set("speed", filters.speeds.join(","));

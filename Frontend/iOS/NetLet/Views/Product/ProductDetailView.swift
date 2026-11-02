@@ -32,7 +32,11 @@ struct ProductDetailView: View {
                 }
             }
         }
-        .task(id: l.current) { await model.load(language: l.current) }
+        .task(id: l.current) {
+            await model.load(language: l.current)
+            // Opened, so the home page's "Previously viewed" and the picks can count it — on this phone alone.
+            if case .loaded(let found) = model.product, let found { app.viewed.remember(found.id) }
+        }
     }
 }
 

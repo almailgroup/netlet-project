@@ -1,10 +1,15 @@
 import SwiftUI
 
 /// The home page, the web's `Home` as a phone draws it: the front door, the
-/// departments as a sideways row, the paid banners and placements, Deals as a navy band
-/// led by the deepest saving, Bestsellers ranked, Picked for you, the brands,
-/// the stores, the new arrivals as a grid and the newest guides. Every shelf after the departments is drawn only when it has
-/// something true to show (`shelvesFor`, in `HomeShelf`).
+/// departments as a sideways row, the paid banners and placements, and then
+/// the shelves in the order the owner asked for — Mega deals as a navy band
+/// led by the deepest saving, the deals picked for the shopper, the deals for
+/// everybody, Picked for you, Trending, Bestsellers ranked, what this phone
+/// looked at before, the new arrivals as a grid and the newest guides. Every
+/// shelf after the departments is drawn only when it has something true to
+/// show (`shelvesFor`, in `HomeShelf`), and most carry a row of department
+/// tabs (`TabbedShelf`); the seasons and occasions whose shopping is on today
+/// sit after Picked for you (`OccasionBand`).
 struct HomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -64,23 +69,31 @@ struct HomeView: View {
             // Paid banners and placements, approved and labelled; absent when none runs today.
             HomeBanners()
             SponsoredShelf(slot: "home")
+            // The shelves, in the owner's order: each computed one leaves out
+            // what a shelf above shows, and the two personal rails and
+            // Previously viewed keep their own rule. The brands and the stores
+            // are on Categories now, on the owner's word.
+            if !shelves.mega.isEmpty {
+                DealsBand(titleKey: "rail.mega.title", products: shelves.mega)
+            }
+            RecommendedRail(quiet: true, deals: true)
             if !shelves.deals.isEmpty {
-                DealsBand(products: shelves.deals)
+                TabbedShelf(title: l.t("rail.deals.title"), products: shelves.deals) { app.select(.deals) }
+            }
+            RecommendedRail(quiet: true)
+            // The seasons and the occasions whose shopping is on today.
+            ForEach(shelves.occasions) { entry in
+                OccasionBand(occasion: entry.occasion, products: entry.products)
+            }
+            if !shelves.trending.isEmpty {
+                TabbedShelf(title: l.t("rail.trending.title"), products: shelves.trending)
             }
             if !shelves.bestsellers.isEmpty {
-                ProductRail(title: l.t("rail.bestsellers.title"), products: shelves.bestsellers, ranked: true)
+                TabbedShelf(title: l.t("rail.bestsellers.title"), products: shelves.bestsellers, ranked: true)
             }
-            // What is about this shopper sits between what sold and what is
-            // new. The brands and the stores are on Categories now, on the
-            // owner's word.
-            RecommendedRail(quiet: true)
+            RecentlyViewedRail()
             if !shelves.newest.isEmpty {
-                VStack(alignment: .leading, spacing: 16) {
-                    ShelfHeading(title: l.t("rail.newest.title")) { app.push(.newest) }
-                    ProductGrid(products: Array(shelves.newest.prefix(15)))
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 24)
+                TabbedShelf(title: l.t("rail.newest.title"), products: shelves.newest, grid: true) { app.push(.newest) }
             }
             GuideShelf()
         }
@@ -176,9 +189,29 @@ struct HomeHero: View {
     }
 }
 
-/// Deals, as a navy band across the page: the deepest saving leads, the whole
-/// row wide, and two more sit under it — never three with one left alone.
+/// A season's or an occasion's shelf — Back to school, Ramadan, the New Year
+/// — on the owner's word; the web's `OccasionBand`: the products the stores
+/// tagged for it (`Occasion.matches`), on a panel of the brand's pale orange
+/// under the occasion's own name and a line saying whose picks they are.
+/// "View all" is the occasion's page.
+struct OccasionBand: View {
+    let occasion: Occasion
+    let products: [Product]
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        TabbedShelf(title: l.t(occasion.label), products: products, tabs: false, note: l.t("rail.occasion.note"), tinted: true) {
+            app.push(.occasion(slug: occasion.slug))
+        }
+    }
+}
+
+/// The deepest savings, as a navy band across the page — Mega deals, on the
+/// owner's word: the deepest saving leads, the whole row wide, and two more
+/// sit under it — never three with one left alone.
 struct DealsBand: View {
+    var titleKey = "rail.deals.title"
     let products: [Product]
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -186,7 +219,7 @@ struct DealsBand: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             // View all is the Deals tab, as the web's link lights it.
-            ShelfHeading(title: l.t("rail.deals.title"), onDark: true) { app.select(.deals) }
+            ShelfHeading(title: l.t(titleKey), onDark: true) { app.select(.deals) }
             if let lead = products.first {
                 ProductCard(product: lead, feature: true)
             }

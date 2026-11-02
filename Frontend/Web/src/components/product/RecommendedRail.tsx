@@ -42,6 +42,15 @@
  * device held when the page appeared (`cartId`, known before the bag is
  * read), and not again on the window coming back into focus; the next page
  * that draws it asks afresh. The app's rail does the same.
+ *
+ * **It carries the device's browsing history**, on the owner's word ("based
+ * on each customer's interests, browsing history, and purchase behavior"):
+ * the products this device opened lately (`lib/recentlyViewed.ts`), sent as
+ * ids with the request and never stored — the weakest signal, and the one a
+ * guest who has saved nothing still has. **And `deals` is the same rail over
+ * the deals alone** — "Deals picked for you", the owner's second shelf — the
+ * server narrowing its candidates to what is on offer (`onOffer`), under its
+ * own title and note, drawn on the same rule.
  */
 import { ProductCard } from "@/components/product/ProductCard";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -53,19 +62,24 @@ import type { Product } from "@shared/commerce/types";
 import type { TasteReason } from "@shared/commerce/taste";
 import { Sparkles } from "lucide-react";
 import { MIN_SHELF_PRODUCTS } from "@/content/homeLayout";
+import { viewedIds } from "@/lib/recentlyViewed";
 
-export function RecommendedRail({ saved, onSave, onQuickView, quiet = false }: {
+export function RecommendedRail({ saved, onSave, onQuickView, quiet = false, deals = false }: {
   saved: string[];
   onSave: (id: string, title: string) => void;
   onQuickView: (product: Product) => void;
   /** Draw nothing while it loads or if it fails: on the home page it is one
       shelf among several, and a loading line or an error there is noise. */
   quiet?: boolean;
+  /** Only what is on offer: "Deals picked for you". */
+  deals?: boolean;
 }) {
   const { t, locale, isArabic } = useTranslation();
   const { cartId } = useCart();
   /* The bag as it was when the page appeared, kept for as long as it is open. */
   const [askedWith] = useState(cartId);
+  /* And what this device had looked at by then. */
+  const [viewed] = useState(() => viewedIds());
 
   /*
    * The bag goes in the request because a signed-out shopper's cart is the
@@ -74,7 +88,7 @@ export function RecommendedRail({ saved, onSave, onQuickView, quiet = false }: {
    * session — it is deliberately not something a caller can name.
    */
   const query = trpc.recommendations.forMe.useQuery(
-    { cartId: askedWith, limit: 8, locale },
+    { cartId: askedWith, limit: 8, locale, viewed, ...(deals ? { onOffer: true } : {}) },
     { refetchOnWindowFocus: false, refetchOnReconnect: false },
   );
 
@@ -87,14 +101,14 @@ export function RecommendedRail({ saved, onSave, onQuickView, quiet = false }: {
         if (quiet && data.items.length < MIN_SHELF_PRODUCTS) return null;
 
         return (
-          <section id="for-you" className="container py-9 sm:py-12">
+          <section id={deals ? "for-you-deals" : "for-you"} className="container py-9 sm:py-12" aria-labelledby={deals ? "for-you-deals-title" : "for-you-title"}>
             <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="text-xl font-extrabold text-[#0a285a] sm:text-2xl">
-                  {t("taste.railPersonal")}
+                <h2 id={deals ? "for-you-deals-title" : "for-you-title"} className="text-xl font-extrabold text-[#0a285a] sm:text-2xl">
+                  {t(deals ? "rail.personalDeals.title" : "taste.railPersonal")}
                 </h2>
                 <p dir="auto" className="mt-1 max-w-prose text-xs leading-5 ink-muted">
-                  {t("taste.railNotePersonal", { terms: data.terms.slice(0, 4).join(isArabic ? "، " : ", ") })}
+                  {t(deals ? "rail.personalDeals.note" : "taste.railNotePersonal", { terms: data.terms.slice(0, 4).join(isArabic ? "، " : ", ") })}
                 </p>
               </div>
               {/* Only when a model actually ran. Every fallback sends false. */}

@@ -34,6 +34,7 @@ const REMEMBERED = new Set([
   "commerce.departmentCounts",
   "commerce.subcategoryCounts",
   "commerce.bestsellers",
+  "commerce.trending",
   "commerce.brands",
   "commerce.stores",
   "commerce.store",

@@ -7,6 +7,7 @@ protocol CatalogServicing: Sendable {
     func departmentCounts() async throws -> [String: Int]
     func search(_ query: String, department: String?, limit: Int, language: Language) async throws -> SearchResult
     func bestsellers(language: Language) async throws -> [Product]
+    func trending(language: Language) async throws -> [Product]
     func stores(language: Language) async throws -> [StoreCard]
     func store(slug: String, language: Language) async throws -> StorePage?
     func brands() async throws -> [BrandCount]
@@ -16,6 +17,7 @@ protocol CatalogServicing: Sendable {
     /// drawn at once while the calls are asked again. Nil when there is none.
     func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]?
     func rememberedBestsellers(language: Language) -> [Product]?
+    func rememberedTrending(language: Language) -> [Product]?
     func rememberedDepartmentCounts() -> [String: Int]?
     func rememberedStores(language: Language) -> [StoreCard]?
     func rememberedBrands() -> [BrandCount]?
@@ -25,6 +27,7 @@ protocol CatalogServicing: Sendable {
 extension CatalogServicing {
     func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]? { nil }
     func rememberedBestsellers(language: Language) -> [Product]? { nil }
+    func rememberedTrending(language: Language) -> [Product]? { nil }
     func rememberedDepartmentCounts() -> [String: Int]? { nil }
     func rememberedStores(language: Language) -> [StoreCard]? { nil }
     func rememberedBrands() -> [BrandCount]? { nil }
@@ -53,6 +56,10 @@ struct CatalogService: CatalogServicing {
         try await client.call(API.bestsellers, .init(locale: language.rawValue))
     }
 
+    func trending(language: Language) async throws -> [Product] {
+        try await client.call(API.trending, .init(locale: language.rawValue))
+    }
+
     func stores(language: Language) async throws -> [StoreCard] {
         try await client.call(API.stores, .init(locale: language.rawValue))
     }
@@ -75,6 +82,10 @@ struct CatalogService: CatalogServicing {
 
     func rememberedBestsellers(language: Language) -> [Product]? {
         client.remembered(API.bestsellers, .init(locale: language.rawValue))
+    }
+
+    func rememberedTrending(language: Language) -> [Product]? {
+        client.remembered(API.trending, .init(locale: language.rawValue))
     }
 
     func rememberedDepartmentCounts() -> [String: Int]? {

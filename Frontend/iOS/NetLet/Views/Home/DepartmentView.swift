@@ -7,12 +7,14 @@ struct DepartmentView: View {
     var view: ShelfView = .all
     /// One of the department's subcategories to open on, the web's `?sub=`.
     var sub: String? = nil
+    /// An occasion's shelf, the web's `?occasion=`: the products the stores tagged for it.
+    var occasion: String? = nil
     /// A tab's first screen — the Deals tab's — with no way back to draw.
     var root = false
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        ModelHost(make: { BrowseModel(source: .shelf(slug: slug, view: view), catalog: app.services.catalog, sub: sub) }) { model in
+        ModelHost(make: { BrowseModel(source: .shelf(slug: slug, view: view), catalog: app.services.catalog, sub: sub, occasion: occasion) }) { model in
             BrowsePage(model: model, root: root)
         }
     }
@@ -163,6 +165,7 @@ private struct BrowsePage: View {
 
     private var title: String {
         if let query = model.query { return l.t("browse.searchTitle", ["query": query]) }
+        if let occasion = model.activeOccasion { return l.t(occasion.label) }
         if let activeSub { return activeSub.shown(l.current) }
         if model.isDealsPage { return l.t("nav.deals") }
         guard model.department == nil, case .shelf(_, let view) = model.source else { return departmentName }

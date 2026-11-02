@@ -176,6 +176,45 @@ describe("signals", () => {
   });
 });
 
+describe("the browsing history, and the deals alone", () => {
+  /* The device's own list, sent as ids: the weakest signal, and the one a
+     guest who has saved nothing still has. What was viewed is never
+     recommended back, the rule for every signal. */
+  it("counts what the device viewed, and never recommends it back", async () => {
+    const guest = await asGuest().recommendations.forMe({ viewed: [String(id.lamp), String(id.shade)] });
+    expect(guest.personalised).toBe(true);
+    expect(guest.terms).toContain("lighting");
+    expect(ids(guest)).not.toContain(String(id.lamp));
+    expect(ids(guest)).not.toContain(String(id.shade));
+    expect(ids(guest)).toContain(String(id.cushion));
+  });
+
+  it("reads nothing into a viewed id that is not a product", async () => {
+    const guest = await asGuest().recommendations.forMe({ viewed: ["nope", "0", "99999999999", String(id.secret)] });
+    expect(guest.personalised).toBe(false);
+    await expect(asGuest().recommendations.forMe({ viewed: Array.from({ length: 40 }, (_, i) => String(i + 1)) })).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  /* "Deals picked for you": the same taste, over what is on offer alone. */
+  it("narrows the picks to what is on offer, from the whole shelf's taste", async () => {
+    const [warm] = await db.select().from(vendors).where(eq(vendors.slug, "warm"));
+    /* A saving is advertised only under a valid permit; the shade's is half off. */
+    await db.update(vendors).set({ discountLicenceNumber: "MOC-1", discountLicenceExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }).where(eq(vendors.id, warm.id));
+    await db.update(productVariants).set({ compareAtPrice: "18.000" }).where(eq(productVariants.productId, id.shade));
+
+    const deals = await asShopper().recommendations.forMe({ onOffer: true });
+    expect(deals.personalised).toBe(true);
+    expect(ids(deals)).toEqual([String(id.shade)]);
+
+    await db.update(productVariants).set({ compareAtPrice: null }).where(eq(productVariants.productId, id.shade));
+    const none = await asShopper().recommendations.forMe({ onOffer: true });
+    expect(none.items).toEqual([]);
+    /* Picked for you is untouched by what is on offer. */
+    const all = await asShopper().recommendations.forMe({});
+    expect(ids(all)).toContain(String(id.shade));
+  });
+});
+
 describe("what the caller may ask for", () => {
   it("reads the account from the session, never from the input", async () => {
     // There is no way to phrase "somebody else's recommendations": the only

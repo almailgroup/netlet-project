@@ -12,7 +12,7 @@
  */
 import { z } from "zod";
 import { publicProcedure, router } from "../core/trpc.js";
-import { recommendFor } from "../services/recommendations.js";
+import { MAX_VIEWED, recommendFor } from "../services/recommendations.js";
 
 export const recommendationsRouter = router({
   forMe: publicProcedure
@@ -23,6 +23,15 @@ export const recommendationsRouter = router({
           cartId: z.string().min(1).max(64).nullish(),
           limit: z.number().int().min(1).max(12).optional(),
           locale: z.enum(["en", "ar"]).optional(),
+          /**
+           * The products this device opened lately, newest first — the
+           * browsing history, kept on the device and never stored here
+           * (`lib/recentlyViewed.ts`). The weakest signal, and the one a
+           * guest who has saved nothing still has.
+           */
+          viewed: z.array(z.string().min(1).max(191)).max(MAX_VIEWED).optional(),
+          /** Only what is on offer: the "Deals picked for you" shelf. */
+          onOffer: z.boolean().optional(),
         })
         .optional(),
     )
@@ -32,6 +41,8 @@ export const recommendationsRouter = router({
         cartId: input?.cartId ?? null,
         limit: input?.limit,
         locale: input?.locale,
+        viewed: input?.viewed,
+        onOffer: input?.onOffer,
       }),
     ),
 });

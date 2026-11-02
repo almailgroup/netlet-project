@@ -6,6 +6,8 @@ struct ShelfHeading: View {
     let title: String
     var onDark = false
     var viewAllKey = "home.viewAll"
+    /// The chevron says the press goes somewhere; off for one that does something here (Clear).
+    var viewAllChevron = true
     var viewAll: (() -> Void)?
     @Environment(LanguageSettings.self) private var l
 
@@ -18,8 +20,10 @@ struct ShelfHeading: View {
                 Button(action: viewAll) {
                     HStack(spacing: 2) {
                         Text(l.t(viewAllKey))
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 12, weight: .bold))
+                        if viewAllChevron {
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 12, weight: .bold))
+                        }
                     }
                     .font(.inter(14, .bold))
                     .foregroundStyle(onDark ? Brand.accentOnDark : Brand.accentInk)
@@ -46,27 +50,143 @@ struct ProductRail: View {
         VStack(alignment: .leading, spacing: 16) {
             ShelfHeading(title: title, viewAll: viewAll)
                 .padding(.horizontal, 16)
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .bottom, spacing: 12) {
-                    ForEach(Array(products.prefix(HomeShelf.most).enumerated()), id: \.element.id) { index, product in
-                        if ranked {
-                            HStack(alignment: .bottom, spacing: -8) {
-                                RankFigure(place: index + 1)
-                                ProductCard(product: product)
-                            }
-                            .frame(width: 200)
-                        } else {
-                            ProductCard(product: product)
-                                .frame(width: 164)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .scrollTargetLayout()
-            }
-            .scrollTargetBehavior(.viewAligned)
+            ProductStrip(products: products, ranked: ranked)
         }
         .padding(.vertical, 24)
+    }
+}
+
+/// The cards of a shelf, scrolled sideways: a strip's twelve at most.
+struct ProductStrip: View {
+    let products: [Product]
+    var ranked = false
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .bottom, spacing: 12) {
+                ForEach(Array(products.prefix(HomeShelf.most).enumerated()), id: \.element.id) { index, product in
+                    if ranked {
+                        HStack(alignment: .bottom, spacing: -8) {
+                            RankFigure(place: index + 1)
+                            ProductCard(product: product)
+                        }
+                        .frame(width: 200)
+                    } else {
+                        ProductCard(product: product)
+                            .frame(width: 164)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .scrollTargetLayout()
+        }
+        .scrollTargetBehavior(.viewAligned)
+    }
+}
+
+/// A shelf with a row of department tabs over it — the web's `TabbedShelf`,
+/// Noon's bestsellers, on the owner's word ("category tabs at the top …
+/// allowing customers to switch between categories without leaving the
+/// section. Apply the same concept to other relevant sections").
+///
+/// **A tab narrows the shelf and is not a tab**: the row is the department
+/// page's subcategory chips, the chosen one navy and `.isSelected` to
+/// VoiceOver, and it is drawn only where it could change something
+/// (`HomeShelf.departmentTabs`). "All" leads and is the shelf as decided; the
+/// choice is the shelf's own while the page is open. A ranked shelf
+/// renumbers inside the tab, so the places read "first among the
+/// electronics". The strip holds a strip's twelve; the grid, the web's fifteen.
+struct TabbedShelf: View {
+    let title: String
+    let products: [Product]
+    var grid = false
+    var ranked = false
+    /// Off for a shelf that is the shopper's own rather than the shop's.
+    var tabs = true
+    var viewAllKey = "home.viewAll"
+    var viewAllChevron = true
+    /// A line under the heading saying what the shelf is.
+    var note: String? = nil
+    /// On a panel of the brand's pale orange, for a season's shelf.
+    var tinted = false
+    var viewAll: (() -> Void)?
+    @State private var chosen: String?
+    @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
+
+    /// The web's `#fff3ec`, the pale orange a season's shelf sits on.
+    static let paleOrange = Color(red: 1, green: 243 / 255, blue: 236 / 255)
+
+    var body: some View {
+        if tinted {
+            content
+                .padding(.vertical, 20)
+                .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Self.paleOrange))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+        } else {
+            content.padding(.vertical, 24)
+        }
+    }
+
+    private var content: some View {
+        let rows = tabs ? HomeShelf.departmentTabs(products) : []
+        // A department that left the shelf leaves the row; the shelf is "All" again.
+        let current = rows.first { $0.slug == chosen }
+        let shown = current?.products ?? products
+        return VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                ShelfHeading(title: title, viewAllKey: viewAllKey, viewAllChevron: viewAllChevron, viewAll: viewAll)
+                if let note {
+                    Text(note)
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 16)
+            if !rows.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        chip(title: l.t("categories.allSub"), count: products.count, slug: nil, chosen: current?.slug)
+                        ForEach(rows) { row in
+                            chip(title: l.t(row.label), count: row.products.count, slug: row.slug, chosen: current?.slug)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(l.t("home.shelfTabs", ["title": title]))
+            }
+            if grid {
+                ProductGrid(products: Array(shown.prefix(15)))
+                    .padding(.horizontal, 16)
+            } else {
+                ProductStrip(products: shown, ranked: ranked)
+            }
+        }
+    }
+
+    /// The department page's subcategory chip, in the same clothes.
+    private func chip(title: String, count: Int, slug: String?, chosen: String?) -> some View {
+        let pressed = chosen == slug
+        return Button {
+            withAnimation(still ? nil : .snappy(duration: 0.2)) { self.chosen = slug }
+        } label: {
+            HStack(spacing: 6) {
+                Text(title).lineLimit(1)
+                Text("\(count)").foregroundStyle(pressed ? Color.white.opacity(0.8) : Brand.muted)
+            }
+            .font(.inter(14, .semibold))
+            .foregroundStyle(pressed ? Color.white : Brand.navy)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 40)
+            .background(Capsule().fill(pressed ? Brand.navy : Color.white))
+            .overlay(Capsule().strokeBorder(pressed ? Brand.navy : Brand.line, lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.tap)
+        .accessibilityAddTraits(pressed ? .isSelected : [])
     }
 }
 

@@ -43,7 +43,7 @@ export function useCatalog(first: number, options: { enabled?: boolean; staleTim
  * Reads that answer with whole storefront products — the same `shape` on the
  * server as `byHandle`'s, so a product found in one of them is the product.
  */
-const SHELVES = new Set(["commerce.products.list", "commerce.products.byIds", "commerce.bestsellers", "search.products"]);
+const SHELVES = new Set(["commerce.products.list", "commerce.products.byIds", "commerce.bestsellers", "commerce.trending", "search.products"]);
 
 /**
  * The product as a shelf already holds it, and when that shelf was read.

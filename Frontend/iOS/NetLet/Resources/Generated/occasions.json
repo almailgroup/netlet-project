@@ -1,0 +1,211 @@
+[
+  {
+    "slug": "ramadan",
+    "label": "occasion.ramadan",
+    "tags": [
+      "ramadan",
+      "رمضان",
+      "رمضان كريم"
+    ],
+    "window": {
+      "calendar": "hijri",
+      "from": [
+        8,
+        15
+      ],
+      "to": [
+        9,
+        29
+      ]
+    }
+  },
+  {
+    "slug": "eid-al-fitr",
+    "label": "occasion.eidAlFitr",
+    "tags": [
+      "eid al fitr",
+      "eid",
+      "عيد الفطر",
+      "العيد",
+      "عيد"
+    ],
+    "window": {
+      "calendar": "hijri",
+      "from": [
+        9,
+        20
+      ],
+      "to": [
+        10,
+        5
+      ]
+    }
+  },
+  {
+    "slug": "eid-al-adha",
+    "label": "occasion.eidAlAdha",
+    "tags": [
+      "eid al adha",
+      "eid",
+      "عيد الأضحى",
+      "العيد",
+      "عيد"
+    ],
+    "window": {
+      "calendar": "hijri",
+      "from": [
+        12,
+        1
+      ],
+      "to": [
+        12,
+        13
+      ]
+    }
+  },
+  {
+    "slug": "national-day",
+    "label": "occasion.nationalDay",
+    "tags": [
+      "national day",
+      "liberation day",
+      "hala february",
+      "العيد الوطني",
+      "عيد التحرير",
+      "هلا فبراير"
+    ],
+    "window": {
+      "calendar": "gregorian",
+      "from": [
+        2,
+        10
+      ],
+      "to": [
+        2,
+        26
+      ]
+    }
+  },
+  {
+    "slug": "mothers-day",
+    "label": "occasion.mothersDay",
+    "tags": [
+      "mother's day",
+      "mothers day",
+      "عيد الأم"
+    ],
+    "window": {
+      "calendar": "gregorian",
+      "from": [
+        3,
+        7
+      ],
+      "to": [
+        3,
+        21
+      ]
+    }
+  },
+  {
+    "slug": "summer",
+    "label": "occasion.summer",
+    "tags": [
+      "summer",
+      "الصيف",
+      "صيف"
+    ],
+    "window": {
+      "calendar": "gregorian",
+      "from": [
+        6,
+        1
+      ],
+      "to": [
+        8,
+        10
+      ]
+    }
+  },
+  {
+    "slug": "back-to-school",
+    "label": "occasion.backToSchool",
+    "tags": [
+      "back to school",
+      "school",
+      "العودة إلى المدارس",
+      "العودة للمدارس",
+      "المدرسة",
+      "مدرسة"
+    ],
+    "window": {
+      "calendar": "gregorian",
+      "from": [
+        8,
+        11
+      ],
+      "to": [
+        9,
+        20
+      ]
+    }
+  },
+  {
+    "slug": "halloween",
+    "label": "occasion.halloween",
+    "tags": [
+      "halloween",
+      "هالوين"
+    ],
+    "window": {
+      "calendar": "gregorian",
+      "from": [
+        10,
+        15
+      ],
+      "to": [
+        10,
+        31
+      ]
+    }
+  },
+  {
+    "slug": "winter",
+    "label": "occasion.winter",
+    "tags": [
+      "winter",
+      "الشتاء",
+      "شتاء"
+    ],
+    "window": {
+      "calendar": "gregorian",
+      "from": [
+        11,
+        15
+      ],
+      "to": [
+        1,
+        31
+      ]
+    }
+  },
+  {
+    "slug": "new-year",
+    "label": "occasion.newYear",
+    "tags": [
+      "new year",
+      "رأس السنة",
+      "السنة الجديدة"
+    ],
+    "window": {
+      "calendar": "gregorian",
+      "from": [
+        12,
+        15
+      ],
+      "to": [
+        1,
+        7
+      ]
+    }
+  }
+]

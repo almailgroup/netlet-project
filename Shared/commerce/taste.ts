@@ -25,7 +25,7 @@ import type { Money, Product } from "./types.js";
 import { toFils } from "../money.js";
 
 /** How a product came to be a signal, strongest first. */
-export type SignalKind = "bought" | "bagged" | "saved" | "followed";
+export type SignalKind = "bought" | "bagged" | "saved" | "followed" | "viewed";
 
 /**
  * What each kind of signal is worth.
@@ -35,12 +35,20 @@ export type SignalKind = "bought" | "bagged" | "saved" | "followed";
  * interest with no commitment. Followed is the weakest *as taste* even though
  * it is a deliberate act — "tell me when this is cheaper" often means "I want
  * this and cannot have it", which says more about the price than the category.
+ *
+ * Viewed is the browsing history, on the owner's word ("based on each
+ * customer's interests, browsing history, and purchase behavior"), and is
+ * worth as little as a follow: opening a page is the one thing here anybody
+ * does by accident. It is the device's own list (`lib/recentlyViewed.ts`),
+ * sent with the request and never stored, so it counts only while the
+ * shopper's browser still holds it.
  */
 export const SIGNAL_WEIGHT: Record<SignalKind, number> = {
   bought: 4,
   bagged: 3,
   saved: 2,
   followed: 1,
+  viewed: 1,
 };
 
 export type TasteSignal = { productId: string; kind: SignalKind };

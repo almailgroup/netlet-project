@@ -68,6 +68,11 @@ export function prefetchRouteData(
     if (term && path.startsWith("/search")) ask(utils.search.products.prefetch({ q: term, department: null, locale, limit: SEARCH_LIMIT }));
     return;
   }
+  /* The home page's Trending and Bestsellers are the server's own shelves. */
+  if (path === "/") {
+    ask(utils.commerce.trending.prefetch({ locale }));
+    ask(utils.commerce.bestsellers.prefetch({ locale }));
+  }
   /* The Categories page opens each department onto its subcategories' counts. */
   if (/^\/categories\/?$/.test(path)) ask(utils.commerce.subcategoryCounts.prefetch());
   const store = /^\/stores\/([^/?#]+)\/?$/.exec(path);

@@ -1455,33 +1455,118 @@ same size; about 25 KB each, loaded eagerly. A set made as one grid has to be
 redone as separate images: cutting the grid apart clipped a sneaker and left a
 sliver of it beside the grocery basket.
 
-Then the paid placements, Deals, Bestsellers, Picked for you, the new
-arrivals as a grid to browse, the newest three
-shoppers' guides (see "Guides") once one is published, and the footer. **A
-shelf below four products is not drawn**: `shelvesFor` in
-`Frontend/Web/src/content/homeLayout.ts` decides — Deals is what is actually
-discounted, deepest first; Bestsellers is what sold, by units over ninety days
-(`Backend/src/services/homeShelves.ts`: never a cancelled or returned line, nor an exchange's
-zero-priced replacement, which is the same item counted twice); New arrivals is
-the most recent; each leaves out what a shelf above shows, and what a hidden
-shelf did not show is free for the next. Anything that points at a shelf asks
-whether it is drawn. There were five shelves once, and on a dozen-product
-catalog they were the same dozen five times — Bestsellers came back when there
-were orders to count, because then it is a different list rather than the same
-one reordered.
+Then the paid placements and **the shelves in the order the owner asked
+for, as a list**: Mega deals, Deals picked for you, Deals, Picked for you,
+(the seasons and occasions, which wait on a table of their own — see below),
+Trending, Bestsellers, Previously viewed, then the new arrivals as a grid to
+browse, the newest three shoppers' guides (see "Guides") once one is
+published, and the footer. **A strip below four products is not drawn**:
+`shelvesFor` in `Frontend/Web/src/content/homeLayout.ts` decides the computed
+ones — Mega deals is the deepest savings, from `MEGA_DEAL_PERCENT` (30) off
+(a was-price the permit allows, which `fromInventory` has already checked);
+Deals is every other saving, deepest first; Trending is what shoppers reached
+for this week (`commerce.trending`, `listTrending` in
+`Backend/src/services/homeShelves.ts`: over `TRENDING_WINDOW_DAYS` (7), every
+unit sold by the bestsellers' own rule, every bag a product was put in, every
+heart and every wishlist it was added to, weighed `TREND_WEIGHT` — a sale 3,
+a bag 2, a heart 2, a wish 1 — seven days rather than ninety because that is
+what tells it apart from Bestsellers); Bestsellers is what sold, by units over
+ninety days (`listBestsellers`: never a cancelled or returned line, nor an
+exchange's zero-priced replacement, which is the same item counted twice); New
+arrivals is the most recent; each leaves out what a shelf above shows, and
+what a hidden shelf did not show is free for the next, so a mega deal the
+band could not hold is a deal rather than nothing. The two personal rails and
+Previously viewed are not computed there: each is about one shopper and keeps
+its own rule, never recommending back what the shopper already has. Anything
+that points at a shelf asks whether it is drawn (`dealsDrawn`: Mega deals or
+Deals). There were five shelves once, and on a dozen-product catalog they were
+the same dozen five times — Bestsellers came back when there were orders to
+count, because then it is a different list rather than the same one reordered.
 
-**Deals is a navy band across the page, led by the deepest saving.** The lead
-card is `ProductCard`'s `feature` — two of five columns on a wide screen, the
-whole row on a phone, a wider photograph and a larger price — and three more
-sit beside it (two on a phone, never three with one left alone on a row). It is
-the same shelf in a different dress, so it is drawn exactly when the Deals
-shelf would be, and every saving on it has passed the permit rule on the read.
-No "ends on" date: a permit's period is when a saving may be advertised, not
-when this one stops.
+**Most shelves carry a row of department tabs, on the owner's word** ("category
+tabs at the top, similar to Noon, allowing customers to switch between
+categories without leaving the section. Apply the same concept to other
+relevant sections"): Deals, Trending, Bestsellers and New arrivals, each
+holding `MAX_TABBED_PRODUCTS` (24) rather than a strip's twelve, because twelve
+cut five ways is a tab of two; the server's shelves answer `HOME_SHELF_LIMIT`
+(60) for the same reason. `departmentTabs` is the rule, pure: "All" leads and
+is the shelf as decided; a department is a tab with `MIN_TAB_PRODUCTS` (2) of
+the shelf in it, in the departments' order, keeping the shelf's order (a
+bestseller is still ranked inside its department, the places renumbered
+there); and no row is offered when it could change nothing — one department
+holding the whole shelf is "All" said twice. The row is `aria-pressed`
+buttons in a named group (the department page's subcategory chips, the
+portal's `Segmented` rule: it narrows a list, so it is not a tablist), the
+choice kept while the page is open and never in the address. `TabbedShelf` in
+`components/home/ProductShelf.tsx` draws every one, strip or grid; the app's
+is the Swift twin of the same name (`HomeShelf.departmentTabs`).
+
+**Deals picked for you is Picked for you over the deals alone**
+(`RecommendedRail`'s `deals`, `recommendations.forMe` with `onOffer`): the
+taste is built from the whole shelf, because what somebody saved says what
+they like whether or not it was on offer, and only the candidates are
+narrowed, to what the store's permit lets the shop call a saving. **Both
+rails carry the device's browsing history**, on the owner's word ("based on
+each customer's interests, browsing history, and purchase behavior"):
+`viewed`, the ids `lib/recentlyViewed.ts` holds, sent with the request and
+never stored (`MAX_VIEWED`, 24), the weakest signal in `SIGNAL_WEIGHT` and
+the one a guest who has saved nothing still has; an id that is not a row's
+is read as nothing. **Previously viewed is the device's own list**
+(`RecentlyViewedRail`): the product page records an opening by id, newest
+first and once, for `VIEWED_DAYS` (90); the shelf reads the products back by
+id (`commerce.products.byIds`), so the cards carry today's price and photo
+and one no longer on the shelf is not drawn; it is drawn from one, being this
+shopper's own history, with Clear in its heading, which empties the list and
+says so; it is read as the page appears, so a product opened from the shelf
+joins it on the next visit and not under the finger. The privacy policy says
+all of it (`privacy.device.body`). The app keeps the same list in
+`UserDefaults` (`RecentlyViewed`, tested on the web's cases).
+
+**The seasons and the occasions are a calendar in code and the stores'
+tags, on the owner's word** ("dedicated sections for seasonal events and
+special occasions, such as Back to School, Halloween, New Year, and other
+holidays"). `Shared/commerce/occasions.ts` is the rule, pure and exported to
+the app (`occasions.json`): ten occasions — Ramadan, the two Eids, the
+National and Liberation Days, Mother's Day, summer, Back to school,
+Halloween, winter, the New Year — each a name in both languages, the words a
+store tags a product with for it, and a window, by the Gregorian calendar for
+a fixed date and by the Umm al-Qura calendar for the three that move
+(`Intl` with `islamic-umalqura`, trusted only when it says it is Hijri;
+`Calendar(identifier: .islamicUmmAlQura)` in the app), counted on Kuwait's
+day and starting before the day itself, since the shopping does. **A store
+puts a product on an occasion by tagging it** in its editor's Tags box, with
+any of the occasion's words in either language or its slug, compared folded
+(`foldTag`: "Back to School", "back-to-school" and "العودة الى المدارس" are
+one tag); nothing chooses a product by its kind, which would be the shop
+promising for a seller. `shelvesFor` draws each occasion whose shopping is
+on — at most `MAX_OCCASIONS` (2), the end of the year having three — from the
+products tagged for it, after the deals (a saving is the stronger reason to
+show a product) and before Trending, from four, on a panel of the brand's
+pale orange under its own name (`OccasionBand`, `TabbedShelf`'s `tinted`),
+and "View all" opens `/category/all?occasion=<slug>`, the occasion as a
+page: `BrowseFilters.occasion`, the subcategory's rule — the page it names
+rather than a filter, not counted, kept by Clear all, not indexed; the app's
+`Route.occasion` and `BrowseFilters.occasion`. An occasion with nothing
+tagged draws nothing, the shelves' rule, so the live shop shows none until a
+store tags something. A desk where NetLet curates a season by hand — a
+picture, its own dates, products chosen rather than tagged — is an
+`occasions` table, a migration to show the owner first; this is what could
+be built without one.
+
+**Mega deals is a navy band across the page, led by the deepest saving.** The
+lead card is `ProductCard`'s `feature` — two of five columns on a wide screen,
+the whole row on a phone, a wider photograph and a larger price — and three
+more sit beside it (two on a phone, never three with one left alone on a
+row). It is the Mega deals shelf in a different dress (`DealsBand`), so it is
+drawn exactly when that shelf would be, and every saving on it has passed the
+permit rule on the read. It was the Deals shelf until the owner asked for
+major deals and general deals apart. No "ends on" date: a permit's period is
+when a saving may be advertised, not when this one stops.
 
 **Bestsellers carries its places, 1 to 12, as large outlined figures** beside
 the cards (`.rank-figure`), because that shelf's order *is* a ranking; no other
-shelf has one to show. The figures are pale navy and outlined, so they read as
+shelf has one to show (Trending is an order too, but a score nobody can check
+against a figure is not a place). The figures are pale navy and outlined, so they read as
 order rather than as a second price, hidden from a screen reader (the list's
 order says it), and one column width whatever the number — a two-digit place is
 drawn smaller — so every card is the same size. **The figure has no `direction`
@@ -4720,8 +4805,8 @@ somebody and staring at a rail is one nobody checks. The failure mode is not a
 crash; it is a shop quietly recommending the wrong things to everybody for a
 month.
 
-Signals are weighted `bought > bagged > saved > followed`, and **a product
-counts once, at its strongest kind**: somebody who saved a lamp, bagged it and
+Signals are weighted `bought > bagged > saved > followed = viewed`, and **a
+product counts once, at its strongest kind**: somebody who saved a lamp, bagged it and
 bought it has said one thing about lamps, and counting it three times lets a
 single purchase drown out everything else they browse. Price uses the **median**
 rather than the mean, so one aspirational look at a KWD 480 rug does not start
@@ -6319,7 +6404,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, and is 821 KB (240 KB) now, the filter chips and the Sort | Filter pill — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, and is 832 KB (244 KB) now, the home page's shelves with their department tabs, the occasions' calendar and their words in both languages — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -6873,10 +6958,14 @@ TypeScript's cases), and Save asks "Is this your address?" in a sheet
 opened for editing with its pin on a still map that opens the picker
 (`address:edit`, `57-address-edit`); every map names its places
 (`pointsOfInterest: .all`) and the picker switches Map and Satellite. The home page is `HomeShelf`, which is
-`shelvesFor` rule for rule (Deals deepest first from four, Bestsellers from
-four, New arrivals from one, each leaving out what a shelf above shows), under
-the hero slideshow, the six department cards, the Deals band, the ranked
-Bestsellers, and the grid. The type is
+`shelvesFor` rule for rule (Mega deals from 30% off and from four, Deals from
+four, Trending and Bestsellers from four, New arrivals from one, each leaving
+out what a shelf above shows, the tabbed ones holding two dozen), under the
+hero slideshow, the six department cards, the Mega deals band, the deals
+picked for the shopper, Deals, Picked for you, Trending, the ranked
+Bestsellers, Previously viewed (`RecentlyViewed`, `RecentlyViewedRail`) and
+the grid — each shelf under its department tabs (`TabbedShelf`,
+`HomeShelf.departmentTabs`, `HomeShelfRuleTests` on the recorded catalogue). The type is
 Inter from the web's own variable file (`Typography.swift`); the logo, the
 department art and the hero pictures are the web's files, copied byte for byte
 by `pnpm ios:resources` with `assets.json` naming which is which, so the

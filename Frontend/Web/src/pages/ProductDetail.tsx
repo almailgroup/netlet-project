@@ -44,6 +44,7 @@ import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { StarRow } from "@/components/ui/StarRow";
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { rememberViewed } from "@/lib/recentlyViewed";
 import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
 import { Later } from "@/components/layout/Later";
@@ -1066,6 +1067,10 @@ export default function ProductDetail() {
   const [, navigate] = useLocation();
   const handle = params?.handle ?? "";
   const { data: product, isLoading, error } = useProductByHandle(handle);
+  /* Opened, so the home page's "Previously viewed" and the picks can count it — on this device alone. */
+  useEffect(() => {
+    if (product?.id) rememberViewed(product.id);
+  }, [product?.id]);
   const { data: catalog = [] } = useCatalog(24);
   const { addItem, cart, openCart, updateQuantity, removeItem } = useCart();
   const { heartedIds, toggleSaved, deliveryZone } = useCustomer();

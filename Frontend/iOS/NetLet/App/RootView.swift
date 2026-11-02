@@ -187,6 +187,7 @@ private struct RouteDestination: View {
         case .product(let handle): ProductDetailView(handle: handle)
         case .department(let slug): DepartmentView(slug: slug)
         case .subcategory(let department, let sub): DepartmentView(slug: department, sub: sub)
+        case .occasion(let slug): DepartmentView(slug: nil, occasion: slug)
         case .deals: DepartmentView(slug: nil, view: .deals)
         case .dealsIn(let department, let sub): DepartmentView(slug: department, view: .deals, sub: sub)
         case .newest: DepartmentView(slug: nil, view: .newest)

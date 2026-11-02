@@ -74,6 +74,9 @@ struct BrowseFilters: Equatable {
     /// One of the department's subcategories, by slug — the page it names
     /// rather than a filter, so it is not counted and clearing keeps it.
     var sub: String?
+    /// An occasion's shelf, by slug (`?occasion=`): the products the stores
+    /// tagged for it. The page, like a subcategory, so not counted either.
+    var occasion: String?
 
     /// How many are on, for "Filters (3)" and the corner button's badge.
     var activeCount: Int {
@@ -104,6 +107,10 @@ struct BrowseFilters: Equatable {
         if onOffer && !product.isOnOffer { return false }
         if express && !product.isExpress { return false }
         if let sub, product.subcategory != sub { return false }
+        if let occasion {
+            // A slug naming no occasion narrows to nothing, never to everything.
+            guard let found = ReferenceData.shared.occasion(slug: occasion), found.matches(product) else { return false }
+        }
         return true
     }
 }
@@ -380,10 +387,11 @@ final class BrowseModel {
     static let pageSize = 100
     static let searchLimit = 60
 
-    init(source: Source, catalog: CatalogServicing, sub: String? = nil) {
+    init(source: Source, catalog: CatalogServicing, sub: String? = nil, occasion: String? = nil) {
         self.source = source
         self.catalog = catalog
         filters.sub = sub
+        filters.occasion = occasion
         if case .shelf(_, let view) = source {
             switch view {
             case .all: break
@@ -470,11 +478,16 @@ final class BrowseModel {
         return counts
     }
 
+    /// The occasion the page is narrowed to, by its slug (`activeOccasion`).
+    var activeOccasion: Occasion? {
+        query == nil ? ReferenceData.shared.occasion(slug: filters.occasion) : nil
+    }
+
     func clearFilters() {
-        // The subcategory is the page, not a filter, so it stays; so does
-        // "On offer" on the Deals page, which it is.
+        // The subcategory or the occasion is the page, not a filter, so it
+        // stays; so does "On offer" on the Deals page, which it is.
         let deals = isDealsPage
-        filters = BrowseFilters(sub: filters.sub)
+        filters = BrowseFilters(sub: filters.sub, occasion: filters.occasion)
         filters.onOffer = deals
     }
 }

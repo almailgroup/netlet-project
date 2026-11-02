@@ -41,6 +41,8 @@ enum API {
     static let products = Procedure<ProductList, [Product]>(query: "commerce.products.list")
     /// The home page's Bestsellers: units sold over the last ninety days.
     static let bestsellers = Procedure<LocaleOnly, [Product]>(query: "commerce.bestsellers")
+    /// The home page's Trending: what was bought, bagged, hearted and wished for this week.
+    static let trending = Procedure<LocaleOnly, [Product]>(query: "commerce.trending")
     /// Stores with something on sale, the busiest first.
     static let stores = Procedure<StoreList, [StoreCard]>(query: "commerce.stores")
     /// One store's public page, or nil for an address no approved store answers to.

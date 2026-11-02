@@ -60,7 +60,7 @@ import { useDeliveryArea } from "@/components/layout/deliveryArea";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { LiveSearch } from "@/components/search/LiveSearch";
 import { CountBadge } from "@/components/ui/CountBadge";
-import { categoryRail, shelvesFor } from "@/content/homeLayout";
+import { dealsDrawn as drawsDeals, categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -123,7 +123,7 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
   const inStock = useDepartmentsInStock();
   /* The home page's own read, so on Home the header asks nothing new. */
   const shelf = useCatalog(HEADER_SHELF, { staleTime: 5 * 60 * 1000 });
-  const dealsDrawn = useMemo(() => shelvesFor(shelf.data ?? []).deals.length > 0, [shelf.data]);
+  const dealsDrawn = useMemo(() => drawsDeals(shelvesFor(shelf.data ?? [])), [shelf.data]);
   const onDeals = location === "/category/all" && new URLSearchParams(query).get("offer") === "1";
 
   /*

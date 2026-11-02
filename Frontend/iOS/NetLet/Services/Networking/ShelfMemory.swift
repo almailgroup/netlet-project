@@ -6,7 +6,7 @@ import Foundation
 /// The app opened on grey outlines every time, for as long as the server took
 /// to answer from across the world, while the web opened on what it had shown
 /// earlier in the day. So the answers to the procedures that are the same for
-/// everybody — the catalogue's first page, Bestsellers, the departments'
+/// everybody — the catalogue's first page, Bestsellers, Trending, the departments'
 /// counts, the stores, the brands and the shop's contact details — are kept as
 /// the server sent them, and the home page draws them at once and asks again
 /// behind them (`HomeShelf.load`).
@@ -21,7 +21,7 @@ final class ShelfMemory: @unchecked Sendable {
 
     /// The procedures whose answers are kept, named by the app's own list of them.
     static let procedures: Set<String> = [
-        API.products.path, API.bestsellers.path, API.departmentCounts.path, API.subcategoryCounts.path,
+        API.products.path, API.bestsellers.path, API.trending.path, API.departmentCounts.path, API.subcategoryCounts.path,
         API.stores.path, API.brands.path, API.contact.path,
     ]
 

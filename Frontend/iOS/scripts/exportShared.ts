@@ -29,6 +29,7 @@ import { en, ar } from "../../../Shared/i18n/dictionary.js";
 import { PLURAL_FORMS } from "../../../Shared/i18n/plurals.js";
 import { MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
+import { OCCASIONS } from "../../../Shared/commerce/occasions.js";
 import { subcategoriesOf } from "../../../Shared/commerce/subcategories.js";
 import { AREAS, PART_KEYS, PART_LABEL_AR, PART_LABEL_EN, PART_MAX, REQUIRED_PARTS } from "../../../Shared/commerce/kuwaitAddress.js";
 import { GOVERNORATE_CENTRES, KUWAIT_BOUNDS, KUWAIT_CENTRE } from "../../../Shared/commerce/geo.js";
@@ -175,6 +176,8 @@ export function buildResources(): Record<string, string> {
         subcategories: subcategoriesOf(slug).map(entry => ({ slug: entry.slug, name: entry.name, nameAr: entry.nameAr, icon: entry.icon })),
       })),
     ),
+    /* The seasons and the occasions, with the words a store tags a product with and their windows (`Shared/commerce/occasions.ts`). */
+    "occasions.json": json(OCCASIONS.map(({ slug, label, tags, window }) => ({ slug, label, tags, window: { calendar: window.calendar, from: window.from, to: window.to } }))),
     "kuwait.json": json({
       governorates: kuwaitDeliveryZones.map(({ id, label, labelAr }) => ({ id, label, labelAr })),
       areas: AREAS,

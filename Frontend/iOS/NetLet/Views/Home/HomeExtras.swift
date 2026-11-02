@@ -28,6 +28,10 @@ extension API {
         let cartId: String?
         let limit: Int
         let locale: String
+        /// The phone's browsing history, newest first (`RecentlyViewed`); never stored.
+        var viewed: [String]? = nil
+        /// Only what is on offer: "Deals picked for you".
+        var onOffer: Bool? = nil
     }
 
     static let homeBanners = Procedure<LocaleOnly, [HomeBanner]>(query: "ads.banners")
@@ -247,8 +251,17 @@ struct Recommendations: Decodable, Sendable {
 /// what is in the bag, so a product added from the rail itself vanished from
 /// it. The bag and the hearts are read when it is asked, which is each time
 /// the page comes back into view.
+///
+/// **It carries the phone's browsing history** (`RecentlyViewed`), on the
+/// owner's word ("based on each customer's interests, browsing history, and
+/// purchase behavior"): the products opened lately, sent as ids and never
+/// stored — the weakest signal, and the one a guest who has saved nothing
+/// still has. **And `deals` is the same rail over the deals alone** — "Deals
+/// picked for you", the owner's second shelf — the server narrowing its
+/// candidates to what is on offer, under its own title and note.
 struct RecommendedRail: View {
     var quiet = false
+    var deals = false
     @State private var answer: Recommendations?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -259,8 +272,8 @@ struct RecommendedRail: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(alignment: .top, spacing: 10) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(l.t("taste.railPersonal")).shelfTitle()
-                            Text(l.t("taste.railNotePersonal", ["terms": answer.terms.prefix(4).joined(separator: l.current == .ar ? "، " : ", ")]))
+                            Text(l.t(deals ? "rail.personalDeals.title" : "taste.railPersonal")).shelfTitle()
+                            Text(l.t(deals ? "rail.personalDeals.note" : "taste.railNotePersonal", ["terms": answer.terms.prefix(4).joined(separator: l.current == .ar ? "، " : ", ")]))
                                 .font(.inter(13))
                                 .foregroundStyle(Brand.muted)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -289,12 +302,50 @@ struct RecommendedRail: View {
                 answer = nil
                 return
             }
-            answer = try? await app.services.api.call(API.forMe, .init(cartId: app.cart.cartId, limit: 8, locale: l.current.rawValue))
+            answer = try? await app.services.api.call(API.forMe, .init(cartId: app.cart.cartId, limit: 8, locale: l.current.rawValue, viewed: app.viewed.ids, onOffer: deals ? true : nil))
         }
     }
 
     private func reason(_ reason: Recommendations.Item.Reason) -> String {
         reason.key == "taste.becausePrice" ? l.t(reason.key) : l.t(reason.key, ["value": reason.value ?? ""])
+    }
+}
+
+// MARK: - Previously viewed
+
+/// "Previously viewed": what this phone opened lately, newest first, so a
+/// shopper comes back to something without searching for it again — on the
+/// owner's word; the web's `RecentlyViewedRail`. The list is the phone's own
+/// (`RecentlyViewed`) and the products are read back by id, so the cards
+/// carry today's price and photo and one no longer on the shelf is not drawn.
+/// Drawn from one, being this shopper's own history; Clear empties the list
+/// and says so. Read as the page appears, so a product opened from the shelf
+/// joins it on the next visit and not under the finger.
+struct RecentlyViewedRail: View {
+    @State private var products: [Product] = []
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if !products.isEmpty {
+                TabbedShelf(title: l.t("rail.viewed.title"), products: products, tabs: false, viewAllKey: "rail.viewed.clear", viewAllChevron: false) {
+                    app.viewed.clear()
+                    products = []
+                    app.toast(l.t("rail.viewed.cleared"))
+                }
+            }
+        }
+        .task(id: l.current) {
+            let wanted = app.viewed.ids
+            guard !wanted.isEmpty else {
+                products = []
+                return
+            }
+            let found = (try? await app.services.api.call(API.productsByIds, .init(ids: wanted, locale: l.current.rawValue))) ?? []
+            let byId = Dictionary(found.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            products = wanted.compactMap { byId[$0] }
+        }
     }
 }
 

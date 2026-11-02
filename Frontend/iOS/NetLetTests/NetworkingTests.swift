@@ -1191,3 +1191,161 @@ final class HomeShelfMemoryTests: XCTestCase {
         XCTAssertTrue(shelf.showingEarlier, "the page says the shelf is this morning's")
     }
 }
+
+/// The home page's shelves follow the web's `shelvesFor`: the owner's order,
+/// never a product twice, the deep savings on Mega deals, and a row of
+/// department tabs only where it could change something.
+final class HomeShelfRuleTests: XCTestCase {
+    func testTheShelvesFollowTheWebRule() async throws {
+        let products = try await Fixtures.products()
+        let sold = Array(products.prefix(6))
+        let hot = Array(products.suffix(6))
+        let shelves = HomeShelf.shelves(products, bestsellers: sold, trending: hot)
+
+        let drawn = [shelves.mega, shelves.deals, shelves.trending, shelves.bestsellers, shelves.newest].flatMap { $0.map(\.id) }
+        XCTAssertEqual(drawn.count, Set(drawn).count, "a product is on one shelf at most")
+        XCTAssertEqual(Set(drawn), Set(products.map(\.id)), "every live product is on the home page somewhere")
+        for product in shelves.mega { XCTAssertGreaterThanOrEqual(product.bestSaving, HomeShelf.megaPercent) }
+        for product in shelves.deals { XCTAssertTrue(product.isOnOffer) }
+        XCTAssertLessThanOrEqual(shelves.mega.count, HomeShelf.most)
+        for shelf in [shelves.deals, shelves.trending, shelves.bestsellers, shelves.newest] {
+            XCTAssertLessThanOrEqual(shelf.count, HomeShelf.tabbed)
+            XCTAssertTrue(shelf.isEmpty || shelf.count >= HomeShelf.floor || shelf == shelves.newest)
+        }
+        // Trending picks before Bestsellers, so what is hot is not a bestseller too.
+        XCTAssertTrue(Set(shelves.trending.map(\.id)).isDisjoint(with: shelves.bestsellers.map(\.id)))
+    }
+
+    func testTheDepartmentTabsNarrowOrAreNotOffered() async throws {
+        let products = try await Fixtures.products()
+        let tabs = HomeShelf.departmentTabs(products)
+        for tab in tabs {
+            XCTAssertGreaterThanOrEqual(tab.products.count, HomeShelf.minTab)
+            let name = ReferenceData.shared.departments.first { $0.slug == tab.slug }?.name ?? ""
+            XCTAssertTrue(tab.products.allSatisfy { $0.productType == name || $0.tags.contains(name) })
+        }
+        // One department holding the whole shelf is "All" said twice: no row.
+        if let first = tabs.first {
+            XCTAssertEqual(HomeShelf.departmentTabs(first.products), [])
+        }
+        XCTAssertEqual(HomeShelf.departmentTabs([]), [])
+    }
+}
+
+/// What this phone looked at lately, kept on the phone: the web's
+/// `recentlyViewed` rule — newest first, once, two dozen at most, nothing
+/// older than the window, and Clear forgetting it all.
+final class RecentlyViewedTests: XCTestCase {
+    @MainActor
+    func testRemembersNewestFirstOnceAndForgetsOnClear() {
+        let defaults = UserDefaults(suiteName: "RecentlyViewedTests-\(UUID().uuidString)")!
+        var clock = Date(timeIntervalSince1970: 1_000_000)
+        let viewed = RecentlyViewed(defaults: defaults, now: { clock })
+        XCTAssertEqual(viewed.ids, [])
+        viewed.remember("1")
+        clock = clock.addingTimeInterval(60)
+        viewed.remember("2")
+        clock = clock.addingTimeInterval(60)
+        viewed.remember("1")
+        XCTAssertEqual(viewed.ids, ["1", "2"])
+        viewed.remember("")
+        viewed.remember(String(repeating: "x", count: 300))
+        XCTAssertEqual(viewed.ids, ["1", "2"])
+
+        // Kept across a launch, and read back newest first.
+        let again = RecentlyViewed(defaults: defaults, now: { clock })
+        XCTAssertEqual(again.ids, ["1", "2"])
+
+        // Older than the window, it is gone.
+        let later = RecentlyViewed(defaults: defaults, now: { clock.addingTimeInterval((RecentlyViewed.days + 1) * 24 * 60 * 60) })
+        XCTAssertEqual(later.ids, [])
+
+        for index in 0..<(RecentlyViewed.most + 5) {
+            clock = clock.addingTimeInterval(1)
+            viewed.remember("p\(index)")
+        }
+        XCTAssertEqual(viewed.ids.count, RecentlyViewed.most)
+        XCTAssertEqual(viewed.ids.first, "p\(RecentlyViewed.most + 4)")
+
+        viewed.clear()
+        XCTAssertEqual(viewed.ids, [])
+        XCTAssertEqual(RecentlyViewed(defaults: defaults, now: { clock }).ids, [])
+    }
+}
+
+/// The seasons and the occasions follow the web's `occasions.ts`, from the
+/// same exported table: the fixed dates and the Hijri ones, Kuwait's day, and
+/// a store's tag in either language however it was typed.
+final class OccasionTests: XCTestCase {
+    private func on(_ iso: String) -> [String] {
+        let date = ISO8601DateFormatter().date(from: iso)!
+        return ReferenceData.shared.occasionsOn(date).map(\.slug)
+    }
+
+    @MainActor
+    func testTheCalendarIsExportedWholeAndNamedInBothLanguages() {
+        let occasions = ReferenceData.shared.occasions
+        XCTAssertEqual(occasions.map(\.slug), ["ramadan", "eid-al-fitr", "eid-al-adha", "national-day", "mothers-day", "summer", "back-to-school", "halloween", "winter", "new-year"])
+        let english = LanguageSettings(defaults: UserDefaults(suiteName: "OccasionTests-en")!)
+        english.set(.en)
+        let arabic = LanguageSettings(defaults: UserDefaults(suiteName: "OccasionTests-ar")!)
+        arabic.set(.ar)
+        for occasion in occasions {
+            XCTAssertNotEqual(english.t(occasion.label), occasion.label)
+            XCTAssertNotEqual(arabic.t(occasion.label), occasion.label)
+        }
+    }
+
+    func testTheWindowsFollowTheWebsOnTheSameDates() {
+        XCTAssertEqual(on("2026-08-20T09:00:00Z"), ["back-to-school"])
+        XCTAssertEqual(on("2026-07-01T09:00:00Z"), ["summer"])
+        XCTAssertEqual(on("2026-10-20T09:00:00Z"), ["halloween"])
+        XCTAssertEqual(on("2026-12-25T09:00:00Z"), ["winter", "new-year"])
+        XCTAssertEqual(on("2026-01-20T09:00:00Z"), ["winter"])
+        XCTAssertEqual(on("2026-11-02T09:00:00Z"), [])
+        // Ramadan 1447 begins 18 February 2026; Shawwal 20 March; Dhu al-Hijja 18 May.
+        XCTAssertEqual(on("2026-02-20T09:00:00Z"), ["ramadan", "national-day"])
+        XCTAssertEqual(on("2026-03-01T09:00:00Z"), ["ramadan"])
+        XCTAssertEqual(on("2026-03-22T09:00:00Z"), ["eid-al-fitr"])
+        XCTAssertEqual(on("2026-05-24T09:00:00Z"), ["eid-al-adha"])
+        // At 01:00 in Kuwait the window has opened, though it is still the day before in UTC.
+        XCTAssertEqual(on("2026-08-10T22:00:00Z"), ["back-to-school"])
+        XCTAssertEqual(on("2026-08-10T20:00:00Z"), ["summer"])
+        XCTAssertTrue(Occasion.inWindow(month: 12, day: 20, from: [12, 15], to: [1, 7]))
+        XCTAssertFalse(Occasion.inWindow(month: 1, day: 8, from: [12, 15], to: [1, 7]))
+    }
+
+    func testAStoresTagPutsAProductOnTheOccasion() async throws {
+        let school = try XCTUnwrap(ReferenceData.shared.occasion(slug: "back-to-school"))
+        for tag in ["Back to School", "back-to-school", "BACK_TO_SCHOOL", "school", "العودة إلى المدارس", "العودة الى المدارس", "مدرسة", "المدرسه"] {
+            XCTAssertTrue(school.matches(tags: ["sale", tag]), tag)
+        }
+        XCTAssertFalse(school.matches(tags: ["summer", "sale"]))
+        XCTAssertFalse(school.matches(tags: []))
+        XCTAssertEqual(Occasion.fold("Back-to-School!"), "backtoschool")
+        XCTAssertEqual(Occasion.fold("العودة إلى المدارس"), Occasion.fold("العودة الى المدارس"))
+        XCTAssertEqual(Occasion.fold("رَمَضان"), "رمضان")
+    }
+
+    /// On the home page an occasion's shelf is the tagged products the deals
+    /// did not take, from four, only while its shopping is on — checked with
+    /// a calendar of the test's own over the recorded catalogue.
+    func testTheHomePageDrawsAnOccasionFromTheTagsWhileItIsOn() async throws {
+        let products = try await Fixtures.products()
+        // The recorded catalogue carries no tags, so the shelf is empty there; a catalogue with some proves the rest.
+        let tag = products.flatMap(\.tags).first ?? "nothing-is-tagged-with-this"
+        let always = Occasion(slug: "test-season", label: "occasion.summer", tags: [tag], window: .init(calendar: "gregorian", from: [1, 1], to: [12, 31]))
+        let never = Occasion(slug: "never", label: "occasion.winter", tags: [tag], window: .init(calendar: "gregorian", from: [2, 30], to: [2, 31]))
+        let shelves = HomeShelf.shelves(products, bestsellers: [], now: Date(), occasions: [always, never])
+        let plain = HomeShelf.shelves(products, bestsellers: [], now: Date(), occasions: [])
+        let tagged = products.filter { always.matches($0) && !plain.mega.contains($0) && !plain.deals.contains($0) }
+        if tagged.count >= HomeShelf.floor {
+            XCTAssertEqual(shelves.occasions.map(\.occasion.slug), ["test-season"])
+            XCTAssertEqual(Set(shelves.occasions[0].products.map(\.id)), Set(tagged.prefix(HomeShelf.most).map(\.id)))
+            XCTAssertTrue(Set(shelves.trending.map(\.id) + shelves.bestsellers.map(\.id) + shelves.newest.map(\.id)).isDisjoint(with: shelves.occasions[0].products.map(\.id)))
+        } else {
+            XCTAssertEqual(shelves.occasions, [])
+        }
+        XCTAssertEqual(HomeShelf.shelves(products, bestsellers: [], now: Date(), occasions: [never]).occasions, [])
+    }
+}

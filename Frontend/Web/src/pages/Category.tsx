@@ -58,6 +58,7 @@ import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { departmentMeta, privatePageMeta } from "@shared/seo";
 import { findSubcategory, subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
+import { occasionFromSlug, productsForOccasion } from "@shared/commerce/occasions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   ArrowUpDown, BadgePercent, Banknote, Check, ChevronDown, LayoutGrid, ListFilter, PackageOpen, SlidersHorizontal, Star, Store, Tag, Truck, X,
@@ -159,11 +160,13 @@ export default function Category() {
   // otherwise ticking "Sony" would remove every other brand from the list you
   // used to tick it. On a search, what is in it is what the search found.
   const inCategory = useMemo(() => productsInCategory(catalog, category), [catalog, category]);
-  /* A subcategory is the page rather than a facet, so its facets are its own products'. */
-  const inPage = useMemo(
-    () => (filters.sub ? inCategory.filter(product => product.subcategory === filters.sub) : inCategory),
-    [inCategory, filters.sub],
-  );
+  /* An occasion's shelf, the products the stores tagged for it (`?occasion=`): the page, like a subcategory. */
+  const activeOccasion = onSearchPage ? null : occasionFromSlug(filters.occasion);
+  /* A subcategory or an occasion is the page rather than a facet, so its facets are its own products'. */
+  const inPage = useMemo(() => {
+    const narrowed = filters.sub ? inCategory.filter(product => product.subcategory === filters.sub) : inCategory;
+    return activeOccasion ? productsForOccasion(narrowed, activeOccasion) : narrowed;
+  }, [inCategory, filters.sub, activeOccasion]);
   /*
    * The Deals page, on the owner's word: the whole shop narrowed to what is on
    * offer — the Deals tab, and the footer's "On offer" — drawn as a shelf per
@@ -220,11 +223,11 @@ export default function Category() {
     : null;
   const title = searched
     ? category === "all" ? t("browse.searchTitle", { query: searched }) : t("browse.searchInTitle", { query: searched, name: departmentName })
-    : viewName ?? (activeSub ? subcategoryName(activeSub, locale === "ar") : departmentName);
+    : viewName ?? (activeOccasion ? t(activeOccasion.label) : activeSub ? subcategoryName(activeSub, locale === "ar") : departmentName);
 
   /* A department page is a page to be found; a search or a filtered view is not. */
   usePageMeta(
-    !onSearchPage && !searched && !activeFilterCount(filters) && !filters.sub && knownDepartment
+    !onSearchPage && !searched && !activeFilterCount(filters) && !filters.sub && !filters.occasion && knownDepartment
       ? departmentMeta(knownDepartment.name, knownDepartment.slug, SITE_URL)
       : privatePageMeta(title),
   );
@@ -263,8 +266,8 @@ export default function Category() {
 
   /* Clears the facets and keeps what was searched for: "Clear all" sits beside the filters, not the search box. */
   const clearAll = () => {
-    /* The subcategory is the page, not a filter, so it stays. */
-    const query = searchWithTerm({ ...EMPTY_FILTERS, sub: filters.sub, onOffer: dealsPage }, term);
+    /* The subcategory or the occasion is the page, not a filter, so it stays. */
+    const query = searchWithTerm({ ...EMPTY_FILTERS, sub: filters.sub, occasion: filters.occasion, onOffer: dealsPage }, term);
     navigate(`${basePath}${query}`, { replace: true });
     setQueryString(query);
   };

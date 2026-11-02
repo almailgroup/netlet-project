@@ -51,9 +51,13 @@ import {
   type TasteSignal,
 } from "../../../Shared/commerce/taste.js";
 import type { LocalePick } from "../../../Shared/commerce/fromInventory.js";
+import { isOnOffer } from "../../../Shared/commerce/browse.js";
+import { rowIdText } from "../core/schemas.js";
 
 /** How wide a net the ranking casts before it is cut to the rail's length. */
 const CANDIDATE_LIMIT = 120;
+/** The most of a device's viewing history a request carries (`MAX_VIEWED` on the web too). */
+export const MAX_VIEWED = 24;
 
 export type RecommendationResult = {
   items: Recommendation[];
@@ -82,11 +86,21 @@ const empty: RecommendationResult = { items: [], personalised: false, terms: [],
  * us. Orders are read for a signed-in shopper only — there is no such thing as
  * an anonymous purchase here.
  */
-async function signalsFor(userId: number | null, cartId: string | null): Promise<TasteSignal[]> {
+async function signalsFor(userId: number | null, cartId: string | null, viewed: string[]): Promise<TasteSignal[]> {
   const db = await getDb();
   if (!db) return [];
 
   const out: TasteSignal[] = [];
+
+  /*
+   * The browsing history is the caller's word, so only something shaped like
+   * a product's id is read from it: an id that names nothing teaches nothing
+   * (`buildTaste` skips what is not on the shelf), and anything else is noise
+   * a page could not have recorded.
+   */
+  for (const id of viewed) {
+    if (rowIdText.safeParse(id).success) out.push({ productId: id, kind: "viewed" });
+  }
 
   if (userId !== null) {
     const savedRows = await db
@@ -174,22 +188,36 @@ async function refineWithModel(ranked: Recommendation[], terms: string[]): Promi
  *
  * Falls back to the shop's own newest when there is not enough to go on, and
  * says so through `personalised` rather than dressing it up.
+ *
+ * **`onOffer` is the same rail over the deals alone** — "Deals picked for
+ * you", on the owner's word ("personalized deals based on each customer's
+ * interests, browsing history, and purchase behavior"). The profile is built
+ * from the whole shelf, because what somebody saved says what they like
+ * whether or not it was on offer; only the candidates are narrowed, to what
+ * the store's permit lets the shop call a saving (`isOnOffer`, which
+ * `fromInventory` has already decided on the read).
  */
 export async function recommendFor(
-  { userId, cartId, limit = 8, locale = "en" }: {
+  { userId, cartId, limit = 8, locale = "en", viewed = [], onOffer = false }: {
     userId: number | null;
     cartId: string | null;
     limit?: number;
     locale?: LocalePick;
+    /** The device's viewing history, newest first; never stored. */
+    viewed?: string[];
+    /** Rank only what is on offer. */
+    onOffer?: boolean;
   },
 ): Promise<RecommendationResult> {
   /* Switched off (2.3): an empty rail, which the page already draws as no rail. */
   if (!(await featureOn("recommendations"))) return empty;
-  const catalog = await listProducts({ first: CANDIDATE_LIMIT, locale });
-  if (catalog.length === 0) return empty;
+  const shelf = await listProducts({ first: CANDIDATE_LIMIT, locale });
+  if (shelf.length === 0) return empty;
 
-  const signals = await signalsFor(userId, cartId);
-  const profile = buildTaste(signals, catalog);
+  const signals = await signalsFor(userId, cartId, viewed);
+  const profile = buildTaste(signals, shelf);
+  const catalog = onOffer ? shelf.filter(isOnOffer) : shelf;
+  if (catalog.length === 0) return empty;
 
   if (profile.strength < TASTE_FLOOR) {
     /*

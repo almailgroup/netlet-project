@@ -246,6 +246,7 @@ describe("filters in the URL", () => {
       onOffer: true,
       express: true,
       sub: "phones",
+      occasion: "back-to-school",
       sort: "price-high",
     };
     const restored = filtersFromSearch(searchFromFilters(filters), "Electronics");
