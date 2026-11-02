@@ -20,6 +20,8 @@ import { useCatalog } from "@/hooks/useCatalog";
 import { DEPARTMENT_SHELF, SEARCH_LIMIT } from "@/lib/routeData";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
+import { DealShelves } from "@/components/browse/DealShelves";
+import { dealShelves } from "@shared/commerce/deals";
 import { ProductCard } from "@/components/product/ProductCard";
 import { QuickView } from "@/components/product/QuickView";
 import { BUTTON_PRIMARY, Breadcrumbs, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
@@ -162,7 +164,20 @@ export default function Category() {
     () => (filters.sub ? inCategory.filter(product => product.subcategory === filters.sub) : inCategory),
     [inCategory, filters.sub],
   );
-  const facets = useMemo(() => facetsFor(searching ? matched : inPage), [searching, matched, inPage]);
+  /*
+   * The Deals page, on the owner's word: the whole shop narrowed to what is on
+   * offer — the Deals tab, and the footer's "On offer" — drawn as a shelf per
+   * kind of thing (`DealShelves`) under the filter chips. "On offer" is the
+   * page rather than a filter on it: it is not counted, not a chip, and
+   * Clear all keeps it, and the facets are those of what is on offer, so a
+   * brand ticked here has deals to show.
+   */
+  const dealsPage = !onSearchPage && category === "all" && !searching && filters.onOffer;
+  const shownFilters = useMemo(() => (dealsPage ? { ...filters, onOffer: false } : filters), [dealsPage, filters]);
+  const facets = useMemo(
+    () => facetsFor(searching ? matched : dealsPage ? applyFilters(inPage, { ...EMPTY_FILTERS, onOffer: true }) : inPage),
+    [searching, matched, inPage, dealsPage],
+  );
 
   /*
    * The server has already ranked the matches, corrected a misspelling when the
@@ -196,10 +211,10 @@ export default function Category() {
      filter, and the heading read "All products" for both — the list was
      right and the page said it was something else. Named when the view is
      exactly that and nothing more. */
-  /* The deals, as the Deals tab and the footer open them: the whole shop on offer and nothing else. */
-  const dealsView = category === "all" && !searched && filters.onOffer && activeFilterCount(filters) === 1;
+  /* The deals with nothing else narrowing them, which can only be empty because nothing is on offer. */
+  const dealsView = dealsPage && activeFilterCount(shownFilters) === 0;
   const viewName = category === "all" && !searched
-    ? dealsView ? t("footer.onOffer")
+    ? dealsPage ? t("nav.deals")
       : filters.sort === "newest" && activeFilterCount(filters) === 0 ? t("footer.newArrivals")
       : null
     : null;
@@ -214,7 +229,7 @@ export default function Category() {
       : privatePageMeta(title),
   );
 
-  const activeCount = activeFilterCount(filters);
+  const activeCount = activeFilterCount(shownFilters);
   /* How many of this shelf's products each subcategory holds, and the chips worth a press. */
   const subCounts = useMemo(() => {
     const counted = new Map<string, number>();
@@ -249,7 +264,7 @@ export default function Category() {
   /* Clears the facets and keeps what was searched for: "Clear all" sits beside the filters, not the search box. */
   const clearAll = () => {
     /* The subcategory is the page, not a filter, so it stays. */
-    const query = searchWithTerm({ ...EMPTY_FILTERS, sub: filters.sub }, term);
+    const query = searchWithTerm({ ...EMPTY_FILTERS, sub: filters.sub, onOffer: dealsPage }, term);
     navigate(`${basePath}${query}`, { replace: true });
     setQueryString(query);
   };
@@ -294,7 +309,7 @@ export default function Category() {
       clear: () => setFilters({ minRating: null }),
     }] : []),
     ...(filters.inStock ? [{ key: "stock", label: t("browse.inStock"), clear: () => setFilters({ inStock: false }) }] : []),
-    ...(filters.onOffer ? [{ key: "offer", label: t("browse.onOffer"), clear: () => setFilters({ onOffer: false }) }] : []),
+    ...(shownFilters.onOffer ? [{ key: "offer", label: t("browse.onOffer"), clear: () => setFilters({ onOffer: false }) }] : []),
     ...(filters.express ? [{ key: "express", label: t("browse.expressOnly"), clear: () => setFilters({ express: false }) }] : []),
   ];
 
@@ -310,7 +325,9 @@ export default function Category() {
    * title — one structure at a time, never both with one hidden.
    */
   const wide = useMediaQuery("(min-width: 1024px)");
-  const groups = useMemo(() => filterGroups(facets, filters), [facets, filters]);
+  const groups = useMemo(() => filterGroups(facets, shownFilters), [facets, shownFilters]);
+  /* On the Deals page a change never takes "On offer" away: it is the page. */
+  const setShownFilters = (patch: Partial<BrowseFilters>) => setFilters(dealsPage ? { ...patch, onOffer: true } : patch);
   useAssistantMark(!wide);
   /* The pill leaves the assistant's mark its corner, centred in what is left. */
   const assistantOn = trpc.ai.available.useQuery(undefined, { staleTime: 5 * 60_000 }).data?.chat === true;
@@ -346,9 +363,9 @@ export default function Category() {
   const sidebar = (only?: FilterGroupKey) => (
     <FilterSidebar
       facets={facets}
-      filters={filters}
+      filters={shownFilters}
       currency={currency}
-      onChange={setFilters}
+      onChange={setShownFilters}
       onSelectCategory={selectCategory}
       only={only}
     />
@@ -360,7 +377,9 @@ export default function Category() {
         <Breadcrumbs
           trail={onSearchPage
             ? [{ label: t("browse.searchCrumb") }]
-            : activeSub
+            : dealsPage
+              ? [{ label: t("nav.deals") }]
+              : activeSub
               ? [{ label: departmentName, href: basePath }, { label: subcategoryName(activeSub, locale === "ar") }]
               : [{ label: departmentName }]}
         />
@@ -517,6 +536,15 @@ export default function Category() {
                     so without this the outline skips a level. Hidden because
                     the region is already visibly obvious; it is the screen
                     reader's outline that needs the rung. */}
+                {dealsPage ? (
+                  <DealShelves
+                    shelves={dealShelves(results, { deepestFirst: filters.sort === "relevance" })}
+                    saved={heartedIds}
+                    onSave={product => toastHeart(toggleSaved(product.id), product.title, t)}
+                    onQuickView={setQuickProduct}
+                  />
+                ) : (
+                <>
                 <h2 className="sr-only">{t("browse.resultsRegion")}</h2>
                 <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                 {results.map(product => (
@@ -530,6 +558,8 @@ export default function Category() {
                   />
                 ))}
                 </div>
+                </>
+                )}
               </>
             ) : (
               <div className="mt-5">
@@ -649,7 +679,7 @@ export default function Category() {
               <div className="flex shrink-0 items-center gap-1">
                 {openGroup ? (
                   openGroupActive ? (
-                    <button type="button" onClick={() => setFilters(clearFilterGroup(filters, openGroup))} className="min-h-11 px-2 text-[13px] font-extrabold ink-accent underline underline-offset-4">
+                    <button type="button" onClick={() => setShownFilters(clearFilterGroup(shownFilters, openGroup))} className="min-h-11 px-2 text-[13px] font-extrabold ink-accent underline underline-offset-4">
                       {t("browse.clearGroup")}
                     </button>
                   ) : null

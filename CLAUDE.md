@@ -132,9 +132,9 @@ one filled in navy in a pale grey pill, the rest near-black outlines; each
 tab's word is its name to a screen reader and VoiceOver, never drawn. Saved
 left the bar with an earlier picture and is the Saved tile on the account
 page, one press under Profile; Categories opens `/categories`, the departments
-as a page (see Browsing), and Deals the shop's on-offer products
-(`/category/all?offer=1` on the web, the deals shelf in the app), saying "No
-deals right now" with a way to everything when there are none. **The icons
+as a page (see Browsing), and Deals the Deals page, a shelf of what is on
+offer per kind of thing (see Browsing), saying "No deals right now" with a way
+to everything when there are none. **The icons
 are one drawing, the web's and the app's, on the owner's word**
 (`content/tabIcons.ts`): they asked to "improve the icon design for the menu
 at the bottom", and the first redraw — the same house, person, cart and grid
@@ -5718,6 +5718,29 @@ Measured at 320 and 390 in both languages and 1440: the chips opening their
 own group with focus on its Close, a ticked seller counting on its chip and
 lighting the dot, Sort writing `?sort=` and closing, the pill 12px over the
 tab bar, axe clean with each sheet open, no sideways scroll.
+
+**The Deals tab opens the Deals page, drawn after the owner's picture** ("add
+a new deals page just like shown in the image"): the whole shop narrowed to
+what is on offer (`/category/all?offer=1`, the address the footer's "On offer"
+and Home's deals band already used), titled Deals, under the filter chips and
+with the Sort | Filter pill — and a shelf per kind of thing rather than a
+grid: its name, View all, and a sideways row of cards. `dealShelves`
+(`Shared/commerce/deals.ts`, tested; the app's `DealShelves`, tested on the
+recorded catalogue) cuts them: the product's subcategory within its
+department, a kind with a single deal joining its department's own shelf
+(after the department's kinds), the fullest shelves first, products in no
+department NetLet keeps last as "More deals", and the deepest saving leading
+each shelf unless the shopper chose an order; twelve cards, and View all opens
+that department narrowed to the kind and to what is on offer (the app's
+`Route.dealsIn`). **"On offer" is the page, not a filter on it**
+(`shownFilters`): it is not counted on Filter's dot or a chip, has no row in
+the Offers sheet, Clear all keeps it, and the facets are what is on offer, so
+a brand ticked there has deals to show. With nothing on offer it says "No
+deals right now" and offers everything, never "no products match these
+filters" over a filter nobody set. Measured at 320, 390 in both languages and
+1440 on four seeded deals: the tab opening the page lit, the shelves and View
+all, a ticked seller narrowing it and Clear all leaving it the Deals page,
+axe clean, no sideways scroll.
 
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and

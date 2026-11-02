@@ -11,6 +11,8 @@ enum Route: Hashable {
     case subcategory(department: String, sub: String)
     /// The shelf a department view narrows to: what is on offer, deepest first.
     case deals
+    /// One department's deals, or one kind's within it — a Deals shelf's View all.
+    case dealsIn(department: String, sub: String?)
     /// The newest products, the home page's "View all" under New arrivals.
     case newest
     /// Everything of one brand, from the home page's brand tiles.
@@ -380,6 +382,7 @@ final class AppModel {
             browseSheetStart = pieces[1]
             categoriesPath = NavigationPath([Route.department(slug: pieces[0] == "all" ? nil : pieces[0])])
         case "deals":
+            // The Deals tab, its shelves drawn.
             selectedTab = .deals
         case "stores":
             selectedTab = .home
@@ -388,9 +391,6 @@ final class AppModel {
             guard let value else { return }
             selectedTab = .home
             homePath = NavigationPath([Route.store(slug: value)])
-        case "deals":
-            selectedTab = .home
-            homePath = NavigationPath([Route.deals])
         case "product":
             guard let value else { return }
             selectedTab = .home

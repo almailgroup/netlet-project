@@ -147,6 +147,28 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(found.total, found.products.count)
     }
 
+    /// The Deals page's shelves are the web's `dealShelves`: every deal on one
+    /// shelf, a kind standing alone only with two or more, the fullest shelf
+    /// first, the deepest saving leading each, cut to the shelf's size.
+    func testTheDealsShelvesFollowTheWebRule() async throws {
+        let products = try await client.call(API.products, .init(first: 24))
+        let deals = products.filter(\.isOnOffer)
+        XCTAssertFalse(deals.isEmpty, "the recorded catalogue has deals")
+        let shelves = DealShelves.of(deals, deepestFirst: true)
+        XCTAssertEqual(shelves.reduce(0) { $0 + $1.total }, deals.count, "every deal is on one shelf")
+        XCTAssertEqual(Set(shelves.map(\.key)).count, shelves.count)
+        XCTAssertEqual(shelves.map(\.total), shelves.map(\.total).sorted(by: >), "the fullest shelf first")
+        for shelf in shelves {
+            if shelf.subcategory != nil { XCTAssertGreaterThanOrEqual(shelf.total, DealShelves.minKind, shelf.key) }
+            XCTAssertLessThanOrEqual(shelf.products.count, DealShelves.size)
+            let savings = shelf.products.map(\.bestSaving)
+            XCTAssertEqual(savings, savings.sorted(by: >), "\(shelf.key) leads with the deepest saving")
+        }
+        // A chosen order is kept as given.
+        let kept = DealShelves.of(deals, deepestFirst: false)
+        XCTAssertEqual(kept.reduce(0) { $0 + $1.total }, deals.count)
+    }
+
     /// The chip row's groups are the web's `filterGroups`: each one that can
     /// narrow the shelf, with how many are ticked; a ticked group stays
     /// whatever the shelf holds; Clear takes off that group alone.

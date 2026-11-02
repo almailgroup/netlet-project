@@ -185,7 +185,8 @@ struct DealsBand: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            ShelfHeading(title: l.t("rail.deals.title"), onDark: true) { app.push(.deals) }
+            // View all is the Deals tab, as the web's link lights it.
+            ShelfHeading(title: l.t("rail.deals.title"), onDark: true) { app.select(.deals) }
             if let lead = products.first {
                 ProductCard(product: lead, feature: true)
             }

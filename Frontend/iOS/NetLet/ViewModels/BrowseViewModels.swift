@@ -276,6 +276,83 @@ enum FilterGroups {
     }
 }
 
+/// The Deals page's shelves — the web's `dealShelves` (`Shared/commerce/deals.ts`),
+/// rule for rule, tested on its cases: what is on offer, a shelf per kind of
+/// thing (the product's subcategory within its department); a kind with a
+/// single deal joins its department's own shelf, which follows the
+/// department's kinds; the fullest shelves first, then the departments' and
+/// their kinds' own order, products in no department last; the deepest saving
+/// leading each shelf unless an order was chosen; `size` cards before View all.
+enum DealShelves {
+    struct Shelf: Identifiable {
+        let key: String
+        let department: String?
+        let subcategory: String?
+        let total: Int
+        let products: [Product]
+        var id: String { key }
+    }
+
+    nonisolated static let size = 12
+    nonisolated static let minKind = 2
+
+    nonisolated static func of(_ products: [Product], deepestFirst: Bool, departments: [Department] = ReferenceData.shared.departments) -> [Shelf] {
+        func department(of product: Product) -> Department? { departments.first { $0.name == product.productType } }
+        // Kinds, in the order first met, to see which can stand alone.
+        var kinds: [(key: String, products: [Product])] = []
+        func add(_ product: Product, to key: String, in list: inout [(key: String, products: [Product])]) {
+            if let at = list.firstIndex(where: { $0.key == key }) { list[at].products.append(product) } else { list.append((key, [product])) }
+        }
+        for product in products {
+            guard let home = department(of: product) else { add(product, to: "other", in: &kinds); continue }
+            let kind = product.subcategory.flatMap { home.sub($0)?.slug }
+            add(product, to: home.slug + "/" + (kind ?? ""), in: &kinds)
+        }
+        var shelves: [(key: String, products: [Product])] = []
+        for entry in kinds {
+            let parts = entry.key.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+            let key = entry.key == "other" ? "other" : (parts[1].isEmpty || entry.products.count < minKind) ? parts[0] + "/" : entry.key
+            for product in entry.products { add(product, to: key, in: &shelves) }
+        }
+        func rank(_ shelf: Shelf) -> (Int, Int) {
+            guard let slug = shelf.department, let home = departments.first(where: { $0.slug == slug }) else { return (Int.max, Int.max) }
+            let order = home.subs.map(\.slug)
+            return (home.position, shelf.subcategory.flatMap { order.firstIndex(of: $0) } ?? order.count)
+        }
+        return shelves.map { entry in
+            let parts = entry.key.split(separator: "/", omittingEmptySubsequences: false).map(String.init)
+            let ordered = deepestFirst
+                ? entry.products.enumerated()
+                    .sorted { a, b in
+                        let left = a.element.bestSaving, right = b.element.bestSaving
+                        return left != right ? left > right : a.offset < b.offset
+                    }
+                    .map(\.element)
+                : entry.products
+            return Shelf(
+                key: entry.key == "other" ? "other" : parts[1].isEmpty ? parts[0] : entry.key,
+                department: entry.key == "other" ? nil : parts[0],
+                subcategory: entry.key == "other" || parts[1].isEmpty ? nil : parts[1],
+                total: entry.products.count,
+                products: Array(ordered.prefix(size))
+            )
+        }
+        .sorted { a, b in
+            if a.total != b.total { return a.total > b.total }
+            let left = rank(a), right = rank(b)
+            return left.0 != right.0 ? left.0 < right.0 : left.1 < right.1
+        }
+    }
+}
+
+extension Product {
+    /// The best live saving across the variants still for sale, in percent —
+    /// `savingPercentOf`, which leads a Deals shelf.
+    var bestSaving: Int {
+        variants.filter(\.availableForSale).compactMap(\.savingPercent).max() ?? 0
+    }
+}
+
 /// A shelf page — a department, the whole catalogue, a view of it, or a
 /// search's results — with the filters and the sort a phone draws.
 @Observable
@@ -358,9 +435,28 @@ final class BrowseModel {
         sort.apply(to: (products.value ?? []).filter(filters.admits))
     }
 
-    /// A subcategory is the page, so its facets are its own products'.
+    /// The Deals page, on the owner's word: the whole shop narrowed to what
+    /// is on offer — the Deals tab — drawn as a shelf per kind of thing. "On
+    /// offer" is the page rather than a filter on it (`shownFilters`).
+    var isDealsPage: Bool {
+        if case .shelf(.none, .deals) = source, query == nil { return filters.onOffer }
+        return false
+    }
+
+    /// The filters as the page shows and counts them: on the Deals page,
+    /// without the "On offer" the page itself is — the web's `shownFilters`.
+    var shownFilters: BrowseFilters {
+        var shown = filters
+        if isDealsPage { shown.onOffer = false }
+        return shown
+    }
+
+    /// A subcategory is the page, so its facets are its own products'; on
+    /// the Deals page they are what is on offer, so a brand ticked there has
+    /// deals to show.
     var facets: Facets {
-        let all = products.value ?? []
+        var all = products.value ?? []
+        if isDealsPage { all = all.filter(\.isOnOffer) }
         guard let sub = filters.sub else { return Facets(all) }
         return Facets(all.filter { $0.subcategory == sub })
     }
@@ -375,8 +471,11 @@ final class BrowseModel {
     }
 
     func clearFilters() {
-        // The subcategory is the page, not a filter, so it stays.
+        // The subcategory is the page, not a filter, so it stays; so does
+        // "On offer" on the Deals page, which it is.
+        let deals = isDealsPage
         filters = BrowseFilters(sub: filters.sub)
+        filters.onOffer = deals
     }
 }
 

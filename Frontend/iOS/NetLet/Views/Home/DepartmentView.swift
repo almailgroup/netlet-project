@@ -33,6 +33,39 @@ struct SearchResultsView: View {
     }
 }
 
+/// The Deals page's shelves, after the owner's picture: what is on offer, a
+/// shelf per kind of thing (`DealShelves`), each its name, View all — that
+/// kind's department narrowed to it and to what is on offer — and a sideways
+/// row of cards (`ProductRail`). The web's `DealShelves`.
+private struct DealShelvesView: View {
+    let shelves: [DealShelves.Shelf]
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(shelves) { shelf in
+                ProductRail(title: title(shelf), products: shelf.products, viewAll: viewAll(shelf))
+            }
+        }
+        // The rails carry their own side room; the page's is given back.
+        .padding(.horizontal, -16)
+        .padding(.top, -24)
+    }
+
+    private func title(_ shelf: DealShelves.Shelf) -> String {
+        let department = ReferenceData.shared.department(slug: shelf.department)
+        if let department, let kind = department.sub(shelf.subcategory) { return kind.shown(l.current) }
+        if let department { return l.t(department.label) }
+        return l.t("browse.moreDeals")
+    }
+
+    private func viewAll(_ shelf: DealShelves.Shelf) -> (() -> Void)? {
+        guard let slug = shelf.department else { return nil }
+        return { app.push(.dealsIn(department: slug, sub: shelf.subcategory)) }
+    }
+}
+
 /// Which sheet the page has open: every filter, one group of them, or the sort.
 private enum BrowseSheet: Identifiable {
     case filters(FilterGroupKey?)
@@ -117,7 +150,8 @@ private struct BrowsePage: View {
     }
 
     private var crumb: String {
-        model.query == nil ? departmentName : l.t("browse.searchCrumb")
+        if model.isDealsPage { return l.t("nav.deals") }
+        return model.query == nil ? departmentName : l.t("browse.searchCrumb")
     }
 
     /// The subcategory the page is narrowed to, by its department.
@@ -128,10 +162,10 @@ private struct BrowsePage: View {
     private var title: String {
         if let query = model.query { return l.t("browse.searchTitle", ["query": query]) }
         if let activeSub { return activeSub.shown(l.current) }
+        if model.isDealsPage { return l.t("nav.deals") }
         guard model.department == nil, case .shelf(_, let view) = model.source else { return departmentName }
         // The view's own name while it is exactly that view and nothing more.
         switch view {
-        case .deals where model.filters.activeCount == 1 && model.filters.onOffer: return l.t("footer.onOffer")
         case .newest where model.filters.activeCount == 0 && model.sort == .newest: return l.t("footer.newArrivals")
         case .brand(let name) where model.filters.activeCount == 1 && model.filters.brands == [name]: return name
         default: return departmentName
@@ -144,7 +178,7 @@ private struct BrowsePage: View {
     }
 
     private var filtersLabel: String {
-        let count = model.filters.activeCount
+        let count = model.shownFilters.activeCount
         return count > 0 ? l.t("browse.filtersWithCount", ["count": "\(count)"]) : l.t("browse.filters")
     }
 
@@ -154,7 +188,7 @@ private struct BrowsePage: View {
     /// group, and one with something ticked says how many.
     @ViewBuilder
     private var filterChips: some View {
-        let groups = FilterGroups.of(model.facets, model.filters)
+        let groups = FilterGroups.of(model.facets, model.shownFilters)
         if !groups.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -240,7 +274,7 @@ private struct BrowsePage: View {
                 .padding(.trailing, 20)
                 .frame(maxHeight: .infinity)
                 .overlay(alignment: .topTrailing) {
-                    if model.filters.activeCount > 0 {
+                    if model.shownFilters.activeCount > 0 {
                         NoticeDot()
                             .padding(.top, 9)
                             .padding(.trailing, 13)
@@ -256,7 +290,7 @@ private struct BrowsePage: View {
         .frame(height: 50)
         .background(Capsule().fill(Brand.navy).shadow(color: Brand.navy.opacity(0.28), radius: 15, x: 0, y: 10))
         .buttonStyle(.tap)
-        .animation(still ? nil : .spring(response: 0.3, dampingFraction: 0.7), value: model.filters.activeCount > 0)
+        .animation(still ? nil : .spring(response: 0.3, dampingFraction: 0.7), value: model.shownFilters.activeCount > 0)
         .frame(maxWidth: .infinity)
         .padding(.leading, 16)
         // The assistant's mark is 50 points at the end, 16 from the edge.
@@ -274,7 +308,7 @@ private struct BrowsePage: View {
     }
 
     private var activeChips: [Chip] {
-        let filters = model.filters
+        let filters = model.shownFilters
         var chips: [Chip] = []
         if filters.inStock { chips.append(Chip(id: "stock", label: l.t("browse.inStock")) { $0.inStock = false }) }
         if filters.onOffer { chips.append(Chip(id: "offer", label: l.t("browse.onOffer")) { $0.onOffer = false }) }
@@ -414,6 +448,8 @@ private struct BrowsePage: View {
             }
             if shown.isEmpty {
                 empty
+            } else if model.isDealsPage {
+                DealShelvesView(shelves: DealShelves.of(shown, deepestFirst: model.sort == .relevance))
             } else {
                 ProductGrid(products: shown)
             }
@@ -422,12 +458,12 @@ private struct BrowsePage: View {
 
     @ViewBuilder
     private var empty: some View {
-        if case .shelf(.none, .deals) = model.source, model.query == nil, model.filters.activeCount == 1, model.filters.onOffer {
+        if model.isDealsPage, model.shownFilters.activeCount == 0 {
             // The Deals tab with nothing on offer: not a filter the shopper set.
             EmptyStateView(systemImage: "tag", title: l.t("browse.noDeals"), note: l.t("browse.noDealsNote"), actionTitle: l.t("browse.browseEverything")) {
                 app.push(.department(slug: nil))
             }
-        } else if model.filters.activeCount > 0 {
+        } else if model.shownFilters.activeCount > 0 {
             EmptyStateView(systemImage: "line.3.horizontal.decrease.circle", title: l.t("browse.empty"), note: l.t("browse.emptyNote"), actionTitle: l.t("browse.clearAll")) {
                 model.clearFilters()
             }
@@ -570,7 +606,7 @@ private struct FilterSheet: View {
 
     var body: some View {
         let facets = model.facets
-        let groups = FilterGroups.of(facets, model.filters)
+        let groups = FilterGroups.of(facets, model.shownFilters)
         let shown = only.map { key in groups.filter { $0.key == key } } ?? groups
         let ticked = shown.reduce(0) { $0 + $1.active }
         VStack(spacing: 0) {
@@ -584,7 +620,10 @@ private struct FilterSheet: View {
                 if ticked > 0 {
                     Button(l.t(only == nil ? "browse.clearAll" : "browse.clearGroup")) {
                         if let only {
+                            // On the Deals page "On offer" is the page, not the group's to clear.
+                            let deals = model.isDealsPage
                             FilterGroups.clear(only, in: &model.filters)
+                            if deals { model.filters.onOffer = true }
                         } else {
                             model.clearFilters()
                         }
@@ -631,7 +670,7 @@ private struct FilterSheet: View {
             if facets.narrows(facets.inStock) || model.filters.inStock {
                 tick(l.t("browse.inStock"), count: facets.inStock, on: $model.filters.inStock)
             }
-            if facets.narrows(facets.onOffer) || model.filters.onOffer {
+            if !model.isDealsPage, facets.narrows(facets.onOffer) || model.filters.onOffer {
                 tick(l.t("browse.onOffer"), count: facets.onOffer, on: $model.filters.onOffer)
             }
             if facets.narrows(facets.express) || model.filters.express {
