@@ -18,24 +18,39 @@ struct AuthView: View {
 
     var body: some View {
         ModelHost(make: { AuthViewModel(account: app.services.account) }) { model in
-            if inSheet {
-                ScrollView { AuthForm(model: model, band: false) }
-                    .scrollDismissesKeyboard(.interactively)
-                    .background(Brand.ground.ignoresSafeArea())
-                    .navigationTitle(l.t("auth.signInTitle"))
-                    .navigationBarTitleDisplayMode(.inline)
-            } else {
-                // Signed out, the account page is the form itself, in the
-                // shop's frame like every other page.
-                ShopPage(root: true, header: false) {
-                    AuthForm(model: model, band: true)
-                    // The app has no footer: its links, and for a guest the
-                    // language, are under the form.
-                    MoreFromNetLet(language: true)
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
-                        .padding(.bottom, 24)
-                }
+            form(model)
+                // The tutorial's last page opens the form on creating an
+                // account or on signing in, whichever was pressed.
+                .onAppear { takePreset(model) }
+                .onChange(of: app.authModePreset) { _, _ in takePreset(model) }
+        }
+    }
+
+    private func takePreset(_ model: AuthViewModel) {
+        guard !inSheet, let mode = app.authModePreset else { return }
+        model.mode = mode
+        app.authModePreset = nil
+    }
+
+    @ViewBuilder
+    private func form(_ model: AuthViewModel) -> some View {
+        if inSheet {
+            ScrollView { AuthForm(model: model, band: false) }
+                .scrollDismissesKeyboard(.interactively)
+                .background(Brand.ground.ignoresSafeArea())
+                .navigationTitle(l.t("auth.signInTitle"))
+                .navigationBarTitleDisplayMode(.inline)
+        } else {
+            // Signed out, the account page is the form itself, in the
+            // shop's frame like every other page.
+            ShopPage(root: true, header: false) {
+                AuthForm(model: model, band: true)
+                // The app has no footer: its links, and for a guest the
+                // language, are under the form.
+                MoreFromNetLet(language: true)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
             }
         }
     }

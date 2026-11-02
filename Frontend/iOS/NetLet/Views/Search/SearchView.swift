@@ -714,8 +714,9 @@ private struct SkeletonRows: View {
 }
 
 /// A press the eye sees as well as the finger: the shade every press here
-/// gets, and the tile giving a little under the thumb and springing back.
-private struct SpringPressStyle: ButtonStyle {
+/// gets, and the tile giving a little under the thumb and springing back —
+/// the search sheet's tiles and rows, and the Categories tab's.
+struct SpringPressStyle: ButtonStyle {
     var cornerRadius: CGFloat = 14
     @Environment(\.accessibilityReduceMotion) private var still
 

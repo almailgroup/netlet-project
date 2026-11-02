@@ -91,6 +91,7 @@ describe("sentences written for a constant", () => {
     ["returns.howTo", RETURN_WINDOW_DAYS, "many", "يوماً"],
     ["home.returnsWithin", RETURN_WINDOW_DAYS, "many", "يوماً"],
     ["returnsPage.intro", RETURN_WINDOW_DAYS, "many", "يومًا"],
+    ["ios.tutorial.ordersBody", RETURN_WINDOW_DAYS, "many", "يوماً"],
     ["offers.sent", ASK_WINDOW_DAYS, "few", "أيام"],
     ["delivery.ratingClosed", DELIVERY_RATING_WINDOW_DAYS, "many", "يوماً"],
     ["claims.windowClosed", CLAIM_WINDOW_DAYS, "few", "أيام"],

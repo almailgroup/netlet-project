@@ -10,7 +10,8 @@ import SwiftUI
 /// somebody's wishlist, the stores, selling on NetLet and the seller agreement
 /// left it, on the owner's word**: the stores are a box on Categories, the
 /// finder is in Wishlists and gifts, and the notifications are the bell at the
-/// top of the page.
+/// top of the page. "How to use the app" opens the first launch's tutorial
+/// again (`AppTutorial`), for whoever skipped it.
 ///
 /// A guest's Profile tab is the sign-in form, and the footer was the only
 /// place a guest could change the language, so the guest's card leads with
@@ -26,7 +27,8 @@ struct MoreFromNetLet: View {
         let id: String
         let symbol: String
         let title: String
-        let route: Route
+        /// Where the row goes; none opens the app's tutorial again.
+        let route: Route?
     }
 
     private var helpRows: [Row] {
@@ -36,6 +38,8 @@ struct MoreFromNetLet: View {
         if app.features.isOn("articles") {
             rows.append(Row(id: "guides", symbol: "book", title: l.t("guides.title"), route: .guides))
         }
+        // The first launch's tutorial, for whoever skipped it or wants it again.
+        rows.append(Row(id: "tutorial", symbol: "sparkles", title: l.t("ios.tutorial.open"), route: nil))
         return rows
     }
 
@@ -82,7 +86,11 @@ struct MoreFromNetLet: View {
         ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
             if index > 0 { DashedRule() }
             Button {
-                app.push(row.route)
+                if let route = row.route {
+                    app.push(route)
+                } else {
+                    withAnimation(.spring(response: 0.55, dampingFraction: 0.9)) { app.showTutorial() }
+                }
             } label: {
                 HStack(spacing: 14) {
                     Image(systemName: row.symbol)

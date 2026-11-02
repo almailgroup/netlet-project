@@ -5635,6 +5635,31 @@ and the rows; `-NetLetOpen categories:<slug>` chooses one), `Route.subcategory`,
 the chips on `DepartmentView`, the names and icons exported with the
 departments (`departments.json`).
 
+**The tiles are larger, the chosen one grows, and its subcategories rise in —
+on the owner's word** ("make the category images … bigger, and when you select
+any of them it gets a bit bigger … I want smooth animation for everything").
+A phone's tile is 104px, 112 from 390, and from `sm` the six share one row
+896px wide (1024 from `lg`); the chosen one's frame grows to 108% on a curve
+that overshoots a little (`.cat-tile`, 460ms) with a deeper shadow, and
+on a phone the row glides it to the middle of the screen, since a tile chosen
+at the edge would grow half out of sight. **The tiles snap at their centres**
+(`snap-center`): at their starts, the row's snapping pulled the glide back so
+the chosen tile sat at the edge, 92px off the middle at 320 — measured, not
+seen, since at 390 the two happened to agree. A press gives under the finger
+(95%, 103% on the chosen one). The rows are not a second press away: choosing
+a tile *is* showing its subcategories, and they arrive one after another,
+each 40ms behind the last (`.cat-rise`, a rise of 12px and a fade, the section
+keyed by the department so a new choice plays it again). A row lifts 2px
+under a mouse and gives on a press. **Every one of them is opacity and
+transform alone**, so nothing beside a tile moves while it grows; under
+reduced motion the global guard shortens the springs to a cut, and
+`cat-rise` is switched off outright, because the guard shortens a duration
+and not a delay — rows held back 200ms read as a page that is slow, not one
+that is still. The app is the same (`DepartmentBrowser`): 108-point art, the
+chosen tile at 1.08 on a spring, scrolled to the middle as it is chosen, the
+rows rising in by `RiseIn` 40ms apart, every press `SpringPressStyle`, and
+Reduce Motion drawing each in place.
+
 **Enter in the search box opens `/search?q=`, which is this page.** The term is
 `q` beside the facets (`searchWithTerm`), a department page honours it too, and
 `matchesSearch` — every word somewhere in what the shopper can see — is the one
@@ -6177,7 +6202,7 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, and is 817 KB (239 KB) now, the Returns and Payment methods pages' words and the tab bar's own icons — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, and is 820 KB (240 KB) now, the app tutorial's words in both languages — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -6530,7 +6555,8 @@ departments, the shopping and service links, the contact block, the language,
 who the shop is — as screens of navy under the last shelf. What it carried that
 the app had no other door to is a card on the Profile tab now
 (`MoreFromNetLet`, "Help and information"): the help centre (where WhatsApp,
-the phone and the email are), the guides, then the terms and the privacy
+the phone and the email are), the guides, "How to use the app" (the first
+launch's tutorial again), then the terms and the privacy
 policy, and the copyright and registration line. **The returns policy, Find a
 wishlist, the stores, Sell with us, the seller agreement and the Notifications
 row left the Profile tab, on the owner's word**: the stores are a box on
@@ -7197,6 +7223,38 @@ glass bars' shadows are left as they were: their blur is redrawn every frame
 anyway, and a shape behind translucent glass would show through it. Not
 measured on a device here, which this sandbox cannot reach — Instruments'
 hitches template on a ProMotion iPhone is the check.
+
+**A new install opens on a tutorial, and it can always be skipped — on the
+owner's word** ("work on app tutorial, for a new user that downloads and opens
+the app. Explain how to login or create account and use the app. But make sure
+that there is skip tutorial option"; `AppTutorial`). Five pages a thumb swipes
+or Next steps: what NetLet is (the street, the logo, three departments
+floating gently round it); signing in or creating an account — the switch
+sliding to Create account, the email, and the six-digit code filling box by
+box to a tick, since the code is what a new shopper would not expect; finding
+things — the search field typing a department's name beside its microphone and
+camera, then the departments popping in; adding to the cart — a finger on the
+photo's plus, the plus becoming the count, the tab bar's cart filling with its
+badge; and paying at the door and following a parcel through its four steps.
+Each picture is the shop's own controls drawn small and acted out once as its
+page arrives (`PictureScene`), and its words name the tabs and the form by the
+dictionary's own words for them (`nav.profile`, `auth.modeRegister`), so a
+rename on the web renames the tutorial. **Skip is on every page**, at the top
+with the language switch beside it, so somebody who reads Arabic is not made
+to finish an English tutorial to find it. The last page ends where a new
+shopper wants to go: Create account and Sign in open the Profile tab's form in
+that mode (`AppModel.authModePreset`, which `AuthView` takes and clears), and
+Start shopping puts it away. **However it ends it is not shown again on its
+own** (`netlet.tutorialSeen`); an update installed by somebody already signed
+in skips it outright (the session cookie is there), and "How to use the app"
+under Help and information opens it again. **It sits under the opening
+animation**, so the roof's window opens onto its first page, which waits for
+the window before it moves (`ready`). Reduce Motion draws each picture
+finished and the pages cut. A UI test or a screenshot never meets it unless it
+asks (`-NetLetOpen tutorial`, `tutorial:<page>`); `TutorialUITests` proves Skip
+in both languages, Next to the last page and Create account landing on the
+form's first step, and a swipe turning the page, and the CI photographs the
+first, second and last pages (`65`–`67`).
 
 **The empty search field offers the shop's own examples in turn, on the
 owner's word** (`CyclingExample`, in the header's field and the open sheet's):

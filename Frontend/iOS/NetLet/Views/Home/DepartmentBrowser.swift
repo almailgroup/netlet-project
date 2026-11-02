@@ -13,6 +13,14 @@ import SwiftUI
 /// last row, "View all", opens the whole department. Every subcategory is
 /// listed, an empty one saying so, as the tiles keep all six. "All
 /// departments" ends the row and opens its page: it has no subcategories.
+///
+/// **The tiles are large, and the chosen one grows a little on a spring, on
+/// the owner's word** ("make the category images bigger, and when you select
+/// any of them it gets a bit bigger … smooth animation for everything"): a
+/// press gives under the thumb (`SpringPressStyle`), the chosen tile settles
+/// at 108% and is brought to the middle of the row, and its subcategories
+/// rise into place one after another (`RiseIn`). Reduce Motion keeps the
+/// chosen tile the larger and moves nothing.
 struct DepartmentBrowser: View {
     @State private var chosen: String?
     @State private var subCounts: [String: [String: Int]]?
@@ -26,10 +34,14 @@ struct DepartmentBrowser: View {
         VStack(alignment: .leading, spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: 14) {
                         ForEach(departments) { entry in
                             tile(slug: entry.slug, title: l.t(entry.label), selected: entry.slug == department?.slug) {
-                                withAnimation(still ? nil : .snappy(duration: 0.25)) { chosen = entry.slug }
+                                guard chosen != entry.slug else { return }
+                                withAnimation(still ? nil : .spring(response: 0.45, dampingFraction: 0.82)) {
+                                    chosen = entry.slug
+                                    proxy.scrollTo(entry.slug, anchor: .center)
+                                }
                             }
                             .accessibilityHint(l.t("ios.categories.showsSubcategories"))
                             .id(entry.slug)
@@ -39,7 +51,8 @@ struct DepartmentBrowser: View {
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
+                    // Room above and below for the chosen tile to grow into.
+                    .padding(.vertical, 12)
                     .scrollTargetLayout()
                 }
                 .scrollTargetBehavior(.viewAligned)
@@ -56,7 +69,7 @@ struct DepartmentBrowser: View {
             }
             if let department {
                 list(department)
-                    .padding(.top, 24)
+                    .padding(.top, 16)
             }
         }
         .task {
@@ -64,33 +77,36 @@ struct DepartmentBrowser: View {
         }
     }
 
-    /// One department's picture tile with its name under it.
+    /// One department's picture tile with its name under it; the chosen one
+    /// outlined in navy, lifted by its shadow and grown a little on a spring.
     private func tile(slug: String, title: String, selected: Bool, open: @escaping () -> Void) -> some View {
         Button(action: open) {
-            VStack(spacing: 6) {
+            VStack(spacing: 12) {
                 BundledImage(image: WebAssets.department(slug))
                     .aspectRatio(contentMode: .fit)
-                    .padding(6)
-                    .frame(width: 88, height: 88)
+                    .padding(8)
+                    .frame(width: 108, height: 108)
                     .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .fill(Color.white)
-                            .shadow(color: Brand.navy.opacity(selected ? 0.12 : 0), radius: 4, x: 0, y: 2)
+                            .shadow(color: Brand.navy.opacity(selected ? 0.16 : 0.04), radius: selected ? 10 : 2, x: 0, y: selected ? 6 : 1)
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .strokeBorder(selected ? Brand.navy : Brand.cardLine, lineWidth: 2)
                     )
+                    .scaleEffect(selected ? 1.08 : 1)
+                    .animation(still ? nil : .spring(response: 0.42, dampingFraction: 0.6), value: selected)
                 Text(title)
-                    .font(.inter(13, selected ? .heavy : .semibold))
-                    .foregroundStyle(Brand.navy)
+                    .font(.inter(13.5, selected ? .heavy : .semibold))
+                    .foregroundStyle(selected ? Brand.navy : Color(red: 43 / 255, green: 58 / 255, blue: 85 / 255))
                     .multilineTextAlignment(.center)
                     .lineLimit(2, reservesSpace: true)
             }
-            .frame(width: 92)
+            .frame(width: 112)
             .contentShape(Rectangle())
         }
-        .buttonStyle(PressFillStyle(cornerRadius: 16))
+        .buttonStyle(SpringPressStyle(cornerRadius: 20))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
@@ -101,6 +117,7 @@ struct DepartmentBrowser: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(name)
+                    .contentTransition(.opacity)
                     .font(.inter(18, .heavy))
                     .foregroundStyle(Brand.navy)
                     .accessibilityAddTraits(.isHeader)
@@ -111,8 +128,10 @@ struct DepartmentBrowser: View {
                         .foregroundStyle(Brand.muted)
                 }
             }
+            // Made afresh for each department, so its rows rise in again;
+            // the old ones go at once rather than sharing the column.
             VStack(spacing: 8) {
-                ForEach(department.subs) { entry in
+                ForEach(Array(department.subs.enumerated()), id: \.element.id) { index, entry in
                     let count = subCounts?[department.slug]?[entry.slug] ?? 0
                     row(symbol: entry.symbol,
                         title: entry.shown(l.current),
@@ -120,13 +139,15 @@ struct DepartmentBrowser: View {
                         quiet: subCounts != nil && count == 0) {
                         app.push(.subcategory(department: department.slug, sub: entry.slug))
                     }
+                    .modifier(RiseIn(order: index))
                 }
                 row(symbol: "line.3.horizontal", title: l.t("home.viewAll"), note: l.t("categories.seeAllIn", ["name": name]), quiet: false) {
                     app.push(.department(slug: department.slug))
                 }
+                .modifier(RiseIn(order: department.subs.count))
             }
             .id(department.slug)
-            .transition(.opacity)
+            .transition(.identity)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("categories.subcategoriesOf", ["name": name]))
@@ -177,7 +198,28 @@ struct DepartmentBrowser: View {
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
-        .buttonStyle(PressFillStyle(cornerRadius: 16))
+        .buttonStyle(SpringPressStyle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A row rising into place a beat behind the one before it — `order` beats,
+/// 40 milliseconds each — the web's `.cat-rise`. Shown at once under Reduce
+/// Motion.
+private struct RiseIn: ViewModifier {
+    let order: Int
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var still
+
+    func body(content: Content) -> some View {
+        let up = shown || still
+        content
+            .opacity(up ? 1 : 0)
+            .offset(y: up ? 0 : 14)
+            .scaleEffect(up ? 1 : 0.98)
+            .onAppear {
+                guard !still, !shown else { return }
+                withAnimation(.spring(response: 0.46, dampingFraction: 0.86).delay(Double(order) * 0.04)) { shown = true }
+            }
     }
 }

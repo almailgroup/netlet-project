@@ -669,6 +669,72 @@
 }
 
 /*
+ * The Categories page (`pages/Categories.tsx`), on the owner's word ("when
+ * you select any of them it gets a bit bigger … smooth animation for
+ * everything"). The chosen department's tile grows on a spring that settles
+ * a touch past its size and back; a press gives under the finger; the
+ * department's subcategories rise into place one after another, each a
+ * beat behind the one before (`--rise`, its place in the list); a row lifts
+ * a little under a mouse and gives under a press. Transforms and opacity on
+ * plain white cards, nothing behind them to blur. Under reduced motion the
+ * chosen tile is still the larger, without the spring, and nothing rises.
+ */
+.cat-tile {
+  transition:
+    transform 460ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 220ms var(--ease-out),
+    box-shadow 320ms var(--ease-out);
+}
+.cat-tile[data-chosen] {
+  transform: scale(1.08);
+}
+.cat-tile-press:active .cat-tile {
+  transform: scale(0.95);
+  transition-duration: 140ms;
+}
+.cat-tile-press:active .cat-tile[data-chosen] {
+  transform: scale(1.03);
+}
+.cat-rise {
+  animation: cat-rise 420ms var(--ease-out) both;
+  animation-delay: calc(var(--rise, 0) * 40ms);
+}
+@keyframes cat-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.cat-row {
+  transition:
+    transform 220ms var(--ease-out),
+    box-shadow 220ms var(--ease-out),
+    background-color 120ms var(--ease-out);
+}
+.cat-row:active {
+  transform: scale(0.98);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .cat-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(10, 40, 90, 0.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cat-rise {
+    animation: none;
+  }
+  .cat-row:active,
+  .cat-tile-press:active .cat-tile {
+    transform: none;
+  }
+}
+
+/*
  * The voice panel's level meter. It is not reading a real signal — nothing is
  * listening yet — but it is what the meter has to do when something is: the
  * bars have to move independently, or a row that rises and falls as one block

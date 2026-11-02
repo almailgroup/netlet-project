@@ -201,6 +201,41 @@ final class AppModel {
     /// A department the Categories tab opens onto its subcategories when it
     /// first appears — the screenshots' `-NetLetOpen categories:<slug>`.
     var categoriesOpen: String?
+    /// The tutorial is over the app (`AppTutorial`): on a new install's first
+    /// launch, or opened again from Help and information.
+    var tutorialShowing = false
+    /// The page the tutorial opens on — the screenshots' `tutorial:<page>`.
+    var tutorialPage = 0
+    /// How the sign-in form on the Profile tab opens next — the tutorial's
+    /// last page sends a new shopper there to create an account or sign in.
+    var authModePreset: AuthViewModel.Mode?
+
+    /// How the tutorial was left.
+    enum TutorialExit { case skip, signIn, register, shop }
+
+    /// Puts the tutorial away for good — it is not shown again on its own —
+    /// and goes where its last press asked: the sign-in form in the right
+    /// mode, or the shop as it stands.
+    func finishTutorial(_ exit: TutorialExit) {
+        UserDefaults.standard.set(true, forKey: AppTutorial.seenKey)
+        switch exit {
+        case .register:
+            authModePreset = .register
+            selectedTab = .account
+        case .signIn:
+            authModePreset = .signIn
+            selectedTab = .account
+        case .skip, .shop:
+            break
+        }
+        tutorialShowing = false
+    }
+
+    /// Opens the tutorial again from its first page.
+    func showTutorial() {
+        tutorialPage = 0
+        tutorialShowing = true
+    }
     /// The order screen opens with this sheet up — "track" or "refund" — for
     /// the screenshots' `track:` and `refund:` hooks.
     var orderSheet: String?

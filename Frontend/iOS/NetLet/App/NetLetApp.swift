@@ -14,8 +14,13 @@ struct NetLetApp: App {
     // property's initial value, which Swift 5 mode evaluates outside it.
     init() {
         let model = AppModel.live()
+        let open = UserDefaults.standard.string(forKey: "NetLetOpen")
+        // A new install opens on the tutorial, under the opening animation, so
+        // the roof's window opens onto its first page (`AppTutorial`).
+        model.tutorialShowing = AppTutorial.showsAtLaunch(open: open)
+        model.tutorialPage = AppTutorial.startPage(open: open)
         _app = State(initialValue: model)
-        _opening = State(initialValue: !UITestHooks.on && UserDefaults.standard.string(forKey: "NetLetOpen") == nil)
+        _opening = State(initialValue: !UITestHooks.on && open == nil)
         // "Hide keyboard" over every field the app has (`KeyboardBar`).
         KeyboardBar.install(language: model.language)
     }
@@ -25,6 +30,12 @@ struct NetLetApp: App {
             ZStack {
                 RootView()
                     .scaleEffect(opening && !revealed && !UIAccessibility.isReduceMotionEnabled ? 1.08 : 1)
+                if app.tutorialShowing {
+                    AppTutorial(ready: !opening || revealed, start: app.tutorialPage)
+                        .scaleEffect(opening && !revealed && !UIAccessibility.isReduceMotionEnabled ? 1.08 : 1)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(0.5)
+                }
                 if opening {
                     LaunchSplash(revealing: {
                         withAnimation(.timingCurve(0.2, 0.8, 0.3, 1, duration: 0.8)) { revealed = true }
