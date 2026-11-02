@@ -637,23 +637,21 @@ private struct CartPicture: View {
         }
     }
 
-    /// The tab bar's cart, its badge hopping in once the plus is pressed.
+    /// The tab bar's cart, as the bar draws it — the icon alone — its badge
+    /// hopping in once the plus is pressed.
     private var cartTab: some View {
-        VStack(spacing: 4) {
-            TabIcon.cart.image(filled: moment >= 3)
-                .foregroundStyle(Brand.navy)
-                .overlay(alignment: .topTrailing) {
-                    CountBadge(value: moment >= 3 ? 1 : 0)
-                        .offset(x: 10, y: -8)
-                        .scaleEffect(moment >= 3 ? 1 : 0.3)
-                }
-            Text(l.t("nav.cart"))
-                .font(.inter(12, .bold))
-                .foregroundStyle(Brand.navy)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Capsule().fill(Color.white).shadow(color: Brand.navy.opacity(0.1), radius: 10, x: 0, y: 4))
+        TabIcon.cart.image(filled: moment >= 3)
+            .foregroundStyle(Brand.navy)
+            .overlay(alignment: .topTrailing) {
+                CountBadge(value: moment >= 3 ? 1 : 0)
+                    .offset(x: 10, y: -8)
+                    .scaleEffect(moment >= 3 ? 1 : 0.3)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Capsule().fill(moment >= 3 ? Color(red: 236 / 255, green: 236 / 255, blue: 239 / 255) : Color.white))
+            .padding(5)
+            .background(Capsule().fill(Color.white).shadow(color: Brand.navy.opacity(0.1), radius: 10, x: 0, y: 4))
     }
 }
 

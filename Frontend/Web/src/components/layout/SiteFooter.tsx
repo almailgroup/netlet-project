@@ -217,8 +217,10 @@ export function SiteFooter({ clearance = "tabs", assistant = false }: { clearanc
       <Link href="/" className="inline-block" aria-label={t("header.home")}>
         <img src={footerLogoImage} alt="NetLet" loading="lazy" decoding="async" className="h-10 w-auto object-contain" />
       </Link>
-      <p className="mt-3 text-[15px] font-semibold text-white">{t("home.heroTitle")} <span className="ink-accent-on-dark">{t("home.heroTitleAccent")}</span></p>
-      <h2 className="mt-6 flex items-center gap-2 text-[15px] font-bold text-white">
+      {/* The shop's line ("Kuwait's stores, one cart.") stood here and went
+          with the home page's, on the owner's word: on a phone this footer is
+          the home page's. */}
+      <h2 className="mt-5 flex items-center gap-2 text-[15px] font-bold text-white">
         <Headset className="size-[18px] shrink-0 text-[#ffab85]" aria-hidden />{t("footer.contactTitle")}
       </h2>
       {/* The owner's own line: who answers, and the three ways to reach

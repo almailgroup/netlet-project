@@ -6,13 +6,15 @@
  * pill. On a phone that bar *is* the navigation; it belongs on every shopping
  * page, which is what it is now.
  *
- * **Four tabs in a floating pill — Home, Profile, Cart, Categories — drawn to
- * the owner's picture.** The current tab sits in a pale grey pill with its icon
- * and its word in navy, the rest are near-black outlines. Saved left the bar
- * with that picture; it is the Saved tile on the account page, one press under
- * Profile. Categories opens `/categories`, the departments as a page: it was
- * a sheet over whatever page the shopper was on, with no address to go Back
- * from, and the owner asked for a page.
+ * **Five tabs in a floating pill — Home, Categories, Deals, Profile, Cart —
+ * bold icons and no words, on the owner's word**, in the order of the picture
+ * they sent of a shop's bar (`content/tabIcons.ts` says how the icons came to
+ * be). The current tab sits in a pale grey pill with its icon filled in navy,
+ * the rest are near-black outlines; each tab's word is its name to a screen
+ * reader. Saved left the bar with an earlier picture; it is the Saved tile on
+ * the account page, one press under Profile. Categories opens `/categories`,
+ * the departments as a page, and Deals the shop's on-offer products
+ * (`/category/all?offer=1`, the department page's own view of them).
  *
  * **Its background is the header's liquid glass** (`.glass-bar-surface` with
  * `.glass-bar-round`, in `index.css`): the page blurs under it as it scrolls
@@ -47,10 +49,10 @@ import { useCart } from "@/contexts/CartContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useTranslation } from "@/hooks/useTranslation";
 import { TAB_ICONS, TAB_ICON_STROKE, type TabIconName } from "@/content/tabIcons";
-import { useEffect, useRef, useState, type ReactNode, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { MAX_WAIT_MS } from "@/lib/readyNavigation";
 import { nextTabBar, SHOWN, type TabBarScroll } from "@/lib/tabBarScroll";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 
 /**
  * One of the bar's four icons, filled while it is the current tab — the one
@@ -58,17 +60,30 @@ import { Link, useLocation } from "wouter";
  */
 function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
   const paths = TAB_ICONS[name][filled ? "filled" : "outline"];
+  const maskId = useId();
+  const drawn = (path: (typeof paths)[number], index: number, ink: string) => (
+    <path
+      key={index}
+      d={path.d}
+      fill={path.mode === "stroke" ? "none" : ink}
+      stroke={path.mode === "fill" ? "none" : ink}
+      strokeWidth={TAB_ICON_STROKE}
+    />
+  );
+  /* A knockout is cut out of what is drawn — the percent through the chosen
+     Deals bag — by a mask, so the bar shows through it. */
+  const cut = paths.filter(path => path.knockout);
   return (
-    <svg viewBox="0 0 24 24" aria-hidden className="size-[24px]" strokeLinejoin="round" strokeLinecap="round">
-      {paths.map((path, index) => (
-        <path
-          key={index}
-          d={path.d}
-          fill={path.mode === "stroke" ? "none" : "currentColor"}
-          stroke={path.mode === "fill" ? "none" : "currentColor"}
-          strokeWidth={TAB_ICON_STROKE}
-        />
-      ))}
+    <svg viewBox="0 0 24 24" aria-hidden className="size-[28px]" strokeLinejoin="round" strokeLinecap="round">
+      {cut.length ? (
+        <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+          <rect width="24" height="24" fill="white" />
+          {cut.map((path, index) => drawn(path, index, "black"))}
+        </mask>
+      ) : null}
+      <g mask={cut.length ? `url(#${maskId})` : undefined}>
+        {paths.filter(path => !path.knockout).map((path, index) => drawn(path, index, "currentColor"))}
+      </g>
     </svg>
   );
 }
@@ -110,6 +125,10 @@ type Tab = {
 export function MobileTabBar() {
   const { t } = useTranslation();
   const [location] = useLocation();
+  const search = useSearch();
+  /* The deals are the whole shop narrowed to what is on offer — Deals' page,
+     not Categories', though the address is a department page's. */
+  const onDeals = location === "/category/all" && new URLSearchParams(search).get("offer") === "1";
   const { itemCount } = useCart();
   /* The tab pressed whose page has not arrived yet. */
   const [pressed, setPressed] = useState<string | null>(null);
@@ -135,6 +154,21 @@ export function MobileTabBar() {
       href: "/",
     },
     {
+      key: "categories",
+      label: t("nav.categories"),
+      icon: active => <TabIcon name="categories" filled={active} />,
+      /* The page of departments, and every department page it leads to. */
+      active: !onDeals && (location === "/categories" || location.startsWith("/category/")),
+      href: "/categories",
+    },
+    {
+      key: "deals",
+      label: t("nav.deals"),
+      icon: active => <TabIcon name="deals" filled={active} />,
+      active: onDeals,
+      href: "/category/all?offer=1",
+    },
+    {
       key: "profile",
       label: t("nav.profile"),
       icon: active => <TabIcon name="profile" filled={active} />,
@@ -154,14 +188,6 @@ export function MobileTabBar() {
          anyway, and the page has an address Back returns from. */
       href: "/cart",
     },
-    {
-      key: "categories",
-      label: t("nav.categories"),
-      icon: active => <TabIcon name="categories" filled={active} />,
-      /* The page of departments, and every department page it leads to. */
-      active: location === "/categories" || location.startsWith("/category/"),
-      href: "/categories",
-    },
   ];
 
   /* Where the pill is: a press on its way, then the page. */
@@ -180,7 +206,7 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label={t("nav.mobile")}
-      className="tab-bar fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid grid-cols-4 rounded-full border border-black/[.12] p-[5px] shadow-[0_8px_28px_rgba(10,40,90,.12),0_1px_3px_rgba(10,40,90,.06)] lg:hidden"
+      className="tab-bar fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 grid grid-cols-5 rounded-full border border-black/[.12] p-[5px] shadow-[0_8px_28px_rgba(10,40,90,.12),0_1px_3px_rgba(10,40,90,.06)] lg:hidden"
     >
       {/* The header's glass, behind the tabs and inside the bar's corners. */}
       <span aria-hidden className="glass-bar-surface glass-bar-round">
@@ -196,16 +222,18 @@ export function MobileTabBar() {
       />
       {tabs.map((tab, index) => {
         const lit = index === shown;
-        const className = `relative flex h-[52px] min-w-0 flex-col items-center justify-center gap-0.5 whitespace-nowrap rounded-full text-[12px] leading-4 transition-colors duration-300 min-[360px]:text-[13px] min-[390px]:text-[14px] ${
-          lit ? "font-bold text-[#0a285a]" : "font-medium text-[#16181d]"
+        const className = `relative flex h-[52px] min-w-0 items-center justify-center rounded-full transition-colors duration-300 ${
+          lit ? "text-[#0a285a]" : "text-[#16181d]"
         }`;
+        /* The word is the tab's name, read and never drawn: the owner's
+           picture is icons alone. */
         const face = (
           <>
             <span className="relative">
               {tab.icon(lit)}
               <CountBadge value={tab.badge ?? 0} className="absolute -end-3 -top-2" />
             </span>
-            {tab.label}
+            <span className="sr-only">{tab.label}</span>
           </>
         );
         /* Every tab is a link to its page, so a finger landing on it starts

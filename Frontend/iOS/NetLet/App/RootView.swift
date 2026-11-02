@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The app's frame: the web's four phone tabs — Home, Profile, Cart,
-/// Categories — each its own stack, in the system's own tab bar.
+/// The app's frame: the web's five phone tabs — Home, Categories, Deals,
+/// Profile, Cart, in the order of the owner's picture — each its own stack,
+/// in the system's own tab bar, drawn as icons alone.
 ///
 /// **The tab bar is Apple's, on the owner's word**, not a copy of the web's
 /// floating pill: a `TabView` built with the iOS 26 SDK is drawn in Liquid
@@ -17,9 +18,10 @@ import SwiftUI
 /// changes.
 ///
 /// Every stack stays alive while another tab shows, so a tab comes back where
-/// it was left. Selling is in the account, as on the web, rather than a fifth
-/// tab; searching is the header's field on every screen, grown down over the
-/// page while it is open (`SearchOverlay`).
+/// it was left. Selling is in the account, as on the web, rather than a tab
+/// of its own; searching is the header's field on every screen, grown down
+/// over the page while it is open (`SearchOverlay`). Deals is the shop's
+/// on-offer shelf (`DepartmentView`'s `.deals`) as a tab's first screen.
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -28,21 +30,24 @@ struct RootView: View {
         @Bindable var app = app
         TabView(selection: selection) {
             NavigationStack(path: $app.homePath) { HomeView().routes() }
-                .tabItem { Label { Text(l.t("nav.home")) } icon: { TabIcon.home.image(filled: app.selectedTab == .home) } }
+                .tabItem { tabFace(.home, name: "nav.home", chosen: app.selectedTab == .home) }
                 .tag(AppModel.Tab.home)
+            NavigationStack(path: $app.categoriesPath) { CategoriesView().routes() }
+                .tabItem { tabFace(.categories, name: "nav.categories", chosen: app.selectedTab == .categories) }
+                .tag(AppModel.Tab.categories)
+            NavigationStack(path: $app.dealsPath) { DepartmentView(slug: nil, view: .deals, root: true).routes() }
+                .tabItem { tabFace(.deals, name: "nav.deals", chosen: app.selectedTab == .deals) }
+                .tag(AppModel.Tab.deals)
             NavigationStack(path: $app.accountPath) { AccountView().routes() }
-                .tabItem { Label { Text(l.t("nav.profile")) } icon: { TabIcon.profile.image(filled: app.selectedTab == .account) } }
+                .tabItem { tabFace(.profile, name: "nav.profile", chosen: app.selectedTab == .account) }
                 .badge(app.signals.total)
                 .tag(AppModel.Tab.account)
             NavigationStack(path: $app.cartPath) {
                 CartView(path: $app.cartPath).routes(path: $app.cartPath)
             }
-            .tabItem { Label { Text(l.t("nav.cart")) } icon: { TabIcon.cart.image(filled: app.selectedTab == .cart) } }
+            .tabItem { tabFace(.cart, name: "nav.cart", chosen: app.selectedTab == .cart) }
             .badge(app.cart.itemCount)
             .tag(AppModel.Tab.cart)
-            NavigationStack(path: $app.categoriesPath) { CategoriesView().routes() }
-                .tabItem { Label { Text(l.t("nav.categories")) } icon: { TabIcon.categories.image(filled: app.selectedTab == .categories) } }
-                .tag(AppModel.Tab.categories)
         }
         .modifier(NoBottomEdge())
         .overlay {
@@ -100,6 +105,13 @@ struct RootView: View {
             .environment(\.layoutDirection, l.layoutDirection)
             .buttonStyle(HapticDefaultStyle())
         }
+    }
+
+    /// A tab's face: its icon alone, bold, after the owner's picture — the
+    /// word is its name to VoiceOver and never drawn.
+    private func tabFace(_ icon: TabIcon, name: String, chosen: Bool) -> some View {
+        icon.image(filled: chosen)
+            .accessibilityLabel(Text(l.t(name)))
     }
 
     /// The tab bar's selection. The system sets it only for a press — the

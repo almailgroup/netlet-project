@@ -126,31 +126,33 @@ not conditional.
 
 **The phone's tab bar wears the same glass, on the owner's word**
 (`MobileTabBar`, `.glass-bar-surface` with `.glass-bar-round`), and is drawn to
-a picture the owner sent: **a floating pill of four tabs — Home, Profile, Cart,
-Categories** — the current one in a pale grey pill with its icon and word in
-navy and bold, the rest near-black outlines. Saved left the
-bar with that picture and is the Saved tile on the account page, one press
-under Profile; Categories opens `/categories`, the departments as a page (see
-Browsing). **The four icons are one drawing, the web's and the app's, on the
-owner's word** ("improve the icon design for the menu at the bottom";
-`content/tabIcons.ts`): a house whose roof is the logo's own two bars meeting
-at a point, a person, a cart and the departments' grid, on one 24 grid at one
-line weight with round caps and joins, each an outline and a filled form —
-the current tab filled, every one of the four, where only the house used to
-fill. They were a hand-drawn house, lucide's person and cart at their own
-weight and a grid of our own, and SF Symbols in the app. The paths are
+a picture the owner sent: **a floating pill of five tabs — Home, Categories,
+Deals, Profile, Cart, in that order — bold icons and no words**, the current
+one filled in navy in a pale grey pill, the rest near-black outlines; each
+tab's word is its name to a screen reader and VoiceOver, never drawn. Saved
+left the bar with an earlier picture and is the Saved tile on the account
+page, one press under Profile; Categories opens `/categories`, the departments
+as a page (see Browsing), and Deals the shop's on-offer products
+(`/category/all?offer=1` on the web, the deals shelf in the app), saying "No
+deals right now" with a way to everything when there are none. **The icons
+are one drawing, the web's and the app's, on the owner's word**
+(`content/tabIcons.ts`): they asked to "improve the icon design for the menu
+at the bottom", and the first redraw — the same house, person, cart and grid
+at the same size, with words — read to them as no change at all, so two
+directions were drawn for them and they chose the one after their picture of
+a shop's bar, then asked for its Deals tab, in its order. A rounded house with
+its door; three squares and a sparkle for the departments; a bag with a
+percent sign for the deals, the sign cut out of the chosen bag (`knockout`: a
+mask on the web, the clear blend mode in the app); a person in a circle; the
+cart with its wheels. One 24 grid, one heavier line (2), round caps and
+joins, each an outline and a filled form, drawn 28px. The paths are
 absolute M, L, H, V, C and Z alone, so the app draws them from
 `tabIcons.json` (`TabIcon.swift`, a dozen-line parser) as template images the
 system tints; a filled shape is stroked at the same weight too, so it is the
-size of its outline and an icon does not shrink when chosen. The words
-are dark, not the muted ink they once were — the tint keeps dark ink at 4.5:1
-over the darkest thing that passes, and the muted ink would have needed nine
-parts white — and the current tab's pill is solid for the same reason.
-Measured by hiding the tabs' ink and reading the darkest pixel behind each
-label's words at every 120px of the home page, at 390 in both languages: 7.62:1
-at worst under the old tint, 5.55:1 under the phone's 60 and 45 (over the navy
-footer); 50 and 35 measured 4.16:1, below the line. The words step down from 14px to 13px under 390 and 12px under 360,
-so "Categories" in bold fits a 320px phone. **The grey pill is one element
+size of its outline and an icon does not shrink when chosen. The icons
+are dark, not the muted ink — the tint keeps dark ink at 4.5:1 over the
+darkest thing that passes — and the current tab's pill is solid for the same
+reason. **The grey pill is one element
 that slides between the tabs** (`.tab-pill`, 420ms, mirrored on the Arabic
 page), also on the owner's word. It moves on the press rather than when the
 address does, because a page whose code is still coming keeps the old one up
@@ -1370,26 +1372,26 @@ there is something off-screen.
 once that said "Small upgrades. A brighter everyday." over blurred colour blobs —
 a slogan where a shopper looks for something to tap — and it went, leaving the
 page to open on six tiles, which the owner found plain. `HomeHero` is the door
-that came back, built the other way round: a navy band the width of the screen
-with NetLet's pictures on it and one line saying what the shop is — "Kuwait's
-stores, one cart." **It carries no buttons, on the owner's word**: it had two,
-"See what's new" (Today's deals while the home page drew that shelf) and "All
-departments", which offered again what the row directly under the band
-offers. The page's `h1` is in it, the shop's name first for a screen reader.
-The three facts every order carries (every
-governorate, cash at the door, `RETURN_WINDOW_DAYS`) sat under the line as a
-list, and the owner asked for them gone; checkout and the sign-in page still
-say them.
+that came back: NetLet's pictures the width of the screen. **It carries no
+words and no buttons, on the owner's word**: it had the line "Kuwait's stores,
+one cart." with a sentence under it, and the owner asked for both gone, and
+the footer's copy of the line under its logo with them, since on a phone the
+footer is the home page's; before that it had two buttons, "See what's new"
+and "All departments", which offered again what the row directly under the
+band offers, and the three facts every order carries (every governorate, cash
+at the door, `RETURN_WINDOW_DAYS`) as a list — checkout and the sign-in page
+still say them. The page's `h1` is in it, the shop's name, for a screen
+reader alone (the app's pictures are its heading to VoiceOver). On a wide
+screen the pictures are the whole width, no longer a half beside the words.
 
 **The band fades into the page rather than ending on a line**: its foot runs
 from the navy into `--background`, over the pictures too, so the departments
 below read as the same surface continuing. It ended on an orange rule once, and
-the owner asked for the fade — and then for a softer one. **Both of the band's
-fades are eased** (`.hero-foot`, `.hero-shade`: smoothstep, as a stop every
-tenth): a straight gradient starts at a visible line and spends its middle in
-one flat slate grey, and the eased one leaves the navy and reaches the page
-with neither. The foot is 144px on a phone and 192px wide, taller than the
-room under the buttons, because its first fifth is all but clear. Its stops are
+the owner asked for the fade — and then for a softer one. **The fade is
+eased** (`.hero-foot`: smoothstep, as a stop every tenth): a straight gradient
+starts at a visible line and spends its middle in one flat slate grey, and the
+eased one reaches the page with neither. The foot is 96px on a phone and 144px
+wide, over the pictures' foot, its first fifth all but clear. Its stops are
 `rgb(var(--background-rgb) / a)`, the page's ground as channels: written with
 `color-mix`, the minifier wrapped them in a fallback that painted the ground
 solid from the first tenth down — no browser that matters takes that branch,
@@ -6746,8 +6748,10 @@ already choosing (`AppModel.searchStart`).
 **The tab bar is the one place it is not the web's, on the owner's word**: it
 was `FloatingTabBar`, a copy of `MobileTabBar`'s floating pill, and the owner
 asked for Apple's own Liquid Glass instead. It is a system `TabView` in
-`RootView` — Home, Profile, Cart and Categories, the web's own icons
-(`TabIcon`, an outline and the chosen tab filled), the selected tab in navy, the cart's count the system's badge — which the iOS 26 SDK draws in
+`RootView` — Home, Categories, Deals, Profile and Cart, the web's own icons
+alone with no words (`TabIcon`, an outline and the chosen tab filled, each
+named for VoiceOver by its `accessibilityLabel`; `TabBarUITests` reads the
+five in order and opens Deals), the selected tab in navy, the cart's count the system's badge — which the iOS 26 SDK draws in
 Liquid Glass on iOS 26 and as the standard tab bar on 17 and 18. **Over the
 navy footer the glass turned dark, and the selected tab vanished** in the
 first build (17): it is drawn in the tint, which the glass lightens a little

@@ -3,7 +3,7 @@ import { TAB_ICON_COMMANDS, TAB_ICONS } from "./tabIcons";
 
 describe("the tab bar's icons", () => {
   it("draws every tab in both forms, with only the commands the app reads", () => {
-    expect(Object.keys(TAB_ICONS).sort()).toEqual(["cart", "categories", "home", "profile"]);
+    expect(Object.keys(TAB_ICONS).sort()).toEqual(["cart", "categories", "deals", "home", "profile"]);
     for (const [name, drawing] of Object.entries(TAB_ICONS)) {
       for (const form of [drawing.outline, drawing.filled]) {
         expect(form.length, name).toBeGreaterThan(0);

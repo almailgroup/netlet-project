@@ -7,11 +7,13 @@ struct DepartmentView: View {
     var view: ShelfView = .all
     /// One of the department's subcategories to open on, the web's `?sub=`.
     var sub: String? = nil
+    /// A tab's first screen — the Deals tab's — with no way back to draw.
+    var root = false
     @Environment(AppModel.self) private var app
 
     var body: some View {
         ModelHost(make: { BrowseModel(source: .shelf(slug: slug, view: view), catalog: app.services.catalog, sub: sub) }) { model in
-            BrowsePage(model: model)
+            BrowsePage(model: model, root: root)
         }
     }
 }
@@ -53,13 +55,14 @@ private enum BrowseSheet: Identifiable {
 /// pill, the reference's round button, rather than leaving the page.
 private struct BrowsePage: View {
     @Bindable var model: BrowseModel
+    var root = false
     @State private var sheet: BrowseSheet?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: true, assistantFolded: true, searchTerm: model.searchTerm) {
+        ShopPage(root: root, logo: false, refresh: { await model.load(language: l.current) }, assistant: true, assistantFolded: true, searchTerm: model.searchTerm) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: activeSub.map { [departmentName, $0.shown(l.current)] } ?? [crumb])
                 Text(title)
@@ -419,7 +422,12 @@ private struct BrowsePage: View {
 
     @ViewBuilder
     private var empty: some View {
-        if model.filters.activeCount > 0 {
+        if case .shelf(.none, .deals) = model.source, model.query == nil, model.filters.activeCount == 1, model.filters.onOffer {
+            // The Deals tab with nothing on offer: not a filter the shopper set.
+            EmptyStateView(systemImage: "tag", title: l.t("browse.noDeals"), note: l.t("browse.noDealsNote"), actionTitle: l.t("browse.browseEverything")) {
+                app.push(.department(slug: nil))
+            }
+        } else if model.filters.activeCount > 0 {
             EmptyStateView(systemImage: "line.3.horizontal.decrease.circle", title: l.t("browse.empty"), note: l.t("browse.emptyNote"), actionTitle: l.t("browse.clearAll")) {
                 model.clearFilters()
             }

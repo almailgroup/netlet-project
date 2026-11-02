@@ -275,7 +275,7 @@ export function buildResources(): Record<string, string> {
     // The display currencies and the reference rates (`Shared/commerce/currency.ts`).
     "currency.json": json({ currencies: DISPLAY_CURRENCIES, rates: REFERENCE_RATES, asOf: RATES_AS_OF, minorDigits: Object.fromEntries(DISPLAY_CURRENCIES.map(code => [code, minorDigits(code)])) }),
     "assets.json": json(buildAssets().manifest),
-    /* The tab bar's four icons, the web's own paths (`content/tabIcons.ts`). */
+    /* The tab bar's five icons, the web's own paths (`content/tabIcons.ts`). */
     "tabIcons.json": json({ strokeWidth: TAB_ICON_STROKE, icons: TAB_ICONS }),
     "content.json": json(buildContent()),
     /* The portal's menu and the permission model it is filtered by

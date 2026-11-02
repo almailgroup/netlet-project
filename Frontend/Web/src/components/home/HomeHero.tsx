@@ -1,6 +1,13 @@
 /**
- * The front door: a navy band the width of the screen with NetLet's pictures
- * on it and one line saying what the shop is.
+ * The front door: NetLet's pictures the width of the screen, fading into the
+ * page.
+ *
+ * **It carries no words, on the owner's word** ("remove the Kuwait's stores,
+ * one cart text with the text below it"): it had that line, the shop's name
+ * before it for a screen reader, and a sentence under it; the line and the
+ * sentence went, and the band is the pictures alone — on a wide screen the
+ * whole width, no longer a half beside the words. The page's `h1` is still
+ * here, the shop's name, for a screen reader's outline and nobody's eye.
  *
  * The home page opened on a slogan once ("Small upgrades. A brighter
  * everyday.") over blurred colour blobs, and it went because it was words where
@@ -14,9 +21,7 @@
  * checkout and on the sign-in page.
  *
  * **The pictures are a slideshow, on the owner's word** (`heroSlides`: the
- * street, then `Frontend/Web/src/assets/hero/` in name order). Only the pictures
- * change; the words and the buttons hold still, so nothing a shopper is
- * reading moves. A picture stays `SLIDE_MS` — three seconds, the owner's figure
+ * street, then `Frontend/Web/src/assets/hero/` in name order). A picture stays `SLIDE_MS` — three seconds, the owner's figure
  * — and the band carries no controls, also on the owner's word: it had dots
  * and a Pause button, and they asked for it to change by itself and nothing
  * else. It still waits while the band is off screen or the tab hidden, and
@@ -35,8 +40,7 @@
  *
  * **The band fades into the page** rather than ending on a line: its foot runs
  * from the navy into the page's own background, so the departments below
- * read as the same surface continuing. The words sit above the fade. It is
- * eased (`.hero-foot` in `index.css`), on the owner's word: a straight
+ * read as the same surface continuing. It is eased (`.hero-foot` in `index.css`), on the owner's word: a straight
  * gradient starts at a visible line and lingers in a slate grey halfway, and
  * an eased one leaves the navy and arrives at the page without either.
  */
@@ -114,9 +118,12 @@ export function HomeHero() {
       onFocus={event => { if ((event.target as Element).matches(":focus-visible")) setHeld(true); }}
       onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHeld(false); }}
     >
+      {/* The page's heading, for a screen reader's outline: the band shows
+          pictures and no words. */}
+      <h1 id="home-hero-title" className="sr-only">{t("home.heading")}</h1>
       {slides.length ? (
-        <div className="relative h-[220px] sm:h-[300px] lg:absolute lg:inset-y-0 lg:end-0 lg:h-auto lg:w-[56%]">
-          {/* Decorative: the words beside them say what the shop is. */}
+        <div className="relative h-[240px] sm:h-[340px] lg:h-[460px]">
+          {/* Decorative: the shop's name is the heading above. */}
           <div aria-hidden className="absolute inset-0">
             {slides.map(({ src, phone }, slide) => fetched.has(slide) ? (
               <picture key={src}>
@@ -140,31 +147,14 @@ export function HomeHero() {
                 />
               </picture>
             ) : null)}
-            {/* Into the navy on the words' side: below the pictures on a
-                phone, beside them from `lg`, from the start edge in either
-                direction. */}
-            <span className="hero-shade absolute inset-0 z-[3]" />
           </div>
 
         </div>
       ) : null}
 
-      <div className="container relative z-10 pb-32 pt-1 sm:pb-36 lg:flex lg:min-h-[480px] lg:items-center lg:pb-40 lg:pt-12">
-        <div className="max-w-[600px]">
-          {/* The page's heading: the shop's name for a screen reader's outline,
-              then the line everybody reads. */}
-          <h1 id="home-hero-title" className="max-w-[15ch] text-[30px] font-extrabold leading-[1.08] tracking-[-.02em] sm:text-[40px] lg:text-[48px]">
-            <span className="sr-only">{t("home.heading")}: </span>
-            {t("home.heroTitle")} <span className="text-[#f2683a]">{t("home.heroTitleAccent")}</span>
-          </h1>
-          <p className="mt-3 max-w-[46ch] text-[15px] leading-6 text-[#c9d4e2] sm:mt-4 sm:text-[17px] sm:leading-7">{t("home.heroNote")}</p>
-        </div>
-      </div>
-
-      {/* The foot: from the navy into the page's own background, over the
-          pictures as well, so the band ends without an edge. Taller than the
-          room under the words, because its first fifth is all but clear. */}
-      <span aria-hidden className="hero-foot pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-36 sm:h-40 lg:h-48" />
+      {/* The foot: the pictures into the page's own background, so the band
+          ends without an edge. Its first fifth is all but clear. */}
+      <span aria-hidden className="hero-foot pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-24 sm:h-28 lg:h-36" />
     </section>
   );
 }

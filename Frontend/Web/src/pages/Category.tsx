@@ -196,8 +196,10 @@ export default function Category() {
      filter, and the heading read "All products" for both — the list was
      right and the page said it was something else. Named when the view is
      exactly that and nothing more. */
+  /* The deals, as the Deals tab and the footer open them: the whole shop on offer and nothing else. */
+  const dealsView = category === "all" && !searched && filters.onOffer && activeFilterCount(filters) === 1;
   const viewName = category === "all" && !searched
-    ? filters.onOffer && activeFilterCount(filters) === 1 ? t("footer.onOffer")
+    ? dealsView ? t("footer.onOffer")
       : filters.sort === "newest" && activeFilterCount(filters) === 0 ? t("footer.newArrivals")
       : null
     : null;
@@ -532,11 +534,16 @@ export default function Category() {
             ) : (
               <div className="mt-5">
                 <EmptyState
-                  icon={<PackageOpen className="size-6" />}
-                  title={elsewhere ? t("browse.emptyHere", { name: departmentName }) : activeCount ? t("browse.empty") : searched ? t("browse.emptySearch") : t("browse.emptyCategory")}
-                  note={activeCount ? t("browse.emptyNote") : searched ? t("browse.emptySearchNote") : t("browse.emptyCategoryNote")}
+                  icon={dealsView ? <BadgePercent className="size-6" /> : <PackageOpen className="size-6" />}
+                  title={dealsView ? t("browse.noDeals") : elsewhere ? t("browse.emptyHere", { name: departmentName }) : activeCount ? t("browse.empty") : searched ? t("browse.emptySearch") : t("browse.emptyCategory")}
+                  note={dealsView ? t("browse.noDealsNote") : activeCount ? t("browse.emptyNote") : searched ? t("browse.emptySearchNote") : t("browse.emptyCategoryNote")}
                 >
-                  {elsewhere ? (
+                  {/* Nothing on offer is not a filter the shopper set: the way on is everything. */}
+                  {dealsView ? (
+                    <button type="button" onClick={() => { setSheet(null); navigate("/category/all"); setQueryString(""); }} className={BUTTON_PRIMARY}>
+                      {t("browse.browseEverything")}
+                    </button>
+                  ) : elsewhere ? (
                     <Link href={searchPath(typed)} className={BUTTON_PRIMARY}>
                       {t(elsewhere === 1 ? "browse.searchAllOne" : "browse.searchAllMany", { count: elsewhere })}
                     </Link>

@@ -192,6 +192,7 @@ jobs:
             shot 67-tutorial-last "$lang" tutorial:4 ""
             shot 68-browse-sort "$lang" browseSheet:all/sort ""
             shot 69-browse-price "$lang" browseSheet:all/price ""
+            shot 70-deals "$lang" deals ""
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

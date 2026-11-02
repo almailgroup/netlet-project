@@ -150,7 +150,7 @@ final class AppModel {
     /// Set while the sign-in sheet is up, for the screens that need an account
     /// to go on (checkout, selling). Signed out, the Account tab is the form itself.
     var authPresented = false
-    /// The web's phone tabs, in its order: Home, Profile, Cart, Categories.
+    /// The web's phone tabs, in its order: Home, Categories, Deals, Profile, Cart.
     var selectedTab: Tab = .home
     /// Each tab's stack, held here so one tab can open another's screen — Buy
     /// now opening checkout, a launch argument opening a product.
@@ -158,6 +158,7 @@ final class AppModel {
     var accountPath = NavigationPath()
     var cartPath = NavigationPath()
     var categoriesPath = NavigationPath()
+    var dealsPath = NavigationPath()
     /// The header's search, grown down over the page while it is open.
     var searchOpen = false
     var searchText = ""
@@ -273,7 +274,7 @@ final class AppModel {
     }
 
     enum Tab: Hashable, CaseIterable {
-        case home, account, cart, categories
+        case home, categories, deals, account, cart
     }
 
     /// `language` is optional rather than defaulted: a default argument is
@@ -378,6 +379,8 @@ final class AppModel {
             selectedTab = .categories
             browseSheetStart = pieces[1]
             categoriesPath = NavigationPath([Route.department(slug: pieces[0] == "all" ? nil : pieces[0])])
+        case "deals":
+            selectedTab = .deals
         case "stores":
             selectedTab = .home
             homePath = NavigationPath([Route.stores])
@@ -493,6 +496,7 @@ final class AppModel {
         case .account: accountPath.append(route)
         case .cart: cartPath.append(route)
         case .categories: categoriesPath.append(route)
+        case .deals: dealsPath.append(route)
         }
     }
 
@@ -592,6 +596,7 @@ final class AppModel {
             case .account: accountPath = NavigationPath()
             case .cart: cartPath = NavigationPath()
             case .categories: categoriesPath = NavigationPath()
+            case .deals: dealsPath = NavigationPath()
             }
         }
         selectedTab = tab

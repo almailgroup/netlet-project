@@ -1,25 +1,26 @@
 import SwiftUI
 import UIKit
 
-/// The tab bar's four icons — the web's own drawing (`content/tabIcons.ts`,
-/// exported to `tabIcons.json`), on the owner's word ("see if you can improve
-/// the icon design for the menu at the bottom").
-///
-/// They were SF Symbols — a house, a person, a cart and a grid — beside the
-/// web's own set, so the app's bar and the web's drew four different
-/// pictures. Now one set: one line weight, round caps and joins, the house's
-/// roof NetLet's own, an outline for each tab and a filled form for the one
-/// that is chosen, drawn here as template images the system tints — navy
-/// chosen, the bar's ink otherwise — so the tab bar stays Apple's own.
+/// The tab bar's five icons — the web's own drawing (`content/tabIcons.ts`,
+/// exported to `tabIcons.json`): bold and wordless, on the owner's word,
+/// after the picture they sent of a shop's bar — a rounded house, three
+/// squares and a sparkle, a bag with a percent sign for the deals, a person
+/// in a circle, the cart. An outline for each tab and a filled form for the
+/// one that is chosen, drawn here as template images the system tints — navy
+/// chosen, the bar's ink otherwise — so the tab bar stays Apple's own. A
+/// `knockout` path is cut out of what is drawn (the percent through the
+/// chosen bag), with the clear blend mode, since one tint cannot draw it.
 ///
 /// The paths are absolute M, L, H, V, C and Z alone, the parser below being
 /// all it takes; a test draws every one.
 enum TabIcon: String, CaseIterable {
-    case home, profile, cart, categories
+    case home, categories, deals, profile, cart
 
     struct Path: Decodable, Sendable {
         let d: String
         let mode: String
+        /// Cut out of what is drawn rather than drawn.
+        var knockout: Bool?
     }
 
     struct Drawing: Decodable, Sendable {
@@ -32,8 +33,9 @@ enum TabIcon: String, CaseIterable {
         let icons: [String: Drawing]
     }
 
-    /// The tab bar's own size for an icon, in points.
-    static let side: CGFloat = 25
+    /// An icon's size, in points — larger than the system's 25, as the words
+    /// under it are gone and the picture the owner sent draws them bold.
+    static let side: CGFloat = 28
 
     static let file: File? = try? JSONDecoder().decode(File.self, from: Bundle.main.resource("tabIcons", "json"))
 
@@ -61,9 +63,10 @@ enum TabIcon: String, CaseIterable {
     private var fallback: String {
         switch self {
         case .home: return "house"
-        case .profile: return "person"
-        case .cart: return "cart"
         case .categories: return "square.grid.2x2"
+        case .deals: return "bag"
+        case .profile: return "person.crop.circle"
+        case .cart: return "cart"
         }
     }
 
@@ -78,7 +81,9 @@ enum TabIcon: String, CaseIterable {
             cg.setLineJoin(.round)
             cg.setFillColor(UIColor.black.cgColor)
             cg.setStrokeColor(UIColor.black.cgColor)
-            for path in paths {
+            // What is drawn first, then what is cut out of it.
+            for path in paths.filter({ $0.knockout != true }) + paths.filter({ $0.knockout == true }) {
+                cg.setBlendMode(path.knockout == true ? .clear : .normal)
                 cg.addPath(cgPath(path.d))
                 switch path.mode {
                 case "fill": cg.fillPath()

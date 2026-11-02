@@ -1194,7 +1194,7 @@ html[dir="rtl"] .nav-progress {
   top: 5px;
   bottom: 5px;
   inset-inline-start: 5px;
-  width: calc((100% - 10px) / 4);
+  width: calc((100% - 10px) / 5);
   border-radius: 9999px;
   background: #ececef;
   box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.06);
@@ -1374,63 +1374,12 @@ html[dir="rtl"] .nav-progress {
 }
 
 /*
- * The home band's two fades, eased rather than straight (`HomeHero`). A
+ * The home band's fade, eased rather than straight (`HomeHero`). A
  * straight gradient starts at a visible line and spends its middle in one
  * flat grey; easing in and out (smoothstep, as stops every tenth) leaves the
- * navy and reaches the page with neither. `.hero-shade` runs the pictures
- * into the navy where the words are; `.hero-foot` runs the whole band into
- * the page's own background.
+ * navy and reaches the page with neither. `.hero-foot` runs the pictures
+ * into the page's own background.
  */
-.hero-shade {
-  background: linear-gradient(
-    0deg,
-    rgb(10 40 90 / 1) 0%,
-    rgb(10 40 90 / 0.972) 4.5%,
-    rgb(10 40 90 / 0.896) 9%,
-    rgb(10 40 90 / 0.784) 13.5%,
-    rgb(10 40 90 / 0.648) 18%,
-    rgb(10 40 90 / 0.5) 22.5%,
-    rgb(10 40 90 / 0.352) 27%,
-    rgb(10 40 90 / 0.216) 31.5%,
-    rgb(10 40 90 / 0.104) 36%,
-    rgb(10 40 90 / 0.028) 40.5%,
-    rgb(10 40 90 / 0) 45%
-  );
-}
-@media (min-width: 1024px) {
-  .hero-shade {
-    background: linear-gradient(
-      90deg,
-      rgb(10 40 90 / 1) 0%,
-      rgb(10 40 90 / 0.972) 3.5%,
-      rgb(10 40 90 / 0.896) 7%,
-      rgb(10 40 90 / 0.784) 10.5%,
-      rgb(10 40 90 / 0.648) 14%,
-      rgb(10 40 90 / 0.5) 17.5%,
-      rgb(10 40 90 / 0.352) 21%,
-      rgb(10 40 90 / 0.216) 24.5%,
-      rgb(10 40 90 / 0.104) 28%,
-      rgb(10 40 90 / 0.028) 31.5%,
-      rgb(10 40 90 / 0) 35%
-    );
-  }
-  [dir="rtl"] .hero-shade {
-    background: linear-gradient(
-      270deg,
-      rgb(10 40 90 / 1) 0%,
-      rgb(10 40 90 / 0.972) 3.5%,
-      rgb(10 40 90 / 0.896) 7%,
-      rgb(10 40 90 / 0.784) 10.5%,
-      rgb(10 40 90 / 0.648) 14%,
-      rgb(10 40 90 / 0.5) 17.5%,
-      rgb(10 40 90 / 0.352) 21%,
-      rgb(10 40 90 / 0.216) 24.5%,
-      rgb(10 40 90 / 0.104) 28%,
-      rgb(10 40 90 / 0.028) 31.5%,
-      rgb(10 40 90 / 0) 35%
-    );
-  }
-}
 .hero-foot {
   background: linear-gradient(
     180deg,

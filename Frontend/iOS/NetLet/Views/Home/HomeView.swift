@@ -87,16 +87,17 @@ struct HomeView: View {
     }
 }
 
-/// The front door: a navy band with NetLet's pictures on it and one line
-/// saying what the shop is (`HomeHero`). **No buttons, on the owner's word**:
-/// "See what's new" and "All departments" offered again what the departments'
-/// row directly under the band offers.
+/// The front door: NetLet's pictures the width of the screen (`HomeHero`).
+/// **No words and no buttons, on the owner's word**: "Kuwait's stores, one
+/// cart." and the sentence under it went ("remove the … text with the text
+/// below it"), as the buttons had, which offered again what the departments'
+/// row directly under the band offers. The pictures are the page's heading to
+/// VoiceOver, the shop's name.
 ///
 /// The pictures are a slideshow, on the owner's word: each stays three
 /// seconds, the next fades in over the last, which stays whole underneath so
-/// the navy never shows through mid-change. Only the pictures move; the words
-/// hold still. Nobody who asked for less motion sees it move.
-/// The band ends in a fade into the page rather than a line.
+/// the navy never shows through mid-change. Nobody who asked for less motion
+/// sees it move. The band ends in a fade into the page rather than a line.
 struct HomeHero: View {
     @State private var current = 0
     @State private var previous: Int?
@@ -108,37 +109,14 @@ struct HomeHero: View {
     private let slides = WebAssets.manifest.heroSlides
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if !slides.isEmpty {
-                pictures
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                (Text(l.t("home.heroTitle") + " ").foregroundStyle(.white) + Text(l.t("home.heroTitleAccent")).foregroundStyle(Brand.orange))
-                    .font(.inter(30, .heavy))
-                    .tracking(-0.6)
-                    .lineSpacing(-2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    // `max-w-[15ch]`: the line breaks before "one cart." as it does on the web.
-                    .frame(maxWidth: 270, alignment: .leading)
-                    .accessibilityLabel(l.t("home.heading") + ": " + l.t("home.heroTitle") + " " + l.t("home.heroTitleAccent"))
-                    .accessibilityAddTraits(.isHeader)
-                Text(l.t("home.heroNote"))
-                    .font(.inter(15))
-                    .lineSpacing(3)
-                    .foregroundStyle(Color(red: 201 / 255, green: 212 / 255, blue: 226 / 255))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 12)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 4)
-            .padding(.bottom, 128)
+        if !slides.isEmpty {
+            pictures
+                .overlay(alignment: .bottom) {
+                    Self.foot.frame(height: 96).allowsHitTesting(false)
+                }
+                .background(Brand.navy)
+                .task(id: still) { await run() }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Brand.navy)
-        .overlay(alignment: .bottom) {
-            Self.foot.frame(height: 144).allowsHitTesting(false)
-        }
-        .task(id: still) { await run() }
     }
 
     private var pictures: some View {
@@ -148,13 +126,14 @@ struct HomeHero: View {
                 .id(current)
                 .transition(.opacity)
                 .zIndex(2)
-            // Into the navy under the pictures, where the words begin.
-            Self.shade.zIndex(3)
         }
-        .frame(height: 220)
+        .frame(height: 240)
         .frame(maxWidth: .infinity)
         .clipped()
-        .accessibilityHidden(true)
+        // The page's heading: the shop's name, for VoiceOver alone.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(l.t("home.heading"))
+        .accessibilityAddTraits(.isHeader)
     }
 
     private func slide(_ index: Int) -> some View {
@@ -179,14 +158,7 @@ struct HomeHero: View {
         }
     }
 
-    /// `.hero-shade`: the navy rising into the pictures from their foot, eased.
-    static let shade = LinearGradient(
-        stops: easedStops(color: Brand.navy, reach: 0.45, fromBottom: true),
-        startPoint: .bottom,
-        endPoint: .top
-    )
-
-    /// `.hero-foot`: the band into the page's own ground, eased.
+    /// `.hero-foot`: the pictures into the page's own ground, eased.
     static let foot = LinearGradient(
         stops: easedStops(color: Brand.ground, reach: 1, fromBottom: true),
         startPoint: .bottom,
