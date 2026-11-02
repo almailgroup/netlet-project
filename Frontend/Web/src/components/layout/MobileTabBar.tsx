@@ -70,8 +70,8 @@ function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
       strokeWidth={TAB_ICON_STROKE}
     />
   );
-  /* A knockout is cut out of what is drawn — the percent through the chosen
-     Deals bag — by a mask, so the bar shows through it. */
+  /* A knockout is cut out of what is drawn — the hole through the chosen
+     Deals tag — by a mask, so the bar shows through it. */
   const cut = paths.filter(path => path.knockout);
   return (
     <svg viewBox="0 0 24 24" aria-hidden className="size-[28px]" strokeLinejoin="round" strokeLinecap="round">

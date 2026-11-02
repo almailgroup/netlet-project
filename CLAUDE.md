@@ -141,10 +141,13 @@ at the bottom", and the first redraw — the same house, person, cart and grid
 at the same size, with words — read to them as no change at all, so two
 directions were drawn for them and they chose the one after their picture of
 a shop's bar, then asked for its Deals tab, in its order. A rounded house with
-its door; three squares and a sparkle for the departments; a bag with a
-percent sign for the deals, the sign cut out of the chosen bag (`knockout`: a
-mask on the web, the clear blend mode in the app); a person in a circle; the
-cart with its wheels. One 24 grid, one heavier line (2), round caps and
+its door; three squares and a sparkle for the departments; a price tag for
+the deals, tilted 45° with its square end at the top right and the hole cut
+out of the chosen tag (`knockout`: a mask on the web, the clear blend mode in
+the app) — it was a bag with a percent sign until the owner sent a picture of
+a tag ("make the deals icon like this"), and `roundedPolygon` draws it as
+lines and cubics the app can parse; a person in a circle; the cart with its
+wheels. One 24 grid, one heavier line (2), round caps and
 joins, each an outline and a filled form, drawn 28px. The paths are
 absolute M, L, H, V, C and Z alone, so the app draws them from
 `tabIcons.json` (`TabIcon.swift`, a dozen-line parser) as template images the
