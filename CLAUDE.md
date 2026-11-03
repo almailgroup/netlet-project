@@ -1663,15 +1663,20 @@ there are no uppercase eyebrows over them — a 10px tracked-out label restating
 the heading below it is the most recognisable mark of generated design there
 is, and it does nothing at all in Arabic, which has no capitals.
 
-**"Download the NetLet app" ends a wide screen's department row, under the
-cart, on the owner's word** (`AppDownloadLink` in `components/layout/`): it
-was an App Store badge in the screen's bottom corner first, and the owner
-asked for the words under the cart and a card on hover, after a picture of a
-shop's own. A pointer resting on it, the keyboard reaching it or a press opens
-the card — the QR code with NetLet's mark in its middle (correction level H, so
-the mark hides nothing the code needs), "Download the NetLet app", "Scan the
-QR code to download", Apple's black App Store pill (Simple Icons' mark, CC0)
-and "For iOS only." — which stays while the pointer crosses onto it
+**Apple's App Store badge, in NetLet's navy, ends a wide screen's department
+row, under the cart, on the owner's word** (`AppDownloadLink` in
+`components/layout/`): it was a black badge in the screen's bottom corner
+first, then the words "Download the NetLet app" under the cart, and the owner
+sent the badge to put there instead, "in the NetLet blue" —
+`assets/app-store-badge.svg`, their file with its black and grey rim made
+`#0a285a` and its grey shine taken off. Its name is the words it draws,
+"Download on the App Store", which the Arabic name carries first (WCAG 2.5.3).
+Apple's marketing guidelines ask for the badge in black or white; navy is the
+owner's choice. A pointer resting on it, the keyboard reaching it or a press
+opens the card — the QR code with NetLet's mark in its middle (correction level
+H, so the mark hides nothing the code needs), "Download the NetLet app", "Scan
+the QR code to download", the same navy badge as its button, and "For iOS
+only." — which stays while the pointer crosses onto it
 (`LEAVE_MS`), closes on leaving, Escape (focus back on the link) or a press
 elsewhere, and drops in by a transform (`.app-card`). The disclosure pattern,
 not a modal. **No Google Play button**: there is no Android app, and a button

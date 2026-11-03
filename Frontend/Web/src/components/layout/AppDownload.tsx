@@ -1,15 +1,18 @@
 /**
- * "Download the NetLet app" at the end of a wide screen's department row,
- * under the cart, and the card it opens — on the owner's word ("put the
- * download NetLet app text below the cart icon in the header. And when you
- * hover over it, it should show the QR code with the buttons", after a
- * picture of a shop's own card). It was a black App Store badge in the bottom
- * corner of the screen first.
+ * The App Store badge at the end of a wide screen's department row, under the
+ * cart, and the card it opens — on the owner's word ("put the download NetLet
+ * app text below the cart icon in the header. And when you hover over it, it
+ * should show the QR code with the buttons", after a picture of a shop's own
+ * card). **The trigger is Apple's "Download on the App Store" badge in
+ * NetLet's navy, on the owner's word** ("put this instead of the download
+ * NetLet app text, and make its color the NetLet blue"): their file,
+ * `assets/app-store-badge.svg`, its black and grey rim made `#0a285a` and its
+ * grey shine taken off. It was a black badge in the screen's bottom corner
+ * first, then the words "Download the NetLet app".
  *
  * **The card**: the QR code with NetLet's mark in its middle, "Download the
- * NetLet app", "Scan the QR code to download", and the App Store button —
- * Apple's black pill with its mark (Simple Icons' drawing, CC0) — then "For
- * iOS only." There is no Google Play button: there is no Android app, and a
+ * NetLet app", "Scan the QR code to download", and the same navy badge as the
+ * App Store button — one button, one colour — then "For iOS only." There is no Google Play button: there is no Android app, and a
  * button leading nowhere is the dead-control rule.
  *
  * **It opens for a pointer resting on it, the keyboard reaching it, and a
@@ -25,24 +28,13 @@
  * published, by the `qrcode` library, fetched only when the card first opens.
  */
 import { useEffect, useId, useRef, useState } from "react";
-import { Smartphone } from "lucide-react";
+import badgeUrl from "@/assets/app-store-badge.svg";
 import { useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
 import { APP_STORE_URL } from "@/content/appDownload";
 
-const APPLE_MARK =
-  "M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701";
-
 /** How long the card waits for a pointer crossing from the link to it. */
 const LEAVE_MS = 180;
-
-function AppleMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className={className}>
-      <path fill="currentColor" d={APPLE_MARK} />
-    </svg>
-  );
-}
 
 /** The code, drawn once the card first opens; nothing while it is being drawn. */
 function useQrCode(wanted: boolean): string | null {
@@ -122,10 +114,11 @@ export function AppDownloadLink({ className = "" }: { className?: string }) {
            press never closes it under the pointer. Escape, leaving and a
            press elsewhere close it. */
         onClick={show}
-        className="pressable flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]"
+        className="flex shrink-0 items-center rounded-[9px] p-0"
       >
-        <Smartphone className="size-3.5 shrink-0" aria-hidden />
-        {t("appDownload.title")}
+        {/* Apple's own words, drawn in English on either page: its name
+            carries them, so somebody steering by voice can say what they see. */}
+        <img src={badgeUrl} alt={t("appDownload.badge")} width={122} height={36} loading="eager" decoding="async" className="h-9 w-auto" />
       </button>
       <div
         id={cardId}
@@ -160,11 +153,10 @@ export function AppDownloadLink({ className = "" }: { className?: string }) {
               href={APP_STORE_URL}
               target="_blank"
               rel="noreferrer"
-              aria-label={t("appDownload.open")}
-              className="mt-4 inline-flex h-12 items-center gap-2 rounded-full bg-black pe-5 ps-4 text-white"
+              className="mt-4 inline-flex rounded-[11px]"
             >
-              <AppleMark className="size-[22px]" />
-              <span className="text-[16px] font-bold tracking-tight" dir="ltr">App Store</span>
+              {/* The header's own badge, larger: one App Store button, one colour. */}
+              <img src={badgeUrl} alt={t("appDownload.badge")} width={149} height={44} loading="eager" decoding="async" className="h-11 w-auto" />
             </a>
             <p className="mt-2 text-[12px] font-semibold text-[#536b8c]">{t("appDownload.iosOnly")}</p>
           </div>

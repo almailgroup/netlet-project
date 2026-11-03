@@ -78,9 +78,9 @@ describe("dictionary completeness", () => {
       "manufacturer.searchHint",
       // A cleaned photo says which model made it, by the maker's own name.
       "media.aiNote", "tryOn.privacy",
-      // The badge's name says where the app is, as Apple names its store on an
-      // Arabic phone — "App Store" in Latin: the maps' reason.
-      "appDownload.open",
+      // The header's badge is Apple's drawing, in English on either page; its
+      // name carries the words it shows (WCAG 2.5.3), then says it in Arabic.
+      "appDownload.badge",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.
