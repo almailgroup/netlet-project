@@ -20,7 +20,7 @@
 import type { Cart, CartItem, Product } from "@shared/commerce/types";
 import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 import { EACH } from "@shared/commerce/units";
-import { addMoney, multiplyMoney } from "@shared/money";
+import { addMoney, multiplyMoney, subtractMoney } from "@shared/money";
 
 export type BagOp =
   | { kind: "add"; variantId: string; quantity: number; ghost: CartItem | null; addonIds?: string[]; bundleId?: number }
@@ -110,7 +110,8 @@ function withItems(cart: Cart, items: CartItem[]): Cart {
     items,
     itemCount: counted(items) + unexplained,
     subtotal: { amount: subtotal, currencyCode },
-    total: { amount: addMoney(subtotal, cart.delivery.total.amount), currencyCode },
+    /* The lines' own codes (0074) stay the server's last, like the delivery. */
+    total: { amount: subtractMoney(addMoney(subtotal, cart.delivery.total.amount), cart.codeDiscount?.amount ?? "0.000"), currencyCode },
   };
 }
 

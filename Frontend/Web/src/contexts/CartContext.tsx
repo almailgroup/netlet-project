@@ -76,6 +76,8 @@ type Change =
   | BagOp
   | { kind: "destination"; lineId: string; addressId: number | null }
   | { kind: "speed"; lineId: string; choice: "regular" | "fast" }
+  /* A line's own discount code (0074); `answer` carries the refusal back. */
+  | { kind: "code"; lineId: string; code: string | null; answer: { reason: string | null } }
   | { kind: "refresh" };
 
 type Entry = { change: Change; sent: boolean; done: Promise<void>; resolve: () => void; reject: (error: unknown) => void };
@@ -123,6 +125,12 @@ type CartContextValue = {
   setDestination: (lineId: string, addressId: number | null) => Promise<void>;
   /** Fast or regular for this line (3.2.5); the quote moves with it. */
   setDeliveryChoice: (lineId: string, choice: "regular" | "fast") => Promise<void>;
+  /**
+   * A store's or a product's discount code on this line alone (migration
+   * 0074), or `null` to take it off. Answers null when it went on, or the
+   * reason it does not fit, as a message key.
+   */
+  setLineCode: (lineId: string, code: string | null) => Promise<string | null>;
   clearCart: () => void;
   /**
    * Read the bag again from the server. The context holds its own copy, so
@@ -218,6 +226,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const lineId = realLineId(current, change.lineId);
         if (!id || !lineId) return current;
         return (await client.setDeliveryChoice.mutate({ cartId: id, lineId, choice: change.choice })) ?? current;
+      }
+      case "code": {
+        const lineId = realLineId(current, change.lineId);
+        if (!id || !lineId) return current;
+        if (change.code === null) return (await client.clearLineCode.mutate({ cartId: id, lineId })) ?? current;
+        const answer = await client.setLineCode.mutate({ cartId: id, lineId, code: change.code });
+        if (answer.ok) return answer.cart;
+        change.answer.reason = answer.reason;
+        return current;
       }
       case "refresh": {
         if (!id) return current;
@@ -346,7 +363,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cartId, setCartId, setServerCart, utils.commerce.cart.get]);
 
   const cart = useMemo(
-    () => waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "speed" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart),
+    () => waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "speed" || change.kind === "code" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart),
     [serverCart, waiting],
   );
   const itemCount = cart?.itemCount ?? 0;
@@ -392,6 +409,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     (lineId: string, choice: "regular" | "fast") => enqueue({ kind: "speed", lineId, choice }),
     [enqueue]
   );
+
+  /* Through the queue for the same reason: the line's price and the total move with it. */
+  const setLineCode = useCallback(async (lineId: string, code: string | null) => {
+    const change: Change = { kind: "code", lineId, code, answer: { reason: null } };
+    await enqueue(change);
+    return change.kind === "code" ? change.answer.reason : null;
+  }, [enqueue]);
 
   /* In the queue, so a read cannot overtake a change still on its way. */
   const refreshCart = useCallback(() => enqueue({ kind: "refresh" }).catch(() => undefined), [enqueue]);
@@ -446,6 +470,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       setDestination,
       setDeliveryChoice,
+      setLineCode,
       clearCart,
       refreshCart,
       adoptCart,
@@ -466,6 +491,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       setDestination,
       setDeliveryChoice,
+      setLineCode,
       clearCart,
       refreshCart,
       adoptCart,

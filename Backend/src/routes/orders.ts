@@ -41,7 +41,8 @@ import { documentsForShopperOrder } from "../services/invoices.js";
 import { MAX_RETURN_NOTE, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
 import { fraudUnseen, markFraudSeen, referralWatch, reviewWatch, riskForOrders } from "../services/fraud.js";
 import { lineEligibility, myReviewsForLines } from "../services/reviews.js";
-import { createGiftCard, listVouchers, saveDiscountCode } from "../services/vouchers.js";
+import { createGiftCard, listVouchers, PromotionRefused, saveDiscountCode } from "../services/vouchers.js";
+import { CODE_FUNDERS, CODE_SCOPES } from "../../../Shared/commerce/lineCodes.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { PAYMENT_METHODS } from "../../../Shared/commerce/payment.js";
 import { MAX_HELD_CLAIMS } from "../../../Shared/commerce/wishlist.js";
@@ -445,6 +446,11 @@ export const ordersRouter = router({
       endsAt: lastDay.nullable().optional(),
       maxRedemptions: z.number().int().min(1).max(1_000_000).nullable().optional(),
       perShopper: z.number().int().min(1).max(100).optional(),
+      /* What it covers and who pays (0074). A store's own are always its own. */
+      scope: z.enum(CODE_SCOPES).optional(),
+      vendorId: rowId.nullable().optional(),
+      fundedBy: z.enum(CODE_FUNDERS).optional(),
+      productIds: z.array(rowId).max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => guard(async () =>
       saveDiscountCode(await resolveActor(ctx.user), input))),
@@ -580,6 +586,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "NOT_FOUND") throw new TRPCError({ code: "NOT_FOUND", message: "orders.lineGone" });
     /* A move the line's own rules refuse is the caller's to fix, and says why —
        it used to have nowhere to go but a 500. */
+    if (error instanceof PromotionRefused) throw new TRPCError({ code: "BAD_REQUEST", message: error.reason });
     if (error instanceof FulfilmentRefused) {
       throw new TRPCError({ code: error.reason === "orders.lineMoved" ? "CONFLICT" : "BAD_REQUEST", message: error.reason });
     }

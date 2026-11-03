@@ -5,10 +5,13 @@
  * shopper may type into the one field at checkout — and two pages would mean
  * somebody choosing between them before they know which they are making.
  *
- * **A discount code is NetLet's own promotion**, so it comes out of NetLet's
- * cut and needs no seller's agreement; a seller's own code would reduce their
- * takings and change the commission split on their lines, which is a decision
- * about money rather than a default to pick, so it is deliberately not here.
+ * **A code for the whole order is NetLet's own promotion**, so it comes out of
+ * NetLet's cut. **A code for a store or chosen products (migration 0074)** is
+ * typed on that product's line at checkout and comes off that line alone; the
+ * owner's rule is that whoever made it pays for it. A store's owner or manager
+ * (`promotion.manage`) makes codes here for their own products only, always
+ * paid by the store, and sees their own codes and nothing of NetLet's; NetLet
+ * makes any code and says who pays.
  *
  * **A gift card is money somebody already paid for.** It is generated rather
  * than chosen — the code is the whole credential — and it pays what is still
@@ -24,6 +27,8 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { VOUCHER_KINDS, type VoucherKind } from "@shared/commerce/vouchers";
+import { codeShapeProblem, type CodeFunder, type CodeScope } from "@shared/commerce/lineCodes";
+import { can, type Actor } from "@shared/inventory/permissions";
 import { kuwaitDay } from "@shared/kuwaitDay";
 import { privatePageMeta } from "@shared/seo";
 import { Gift, LoaderCircle, Ticket } from "lucide-react";
@@ -36,15 +41,23 @@ function trimZeros(value: string): string {
   return value.includes(".") ? value.replace(/\.?0+$/, "") : value;
 }
 
-const EMPTY_CODE = { code: "", kind: "percent" as VoucherKind, value: "", minSpend: "", endsAt: "", maxRedemptions: "", perShopper: "1" };
+const EMPTY_CODE = {
+  code: "", kind: "percent" as VoucherKind, value: "", minSpend: "", endsAt: "", maxRedemptions: "", perShopper: "1",
+  /* What it covers and who pays (0074). */
+  scope: "order" as CodeScope, vendorId: "", fundedBy: "netlet" as CodeFunder, productIds: [] as number[],
+};
 
 export default function AdminPromotions() {
   usePageMeta(privatePageMeta("Codes and gift cards"));
-  return <AdminShell need="platform.viewAll">{() => <Promotions />}</AdminShell>;
+  /* NetLet's whole page, or a store's own codes for its owner or manager. */
+  return <AdminShell need={["platform.viewAll", "promotion.manage"]}>{actor => <Promotions actor={actor} />}</AdminShell>;
 }
 
-function Promotions() {
-  const { t, tError } = useTranslation();
+function Promotions({ actor }: { actor: Actor }) {
+  const { t, tError, isArabic } = useTranslation();
+  const netlet = can(actor, "platform.viewAll");
+  const ownStore = actor.kind === "vendor" ? actor.vendorId : null;
+  const fresh = netlet ? EMPTY_CODE : { ...EMPTY_CODE, scope: "store" as CodeScope, vendorId: String(ownStore ?? ""), fundedBy: "store" as CodeFunder };
   /* Switched off (2.3): no new cards. One already sold is money somebody
      holds, so it stays listed and spendable. */
   const cardsOn = useFeature("giftCards");
@@ -53,7 +66,16 @@ function Promotions() {
   const list = trpc.orders.vouchers.useQuery({});
   const utils = trpc.useUtils();
 
-  const [code, setCode] = useState(EMPTY_CODE);
+  const [code, setCode] = useState(fresh);
+  const vendors = trpc.inventory.vendors.list.useQuery({ pageSize: 200 }, { enabled: netlet });
+  const storeName = (id: number | null, fallback: string | null) =>
+    vendors.data?.rows.find(row => row.id === id)?.name ?? fallback ?? "";
+  const shape = codeShapeProblem({
+    scope: code.scope,
+    vendorId: code.scope === "order" ? null : code.vendorId ? Number(code.vendorId) : null,
+    fundedBy: code.scope === "order" ? "netlet" : code.fundedBy,
+    productIds: code.productIds,
+  });
   /* Saving an existing code edits it, which the server has always allowed —
      a live campaign gets a later end date. The form says which it is doing. */
   const [editing, setEditing] = useState<string | null>(null);
@@ -61,7 +83,7 @@ function Promotions() {
 
   const refresh = () => void utils.orders.vouchers.invalidate();
   const saveCode = trpc.orders.saveDiscountCode.useMutation({
-    onSuccess: () => { toast.success(t("admin.codeSaved")); refresh(); setCode(EMPTY_CODE); setEditing(null); },
+    onSuccess: () => { toast.success(t("admin.codeSaved")); refresh(); setCode(fresh); setEditing(null); },
     onError: error => toast.error(tError(error.message)),
   });
   const makeCard = trpc.orders.createGiftCard.useMutation({
@@ -74,7 +96,7 @@ function Promotions() {
 
   return (
     <>
-      <PageHeader title={t("admin.promotions")} description={t("admin.promotionsNote")} />
+      <PageHeader title={t(netlet ? "admin.promotions" : "admin.codeOwnTitle")} description={t(netlet ? "admin.promotionsNote" : "admin.codeStoreNote")} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <form onSubmit={event => {
@@ -89,14 +111,18 @@ function Promotions() {
             endsAt: code.endsAt || null,
             maxRedemptions: code.maxRedemptions.trim() ? Number(code.maxRedemptions) : null,
             perShopper: Number(code.perShopper) || 1,
+            scope: code.scope,
+            vendorId: code.scope === "order" || !code.vendorId ? null : Number(code.vendorId),
+            fundedBy: code.scope === "order" ? "netlet" : code.fundedBy,
+            productIds: code.scope === "products" ? code.productIds : [],
           });
         }}>
           <Card
             title={<span className="inline-flex items-center gap-2"><Ticket className="size-4 ink-accent" aria-hidden />{editing ? editing : t("admin.codeNew")}</span>}
             footer={
               <>
-                {editing ? <button type="button" onClick={() => { setCode(EMPTY_CODE); setEditing(null); }} className={buttonClass.secondary}>{t("admin.codeStartNew")}</button> : null}
-                <button type="submit" disabled={code.code.trim().length < 3 || !code.value.trim() || saveCode.isPending} className={buttonClass.primary}>
+                {editing ? <button type="button" onClick={() => { setCode(fresh); setEditing(null); }} className={buttonClass.secondary}>{t("admin.codeStartNew")}</button> : null}
+                <button type="submit" disabled={code.code.trim().length < 3 || !code.value.trim() || Boolean(shape) || saveCode.isPending} className={buttonClass.primary}>
                   {saveCode.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
                   {t("admin.codeSave")}
                 </button>
@@ -130,11 +156,47 @@ function Promotions() {
               <Field label={t("admin.codePerShopper")}>
                 <input dir="ltr" inputMode="numeric" value={code.perShopper} onChange={e => set({ perShopper: e.target.value.replace(/\D/g, "") })} className={fieldClass} />
               </Field>
+              {/* What it takes money off (0074): NetLet's whole order, a store,
+                  or chosen products — a store's own codes are only the last two. */}
+              <Field label={t("admin.codeScope")}>
+                <Select value={code.scope} onChange={e => set({ scope: e.target.value as CodeScope, productIds: [] })} className={fieldClass}>
+                  {netlet ? <option value="order">{t("admin.codeScopeOrder")}</option> : null}
+                  <option value="store">{t(netlet ? "admin.codeScopeStore" : "admin.codeScopeStoreOwn")}</option>
+                  <option value="products">{t("admin.codeScopeProducts")}</option>
+                </Select>
+              </Field>
+              {netlet && code.scope !== "order" ? (
+                <Field label={t("admin.codeStore")}>
+                  <Select value={code.vendorId} onChange={e => set({ vendorId: e.target.value, productIds: [] })} className={fieldClass}>
+                    <option value="">—</option>
+                    {(vendors.data?.rows ?? []).map(row => <option key={row.id} value={String(row.id)}>{row.name}</option>)}
+                  </Select>
+                </Field>
+              ) : null}
+              {netlet && code.scope !== "order" ? (
+                <Field label={t("admin.codeFunder")}>
+                  <Select value={code.fundedBy} onChange={e => set({ fundedBy: e.target.value as CodeFunder })} className={fieldClass}>
+                    <option value="netlet">{t("admin.codeFundedNetlet")}</option>
+                    <option value="store">{t("admin.codeFundedStore")}</option>
+                  </Select>
+                </Field>
+              ) : null}
+              {code.scope === "products" && code.vendorId ? (
+                <ProductPicker
+                  vendorId={Number(code.vendorId)}
+                  chosen={code.productIds}
+                  onChange={productIds => set({ productIds })}
+                  isArabic={isArabic}
+                />
+              ) : null}
             </div>
+            {shape ? (
+              <p className="mt-3 text-[13px] font-semibold text-[#8c2f22]">{t(shape)}</p>
+            ) : null}
           </Card>
         </form>
 
-        {cardsOn ? (
+        {!netlet ? null : cardsOn ? (
           <form onSubmit={event => {
             event.preventDefault();
             makeCard.mutate({ amount: card.amount.trim(), note: card.note.trim() || null, expiresAt: card.expiresAt || null });
@@ -194,7 +256,13 @@ function Promotions() {
                                       back as "10.000" and reads as a strange figure. */}
                                   {row.kind === "percent" ? <bdi dir="ltr">{trimZeros(row.value)}%</bdi> : amount(row.value)}
                                 </Pill>
-                                {over ? <Pill tone="neutral">{t("offers.statusExpired")}</Pill> : null}
+                                {over ? <Pill tone="neutral">{t("admin.codeExpired")}</Pill> : null}
+                                <Pill tone="neutral">
+                                  {row.scope === "order" ? t("admin.codeForOrder")
+                                    : row.scope === "store" ? t("admin.codeForStore", { name: storeName(row.vendorId, row.vendorName) })
+                                    : t("admin.codeForProducts", { name: storeName(row.vendorId, row.vendorName), count: row.productIds.length })}
+                                </Pill>
+                                {row.scope !== "order" && netlet ? <Pill tone="neutral">{t(row.fundedBy === "store" ? "admin.codePaidByStore" : "admin.codePaidByNetlet")}</Pill> : null}
                               </p>
                               <p className="mt-1 text-[13px] ink-muted">
                                 {row.maxRedemptions ? t("admin.codeUsedOf", { used: row.used, max: row.maxRedemptions }) : t("admin.codeUsed", { used: row.used })}
@@ -215,6 +283,10 @@ function Promotions() {
                                   endsAt: row.endsAt ? kuwaitDay(new Date(row.endsAt)) : "",
                                   maxRedemptions: row.maxRedemptions ? String(row.maxRedemptions) : "",
                                   perShopper: String(row.perShopper ?? 1),
+                                  scope: row.scope,
+                                  vendorId: row.vendorId === null ? "" : String(row.vendorId),
+                                  fundedBy: row.fundedBy,
+                                  productIds: row.productIds,
                                 });
                                 window.scrollTo({ top: 0, behavior: "smooth" });
                               }}
@@ -229,7 +301,7 @@ function Promotions() {
                   )}
                 </section>
 
-                <section aria-labelledby="cards-title" className="min-w-0">
+                {netlet ? <section aria-labelledby="cards-title" className="min-w-0">
                   <SectionHeading><span id="cards-title">{t("admin.cardsTitle")}</span></SectionHeading>
                   {data.cards.length === 0 ? (
                     <EmptyState title={t("admin.cardsEmpty")} />
@@ -259,12 +331,60 @@ function Promotions() {
                       </table>
                     </div>
                   )}
-                </section>
+                </section> : null}
               </div>
             );
           }}
         </QueryGate>
       )}
     </>
+  );
+}
+
+/**
+ * The products a code is for: the store's own, searched on the server like
+ * the products page, each a tick box. What was ticked stays ticked while the
+ * search changes, and the count says how many.
+ */
+function ProductPicker({ vendorId, chosen, onChange, isArabic }: {
+  vendorId: number;
+  chosen: number[];
+  onChange: (ids: number[]) => void;
+  isArabic: boolean;
+}) {
+  const { t } = useTranslation();
+  const [query, setQuery] = useState("");
+  const list = trpc.inventory.products.list.useQuery({ vendorId, query: query.trim() || undefined, pageSize: 50 });
+  const rows = list.data?.rows ?? [];
+  const toggle = (id: number) => onChange(chosen.includes(id) ? chosen.filter(one => one !== id) : [...chosen, id]);
+  return (
+    <fieldset className="sm:col-span-2">
+      <legend className="text-[13px] font-bold text-[#0a285a]">{t("admin.codeProducts")}</legend>
+      <p className="mt-0.5 text-[12px] ink-muted">{t("admin.codeProductsHint")}</p>
+      <div className="mt-2 flex items-center gap-3">
+        <input
+          type="search"
+          dir="auto"
+          value={query}
+          onChange={event => setQuery(event.target.value)}
+          aria-label={t("admin.codeProductsSearch")}
+          placeholder={t("admin.codeProductsSearch")}
+          className={`${fieldClass} flex-1`}
+        />
+        <span className="shrink-0 text-[13px] font-bold text-[#0a285a]">{t("admin.codeChosenCount", { count: chosen.length })}</span>
+      </div>
+      <ul className="mt-2 max-h-56 divide-y divide-[#eef1f5] overflow-y-auto rounded-xl border border-[#e1e7ef] bg-white">
+        {list.isLoading ? <li className="px-3 py-3"><LoaderCircle className="size-4 animate-spin ink-muted" aria-hidden /></li> : null}
+        {!list.isLoading && rows.length === 0 ? <li className="px-3 py-3 text-[13px] ink-muted">{t("admin.codeNoProducts")}</li> : null}
+        {rows.map(row => (
+          <li key={row.id}>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2 text-[14px]">
+              <input type="checkbox" checked={chosen.includes(row.id)} onChange={() => toggle(row.id)} className="size-4 shrink-0 accent-[#0a285a]" />
+              <span dir="auto" className="min-w-0 flex-1 truncate">{(isArabic && row.titleAr?.trim()) || row.title}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </fieldset>
   );
 }

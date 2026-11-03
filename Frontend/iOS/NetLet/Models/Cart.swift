@@ -19,6 +19,9 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
     var addresses: [CartAddress]? = nil
     /// A bag left alone long enough to be reminded of (`recovery`).
     var recovery: CartRecovery? = nil
+    /// What the lines' own codes take off together (0074); nil when none does.
+    /// `subtotal` is before them and `total` after them.
+    var codeDiscount: Money? = nil
 
     var isEmpty: Bool { items.isEmpty }
 
@@ -66,6 +69,28 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     /// price, a subscriber's or a member's, which `priceReason` names.
     var agreedFrom: Money? = nil
     var priceReason: String? = nil
+    /// The line's own discount code (migration 0074) and what it takes off this
+    /// line alone; `lineTotal` is the line before it.
+    var code: LineCode? = nil
+    /// A code on this line that no longer takes anything off, and why (a key).
+    var codeProblem: LineCodeProblem? = nil
+
+    struct LineCode: Decodable, Hashable, Sendable {
+        let code: String
+        let amount: Money
+        let fundedBy: String
+    }
+
+    struct LineCodeProblem: Decodable, Hashable, Sendable {
+        let code: String
+        let reason: String
+    }
+
+    /// What the shopper pays for this line: less its own code.
+    var finalTotal: Money {
+        guard let code else { return lineTotal }
+        return Money(fils: lineTotal.fils - code.amount.fils, currencyCode: lineTotal.currencyCode)
+    }
 
     struct FastDelivery: Decodable, Hashable, Sendable {
         let fee: Money

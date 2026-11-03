@@ -1826,7 +1826,8 @@ drawer and its floating bar show the bag's own total with a line saying codes,
 gift cards and points are taken at checkout (`cart.checkoutNote`). What was
 chosen is kept for the tab and the bag (`lib/bagSavings.ts`, the session
 helpers), so leaving checkout and coming back finds it held.
-**A discount and a gift card are two boxes, and one order may use both** —
+**A store's or a product's code is typed on its own line**, never in these
+boxes (see "Discount codes on one product"). **A discount and a gift card are two boxes, and one order may use both** —
 `orders.place` takes `giftCardCode` beside `voucherCode` now, and the order
 writer always had the columns and `settle`'s order: the code, then the points,
 then the card against what is left. Each box still asks the shop what a code
@@ -3476,6 +3477,81 @@ on it punishes the seller for our missing field — the direction
 `isOffer` is only a compare-at price *above* the price. Equal or lower is not a
 claim about a saving, so it needs no paperwork, and a vendor who typed the same
 number twice should not be told otherwise.
+
+## Discount codes on one product
+
+**A store's or a product's code is typed on that product's line at checkout
+and comes off that line alone, on the owner's word** (migration 0074,
+approved as shown): "an Apply discount code option for each product … the
+discount applies only to that product", "support product-specific and
+seller-specific discount codes … so one seller's discounts don't affect other
+sellers' pricing or revenue". `Shared/commerce/lineCodes.ts` is the rule,
+pure; `Backend/src/services/lineCodes.ts` loads a code with what it covers and
+how often it has gone, and judges each line. A code is `order` (every code
+before it, the order's own box), `store` (every product of `vendor_id`) or
+`products` (the ones in `discount_code_products`); the order box refuses a
+store's or a product's (`voucher.forProducts`) and a line refuses an order
+code (`voucher.orderWide`) or a gift card (`voucher.giftOnLine`), each saying
+which box it belongs in.
+
+**The bag keeps the code, never what it took** (`cart_items.discount_code_id`),
+so it is judged again on every read like the price and follows the quantity:
+a percentage is of the line's worth (the goods at the shopper's price and the
+extras), a fixed amount is capped at it, and a minimum spend is the line's own
+(`voucher.lineBelowMinimum`). A line in a set takes none (`voucher.notOnSet`).
+`getCart` and the order's `priceableLines` judge through the one
+`judgeLineCodes`, so the figure checkout shows beside a line is the one the
+order freezes. `commerce.cart.setLineCode` writes it and reads the bag back,
+answering the bag's own verdict on that line (or putting the earlier code
+back); a code nobody has counts against the address's guesses, the order
+box's ceiling. **A code that stops applying stays on its line with the
+reason** — the quantity lowered under its minimum, the code expired, the
+store's permit lapsed — and Place order waits until it is removed
+(`checkout.codeProblem`); one that stops between the page and the press
+refuses the order (`order.voucherGone`) rather than charging the line in
+full. A line's code is money not spent with its store, so it does not count
+toward that store's free delivery. The cart's `subtotal` is before the codes,
+`codeDiscount` is what they take, and `total` is after; the order's own code,
+points and gift card come after them (`useSavingsBill`, `Till.bill`).
+
+**Whoever made the code pays for it, on the owner's word** (`funded_by`). A
+store's code comes out of the store's earnings — `freezeLine` takes the
+commission on what the shopper paid — and NetLet's is paid by NetLet, the
+store paid on the full line and NetLet's commission carrying the discount
+(below zero when the code is worth more than the cut, which is the honest
+record; `netletCommissionFils` already floors at zero for the referral
+shares). Either way commission plus net is the line's total. **A store's own
+code needs its discount permit, also on the owner's word** — the Ministry
+permit its struck-through prices need — and without a valid one the line
+says so (`voucher.storeUnavailable`); NetLet's code on a store's product needs
+none. The order line freezes the code, its words and what it took
+(`order_items.discount_code_id`, `discount_code`, `discount_amount`), and
+`line_total` is already net of it, so a refund, the driver's figure, finance
+and payouts read it as they always did. One use per code per order however
+many lines carry it, claimed under the code's lock like the order code's
+(`claimRedemption`); **a code whose every line is cancelled is the shopper's
+again** (`releaseLineCodes`, after a shopper's change and a store's cancel),
+and losing the order's own code under a smaller basket now deletes that
+code's use alone — it deleted every use on the order. A coded line can come
+out of an order whole but not be lowered (`orders.changeCoded`), since its
+total is not the unit price times the quantity. The invoice and the order page
+say the code on its line.
+
+**A store makes its own codes** (`promotion.manage`, an owner or a manager, on
+the owner's word): on `/admin/promotions`, for everything in its store or
+chosen products of its own (`promotion.notYourProducts` otherwise), always
+paid by the store, seeing its own codes and no gift cards; a code's words are
+first come, first served (`promotion.codeTaken`). NetLet makes any, says who
+pays, and keeps the whole-order codes and gift cards. The app's portal page
+(`PortalPromotionsView`, `CodeProductPicker`) is the same, and the app's
+checkout (`LineCodeRow`, `CartModel.setLineCode`) and cart are the web's; the
+recorded demo bag carries RICE10, so the screenshots show it. Measured through
+a local server and Postgres at 320, 390 and 1440 in both languages: a wrong
+product's code, an order code and another store's code each refused with the
+reason, two codes applied on two stores' lines, the summary naming each, the
+order freezing each with the right commission and one use per code, the
+order box sending a product's code to its line, the store's page listing its
+own codes only; axe clean and no sideways scroll.
 
 ## Asking for a price
 
@@ -6775,8 +6851,9 @@ with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB
 (254 KB), the after-sales centre's words — warranty, changing an order,
 help with it, recovery by code — in both languages, then 875 KB (255 KB),
 Frequently bought's words in both languages, then 879 KB (256 KB), the App
-Store badge and its window, and is 881 KB (256 KB) now, the app link under the
-cart and the confirmation's words, nearly
+Store badge and its window, then 881 KB (256 KB), the app link under the
+cart and the confirmation's words, and is 887 KB (258 KB) now, the product
+codes' words in both languages, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

@@ -15,7 +15,8 @@
  * the payment.
  */
 import { commissionFor, type CommissionRule } from "../inventory/commission.js";
-import { addMoney, multiplyMoney, money } from "../money.js";
+import { addMoney, compareMoney, multiplyMoney, money, subtractMoney } from "../money.js";
+import type { CodeFunder } from "./lineCodes.js";
 import { fulfilmentFor, type StockLevels } from "./preorder.js";
 import { addonsTotal, type ChosenAddon } from "./addons.js";
 import type { FrozenDestination } from "./addresses.js";
@@ -80,6 +81,12 @@ export type PriceableLine = {
    */
   sizeClass?: string | null;
   weightGrams?: number | null;
+  /**
+   * This line's own discount code (migration 0074), already checked against
+   * the line by `lineCodeRefusal` and priced by `lineCodeDiscount`. Absent on
+   * every line before it, which stays exactly as it was.
+   */
+  codeDiscount?: { codeId: number; code: string; amount: string; fundedBy: CodeFunder } | null;
 };
 
 /** One line as it will be written, with nothing left to compute. */
@@ -108,8 +115,16 @@ export type FrozenLine = {
   weightGrams: number | null;
   /** Those extras for the whole line: per unit, times the quantity. */
   addonsTotal: string;
-  /** The goods and the extras together — everything this line is worth. */
+  /**
+   * The goods and the extras together, less the line's own code — what the
+   * shopper pays for this line, so a refund, the driver's figure and the
+   * finance panel read it as they always did.
+   */
   lineTotal: string;
+  /** The line's own code, as typed, and what it took (0074). */
+  discountCodeId: number | null;
+  discountCode: string | null;
+  discountAmount: string;
   commissionPercent: string;
   commissionFixed: string;
   commissionAmount: string;
@@ -158,7 +173,28 @@ export function freezeLine(line: PriceableLine): FrozenLine {
    */
   const addons = line.addons ?? [];
   const extras = addonsTotal(addons, quantity);
-  const split = commissionFor(line.unitPrice, quantity, line.vendorRule, line.productRule, extras);
+  const gross = addMoney(multiplyMoney(line.unitPrice, quantity), extras);
+
+  /*
+   * A code on this line (0074) comes off what the line is worth, capped at it,
+   * and is paid for by whoever made it, on the owner's word. A store's own
+   * code: the commission is taken on what the shopper actually paid, so the
+   * discount comes out of the store's earnings. NetLet's: the store is paid
+   * on the full line, and NetLet's commission carries the discount — below
+   * zero if the code is worth more than the cut, which is the honest record
+   * of NetLet having paid for it. Either way `commission + vendorNet` is still
+   * exactly the line's total.
+   */
+  const asked = line.codeDiscount ? money(line.codeDiscount.amount) : "0.000";
+  const off = compareMoney(asked, gross) > 0 ? gross : compareMoney(asked, "0") < 0 ? "0.000" : asked;
+  const lineTotal = subtractMoney(gross, off);
+  const coded = compareMoney(off, "0") > 0 && line.codeDiscount ? line.codeDiscount : null;
+  const full = commissionFor(line.unitPrice, quantity, line.vendorRule, line.productRule, extras);
+  const split = !coded
+    ? full
+    : coded.fundedBy === "store"
+      ? commissionFor(line.unitPrice, quantity, line.vendorRule, line.productRule, subtractMoney(extras, off))
+      : { ...full, commission: subtractMoney(lineTotal, full.net), net: full.net };
 
   return {
     variantId: line.variantId,
@@ -178,7 +214,10 @@ export function freezeLine(line: PriceableLine): FrozenLine {
     destination: line.destination ?? null,
     sizeClass: line.sizeClass ?? null,
     weightGrams: line.weightGrams ?? null,
-    lineTotal: addMoney(multiplyMoney(line.unitPrice, quantity), extras),
+    lineTotal,
+    discountCodeId: coded ? coded.codeId : null,
+    discountCode: coded ? coded.code : null,
+    discountAmount: coded ? off : "0.000",
     commissionPercent: split.percentApplied,
     commissionFixed: money(split.fixedApplied),
     commissionAmount: split.commission,

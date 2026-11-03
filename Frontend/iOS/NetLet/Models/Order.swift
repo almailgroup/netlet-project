@@ -219,6 +219,9 @@ struct OrderLine: Decodable, Identifiable, Hashable, Sendable {
     /// Whether its quantity may still be lowered or the item taken out:
     /// in the store's hands, unpaid, and not part of a set.
     var changeable: Bool? = nil
+    /// The line's own discount code and what it took, as frozen (0074).
+    var discountCode: String? = nil
+    var discountAmount: Money? = nil
 
     /// "Rate this item" is drawn for a line with no review that may be rated.
     var mayRate: Bool { review == nil && reviewEligibility?.allowed == true }

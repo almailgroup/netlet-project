@@ -519,6 +519,13 @@
       "when": 1793711968286,
       "tag": "0073_frequent_items",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1793731242128,
+      "tag": "0074_product_discount_codes",
+      "breakpoints": true
     }
   ]
 }

@@ -45,7 +45,15 @@
               "currencyCode": "KWD"
             },
             "productId": "228",
-            "deliverySpeed": "next_day"
+            "deliverySpeed": "next_day",
+            "code": {
+              "code": "RICE10",
+              "amount": {
+                "amount": "0.950",
+                "currencyCode": "KWD"
+              },
+              "fundedBy": "store"
+            }
           }
         ],
         "itemCount": 2,
@@ -86,7 +94,11 @@
           "memberWaived": null
         },
         "total": {
-          "amount": "10.250",
+          "amount": "9.300",
+          "currencyCode": "KWD"
+        },
+        "codeDiscount": {
+          "amount": "0.950",
           "currencyCode": "KWD"
         }
       }

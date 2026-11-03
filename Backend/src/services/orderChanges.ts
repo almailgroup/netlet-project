@@ -24,7 +24,7 @@
  * are the schema's and none was approved — so its desk shows the lines as
  * they now are.
  */
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import {
   customerAddresses,
   discountCodes,
@@ -57,6 +57,7 @@ import { recordAudit } from "./audit.js";
 import { addCartLines, createCart, getCart } from "./catalog.js";
 import { getDb } from "./db.js";
 import { withProductAlerts } from "./notifications.js";
+import { releaseLineCodes } from "./lineCodes.js";
 import { closeIfNothingLeft, returnUnits } from "./orders.js";
 import { refundGiftCard } from "./vouchers.js";
 
@@ -111,6 +112,7 @@ async function load(db: Db, userId: number, reference: string, lock: boolean) {
     vendorNet: row.vendorNet,
     affiliateVendorPercent: row.affiliateVendorPercent,
     addonsPerUnit: fromFils(perUnit.get(row.id) ?? 0n),
+    coded: toFils(row.discountAmount ?? "0") > 0n,
     bundleId: row.bundleId,
     deliveryChoice: row.deliveryChoice,
     destinationLabel: (row.destination as { label?: string } | null)?.label ?? null,
@@ -249,8 +251,16 @@ export async function applyOrderChange(userId: number, reference: string, change
     if (pointsBack > 0 && order.userId !== null) {
       await w.insert(pointEntries).values({ userId: order.userId, points: pointsBack, reason: "order_changed", orderId: order.id });
     }
-    /* A code the smaller order no longer earns is the shopper's to use again. */
-    if (done.quote.codeLost) await w.delete(discountRedemptions).where(eq(discountRedemptions.orderId, order.id));
+    /* A code the smaller order no longer earns is the shopper's to use again —
+       the order's own code, never a product's code on a line still coming. */
+    if (done.quote.codeLost && order.discountCode) {
+      await w.delete(discountRedemptions).where(and(
+        eq(discountRedemptions.orderId, order.id),
+        sql`${discountRedemptions.codeId} in (select ${discountCodes.id} from ${discountCodes} where ${discountCodes.code} = ${order.discountCode})`,
+      ));
+    }
+    /* A product's code whose every line came out is the shopper's again too. */
+    await releaseLineCodes(w, order.id);
 
     await closeIfNothingLeft(w, order.id);
     return { quote: done.quote, orderId: order.id };

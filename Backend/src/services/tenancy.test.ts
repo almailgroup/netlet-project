@@ -163,10 +163,17 @@ describe("payouts", () => {
 });
 
 describe("vouchers", () => {
-  it("is NetLet's money, so no seller writes one", async () => {
-    await expect(vouchers.listVouchers(acmeActor())).rejects.toThrow("FORBIDDEN");
+  it("keeps gift cards and whole-order codes NetLet's, and shows a store only its own codes", async () => {
     await expect(vouchers.createGiftCard(acmeActor(), { code: "GIFT-1", amount: "10.000" })).rejects.toThrow("FORBIDDEN");
+    /* A store makes codes for its own products (0074), never for the whole order. */
     await expect(vouchers.saveDiscountCode(acmeActor(), { code: "SAVE-1", kind: "percent", value: "10.00" })).rejects.toThrow("FORBIDDEN");
+    await vouchers.saveDiscountCode(acmeActor(), { code: "ACMEONLY", kind: "percent", value: "10.00", scope: "store" });
+    await vouchers.saveDiscountCode(adminActor(), { code: "NETLETWIDE", kind: "fixed", value: "1.000" });
+    const mine = await vouchers.listVouchers(acmeActor());
+    expect(mine.codes.map(code => code.code)).toEqual(["ACMEONLY"]);
+    expect(mine.cards).toEqual([]);
+    expect((await vouchers.listVouchers(adminActor())).codes.map(code => code.code)).toEqual(expect.arrayContaining(["ACMEONLY", "NETLETWIDE"]));
+    await expect(vouchers.listVouchers(boltActor())).resolves.toMatchObject({ codes: [] });
     await expect(vouchers.listVouchers(shopperActor())).rejects.toThrow("FORBIDDEN");
   });
 });

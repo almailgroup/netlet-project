@@ -58,7 +58,8 @@ enum Till {
         let pointsOff = usePoints ? spendValue(pointsSpendable(balance, on: afterDiscount)) : .zero
         let card = gift?.ok == true && gift?.kind == "gift" ? gift : nil
         let giftOff = card.map { giftCardPayment(remaining: $0.remaining ?? $0.amount ?? .zero, owed: afterDiscount - pointsOff) } ?? .zero
-        return settle(goods: cart.subtotal, delivery: cart.delivery.total, discount: discountOff, points: pointsOff, giftCard: giftOff)
+        // The goods are what the shopper pays for them: less each product's own code (0074).
+        return settle(goods: cart.subtotal - (cart.codeDiscount ?? .zero), delivery: cart.delivery.total, discount: discountOff, points: pointsOff, giftCard: giftOff)
     }
 
     private static func capped(_ amount: Money, _ ceiling: Money) -> Money {

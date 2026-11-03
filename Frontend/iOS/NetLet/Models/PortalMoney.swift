@@ -127,6 +127,13 @@ struct DiscountCode: Decodable, Identifiable, Hashable, Sendable {
     var maxRedemptions: Int? = nil
     var perShopper: Int = 1
     var used: Int = 0
+    /// What it covers and who pays (migration 0074): "order", "store" or
+    /// "products"; the store; "netlet" or "store".
+    var scope: String = "order"
+    var vendorId: Int? = nil
+    var vendorName: String? = nil
+    var fundedBy: String = "netlet"
+    var productIds: [Int] = []
 }
 
 struct GiftCardRow: Decodable, Identifiable, Hashable, Sendable {
@@ -252,6 +259,11 @@ extension API {
         let endsAt: OrNull<String>
         let maxRedemptions: OrNull<Int>
         let perShopper: Int
+        /// What it covers and who pays (0074). A store's own are always its own.
+        let scope: String
+        let vendorId: OrNull<Int>
+        let fundedBy: String
+        let productIds: [Int]
     }
 
     static let saveDiscountCode = Procedure<DiscountCodeInput, Acknowledged>(mutation: "orders.saveDiscountCode")

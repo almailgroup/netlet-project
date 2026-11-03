@@ -327,7 +327,16 @@ export type CartItem = {
    * only on a line the bag draws before the server has answered for it.
    */
   vendor?: { id: number | null; name: string; nameAr: string | null; slug: string } | null;
+  /** What the line is worth before its own code: the goods and the extras. */
   lineTotal: Money;
+  /**
+   * The line's own discount code (migration 0074) — a store's or a product's,
+   * typed on this line at checkout — and what it takes off this line alone.
+   * Judged again on every read, like the price, so it follows the quantity.
+   */
+  code?: { code: string; amount: Money; fundedBy: "netlet" | "store" } | null;
+  /** A code on this line that no longer takes anything off, and why (a message key). */
+  codeProblem?: { code: string; reason: string } | null;
   /**
    * What the variant is sold in, so the bag can read "1.5 kg" beside a
    * quantity of 6. `{ unit: "each", stepAmount: 1 }` for everything counted,
@@ -408,5 +417,10 @@ export type Cart = {
    * since moved is a shop arguing with its own page.
    */
   recovery: { remind: true; itemCount: number; hours: number } | { remind: false };
+  /**
+   * What the lines' own codes take off together (0074); null when none does.
+   * `subtotal` is the lines before them, and `total` is after them.
+   */
+  codeDiscount?: Money | null;
   total: Money;
 };

@@ -89,8 +89,10 @@ export type InvoiceLine = {
   sku: string | null;
   quantity: number;
   unitPrice: string;
-  /** As frozen, add-ons included. */
+  /** As frozen, add-ons included, less the line's own code. */
   lineTotal: string;
+  /** The line's own discount code and what it took (0074); absent before it. */
+  discount?: { code: string; amount: string } | null;
 };
 
 export type InvoiceSeller = {
@@ -140,6 +142,9 @@ export type FrozenOrderLine = {
   quantity: number;
   unitPrice: string;
   lineTotal: string;
+  /** The line's own code, as frozen (0074). */
+  discountCode?: string | null;
+  discountAmount?: string | null;
   fulfilment: string;
   /** The trip it rode (3.2.5): a fast parcel is a door of its own, `stillOwed`'s rule. */
   deliveryChoice?: string | null;
@@ -223,6 +228,9 @@ export function buildInvoice(input: {
       quantity: line.quantity,
       unitPrice: line.unitPrice,
       lineTotal: line.lineTotal,
+      ...(line.discountCode && line.discountAmount && toFils(line.discountAmount) > 0n
+        ? { discount: { code: line.discountCode, amount: line.discountAmount } }
+        : {}),
     });
   }
 

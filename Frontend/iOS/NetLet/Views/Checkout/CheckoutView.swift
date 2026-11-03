@@ -113,7 +113,7 @@ private struct CheckoutForm: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.tap)
-                    .disabled(blocker == "checkout.needCod" || blocker == "checkout.needItems")
+                    .disabled(blocker == "checkout.needCod" || blocker == "checkout.needItems" || blocker == "checkout.codeProblem")
                 } else if let refusal = model.refusal {
                     Text(l.t(refusalKey(refusal))).font(.footnote).foregroundStyle(Brand.danger)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -228,7 +228,8 @@ private struct CheckoutForm: View {
     /// the address book.
     private func fix(_ blocker: String, address: SavedAddress?) {
         switch blocker {
-        case "checkout.needCod", "checkout.needItems":
+        case "checkout.needCod", "checkout.needItems", "checkout.codeProblem":
+            // A product's code that no longer applies is removed on its own line.
             return
         case "checkout.needPhone", "checkout.badPhone":
             if model.asksPhone(for: address) { phoneFocused = true } else { app.deliveryOpen = true }
@@ -402,26 +403,39 @@ private struct CheckoutItemRow: View {
 
     var body: some View {
         let title = item.title(l.current)
-        HStack(alignment: .top, spacing: 12) {
-            Color.clear
-                .frame(width: 56, height: 56)
-                .overlay { RemoteImage(reference: item.image?.url, label: title) }
-                .background(Brand.photo)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.inter(14, .bold)).foregroundStyle(Brand.navy).lineLimit(2)
-                if let variant = item.variantLabel {
-                    Text(variant).font(.inter(12)).foregroundStyle(Brand.muted)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Color.clear
+                    .frame(width: 56, height: 56)
+                    .overlay { RemoteImage(reference: item.image?.url, label: title) }
+                    .background(Brand.photo)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.inter(14, .bold)).foregroundStyle(Brand.navy).lineLimit(2)
+                    if let variant = item.variantLabel {
+                        Text(variant).font(.inter(12)).foregroundStyle(Brand.muted)
+                    }
+                    Text(l.t("cart.quantityShort", ["count": "\(item.quantity)"])).font(.inter(12)).foregroundStyle(Brand.muted)
                 }
-                Text(l.t("cart.quantityShort", ["count": "\(item.quantity)"])).font(.inter(12)).foregroundStyle(Brand.muted)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // What the shopper pays for this line: less its own code (0074).
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(item.finalTotal.formatted(l.current)).font(.inter(14, .heavy)).foregroundStyle(Brand.navy)
+                    if item.code != nil {
+                        Text(l.t("checkout.lineBefore", ["amount": item.lineTotal.formatted(l.current)]))
+                            .font(.inter(12))
+                            .foregroundStyle(Brand.muted)
+                    }
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Text(item.lineTotal.formatted(l.current)).font(.inter(14, .heavy)).foregroundStyle(Brand.navy)
+            .accessibilityElement(children: .combine)
+            // The product's own discount code, the width of the line under it
+            // (0074): beside the price a box would have no room to type in.
+            LineCodeRow(item: item)
         }
         .padding(.vertical, 12)
-        .accessibilityElement(children: .combine)
     }
 }
 
@@ -558,6 +572,10 @@ private struct CheckoutSummary: View {
             Text(l.t("checkout.orderSummary")).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
             row(l.t("cart.subtotal") + " (" + l.t("cart.itemCount", ["count": "\(cart.itemCount)"]) + ")", cart.subtotal.formatted(l.current))
             row(l.t("cart.delivery"), cart.delivery.total.isZero ? l.t("cart.deliveryFree") : cart.delivery.total.formatted(l.current), faint: app.cart.syncing)
+            // Each product's own code (0074), named, before anything is paid.
+            ForEach(cart.items.filter { $0.code != nil }) { item in
+                codeRow(item)
+            }
             if !bill.discount.isZero { row(l.t("checkout.discountRow"), "−" + bill.discount.formatted(l.current), good: true) }
             if !bill.points.isZero { row(l.t("checkout.pointsRow"), "−" + bill.points.formatted(l.current), good: true) }
             if !bill.giftCard.isZero { row(l.t("checkout.giftCardRow"), "−" + bill.giftCard.formatted(l.current), good: true) }
@@ -586,6 +604,21 @@ private struct CheckoutSummary: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
+    }
+
+    private func codeRow(_ item: CartItem) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(l.t("checkout.lineCodeRow") + " \u{2066}\(item.code?.code ?? "")\u{2069}").font(.inter(14)).foregroundStyle(Brand.body)
+                Text(item.title(l.current)).font(.inter(12)).foregroundStyle(Brand.muted).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Text("−" + (item.code?.amount ?? .zero).formatted(l.current))
+                .font(.inter(14, .bold))
+                .foregroundStyle(Brand.success)
+                .opacity(app.cart.syncing ? 0.5 : 1)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func row(_ label: String, _ value: String, faint: Bool = false, good: Bool = false) -> some View {

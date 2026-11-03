@@ -65,6 +65,8 @@ import { pointsSpendableOn, spendValue } from "../../../Shared/commerce/referral
 import { addonsTotal, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { giftCardPayment, settle } from "../../../Shared/commerce/vouchers.js";
 import { bundlePricing } from "./bundles.js";
+import { judgeLineCodes, releaseLineCodes } from "./lineCodes.js";
+import type { LineCodeRefusal } from "../../../Shared/commerce/lineCodes.js";
 import { claimRedemption, quoteVoucher, recordGiftCardUse, refundGiftCard, returnRedemption, spendGiftCard, stampRedemption } from "./vouchers.js";
 import { addMoney, multiplyMoney, subtractMoney, toFils } from "../../../Shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
@@ -192,9 +194,14 @@ async function priceableLines(
   /** Placed by a member (4.1), and what of their delivery NetLet carries. */
   member: boolean;
   deliveryWaived: string;
+  /** Lines whose own code no longer applies (0074), and why. */
+  codeProblems: { lineId: number; code: string; reason: LineCodeRefusal }[];
 }> {
   const rows = await db
     .select({
+      lineId: cartItems.id,
+      /* The line's own discount code (0074), judged below like a price. */
+      discountCodeId: cartItems.discountCodeId,
       variantId: productVariants.id,
       productId: products.id,
       vendorId: vendors.id,
@@ -323,9 +330,43 @@ async function priceableLines(
     return [row.variantId, price.charged] as const;
   }));
 
+  const extrasOf = (variantId: number) => extras
+    .filter(addon => addon.variantId === variantId)
+    .map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price }));
+  /* What each line is worth before its own code: the goods at the shopper's
+     price and the extras — the value a code's percentage and minimum are of. */
+  const worth = new Map(rows.map(row => [
+    row.lineId,
+    addMoney(multiplyMoney(pricing.get(row.variantId)!, row.quantity), addonsTotal(extrasOf(row.variantId), row.quantity)),
+  ]));
+  /*
+   * Each line's own code (0074), judged against the line as it is priced now —
+   * the rule the bag drew it by, read again at the moment of sale like the
+   * price. A store's code needs the store's discount permit, on the owner's
+   * word, the permit its struck-through prices need.
+   */
+  const verdicts = await judgeLineCodes(db, userId ?? null, rows.map(row => ({
+    key: row.lineId,
+    codeId: row.discountCodeId,
+    productId: row.productId,
+    vendorId: row.vendorId,
+    value: worth.get(row.lineId)!,
+    inBundle: Boolean(bundled.get(row.variantId)),
+    permitValid: discountAllowed({ number: row.licenceNumber, expiresAt: row.licenceExpiresAt }).allowed,
+  })));
+  const codeProblems: { lineId: number; code: string; reason: LineCodeRefusal }[] = [];
+  for (const [lineId, verdict] of verdicts) {
+    if (!verdict.ok) codeProblems.push({ lineId, code: verdict.code, reason: verdict.reason });
+  }
+  const codeOff = (lineId: number) => {
+    const verdict = verdicts.get(lineId);
+    return verdict?.ok ? verdict : null;
+  };
+
   const lines = rows.map(row => {
     const inBundle = bundled.get(row.variantId);
     const charged = pricing.get(row.variantId)!;
+    const coded = codeOff(row.lineId);
     return {
     variantId: row.variantId,
     productId: row.productId,
@@ -361,9 +402,8 @@ async function priceableLines(
       row.productPercent === null && row.productFixed === null
         ? null
         : { percent: row.productPercent, fixed: row.productFixed },
-    addons: extras
-      .filter(addon => addon.variantId === row.variantId)
-      .map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price })),
+    addons: extrasOf(row.variantId),
+    codeDiscount: coded ? { codeId: coded.codeId, code: coded.code, amount: coded.amount, fundedBy: coded.fundedBy } : null,
     };
   });
 
@@ -379,18 +419,11 @@ async function priceableLines(
   );
 
   const destined: DestinedLine[] = rows.map(row => {
-    const charged = pricing.get(row.variantId)!;
     /* The extras are money spent with that seller, so they count toward their
-       free-delivery threshold exactly as the goods do. */
-    const value = addMoney(
-      multiplyMoney(charged, row.quantity),
-      addonsTotal(
-        extras
-          .filter(addon => addon.variantId === row.variantId)
-          .map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price })),
-        row.quantity,
-      ),
-    );
+       free-delivery threshold exactly as the goods do — and a line's own code
+       is money not spent, so it does not (0074). */
+    const coded = codeOff(row.lineId);
+    const value = coded ? subtractMoney(worth.get(row.lineId)!, coded.amount) : worth.get(row.lineId)!;
     const destinationId = row.addressId && doors.has(row.addressId) ? row.addressId : null;
     return {
       vendorId: row.vendorId,
@@ -417,6 +450,7 @@ async function priceableLines(
     lines,
     offerIds,
     member,
+    codeProblems,
     deliveryWaived: delivery.waived,
     delivery,
     /*
@@ -552,7 +586,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) throw new OrderRefused("order.noCart");
 
-  const { lines, offerIds, delivery, cod, member, deliveryWaived } = await priceableLines(
+  const { lines, offerIds, delivery, cod, member, deliveryWaived, codeProblems } = await priceableLines(
     db, cartId, details.userId,
     details.subscription ? { variantId: details.subscription.variantId, percent: details.subscription.percent } : undefined,
   );
@@ -580,6 +614,11 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   if (details.paymentMethod === "cod" && !cod.available) {
     throw new OrderRefused("order.paymentUnavailable");
   }
+  /* A line whose own code no longer applies is drawn at checkout with the
+     reason and its price without the code, and Place order waits on it; one
+     that stopped working between the page and the press refuses the order
+     rather than charging the line in full — the order code's rule. */
+  if (codeProblems.length) throw new OrderRefused("order.voucherGone");
 
   const priced = draftOrder(lines, delivery.total);
 
@@ -654,6 +693,33 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
    * since a gift card *pays* rather than reduces. `settle` is the one place
    * that order lives, so the checkout summary and this cannot disagree.
    */
+  /*
+   * Each line code's use is taken now, under the code's own lock, as the
+   * order code's is — one use per code per order, however many of its lines
+   * carry it, worth what it took off all of them. A code that has run out
+   * since the bag was read refuses the order and hands back what was taken.
+   */
+  const lineClaims: number[] = [];
+  const byCode = new Map<string, string>();
+  for (const line of draft.lines) {
+    if (line.discountCode && toFils(line.discountAmount) > 0n) {
+      byCode.set(line.discountCode, addMoney(byCode.get(line.discountCode) ?? "0.000", line.discountAmount));
+    }
+  }
+  for (const [code, amount] of byCode) {
+    const claimed = await claimRedemption(db, code, { userId: details.userId ?? null, amount });
+    if (claimed !== null) {
+      lineClaims.push(claimed);
+      continue;
+    }
+    for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    for (const id of lineClaims) await returnRedemption(db, id);
+    throw new OrderRefused("order.voucherGone");
+  }
+  const handBackLineCodes = async () => {
+    for (const id of lineClaims) await returnRedemption(db, id);
+  };
+
   const typed = details.voucherCode?.trim() ?? "";
   const typedGift = details.giftCardCode?.trim() ?? "";
   const context = {
@@ -675,6 +741,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     || (codeIsGift && quotedGift)
   ) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    await handBackLineCodes();
     throw new OrderRefused("order.voucherGone");
   }
   /*
@@ -701,6 +768,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     : null;
   if (discountQuote && claimId === null) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
+    await handBackLineCodes();
     throw new OrderRefused("order.voucherGone");
   }
 
@@ -716,6 +784,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   if (wantedPoints > 0 && pointsEntryId === null) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     if (claimId !== null) await returnRedemption(db, claimId);
+    await handBackLineCodes();
     throw new OrderRefused("order.pointsGone");
   }
   const pointsSpent = pointsEntryId === null ? 0 : wantedPoints;
@@ -734,6 +803,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
     for (const done of taken) await returnUnits(db, done.variantId, done.quantity, done.pool);
     if (pointsEntryId !== null) await returnPoints(db, pointsEntryId);
     if (claimId !== null) await returnRedemption(db, claimId);
+    await handBackLineCodes();
     throw new OrderRefused("order.voucherGone");
   }
   const giftCardValue = giftTaken ? giftAsked : "0.000";
@@ -834,6 +904,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
           deliveryChoice: line.deliveryChoice,
           referrerId: referred.byProduct.get(String(line.productId)) ?? null,
           referralRate: referred.byProduct.has(String(line.productId)) ? referred.rate : null,
+          discountCodeId: line.discountCodeId,
+          discountCode: line.discountCode,
+          discountAmount: line.discountAmount,
         })),
       ).returning({ id: orderItems.id, variantId: orderItems.variantId });
 
@@ -873,6 +946,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
          often a code has been used, so it had to exist before anybody else could
          be told the code was still good. This only attaches the order to it. */
       if (claimId !== null) await stampRedemption(w, claimId, order.id);
+      for (const id of lineClaims) await stampRedemption(w, id, order.id);
       if (giftTaken && giftQuote) await recordGiftCardUse(w, giftQuote.code, order.id, giftCardValue);
 
       // The basket has become the order; leaving it would let the same items be
@@ -918,6 +992,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
        as the stock and the points. */
     if (giftTaken && giftQuote) await refundGiftCard(db, giftQuote.code, giftCardValue);
     if (claimId !== null) await returnRedemption(db, claimId);
+    await handBackLineCodes();
     throw error;
   }
 }
@@ -1328,6 +1403,9 @@ export async function getOrderFor(actor: Actor, orderId: number) {
         sizeClass: null,
         weightGrams: null,
         lineTotal: line.lineTotal,
+        discountCodeId: line.discountCodeId,
+        discountCode: line.discountCode,
+        discountAmount: line.discountAmount,
         commissionPercent: line.commissionPercent,
         commissionFixed: line.commissionFixed,
         commissionAmount: line.commissionAmount,
@@ -1488,6 +1566,8 @@ async function moveLine(
 
   if (cancelling && line.variantId !== null) await returnUnits(db, line.variantId, line.quantity, pool, line.centreId);
   if (cancelling) await closeIfNothingLeft(db, line.orderId);
+  /* A product's code whose every line is now cancelled is the shopper's again (0074). */
+  if (cancelling) await releaseLineCodes(db, line.orderId);
   /* Arrived after its cash was collected: a held referral commission now
      matures at the end of the window that runs from today (3.1.14). */
   if (deliveredAt && !line.deliveredAt) await extendReferralHold(db, [lineId], deliveredAt);

@@ -10,10 +10,11 @@
  * outside can redirect, so anything living there cannot be tested against a
  * real database.
  */
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
 import { randomBytes } from "node:crypto";
-import { discountCodes, discountRedemptions, giftCardUses, giftCards } from "../../database/schema.js";
+import { discountCodeProducts, discountCodes, discountRedemptions, giftCardUses, giftCards, vendors } from "../../database/schema.js";
+import { ownedBy } from "./lineCodes.js";
 import {
   discountOf,
   giftCardRefusal,
@@ -23,7 +24,15 @@ import {
   type VoucherRefusal,
   type VoucherRefusalGift,
 } from "../../../Shared/commerce/vouchers.js";
-import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
+import {
+  codeShapeProblem,
+  isCodeFunder,
+  isCodeScope,
+  orderBoxRefusal,
+  type CodeFunder,
+  type CodeScope,
+} from "../../../Shared/commerce/lineCodes.js";
+import { assertCan, can, type Actor } from "../../../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -32,7 +41,7 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 export type VoucherQuote =
   | { ok: true; kind: "discount"; code: string; amount: string }
   | { ok: true; kind: "gift"; code: string; amount: string; remaining: string }
-  | { ok: false; reason: VoucherRefusal | VoucherRefusalGift };
+  | { ok: false; reason: VoucherRefusal | VoucherRefusalGift | "voucher.forProducts" };
 
 /**
  * Work out what one typed code is worth on this basket.
@@ -55,6 +64,10 @@ export async function quoteVoucher(
   if (!code) return { ok: false, reason: "voucher.unknown" };
 
   const [discount] = await db.select().from(discountCodes).where(eq(discountCodes.code, code)).limit(1);
+  /* A store's or a product's code (0074) is typed on its line and comes off
+     that line alone; the order's box says where it belongs. */
+  const misplaced = discount ? orderBoxRefusal(isCodeScope(discount.scope) ? discount.scope : "order") : null;
+  if (misplaced) return { ok: false, reason: misplaced };
   if (discount) {
     const [counts] = await db
       .select({
@@ -243,7 +256,24 @@ export async function createGiftCard(
   return { code };
 }
 
-/** Create or replace a discount code. Admin only. */
+/** A code the portal's form cannot save, with the reason as a message key. */
+export class PromotionRefused extends Error {
+  constructor(public readonly reason: string) {
+    super(reason);
+    this.name = "PromotionRefused";
+  }
+}
+
+/**
+ * Create or edit a discount code.
+ *
+ * NetLet makes any code and says who pays for it. A store's owner or manager
+ * (`promotion.manage`, migration 0074) makes codes for their own store or
+ * their own products, and those are always paid by the store — "whoever made
+ * the code", on the owner's word. Editing is by retyping the code; a store
+ * cannot edit a code that is not its own, whoever's it is, so the words of
+ * NetLet's or another store's campaign are not something a store can take.
+ */
 export async function saveDiscountCode(
   actor: Actor,
   input: {
@@ -255,41 +285,65 @@ export async function saveDiscountCode(
     endsAt?: Date | null;
     maxRedemptions?: number | null;
     perShopper?: number;
+    scope?: CodeScope;
+    vendorId?: number | null;
+    fundedBy?: CodeFunder;
+    productIds?: number[];
   },
 ): Promise<{ code: string }> {
-  assertCan(actor, "platform.viewAll");
+  const netlet = can(actor, "platform.viewAll");
+  const scope: CodeScope = input.scope ?? "order";
+  const vendorId = netlet ? (input.vendorId ?? null) : actor.kind === "vendor" ? actor.vendorId : null;
+  if (!netlet) {
+    assertCan(actor, "promotion.manage", vendorId ?? undefined);
+    if (vendorId === null || scope === "order") throw new Error("FORBIDDEN:promotion.manage");
+  }
+  const fundedBy: CodeFunder = netlet ? (scope === "order" ? "netlet" : input.fundedBy ?? "netlet") : "store";
+  const productIds = scope === "products" ? [...new Set(input.productIds ?? [])] : [];
+  const shape = codeShapeProblem({ scope, vendorId: scope === "order" ? null : vendorId, fundedBy, productIds });
+  if (shape) throw new PromotionRefused(shape);
+
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
   const code = normaliseCode(input.code);
-  if (!code) throw new Error("voucher.unknown");
+  if (!code) throw new PromotionRefused("voucher.unknown");
+  if (vendorId !== null && scope !== "order" && !(await ownedBy(db, productIds, vendorId))) {
+    throw new PromotionRefused("promotion.notYourProducts");
+  }
 
-  await db
-    .insert(discountCodes)
-    .values({
-      code,
-      kind: input.kind,
-      value: input.value,
-      minSpend: input.minSpend ?? null,
-      startsAt: input.startsAt ?? null,
-      endsAt: input.endsAt ?? null,
-      maxRedemptions: input.maxRedemptions ?? null,
-      perShopper: input.perShopper ?? 1,
-    })
+  const terms = {
+    kind: input.kind,
+    value: input.value,
+    minSpend: input.minSpend ?? null,
+    startsAt: input.startsAt ?? null,
+    endsAt: input.endsAt ?? null,
+    maxRedemptions: input.maxRedemptions ?? null,
+    perShopper: input.perShopper ?? 1,
+    scope,
+    vendorId: scope === "order" ? null : vendorId,
+    fundedBy,
+  };
+
+  await db.transaction(async tx => {
+    const [existing] = await tx
+      .select({ id: discountCodes.id, vendorId: discountCodes.vendorId })
+      .from(discountCodes)
+      .where(eq(discountCodes.code, code))
+      .for("update")
+      .limit(1);
+    /* A store edits its own codes only; the words are first come, first served. */
+    if (existing && !netlet && existing.vendorId !== vendorId) throw new PromotionRefused("promotion.codeTaken");
     /* Editing a live code is ordinary — a campaign gets extended, a ceiling
        raised — and re-typing the same code is how somebody does it. */
-    .onConflictDoUpdate({
-      target: discountCodes.code,
-      set: {
-        kind: input.kind,
-        value: input.value,
-        minSpend: input.minSpend ?? null,
-        startsAt: input.startsAt ?? null,
-        endsAt: input.endsAt ?? null,
-        maxRedemptions: input.maxRedemptions ?? null,
-        perShopper: input.perShopper ?? 1,
-      },
-    });
+    const [row] = existing
+      ? await tx.update(discountCodes).set(terms).where(eq(discountCodes.id, existing.id)).returning({ id: discountCodes.id })
+      : await tx.insert(discountCodes).values({ code, ...terms }).returning({ id: discountCodes.id });
+    await tx.delete(discountCodeProducts).where(eq(discountCodeProducts.codeId, row.id));
+    if (productIds.length) {
+      await tx.insert(discountCodeProducts).values(productIds.map(productId => ({ codeId: row.id, productId })));
+    }
+  });
   return { code };
 }
 
@@ -305,6 +359,12 @@ export type VoucherListing = {
     maxRedemptions: number | null;
     perShopper: number;
     used: number;
+    /** What it covers and who pays (0074). */
+    scope: CodeScope;
+    vendorId: number | null;
+    vendorName: string | null;
+    fundedBy: CodeFunder;
+    productIds: number[];
   }[];
   cards: {
     id: number;
@@ -316,9 +376,15 @@ export type VoucherListing = {
   }[];
 };
 
-/** Everything an admin needs to see on the promotions page. */
+/**
+ * Everything the promotions page shows: every code and card for NetLet, and
+ * a store's own codes for its owner or manager — never NetLet's or another
+ * store's, and no gift cards, which are NetLet's money.
+ */
 export async function listVouchers(actor: Actor, limit = 100): Promise<VoucherListing> {
-  assertCan(actor, "platform.viewAll");
+  const netlet = can(actor, "platform.viewAll");
+  if (!netlet) assertCan(actor, "promotion.manage");
+  const own = !netlet && actor.kind === "vendor" ? actor.vendorId : null;
   const db = await getDb();
   if (!db) return { codes: [], cards: [] };
 
@@ -333,20 +399,42 @@ export async function listVouchers(actor: Actor, limit = 100): Promise<VoucherLi
       endsAt: discountCodes.endsAt,
       maxRedemptions: discountCodes.maxRedemptions,
       perShopper: discountCodes.perShopper,
+      scope: discountCodes.scope,
+      vendorId: discountCodes.vendorId,
+      vendorName: vendors.name,
+      fundedBy: discountCodes.fundedBy,
       used: sql<string>`(select count(*) from ${discountRedemptions} where ${discountRedemptions.codeId} = ${outer(discountCodes.id)})`,
     })
     .from(discountCodes)
+    .leftJoin(vendors, eq(vendors.id, discountCodes.vendorId))
+    .where(own === null ? undefined : eq(discountCodes.vendorId, own))
     .orderBy(desc(discountCodes.createdAt), desc(discountCodes.id))
     .limit(limit);
 
-  const cards = await db
-    .select()
-    .from(giftCards)
-    .orderBy(desc(giftCards.createdAt), desc(giftCards.id))
-    .limit(limit);
+  const listed = codes.filter(row => row.scope === "products").map(row => row.id);
+  const covered = listed.length
+    ? await db
+        .select({ codeId: discountCodeProducts.codeId, productId: discountCodeProducts.productId })
+        .from(discountCodeProducts)
+        .where(inArray(discountCodeProducts.codeId, listed))
+    : [];
+
+  const cards = netlet
+    ? await db
+        .select()
+        .from(giftCards)
+        .orderBy(desc(giftCards.createdAt), desc(giftCards.id))
+        .limit(limit)
+    : [];
 
   return {
-    codes: codes.map(row => ({ ...row, used: Number(row.used) })),
+    codes: codes.map(row => ({
+      ...row,
+      used: Number(row.used),
+      scope: isCodeScope(row.scope) ? row.scope : "order",
+      fundedBy: isCodeFunder(row.fundedBy) ? row.fundedBy : "netlet",
+      productIds: covered.filter(item => item.codeId === row.id).map(item => item.productId),
+    })),
     cards: cards.map(row => ({
       id: row.id,
       code: row.code,

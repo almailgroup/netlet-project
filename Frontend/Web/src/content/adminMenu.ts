@@ -54,7 +54,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     /* A store's manager reaches this one too: when their money comes is theirs to know. */
     { href: "/admin/payouts", label: "admin.payoutsPage", need: "payouts.view" },
     { href: "/admin/invoices", label: "admin.invoices", need: "platform.viewAll" },
-    { href: "/admin/promotions", label: "admin.promotions", need: "platform.viewAll" },
+    /* A store's owner or manager makes its own product codes here (0074). */
+    { href: "/admin/promotions", label: "admin.promotions", need: "promotion.manage" },
     /* A store's owner books here; an administrator sees every store's bookings. */
     { href: "/admin/ads", label: "admin.ads", need: "ads.book" },
     { href: "/admin/affiliates", label: "admin.affiliates", need: "affiliate.manage" },

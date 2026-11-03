@@ -75,6 +75,8 @@ export type ChangeRefusal =
   | "orders.changeNotLower"
   /** A line bought as part of a set. */
   | "orders.changeBundle"
+  /** A line with its own discount code (0074): it can come out whole, not be lowered. */
+  | "orders.changeCoded"
   /** Nothing asked for. */
   | "orders.changeNothing"
   /** The money moved between the quote and the press. */
@@ -132,6 +134,13 @@ export type ChangeLine = {
   deliveryChoice: string;
   /** Where this line goes when not to the order's own address — its label is the door's. */
   destinationLabel: string | null;
+  /**
+   * Whether a discount code of its own came off this line (0074). Its total is
+   * not the unit price times the quantity, so lowering it would need the code
+   * read again; it can come out whole instead, which hands back exactly what
+   * it cost.
+   */
+  coded?: boolean;
 };
 
 /** The figures of a split: what stays on the line, and what the cancelled sibling carries. */
@@ -267,6 +276,7 @@ export function linesAfter(
     if (!lineMayChange(line)) return { refused: "orders.changeLineGone" };
     if (want < 0 || want >= line.quantity) return { refused: "orders.changeNotLower" };
     if (line.bundleId !== null) return { refused: "orders.changeBundle" };
+    if (want > 0 && line.coded) return { refused: "orders.changeCoded" };
     quoted.push({ lineId: line.id, from: line.quantity, to: want });
     if (want === 0) {
       out.push({ ...line, fulfilment: "cancelled" });

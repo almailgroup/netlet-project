@@ -71,6 +71,13 @@ export type Capability =
    */
   | "offer.answer"
   /*
+   * A store's own discount codes, for its store or its products (migration
+   * 0074, on the owner's word: "owners and managers"). A pricing decision,
+   * so `manager`, like answering a price request; the code is paid for out of
+   * the store's own earnings, and NetLet's codes stay NetLet's.
+   */
+  | "promotion.manage"
+  /*
    * Returns (3.2.8). `manager`: answering a request a rule could not decide,
    * and saying what came back and whether it goes on the shelf, are decisions
    * about money and stock together, which is a manager's.
@@ -164,6 +171,7 @@ export const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "product.publish": "manager",
   "product.delete": "manager",
   "offer.answer": "manager",
+  "promotion.manage": "manager",
   "payouts.view": "manager",
   "vendor.editProfile": "owner",
   "vendor.manageMembers": "owner",

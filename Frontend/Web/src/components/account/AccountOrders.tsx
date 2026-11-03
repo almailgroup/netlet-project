@@ -370,6 +370,12 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                         price: formatMoney(line.unitPrice, { currencyCode: data.order.currency, locale }),
                       })}
                     </p>
+                    {/* The product's own code (0074), as frozen at the sale. */}
+                    {line.discountCode && Number(line.discountAmount) > 0 ? (
+                      <p className="mt-0.5 text-xs font-bold text-[#2f5d33]">
+                        {t("orders.lineCode", { code: line.discountCode, amount: formatMoney(line.discountAmount, { currencyCode: data.order.currency, locale }) })}
+                      </p>
+                    ) : null}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Pill label={t(fulfilment.label)} className={fulfilment.className} />
                       {/*

@@ -679,7 +679,7 @@ final class TabBarScrollTests: XCTestCase {
 
 /// What the bag looks like the moment a button is pressed — the web's
 /// `bagOps.test.ts`, on the recorded bag: one line of rice, 2 × 4.750, with
-/// 0.750 delivery.
+/// 0.750 delivery and the store's own code RICE10 taking 0.950 off the line.
 final class BagOpsTests: XCTestCase {
     func testAPlusOnACardDrawsTheLineFromTheCardsOwnProduct() async throws {
         let products = try await Fixtures.products()
@@ -693,7 +693,21 @@ final class BagOpsTests: XCTestCase {
         XCTAssertEqual(bag.items.last?.vendor?.slug, "gulf-grocers", "drawn under its store before the server says")
         XCTAssertEqual(bag.itemCount, 4)
         XCTAssertEqual(bag.subtotal.fils, 22_000)
-        XCTAssertEqual(bag.total.fils, 22_750, "the delivery stays the server's last until it answers")
+        XCTAssertEqual(bag.total.fils, 21_800, "the delivery and the line's code stay the server's last until it answers")
+    }
+
+    /// A product's own code (migration 0074): the line says what it takes off,
+    /// what the shopper pays for it, and the till starts from the goods after it.
+    func testALinesOwnCodeComesOffThatLineAndTheTill() async throws {
+        let rice = try await Fixtures.cart()
+        let line = try XCTUnwrap(rice.items.first)
+        XCTAssertEqual(line.code?.code, "RICE10")
+        XCTAssertEqual(line.code?.fundedBy, "store")
+        XCTAssertEqual(line.finalTotal.fils, 8_550)
+        XCTAssertEqual(rice.codeDiscount?.fils, 950)
+        let bill = Till.bill(for: rice, discount: nil, gift: nil, balance: 0, usePoints: false)
+        XCTAssertEqual(bill.payable, rice.total, "subtotal less the line's code, plus delivery")
+        XCTAssertEqual(bill.payable.fils, 9_300)
     }
 
     func testAnAddOntoALineAddsToItUpToTheCeiling() async throws {

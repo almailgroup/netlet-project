@@ -1079,6 +1079,15 @@ export const cartItems = pgTable(
      * exists.
      */
     addressId: integer("address_id").references(() => customerAddresses.id, { onDelete: "set null" }),
+    /**
+     * A discount code on this line alone (migration 0074, on the owner's
+     * word): a store's or a product's code, typed on the line at checkout.
+     * The code is kept rather than what it took, so the discount follows the
+     * quantity and is read again — still valid? still for this product? — on
+     * every read of the bag, like the price. `set null`: a code deleted leaves
+     * the line at its price.
+     */
+    discountCodeId: integer("discount_code_id").references(() => discountCodes.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
@@ -2388,6 +2397,17 @@ export const orderItems = pgTable(
     /** Fast or regular, as chosen at the sale (3.2.5); a fast line is its own parcel. */
     deliveryChoice: varchar("delivery_choice", { length: 8 }).notNull().default("regular"),
     /**
+     * The line's own discount code (migration 0074), frozen at the sale:
+     * which, as typed, and what it took. `line_total` is already net of it —
+     * what the shopper pays for this line — so a refund, the driver's figure
+     * and the finance panel need nothing new; `discount_amount` is what it
+     * says beside the line, and the reference is `set null` with the code's
+     * words copied, for the reason every fact on a line is.
+     */
+    discountCodeId: integer("discount_code_id").references(() => discountCodes.id, { onDelete: "set null" }),
+    discountCode: varchar("discount_code", { length: 40 }),
+    discountAmount: numeric("discount_amount", { precision: 12, scale: 3 }).notNull().default("0"),
+    /**
      * How big and how heavy, frozen at the sale.
      *
      * Copied for the reason the price is: the vehicle is decided from these,
@@ -2712,9 +2732,35 @@ export const discountCodes = pgTable(
     maxRedemptions: integer("max_redemptions"),
     /** How many times one shopper may use it. */
     perShopper: integer("per_shopper").notNull().default(1),
+    /**
+     * What it covers (migration 0074, on the owner's word): `order`, the
+     * whole basket — every code before it; `store`, every product of
+     * `vendor_id`; `products`, the ones in `discount_code_products`. A store
+     * or product code is typed on its line at checkout and comes off that
+     * line alone (`Shared/commerce/lineCodes.ts`).
+     */
+    scope: varchar("scope", { length: 10 }).notNull().default("order"),
+    /** The store whose products it covers; null for an order code. */
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "cascade" }),
+    /**
+     * Who pays for it: `netlet`, out of NetLet's commission with the store
+     * paid in full; or `store`, out of the store's own earnings. The owner's
+     * rule is whoever made the code, so a store's own codes are `store`.
+     */
+    fundedBy: varchar("funded_by", { length: 10 }).notNull().default("netlet"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [uniqueIndex("discount_codes_code_unique").on(table.code)]
+);
+
+/** The products a `products` code covers (migration 0074). */
+export const discountCodeProducts = pgTable(
+  "discount_code_products",
+  {
+    codeId: integer("code_id").notNull().references(() => discountCodes.id, { onDelete: "cascade" }),
+    productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+  },
+  table => [primaryKey({ columns: [table.codeId, table.productId] })]
 );
 
 /**

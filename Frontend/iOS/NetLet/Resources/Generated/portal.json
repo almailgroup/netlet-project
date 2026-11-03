@@ -132,7 +132,7 @@
         {
           "href": "/admin/promotions",
           "label": "admin.promotions",
-          "need": "platform.viewAll"
+          "need": "promotion.manage"
         },
         {
           "href": "/admin/ads",
@@ -213,6 +213,7 @@
     "product.publish": "manager",
     "product.delete": "manager",
     "offer.answer": "manager",
+    "promotion.manage": "manager",
     "payouts.view": "manager",
     "vendor.editProfile": "owner",
     "vendor.manageMembers": "owner",

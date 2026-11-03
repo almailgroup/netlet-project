@@ -43,7 +43,8 @@ import { maxQuantityFor } from "../../../Shared/commerce/preorder.js";
 import type { Measure } from "../../../Shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
-import { addMoney, compareMoney, multiplyMoney } from "../../../Shared/money.js";
+import { addMoney, compareMoney, multiplyMoney, subtractMoney, toFils } from "../../../Shared/money.js";
+import { codeByText, judgeLineCodes } from "./lineCodes.js";
 import { addonsTotal, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { bundlePricing } from "./bundles.js";
 import { effectiveChoice, groupForDelivery, offersFast, quoteDelivery, type DeliveryRule } from "../../../Shared/commerce/delivery.js";
@@ -566,6 +567,8 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       lineId: cartItems.id,
       quantity: cartItems.quantity,
       bundleId: cartItems.bundleId,
+      /* The line's own discount code (0074), judged below like the price. */
+      discountCodeId: cartItems.discountCodeId,
       /* Which door this line is going to (3.2.6). Null is the order's own. */
       addressId: cartItems.addressId,
       /* Which trip it takes (3.2.5), and what fast costs from its store. */
@@ -697,6 +700,25 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     };
   });
 
+  /*
+   * Each line's own code (0074), by the one rule the order uses: of the line's
+   * worth at the shopper's price, a store's code only while its permit is
+   * valid, never on a set's line.
+   */
+  const verdicts = await judgeLineCodes(db, cart.userId, priced.map(row => ({
+    key: row.lineId,
+    codeId: row.discountCodeId,
+    productId: row.productId,
+    vendorId: row.vendorId,
+    value: addMoney(multiplyMoney(row.charged, row.quantity), row.extrasTotal),
+    inBundle: Boolean(row.inBundle),
+    permitValid: discountAllowed({ number: row.licenceNumber, expiresAt: row.licenceExpiresAt }).allowed,
+  })));
+  const codeTaken = (lineId: number) => {
+    const verdict = verdicts.get(lineId);
+    return verdict?.ok ? verdict.amount : "0.000";
+  };
+
   const items: CartItem[] = priced.map(row => ({
     lineId: String(row.lineId),
     variantId: String(row.variantId),
@@ -747,19 +769,27 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     /* The extras are part of what this line costs, so they are inside the
        line total rather than a figure somebody has to add up themselves. */
     lineTotal: money(addMoney(sumMinor([{ amount: row.charged, quantity: row.quantity }]), row.extrasTotal)),
+    ...((verdict => verdict === undefined
+      ? {}
+      : verdict.ok
+        ? { code: { code: verdict.code, amount: money(verdict.amount), fundedBy: verdict.fundedBy } }
+        : { codeProblem: { code: verdict.code, reason: verdict.reason } })(verdicts.get(row.lineId))),
   }));
 
   const subtotal = addMoney(
     sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity }))),
     ...priced.map(row => row.extrasTotal),
   );
-  const quoted = deliveryFor(priced, doors);
+  const codeDiscount = addMoney("0.000", ...priced.map(row => codeTaken(row.lineId)));
+  /* A line's own code is money not spent with its store, so it does not count
+     toward that store's free delivery — the order's rule. */
+  const quoted = deliveryFor(priced.map(row => ({ ...row, codeTaken: codeTaken(row.lineId) })), doors);
   /* Waived the way checkout waives it (4.1), so the bag shows what the order will charge. */
   const minimum = member ? await freeDeliveryOver(db) : null;
-  const quote = member ? waiveDelivery(quoted, subtotal, minimum) : { ...quoted, waived: "0.000" };
+  const quote = member ? waiveDelivery(quoted, subtractMoney(subtotal, codeDiscount), minimum) : { ...quoted, waived: "0.000" };
   /* Whether every trip on this bag is NetLet's to carry, fast included (4.1):
      the line's Fast choice then says "free" rather than a fee nobody pays. */
-  const memberFree = member && (minimum === null || compareMoney(subtotal, minimum) >= 0);
+  const memberFree = member && (minimum === null || compareMoney(subtractMoney(subtotal, codeDiscount), minimum) >= 0);
   /* One row per seller, so the COD rules line up with the delivery groups. */
   const rules = new Map(priced.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
 
@@ -810,7 +840,8 @@ export async function getCart(cartId: string): Promise<Cart | null> {
       memberWaived: quote.waived !== "0.000" ? money(quote.waived) : null,
       memberFree,
     },
-    total: money(addMoney(subtotal, quote.total)),
+    codeDiscount: toFils(codeDiscount) > 0n ? money(codeDiscount) : null,
+    total: money(addMoney(subtractMoney(subtotal, codeDiscount), quote.total)),
   };
 }
 
@@ -829,6 +860,8 @@ function deliveryFor(
     vendorId: number; vendorName: string; deliveryFlat: string | null; deliveryFreeOver: string | null;
     fastDeliveryFee?: string | null; deliveryChoice?: string | null;
     charged: string; quantity: number; extrasTotal?: string; addressId?: number | null;
+    /** What the line's own code takes off (0074). */
+    codeTaken?: string;
   }[],
   doors: Map<number, { label: string }>,
 ) {
@@ -838,7 +871,7 @@ function deliveryFor(
   const lines: DestinedLine[] = rows.map(row => {
     /* The extras count toward a seller's free-delivery threshold: they are
        money spent with that seller, the same as an agreed price is. */
-    const value = addMoney(multiplyMoney(row.charged, row.quantity), row.extrasTotal ?? "0.000");
+    const value = subtractMoney(addMoney(multiplyMoney(row.charged, row.quantity), row.extrasTotal ?? "0.000"), row.codeTaken ?? "0.000");
     const destinationId = row.addressId && doors.has(row.addressId) ? row.addressId : null;
     return {
       vendorId: row.vendorId,
@@ -1009,6 +1042,57 @@ export async function setLineDeliveryChoice(cartId: string, lineId: string, choi
   const id = Number(lineId);
   if (Number.isInteger(id)) {
     await db.update(cartItems).set({ deliveryChoice: choice }).where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)));
+  }
+  return getCart(cartId);
+}
+
+/**
+ * Put a discount code on one line of the bag, or say why it does not fit
+ * (migration 0074).
+ *
+ * The code is written and the bag read back through `getCart`, which judges
+ * every line's code by the rule the order uses — so the answer is the bag's
+ * own verdict on this line, priced as checkout will price it, rather than a
+ * second implementation of the line's worth. A refusal puts the line's
+ * earlier code back, so a mistyped code never knocks off one that worked.
+ */
+export async function setLineCode(
+  cartId: string,
+  lineId: string,
+  typed: string,
+): Promise<{ ok: true; cart: Cart } | { ok: false; reason: string }> {
+  const db = await getDb();
+  if (!db) return { ok: false, reason: "voucher.unknown" };
+  const id = Number(lineId);
+  const [line] = Number.isInteger(id)
+    ? await db
+        .select({ id: cartItems.id, previous: cartItems.discountCodeId, userId: carts.userId })
+        .from(cartItems)
+        .innerJoin(carts, eq(carts.id, cartItems.cartId))
+        .where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)))
+        .limit(1)
+    : [];
+  if (!line) return { ok: false, reason: "voucher.noLine" };
+
+  const found = await codeByText(db, typed, line.userId);
+  if ("refused" in found) return { ok: false, reason: found.refused };
+
+  await db.update(cartItems).set({ discountCodeId: found.found.id }).where(eq(cartItems.id, id));
+  const cart = await getCart(cartId);
+  const drawn = cart?.items.find(item => item.lineId === String(id));
+  if (cart && drawn?.code) return { ok: true, cart };
+
+  await db.update(cartItems).set({ discountCodeId: line.previous }).where(eq(cartItems.id, id));
+  return { ok: false, reason: drawn?.codeProblem?.reason ?? "voucher.noLine" };
+}
+
+/** Take a line's code off; the line is its price again. */
+export async function clearLineCode(cartId: string, lineId: string): Promise<Cart | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const id = Number(lineId);
+  if (Number.isInteger(id)) {
+    await db.update(cartItems).set({ discountCodeId: null }).where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)));
   }
   return getCart(cartId);
 }

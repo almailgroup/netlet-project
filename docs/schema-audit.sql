@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 72 tables, 770 columns, 135 indexes, 167 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 73 tables, 779 columns, 135 indexes, 172 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -32,7 +32,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('bundle_items', 'bundle_id:n,id:pnd,position:nd,quantity:nd,variant_id:n', 'bundle_items_unique:u', 'bundle_id>bundles:c,variant_id>product_variants:c'),
   ('bundles', 'active:nd,bundle_price:n,created_at:nd,id:pnd,name:n,name_ar,updated_at:nd,vendor_id', 'bundles_vendor_idx', 'vendor_id>vendors:c'),
   ('cart_item_addons', 'addon_id:n,cart_item_id:n,id:pnd', 'cart_item_addons_unique:u', 'addon_id>product_addons:c,cart_item_id>cart_items:c'),
-  ('cart_items', 'address_id,bundle_id,cart_id:n,created_at:nd,delivery_choice:nd,id:pnd,quantity:nd,updated_at:nd,variant_id:n', 'cart_items_cart_id_idx,cart_items_cart_variant_unique:u', 'address_id>customer_addresses:n,bundle_id>bundles:n,cart_id>carts:c,variant_id>product_variants:c'),
+  ('cart_items', 'address_id,bundle_id,cart_id:n,created_at:nd,delivery_choice:nd,discount_code_id,id:pnd,quantity:nd,updated_at:nd,variant_id:n', 'cart_items_cart_id_idx,cart_items_cart_variant_unique:u', 'address_id>customer_addresses:n,bundle_id>bundles:n,cart_id>carts:c,discount_code_id>discount_codes:n,variant_id>product_variants:c'),
   ('carts', 'created_at:nd,id:pn,updated_at:nd,user_id', 'carts_user_id_idx', 'user_id>users:c'),
   ('categories', 'created_at:nd,id:pnd,name:n,name_ar,parent_id,position:nd,slug:n', 'categories_slug_unique:u', ''),
   ('commission_proposals', 'created_at:nd,created_by,decided_at,decided_by,decision_note,fixed,id:pnd,percent,product_id,reason,status:nd,vendor_id:n', 'commission_proposals_open_unique:uw,commission_proposals_status_idx', 'created_by>users:n,decided_by>users:n,product_id>products:c,vendor_id>vendors:c'),
@@ -44,7 +44,8 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('customer_profiles', 'birthday,first_name,gender,last_name,nationality,phone,updated_at:nd,user_id:pn', '', 'user_id>users:c'),
   ('damage_claims', 'awarded_amount,claimed_amount:n,courier_id,courier_responded_at,courier_response,created_at:nd,decided_at,decided_by,decision_note,description:n,evidence_url,filed_as:n,filed_by,id:pnd,line_ids:n,order_id:n,parcel_key:n,status:nd,updated_at:nd,vendor_id,vendor_name', 'damage_claims_courier_idx,damage_claims_open_unique:uw,damage_claims_order_idx', 'courier_id>couriers:n,decided_by>users:n,filed_by>users:n,order_id>orders:c,vendor_id>vendors:n'),
   ('delivery_ratings', 'comment,condition,conduct,courier_id,created_at:nd,id:pnd,order_id:n,parcel_key:n,rating:n,speed,updated_at:nd,user_id:n,vendor_id,vendor_name', 'delivery_ratings_courier_idx,delivery_ratings_parcel_unique:u,delivery_ratings_vendor_idx', 'courier_id>couriers:n,order_id>orders:c,user_id>users:c,vendor_id>vendors:n'),
-  ('discount_codes', 'code:n,created_at:nd,ends_at,id:pnd,kind:nd,max_redemptions,min_spend,per_shopper:nd,starts_at,value:n', 'discount_codes_code_unique:u', ''),
+  ('discount_code_products', 'code_id:n,product_id:n', '', 'code_id>discount_codes:c,product_id>products:c'),
+  ('discount_codes', 'code:n,created_at:nd,ends_at,funded_by:nd,id:pnd,kind:nd,max_redemptions,min_spend,per_shopper:nd,scope:nd,starts_at,value:n,vendor_id', 'discount_codes_code_unique:u', 'vendor_id>vendors:c'),
   ('discount_redemptions', 'amount:n,code_id:n,created_at:nd,id:pnd,order_id,user_id', 'discount_redemptions_order_unique:u,discount_redemptions_user_idx', 'code_id>discount_codes:c,order_id>orders:n,user_id>users:n'),
   ('driver_positions', 'accuracy_m,courier_id:n,position:n,recorded_at:nd,user_id:pn', '', 'courier_id>couriers:c,user_id>users:c'),
   ('feature_switches', 'enabled:n,key:pn,updated_at:nd,updated_by', '', 'updated_by>users:n'),
@@ -65,7 +66,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('notification_deliveries', 'address:n,attempts:nd,channel:n,created_at:nd,id:pnd,last_error,next_attempt_at:nd,notification_id:n,sent_at,status:nd', 'notification_deliveries_due_idx:w,notification_deliveries_once_idx:u', 'notification_id>notifications:c'),
   ('notifications', 'created_at:nd,dedupe_key:n,id:pnd,kind:n,link,message_key:n,params:nd,read_at,user_id:n', 'notifications_unread_idx:w,notifications_user_created_idx,notifications_user_dedupe_idx:u', 'user_id>users:c'),
   ('order_item_addons', 'addon_id,id:pnd,kind:n,label:n,order_item_id:n,price:n', 'order_item_addons_line_idx', 'addon_id>product_addons:n,order_item_id>order_items:c'),
-  ('order_items', 'affiliate_vendor_percent,bundle_id,bundle_name,carried_by,centre_id,commission_amount:nd,commission_fixed:nd,commission_percent:nd,courier_id,created_at:nd,delivered_at,delivery_choice:nd,destination,fulfilment:nd,id:pnd,line_total:n,order_id:n,preorder_release_at,preordered:nd,product_id,product_title:n,quantity:n,referral_rate,referrer_id,size_class,sku,unit_price:n,updated_at:nd,variant_id,variant_title,vendor_id,vendor_name,vendor_net:nd,weight_grams', 'order_items_fulfilment_idx,order_items_order_id_idx,order_items_vendor_id_idx', 'bundle_id>bundles:n,carried_by>users:n,centre_id>fulfilment_centres:r,courier_id>couriers:n,order_id>orders:c,product_id>products:n,referrer_id>users:n,variant_id>product_variants:n,vendor_id>vendors:n'),
+  ('order_items', 'affiliate_vendor_percent,bundle_id,bundle_name,carried_by,centre_id,commission_amount:nd,commission_fixed:nd,commission_percent:nd,courier_id,created_at:nd,delivered_at,delivery_choice:nd,destination,discount_amount:nd,discount_code,discount_code_id,fulfilment:nd,id:pnd,line_total:n,order_id:n,preorder_release_at,preordered:nd,product_id,product_title:n,quantity:n,referral_rate,referrer_id,size_class,sku,unit_price:n,updated_at:nd,variant_id,variant_title,vendor_id,vendor_name,vendor_net:nd,weight_grams', 'order_items_fulfilment_idx,order_items_order_id_idx,order_items_vendor_id_idx', 'bundle_id>bundles:n,carried_by>users:n,centre_id>fulfilment_centres:r,courier_id>couriers:n,discount_code_id>discount_codes:n,order_id>orders:c,product_id>products:n,referrer_id>users:n,variant_id>product_variants:n,vendor_id>vendors:n'),
   ('order_tracking_events', 'created_at:nd,id:pnd,message,occurred_at:nd,order_reference:n,status:n,user_id:n', 'order_tracking_user_id_idx,order_tracking_user_occurred_idx', 'user_id>users:c'),
   ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total:nd,contact_name,contact_phone,currency:nd,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total:nd,delivery_waived:nd,delivery_zone_id,discount_code,discount_value:nd,email:n,gift_card_code,gift_card_value:nd,grand_total:n,id:pnd,items_total:n,member:nd,payment_collected_at,payment_method,placed_at:nd,points_spent:nd,points_value:nd,reference:n,status:nd,subscription_id,updated_at:nd,user_id', 'orders_placed_idx,orders_reference_unique:u,orders_status_idx,orders_user_id_idx', 'affiliate_id>affiliates:n,subscription_id>subscriptions:n,user_id>users:n'),
   ('payout_files', 'created_at:nd,created_by,id:pnd', '', 'created_by>users:n'),
@@ -244,7 +245,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 72 tables' AS object,
+    count(*) || ' of 73 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -258,7 +259,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 72 tables, 770 columns, 135 indexes, 167 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 73 tables, 779 columns, 135 indexes, 172 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

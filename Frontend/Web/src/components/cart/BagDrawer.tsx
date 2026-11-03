@@ -28,7 +28,7 @@ import { toast } from "sonner";
 import { CARD } from "@/components/layout/Page";
 import { bagGroups, freeDeliveryProgress, type BagGroup } from "@/lib/bagGroups";
 import type { CartItem } from "@shared/commerce/types";
-import type { MessageKey } from "@shared/i18n/dictionary";
+import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { isDeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { lineCeiling, quantityDraft, shortLines, typedQuantity } from "@shared/commerce/typedQuantity";
 import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
@@ -214,6 +214,10 @@ function BagLine({ item }: { item: CartItem }) {
                 are the machinery of an advertised saving, which needs a Ministry
                 of Commerce permit, and this is a private answer to one person. */}
             {item.agreedFrom ? <p className="mt-0.5 text-[11px] font-bold ink-accent">{t(item.priceReason === "member" ? "membership.priceFrom" : "offers.agreedFrom", { price: money(item.agreedFrom) })}</p> : null}
+            {/* The product's own code (0074), applied at checkout: what it takes
+                off this line, or why it no longer does. */}
+            {item.code ? <p className="mt-0.5 text-[12px] font-bold text-[#2f5d33]"><bdi dir="ltr">{item.code.code}</bdi> · {t("checkout.lineCodeOff", { amount: money(item.code.amount) })}</p> : null}
+            {item.codeProblem ? <p className="mt-0.5 text-[12px] font-bold text-[#8c2f22]"><bdi dir="ltr">{item.codeProblem.code}</bdi> · {isMessageKey(item.codeProblem.reason) ? t(item.codeProblem.reason) : item.codeProblem.reason}</p> : null}
             {/* "1.5 kg" beside a quantity of 6. Nothing for a counted line. */}
             <MeasureLabel measure={item.measure} quantity={item.quantity} className="text-[12px] ink-muted" />
           </div>
@@ -403,6 +407,7 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout }: {
         </p>
       ))}
       <div className="flex items-center justify-between gap-3 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")} <span className="font-normal">({t("cart.itemCount", { count: cart.itemCount })})</span></span><span className="shrink-0 font-bold text-[#0a285a]">{money(cart.subtotal)}</span></div>
+      {cart.codeDiscount ? <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("checkout.lineCodesTitle")}</span><span className={`font-bold text-[#2f5d33] transition-opacity ${updating}`}>−{money(cart.codeDiscount)}</span></div> : null}
       <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.delivery")}</span><span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.delivery.total)}</span></div>
       {/* A member's free delivery (4.1), said with what it saved. */}
       {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}

@@ -66,6 +66,8 @@ import { playOrderChime, primeOrderChime } from "@/lib/orderChime";
 import { heldClaims } from "@/lib/giftClaims";
 import { productLinks } from "@/lib/referral";
 import { BagSavings, useSavingsBill } from "@/components/cart/BagSavings";
+import { LineCode } from "@/components/checkout/LineCode";
+import { subtractMoney } from "@shared/money";
 import { pressHaptic, refusedHaptic, successHaptic } from "@/lib/haptics";
 import { bagGroups, type BagGroup } from "@/lib/bagGroups";
 import { Link, useLocation } from "wouter";
@@ -170,6 +172,7 @@ export default function Checkout() {
     : settling || !delivery.loaded ? null
     : !items.length ? "checkout.needItems"
     : shortLines(items).size ? "checkout.needFewer"
+    : items.some(item => item.codeProblem) ? "checkout.codeProblem"
     : cart?.cod.available === false ? "checkout.needCod"
     : !address ? "checkout.needAddressChoice"
     : !addressLineOf(address) ? "checkout.needAddress"
@@ -188,6 +191,14 @@ export default function Checkout() {
       return;
     }
     if (blocker === "checkout.needCod" || blocker === "checkout.needItems") return;
+    /* A product's code that no longer applies is removed on its own line. */
+    if (blocker === "checkout.codeProblem") {
+      const line = items.find(item => item.codeProblem);
+      const row = line ? document.getElementById(`line-code-${line.lineId}`) : null;
+      row?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+      row?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+      return;
+    }
     /* The quantity is changed where the stepper is. */
     if (blocker === "checkout.needFewer") {
       navigate("/cart");
@@ -305,6 +316,16 @@ export default function Checkout() {
               <dl className="mt-3 space-y-2 text-[14px]">
                 <Row label={<>{t("cart.subtotal")} <span className="ink-muted">({t("cart.itemCount", { count: cart?.itemCount ?? 0 })})</span></>} value={settling ? null : money(subtotal)} />
                 <Row label={t("cart.delivery")} value={settling ? null : cart ? (Number(cart.delivery.total.amount) > 0 ? money(cart.delivery.total) : t("cart.deliveryFree")) : null} faint={syncing} />
+                {/* Each product's own code (0074), named, before anything paid. */}
+                {items.filter(item => item.code).map(item => (
+                  <Row
+                    key={`code-${item.lineId}`}
+                    label={<span className="flex min-w-0 flex-col"><span>{t("checkout.lineCodeRow")} <bdi dir="ltr">{item.code!.code}</bdi></span><span dir="auto" className="truncate text-[12px] ink-muted">{lineTitle(item, isArabic)}</span></span>}
+                    value={`−${money(item.code!.amount)}`}
+                    good
+                    faint={syncing}
+                  />
+                ))}
                 {Number(bill.discountOff) > 0 ? <Row label={t("checkout.discountRow")} value={`−${money({ amount: bill.discountOff, currencyCode: "KWD" })}`} good /> : null}
                 {Number(bill.pointsOff) > 0 ? <Row label={t("checkout.pointsRow")} value={`−${money({ amount: bill.pointsOff, currencyCode: "KWD" })}`} good /> : null}
                 {Number(bill.giftOff) > 0 ? <Row label={t("checkout.giftCardRow")} value={`−${money({ amount: bill.giftOff, currencyCode: "KWD" })}`} good /> : null}
@@ -519,17 +540,33 @@ function ItemRow({ item }: { item: CartItem }) {
   const money = useMoney();
   const title = lineTitle(item, isArabic);
   const variant = isDefaultVariantTitle(item.variantTitle) ? null : item.variantTitle;
+  /* What the shopper pays for this line: less its own code (0074). */
+  const final = item.code
+    ? { amount: subtractMoney(item.lineTotal.amount, item.code.amount.amount), currencyCode: item.lineTotal.currencyCode }
+    : item.lineTotal;
   return (
-    <div className="flex gap-3 py-3">
-      <div className="size-14 shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9]">
-        <Thumb src={item.image?.url} alt={item.image?.altText ?? title} className="size-full object-cover" icon={<ShoppingBag className="size-4" />} />
+    <div id={`line-code-${item.lineId}`} className="scroll-mt-24 py-3">
+      <div className="flex gap-3">
+        <div className="size-14 shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9]">
+          <Thumb src={item.image?.url} alt={item.image?.altText ?? title} className="size-full object-cover" icon={<ShoppingBag className="size-4" />} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p dir="auto" className="line-clamp-2 text-[14px] font-bold leading-5">{title}</p>
+          {variant ? <p dir="auto" className="mt-0.5 text-[12px] ink-muted">{variant}</p> : null}
+          <p className="mt-0.5 text-[12px] ink-muted">{t("cart.quantityShort", { count: item.quantity })}</p>
+        </div>
+        {/* At most part of the row, so "Before the code" wraps rather than
+            squeezing the product's name to nothing on a narrow phone. */}
+        <div className="max-w-[42%] shrink-0 text-end">
+          <p className="text-[14px] font-extrabold">{money(final)}</p>
+          {item.code ? <p className="mt-0.5 text-[12px] leading-4 ink-muted">{t("checkout.lineBefore", { amount: money(item.lineTotal) })}</p> : null}
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p dir="auto" className="line-clamp-2 text-[14px] font-bold leading-5">{title}</p>
-        {variant ? <p dir="auto" className="mt-0.5 text-[12px] ink-muted">{variant}</p> : null}
-        <p className="mt-0.5 text-[12px] ink-muted">{t("cart.quantityShort", { count: item.quantity })}</p>
+      {/* The product's own discount code (0074), the width of the line under
+          it: beside the price a box had no room to type in. */}
+      <div className="sm:ps-[68px]">
+        <LineCode item={item} title={title} />
       </div>
-      <p className="shrink-0 text-[14px] font-extrabold">{money(item.lineTotal)}</p>
     </div>
   );
 }

@@ -14,12 +14,20 @@ protocol CartServicing: Sendable {
     func setDestination(_ cartId: String, lineId: String, addressId: Int?) async throws -> Cart?
     /// Fast or regular for one line (3.2.5); the delivery quote moves with it.
     func setDeliveryChoice(_ cartId: String, lineId: String, choice: String) async throws -> Cart?
+    /// A product's own discount code on one line (0074), or nil to take it off.
+    func setLineCode(_ cartId: String, lineId: String, code: String?) async throws -> API.LineCodeAnswer
 }
 
 extension CartServicing {
     /// A stand-in with no address book keeps the bag as it is.
     func setDestination(_ cartId: String, lineId: String, addressId: Int?) async throws -> Cart? {
         try await get(cartId)
+    }
+
+    /// A stand-in with no codes recognises none, and taking one off keeps the bag.
+    func setLineCode(_ cartId: String, lineId: String, code: String?) async throws -> API.LineCodeAnswer {
+        if code == nil { return API.LineCodeAnswer(ok: true, cart: try await get(cartId), reason: nil) }
+        return API.LineCodeAnswer(ok: false, cart: nil, reason: "voucher.unknown")
     }
 
     /// A stand-in with no delivery choices keeps the bag as it is.
@@ -73,5 +81,13 @@ struct CartService: CartServicing {
 
     func setDeliveryChoice(_ cartId: String, lineId: String, choice: String) async throws -> Cart? {
         try await client.call(API.setLineDeliveryChoice, .init(cartId: cartId, lineId: lineId, choice: choice))
+    }
+
+    func setLineCode(_ cartId: String, lineId: String, code: String?) async throws -> API.LineCodeAnswer {
+        guard let code else {
+            let cart = try await client.call(API.clearLineCode, .init(cartId: cartId, lineId: lineId))
+            return API.LineCodeAnswer(ok: true, cart: cart, reason: nil)
+        }
+        return try await client.call(API.setLineCode, .init(cartId: cartId, lineId: lineId, code: code))
     }
 }

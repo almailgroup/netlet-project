@@ -353,6 +353,11 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* No demo store offers a fast trip (3.2.5), so every line rides regular. */
     case "commerce.cart.setDeliveryChoice":
       return requireCart(String(input.cartId));
+    /* The demo has no codes, so a product's code is one nobody recognises (0074). */
+    case "commerce.cart.setLineCode":
+      return { ok: false, reason: "voucher.unknown" } as const;
+    case "commerce.cart.clearLineCode":
+      return requireCart(String(input.cartId));
 
     /* The live search ranks the whole catalogue on the server with the rules in
        `Shared/commerce/search.ts`; here the same rules rank the fixtures. */

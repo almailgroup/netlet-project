@@ -27,6 +27,8 @@ import {
   listProductsByIds,
   listStoreCards,
   removeCartLines,
+  setLineCode,
+  clearLineCode,
   setLineDeliveryChoice,
   STORE_INDEX_LIMIT,
   updateCartLines,
@@ -38,6 +40,7 @@ import { publishedDepartmentCounts, publishedSubcategoryCounts } from "../servic
 import { AddressError, setLineDestination } from "../services/addresses.js";
 import { TRPCError } from "@trpc/server";
 import { returnWindowDays } from "../services/settings.js";
+import { checkVoucherAllowed, recordVoucherMiss } from "../services/rateLimit.js";
 
 /**
  * Which language to read merchant data in.
@@ -218,6 +221,29 @@ export const commerceRouter = router({
     setDeliveryChoice: publicProcedure
       .input(z.object({ cartId: z.string().min(1), lineId: rowIdText, choice: z.enum(DELIVERY_CHOICES) }))
       .mutation(({ input }) => setLineDeliveryChoice(input.cartId, input.lineId, input.choice)),
+    /**
+     * A store's or a product's discount code on one line (migration 0074).
+     * Answers the bag with the code on it, or the reason it does not fit —
+     * a message key, never an error, because a wrong code is an ordinary
+     * thing to type. A code nobody has counts against the address's guesses,
+     * the order box's ceiling, so a line is no back door to the dictionary.
+     */
+    setLineCode: publicProcedure
+      .input(z.object({ cartId: z.string().min(1).max(64), lineId: rowIdText, code: z.string().trim().min(1).max(40) }))
+      .mutation(async ({ ctx, input }) => {
+        const address = ctx.req.ip ?? null;
+        const verdict = await checkVoucherAllowed(address);
+        if (!verdict.allowed) {
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "voucher.tooMany", cause: { retryAfterSeconds: verdict.retryAfterSeconds } });
+        }
+        const answer = await setLineCode(input.cartId, input.lineId, input.code);
+        if (!answer.ok && answer.reason === "voucher.unknown") await recordVoucherMiss(address);
+        return answer;
+      }),
+    /** Take a line's code off. */
+    clearLineCode: publicProcedure
+      .input(z.object({ cartId: z.string().min(1).max(64), lineId: rowIdText }))
+      .mutation(({ input }) => clearLineCode(input.cartId, input.lineId)),
     /**
      * Send one line to a different door (3.2.6).
      *

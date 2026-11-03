@@ -27,6 +27,8 @@ final class CartModel {
         case remove(lineId: String)
         case destination(lineId: String, addressId: Int?)
         case speed(lineId: String, fast: Bool)
+        /// A product's own discount code on a line (0074), or nil to take it off.
+        case code(lineId: String, code: String?)
         case refresh
 
         /// What the press draws before the server answers. A line with extras
@@ -42,7 +44,7 @@ final class CartModel {
                 return [.set(lineId: lineId, quantity: quantity)]
             case let .remove(lineId):
                 return [.remove(lineId: lineId)]
-            case .destination, .speed, .refresh:
+            case .destination, .speed, .code, .refresh:
                 return []
             }
         }
@@ -76,6 +78,8 @@ final class CartModel {
 
     /// The bag as the server last answered.
     private var confirmed: Cart?
+    /// Why the last line code did not fit, handed back by `setLineCode`.
+    private var codeRefusal: String?
     /// Presses drawn and not yet answered, oldest first.
     private var waiting: [Entry] = []
     @ObservationIgnored private var waiters: [Int: [CheckedContinuation<Bool, Never>]] = [:]
@@ -183,6 +187,19 @@ final class CartModel {
     func setDeliveryChoice(lineId: String, fast: Bool) async -> Bool {
         guard cartId != nil else { return false }
         return await enqueue(.speed(lineId: lineId, fast: fast))
+    }
+
+    /// Puts a store's or a product's discount code on one line (migration
+    /// 0074), or takes it off with nil — the web's `setLineCode`. Nil when it
+    /// went on; otherwise why not, as a message key, the line keeping its
+    /// earlier code.
+    func setLineCode(lineId: String, code: String?) async -> String? {
+        guard cartId != nil else { return "voucher.noLine" }
+        codeRefusal = nil
+        let took = await enqueue(.code(lineId: lineId, code: code))
+        defer { codeRefusal = nil }
+        if !took { return "cart.updateFailed" }
+        return codeRefusal
     }
 
     /// Reads the bag again — after an order, which empties it on the server.
@@ -300,6 +317,12 @@ final class CartModel {
         case let .speed(lineId, fast):
             guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return false }
             if let found = try await service.setDeliveryChoice(id, lineId: line, choice: fast ? "fast" : "regular") { keep(found) }
+            return true
+        case let .code(lineId, code):
+            guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return false }
+            let answer = try await service.setLineCode(id, lineId: line, code: code)
+            if answer.ok, let cart = answer.cart { keep(cart) }
+            if !answer.ok { codeRefusal = answer.reason ?? "voucher.unknown" }
             return true
         case .refresh:
             guard let id = cartId else { return true }

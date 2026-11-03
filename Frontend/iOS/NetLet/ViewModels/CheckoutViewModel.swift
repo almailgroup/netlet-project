@@ -82,6 +82,8 @@ final class CheckoutViewModel {
         // A line asking for more than is left is lowered in the bag first,
         // rather than refused after the press (`BagStock.shortLines`).
         if !BagStock.shortLines(cart.items).isEmpty { return "checkout.needFewer" }
+        // A product's own code that no longer applies is removed first (0074).
+        if cart.items.contains(where: { $0.codeProblem != nil }) { return "checkout.codeProblem" }
         if !cart.cod.available { return "checkout.needCod" }
         guard let address else { return "checkout.needAddressChoice" }
         return Validation.savedAddressProblem(address, phone: phone(for: address), requiredParts: reference.requiredParts)

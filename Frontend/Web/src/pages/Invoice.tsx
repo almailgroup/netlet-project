@@ -226,6 +226,11 @@ function SellerBlock({ seller, money }: { seller: InvoiceSeller; money: (amount:
                   {line.titleAr ? <span lang="ar" dir="rtl" className="block align-parent">{line.titleAr}</span> : null}
                   {line.variantTitle && line.variantTitle !== "Default" ? <bdi className="block text-[#536b8c]">{line.variantTitle}</bdi> : null}
                   {line.sku ? <span className="block text-[12px] text-[#536b8c]"><bdi dir="ltr">{line.sku}</bdi></span> : null}
+                  {line.discount ? (
+                    <span className="block text-[12px] font-semibold text-[#2f5d33]">
+                      <Both k="invoice.lineCode" values={{ code: line.discount.code, amount: money(line.discount.amount) }} />
+                    </span>
+                  ) : null}
                 </td>
                 <td className="py-2 text-end">{line.quantity}</td>
                 <td className="py-2 text-end">{money(line.unitPrice)}</td>

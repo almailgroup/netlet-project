@@ -2016,6 +2016,40 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "frequent_items_user_product_variant_unique" ON "frequent_items" USING btree ("user_id","product_id","variant_id");
 CREATE INDEX IF NOT EXISTS "frequent_items_user_idx" ON "frequent_items" USING btree ("user_id");
 
+-- ===== 0074_product_discount_codes.sql =====
+CREATE TABLE IF NOT EXISTS "discount_code_products" (
+	"code_id" integer NOT NULL,
+	"product_id" integer NOT NULL,
+	CONSTRAINT "discount_code_products_code_id_product_id_pk" PRIMARY KEY("code_id","product_id")
+);
+ALTER TABLE "cart_items" ADD COLUMN IF NOT EXISTS "discount_code_id" integer;
+ALTER TABLE "discount_codes" ADD COLUMN IF NOT EXISTS "scope" varchar(10) DEFAULT 'order' NOT NULL;
+ALTER TABLE "discount_codes" ADD COLUMN IF NOT EXISTS "vendor_id" integer;
+ALTER TABLE "discount_codes" ADD COLUMN IF NOT EXISTS "funded_by" varchar(10) DEFAULT 'netlet' NOT NULL;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "discount_code_id" integer;
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "discount_code" varchar(40);
+ALTER TABLE "order_items" ADD COLUMN IF NOT EXISTS "discount_amount" numeric(12, 3) DEFAULT '0' NOT NULL;
+DO $$ BEGIN
+  ALTER TABLE "discount_code_products" ADD CONSTRAINT "discount_code_products_code_id_discount_codes_id_fk" FOREIGN KEY ("code_id") REFERENCES "public"."discount_codes"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "discount_code_products" ADD CONSTRAINT "discount_code_products_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_discount_code_id_discount_codes_id_fk" FOREIGN KEY ("discount_code_id") REFERENCES "public"."discount_codes"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "discount_codes" ADD CONSTRAINT "discount_codes_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "order_items" ADD CONSTRAINT "order_items_discount_code_id_discount_codes_id_fk" FOREIGN KEY ("discount_code_id") REFERENCES "public"."discount_codes"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2059,6 +2093,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  74 AS migrations_in_this_file,
+  75 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

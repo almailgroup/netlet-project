@@ -410,6 +410,18 @@ struct CartLineRow: View {
                         .font(.inter(11, .bold))
                         .foregroundStyle(Brand.accentInk)
                 }
+                // The product's own code (0074), applied at checkout: what it
+                // takes off this line, or why it no longer does.
+                if let code = item.code {
+                    Text("\u{2066}\(code.code)\u{2069} · " + l.t("checkout.lineCodeOff", ["amount": l.price(code.amount)]))
+                        .font(.inter(12, .bold))
+                        .foregroundStyle(Brand.success)
+                } else if let problem = item.codeProblem {
+                    Text("\u{2066}\(problem.code)\u{2069} · " + (l.phrasebook.has(problem.reason) ? l.t(problem.reason) : problem.reason))
+                        .font(.inter(12, .bold))
+                        .foregroundStyle(Brand.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 // How much the steps come to, for something sold by weight (`MeasureLabel`).
                 if let measure = item.measure,
                    let amount = ListingRules.shared.measureOf(unit: measure.unit, step: measure.stepAmount, quantity: item.quantity) {
@@ -517,6 +529,9 @@ struct SummaryCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
             row(l.t("cart.subtotal") + " (" + count + ")", l.price(cart.subtotal))
+            if let off = cart.codeDiscount, !off.isZero {
+                row(l.t("checkout.lineCodesTitle"), "−" + l.price(off), faint: updating)
+            }
             if grouped {
                 row(l.t("cart.delivery"), l.price(cart.delivery.total), faint: updating)
             }

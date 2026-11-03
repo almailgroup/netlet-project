@@ -292,6 +292,12 @@ struct PortalInvoicesView: View {
 /// Discount codes and gift cards — the web's `/admin/promotions`. A code is
 /// made or edited in one form (a live campaign's edit is ordinary); a gift
 /// card's code is generated, since the code is the whole credential.
+///
+/// A code covers the whole order, a store, or chosen products (migration
+/// 0074); a store's or a product's is typed on that product's line at
+/// checkout. A store's owner or manager (`promotion.manage`) makes codes for
+/// its own products here, always paid by the store, and sees only its own;
+/// NetLet makes any and says who pays.
 struct PortalPromotionsView: View {
     @State private var vouchers: Vouchers?
     @State private var failed: APIError?
@@ -303,6 +309,11 @@ struct PortalPromotionsView: View {
     @State private var endsAt: Date?
     @State private var maxRedemptions = ""
     @State private var perShopper = "1"
+    @State private var scope = "order"
+    @State private var storeId: Int?
+    @State private var fundedBy = "netlet"
+    @State private var productIds: [Int] = []
+    @State private var stores: [StoreRow] = []
     @State private var cardAmount = ""
     @State private var cardNote = ""
     @State private var cardExpires: Date?
@@ -310,10 +321,24 @@ struct PortalPromotionsView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
+    /// NetLet's whole page, or a store's own codes.
+    private var netlet: Bool { app.session.seller?.can("platform.viewAll") == true }
+    private var ownStore: Int? { app.session.seller?.ownVendor }
+    /// The store a code is for: the one chosen, or a seller's own.
+    private var codeStore: Int? { netlet ? storeId : ownStore }
+    private var shapeProblem: String? {
+        if scope == "order" { return netlet ? nil : "promotion.orderIsNetlet" }
+        if codeStore == nil { return "promotion.needsStore" }
+        if scope == "products" && productIds.isEmpty { return "promotion.needsProducts" }
+        return nil
+    }
+
     var body: some View {
-        PortalScreen(title: l.t("admin.promotions"), intro: l.t("admin.promotionsNote"), refresh: { await load() }) {
+        PortalScreen(title: l.t(netlet ? "admin.promotions" : "admin.codeOwnTitle"), intro: l.t(netlet ? "admin.promotionsNote" : "admin.codeStoreNote"), refresh: { await load() }) {
             codeForm
-            if app.features.isOn("giftCards") {
+            if !netlet {
+                EmptyView()
+            } else if app.features.isOn("giftCards") {
                 cardForm
             } else {
                 PortalNotice(text: l.t("admin.cardsOff"), tone: .info)
@@ -325,11 +350,13 @@ struct PortalPromotionsView: View {
                 } else {
                     ForEach(vouchers.codes) { row in codeRow(row) }
                 }
-                PortalSectionHeading(title: l.t("admin.cardsTitle"))
-                if vouchers.cards.isEmpty {
-                    PortalEmpty(text: l.t("admin.cardsEmpty"))
-                } else {
-                    ForEach(vouchers.cards) { row in cardRow(row) }
+                if netlet {
+                    PortalSectionHeading(title: l.t("admin.cardsTitle"))
+                    if vouchers.cards.isEmpty {
+                        PortalEmpty(text: l.t("admin.cardsEmpty"))
+                    } else {
+                        ForEach(vouchers.cards) { row in cardRow(row) }
+                    }
                 }
             } else if let failed {
                 ErrorStateView(error: failed) { await load() }
@@ -337,7 +364,10 @@ struct PortalPromotionsView: View {
                 ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 120)
             }
         }
-        .task { await load() }
+        .task {
+            if !netlet { scope = "store" }
+            await load()
+        }
     }
 
     private var codeForm: some View {
@@ -355,6 +385,31 @@ struct PortalPromotionsView: View {
                          hint: l.t("admin.codeLimitHint"), keyboard: .numberPad, leftToRight: true)
             LabeledField(label: l.t("admin.codePerShopper"), text: Binding(get: { perShopper }, set: { perShopper = PhoneNumber.foldDigits($0).filter(\.isNumber) }),
                          keyboard: .numberPad, leftToRight: true)
+            // What it takes money off (0074): NetLet's whole order, a store,
+            // or chosen products — a store's own codes are only the last two.
+            ChoiceField(label: l.t("admin.codeScope"), current: scope, placeholder: l.t("admin.codeScope"),
+                        options: (netlet ? [("order", l.t("admin.codeScopeOrder"))] : [])
+                            + [("store", l.t(netlet ? "admin.codeScopeStore" : "admin.codeScopeStoreOwn")), ("products", l.t("admin.codeScopeProducts"))]) {
+                scope = $0 ?? (netlet ? "order" : "store")
+                productIds = []
+            }
+            if netlet && scope != "order" {
+                ChoiceField(label: l.t("admin.codeStore"), current: storeId.map(String.init), placeholder: "—",
+                            options: stores.map { (String($0.id), $0.name) }) {
+                    storeId = $0.flatMap(Int.init)
+                    productIds = []
+                }
+                ChoiceField(label: l.t("admin.codeFunder"), current: fundedBy, placeholder: l.t("admin.codeFunder"),
+                            options: [("netlet", l.t("admin.codeFundedNetlet")), ("store", l.t("admin.codeFundedStore"))]) {
+                    fundedBy = $0 ?? "netlet"
+                }
+            }
+            if scope == "products", let store = codeStore {
+                CodeProductPicker(vendorId: store, chosen: $productIds)
+            }
+            if let shapeProblem, scope != "order" {
+                Text(l.t(shapeProblem)).font(.inter(13, .semibold)).foregroundStyle(Brand.danger).fixedSize(horizontal: false, vertical: true)
+            }
             HStack(spacing: 8) {
                 if editing != nil {
                     Button(l.t("admin.codeStartNew")) { clearCode() }.buttonStyle(PortalSmallButtonStyle())
@@ -362,7 +417,7 @@ struct PortalPromotionsView: View {
                 Spacer()
                 Button(l.t("admin.codeSave")) { Task { await saveCode() } }
                     .buttonStyle(PortalSmallButtonStyle(kind: .primary))
-                    .disabled(busy || code.trimmingCharacters(in: .whitespaces).count < 3 || value.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .disabled(busy || code.trimmingCharacters(in: .whitespaces).count < 3 || value.trimmingCharacters(in: .whitespaces).isEmpty || shapeProblem != nil)
             }
         }
     }
@@ -390,12 +445,26 @@ struct PortalPromotionsView: View {
                 FlowLayout(spacing: 6) {
                     Text(latin(row.code)).font(.system(size: 15, weight: .bold, design: .monospaced)).foregroundStyle(Brand.navy).textSelection(.enabled)
                     StatusPill(label: shownValue, tone: .shipped)
-                    if over { StatusPill(label: l.t("offers.statusExpired"), tone: .waiting) }
+                    if over { StatusPill(label: l.t("admin.codeExpired"), tone: .waiting) }
+                    StatusPill(label: reach(row), tone: .waiting)
+                    if row.scope != "order" && netlet {
+                        StatusPill(label: l.t(row.fundedBy == "store" ? "admin.codePaidByStore" : "admin.codePaidByNetlet"), tone: .waiting)
+                    }
                 }
                 Spacer()
                 Button(l.t("admin.codeEdit")) { edit(row) }.buttonStyle(PortalSmallButtonStyle())
             }
             Text(codeLine(row)).font(.inter(12)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// What a code covers, in words.
+    private func reach(_ row: DiscountCode) -> String {
+        let name = stores.first { $0.id == row.vendorId }?.name ?? row.vendorName ?? ""
+        switch row.scope {
+        case "store": return l.t("admin.codeForStore", ["name": name])
+        case "products": return l.t("admin.codeForProducts", ["name": name, "count": "\(row.productIds.count)"])
+        default: return l.t("admin.codeForOrder")
         }
     }
 
@@ -430,6 +499,10 @@ struct PortalPromotionsView: View {
         endsAt = row.endsAt
         maxRedemptions = row.maxRedemptions.map(String.init) ?? ""
         perShopper = "\(row.perShopper)"
+        scope = row.scope
+        storeId = row.vendorId
+        fundedBy = row.fundedBy
+        productIds = row.productIds
     }
 
     private func clearCode() {
@@ -441,12 +514,19 @@ struct PortalPromotionsView: View {
         endsAt = nil
         maxRedemptions = ""
         perShopper = "1"
+        scope = netlet ? "order" : "store"
+        storeId = nil
+        fundedBy = "netlet"
+        productIds = []
     }
 
     private func load() async {
         do {
             vouchers = try await app.services.api.call(API.vouchers)
             failed = nil
+            if netlet, stores.isEmpty {
+                stores = (try? await app.services.api.call(API.vendorRows, .init(pageSize: 200)))?.rows ?? []
+            }
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, vouchers == nil { failed = failure }
@@ -463,7 +543,11 @@ struct PortalPromotionsView: View {
             minSpend: .text(PhoneNumber.foldDigits(minSpend)),
             endsAt: OrNull(endsAt.map(StoreRules.kuwaitDay)),
             maxRedemptions: OrNull(Int(maxRedemptions)),
-            perShopper: max(1, Int(perShopper) ?? 1)
+            perShopper: max(1, Int(perShopper) ?? 1),
+            scope: scope,
+            vendorId: OrNull(scope == "order" ? nil : codeStore),
+            fundedBy: scope == "order" ? "netlet" : (netlet ? fundedBy : "store"),
+            productIds: scope == "products" ? productIds : []
         )
         if await app.attempt(done: "admin.codeSaved", fallback: "admin.saveFailed", {
             _ = try await app.services.api.call(API.saveDiscountCode, request)
@@ -818,6 +902,72 @@ struct PortalMembershipView: View {
             _ = try await app.services.api.call(API.endMembership, .init(id: row.id))
         }) {
             await load()
+        }
+    }
+}
+
+/// The products a code is for: the store's own, searched on the server like
+/// the products page, each a toggle — the web's `ProductPicker`.
+private struct CodeProductPicker: View {
+    let vendorId: Int
+    @Binding var chosen: [Int]
+    @State private var query = ""
+    @State private var rows: [SellerProduct] = []
+    @State private var loading = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(l.t("admin.codeProducts")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
+                Spacer()
+                Text(l.t("admin.codeChosenCount", ["count": "\(chosen.count)"])).font(.inter(13, .bold)).foregroundStyle(Brand.navy)
+            }
+            Text(l.t("admin.codeProductsHint")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            TextField(l.t("admin.codeProductsSearch"), text: $query)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.pearl))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+            VStack(spacing: 0) {
+                if loading && rows.isEmpty {
+                    ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 60)
+                } else if rows.isEmpty {
+                    Text(l.t("admin.codeNoProducts")).font(.inter(13)).foregroundStyle(Brand.muted).frame(maxWidth: .infinity, minHeight: 44)
+                }
+                ForEach(rows) { row in
+                    Toggle(isOn: Binding(
+                        get: { chosen.contains(row.id) },
+                        set: { on in
+                            if on { if !chosen.contains(row.id) { chosen.append(row.id) } } else { chosen.removeAll { $0 == row.id } }
+                        }
+                    )) {
+                        Text(l.current == .ar && !(row.titleAr ?? "").isEmpty ? row.titleAr! : row.title)
+                            .font(.inter(14))
+                            .foregroundStyle(Brand.ink)
+                            .lineLimit(1)
+                    }
+                    .tint(Brand.navy)
+                    .frame(minHeight: 44)
+                    .padding(.horizontal, 12)
+                    if row.id != rows.last?.id { Divider().overlay(Brand.cardLine) }
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        }
+        .task(id: "\(vendorId)|\(query)") {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            loading = true
+            defer { loading = false }
+            let trimmed = query.trimmingCharacters(in: .whitespaces)
+            if let page = try? await app.services.api.call(API.sellerProducts, .init(vendorId: vendorId, pageSize: 50, query: trimmed.isEmpty ? nil : trimmed)) {
+                rows = page.rows
+            }
         }
     }
 }

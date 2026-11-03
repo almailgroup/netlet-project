@@ -126,6 +126,28 @@ enum API {
     }
 
     static let setLineDeliveryChoice = Procedure<LineDeliveryChoice, Cart?>(mutation: "commerce.cart.setDeliveryChoice")
+
+    /// A store's or a product's discount code on one line (migration 0074).
+    struct LineCodeInput: Encodable, Sendable {
+        let cartId: String
+        let lineId: String
+        let code: String
+    }
+
+    /// The bag with the code on the line, or why it does not fit (a message key).
+    struct LineCodeAnswer: Decodable, Sendable {
+        let ok: Bool
+        let cart: Cart?
+        let reason: String?
+    }
+
+    struct LineCodeClear: Encodable, Sendable {
+        let cartId: String
+        let lineId: String
+    }
+
+    static let setLineCode = Procedure<LineCodeInput, LineCodeAnswer>(mutation: "commerce.cart.setLineCode")
+    static let clearLineCode = Procedure<LineCodeClear, Cart?>(mutation: "commerce.cart.clearLineCode")
     static let updateCart = Procedure<CartUpdate, Cart?>(mutation: "commerce.cart.updateLines")
 
     // MARK: Accounts

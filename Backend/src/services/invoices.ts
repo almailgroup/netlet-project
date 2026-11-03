@@ -102,6 +102,8 @@ async function frozenLines(db: Db | Tx, orderId: number): Promise<(FrozenOrderLi
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
       lineTotal: orderItems.lineTotal,
+      discountCode: orderItems.discountCode,
+      discountAmount: orderItems.discountAmount,
       fulfilment: orderItems.fulfilment,
       deliveryChoice: orderItems.deliveryChoice,
     })

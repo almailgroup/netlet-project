@@ -322,6 +322,12 @@ struct OrderDetailView: View {
                             Text(l.t("orders.quantityAndPrice", ["quantity": "\(line.quantity)", "price": line.unitPrice.formatted(l.current)]))
                                 .font(.caption)
                                 .foregroundStyle(Brand.muted)
+                            // The product's own code (0074), as frozen at the sale.
+                            if let code = line.discountCode, let off = line.discountAmount, !off.isZero {
+                                Text(l.t("orders.lineCode", ["code": code, "amount": off.formatted(l.current)]))
+                                    .font(.inter(12, .bold))
+                                    .foregroundStyle(Brand.success)
+                            }
                             Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
                             StatusPill(label: OrderWording.line(line.fulfilment, language: l), tone: OrderTone.line(line.fulfilment))
                             returnWindow(line)

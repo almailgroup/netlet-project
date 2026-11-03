@@ -64,7 +64,9 @@ export function useSavingsBill({ withBalance = false }: { withBalance?: boolean 
   /* A percentage and a minimum spend are of the goods, so a code is asked
      about again when the goods change. A code that works is not a guess, so
      asking again costs nothing against the ceiling. */
-  const goods = cart?.subtotal.amount;
+  /* The goods are what the shopper pays for them: less each product's own
+     code (0074), which the order's code and points then come after. */
+  const goods = subtractMoney(cart?.subtotal.amount ?? "0.000", cart?.codeDiscount?.amount ?? "0.000");
   useEffect(() => {
     if (chosen.code || chosen.giftCard) void utils.orders.quoteVoucher.invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,7 +82,7 @@ export function useSavingsBill({ withBalance = false }: { withBalance?: boolean 
   const pointsOff = spendValue(pointsApplied);
   const giftOff = gift ? giftCardPayment(gift.remaining, subtractMoney(afterDiscount, pointsOff)) : "0.000";
   const bill = settle({
-    goods: cart?.subtotal.amount ?? "0.000",
+    goods,
     delivery: cart?.delivery.total.amount ?? "0.000",
     discount: discountOff,
     points: pointsOff,
