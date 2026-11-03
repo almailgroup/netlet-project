@@ -33,8 +33,8 @@ export const streetImage: string | null = Object.values(
   import.meta.glob<string>("../assets/auth/welcome.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
 )[0] ?? null;
 
-/** A picture with an optional copy for a phone's screen. */
-export type Slide = { src: string; phone: string | null };
+/** A picture with optional copies for a phone's screen and a wide one. */
+export type Slide = { src: string; phone: string | null; wide: string | null };
 
 /* `phone/<same name>` beside a picture is its phone copy, 960px wide — half
    the bytes of a 1600px slide, for a band a phone draws 390px wide. A
@@ -45,6 +45,17 @@ const phoneCopies = {
   ...import.meta.glob<string>("../assets/auth/phone/*.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
 };
 const phoneCopyOf = (path: string): string | null => phoneCopies[path.replace(/\/([^/]+)$/, "/phone/$1")] ?? null;
+
+/* `large/<same name>` beside a picture is its copy for a wide screen, about
+   3200px wide. The band there is up to 1616px across, so a 1600px picture is
+   drawn at about its own size and a 1120px one is stretched — and a Retina
+   screen draws twice the pixels. With a large copy every wide screen gets a
+   picture sharper than the frame it fills. Without one the picture is used. */
+const wideCopies = {
+  ...import.meta.glob<string>("../assets/hero/large/*.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
+  ...import.meta.glob<string>("../assets/auth/large/*.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
+};
+const wideCopyOf = (path: string): string | null => wideCopies[path.replace(/\/([^/]+)$/, "/large/$1")] ?? null;
 
 const streetPath = Object.keys(
   import.meta.glob<string>("../assets/auth/welcome.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
@@ -58,12 +69,11 @@ const streetPath = Object.keys(
  * the slideshow is about to show it.
  */
 export const heroSlides: Slide[] = [
-  ...(streetImage ? [{ src: streetImage, phone: streetPath ? phoneCopyOf(streetPath) : null }] : []),
+  ...(streetImage ? [{ src: streetImage, phone: streetPath ? phoneCopyOf(streetPath) : null, wide: streetPath ? wideCopyOf(streetPath) : null }] : []),
   ...Object.entries(
     import.meta.glob<string>("../assets/hero/*.{webp,png,jpg,jpeg}", { eager: true, query: "?url", import: "default" }),
   )
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([path, url]) => ({ src: url, phone: phoneCopyOf(path) })),
+    .map(([path, url]) => ({ src: url, phone: phoneCopyOf(path), wide: wideCopyOf(path) })),
 ];
 
-/** Placeholder QR for the app-download panel: reads as a code, decodes to nothing. */

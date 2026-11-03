@@ -3028,6 +3028,12 @@ export const en = {
   "home.appNote": "Save discoveries and return to your cart whenever you are ready.",
   "home.appUpdates": "Get app updates",
   "home.appSoon": "The NetLet app isn't available to download yet.",
+  "appDownload.open": "Get the NetLet app on the App Store",
+  "appDownload.badgeTop": "Download on the",
+  "appDownload.title": "Get the NetLet app",
+  "appDownload.scan": "Scan this QR code to download the NetLet application.",
+  "appDownload.iosOnly": "For iOS only.",
+  "appDownload.qrAlt": "QR code to download the NetLet app",
 
   // --- categories and rails ------------------------------------------
   "category.all": "All departments",
@@ -7235,6 +7241,12 @@ export const ar: Record<MessageKey, string> = {
   "home.appNote": "احفظ ما يعجبك وعد إلى سلتك متى شئت.",
   "home.appUpdates": "تابع تحديثات التطبيق",
   "home.appSoon": "تطبيق نت‑لت غير متاح للتنزيل بعد.",
+  "appDownload.open": "حمّل تطبيق نت‑لت من App Store",
+  "appDownload.badgeTop": "حمِّله من",
+  "appDownload.title": "حمّل تطبيق نت‑لت",
+  "appDownload.scan": "امسح رمز QR هذا لتنزيل تطبيق نت‑لت.",
+  "appDownload.iosOnly": "لأجهزة آيفون وآيباد فقط.",
+  "appDownload.qrAlt": "رمز QR لتنزيل تطبيق نت‑لت",
 
   // --- categories and rails ------------------------------------------
   "category.all": "جميع الأقسام",

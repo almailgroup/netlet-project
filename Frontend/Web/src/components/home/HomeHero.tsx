@@ -40,7 +40,10 @@
  *
  * **The band fades into the page** rather than ending on a line: its foot runs
  * from the navy into the page's own background, so the departments below
- * read as the same surface continuing. It is eased (`.hero-foot` in `index.css`), on the owner's word: a straight
+ * read as the same surface continuing. **On a wide screen the fade is under
+ * the pictures, not on them, and the pictures are a rounded frame on the
+ * page's column** — both on the owner's word: the band was the whole window
+ * wide and 460px tall, so a 1600px picture was stretched and cut to a strip. It is eased (`.hero-foot` in `index.css`), on the owner's word: a straight
  * gradient starts at a visible line and lingers in a slate grey halfway, and
  * an eased one leaves the navy and arrives at the page without either.
  */
@@ -122,13 +125,23 @@ export function HomeHero() {
           pictures and no words. */}
       <h1 id="home-hero-title" className="sr-only">{t("home.heading")}</h1>
       {slides.length ? (
-        <div className="relative h-[240px] sm:h-[340px] lg:h-[460px]">
+        /* On a wide screen the pictures sit in a rounded frame on the page's
+           own column, 3:1 and at most 500px tall, rather than across the whole
+           window: a 1600px picture stretched to a 1900px screen and cropped to
+           a strip was blurred and lost most of its height. The frame is at most
+           the column's 1616px, so a 16:9 picture is drawn at its own size or
+           smaller. */
+        <div className="lg:mx-auto lg:max-w-[1680px] lg:px-8 lg:pt-6">
+        <div className="relative h-[240px] sm:h-[340px] lg:aspect-[3/1] lg:h-auto lg:max-h-[500px] lg:w-full lg:overflow-hidden lg:rounded-[28px] lg:shadow-[0_22px_48px_-28px_rgba(0,0,0,.65)]">
           {/* Decorative: the shop's name is the heading above. */}
           <div aria-hidden className="absolute inset-0">
-            {slides.map(({ src, phone }, slide) => fetched.has(slide) ? (
+            {slides.map(({ src, phone, wide }, slide) => fetched.has(slide) ? (
               <picture key={src}>
                 {/* A phone's band is 390px wide; its copy is half the bytes. */}
                 {phone ? <source media="(max-width: 640px)" srcSet={phone} /> : null}
+                {/* A wide screen's frame is up to 1616px across; a large copy
+                    keeps it sharp there, on a Retina screen too. */}
+                {wide ? <source media="(min-width: 1024px)" srcSet={wide} /> : null}
                 <img
                   src={src}
                   alt=""
@@ -150,11 +163,16 @@ export function HomeHero() {
           </div>
 
         </div>
+        </div>
       ) : null}
 
-      {/* The foot: the pictures into the page's own background, so the band
-          ends without an edge. Its first fifth is all but clear. */}
-      <span aria-hidden className="hero-foot pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-24 sm:h-28 lg:h-36" />
+      {/* The foot: the band into the page's own background, so it ends without
+          an edge. On a phone and a tablet it lies over the pictures' foot, its
+          first fifth all but clear; on a wide screen it is under the frame,
+          on the owner's word ("make the fade below the banner, not on it"),
+          so nothing is drawn over a picture. */}
+      <span aria-hidden className="hero-foot pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-24 sm:h-28 lg:hidden" />
+      <span aria-hidden className="hero-foot pointer-events-none hidden h-24 lg:block" />
     </section>
   );
 }

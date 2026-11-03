@@ -1401,6 +1401,20 @@ still say them. The page's `h1` is in it, the shop's name, for a screen
 reader alone (the app's pictures are its heading to VoiceOver). On a wide
 screen the pictures are the whole width, no longer a half beside the words.
 
+**On a wide screen the pictures are a rounded frame and the fade is under
+it, not on it — both on the owner's word** ("make the fade below the banner
+not on it, and place the banner so it has perfect quality"). The band was the
+whole window wide and 460px tall, so a 1600px picture was stretched past its
+size on a large screen and cut to a strip; now from `lg` it is a frame on the
+page's column (at most 1616px), 3:1 and at most 500px tall, with 28px corners,
+on the band's navy, and the fade runs from the frame's foot into the page.
+Measured at 1440 and 1920: a 16:9 picture is drawn at 0.86 and 1.01 of its
+size. **The street is the one soft picture**, 1120px wide and drawn at 1.23 and
+1.44; a `large/` copy beside any picture (`hero/large/`, `auth/large/`, about
+3200px wide) is what a wide screen then draws (`Slide.wide`), sharp on a Retina
+screen too. Phones and tablets keep the full-width band with the fade over its
+foot.
+
 **The band fades into the page rather than ending on a line**: its foot runs
 from the navy into `--background`, over the pictures too, so the departments
 below read as the same surface continuing. It ended on an orange rule once, and
@@ -1647,6 +1661,18 @@ found", "Your account" now. Headings are sentence case without a full stop, and
 there are no uppercase eyebrows over them — a 10px tracked-out label restating
 the heading below it is the most recognisable mark of generated design there
 is, and it does nothing at all in Arabic, which has no capitals.
+
+**A wide screen carries an App Store badge in its bottom start corner, on the
+owner's word** (`AppDownload` in `components/layout/`, drawn by the shell):
+Apple's black pill with the Apple mark (Simple Icons' drawing, CC0), the left
+in English and the right in Arabic, because the assistant holds the end
+corner; a phone has none, since a phone cannot scan its own screen. A press
+opens one plain window — the QR code, "Scan this QR code to download the
+NetLet application." and "For iOS only." — the shop's modal (`useOverlay`,
+Close focused, Escape back to the badge), the `qrcode` library fetched only
+then. **The code is a template until the app is published**:
+`APP_STORE_URL` (`content/appDownload.ts`) opens the shop for now, so a scan
+goes somewhere real, and becomes the App Store address in that one place.
 
 **`SiteFooter` is the one footer** — every shopping page on a wide screen, and
 **on a phone the home page alone, on the owner's word** (`footed` in
@@ -6688,8 +6714,9 @@ draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
 with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, then 832 KB (244 KB), the home page's shelves with their department tabs, the occasions' calendar and their words in both languages, then 837 KB (245 KB), the reviews' words in both languages, then 870 KB
 (254 KB), the after-sales centre's words — warranty, changing an order,
-help with it, recovery by code — in both languages, and is 875 KB (255 KB)
-now, Frequently bought's words in both languages, nearly
+help with it, recovery by code — in both languages, then 875 KB (255 KB),
+Frequently bought's words in both languages, and is 879 KB (256 KB) now, the
+App Store badge and its window, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
