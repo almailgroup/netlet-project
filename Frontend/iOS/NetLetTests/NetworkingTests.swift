@@ -276,7 +276,10 @@ final class FixtureDecodingTests: XCTestCase {
         let cart = try await Fixtures.cart()
         XCTAssertFalse(cart.isEmpty)
         XCTAssertEqual(cart.itemCount, cart.items.reduce(0) { $0 + $1.quantity })
-        XCTAssertEqual(cart.subtotal + cart.delivery.total, cart.total)
+        // The lines' own codes (0074) come off after the goods and the delivery.
+        let codes = cart.items.reduce(0) { $0 + ($1.code?.amount.fils ?? 0) }
+        XCTAssertEqual(cart.codeDiscount?.fils ?? 0, codes, "what the codes take is the sum of the lines'")
+        XCTAssertEqual(cart.subtotal.fils + cart.delivery.total.fils - codes, cart.total.fils)
     }
 
     func testTheAccount() async throws {

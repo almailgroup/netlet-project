@@ -134,6 +134,32 @@ struct DiscountCode: Decodable, Identifiable, Hashable, Sendable {
     var vendorName: String? = nil
     var fundedBy: String = "netlet"
     var productIds: [Int] = []
+
+    private enum CodingKeys: String, CodingKey {
+        case id, code, kind, value, minSpend, endsAt, maxRedemptions, perShopper, used
+        case scope, vendorId, vendorName, fundedBy, productIds
+    }
+
+    /// Written out because a synthesised decoder requires every non-optional
+    /// key, default or not: a list from before 0074 carries no scope, and is an
+    /// order-wide code NetLet pays for.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        code = try c.decode(String.self, forKey: .code)
+        kind = try c.decode(String.self, forKey: .kind)
+        value = try c.decode(String.self, forKey: .value)
+        minSpend = try c.decodeIfPresent(String.self, forKey: .minSpend)
+        endsAt = try c.decodeIfPresent(Date.self, forKey: .endsAt)
+        maxRedemptions = try c.decodeIfPresent(Int.self, forKey: .maxRedemptions)
+        perShopper = try c.decodeIfPresent(Int.self, forKey: .perShopper) ?? 1
+        used = try c.decodeIfPresent(Int.self, forKey: .used) ?? 0
+        scope = try c.decodeIfPresent(String.self, forKey: .scope) ?? "order"
+        vendorId = try c.decodeIfPresent(Int.self, forKey: .vendorId)
+        vendorName = try c.decodeIfPresent(String.self, forKey: .vendorName)
+        fundedBy = try c.decodeIfPresent(String.self, forKey: .fundedBy) ?? "netlet"
+        productIds = try c.decodeIfPresent([Int].self, forKey: .productIds) ?? []
+    }
 }
 
 struct GiftCardRow: Decodable, Identifiable, Hashable, Sendable {
