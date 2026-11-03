@@ -248,7 +248,7 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(warnings.standing, warnings.rows.filter { $0.state == "standing" }.count)
         XCTAssertEqual(warnings.suspendAt, WarningRules().suspendAt)
         let settings = try await client.call(API.platformSettings)
-        XCTAssertEqual(settings.map(\.key), ["referral.productPercent", "referral.invitePercent"])
+        XCTAssertEqual(settings.map(\.key), ["referral.productPercent", "referral.invitePercent", "returns.windowDays"])
         XCTAssertTrue(settings.allSatisfy { $0.normalise($0.value) == $0.value })
         _ = try await client.call(API.affiliateProducts, .init())
         let reading = try await client.call(API.returnReadAvailable)
