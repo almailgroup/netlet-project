@@ -432,7 +432,9 @@ code emailed to the address. `auth.register` sends the code and makes nothing;
 the account then. Supabase sends it — `/auth/v1/signup` with the anon key, so
 the project holds the account unconfirmed, and `/auth/v1/verify` confirms it —
 and the "Confirm signup" template has to print `{{ .Token }}`
-(`docs/SUPABASE-AUTH.md`); `createSupabaseUser`'s admin endpoint, which makes an
+(`docs/SUPABASE-AUTH.md`) — **and the project's Email OTP Length has to be 6**
+(`CODE_LENGTH`): the live project sent eight, the box kept the first six, and
+Supabase refused every code with a 403; `createSupabaseUser`'s admin endpoint, which makes an
 account confirmed, is now the administrator's door only. **The password typed
 with the code is the one kept**: an address can be registered twice before
 anybody confirms it, by somebody else first, and the person reading that inbox

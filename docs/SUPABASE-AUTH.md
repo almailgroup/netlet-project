@@ -203,7 +203,7 @@ typed back on the site — an address nobody has shown they read is not one
 NetLet opens an account on. Signing in with the right password on an account
 whose code never came back goes to the same step and sends a fresh code.
 
-Three settings in the Supabase dashboard make it work, beside the Site URL
+Four settings in the Supabase dashboard make it work, beside the Site URL
 above. All three are switches or text boxes; none is code.
 
 **1. "Confirm email" stays on.** **Authentication → Sign In / Providers →
@@ -257,7 +257,17 @@ Accounts you add by hand under **Authentication → Users → Add user** (with "
 Confirm User" ticked) are not sign-ups: Supabase sends them nothing, and they
 become NetLet logins the first time they sign in, as before.
 
-**3. Your own mail server.** **Project Settings → Authentication → SMTP
+**3. The code is six digits.** **Authentication → Sign In / Providers →
+Email → Email OTP Length: 6.** NetLet's code box takes six digits
+(`CODE_LENGTH` in `Shared/auth/emailCode.ts`), on the site and in the app. A
+newer project can send eight, and then every code is refused: the box keeps the
+first six, and Supabase answers `/auth/v1/verify` with a 403 ("token has
+expired or is invalid"). That is how it was found on the live project, the
+first time a code arrived. A code sent before the change keeps its old length,
+so send a new one after changing it. **Email OTP Expiration** is how long a code
+lasts; 3600 (an hour) is what the emails say.
+
+**4. Your own mail server.** **Project Settings → Authentication → SMTP
 Settings.** Supabase's built-in mailer only sends to the email addresses of
 your Supabase team and only a few an hour — enough to test with, not enough for
 shoppers. Any SMTP provider works (Amazon SES, Resend, SendGrid, Zoho, Google
