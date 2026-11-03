@@ -6869,6 +6869,27 @@ process that started. `/healthz` is answered before the router is ever
 touched, so a bundle whose router cannot load still passes it; the tRPC route
 is the check that matters.
 
+### A frozen instance still holds its connections
+
+**The live shop ran out of database connections once, and every query
+failed.** Sign-in, the shelves and `/api/readyz` all answered with
+`EMAXCONN max client connections reached, limit: 200`: Supabase's pooler takes
+200 client connections for the project, and each Vercel instance kept
+postgres.js's default of up to ten, never closed an idle one, and went on
+holding them while Vercel had it frozen between requests. A frozen instance
+runs no timers, so an idle timeout alone would not have fired either.
+
+Two settings and one hold fix it. `getDb` opens at most `DB_MAX_CONNECTIONS`
+(5) per instance and closes one idle for `DB_IDLE_SECONDS` (5);
+`holdUntilConnectionsIdle` (`core/connectionRelease.ts`, the app's first
+middleware) asks Vercel through `waitUntil` to keep the instance awake until
+half a second after that has passed since each request closed, so the timer
+runs before the freeze. Vercel's own `attachDatabasePool` does this for the
+pools it knows, and postgres.js is not one. Measured against a real Postgres:
+twelve queries at once held five connections, and none was left 6.5 seconds
+later. **`/readyz` on the live site is `/api/readyz`**: `vercel.json` sends
+bare paths to the page, so `netlet.net/readyz` is the shop's 404.
+
 ### A missing asset is a 404, never the page
 
 **`/assets/` is outside the single-page fallback** (`/((?!assets/).*)` in

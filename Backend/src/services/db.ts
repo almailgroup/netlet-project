@@ -30,6 +30,26 @@ import {
 let _db: ReturnType<typeof drizzle> | null = null;
 
 /**
+ * At most this many connections per server instance.
+ *
+ * Supabase's pooler takes 200 client connections for the whole project, and
+ * the live shop ran out: every instance Vercel started kept postgres.js's
+ * default of up to ten, none was ever closed, and an instance Vercel freezes
+ * between requests holds its connections all the while. Every query then
+ * failed with `EMAXCONN max client connections reached`, sign-in included.
+ * Five still lets a page's queries run side by side.
+ */
+export const DB_MAX_CONNECTIONS = 5;
+
+/**
+ * A connection nobody has used for this many seconds is closed. The default is
+ * never, which is how an instance came to hold its connections for as long as
+ * it lived. `holdUntilConnectionsIdle` keeps an instance awake this long after
+ * each request, so the timer gets to run before Vercel freezes it.
+ */
+export const DB_IDLE_SECONDS = 5;
+
+/**
  * Lazily create the drizzle instance, so tests and local tooling run without a
  * database and every query path degrades to a no-op instead of throwing.
  *
@@ -41,7 +61,14 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(postgres(process.env.DATABASE_URL, { prepare: false }));
+      _db = drizzle(
+        postgres(process.env.DATABASE_URL, {
+          prepare: false,
+          max: DB_MAX_CONNECTIONS,
+          idle_timeout: DB_IDLE_SECONDS,
+          connect_timeout: 10,
+        }),
+      );
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

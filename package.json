@@ -5,6 +5,7 @@
     "@trpc/client": "^11.6.0",
     "@trpc/react-query": "^11.6.0",
     "@trpc/server": "^11.6.0",
+    "@vercel/functions": "3.10.6",
     "clsx": "^2.1.1",
     "compression": "^1.8.1",
     "cookie": "^1.0.2",

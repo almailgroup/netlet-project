@@ -23,6 +23,7 @@ import { describeError } from "./describeError.js";
 import { remindAbandonedBags, sendDueEmails } from "../services/notifications.js";
 import { DrawingRefused, cleanUpPhoto } from "../services/aiImages.js";
 import { getDb } from "../services/db.js";
+import { holdUntilConnectionsIdle } from "./connectionRelease.js";
 import { sitemapEntries } from "../services/sitemap.js";
 import { robotsTxt, sitemapXml } from "../../../Shared/sitemap.js";
 import { timingSafeEqual } from "node:crypto";
@@ -59,6 +60,13 @@ export function createApp(): Express {
 
   // Before any route, so a blocked request never reaches application code.
   applySecurity(app);
+
+  // Every request: stay awake long enough to close idle database connections
+  // before Vercel freezes the instance (`connectionRelease.ts`).
+  app.use((_req, res, next) => {
+    holdUntilConnectionsIdle(res);
+    next();
+  });
 
   // 50mb was inherited from a template that proxied file uploads. Nothing here
   // accepts a file: the largest body the API sees is a cart mutation. Leaving
