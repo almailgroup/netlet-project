@@ -12,6 +12,9 @@ protocol AccountServicing: Sendable {
     func verify(email: String, password: String, code: String, name: String?) async throws -> User
     func resendCode(email: String) async throws
     func requestPasswordReset(email: String) async throws
+    /// A new password from the reset mail's six-digit code — signs in, or
+    /// answers that a sign-up's own code is still to come.
+    func resetWithCode(email: String, code: String, password: String) async throws -> RegistrationResult
     func signOut() async throws
     func updateName(_ name: String) async throws -> User
     func updateNameParts(first: String, last: String) async throws -> User
@@ -57,6 +60,10 @@ struct AccountService: AccountServicing {
 
     func requestPasswordReset(email: String) async throws {
         _ = try await client.call(API.requestPasswordReset, .init(email: email))
+    }
+
+    func resetWithCode(email: String, code: String, password: String) async throws -> RegistrationResult {
+        try await client.call(API.resetWithCode, .init(email: email, code: code, password: password, remember: true))
     }
 
     func signOut() async throws {

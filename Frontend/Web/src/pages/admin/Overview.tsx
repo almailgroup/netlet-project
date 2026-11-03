@@ -80,6 +80,10 @@ function Overview({ actor }: { actor: Actor }) {
   const waitingReturns = trpc.returns.waiting.useQuery(undefined, {
     enabled: can(actor, "returns.handle", actor.kind === "vendor" ? actor.vendorId : undefined),
   });
+  /* Warranty claims nobody has answered (migration 0072). */
+  const waitingWarranty = trpc.warranty.waitingCount.useQuery(undefined, {
+    enabled: can(actor, "returns.handle", actor.kind === "vendor" ? actor.vendorId : undefined),
+  });
   /* Stores' commission proposals waiting on whoever sets rates (3.3.2). */
   const waitingProposals = trpc.commission.waiting.useQuery(undefined, { enabled: can(actor, "vendor.setCommission") });
   /* Affiliate applications waiting on NetLet (3.7). */
@@ -154,6 +158,7 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "dispatch.waiting" as const, value: waitingParcels.data ?? 0, href: "/admin/dispatch", tone: "urgent" as const },
     { label: "admin.claimsOpenTile" as const, value: openClaims.data ?? 0, href: "/admin/claims", tone: "urgent" as const },
     { label: "admin.returnsWaiting" as const, value: waitingReturns.data ?? 0, href: "/admin/returns", tone: "urgent" as const },
+    { label: "warranty.waitingTile" as const, value: waitingWarranty.data ?? 0, href: "/admin/warranty", tone: "urgent" as const },
     { label: "admin.affiliatesWaiting" as const, value: waitingAffiliates.data ?? 0, href: "/admin/affiliates", tone: "urgent" as const },
     { label: "admin.bannersWaiting" as const, value: waitingBanners.data ?? 0, href: "/admin/ads", tone: "urgent" as const },
     { label: "support.waitingTile" as const, value: waitingSupport.data ?? 0, href: "/admin/support", tone: "urgent" as const },

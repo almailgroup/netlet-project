@@ -145,8 +145,43 @@ The link in it opens NetLet's sign-in page on **Choose a new password**. That
 page sets the new password with the one-time token Supabase handed back and
 signs the shopper in; the token is used for that alone and never kept. Before
 this, the link signed into Supabase and changed nothing, because no page read
-what came back. Supabase's default "Reset Password" email works as it is — it
-needs only the Site URL above.
+what came back.
+
+**The email also carries a six-digit code, and the code is the way the forms
+ask for** (on the owner's word: "password recovery using a verification code
+sent to the registered email"). "Forgot your password?" on the sign-in form,
+and "Forgot your current password?" in Account security, both send the email
+and then ask for the code and a new password on the same screen — no switching
+to the inbox's browser. The link still works for anybody who prefers it. For
+the code to arrive, **Authentication → Emails → Reset Password** has to print
+`{{ .Token }}` beside the link — the default prints only the link. Replace the
+subject and body with:
+
+```
+Your NetLet reset code: {{ .Token }} · رمز إعادة التعيين
+```
+
+```html
+<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#0a285a">
+  <h2 style="margin:0 0 12px">Reset your NetLet password</h2>
+  <p>Type this code on NetLet to choose a new password:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:16px 0">{{ .Token }}</p>
+  <p>Or <a href="{{ .ConfirmationURL }}">open this link</a>. Both work for an hour.</p>
+  <div dir="rtl" style="margin-top:24px;border-top:1px solid #e3e1d9;padding-top:16px">
+    <h2 style="margin:0 0 12px">إعادة تعيين كلمة المرور في نت‑لت</h2>
+    <p>اكتب هذا الرمز في نت‑لت لاختيار كلمة مرور جديدة:</p>
+    <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:16px 0" dir="ltr">{{ .Token }}</p>
+    <p>أو <a href="{{ .ConfirmationURL }}">افتح هذا الرابط</a>. كلاهما صالح لمدة ساعة.</p>
+  </div>
+  <p style="color:#536b8c;font-size:13px">If you did not ask for this, ignore this email — your password has not changed.</p>
+</div>
+```
+
+**A code by text message needs an SMS provider.** Supabase sends phone codes
+only through one connected under **Authentication → Sign In / Providers →
+Phone** (Twilio, MessageBird, Vonage or Textlocal), and NetLet has none, so
+recovery is by email for now. Connecting one is an account with that provider,
+not code; the forms would then offer the phone as a second way.
 
 **The default project mailer is rate-limited and meant for development.** A real
 deployment points Supabase at its own SMTP under **Project Settings →

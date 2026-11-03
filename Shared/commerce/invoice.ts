@@ -141,6 +141,8 @@ export type FrozenOrderLine = {
   unitPrice: string;
   lineTotal: string;
   fulfilment: string;
+  /** The trip it rode (3.2.5): a fast parcel is a door of its own, `stillOwed`'s rule. */
+  deliveryChoice?: string | null;
 };
 
 export type SellerDetails = { name: string; nameAr: string | null; licence: string | null; underPlatformLicence: boolean };
@@ -160,7 +162,7 @@ export type InvoiceOrder = {
 };
 
 const sellerKey = (vendorId: number | null, name: string | null) => (vendorId !== null ? `v${vendorId}` : `n${name ?? ""}`);
-const doorKey = (vendorId: number | null, label: string | null | undefined) => `${vendorId ?? "none"}|${label ?? ""}`;
+const doorKey = (vendorId: number | null, label: string | null | undefined, fast = false) => `${vendorId ?? "none"}|${label ?? ""}${fast ? "|fast" : ""}`;
 
 /**
  * The invoice for an order whose money has been collected.
@@ -186,7 +188,7 @@ export function buildInvoice(input: {
      charged for a van that never came. */
   const doors = new Map<string, { kept: number; gone: number }>();
   for (const line of input.lines) {
-    const key = doorKey(line.vendorId, line.destinationLabel);
+    const key = doorKey(line.vendorId, line.destinationLabel, line.deliveryChoice === "fast");
     const door = doors.get(key) ?? { kept: 0, gone: 0 };
     if (isKept(line.fulfilment)) door.kept += 1; else door.gone += 1;
     doors.set(key, door);
@@ -225,7 +227,7 @@ export function buildInvoice(input: {
   }
 
   for (const charge of order.deliveryBreakdown ?? []) {
-    const door = doors.get(doorKey(charge.vendorId, charge.destinationLabel));
+    const door = doors.get(doorKey(charge.vendorId, charge.destinationLabel, charge.choice === "fast"));
     if (door && door.kept === 0 && door.gone > 0) continue;
     const group = groupFor(charge.vendorId, charge.vendorName);
     group.delivery = addMoney(group.delivery, charge.fee);

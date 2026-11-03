@@ -54,6 +54,7 @@ import {
   updateSupabaseUser,
   verifySupabasePassword,
   verifySupabaseSignupCode,
+  verifySupabaseRecoveryCode,
   type LinkPasswordOutcome,
   type SupabaseUser,
 } from "./supabaseAuth.js";
@@ -509,7 +510,39 @@ export function linkLanding(requestOrigin?: string): string | undefined {
 }
 
 export async function sendReset(email: string, locale: "en" | "ar", returnTo = linkLanding()): Promise<void> {
-  if (isSupabaseAuthConfigured()) await sendSupabasePasswordReset(email, locale, returnTo);
+  if (isSupabaseAuthConfigured()) {
+    await sendSupabasePasswordReset(email, locale, returnTo);
+    return;
+  }
+  /* With no mail service, a local account's reset code is written to the
+     server's log (the sign-up code's fallback) — only for an account that
+     has a local password, and silently otherwise, so nothing here answers
+     who is registered. */
+  const user = await findLoginByEmail(email);
+  if (user && storeFor(user) === "local" && user.passwordHash) issueLocalCode(email, "reset");
+}
+
+/**
+ * Sets a new password from the six-digit code in the reset mail (on the
+ * owner's word: "password recovery using a verification code sent to the
+ * registered email"), and answers the address so the caller can sign them in.
+ * "wrongCode" covers a wrong code, an expired one and an address with no
+ * account alike, so it cannot be used to ask who is registered.
+ */
+export async function finishResetWithCode(email: string, code: string, password: string): Promise<{ outcome: LinkPasswordOutcome | "wrongCode"; email: string | null }> {
+  const address = email.trim().toLowerCase();
+  if (activeStore() === "supabase") {
+    const token = await verifySupabaseRecoveryCode(address, code);
+    if (!token) return { outcome: "wrongCode", email: null };
+    const { outcome, user } = await setPasswordFromLink(token, password);
+    return { outcome, email: user?.email || address };
+  }
+  if (!takeLocalCode(address, code, "reset")) return { outcome: "wrongCode", email: null };
+  const user = await findLoginByEmail(address);
+  if (!user || storeFor(user) !== "local") return { outcome: "wrongCode", email: null };
+  if (!checkPassword(password).acceptable) return { outcome: "weak", email: null };
+  await setPassword(user, password);
+  return { outcome: "changed", email: address };
 }
 
 /**

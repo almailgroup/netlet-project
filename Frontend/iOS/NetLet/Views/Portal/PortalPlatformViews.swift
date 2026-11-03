@@ -543,7 +543,10 @@ struct PortalFeaturesView: View {
                         }
                     }
                 }
-                ReferralRatesCard()
+                // The return window (on the owner's word, "controlled by super admin, like
+                // 14 days") and the referral programme's two rates — the web's two cards.
+                SettingsCard(title: "returns.settingsTitle", intro: "returns.settingsIntro", keys: ["returns.windowDays"])
+                SettingsCard(title: "settings.title", intro: "settings.intro", keys: ["referral.productPercent", "referral.invitePercent"])
             } else if let failed {
                 ErrorStateView(error: failed) { await load() }
             } else {
@@ -586,11 +589,14 @@ struct PortalFeaturesView: View {
     }
 }
 
-/// The referral programme's two rates (3.1.15), each saved on its own — the
-/// web's `ReferralRates`: the numbers beside the switches, set without a
-/// deploy and recorded on the trail. The box says what the server would
-/// refuse before Save is pressed.
-private struct ReferralRatesCard: View {
+/// The numbers beside the switches, each saved on its own, set without a
+/// deploy and recorded on the trail — the web's `SettingsCard`: the return
+/// window, and the referral programme's two rates (3.1.15). The box says what
+/// the server would refuse before Save is pressed.
+private struct SettingsCard: View {
+    let title: String
+    let intro: String
+    let keys: [String]
     @State private var rows: [PlatformSetting] = []
     @State private var drafts: [String: String] = [:]
     @State private var saving: String?
@@ -599,18 +605,19 @@ private struct ReferralRatesCard: View {
 
     var body: some View {
         PortalCard {
-            Text(l.t("settings.title")).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
-            Text(l.t("settings.intro")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-            ForEach(rows, id: \.key) { row in
+            Text(l.t(title)).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+            Text(l.t(intro)).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            ForEach(rows.filter { keys.contains($0.key) }, id: \.key) { row in
                 Divider()
                 let draft = drafts[row.key] ?? row.value
                 let normalised = row.normalise(draft)
                 HStack(alignment: .bottom, spacing: 8) {
                     LabeledField(label: l.t(SettingWords.label(row.key)), text: Binding(get: { draft }, set: { drafts[row.key] = $0 }),
-                                 hint: l.t("settings.range", ["min": row.minText, "max": row.maxText, "default": row.defaultValue]),
-                                 problem: normalised == nil ? l.t("settings.badValue") : nil, keyboard: .decimalPad, leftToRight: true)
+                                 hint: l.t(row.isDays ? "settings.rangeDays" : "settings.range", ["min": row.minText, "max": row.maxText, "default": row.defaultValue]),
+                                 problem: normalised == nil ? l.t(row.isDays ? "settings.badDays" : "settings.badValue") : nil,
+                                 keyboard: row.isDays ? .numberPad : .decimalPad, leftToRight: true)
                     SectionSave(pending: saving == row.key, disabled: normalised == nil || normalised == row.value || saving != nil) {
-                        Task { await save(row.key, draft) }
+                        Task { await save(row.key, draft, days: row.isDays) }
                     }
                     .padding(.bottom, 26)
                 }
@@ -628,10 +635,10 @@ private struct ReferralRatesCard: View {
         rows = (try? await app.services.api.call(API.platformSettings)) ?? rows
     }
 
-    private func save(_ key: String, _ value: String) async {
+    private func save(_ key: String, _ value: String, days: Bool) async {
         saving = key
         defer { saving = nil }
-        if await app.attempt(done: "settings.saved", fallback: "admin.saveFailed", {
+        if await app.attempt(done: days ? "settings.savedDays" : "settings.saved", fallback: "admin.saveFailed", {
             _ = try await app.services.api.call(API.setPlatformSetting, .init(key: key, value: value.trimmingCharacters(in: .whitespaces)))
         }) {
             drafts[key] = nil
@@ -642,11 +649,19 @@ private struct ReferralRatesCard: View {
 
 enum SettingWords {
     static func label(_ key: String) -> String {
-        key == "referral.invitePercent" ? "settings.invitePercent" : "settings.productPercent"
+        switch key {
+        case "returns.windowDays": return "returns.windowDaysLabel"
+        case "referral.invitePercent": return "settings.invitePercent"
+        default: return "settings.productPercent"
+        }
     }
 
     static func hint(_ key: String) -> String {
-        key == "referral.invitePercent" ? "settings.invitePercentHint" : "settings.productPercentHint"
+        switch key {
+        case "returns.windowDays": return "returns.windowDaysHint"
+        case "referral.invitePercent": return "settings.invitePercentHint"
+        default: return "settings.productPercentHint"
+        }
     }
 }
 

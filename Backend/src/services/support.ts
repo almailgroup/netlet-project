@@ -13,7 +13,8 @@
  */
 import { and, asc, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { supportConversations, supportMessages, users } from "../../database/schema.js";
-import { RETURN_WINDOW_DAYS, returnStateFor } from "../../../Shared/commerce/returns.js";
+import { returnStateFor } from "../../../Shared/commerce/returns.js";
+import { returnWindowDays } from "./settings.js";
 import {
   MAX_OPEN_CONVERSATIONS,
   MAX_SUPPORT_MESSAGES_PER_HOUR,
@@ -75,6 +76,7 @@ type OrderFacts = NonNullable<AnswerFacts["order"]>;
 async function orderFacts(userId: number, reference: string, now: Date): Promise<{ orderId: number; facts: OrderFacts } | null> {
   const found = await getOrderForUser(userId, reference);
   if (!found) return null;
+  const windowDays = await returnWindowDays();
   return {
     orderId: found.order.id,
     facts: {
@@ -83,7 +85,7 @@ async function orderFacts(userId: number, reference: string, now: Date): Promise
       paid: found.order.status === "paid",
       lines: found.lines.map(line => ({
         fulfilment: line.fulfilment,
-        returnable: returnStateFor(found.order, { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt }, now).returnable,
+        returnable: returnStateFor(found.order, { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt }, now, windowDays).returnable,
       })),
     },
   };
@@ -108,7 +110,7 @@ export async function openConversation(userId: number, input: { topic: SupportTo
     if (!found) throw new SupportRefused("support.unknownOrder");
     ({ orderId, facts } = found);
   }
-  const answer = firstAnswer(input.topic, { order: facts, returnWindowDays: RETURN_WINDOW_DAYS });
+  const answer = firstAnswer(input.topic, { order: facts, returnWindowDays: await returnWindowDays() });
 
   return db.transaction(async tx => {
     const [conversation] = await tx
@@ -328,7 +330,7 @@ export async function draftMaterial(actor: Actor, id: number, now = new Date()):
   const english = (part: AnswerPart) => translate("en", part.key, { ...part.params, reference: "the order" });
   const current = conversation.orderReference ? await orderFacts(conversation.userId, conversation.orderReference, now) : null;
   const facts = current
-    ? firstAnswer(conversation.topic, { order: current.facts, returnWindowDays: RETURN_WINDOW_DAYS })
+    ? firstAnswer(conversation.topic, { order: current.facts, returnWindowDays: await returnWindowDays() })
         /* The facts, not the boilerplate around them. */
         .filter(part => part.key !== "support.answerPerson" && part.key !== "support.answerChooseOrder")
         .map(english)

@@ -409,5 +409,66 @@
     ],
     "namePartMax": 60,
     "earliestBirthday": "1900-01-01"
+  },
+  "afterSales": {
+    "countries": [
+      {
+        "code": "KW",
+        "open": true
+      },
+      {
+        "code": "SA",
+        "open": false
+      },
+      {
+        "code": "AE",
+        "open": false
+      },
+      {
+        "code": "QA",
+        "open": false
+      },
+      {
+        "code": "BH",
+        "open": false
+      },
+      {
+        "code": "OM",
+        "open": false
+      }
+    ],
+    "homeCountry": "KW",
+    "warranty": {
+      "minProblem": 10,
+      "maxProblem": 1000,
+      "maxResponse": 600,
+      "maxPhotos": 4,
+      "remedies": [
+        "repair",
+        "replace",
+        "refund"
+      ]
+    },
+    "help": {
+      "maxQuestion": 500,
+      "turns": 6,
+      "starters": [
+        "orderHelp.q.where",
+        "orderHelp.q.late",
+        "orderHelp.q.damaged",
+        "orderHelp.q.wrong",
+        "orderHelp.q.change"
+      ],
+      "actions": [
+        "track",
+        "refund",
+        "warranty",
+        "cancel",
+        "modify",
+        "address",
+        "buyAgain",
+        "rate"
+      ]
+    }
   }
 }

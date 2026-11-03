@@ -80,8 +80,14 @@ struct OrderDetail: Decodable, Sendable {
     /// Each parcel as steps for "Track order" (`stepsForOrder`); nil from a
     /// server older than tracking.
     let steps: OrderSteps?
+    /// What can still be changed before a driver has it — an item, a
+    /// quantity, the address (`shopperChangeState`, `addressChangeState`).
+    let change: OrderChangeState
+    let changeAddress: OrderChangeState
+    /// Warranty claims on its lines, newest first, with where each stands.
+    let warranty: [WarrantyClaim]
 
-    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps }
+    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, warranty }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -93,6 +99,9 @@ struct OrderDetail: Decodable, Sendable {
         documents = try container.decodeIfPresent([OrderDocument].self, forKey: .documents) ?? []
         cancel = try container.decodeIfPresent(OrderCancelState.self, forKey: .cancel) ?? OrderCancelState(cancellable: false, reason: nil)
         steps = try container.decodeIfPresent(OrderSteps.self, forKey: .steps)
+        change = try container.decodeIfPresent(OrderChangeState.self, forKey: .change) ?? .closed
+        changeAddress = try container.decodeIfPresent(OrderChangeState.self, forKey: .changeAddress) ?? .closed
+        warranty = try container.decodeIfPresent([WarrantyClaim].self, forKey: .warranty) ?? []
     }
 
     /// The lines that may be sent back for a refund now.
@@ -195,12 +204,21 @@ struct OrderLine: Decodable, Identifiable, Hashable, Sendable {
     let lineTotal: Money
     let fulfilment: String
     let photo: String?
+    /// The variant it was, while the product still has it — what Buy again puts back.
+    var variantId: Int? = nil
     var returnState: ReturnState? = nil
     var destination: Destination? = nil
     /// The shopper's own review of this line, and whether it may be rated
     /// now — the rule `reviews.write` refuses with. Absent from an older server.
     var review: MyReview? = nil
     var reviewEligibility: ReviewableLine.Eligibility? = nil
+    /// Whether a warranty claim may be filed on it now, and the store's own
+    /// warranty words, shown as typed (`warrantyEligibility`).
+    var warrantyEligibility: ReviewableLine.Eligibility? = nil
+    var warrantyTerms: String? = nil
+    /// Whether its quantity may still be lowered or the item taken out:
+    /// in the store's hands, unpaid, and not part of a set.
+    var changeable: Bool? = nil
 
     /// "Rate this item" is drawn for a line with no review that may be rated.
     var mayRate: Bool { review == nil && reviewEligibility?.allowed == true }

@@ -52,6 +52,7 @@
  *   sign-up link left a shopper on a page that said nothing.
  */
 import { trpc } from "@/lib/trpc";
+import { ResetByCode } from "@/components/auth/ResetByCode";
 import {
   ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, LoaderCircle, Lock, MailCheck,
 } from "lucide-react";
@@ -366,6 +367,11 @@ export function AuthForm({
         onResend={() => reset.mutate({ email: sentTo, locale })}
         onDifferent={() => { setSentTo(null); window.setTimeout(() => emailRef.current?.focus(), 30); }}
         onBack={() => go("signin")}
+        onSignedIn={displayName => { setSentTo(null); void settle(displayName); }}
+        onVerify={(address, chosen) => {
+          setSentTo(null);
+          setAwaiting({ email: address, password: chosen, remember: true, from: "signin" });
+        }}
       />
     );
   }
@@ -883,11 +889,13 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
 }
 
 /**
- * Where a reset ends: what happened, to which address, and the two things
- * somebody waiting for a mail does next — send it again, or fix the address.
- * "Send again" waits half a minute, which is about how long a mail takes.
+ * Where a reset ends: what happened, to which address, the code and a new
+ * password on the same screen (`ResetByCode`, on the owner's word), and the
+ * two things somebody waiting for a mail does next — send it again, or fix the
+ * address. "Send again" waits half a minute, which is about how long a mail
+ * takes. The link in the mail still works for anybody who opens it instead.
  */
-function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onResend, onDifferent, onBack }: {
+function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onResend, onDifferent, onBack, onSignedIn, onVerify }: {
   email: string;
   Heading: "h1" | "h2";
   headingId: string;
@@ -897,6 +905,8 @@ function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onRes
   onResend: () => void;
   onDifferent: () => void;
   onBack: () => void;
+  onSignedIn: (displayName: string | null) => void;
+  onVerify: (email: string, password: string) => void;
 }) {
   const { t } = useTranslation();
   const marker = "⁣";
@@ -914,13 +924,9 @@ function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onRes
       </p>
       <p className="mt-3 text-[14px] leading-6 text-[#536b8c]">{t("auth.resetSentTip")}</p>
 
-      <button
-        type="button"
-        onClick={onBack}
-        className="mt-8 flex h-12 w-full items-center justify-center rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white hover:bg-[#0d3372]"
-      >
-        {t("auth.resetBack")}
-      </button>
+      <div className="mt-7">
+        <ResetByCode email={email} onSignedIn={onSignedIn} onVerify={onVerify} autoFocus={false} />
+      </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[14px]">
         <button
           type="button"
@@ -938,6 +944,14 @@ function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onRes
           {t("auth.differentEmail")}
         </button>
       </div>
+      <button
+        type="button"
+        onClick={onBack}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-[14px] font-semibold text-[#0a285a]"
+      >
+        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
+        {t("auth.resetBack")}
+      </button>
     </div>
   );
 }
@@ -990,7 +1004,6 @@ function CodeStep({ awaiting, Heading, headingId, resending, onDone, onDifferent
   const { t, tError } = useTranslation();
   const ownId = useId();
   const [code, setCode] = useState("");
-  const [focused, setFocused] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [wait, setWait] = useState(CODE_RESEND_SECONDS);
@@ -1050,7 +1063,6 @@ function CodeStep({ awaiting, Heading, headingId, resending, onDone, onDifferent
 
   const issue = submitted && !code ? "auth.codeRequired" : submitted && !isCodeShaped(code) ? "auth.codeShape" : null;
   const invalid = Boolean(issue) || refusal === "auth.codeWrong";
-  const active = Math.min(code.length, CODE_LENGTH - 1);
   const marker = "\u2063";
   const [before, after = ""] = t(awaiting.from === "register" ? "auth.verifyBody" : "auth.verifyBodySignIn", { email: marker }).split(marker);
 
@@ -1069,46 +1081,14 @@ function CodeStep({ awaiting, Heading, headingId, resending, onDone, onDifferent
 
       <form onSubmit={submit} noValidate className="mt-7">
         <label htmlFor={`${ownId}-code`} className={labelClass}>{t("auth.codeLabel")}</label>
-        {/* Read left to right on either page: it is a number, not a sentence. */}
-        <div className="relative mt-2 [direction:ltr]">
-          <div className="grid grid-cols-6 gap-2" aria-hidden>
-            {Array.from({ length: CODE_LENGTH }, (_, index) => {
-              const here = focused && index === active;
-              return (
-                <span
-                  key={index}
-                  className={`grid h-14 place-items-center rounded-xl border bg-white text-[24px] font-bold tabular-nums text-[#0a285a] transition ${
-                    here
-                      ? "border-[#0a285a] ring-4 ring-[#0a285a]/10"
-                      : invalid
-                        ? "border-[#b3261e]"
-                        : code[index] ? "border-[#9fb0c6]" : "border-[#c9d4e2]"
-                  }`}
-                >
-                  {code[index] ?? (here ? <span className="h-6 w-px animate-pulse bg-[#0a285a]" /> : "")}
-                </span>
-              );
-            })}
-          </div>
-          <input
-            id={`${ownId}-code`}
-            ref={input}
-            name="code"
-            dir="ltr"
-            value={code}
-            onChange={event => change(event.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9]*"
-            maxLength={32}
-            spellCheck={false}
-            aria-invalid={invalid ? true : undefined}
-            aria-describedby={[`${ownId}-body`, issue && `${ownId}-issue`].filter(Boolean).join(" ")}
-            className="absolute inset-0 h-full w-full cursor-text rounded-xl bg-transparent text-transparent caret-transparent outline-none selection:bg-transparent selection:text-transparent"
-          />
-        </div>
+        <CodeBoxes
+          id={`${ownId}-code`}
+          inputRef={input}
+          value={code}
+          onChange={change}
+          invalid={invalid}
+          describedBy={[`${ownId}-body`, issue && `${ownId}-issue`].filter(Boolean).join(" ")}
+        />
         {issue ? <Issue id={`${ownId}-issue`}>{t(issue)}</Issue> : null}
 
         {refusal && refusal !== "auth.codeShape" ? (
@@ -1152,6 +1132,65 @@ function CodeStep({ awaiting, Heading, headingId, resending, onDone, onDifferent
           {t("auth.differentEmail")}
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The six-digit code as six boxes over one field — one field so a paste, a
+ * phone's one-time-code suggestion and a screen reader each take it whole —
+ * read left to right on either page, since it is a number, not a sentence.
+ * The sign-up's code step and the reset's draw the same one.
+ */
+export function CodeBoxes({ id, inputRef, value, onChange, invalid, describedBy }: {
+  id: string;
+  inputRef?: React.Ref<HTMLInputElement>;
+  value: string;
+  onChange: (raw: string) => void;
+  invalid: boolean;
+  describedBy?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const active = Math.min(value.length, CODE_LENGTH - 1);
+  return (
+    <div className="relative mt-2 [direction:ltr]">
+      <div className="grid grid-cols-6 gap-2" aria-hidden>
+        {Array.from({ length: CODE_LENGTH }, (_, index) => {
+          const here = focused && index === active;
+          return (
+            <span
+              key={index}
+              className={`grid h-14 place-items-center rounded-xl border bg-white text-[24px] font-bold tabular-nums text-[#0a285a] transition ${
+                here
+                  ? "border-[#0a285a] ring-4 ring-[#0a285a]/10"
+                  : invalid
+                    ? "border-[#b3261e]"
+                    : value[index] ? "border-[#9fb0c6]" : "border-[#c9d4e2]"
+              }`}
+            >
+              {value[index] ?? (here ? <span className="h-6 w-px animate-pulse bg-[#0a285a]" /> : "")}
+            </span>
+          );
+        })}
+      </div>
+      <input
+        id={id}
+        ref={inputRef}
+        name="code"
+        dir="ltr"
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="[0-9]*"
+        maxLength={32}
+        spellCheck={false}
+        aria-invalid={invalid ? true : undefined}
+        aria-describedby={describedBy || undefined}
+        className="absolute inset-0 h-full w-full cursor-text rounded-xl bg-transparent text-transparent caret-transparent outline-none selection:bg-transparent selection:text-transparent"
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normaliseSetting, resolveSettings, SETTINGS } from "./settings.js";
+import { normaliseSetting, resolveSettings, returnWindowDaysOf, SETTINGS } from "./settings.js";
 
 describe("the administrator's numbers", () => {
   it("takes a percentage inside the range, to two decimals", () => {
@@ -24,7 +24,18 @@ describe("the administrator's numbers", () => {
     expect(resolveSettings([{ key: "referral.productPercent", value: "nonsense" }, { key: "other", value: "1" }])).toEqual({
       "referral.productPercent": "20.00",
       "referral.invitePercent": "10.00",
+      "returns.windowDays": "14",
     });
     expect(resolveSettings([{ key: "referral.invitePercent", value: "7.5" }])["referral.invitePercent"]).toBe("7.50");
+  });
+
+  /* The return window (on the owner's word): whole days, one to ninety. */
+  it("takes the return window as whole days inside its range", () => {
+    expect(normaliseSetting("returns.windowDays", "7")).toBe("7");
+    expect(normaliseSetting("returns.windowDays", " 30 ")).toBe("30");
+    for (const value of ["0", "91", "7.5", "-3", "", "14 days"]) expect(normaliseSetting("returns.windowDays", value)).toBeNull();
+    expect(returnWindowDaysOf(resolveSettings([{ key: "returns.windowDays", value: "21" }]))).toBe(21);
+    expect(returnWindowDaysOf(resolveSettings([]))).toBe(14);
+    expect(returnWindowDaysOf(resolveSettings([{ key: "returns.windowDays", value: "0" }]))).toBe(14);
   });
 });

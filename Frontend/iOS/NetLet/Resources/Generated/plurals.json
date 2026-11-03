@@ -550,5 +550,137 @@
       "two": "تم الجرد: وحدتان.",
       "few": "تم الجرد: {count} وحدات."
     }
+  },
+  "returns.emptyNote": {
+    "param": "days",
+    "en": {
+      "one": "Returns live here too. Once an item is delivered you will have 1 day to send it back, and the window for each item is shown beside it."
+    },
+    "ar": {
+      "one": "الإرجاع يظهر هنا أيضاً. بعد استلام القطعة سيكون أمامك يوم واحد لإرجاعها، وتُعرض المهلة المتبقية بجانب كل قطعة.",
+      "two": "الإرجاع يظهر هنا أيضاً. بعد استلام القطعة سيكون أمامك يومان لإرجاعها، وتُعرض المهلة المتبقية بجانب كل قطعة.",
+      "few": "الإرجاع يظهر هنا أيضاً. بعد استلام القطعة سيكون أمامك {days} أيام لإرجاعها، وتُعرض المهلة المتبقية بجانب كل قطعة."
+    }
+  },
+  "returns.howTo": {
+    "param": "days",
+    "en": {
+      "one": "You have 1 day from delivery to return or exchange an item. Use the button beside it; damaged, faulty and wrong items are approved straight away."
+    },
+    "ar": {
+      "one": "أمامك يوم واحد من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. استخدم الزر بجانبها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً.",
+      "two": "أمامك يومان من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. استخدم الزر بجانبها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً.",
+      "few": "أمامك {days} أيام من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. استخدم الزر بجانبها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً."
+    }
+  },
+  "help.a.returns": {
+    "param": "days",
+    "en": {
+      "one": "Within 1 day of delivery, open the order and press Return or exchange beside the item. Damaged, faulty and wrong items are approved straight away."
+    },
+    "ar": {
+      "one": "خلال يوم واحد من الاستلام، افتح الطلب واضغط «إرجاع أو استبدال» بجانب القطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا.",
+      "two": "خلال يومين من الاستلام، افتح الطلب واضغط «إرجاع أو استبدال» بجانب القطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا.",
+      "few": "خلال {days} أيام من الاستلام، افتح الطلب واضغط «إرجاع أو استبدال» بجانب القطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا."
+    }
+  },
+  "returnsPage.intro": {
+    "param": "days",
+    "en": {
+      "one": "You have 1 day from delivery to send an item back for a refund or swap it for the same thing again."
+    },
+    "ar": {
+      "one": "أمامك يوم واحد من تاريخ الاستلام لإرجاع القطعة واسترداد ثمنها أو استبدالها بمثلها.",
+      "two": "أمامك يومان من تاريخ الاستلام لإرجاع القطعة واسترداد ثمنها أو استبدالها بمثلها.",
+      "few": "أمامك {days} أيام من تاريخ الاستلام لإرجاع القطعة واسترداد ثمنها أو استبدالها بمثلها."
+    }
+  },
+  "home.returnsWithin": {
+    "param": "days",
+    "en": {
+      "one": "Returns within 1 day"
+    },
+    "ar": {
+      "one": "إرجاع خلال يوم واحد",
+      "two": "إرجاع خلال يومين",
+      "few": "إرجاع خلال {days} أيام"
+    }
+  },
+  "support.answerReturnClosed": {
+    "param": "days",
+    "en": {
+      "one": "Nothing on {reference} can be returned from your account right now — a return is open for 1 day from delivery, and only once the item has arrived."
+    },
+    "ar": {
+      "one": "لا يمكن إرجاع شيء من {reference} من حسابك الآن — الإرجاع متاح لمدة يوم واحد من التوصيل، وبعد وصول القطعة فقط.",
+      "two": "لا يمكن إرجاع شيء من {reference} من حسابك الآن — الإرجاع متاح لمدة يومين من التوصيل، وبعد وصول القطعة فقط.",
+      "few": "لا يمكن إرجاع شيء من {reference} من حسابك الآن — الإرجاع متاح لمدة {days} أيام من التوصيل، وبعد وصول القطعة فقط."
+    }
+  },
+  "support.answerReturnPolicy": {
+    "param": "days",
+    "en": {
+      "one": "You can return an item within 1 day of its delivery from the order at the top of this page. A damaged, faulty or wrong item is always accepted in that time."
+    },
+    "ar": {
+      "one": "يمكنك إرجاع قطعة خلال يوم واحد من توصيلها من الطلب في أعلى هذه الصفحة. القطعة التالفة أو المعيبة أو الخاطئة مقبولة دائماً خلال هذه المدة.",
+      "two": "يمكنك إرجاع قطعة خلال يومين من توصيلها من الطلب في أعلى هذه الصفحة. القطعة التالفة أو المعيبة أو الخاطئة مقبولة دائماً خلال هذه المدة.",
+      "few": "يمكنك إرجاع قطعة خلال {days} أيام من توصيلها من الطلب في أعلى هذه الصفحة. القطعة التالفة أو المعيبة أو الخاطئة مقبولة دائماً خلال هذه المدة."
+    }
+  },
+  "returns.howToPaused": {
+    "param": "days",
+    "en": {
+      "one": "Online returns are paused for now. You still have 1 day from delivery to return an item — contact NetLet with the order number and which item."
+    },
+    "ar": {
+      "one": "الإرجاع عبر الإنترنت متوقف مؤقتاً. لا يزال أمامك يوم واحد من تاريخ الاستلام لإرجاع أي قطعة — تواصل مع نت‑لت مع رقم الطلب والقطعة المطلوبة.",
+      "two": "الإرجاع عبر الإنترنت متوقف مؤقتاً. لا يزال أمامك يومان من تاريخ الاستلام لإرجاع أي قطعة — تواصل مع نت‑لت مع رقم الطلب والقطعة المطلوبة.",
+      "few": "الإرجاع عبر الإنترنت متوقف مؤقتاً. لا يزال أمامك {days} أيام من تاريخ الاستلام لإرجاع أي قطعة — تواصل مع نت‑لت مع رقم الطلب والقطعة المطلوبة."
+    }
+  },
+  "terms.returns.window": {
+    "param": "days",
+    "en": {
+      "one": "You can ask to return an item within 1 day of its delivery, from Your orders. An item that arrives damaged, faulty, wrong or not as described is accepted straight away."
+    },
+    "ar": {
+      "one": "يمكنك طلب إرجاع منتج خلال يوم واحد من توصيله، من صفحة طلباتك. ويُقبل فوراً إرجاع المنتج الذي يصل تالفاً أو معيباً أو مختلفاً أو غير مطابق للوصف.",
+      "two": "يمكنك طلب إرجاع منتج خلال يومين من توصيله، من صفحة طلباتك. ويُقبل فوراً إرجاع المنتج الذي يصل تالفاً أو معيباً أو مختلفاً أو غير مطابق للوصف.",
+      "few": "يمكنك طلب إرجاع منتج خلال {days} أيام من توصيله، من صفحة طلباتك. ويُقبل فوراً إرجاع المنتج الذي يصل تالفاً أو معيباً أو مختلفاً أو غير مطابق للوصف."
+    }
+  },
+  "sellerTerms.returns.window": {
+    "param": "days",
+    "en": {
+      "one": "Shoppers may return an item within 1 day of delivery. A damaged, faulty or wrong item, or one not as described, is accepted at once; a change of mind is accepted too, except on groceries and other perishable goods. Anything else is decided by a person."
+    },
+    "ar": {
+      "one": "يحق للمتسوّق إرجاع المنتج خلال يوم واحد من التسليم. يُقبل فوراً المنتج التالف أو المعطوب أو الخطأ أو المخالف للوصف، ويُقبل تغيير الرأي كذلك إلا في البقالة وغيرها من البضائع سريعة التلف. وأي حالة أخرى يقررها شخص.",
+      "two": "يحق للمتسوّق إرجاع المنتج خلال يومين من التسليم. يُقبل فوراً المنتج التالف أو المعطوب أو الخطأ أو المخالف للوصف، ويُقبل تغيير الرأي كذلك إلا في البقالة وغيرها من البضائع سريعة التلف. وأي حالة أخرى يقررها شخص.",
+      "few": "يحق للمتسوّق إرجاع المنتج خلال {days} أيام من التسليم. يُقبل فوراً المنتج التالف أو المعطوب أو الخطأ أو المخالف للوصف، ويُقبل تغيير الرأي كذلك إلا في البقالة وغيرها من البضائع سريعة التلف. وأي حالة أخرى يقررها شخص."
+    }
+  },
+  "returns.window.body": {
+    "param": "days",
+    "en": {
+      "one": "Changed your mind? Return within 1 day of delivery for a full refund — except perishable groceries."
+    },
+    "ar": {
+      "one": "غيّرت رأيك؟ أرجع المنتج خلال يوم واحد من الاستلام واسترد المبلغ كاملاً — باستثناء المواد الغذائية القابلة للتلف.",
+      "two": "غيّرت رأيك؟ أرجع المنتج خلال يومين من الاستلام واسترد المبلغ كاملاً — باستثناء المواد الغذائية القابلة للتلف.",
+      "few": "غيّرت رأيك؟ أرجع المنتج خلال {days} أيام من الاستلام واسترد المبلغ كاملاً — باستثناء المواد الغذائية القابلة للتلف."
+    }
+  },
+  "ios.tutorial.ordersBody": {
+    "param": "days",
+    "en": {
+      "one": "Pay cash when your order arrives. Follow each parcel from {profile} → {orders}, and return an item within 1 day."
+    },
+    "ar": {
+      "one": "ادفع نقداً عند وصول طلبك. تابع كل طرد من {profile} ← {orders}، ويمكنك إرجاع المنتج خلال يوم واحد.",
+      "two": "ادفع نقداً عند وصول طلبك. تابع كل طرد من {profile} ← {orders}، ويمكنك إرجاع المنتج خلال يومين.",
+      "few": "ادفع نقداً عند وصول طلبك. تابع كل طرد من {profile} ← {orders}، ويمكنك إرجاع المنتج خلال {days} أيام."
+    }
   }
 }

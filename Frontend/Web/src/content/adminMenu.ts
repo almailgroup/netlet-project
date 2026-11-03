@@ -36,6 +36,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     /* Stock NetLet holds (4.2): a manager sends it, NetLet runs the floor. */
     { href: "/admin/fulfilment", label: "fulfilment.title", need: ["fulfilment.send", "fulfilment.operate"] },
     { href: "/admin/returns", label: "admin.returns", need: "returns.handle" },
+    /* Warranty claims (migration 0072): the store answers, NetLet answers any. */
+    { href: "/admin/warranty", label: "warranty.deskTitle", need: "returns.handle" },
     { href: "/admin/claims", label: "admin.claims", need: ["delivery.view", "delivery.fileClaim"] },
     { href: "/admin/couriers", label: "admin.couriers", need: "delivery.assign" },
   ] },

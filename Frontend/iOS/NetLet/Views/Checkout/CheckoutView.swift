@@ -77,7 +77,7 @@ private struct CheckoutForm: View {
                     CheckoutSummary(cart: cart, model: model)
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    Label(l.t("home.returnsWithin", ["days": "\(ReferenceData.shared.rules.returnWindowDays)"]), systemImage: "arrow.uturn.backward")
+                    Label(l.t("home.returnsWithin", ["days": "\(app.returnWindowDays)"]), systemImage: "arrow.uturn.backward")
                     Label(l.t("checkout.parcelsNote"), systemImage: "truck.box")
                 }
                 .font(.inter(12))

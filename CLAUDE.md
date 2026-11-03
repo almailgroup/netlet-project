@@ -499,8 +499,20 @@ What the form does, each for a reason:
 - **"Keep me signed in"**, on by default. Off, `auth.login` sets a cookie with no
   expiry, which the browser drops on closing, round a token that lapses in a day
   (`SHORT_SESSION_MS`) for a browser that restores its session cookies.
-- **Reset ends on a page saying what happened**, naming the address, with "Send
-  it again" after thirty seconds and "Use a different email". It used to be a
+- **Reset ends on a page saying what happened, with the code and the new
+  password on it**, naming the address, with "Send it again" after thirty
+  seconds and "Use a different email". On the owner's word ("password recovery
+  using a verification code sent to the registered email"), the mail carries a
+  six-digit code as well as the link, and `ResetByCode` (`ResetByCodeFields` in
+  the app) takes it with the new password on one screen: `auth.resetWithCode`
+  spends it on `/auth/v1/verify` with type `recovery`, sets the password through
+  the token that comes back, and signs in, a sign-up still waiting on its own
+  code going to that step. A wrong code counts as a `codeMiss`; with no Supabase
+  the code is written to the server log (`localCodes.ts`). Supabase's "Reset
+  Password" template has to print `{{ .Token }}` (`docs/SUPABASE-AUTH.md`).
+  Account security's "Forgot your current password?" is the same: a code to the
+  account's own email and the new password, on the card. By phone needs an SMS
+  provider, which NetLet does not have yet. It used to be a
   toast and a jump back to sign-in, which left somebody unsure whether anything
   had gone. Supabase composes and sends the mail through `/auth/v1/recover`, so
   there is no mail provider to configure. The reply is identical for an address
@@ -2073,16 +2085,25 @@ icon, the name, what is waiting, a chevron — with dashed lines between,
 "Account security" (the password and deleting the account, `/account/security`)
 and signing out in red at the foot, still asking first.
 
+**Name, email and phone lead it, and Country, Currency and Language follow,
+on the owner's word** ("clearly visible and directly accessible from the My
+Profile page, rather than being hidden inside the Preferences section"): the
+name card names the phone the driver calls (`customer.details`) or offers to
+add one, and `QuickSettings` (`QuickSettingsCard` in the app) is one card of
+three rows changed where they are drawn. **Country is Kuwait and the rest of
+the Gulf is named as coming** (`Shared/commerce/country.ts`, exported to the
+app), none of them choosable — a country somebody could pick and be delivered
+nothing in would be a control that lies; each is the browser's or the phone's
+own name for it. Preferences keeps the delivery area and the notices.
+
 **Only the rows somebody needs, on the owner's word** ("I only want the
 options that are 100 percent needed in the profile page; combine or remove
 options if necessary"). The first card is Returns, Addresses, Payment methods,
 Wishlists and Reviews; Price requests and Subscribe & Save are rows only for
 somebody who has one (`offers.list`, `subscriptions.mine`), since for anybody
 else they open an empty page, and their pages stay open to a link. The
-language and the currency, which were rows of their own (the language a
-two-way switch), are **inside Preferences**, whose row names both ("English ·
-KWD") so neither is out of sight; Preferences holds the language, the
-currency, the delivery area and the notices. Then the help centre, selling for
+language and the currency were rows of their own, then inside Preferences, and
+are on the page itself now (Quick settings, above). Then the help centre, selling for
 a seller, and the account itself. **Returns is its own page**
 (`/account/returns`, `AccountReturns`; the app's `ReturnsView`): a return is
 started from its order, and this is where somebody asks where their refund
@@ -2468,7 +2489,19 @@ code that needs it, and `invoices.test.ts` checks the fields stay out.
 **`Shared/commerce/returns.ts` is the window, and it is pure.** A return needs
 *both* lifecycles to agree — the money taken and the goods arrived — and asking
 only one is how a shopper gets offered a return on a parcel still in a van.
-`RETURN_WINDOW_DAYS` is one constant so the policy is one edit. The server
+**The window is an administrator's setting, on the owner's word** ("the date
+will be controlled by super admin, like 14 days"): `returns.windowDays` in
+`Shared/settings.ts`, whole days from 1 to 90, set on `/admin/features` beside
+the referral rates and on the trail; `RETURN_WINDOW_DAYS` is only its default.
+`returnWindowDays()` (`Backend/src/services/settings.ts`) reads it per call, the
+switches' rule, and every reader asks it — the return button and its refusal,
+`orders.get`'s `windowDays`, the referral hold, support's automatic answer, the
+help page's facts, the guides' prompt and the shop chat's token (`returnDays`,
+signed so the Worker quotes the shop's figure). Shoppers' pages read it from
+`commerce.policy` (`useReturnWindow`, the app's `AppModel.returnWindowDays`), so
+the product page, checkout, the returns page, the terms and the tutorial quote
+what the server refuses by; a sentence written for a count takes the count's
+plural band (`plurals.ts`). The server
 resolves the state and sends the answer rather than the ingredients, so the
 clock is the server's and nobody reopens a closed window by changing their
 system date.
@@ -2598,19 +2631,28 @@ value was not returned.
 
 ### What the shopper can do about an order
 
-**An opened order leads with Track order, Request a refund and Cancel order,
-on the owner's word** (`OrderActions` on the web, `OrderActionsBar` in the
-app), each drawn only where it does something.
+**An opened order is an after-sales centre, on the owner's word** ("each
+order's detail page should function as a complete after-sales service center",
+with only the actions this order offers now): Track order, Request a refund,
+Warranty, Buy again, Change delivery address, Modify order, Cancel order, Rate
+your items and Get help with this order (`OrderActions` on the web,
+`OrderActionsBar` in the app, one sheet at a time). **Nothing on the page
+decides**: each button is drawn from the server's own answer on `orders.get` —
+`cancel`, `change`, `changeAddress`, each line's `returnState`,
+`warrantyEligibility`, `reviewEligibility` and `changeable` — and the server
+asks every question again under a lock when it is pressed.
 
-**Cancelling is the shopper's while nothing has started**
-(`Shared/commerce/orderCancel.ts`, `shopperCancelState`): an unpaid order whose
-every line still coming is `pending`. A line a store already cancelled does not
-hold the rest back; once a store has moved one to preparing, the button is gone
-and a sentence says why and that a refund follows arrival. `orders.cancel`
+**Cancelling is the shopper's until a driver has it**
+(`Shared/commerce/orderCancel.ts`, `shopperCancelState`), on the owner's word
+("if the order already picked by the driver then need to receive then
+return"): an unpaid order whose every line still coming is `pending` or
+`preparing` — still in the store's hands. A line a store already cancelled does
+not hold the rest back; once a driver has collected one, the button is gone and
+a sentence says to receive it and then return it. `orders.cancel`
 (`cancelOrderForShopper`) asks the rule again **under a lock on the order's
 lines**, in one transaction, so a store pressing "preparing" at the same moment
 either waits and finds the line cancelled or wins and the cancel refuses whole —
-never half a basket. Every pending line goes back to its pool (`returnUnits`)
+never half a basket. Every line still coming goes back to its pool (`returnUnits`)
 and `closeIfNothingLeft` hands back the points, the gift card, the code and an
 agreed price inside the same transaction. It asks first, `ConfirmDialog` with
 "Keep order" as the safe answer and focus on it. **Nobody is told by a notice
@@ -2665,6 +2707,83 @@ pending, a part-way and a delivered order, at 320, 390 and 1440 in both
 languages: tracking open on the moving order with its sentence, the refund
 approved automatically, the cancel returning every unit and closing the order,
 axe clean on all three, no sideways scroll.
+
+**Before a driver has it, an item can come out or a quantity go down**
+(`Shared/commerce/orderChanges.ts` the rule, pure; `Backend/src/services/orderChanges.ts`
+the database half; `OrderModify` on the web, `OrderModifySheet` in the app), on
+the owner's word ("modify order … before delivery pick up", and "cancel
+individual eligible products"). Raising a quantity is not offered (the owner's
+choice): a new order does that at today's price. A line changes while it is
+`pending` or `preparing` on an unpaid order and is not part of a set.
+**Lowering a quantity splits the line**: the kept part is restated from its own
+frozen unit price, add-ons and commission terms (`commissionFor` and the store's
+affiliate share), and a cancelled sibling carries exactly the difference of
+every figure, so the order's lines still add up to what was placed, finance
+reads the gone part as void and `stillOwed` takes it off what the driver
+collects. A line whose frozen figures the rule cannot reproduce is refused
+rather than split by a guess. **The money is settled again in `settle`'s
+order**: a store's free-delivery threshold is measured against what is still
+going to that door, so a door that was free because the order cleared it, and
+no longer does, pays the store's flat fee (waived for a member); a discount code
+below its minimum spend comes off and its use goes back, a percentage is of
+what remains and never more than it was; stored value that no longer fits goes
+back, the card first, then the points as an `order_changed` entry. **Nothing
+changes until the shopper has seen what it costs**: `orders.changeQuote` is the
+quote, and `orders.change` sends the same change with the figure it showed
+(`expectOwed`), refused with `orders.changeMoved` if it has moved, whereupon
+the page asks again rather than applying a price nobody saw. The order's
+`grand_total` is restated so `stillOwed` gives the new figure; the stock goes
+back to its pool in the same transaction, and the change is on the trail after
+the commit (`shopperOnTrail`). A store sees the lines on its desk; there is no
+notice and no history table, the owner having approved neither.
+
+**The delivery address can move while nothing going there has left**
+(`addressChangeState`, `orders.changeAddress`; `OrderAddress`,
+`OrderAddressSheet`): the choices are the address book, the one place an
+address is written, and the order freezes its parts from it. A store charges the
+same anywhere in Kuwait, so what the driver collects does not move, and the
+answer says so; a line sent to an address of its own keeps its own.
+
+**Buy again puts everything still for sale back in the bag at today's price**
+(`orders.buyAgain`): the bag stores no price, so nothing old is carried over; a
+product no longer on sale or sold out is named rather than dropped in silence.
+The page adopts the bag the answer names (`adoptCart` on the web,
+`CartModel.adopt` in the app).
+
+**Warranty claims are on what arrived, and followed on the order** (migration
+0072, `warranty_claims`, the one table the owner approved this round;
+`Shared/commerce/warranty.ts` the rule, `Backend/src/services/warranty.ts` the
+database half; `OrderWarranty` and `/admin/warranty` on the web,
+`WarrantySheet`, `WarrantyClaimsList` and `PortalWarrantyView` in the app).
+A line can be claimed on once delivered, while it is not returned and nothing
+is open on it — one claim per line at a time, a partial unique index. The
+shopper says what stopped working (ten characters at least, never contact
+details) with up to four photos, uploaded as a review's are
+(`ShopperPhotoStrip` in the app, one strip for both); the store's own warranty
+words are shown beside it, never parsed. **The store answers with a remedy or a
+reason**: a repair stays with the store until it marks it done; a replacement
+or a refund becomes an approved return request in the same transaction
+(reason `defective`), which the returns desk collects and settles, and the
+claim reads that request's progress (`claimStage`: waiting, repairing,
+returning, done, declined, withdrawn). A claim nobody has answered can be
+withdrawn. NetLet's administrators answer any claim, a store its own; the
+overview counts the waiting ones. Deleting an account is refused while a claim
+is open, and takes a closed claim's photos with it.
+
+**Get help with this order is NetLet AI first, then a person**
+(`Shared/commerce/orderHelp.ts`, `Backend/src/services/orderHelp.ts`,
+`support.orderHelp`; `OrderHelp`, `OrderHelpSheet`), on the owner's word ("let
+the AI resolve the issue before any real reaction"). The facts are the server's
+own read of this order — each line's state, what can still be cancelled or
+changed, whether a return or a claim is open to it — never the address, the
+phone or anything else about the shopper, and the question is held to the
+contact filter on both sides. The model may point at the buttons the order
+offers (`[[do: action]]`, only those, each once) and hand over
+(`[[person]]`); it never claims to have done anything. **A person is one press
+away always**, and the next step when the model hands over, does not answer,
+is switched off or the hour's allowance (`MAX_ORDER_HELP_PER_HOUR`) is spent:
+the conversation goes to NetLet's support with the order attached
+(`support.open`), and the reply arrives under Help from NetLet and the bell.
 
 ## The finance panel
 
@@ -6313,6 +6432,12 @@ brings with it is adopted without one, since nobody pressed anything. Measured
 on a production build at 390: about 0.55s from the press to the end of the fade,
 with the Arabic product names already in place when it lands.
 
+**A key keeps the meaning it was written for.** Quick settings was first given
+`quick.title`, the Quick view's heading, by rewording it, which renamed the
+preview on every product; it has its own key (`quick.settingsTitle`). A new
+sentence is a new key, the support answers' rule, even where an old one reads
+almost right.
+
 **A counted sentence takes the form its number needs** (`Shared/i18n/plurals.ts`).
 Arabic counts a noun in the plural from three to ten, in the accusative singular
 from eleven to ninety-nine, in the genitive singular from a hundred, in the dual
@@ -6508,7 +6633,9 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, then 832 KB (244 KB), the home page's shelves with their department tabs, the occasions' calendar and their words in both languages, and is 837 KB (245 KB) now, the reviews' words in both languages — nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, then 832 KB (244 KB), the home page's shelves with their department tabs, the occasions' calendar and their words in both languages, then 837 KB (245 KB), the reviews' words in both languages, and is 870 KB
+(254 KB) now, the after-sales centre's words — warranty, changing an order,
+help with it, recovery by code — in both languages, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -7143,6 +7270,23 @@ joining) and nothing for anybody else. `ShareAndEarn` follows the buy buttons
 for a member, checkout names whose link a line came through, and the heart in
 the logo row and the cart's title opens Saved items with the hearts counted.
 
+**The after-sales centre is the app's too, sheet for sheet**
+(`OrderActionsBar`, `Views/Account/OrderAfterSales.swift`): Warranty, Modify
+order (the quote, then Confirm at the figure it showed, asked again on
+`orders.changeMoved`), Change delivery address, Buy again (the answer's bag
+adopted, or the bag read again), Rate your items and Get help with this order,
+each drawn from `orders.get`'s answer, and a button an answer from NetLet AI
+points at opens once the help sheet is down (`.sheet(item:onDismiss:)`, never
+two sheets at once). The claims are listed under the bar with Withdraw; the
+portal has the warranty desk (`PortalWarrantyView`, the overview's tile) and
+the return window on Features (`SettingsCard`, whole days). The Profile tab
+has the phone and Quick settings, Preferences lost the language and the
+currency, and sign-in's reset and Account security take the code
+(`ResetByCodeModel`, tested on the fake service). The recorded pending order is
+`demo.orders.get.pending.json` and a claimed one `demo.orders.get.claimed.json`,
+each read through `DemoTransport`'s variant, and the screenshots run the
+pending one as `-NetLetDemoAs pending`.
+
 **The rest of the shop was checked against the web the same way**, by listing
 every dictionary key a web page or component asks for that no Swift file
 names (a key the web uses and the app does not is usually a feature the app
@@ -7621,7 +7765,9 @@ artifact; notices were tried first and the API cuts an annotation off at
 4,096 characters, a fifth of a picture. **The previews are most of the
 run's time** — about half a minute a screen in each language — so the job's
 limit grows with them: the push of the address screens finished 0s inside
-the old 40 minutes, and a run that times out uploads nothing, so it is 60.
+the old 40 minutes, and a run that times out uploads nothing, so it was 60 —
+and 75 once the after-sales sheets were added, the run before them having
+finished in 54.
 
 **TestFlight uploads by itself after every green iOS run on a push to
 `main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was

@@ -1940,6 +1940,57 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS "review_photos_review_idx" ON "review_photos" USING btree ("review_id","position");
 
+-- ===== 0072_warranty_claims.sql =====
+DO $$ BEGIN
+  CREATE TYPE "public"."warranty_status" AS ENUM('open', 'accepted', 'declined', 'completed', 'withdrawn');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE TABLE IF NOT EXISTS "warranty_claims" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"order_id" integer NOT NULL,
+	"order_item_id" integer NOT NULL,
+	"user_id" integer,
+	"vendor_id" integer,
+	"status" "warranty_status" DEFAULT 'open' NOT NULL,
+	"problem" text NOT NULL,
+	"photos" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"remedy" varchar(10),
+	"response" text,
+	"return_request_id" integer,
+	"decided_by" integer,
+	"decided_at" timestamp with time zone,
+	"completed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "warranty_claims" ADD CONSTRAINT "warranty_claims_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "warranty_claims" ADD CONSTRAINT "warranty_claims_order_item_id_order_items_id_fk" FOREIGN KEY ("order_item_id") REFERENCES "public"."order_items"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "warranty_claims" ADD CONSTRAINT "warranty_claims_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "warranty_claims" ADD CONSTRAINT "warranty_claims_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "warranty_claims" ADD CONSTRAINT "warranty_claims_return_request_id_return_requests_id_fk" FOREIGN KEY ("return_request_id") REFERENCES "public"."return_requests"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "warranty_claims" ADD CONSTRAINT "warranty_claims_decided_by_users_id_fk" FOREIGN KEY ("decided_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "warranty_claims_open_unique" ON "warranty_claims" USING btree ("order_item_id") WHERE "warranty_claims"."status" in ('open', 'accepted');
+CREATE INDEX IF NOT EXISTS "warranty_claims_vendor_idx" ON "warranty_claims" USING btree ("vendor_id","status");
+CREATE INDEX IF NOT EXISTS "warranty_claims_user_idx" ON "warranty_claims" USING btree ("user_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -1983,6 +2034,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  72 AS migrations_in_this_file,
+  73 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

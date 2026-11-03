@@ -34,6 +34,7 @@ import {
   EmailTakenError,
   finishRegistration,
   finishReset,
+  finishResetWithCode,
   linkLanding,
   PasswordMismatchError,
   resendRegistrationCode,
@@ -510,6 +511,43 @@ export const authRouter = router({
       if (outcome !== "changed" || !email) {
         await recordAuthAttempt(caller, "reset");
         throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.resetLinkExpired" });
+      }
+
+      const user = await signIn(email, input.password, landingFor(ctx.req));
+      if (user === "unconfirmed") return { status: "verify" as const, email };
+      if (!user) throw invalidCredentials;
+      await clearAccountFailures(email);
+      await touchLastSignedIn(user.id);
+      await startSession(ctx, user, input.remember);
+      return { status: "signedIn" as const, user: toPublicUser(user) };
+    }),
+
+  /**
+   * The end of a reset by the six-digit code in the mail (on the owner's word:
+   * "password recovery using a verification code sent to the registered
+   * email"), with the new password, and then signed in with — `completeReset`
+   * for the code rather than the link. A wrong code counts against the address
+   * as a wrong sign-up code does; "wrong" answers a code, an expired code and
+   * an address with no account alike.
+   */
+  resetWithCode: publicProcedure
+    .input(z.object({ email: z.string().trim().email().max(320), code: z.string().max(32), password: newPassword, remember: z.boolean().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      assertConfigured();
+      const caller = callerOf(ctx, input.email);
+      await assertNotThrottled(caller, "codeMiss");
+      const code = normaliseCode(input.code);
+      if (!isCodeShaped(code)) {
+        await recordAuthAttempt(caller, "codeMiss");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "auth.codeShape" });
+      }
+
+      const { outcome, email } = await finishResetWithCode(input.email, code, input.password);
+      if (outcome === "same") throw new TRPCError({ code: "BAD_REQUEST", message: "auth.resetSamePassword" });
+      if (outcome === "weak") throw new TRPCError({ code: "BAD_REQUEST", message: "auth.passwordTooWeak" });
+      if (outcome !== "changed" || !email) {
+        await recordAuthAttempt(caller, "codeMiss");
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.codeWrong" });
       }
 
       const user = await signIn(email, input.password, landingFor(ctx.req));

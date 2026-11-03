@@ -110,6 +110,7 @@ struct RewardsView: View {
         case "spent_on_order": return "rewards.reasonSpentOnOrder"
         case "cashed_out": return "rewards.reasonCashedOut"
         case "order_cancelled": return "rewards.reasonOrderCancelled"
+        case "order_changed": return "rewards.reasonOrderChanged"
         case "product_referral": return "rewards.reasonProductReferral"
         case "invite_commission": return "rewards.reasonInviteCommission"
         case "product_referral_reversal": return "rewards.reasonProductReferralReversal"

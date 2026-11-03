@@ -26,6 +26,7 @@ import { rewardsRouter } from "./rewards.js";
 import { helpRouter } from "./help.js";
 import { financeRouter } from "./finance.js";
 import { reviewsRouter } from "./reviews.js";
+import { warrantyRouter } from "./warranty.js";
 import { searchRouter } from "./search.js";
 import { togetherRouter } from "./together.js";
 import { wishlistsRouter } from "./wishlists.js";
@@ -60,6 +61,7 @@ export const appRouter = router({
   help: helpRouter,
   finance: financeRouter,
   reviews: reviewsRouter,
+  warranty: warrantyRouter,
   search: searchRouter,
   together: togetherRouter,
   wishlists: wishlistsRouter,

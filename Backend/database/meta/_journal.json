@@ -505,6 +505,13 @@
       "when": 1793643562344,
       "tag": "0071_review_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1793693266957,
+      "tag": "0072_warranty_claims",
+      "breakpoints": true
     }
   ]
 }

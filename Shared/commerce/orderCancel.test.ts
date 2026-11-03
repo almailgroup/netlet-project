@@ -4,16 +4,18 @@ import { shopperCancelState } from "./orderCancel.js";
 const unpaid = { status: "pending_payment" };
 
 describe("shopperCancelState", () => {
-  it("lets the shopper cancel while every line still coming is pending", () => {
+  it("lets the shopper cancel while every line still coming is in the stores' hands", () => {
     expect(shopperCancelState(unpaid, [{ fulfilment: "pending" }, { fulfilment: "pending" }])).toEqual({ cancellable: true });
+    /* Being packed is still before the driver has it (the owner's rule). */
+    expect(shopperCancelState(unpaid, [{ fulfilment: "pending" }, { fulfilment: "preparing" }])).toEqual({ cancellable: true });
   });
 
   it("is not held back by a line the store already cancelled", () => {
     expect(shopperCancelState(unpaid, [{ fulfilment: "cancelled" }, { fulfilment: "pending" }])).toEqual({ cancellable: true });
   });
 
-  it("refuses once any store has started on it", () => {
-    for (const started of ["preparing", "shipped", "delivered"] as const) {
+  it("refuses once a driver has collected any of it", () => {
+    for (const started of ["shipped", "delivered"] as const) {
       expect(shopperCancelState(unpaid, [{ fulfilment: "pending" }, { fulfilment: started }])).toEqual({ cancellable: false, reason: "orders.cancelStarted" });
     }
   });

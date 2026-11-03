@@ -33,7 +33,7 @@ import {
   merchantWarranty,
   specifications,
 } from "@shared/commerce/productDetail";
-import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
+import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { relatedProducts } from "@shared/commerce/related";
 import { descriptionBlocks } from "@shared/commerce/productDetail";
 import { EMPTY_FILTERS, categorySlug, searchPath, searchWithTerm } from "@shared/commerce/browse";
@@ -1018,13 +1018,14 @@ function WarrantyPanel({ product, t }: { product: Product; t: Translate }) {
  * of them were prose.
  */
 function ReturnsPanel({ t }: { t: Translate }) {
+  const days = useReturnWindow();
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start gap-3.5">
         <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-[#0a285a]/12 bg-[#0a285a]/8 text-[#0a285a]"><RotateCcw className="size-4" /></span>
         <div>
           <strong className="block text-sm font-bold text-[#1f2229]">{t("shipping.returns.title")}</strong>
-          <span className="text-[13px] leading-[1.55] text-[#404553]">{t("returns.window.body", { days: RETURN_WINDOW_DAYS })}</span>
+          <span className="text-[13px] leading-[1.55] text-[#404553]">{t("returns.window.body", { days })}</span>
         </div>
       </div>
       <PolicyRows rows={RETURNS_POLICY} t={t} />

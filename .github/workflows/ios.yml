@@ -37,7 +37,7 @@ jobs:
     # languages — and grow with every screen added; the push of the address
     # screens finished 0s inside the old 40 minutes, and a run that times out
     # uploads nothing to TestFlight.
-    timeout-minutes: 60
+    timeout-minutes: 75
     defaults:
       run:
         working-directory: Frontend/iOS
@@ -194,6 +194,14 @@ jobs:
             shot 69-browse-price "$lang" browseSheet:all/price ""
             shot 70-deals "$lang" deals ""
             shot 71-order-rate "$lang" rate:NL-20261001-J7MWY shopper
+            # The after-sales centre: a claim on what arrived, help with the
+            # order, and — on the recorded pending order — modifying it and
+            # sending it elsewhere; then the store's warranty desk.
+            shot 72-order-warranty "$lang" warranty:NL-20261001-J7MWY shopper
+            shot 73-order-help "$lang" help:NL-20261001-J7MWY shopper
+            shot 74-order-modify "$lang" modify:NL-AS-PENDING pending
+            shot 75-order-address "$lang" orderAddress:NL-AS-PENDING pending
+            shot 76-portal-warranty "$lang" portal:/admin/warranty shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

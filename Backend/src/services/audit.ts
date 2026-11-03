@@ -91,6 +91,11 @@ export const AUDIT_ACTIONS = [
   /* A warning issued to a store, or withdrawn (3.3.18): the third standing one suspends it. */
   "vendor.warn",
   "vendor.withdrawWarning",
+  /* A shopper's own change to their order before a driver collected it — an
+     item cancelled, a quantity lowered, the address moved — with what the
+     driver collects before and after. The order keeps no history of its own. */
+  "order.shopperChange",
+  "order.shopperAddress",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -104,7 +109,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "return" | "proposal";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "return" | "proposal" | "order";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;

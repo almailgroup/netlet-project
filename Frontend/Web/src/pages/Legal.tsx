@@ -29,6 +29,7 @@ import { nameInSentence } from "@shared/commerce/contact";
 import { SETTLEMENT_DAYS } from "@shared/commerce/payoutSchedule";
 import { ASK_WINDOW_DAYS, OFFER_WINDOW_DAYS } from "@shared/commerce/priceOffers";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
+import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { DEFAULT_COMMISSION_PERCENT } from "@shared/inventory/commission";
 import { AGREEMENT_VERSION } from "@shared/inventory/sellerApplication";
 import { legalMeta } from "@shared/seo";
@@ -65,6 +66,8 @@ const DOCUMENTS = {
 
 export default function Legal() {
   const { t, isArabic } = useTranslation();
+  /* The return window an administrator set, not only the code's default. */
+  const figures = { ...FIGURES, days: useReturnWindow() };
   const formatDate = useDateFormat();
   const [location] = useLocation();
   const page: Document = location.startsWith("/privacy") ? "privacy" : location.startsWith("/seller-agreement") ? "sellers" : "terms";
@@ -114,7 +117,7 @@ export default function Legal() {
               <h2 id={`${section.id}-title`} className="text-[18px] font-extrabold text-[#0a285a]">{t(section.title)}</h2>
               {section.body.filter(shown(running)).map(paragraph => (
                 <p key={paragraph.key} className="mt-3 text-[15px] leading-7 text-[#404553]">
-                  {t(paragraph.key, FIGURES)}
+                  {t(paragraph.key, figures)}
                 </p>
               ))}
             </section>

@@ -157,6 +157,14 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
         if let resetError { throw resetError }
     }
 
+    var resetWithCodeResult: Result<RegistrationResult, APIError> = .failure(.server(code: "UNAUTHORIZED", message: "auth.codeWrong", status: 401))
+    var codeResets: [(email: String, code: String, password: String)] = []
+
+    func resetWithCode(email: String, code: String, password: String) async throws -> RegistrationResult {
+        codeResets.append((email, code, password))
+        return try resetWithCodeResult.get()
+    }
+
     func signOut() async throws {}
     func updateName(_ name: String) async throws -> User { Self.user }
 

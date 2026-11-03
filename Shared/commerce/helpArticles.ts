@@ -66,12 +66,25 @@ export const HELP_GROUPS: { id: string; title: MessageKey; entries: HelpEntry[] 
 /** Longest question the assistant is sent. */
 export const MAX_HELP_QUESTION = 300;
 
+/** The shop's own figures an answer quotes — the return window an administrator sets. */
+export type HelpPolicy = { returnWindowDays: number };
+
+/**
+ * An answer's parameters with the shop's current figures in them: the return
+ * window is an administrator's setting (`returns.windowDays`), so the help
+ * page and the assistant quote today's figure rather than the code's default.
+ */
+export function helpParams(entry: HelpEntry, policy?: HelpPolicy): Record<string, string | number> | undefined {
+  if (!entry.params || !policy || !("days" in entry.params)) return entry.params;
+  return { ...entry.params, days: policy.returnWindowDays };
+}
+
 /**
  * The page's answers as one block of text, in the asker's language, for the
  * model to answer from. `say` is the dictionary's own translate.
  */
-export function helpBrief(say: (key: MessageKey, params?: Record<string, string | number>) => string): string {
+export function helpBrief(say: (key: MessageKey, params?: Record<string, string | number>) => string, policy?: HelpPolicy): string {
   return HELP_GROUPS.flatMap(group =>
-    group.entries.map(entry => `Q: ${say(entry.question)}\nA: ${say(entry.answer, entry.params)}`),
+    group.entries.map(entry => `Q: ${say(entry.question)}\nA: ${say(entry.answer, helpParams(entry, policy))}`),
   ).join("\n\n");
 }

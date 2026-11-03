@@ -249,16 +249,22 @@ struct PlatformSetting: Decodable, Sendable {
     let defaultValue: String
     let min: Double
     let max: Double
+    /// "percent" or "days"; absent from a server older than the return window.
+    var unit: String? = nil
     var updatedAt: Date? = nil
     var updatedByEmail: String? = nil
 
+    var isDays: Bool { unit == "days" }
     var minText: String { min == min.rounded() ? "\(Int(min))" : "\(min)" }
     var maxText: String { max == max.rounded() ? "\(Int(max))" : "\(max)" }
 
-    /// `normaliseSetting`: a percentage, two decimals at most, inside the range — or nil.
+    /// `normaliseSetting`: a percentage with two decimals at most, or a whole
+    /// number of days, inside the range — or nil.
     func normalise(_ text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
-        guard trimmed.range(of: #"^\d{1,3}(\.\d{1,2})?$"#, options: .regularExpression) != nil, let number = Double(trimmed), number >= min, number <= max else { return nil }
+        let shape = isDays ? #"^\d{1,3}$"# : #"^\d{1,3}(\.\d{1,2})?$"#
+        guard trimmed.range(of: shape, options: .regularExpression) != nil, let number = Double(trimmed), number >= min, number <= max else { return nil }
+        if isDays { return "\(Int(number))" }
         return String(format: "%.2f", locale: Locale(identifier: "en_US_POSIX"), number)
     }
 }

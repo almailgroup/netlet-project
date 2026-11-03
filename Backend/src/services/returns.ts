@@ -43,6 +43,7 @@ import { affiliateQuietly, reverseAffiliateLine } from "./affiliates.js";
 import { reverseReferralLine } from "./referral.js";
 import { tellReturn, withProductAlerts } from "./notifications.js";
 import { readReturnNote } from "./returnReading.js";
+import { returnWindowDays } from "./settings.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -105,7 +106,7 @@ export async function requestReturn(
     .limit(1);
   if (!line) throw new ReturnRefused("returns.notFound");
 
-  const state = returnStateFor({ status: line.orderStatus }, { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt }, now);
+  const state = returnStateFor({ status: line.orderStatus }, { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt }, now, await returnWindowDays(db));
   if (!state.returnable) throw new ReturnRefused(state.reason);
 
   /* A line already swapped or refunded has had its return. An exchange leaves

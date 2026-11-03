@@ -20,6 +20,8 @@ import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { checkPassword } from "@shared/auth/passwordStrength";
 import { PasswordChecklist } from "@/components/auth/AuthForm";
+import { ResetByCode } from "@/components/auth/ResetByCode";
+import { useAuth } from "@/hooks/useAuth";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { nameProblem, NAME_PART_MAX, splitName } from "@shared/commerce/profileDetails";
 import { ProfileDetailCards } from "@/components/account/ProfileDetailCards";
@@ -194,11 +196,20 @@ function EmailForm({ user, onSaved, onFail }: {
 }
 
 function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [reveal, setReveal] = useState(false);
+  /* "Forgot your current password?" (on the owner's word): a 6-digit code to
+     the account's own email, and the new password with it, on this card. */
+  const [recovering, setRecovering] = useState<"idle" | "sent">("idle");
+  const sendCode = trpc.auth.requestPasswordReset.useMutation({
+    onSuccess: () => setRecovering("sent"),
+    onError: onFail,
+  });
 
   const save = trpc.auth.changePassword.useMutation({
     onSuccess: () => {
@@ -215,7 +226,29 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
 
   return (
     <ProfileCard title={t("account.password")} note={t("account.passwordNote")}>
-      {open ? (
+      {recovering === "sent" && user ? (
+        <div className="space-y-4">
+          <p role="status" className="text-[14px] leading-6 text-[#3d5170]">
+            {t("account.recoverSent", { email: "\u2068" + user.email + "\u2069" })}
+          </p>
+          <ResetByCode
+            email={user.email}
+            onSignedIn={() => {
+              toast.success(t("account.passwordChanged"));
+              setRecovering("idle"); setOpen(false); setCurrent(""); setNext("");
+              void utils.auth.me.invalidate();
+            }}
+            onVerify={() => setRecovering("idle")}
+          />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => sendCode.mutate({ email: user.email, locale })} disabled={sendCode.isPending} className={secondary}>
+              {sendCode.isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+              {t("auth.resendCode")}
+            </button>
+            <button type="button" onClick={() => setRecovering("idle")} className={secondary}>{t("common.cancel")}</button>
+          </div>
+        </div>
+      ) : open ? (
         <div className="space-y-2.5">
           <FloatingField
             label={t("account.currentPassword")}
@@ -247,6 +280,17 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
           />
           <PasswordChecklist id={rulesId} verdict={verdict} typed={next.length > 0} />
           <p className="text-[12px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
+          {user ? (
+            <button
+              type="button"
+              onClick={() => sendCode.mutate({ email: user.email, locale })}
+              disabled={sendCode.isPending}
+              className="pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-1 text-[13px] font-bold text-[#0a285a] underline underline-offset-2 pointer-fine:min-h-8"
+            >
+              {sendCode.isPending ? <LoaderCircle className="size-3.5 animate-spin" aria-hidden /> : null}
+              {t("account.forgotCurrent")}
+            </button>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => save.mutate({ currentPassword: current, newPassword: next })}

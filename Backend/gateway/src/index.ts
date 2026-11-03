@@ -145,7 +145,7 @@ function failureCode(error: unknown): GatewayErrorCode {
 
 const encoder = new TextEncoder();
 
-async function chat(body: unknown, env: Env, headers: Headers, seams: Seams): Promise<Response> {
+async function chat(body: unknown, claims: GatewayClaims, env: Env, headers: Headers, seams: Seams): Promise<Response> {
   const checked = checkChatRequest(body);
   if (!checked.ok) return refuse("bad_request", checked.message, headers, checked.field);
   const request = checked.value;
@@ -157,7 +157,7 @@ async function chat(body: unknown, env: Env, headers: Headers, seams: Seams): Pr
     pieces = await streamText({
       apiKey: env.GEMINI_API_KEY!,
       model: env.GEMINI_MODEL || GATEWAY_MODEL,
-      system: chatSystem(request.locale),
+      system: chatSystem(request.locale, claims.returnDays),
       contents: chatContents(request),
       temperature: 0.3,
       maxOutputTokens: 700,
@@ -305,7 +305,7 @@ export async function handle(request: Request, env: Env, seams: Seams = {}): Pro
   const body = await readJson(request, BODY_LIMIT[scope]);
   if (!body.ok) return refuse(body.code, body.message, headers);
 
-  if (scope === "chat") return chat(body.body, env, headers, seams);
+  if (scope === "chat") return chat(body.body, claims, env, headers, seams);
   if (scope === "catalog") return catalog(body.body, env, headers, seams);
   return generate(body.body, claims, env, headers, seams);
 }

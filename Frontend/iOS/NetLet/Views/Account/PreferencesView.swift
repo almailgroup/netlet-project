@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// The account's preferences — the web's `AccountPreferences`: the language,
-/// the currency prices are read in, the delivery area, and which notices the
-/// shopper hears.
+/// The account's preferences — the web's `AccountPreferences`: the delivery
+/// area and which notices the shopper hears. The language and the currency
+/// left for the Profile tab's Quick settings, on the owner's word ("clearly
+/// visible and directly accessible from the My Profile page").
 struct PreferencesView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -12,8 +13,6 @@ struct PreferencesView: View {
             ShopPage(header: false, refresh: { await model.load() }) {
                 AccountSection(title: l.t("account.sectionPreferences"), hint: l.t("account.hint.preferences")) {
                     VStack(spacing: 14) {
-                        panel(symbol: "globe", title: "account.language", note: "account.languageNote") { language }
-                        panel(symbol: "banknote", title: "currency.title", note: "currency.chargedNote") { currency }
                         panel(symbol: "mappin", title: "account.deliveryArea", note: "account.pricingUnconfigured") { area(model) }
                         panel(symbol: "bell", title: "account.notifications", note: "account.notificationsNote") { notices(model) }
                     }
@@ -42,40 +41,6 @@ struct PreferencesView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
-    }
-
-    private var language: some View {
-        HStack(spacing: 10) {
-            ForEach([Language.en, .ar], id: \.self) { code in
-                ChoiceChip(title: l.t(code == .en ? "account.english" : "account.arabic"), selected: l.current == code, available: true) {
-                    app.setLanguage(code)
-                }
-            }
-        }
-    }
-
-    /// The currency prices are read in, moved here from the account home on
-    /// the owner's word: the shop's list, the feed credited as its title.
-    private var currency: some View {
-        Menu {
-            Section(l.t("currency.source")) {
-                ForEach(CurrencyTable.shared.currencies, id: \.self) { code in
-                    Button {
-                        Haptics.tap()
-                        l.setCurrency(code)
-                    } label: {
-                        if l.currency == code {
-                            Label(CurrencyTable.name(code, language: l.current), systemImage: "checkmark")
-                        } else {
-                            Text(CurrencyTable.name(code, language: l.current))
-                        }
-                    }
-                }
-            }
-        } label: {
-            MenuField(text: CurrencyTable.name(l.currency, language: l.current), placeholder: l.t("currency.title"))
-        }
-        .accessibilityLabel(l.t("currency.title"))
     }
 
     private func area(_ model: PreferencesModel) -> some View {

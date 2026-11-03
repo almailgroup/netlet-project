@@ -103,6 +103,7 @@ async function frozenLines(db: Db | Tx, orderId: number): Promise<(FrozenOrderLi
       unitPrice: orderItems.unitPrice,
       lineTotal: orderItems.lineTotal,
       fulfilment: orderItems.fulfilment,
+      deliveryChoice: orderItems.deliveryChoice,
     })
     .from(orderItems)
     .leftJoin(products, eq(products.id, orderItems.productId))

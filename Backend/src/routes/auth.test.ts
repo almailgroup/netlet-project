@@ -154,6 +154,9 @@ describe("auth with Supabase Auth as the password store", () => {
       finishReset: async (token: string) => (token === "a-token-for-the-link-that-was-opened"
         ? { outcome: "changed", email: "supa@example.com" }
         : { outcome: "expired", email: null }),
+      finishResetWithCode: async (email: string, code: string) => (code === "735102"
+        ? { outcome: "changed", email }
+        : { outcome: "wrongCode", email: null }),
       ...over,
     }));
     vi.doMock("../core/accounts.js", async () => {
@@ -301,6 +304,38 @@ describe("auth with Supabase Auth as the password store", () => {
       await expect(api.auth.completeReset({ token, password: "Harbour-Falcon-2026" }))
         .resolves.toEqual({ status: "verify", email: "supa@example.com" });
       expect(set).toHaveLength(0);
+    });
+  });
+
+  /* The owner's "password recovery using a verification code": the six
+     digits in the reset mail, beside its link. */
+  describe("finishing a reset with the code", () => {
+    it("sets the password, signs in with it, and keeps the session", async () => {
+      stubStore();
+      const { ctx, set } = createContext(null);
+      const api = await caller(ctx);
+      await expect(api.auth.resetWithCode({ email: "supa@example.com", code: "735 102", password: "Harbour-Falcon-2026" }))
+        .resolves.toMatchObject({ status: "signedIn", user: { email: "supa@example.com" } });
+      expect(set).toHaveLength(1);
+      expect(recorded).toEqual([]);
+    });
+
+    it("counts a wrong code, refuses one of the wrong shape, and signs nobody in", async () => {
+      stubStore();
+      const { ctx, set } = createContext(null);
+      const api = await caller(ctx);
+      await expect(api.auth.resetWithCode({ email: "supa@example.com", code: "111111", password: "Harbour-Falcon-2026" }))
+        .rejects.toMatchObject({ code: "UNAUTHORIZED", message: "auth.codeWrong" });
+      await expect(api.auth.resetWithCode({ email: "supa@example.com", code: "12ab", password: "Harbour-Falcon-2026" }))
+        .rejects.toMatchObject({ code: "BAD_REQUEST", message: "auth.codeShape" });
+      expect(recorded).toEqual(["codeMiss", "codeMiss"]);
+      expect(set).toHaveLength(0);
+    });
+
+    it("holds the new password to the floor", async () => {
+      stubStore();
+      const api = await caller(createContext(null).ctx);
+      await expect(api.auth.resetWithCode({ email: "supa@example.com", code: "735102", password: "password1" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     });
   });
 

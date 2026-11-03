@@ -42,6 +42,12 @@ export type OwedLine = {
   /** As frozen: the units and their add-ons together. */
   lineTotal: string;
   fulfilment: FulfilmentState | string;
+  /**
+   * The trip it rides (3.2.5). A fast parcel is a door of its own with a fee
+   * of its own, so it is dropped when its own lines are gone — not held by a
+   * regular parcel of the same store to the same door, nor holding it.
+   */
+  choice?: string | null;
 };
 
 export type StillOwed = {
@@ -55,7 +61,7 @@ export type StillOwed = {
   reduced: boolean;
 };
 
-const doorKey = (vendorId: number | null, label: string | null | undefined) => `${vendorId ?? "none"}|${label ?? ""}`;
+const doorKey = (vendorId: number | null, label: string | null | undefined, fast = false) => `${vendorId ?? "none"}|${label ?? ""}${fast ? "|fast" : ""}`;
 
 export function stillOwed(
   order: { grandTotal: string; deliveryBreakdown: FrozenDelivery | null },
@@ -65,7 +71,7 @@ export function stillOwed(
   const doors = new Map<string, { kept: number; gone: number }>();
 
   for (const line of lines) {
-    const key = doorKey(line.vendorId, line.destinationLabel);
+    const key = doorKey(line.vendorId, line.destinationLabel, line.choice === "fast");
     const door = doors.get(key) ?? { kept: 0, gone: 0 };
     if (isKept(line.fulfilment)) {
       door.kept += 1;
@@ -78,7 +84,7 @@ export function stillOwed(
 
   let droppedDelivery = 0n;
   for (const charge of order.deliveryBreakdown ?? []) {
-    const door = doors.get(doorKey(charge.vendorId, charge.destinationLabel));
+    const door = doors.get(doorKey(charge.vendorId, charge.destinationLabel, charge.choice === "fast"));
     /* A fee with no lines behind it at all is not this function's to drop: it
        means the breakdown and the lines disagree, and quietly zeroing a charge
        is the wrong way to find that out. */

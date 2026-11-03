@@ -126,6 +126,8 @@ enum PortalPage: Hashable, Sendable {
     case stock
     case offers
     case returns
+    /// Warranty claims on things that stopped working (migration 0072).
+    case warranty
     case team
     case payouts
     case bundles
@@ -197,6 +199,7 @@ enum PortalPage: Hashable, Sendable {
             case "stock": self = .stock
             case "offers": self = .offers
             case "returns": self = .returns
+            case "warranty": self = .warranty
             case "team": self = .team
             case "payouts": self = .payouts
             case "bundles": self = .bundles

@@ -1,77 +1,158 @@
 import SwiftUI
 
-/// What a shopper can do about an order, on the owner's word — the web's
-/// `OrderActions`: track it, cancel it while nothing has started, and ask for
-/// a refund on what arrived. Nothing here decides: whether it can be cancelled
-/// is the server's `cancel`, what may go back is each line's return window,
-/// and the steps are `stepsForOrder`'s.
+/// The opened order as an after-sales centre, on the owner's word — the
+/// web's `OrderActions`: only the actions this order offers now. Nothing here
+/// decides: cancelling is the server's `cancel`, changing it is `change` and
+/// `changeAddress`, what may go back is each line's return window (the
+/// administrator's figure), a warranty claim each line's eligibility, and the
+/// steps are `stepsForOrder`'s — and the server asks every one again under a
+/// lock when it is pressed.
+///
+/// Track order, Request a refund, Warranty, Buy again, Change delivery
+/// address, Modify order and Cancel while no driver has it, Rate your items,
+/// and Get help with this order — NetLet AI first, then a person.
 struct OrderActionsBar: View {
     let reference: String
     let detail: OrderDetail
     let reload: () async -> Void
+    /// Rate your items: the order's first item to rate, in its sheet.
+    var onRate: (() -> Void)? = nil
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
-    @State private var tracking = false
-    @State private var refunding = false
+    @State private var sheet: Sheet?
+    /// What an answer from NetLet AI pointed at, opened once the help sheet is down.
+    @State private var next: String?
     @State private var asking = false
     @State private var cancelling = false
+    @State private var rebuying = false
+
+    enum Sheet: String, Identifiable {
+        case track, refund, warranty, modify, address, help
+        var id: String { rawValue }
+    }
 
     private var refundable: [OrderLine] { app.features.isOn("returns") ? detail.refundable : [] }
+    private var claimable: [OrderLine] { app.features.isOn("returns") ? detail.warrantyClaimable : [] }
     private var trackable: Bool { detail.steps.map { !$0.cancelled } ?? false }
+    private var rateable: Bool { onRate != nil && detail.lines.contains(where: \.mayRate) }
 
     var body: some View {
-        if trackable || !refundable.isEmpty || detail.cancel.cancellable || detail.cancelRefusal != nil {
-            VStack(alignment: .leading, spacing: 10) {
-                FlowLayout(spacing: 8) {
-                    if trackable {
-                        Button { tracking = true } label: {
-                            Label(l.t("orders.track"), systemImage: "shippingbox")
-                        }
-                        .buttonStyle(OrderActionStyle())
-                    }
-                    if !refundable.isEmpty {
-                        Button { refunding = true } label: {
-                            Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward")
-                        }
-                        .buttonStyle(OrderActionStyle())
-                    }
-                    if detail.cancel.cancellable {
-                        Button { asking = true } label: {
-                            Label(l.t("orders.cancelOrder"), systemImage: "xmark.circle")
-                        }
-                        .buttonStyle(OrderActionStyle(danger: true))
-                        .disabled(cancelling)
-                    }
+        VStack(alignment: .leading, spacing: 10) {
+            FlowLayout(spacing: 8) {
+                if trackable {
+                    action("orders.track", "shippingbox") { sheet = .track }
                 }
-                if let why = detail.cancelRefusal {
-                    Text(l.t(why))
-                        .font(.inter(13))
-                        .foregroundStyle(Brand.muted)
-                        .fixedSize(horizontal: false, vertical: true)
+                if !refundable.isEmpty {
+                    action("orders.requestRefund", "arrow.uturn.backward") { sheet = .refund }
                 }
+                if !claimable.isEmpty {
+                    action("warranty.title", "checkmark.shield") { sheet = .warranty }
+                }
+                if detail.mayBuyAgain {
+                    action("orders.buyAgain", "bag") { Task { await buyAgain() } }
+                        .disabled(rebuying)
+                }
+                if detail.changeAddress.changeable {
+                    action("orders.changeAddress", "mappin.and.ellipse") { sheet = .address }
+                }
+                if detail.mayModify {
+                    action("orders.modify", "square.and.pencil") { sheet = .modify }
+                }
+                if detail.cancel.cancellable {
+                    Button { asking = true } label: {
+                        Label(l.t("orders.cancelOrder"), systemImage: "xmark.circle")
+                    }
+                    .buttonStyle(OrderActionStyle(danger: true))
+                    .disabled(cancelling)
+                }
+                if rateable, let onRate {
+                    Button(action: onRate) {
+                        Label {
+                            Text(l.t("orders.rateItems"))
+                        } icon: {
+                            Image(systemName: "star.fill").foregroundStyle(Brand.star)
+                        }
+                    }
+                    .buttonStyle(OrderActionStyle())
+                }
+                action("orders.getHelp", "lifepreserver") { sheet = .help }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .sheet(isPresented: $tracking) {
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(l.t("orders.afterSales"))
+            if let why = detail.cancelRefusal {
+                Text(l.t(why))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            WarrantyClaimsList(detail: detail, reload: reload)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .sheet(item: $sheet, onDismiss: openNext) { which in
+            switch which {
+            case .track:
                 if let steps = detail.steps {
                     TrackOrderSheet(reference: reference, steps: steps, lines: detail.lines)
                 }
-            }
-            .sheet(isPresented: $refunding) {
+            case .refund:
                 RefundSheet(reference: reference, lines: refundable, done: { Task { await reload() } })
+            case .warranty:
+                WarrantySheet(reference: reference, detail: detail, done: { Task { await reload() } })
+            case .modify:
+                OrderModifySheet(reference: reference, detail: detail, done: { Task { await reload() } })
+            case .address:
+                OrderAddressSheet(reference: reference, detail: detail, done: { Task { await reload() } })
+            case .help:
+                OrderHelpSheet(reference: reference) { action in next = action }
             }
-            .onAppear {
-                // The screenshots' `track:` and `refund:` hooks; `rate` is the order's own.
-                guard let sheet = app.orderSheet, sheet == "track" || sheet == "refund" else { return }
-                app.orderSheet = nil
-                if sheet == "track" && trackable { tracking = true }
-                if sheet == "refund" && !refundable.isEmpty { refunding = true }
-            }
-            .alert(l.t("orders.cancelAsk"), isPresented: $asking) {
-                Button(l.t("orders.cancelOrder"), role: .destructive) { Task { await cancel() } }
-                Button(l.t("orders.keepOrder"), role: .cancel) {}
-            } message: {
-                Text(l.t("orders.cancelBody"))
-            }
+        }
+        .onAppear {
+            // The screenshots' hooks (`track:`, `refund:`, `warranty:`…); `rate` is the order's own.
+            guard let asked = app.orderSheet, asked != "rate", let which = Sheet(rawValue: asked) else { return }
+            app.orderSheet = nil
+            if offers(which) { sheet = which }
+        }
+        .alert(l.t("orders.cancelAsk"), isPresented: $asking) {
+            Button(l.t("orders.cancelOrder"), role: .destructive) { Task { await cancel() } }
+            Button(l.t("orders.keepOrder"), role: .cancel) {}
+        } message: {
+            Text(l.t("orders.cancelBody"))
+        }
+    }
+
+    private func action(_ key: String, _ symbol: String, run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Label(l.t(key), systemImage: symbol)
+        }
+        .buttonStyle(OrderActionStyle())
+    }
+
+    /// Whether this order offers what a sheet is for — a hook or an answer
+    /// pointing at something the order no longer has opens nothing.
+    private func offers(_ which: Sheet) -> Bool {
+        switch which {
+        case .track: return trackable
+        case .refund: return !refundable.isEmpty
+        case .warranty: return !claimable.isEmpty
+        case .modify: return detail.mayModify
+        case .address: return detail.changeAddress.changeable
+        case .help: return true
+        }
+    }
+
+    /// An answer from NetLet AI pointed at a panel or an act; it runs once the
+    /// help sheet is down, so two sheets are never asked for at once.
+    private func openNext() {
+        guard let action = next else { return }
+        next = nil
+        switch action {
+        case "cancel": if detail.cancel.cancellable { asking = true }
+        case "buyAgain": Task { await buyAgain() }
+        case "rate": onRate?()
+        case "track", "refund", "warranty", "modify", "address":
+            let target: Sheet = action == "track" ? .track : action == "refund" ? .refund : action == "warranty" ? .warranty : action == "modify" ? .modify : .address
+            if offers(target) { sheet = target }
+        default: return
         }
     }
 
@@ -82,6 +163,36 @@ struct OrderActionsBar: View {
             _ = try await app.services.api.call(API.cancelOrder, .init(reference: reference))
         }
         await reload()
+    }
+
+    /// Everything on the order still for sale back in the bag at today's
+    /// price, naming what could not be.
+    private func buyAgain() async {
+        rebuying = true
+        defer { rebuying = false }
+        do {
+            let answer = try await app.services.api.call(API.buyAgain, .init(reference: reference, cartId: app.cart.cartId))
+            if let id = answer.cartId, id != app.cart.cartId {
+                await app.cart.adopt(cartId: id)
+            } else {
+                await app.cart.restore()
+            }
+            guard answer.added > 0 else {
+                Haptics.refused()
+                app.toast(l.t("orders.buyAgainNone"))
+                return
+            }
+            Haptics.succeeded()
+            var said = l.t("orders.buyAgainDone", ["count": "\(answer.added)"])
+            if !answer.skipped.isEmpty {
+                said += "\n" + l.t("orders.buyAgainSkipped", ["items": answer.skipped.map(\.title).joined(separator: ", ")])
+            }
+            app.toast(said)
+        } catch {
+            Haptics.refused()
+            let failure = APIError.from(error)
+            if failure != .cancelled { app.toast(l.t(failure.messageKey(knownKey: Phrasebook.shared.has))) }
+        }
     }
 }
 

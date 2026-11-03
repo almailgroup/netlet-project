@@ -22,6 +22,8 @@ struct AccountView: View {
     @State private var orderPhotos: [String]?
     @State private var savedPhotos: [String]?
     @State private var points: Int?
+    /// The phone the driver calls, saved under Your profile — nil until asked.
+    @State private var phone: String??
 
     struct Holdings {
         var subscriptions = false
@@ -81,6 +83,8 @@ struct AccountView: View {
             VStack(alignment: .leading, spacing: 12) {
                 topRow
                 profileCard(user)
+                // Country, currency and language on the page itself, on the owner's word.
+                QuickSettingsCard()
                 MembershipCard()
                 HStack(alignment: .top, spacing: 12) {
                     previewTile(
@@ -150,7 +154,9 @@ struct AccountView: View {
         let api = app.services.api
         async let orders = try? api.call(API.orders, .init(page: 1, pageSize: 4))
         async let rewards = try? api.call(API.rewards)
+        async let details = try? app.services.account.profileDetails()
         await loadSaved()
+        if let found = await details { phone = .some(found.phone) } else if phone == nil { phone = .some(nil) }
         if let page = await orders {
             var seen = Set<String>()
             orderPhotos = page.rows.flatMap(\.summary.photos).filter { seen.insert($0).inserted }.prefix(4).map { $0 }
@@ -223,6 +229,22 @@ struct AccountView: View {
                     .foregroundStyle(Brand.muted)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                // The phone the driver calls, or a way to add one — the web's card.
+                if let saved = phone {
+                    if let number = saved, !number.isEmpty {
+                        Text("\u{2066}\(Self.shownPhone(number))\u{2069}")
+                            .font(.inter(14))
+                            .foregroundStyle(Brand.muted)
+                            .lineLimit(1)
+                    } else {
+                        Button(l.t("account.addPhone")) { app.push(.profile) }
+                            .font(.inter(14, .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .underline()
+                            .frame(minHeight: 32)
+                            .buttonStyle(.tap)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button {
@@ -240,6 +262,14 @@ struct AccountView: View {
         }
         .padding(16)
         .panel()
+    }
+
+    /// `+965 5012 3456`: the stored `+965` and eight digits, read in two fours
+    /// (`formatPhone`); anything else as it was saved.
+    static func shownPhone(_ stored: String) -> String {
+        let local = stored.hasPrefix("+965") ? String(stored.dropFirst(4)) : stored
+        guard local.count == 8, local.allSatisfy({ ("0"..."9").contains($0) }) else { return stored }
+        return "+965 \(local.prefix(4)) \(local.suffix(4))"
     }
 
     /// A tile with a title and the last few pictures of what is in it, or a
@@ -377,7 +407,7 @@ struct AccountView: View {
                     open(entry)
                 } label: {
                     rowLabel(symbol: entry.symbol, title: l.t(entry.label), waiting: badge(entry), iconColour: ProfileInk.icon,
-                             value: entry.id == "preferences" ? "\(l.t(l.current == .ar ? "account.arabic" : "account.english")) · \(l.currency)" : nil)
+                             value: nil)
                 }
                 .buttonStyle(.tap)
             }
@@ -715,10 +745,18 @@ private struct ProfileForm: View {
     @Environment(LanguageSettings.self) private var l
     @State private var choosingBirthday = false
     @State private var listingCountries = false
+    /// "Forgot your current password?": a six-digit code to the account's own
+    /// email, and the new password with it, on this card (on the owner's word).
+    @State private var recovering: Recovery = .idle
+
+    private enum Recovery { case idle, sending, sent }
 
     var body: some View {
         if security {
-            passwordCard
+            VStack(spacing: 16) {
+                passwordCard
+                recoverCard
+            }
         } else {
             profileCards
         }
@@ -734,6 +772,61 @@ private struct ProfileForm: View {
                 .fixedSize(horizontal: false, vertical: true)
         } action: {
             saveButton(.password, enabled: true) { _ = await model.savePassword() }
+        }
+    }
+
+    /// The way back in for somebody who no longer knows the current password:
+    /// the reset mail's code, typed here with the new one. Saving signs this
+    /// device in again, as the reset always does.
+    @ViewBuilder
+    private var recoverCard: some View {
+        if let user = app.session.user {
+            VStack(alignment: .leading, spacing: 12) {
+                if recovering == .sent {
+                    Text(l.t("account.recoverSent", ["email": "\u{2068}\(user.email)\u{2069}"]))
+                        .font(.inter(14))
+                        .foregroundStyle(Brand.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ResetByCodeFields(email: user.email, signedIn: { signed in
+                        app.session.updated(signed)
+                        Haptics.succeeded()
+                        app.toast(l.t("account.passwordChanged"))
+                        recovering = .idle
+                        model.currentPassword = ""
+                        model.newPassword = ""
+                    })
+                }
+                Button {
+                    Task { await sendCode(to: user.email) }
+                } label: {
+                    HStack(spacing: 8) {
+                        if recovering == .sending { ProgressView().tint(Brand.navy) }
+                        Text(l.t("account.forgotCurrent"))
+                    }
+                    .font(.inter(14, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .underline()
+                    .frame(minHeight: 44, alignment: .leading)
+                }
+                .buttonStyle(.tap)
+                .disabled(recovering == .sending)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .panel()
+        }
+    }
+
+    private func sendCode(to email: String) async {
+        recovering = .sending
+        do {
+            try await app.services.account.requestPasswordReset(email: email)
+            recovering = .sent
+        } catch {
+            Haptics.refused()
+            let failure = APIError.from(error)
+            recovering = .idle
+            if failure != .cancelled { app.toast(l.t(failure.messageKey(knownKey: Phrasebook.shared.has))) }
         }
     }
 

@@ -582,7 +582,7 @@ private struct ProductPage: View {
             }
             section("returns", symbol: "arrow.uturn.backward", title: l.t("product.returnsPolicy")) {
                 VStack(alignment: .leading, spacing: 14) {
-                    policyRow("arrow.uturn.backward", l.t("shipping.returns.title"), l.t("returns.window.body", ["days": "\(ReferenceData.shared.rules.returnWindowDays)"]), translated: true)
+                    policyRow("arrow.uturn.backward", l.t("shipping.returns.title"), l.t("returns.window.body", ["days": "\(app.returnWindowDays)"]), translated: true)
                     policyRow("shippingbox", "returns.condition.title", "returns.condition.body")
                     policyRow("wallet.pass", "returns.refund.title", "returns.refund.body")
                 }

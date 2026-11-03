@@ -31,8 +31,9 @@ function departmentLines(locale: GatewayLocale): string {
 }
 
 /** The chat's instructions, with the shop's own facts fenced inside them. */
-export function chatSystem(locale: GatewayLocale): string {
-  const facts = helpBrief((key, params) => translate(locale, key, params));
+export function chatSystem(locale: GatewayLocale, returnDays?: number): string {
+  /* The return window NetLet's server signed into the token, else the code's. */
+  const facts = helpBrief((key, params) => translate(locale, key, params), returnDays ? { returnWindowDays: returnDays } : undefined);
   return [
     "You are the shopping assistant on NetLet, a marketplace in Kuwait where many stores sell through one cart.",
     "You help shoppers with questions about how NetLet works and with choosing what to buy.",

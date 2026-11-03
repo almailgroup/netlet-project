@@ -131,6 +131,11 @@ type CartContextValue = {
    * been bought, until a reload.
    */
   refreshCart: () => Promise<void>;
+  /**
+   * Take up a bag the server filled — an order's "Buy again" — as this
+   * device's and the account's, and read it.
+   */
+  adoptCart: (id: string) => Promise<void>;
   proceedToCheckout: () => void;
 };
 
@@ -390,6 +395,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   /* In the queue, so a read cannot overtake a change still on its way. */
   const refreshCart = useCallback(() => enqueue({ kind: "refresh" }).catch(() => undefined), [enqueue]);
+  const adoptCart = useCallback(async (id: string) => {
+    if (id !== cartIdRef.current) {
+      setCartId(id);
+      if (signedInRef.current) updateProfileRef.current.mutate({ cartId: id });
+    }
+    await enqueue({ kind: "refresh" }).catch(() => undefined);
+  }, [enqueue, setCartId]);
 
   const clearCart = useCallback(() => {
     setCartId(null);
@@ -436,6 +448,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setDeliveryChoice,
       clearCart,
       refreshCart,
+      adoptCart,
       proceedToCheckout,
     }),
     [
@@ -455,6 +468,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setDeliveryChoice,
       clearCart,
       refreshCart,
+      adoptCart,
       proceedToCheckout,
     ]
   );

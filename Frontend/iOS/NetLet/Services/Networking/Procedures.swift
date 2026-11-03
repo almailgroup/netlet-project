@@ -193,6 +193,16 @@ enum API {
     static let verifyEmail = Procedure<Verify, User>(mutation: "auth.verifyEmail")
     static let resendCode = Procedure<Email, Acknowledged>(mutation: "auth.resendCode")
     static let requestPasswordReset = Procedure<Email, Acknowledged>(mutation: "auth.requestPasswordReset")
+
+    /// The reset mail's code and the new password, on one screen (`auth.resetWithCode`).
+    struct ResetWithCode: Encodable, Sendable {
+        let email: String
+        let code: String
+        let password: String
+        let remember: Bool
+    }
+
+    static let resetWithCode = Procedure<ResetWithCode, RegistrationResult>(mutation: "auth.resetWithCode")
     static let signOut = Procedure<NoInput, Acknowledged>(mutation: "auth.logout")
     static let updateName = Procedure<Name, User>(mutation: "auth.updateName")
 

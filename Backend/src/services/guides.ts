@@ -35,6 +35,7 @@ import { askModel, modelAvailable, parseObject } from "./gemini.js";
 import { auditActor } from "./inventory.js";
 import { takeHourlyAllowance } from "./rateLimit.js";
 import { getDb } from "./db.js";
+import { returnWindowDays } from "./settings.js";
 
 export type GuideProblem =
   | "guides.notFound"
@@ -257,7 +258,7 @@ export async function draftGuide(actor: Actor, topic: string, audience: GuideAud
   if (!(await modelAvailable())) throw new GuideRefused("drawing.off");
   if (!(await takeHourlyAllowance(actor.userId, "guideDraft", MAX_GUIDE_DRAFTS_PER_HOUR))) throw new GuideRefused("drawing.tooMany");
   const text = await askModel("guideDraft", {
-    system: guideDraftSystem(audience, (key, params) => translate("en", key, params)),
+    system: guideDraftSystem(audience, (key, params) => translate("en", key, params), await returnWindowDays()),
     prompt: guideDraftPrompt(flat),
     json: true,
     temperature: 0.4,

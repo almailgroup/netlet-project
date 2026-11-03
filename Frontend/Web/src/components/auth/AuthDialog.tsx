@@ -21,7 +21,7 @@ import { useEffect, useId, useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { logoImage } from "@/lib/brandAssets";
-import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
+import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { DiscButton } from "@/components/ui/DiscButton";
 import { AuthForm, type AuthMode } from "./AuthForm";
 
@@ -79,10 +79,11 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }: {
  */
 export function OrderFacts({ className = "", tone = "light" }: { className?: string; tone?: "light" | "dark" }) {
   const { t } = useTranslation();
+  const days = useReturnWindow();
   const facts = [
     { icon: Truck, label: t("checkout.builtForKuwait") },
     { icon: Wallet, label: t("home.payOnDelivery") },
-    { icon: RotateCcw, label: t("home.returnsWithin", { days: RETURN_WINDOW_DAYS }) },
+    { icon: RotateCcw, label: t("home.returnsWithin", { days }) },
   ];
   const dark = tone === "dark";
   return (

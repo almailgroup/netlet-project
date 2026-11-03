@@ -95,14 +95,14 @@ type Say = (key: MessageKey, params?: Record<string, string | number>) => string
  * a person reads before anybody else does, not a promise, which is why it is
  * short: a long map is one that goes stale in a line nobody checks.
  */
-function siteFacts(audience: GuideAudience, say: Say): string[] {
+function siteFacts(audience: GuideAudience, say: Say, returnDays: number): string[] {
   const shopper = [
-    `On a phone the bar at the foot of the screen has four tabs: ${say("nav.home")}, ${say("nav.profile")}, ${say("nav.cart")} and ${say("nav.categories")}. On a wide screen the header carries the delivery area, saved items, the language, the account and the cart.`,
+    `On a phone the bar at the foot of the screen has five tabs: ${say("nav.home")}, ${say("nav.categories")}, ${say("nav.deals")}, ${say("nav.profile")} and ${say("nav.cart")}. On a wide screen the header carries the delivery area, saved items, the language, the account and the cart.`,
     "Every shopping page has the search field at the top.",
     `A product card has "${say("product.addToCart")}" and "${say("product.buyNow")}". A product with sizes or colours asks for the option first.`,
     `${say("nav.profile")} opens the account: ${say("account.myOrders")} and ${say("footer.savedItems")}, then ${say("account.sectionReturns")}, ${say("address.book")}, ${say("account.sectionPayments")}, ${say("account.sectionWishlists")}, ${say("account.sectionReviews")}, ${say("account.sectionPreferences")} (the language, the currency and the notifications), ${say("footer.helpCentre")} and ${say("account.security")}. The pencil beside the name opens ${say("account.sectionProfile")}, and the bell at the top the notifications.`,
     `Checkout asks for the area, block, street and house, and a phone number for the driver, and is paid in cash on delivery. The button is "${say("checkout.placeOrder")}".`,
-    `A return is started from the order under ${say("account.myOrders")} ("${say("orders.requestRefund")}"), within ${RETURN_WINDOW_DAYS} days of delivery, and followed under ${say("account.sectionReturns")}.`,
+    `An order is opened from ${say("account.myOrders")}, and everything about it is done there: tracking it, a return or refund ("${say("orders.requestRefund")}", within ${returnDays} days of delivery, followed under ${say("account.sectionReturns")}), a warranty claim, buying it again, rating what arrived, and — before a driver collects it — cancelling it or an item, lowering a quantity or changing the address. "${say("orders.getHelp")}" answers questions about that order first and passes them to a person if needed.`,
     `The ${say("help.title")} page answers common questions and finds an order by its number and the email it was placed with.`,
   ];
   const seller = [
@@ -121,7 +121,7 @@ function siteFacts(audience: GuideAudience, say: Say): string[] {
  * rather than inventing a button, because a guide naming a control the shop
  * does not have is worse than no guide.
  */
-export function guideDraftSystem(audience: GuideAudience, say: Say): string {
+export function guideDraftSystem(audience: GuideAudience, say: Say, returnDays = RETURN_WINDOW_DAYS): string {
   return [
     "You write short how-to guides for NetLet, an online marketplace in Kuwait.",
     `The reader is a ${audience === "seller" ? "seller running a store on NetLet" : "shopper on NetLet"}.`,
@@ -133,9 +133,9 @@ export function guideDraftSystem(audience: GuideAudience, say: Say): string {
     'Answer with JSON only: {"title":"","titleAr":"","summary":"","summaryAr":"","steps":[{"title":"","titleAr":"","body":"","bodyAr":""}]}.',
     "",
     "Facts about NetLet:",
-    ...siteFacts(audience, say),
+    ...siteFacts(audience, say, returnDays),
     "",
-    helpBrief(say),
+    helpBrief(say, { returnWindowDays: returnDays }),
   ].join("\n");
 }
 

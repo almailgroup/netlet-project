@@ -67,6 +67,11 @@
           "need": "returns.handle"
         },
         {
+          "href": "/admin/warranty",
+          "label": "warranty.deskTitle",
+          "need": "returns.handle"
+        },
+        {
           "href": "/admin/claims",
           "label": "admin.claims",
           "need": [

@@ -54,7 +54,7 @@ export const GATEWAY_ROUTES = { chat: "/api/ai/chat", catalog: "/api/ai/catalog-
  * token's subject is `s:<task>`, so the Worker's ceiling and its log count
  * each feature apart, and a runaway loop in one cannot starve the others.
  */
-export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "reviewScreen", "arabicName", "makerPage", "photoCleanup", "tryOn", "guideDraft", "guideImage", "categorise", "returnRead"] as const;
+export const SERVER_TASKS = ["searchRefine", "recommendOrder", "photoSearch", "supportDraft", "reviewConcern", "reviewScreen", "arabicName", "makerPage", "photoCleanup", "tryOn", "guideDraft", "guideImage", "categorise", "returnRead", "orderHelp"] as const;
 export type ServerTask = (typeof SERVER_TASKS)[number];
 
 /**
@@ -85,6 +85,13 @@ export type GatewayClaims = {
   vendor: number | null;
   /** Expiry, in seconds since the epoch. */
   exp: number;
+  /**
+   * The return window an administrator set (`returns.windowDays`), on a chat
+   * token, so the assistant quotes today's figure — the Worker cannot read
+   * NetLet's settings. Absent on older tokens and other scopes: the code's
+   * default then.
+   */
+  returnDays?: number;
 };
 
 /* ------------------------------------------------------------------------ */
@@ -133,7 +140,8 @@ function isClaims(value: unknown): value is GatewayClaims {
     && (claims.scope === "server") === claims.sub.startsWith("s:")
     && (claims.scope !== "server" || SERVER_TASKS.includes(claims.sub.slice(2) as ServerTask))
     && (claims.vendor === null || (Number.isInteger(claims.vendor) && (claims.vendor as number) > 0))
-    && Number.isInteger(claims.exp);
+    && Number.isInteger(claims.exp)
+    && (claims.returnDays === undefined || (Number.isInteger(claims.returnDays) && (claims.returnDays as number) >= 1 && (claims.returnDays as number) <= 90));
 }
 
 /**

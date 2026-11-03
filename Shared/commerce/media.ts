@@ -46,6 +46,11 @@ export function isMediaPath(value: string): boolean {
   return MEDIA_PATH.test(value);
 }
 
+/** The stored id inside one of those paths: `/media/<id>.webp` → `<id>`. */
+export function mediaIdOf(path: string): string {
+  return path.slice("/media/".length).replace(/\.(?:webp|jpg)$/, "");
+}
+
 /** The path an uploaded photo is served at. */
 export function mediaPath(id: string, type: StoredType): string {
   return `/media/${id}.${type === "image/webp" ? "webp" : "jpg"}`;

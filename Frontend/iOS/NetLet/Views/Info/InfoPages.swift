@@ -287,7 +287,7 @@ struct ReturnsPolicyView: View {
     ]
 
     var body: some View {
-        InfoPage(title: l.t("returnsPage.title"), note: l.t("returnsPage.intro", ["days": "\(ReferenceData.shared.rules.returnWindowDays)"])) {
+        InfoPage(title: l.t("returnsPage.title"), note: l.t("returnsPage.intro", ["days": "\(app.returnWindowDays)"])) {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 8) {
                     Button(l.t("returnsPage.start")) { app.open(.orders) }
@@ -314,7 +314,7 @@ struct ReturnsPolicyView: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(l.t(title)).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
-                        Text(l.t(body, ["days": "\(ReferenceData.shared.rules.returnWindowDays)"]))
+                        Text(l.t(body, ["days": "\(app.returnWindowDays)"]))
                             .font(.inter(14))
                             .foregroundStyle(Brand.body)
                             .fixedSize(horizontal: false, vertical: true)
@@ -343,7 +343,8 @@ struct LegalView: View {
     var body: some View {
         let legal = SiteContent.shared?.legal
         let doc = legal?.documents[document.rawValue]
-        let figures = legal?.figures ?? [:]
+        // The return window is the administrator's setting, read live — the web's `useReturnWindow`.
+        let figures = (legal?.figures ?? [:]).merging(["days": "\(app.returnWindowDays)"]) { _, live in live }
         InfoPage(title: doc.map { l.t($0.title) } ?? "", note: doc.map { intro($0, figures: figures) }) {
             VStack(alignment: .leading, spacing: 20) {
                 if let updated = legal?.updated {

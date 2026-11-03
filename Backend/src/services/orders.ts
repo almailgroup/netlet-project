@@ -82,6 +82,7 @@ import { tellLineCancelled, tellOrderMoved, tellOrderPlaced, withProductAlerts }
 import { alertIfRiskyOrder, alertIfRiskyReferral } from "./fraud.js";
 import { isKept, type StillOwed } from "../../../Shared/commerce/collection.js";
 import { pinProblem, storedPin, type Pin } from "../../../Shared/commerce/geo.js";
+import { returnWindowDays } from "./settings.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -1035,6 +1036,7 @@ async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promi
     ? (await db.select({ orderItemId: reviews.orderItemId }).from(reviews).where(inArray(reviews.orderItemId, lines.map(line => line.id)))).map(row => row.orderItemId)
     : []);
   const now = new Date();
+  const windowDays = await returnWindowDays(db);
 
   const byOrder = new Map<number, typeof lines>();
   for (const line of lines) byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), line]);
@@ -1050,7 +1052,7 @@ async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promi
       first: lead ? { title: lead.productTitle, variant: lead.variantTitle } : null,
       photos: [...new Set(pictured.map(line => (line.productId === null ? undefined : photos.get(line.productId))).filter((url): url is string => Boolean(url)))].slice(0, PREVIEW_PHOTOS),
       progress: orderProgress(row, own),
-      refundable: own.filter(line => !held.has(line.id) && returnStateFor(row, line, now).returnable).length,
+      refundable: own.filter(line => !held.has(line.id) && returnStateFor(row, line, now, windowDays).returnable).length,
       reviewable: own.filter(line => eligibilityFor({ orderStatus: row.status, deliveredAt: line.deliveredAt, reviewed: reviewed.has(line.id) }).allowed).length,
     }];
   }));
@@ -1555,7 +1557,7 @@ export class OrderCancelRefused extends Error {
 }
 
 /**
- * The shopper cancels their own order while nothing in it has started
+ * The shopper cancels their own order before a driver has collected any of it
  * (`shopperCancelState`), on the owner's word.
  *
  * **One transaction, under a lock on the order's lines.** A store moving a
@@ -1602,11 +1604,12 @@ export async function cancelOrderForShopper(userId: number, reference: string): 
     const state = shopperCancelState(locked, lines);
     if (!state.cancellable) throw new OrderCancelRefused(state.reason);
 
-    const pending = lines.filter(line => line.fulfilment === "pending");
+    /* Everything still in the stores' hands — received or being packed. */
+    const pending = lines.filter(line => line.fulfilment === "pending" || line.fulfilment === "preparing");
     const moved = await tx
       .update(orderItems)
       .set({ fulfilment: "cancelled", deliveredAt: null })
-      .where(and(eq(orderItems.orderId, order.id), eq(orderItems.fulfilment, "pending")))
+      .where(and(eq(orderItems.orderId, order.id), inArray(orderItems.fulfilment, ["pending", "preparing"])))
       .returning({ id: orderItems.id });
     if (moved.length !== pending.length) throw new OrderCancelRefused("orders.cancelStarted");
 

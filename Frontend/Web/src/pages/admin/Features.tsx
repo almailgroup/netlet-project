@@ -24,7 +24,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import type { FeatureKey } from "@shared/features";
-import { normaliseSetting, type SettingKey } from "@shared/settings";
+import { normaliseSetting, SETTINGS, type SettingKey } from "@shared/settings";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
 
@@ -203,7 +203,8 @@ function Features() {
         </QueryGate>
       )}
 
-      <ReferralRates />
+      <SettingsCard title="returns.settingsTitle" intro="returns.settingsIntro" keys={["returns.windowDays"]} />
+      <SettingsCard title="settings.title" intro="settings.intro" keys={["referral.productPercent", "referral.invitePercent"]} />
 
       <ConfirmDialog
         open={confirming !== null}
@@ -222,14 +223,17 @@ function Features() {
 const SETTING_LABEL: Record<SettingKey, { label: MessageKey; hint: MessageKey }> = {
   "referral.productPercent": { label: "settings.productPercent", hint: "settings.productPercentHint" },
   "referral.invitePercent": { label: "settings.invitePercent", hint: "settings.invitePercentHint" },
+  "returns.windowDays": { label: "returns.windowDaysLabel", hint: "returns.windowDaysHint" },
 };
 
 /**
- * The referral programme's two rates (3.1.15), each saved on its own — the
- * numbers beside the switches, set without a deploy and recorded on the trail.
- * The box says what the server would refuse before Save is pressed.
+ * The numbers beside the switches, each saved on its own, set without a
+ * deploy and recorded on the trail: the referral programme's two rates
+ * (3.1.15), and the return window (on the owner's word, "controlled by super
+ * admin, like 14 days"). The box says what the server would refuse before
+ * Save is pressed.
  */
-function ReferralRates() {
+function SettingsCard({ title, intro, keys }: { title: MessageKey; intro: MessageKey; keys: SettingKey[] }) {
   const { t, tError } = useTranslation();
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
@@ -237,7 +241,7 @@ function ReferralRates() {
   const [drafts, setDrafts] = useState<Partial<Record<SettingKey, string>>>({});
   const save = trpc.features.setSetting.useMutation({
     onSuccess: (_reply, input) => {
-      toast.success(t("settings.saved"));
+      toast.success(t(SETTINGS[input.key as SettingKey].unit === "days" ? "settings.savedDays" : "settings.saved"));
       setDrafts(current => ({ ...current, [input.key]: undefined }));
       void utils.features.settings.invalidate();
     },
@@ -246,15 +250,16 @@ function ReferralRates() {
 
   return (
     <div className="mt-5">
-      <Card title={t("settings.title")} description={t("settings.intro")}>
+      <Card title={t(title)} description={t(intro)}>
         {settings.isLoading ? (
           <SkeletonCards label={t("admin.loading")} />
         ) : (
           <QueryGate queries={[settings]}>
             {() => (
               <ul className="-my-3 divide-y divide-[#eef1f5]">
-                {(settings.data ?? []).map(row => {
+                {(settings.data ?? []).filter(row => keys.includes(row.key as SettingKey)).map(row => {
                   const key = row.key as SettingKey;
+                  const days = SETTINGS[key].unit === "days";
                   const draft = drafts[key] ?? row.value;
                   const valid = normaliseSetting(key, draft) !== null;
                   const changed = valid && normaliseSetting(key, draft) !== row.value;
@@ -270,11 +275,11 @@ function ReferralRates() {
                         <Field
                           className="min-w-0 flex-1 basis-56"
                           label={t(SETTING_LABEL[key].label)}
-                          hint={t("settings.range", { min: row.min, max: row.max, default: row.defaultValue })}
-                          error={valid ? undefined : t("settings.badValue")}
+                          hint={t(days ? "settings.rangeDays" : "settings.range", { min: row.min, max: row.max, default: row.defaultValue })}
+                          error={valid ? undefined : t(days ? "settings.badDays" : "settings.badValue")}
                         >
                           <input
-                            inputMode="decimal"
+                            inputMode={days ? "numeric" : "decimal"}
                             dir="ltr"
                             value={draft}
                             onChange={event => setDrafts(current => ({ ...current, [key]: event.target.value }))}

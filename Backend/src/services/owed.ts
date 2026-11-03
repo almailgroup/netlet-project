@@ -32,6 +32,7 @@ export async function stillOwedFor(db: Db, orders: OwedOrder[]): Promise<Map<num
       destination: orderItems.destination,
       lineTotal: orderItems.lineTotal,
       fulfilment: orderItems.fulfilment,
+      deliveryChoice: orderItems.deliveryChoice,
     })
     .from(orderItems)
     .where(inArray(orderItems.orderId, orders.map(order => order.id)));
@@ -46,6 +47,7 @@ export async function stillOwedFor(db: Db, orders: OwedOrder[]): Promise<Map<num
           destinationLabel: (line.destination as { label?: string } | null)?.label ?? null,
           lineTotal: line.lineTotal,
           fulfilment: line.fulfilment,
+          choice: line.deliveryChoice,
         })),
     ));
   }

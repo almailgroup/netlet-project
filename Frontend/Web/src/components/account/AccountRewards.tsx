@@ -38,6 +38,7 @@ const REASON_LABEL: Record<string, MessageKey> = {
   cashed_out: "rewards.reasonCashedOut",
   admin_adjustment: "rewards.reasonAdminAdjustment",
   order_cancelled: "rewards.reasonOrderCancelled",
+  order_changed: "rewards.reasonOrderChanged",
   product_referral: "rewards.reasonProductReferral",
   invite_commission: "rewards.reasonInviteCommission",
   product_referral_reversal: "rewards.reasonProductReferralReversal",

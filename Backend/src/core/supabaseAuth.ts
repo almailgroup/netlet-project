@@ -457,6 +457,28 @@ export async function sendSupabasePasswordReset(email: string, _locale: "en" | "
   }
 }
 
+/**
+ * Checks the six-digit code the reset mail carries (`{{ .Token }}` in the
+ * "Reset Password" template, beside the link) and answers the short-lived
+ * access token it signs into — the same proof the link's token is, spent on
+ * the new password by `setPasswordFromLink` and on nothing else. A wrong and
+ * an expired code are both null, as a sign-up code's are.
+ */
+export async function verifySupabaseRecoveryCode(email: string, code: string): Promise<string | null> {
+  const response = await fetch(`${base()}/auth/v1/verify`, {
+    method: "POST",
+    headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({ type: "recovery", email, token: code }),
+  });
+  if ([400, 401, 403, 404, 410, 422].includes(response.status)) return null;
+  if (!response.ok) {
+    throw new Error(`Supabase recovery code check failed with HTTP ${response.status}: ${await reasonFrom(response)}`);
+  }
+  const body = (await response.json()) as { access_token?: string };
+  return typeof body.access_token === "string" && body.access_token ? body.access_token : null;
+}
+
 /** How setting a password from a reset link went. */
 export type LinkPasswordOutcome = "changed" | "expired" | "same" | "weak";
 

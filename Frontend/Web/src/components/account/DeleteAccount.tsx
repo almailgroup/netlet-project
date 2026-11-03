@@ -34,6 +34,7 @@ const BLOCKER_SENTENCE: Record<string, MessageKey> = {
   team: "account.deleteBlocked.team",
   orderOpen: "account.deleteBlocked.orderOpen",
   returnOpen: "account.deleteBlocked.returnOpen",
+  warrantyOpen: "account.deleteBlocked.warrantyOpen",
   cashOutOwed: "account.deleteBlocked.cashOutOwed",
 };
 

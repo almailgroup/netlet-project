@@ -10,6 +10,7 @@
  * terminates in the browser, no superjson serialization is involved — the values
  * returned here are handed straight to React Query.
  */
+import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { REFERENCE_RATES, RATES_AS_OF } from "@shared/commerce/currency";
 import { DEPARTMENTS } from "@shared/commerce/departments";
 import { correctionFor, productsInCategory, rankBySearch } from "@shared/commerce/browse";
@@ -203,6 +204,10 @@ function resolve(path: string, rawInput: unknown): unknown {
       const ids: string[] = Array.isArray(input.ids) ? input.ids.map(String) : [];
       return ids.flatMap(id => demoCatalog.filter(product => product.id === id));
     }
+
+    case "commerce.policy":
+      /* The code's own window: nobody has changed it in a demo. */
+      return { returnWindowDays: RETURN_WINDOW_DAYS };
 
     case "commerce.currencyRates":
       /* The reference table: a demo build reaches no feed. */
@@ -414,9 +419,28 @@ function resolve(path: string, rawInput: unknown): unknown {
       return onePage([]);
     case "orders.get":
       return null;
-    /* The demo holds no orders, so there is none to cancel. */
+    /* The demo holds no orders, so there is none to cancel, change or buy again. */
     case "orders.cancel":
+    case "orders.changeQuote":
+    case "orders.change":
+    case "orders.changeAddress":
+    case "orders.buyAgain":
+    case "warranty.file":
+    case "warranty.withdraw":
       throw new Error("orders.detailMissing");
+    /* Nor any warranty claim for a store to answer. */
+    case "warranty.list":
+      return [];
+    /* No model in a demo: "Get help" goes straight to a person. */
+    case "support.orderHelpAvailable":
+      return false;
+    case "support.orderHelp":
+      return { kind: "unavailable" };
+    case "warranty.waitingCount":
+      return 0;
+    case "warranty.decide":
+    case "warranty.complete":
+      throw new Error("warranty.notFound");
     case "orders.myReturns":
       return [];
     case "orders.onTheWay":
@@ -615,7 +639,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("platform.configure");
     /* The referral rates at their defaults; setting them is NetLet's. */
     case "features.settings":
-      return SETTING_KEYS.map(key => ({ key, value: SETTINGS[key].defaultValue, defaultValue: SETTINGS[key].defaultValue, min: SETTINGS[key].min, max: SETTINGS[key].max, updatedAt: null, updatedByEmail: null }));
+      return SETTING_KEYS.map(key => ({ key, value: SETTINGS[key].defaultValue, defaultValue: SETTINGS[key].defaultValue, min: SETTINGS[key].min, max: SETTINGS[key].max, unit: SETTINGS[key].unit, updatedAt: null, updatedByEmail: null }));
     case "features.setSetting":
       throw new Error("platform.configure");
     /* Payout runs (3.3.21): nothing is ever paid in the demo, so nothing is

@@ -44,7 +44,7 @@ import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js"
 import { netletCommissionFils, sharerIdFromCode, vendorAffiliateFils, type Pot } from "../../../Shared/commerce/affiliate.js";
 import { fromFils } from "../../../Shared/money.js";
 import { featureOn } from "./features.js";
-import { settingValue } from "./settings.js";
+import { returnWindowDays, settingValue } from "./settings.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -293,6 +293,8 @@ export async function creditReferralCommissions(db: Db, orderId: number, now = n
     .where(eq(orderItems.orderId, orderId));
   const kept = lines.filter(line => isKept(line.fulfilment));
   const rows: (typeof pointEntries.$inferInsert)[] = [];
+  /* Held for the return window the shop runs now, the administrator's figure. */
+  const windowDays = await returnWindowDays(db);
 
   for (const line of kept) {
     if (line.referrerId === null || line.referralRate === null || line.referrerId === order.userId) continue;
@@ -303,7 +305,7 @@ export async function creditReferralCommissions(db: Db, orderId: number, now = n
     const storeShare = order.affiliateId === null ? Number(vendorAffiliateFils(line.lineTotal, line.affiliateVendorPercent)) : 0;
     const points = referralSharePoints(fromFils(netletCommissionFils(line)), line.referralRate) + storeShare;
     if (points <= 0) continue;
-    rows.push({ userId: line.referrerId, points, reason: "product_referral", orderId, orderItemId: line.id, availableAt: maturesAt(line.deliveredAt, now) });
+    rows.push({ userId: line.referrerId, points, reason: "product_referral", orderId, orderItemId: line.id, availableAt: maturesAt(line.deliveredAt, now, windowDays) });
   }
 
   /* The invite pays from the first paid order on, so only a referral that has
@@ -321,7 +323,7 @@ export async function creditReferralCommissions(db: Db, orderId: number, now = n
         if (points <= 0) continue;
         /* No `referral_id`: that column's index allows one entry of a kind per
            referral, which is the welcome's rule. The line names the sale. */
-        rows.push({ userId: referral.referrerId, points, reason: "invite_commission", orderId, orderItemId: line.id, availableAt: maturesAt(line.deliveredAt, now) });
+        rows.push({ userId: referral.referrerId, points, reason: "invite_commission", orderId, orderItemId: line.id, availableAt: maturesAt(line.deliveredAt, now, windowDays) });
       }
     }
   }
@@ -358,7 +360,7 @@ export async function reverseReferralLine(db: Db, orderItemId: number): Promise<
  */
 export async function extendReferralHold(db: Db, orderItemIds: number[], deliveredAt: Date): Promise<void> {
   if (!orderItemIds.length) return;
-  const until = maturesAt(deliveredAt, deliveredAt);
+  const until = maturesAt(deliveredAt, deliveredAt, await returnWindowDays(db));
   const reasons: PointReason[] = [...COMMISSION_REASONS, ...COMMISSION_REASONS.map(reason => REVERSAL_OF[reason])];
   await db
     .update(pointEntries)

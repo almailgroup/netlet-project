@@ -101,6 +101,10 @@ export const POINT_REASONS = [
   /* Points spent on an order whose every line was cancelled before payment,
      given back when it closed. */
   "order_cancelled",
+  /* Points a shopper's own change to an order no longer needed — an item
+     cancelled or a quantity lowered before the driver collected it — given
+     back at once rather than spent on goods nobody is receiving. */
+  "order_changed",
   /* An affiliate's commission and its reversal on a refund (3.7), in the
      affiliate pot rather than the points one. */
   "affiliate_commission",

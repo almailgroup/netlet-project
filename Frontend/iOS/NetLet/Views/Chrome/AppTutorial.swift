@@ -227,6 +227,7 @@ private struct TutorialPage: View {
     let index: Int
     let active: Bool
     @State private var shown = false
+    @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
 
@@ -291,7 +292,7 @@ private struct TutorialPage: View {
             return l.t("ios.tutorial.ordersBody", [
                 "profile": l.t("nav.profile"),
                 "orders": l.t("account.myOrders"),
-                "days": "\(ReferenceData.shared.rules.returnWindowDays)",
+                "days": "\(app.returnWindowDays)",
             ])
         }
     }

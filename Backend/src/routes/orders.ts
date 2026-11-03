@@ -51,8 +51,31 @@ import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
 import { trackOrder, TrackingError } from "../services/tracking.js";
 import { checkVoucherAllowed, recordVoucherMiss } from "../services/rateLimit.js";
-import { returnStateFor, RETURN_WINDOW_DAYS } from "../../../Shared/commerce/returns.js";
+import { returnStateFor } from "../../../Shared/commerce/returns.js";
+import { returnWindowDays } from "../services/settings.js";
 import { shopperCancelState } from "../../../Shared/commerce/orderCancel.js";
+import { addressChangeState, lineMayChange, shopperChangeState } from "../../../Shared/commerce/orderChanges.js";
+import { applyOrderChange, buyAgain, changeOrderAddress, OrderChangeRefused, quoteOrderChange } from "../services/orderChanges.js";
+import { claimsForShopperOrder, warrantyStateForLines } from "../services/warranty.js";
+
+/** The lines a shopper asks to change: each named once, a quantity of nought taking it out. */
+const lineChanges = z
+  .array(z.object({ lineId: rowId, quantity: z.number().int().min(0).max(999) }))
+  .min(1)
+  .max(50)
+  .refine(changes => new Set(changes.map(change => change.lineId)).size === changes.length, { message: "orders.changeNothing" });
+
+/** A change's refusal, said as the message key the page turns into words. */
+async function changeGuard<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof OrderChangeRefused) {
+      throw new TRPCError({ code: error.reason === "orders.detailMissing" ? "NOT_FOUND" : "CONFLICT", message: error.reason });
+    }
+    throw error;
+  }
+}
 
 export const ordersRouter = router({
   /**
@@ -104,12 +127,16 @@ export const ordersRouter = router({
       if (!found) return null;
 
       const now = new Date();
+      /* The administrator's return window, so the button and the refusal agree. */
+      const windowDays = await returnWindowDays();
       /* The shopper's own reviews of these lines, so each says "Rate this
          item" or what was written and whether it is shown yet. */
       const reviewed = await myReviewsForLines(ctx.user.id, found.lines.map(line => line.id));
+      /* Whether each delivered item may be claimed on, and the store's own warranty words. */
+      const warrantyFor = await warrantyStateForLines(found.lines);
       return {
         order: orderForShopper(found.order),
-        windowDays: RETURN_WINDOW_DAYS,
+        windowDays,
         /* What can be done about each parcel once it is at the door — rate the
            delivery (3.4.4), report damage (3.4.2) — resolved with the server's
            clock for the reason the return window is. */
@@ -123,8 +150,15 @@ export const ordersRouter = router({
         /* Whether the shopper may take it back themselves, and if not why —
            the rule `orders.cancel` asks again under a lock. */
         cancel: shopperCancelState(found.order, found.lines),
+        /* What else can still be changed before a driver has it — an item, a
+           quantity, the address — each the rule `orders.change` and
+           `orders.changeAddress` ask again under a lock. */
+        change: shopperChangeState(found.order, found.lines),
+        changeAddress: addressChangeState(found.order, found.lines),
         /* Each parcel as steps for "Track order", with the store's estimate. */
         steps: await orderStepsFor(found.order, found.lines),
+        /* Warranty claims on its lines (migration 0072), newest first, with where each stands. */
+        warranty: await claimsForShopperOrder(ctx.user.id, found.order.id),
         lines: found.lines.map(line => ({
           ...lineForShopper(line),
           /*
@@ -142,10 +176,17 @@ export const ordersRouter = router({
             found.order,
             { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt },
             now,
+            windowDays,
           ),
           review: reviewed.get(line.id) ?? null,
           /* Whether it may be rated now — `eligibilityFor`, the rule `reviews.write` refuses with. */
           reviewEligibility: lineEligibility(found.order, line, reviewed.has(line.id)),
+          /* A warranty claim: whether one may be filed now, and what the store says it covers. */
+          warrantyEligibility: warrantyFor.get(line.id)?.eligibility ?? { allowed: false as const, reason: "warranty.notDelivered" as const },
+          warrantyTerms: warrantyFor.get(line.id)?.terms ?? null,
+          /* Whether the shopper may still cancel it or lower its quantity: in
+             the store's hands, unpaid, and not part of a set. */
+          changeable: found.order.status === "pending_payment" && lineMayChange(line) && line.bundleId === null,
         })),
       };
     }),
@@ -194,6 +235,34 @@ export const ordersRouter = router({
    * word). Scoped by account in the data layer, so another shopper's
    * reference is not found; refused with the reason once a store has begun.
    */
+  /**
+   * What a change would do — the lines, the figure the driver collects before
+   * and after, a store's fee a smaller order no longer clears, a code that no
+   * longer applies and stored value that goes back. Changes nothing.
+   */
+  changeQuote: protectedProcedure
+    .input(z.object({ reference: z.string().min(1).max(64), changes: lineChanges }))
+    .query(({ ctx, input }) => changeGuard(() => quoteOrderChange(ctx.user.id, input.reference, input.changes))),
+
+  /**
+   * Cancel items or lower quantities before a driver has them (on the owner's
+   * word), at the figure the quote showed: refused with `orders.changeMoved`
+   * if it no longer holds.
+   */
+  change: protectedProcedure
+    .input(z.object({ reference: z.string().min(1).max(64), changes: lineChanges, expectOwed: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/) }))
+    .mutation(({ ctx, input }) => changeGuard(() => applyOrderChange(ctx.user.id, input.reference, input.changes, input.expectOwed))),
+
+  /** Send the order to another of the shopper's saved addresses, while nothing going there has left. */
+  changeAddress: protectedProcedure
+    .input(z.object({ reference: z.string().min(1).max(64), addressId: rowId }))
+    .mutation(({ ctx, input }) => changeGuard(() => changeOrderAddress(ctx.user.id, input.reference, input.addressId))),
+
+  /** Everything on the order back in the bag at today's prices, naming what could not be. */
+  buyAgain: protectedProcedure
+    .input(z.object({ reference: z.string().min(1).max(64), cartId: z.string().min(1).max(64).nullable() }))
+    .mutation(({ ctx, input }) => changeGuard(() => buyAgain(ctx.user.id, input.reference, input.cartId))),
+
   cancel: protectedProcedure
     .input(z.object({ reference: z.string().min(1).max(64) }))
     .mutation(async ({ ctx, input }) => {

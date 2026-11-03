@@ -12,7 +12,7 @@
  */
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
-import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
+import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { privatePageMeta } from "@shared/seo";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ArrowRight, CircleCheck, LifeBuoy, MessageSquareText, PackageOpen, RefreshCw, Shirt, Wallet } from "lucide-react";
@@ -50,10 +50,11 @@ function Rows({ rows }: { rows: typeof DECIDED }) {
 
 export default function Returns() {
   const { t } = useTranslation();
+  const days = useReturnWindow();
   usePageMeta(privatePageMeta("Returns and exchanges"));
   return (
     <PageBody width="reading">
-        <PageHeading title={t("returnsPage.title")} note={t("returnsPage.intro", { days: RETURN_WINDOW_DAYS })} />
+        <PageHeading title={t("returnsPage.title")} note={t("returnsPage.intro", { days })} />
 
         <div className={`${CARD} p-5 sm:p-6`}>
           <Link href="/account/orders" className="glass glass-navy pressable inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-bold">

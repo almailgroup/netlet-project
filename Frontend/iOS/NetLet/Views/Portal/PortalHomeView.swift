@@ -99,6 +99,7 @@ struct PortalHomeView: View {
         add("dispatch.waiting", waiting["parcels"], "/admin/dispatch")
         add("admin.claimsOpenTile", waiting["claims"], "/admin/claims")
         add("admin.returnsWaiting", waiting["returns"], "/admin/returns")
+        add("warranty.waitingTile", waiting["warranty"], "/admin/warranty")
         add("admin.affiliatesWaiting", waiting["affiliates"], "/admin/affiliates")
         add("commission.waitingTile", waiting["proposals"], "/admin/commission")
         add("admin.bannersWaiting", waiting["banners"], "/admin/ads")
@@ -140,6 +141,7 @@ struct PortalHomeView: View {
             async let changes = count("platform.viewAll") { try await api.call(API.sellerChanges, .init(limit: 1)).unseen }
             async let applications = count("platform.manageUsers") { try await api.call(API.applicationsWaiting) }
             async let returns = count("returns.handle") { try await api.call(API.returnsWaiting) }
+            async let warranty = count("returns.handle") { try await api.call(API.warrantyWaiting) }
             async let affiliates = count("affiliate.manage") { try await api.call(API.affiliatesWaiting) }
             async let proposals = count("vendor.setCommission") { try await api.call(API.proposalsWaiting) }
             async let banners = count("product.review") { try await api.call(API.bannersWaiting) }
@@ -155,7 +157,7 @@ struct PortalHomeView: View {
             let alerts = await fraud
             waiting = [
                 "parcels": await parcels, "claims": await claims, "offers": await offers, "sellerChanges": await changes,
-                "applications": await applications, "returns": await returns, "affiliates": await affiliates, "proposals": await proposals,
+                "applications": await applications, "returns": await returns, "warranty": await warranty, "affiliates": await affiliates, "proposals": await proposals,
                 "banners": await banners, "support": await support,
                 "toReceive": floor?.toReceive, "toPick": floor?.toPick,
                 "fraudOrders": alerts?.orders, "fraudWatch": alerts?.watch,

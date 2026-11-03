@@ -325,6 +325,12 @@ private struct AuthForm: View {
             Text(l.t("auth.resetSentTitle")).font(.inter(24, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
             Text(l.t("auth.resetSentBody", ["email": email])).font(.inter(15)).foregroundStyle(Brand.ink)
             Text(l.t("auth.resetSentTip")).font(.footnote).foregroundStyle(Brand.muted)
+            // The code and the new password here, so nobody leaves for the mail's link.
+            ResetByCodeFields(email: email, signedIn: { user in await app.signedIn(user) }) { address, typed in
+                model.waitForSignUpCode(email: address, password: typed)
+            }
+            .id(email)
+            .padding(.top, 6)
             Button(model.resendWait > 0 ? l.t("auth.resendIn", ["seconds": "\(model.resendWait)"]) : l.t("auth.resend")) {
                 Task { await model.resend() }
             }

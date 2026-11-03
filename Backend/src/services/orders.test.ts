@@ -1752,15 +1752,18 @@ describe("cancelOrderForShopper", () => {
     expect(await stockOf(ids.kettleVariant)).toBe(4);
   });
 
-  it("refuses once a store has started, and changes nothing", async () => {
+  /* Until a driver has it, on the owner's word: being packed is still the store's. */
+  it("refuses once a driver has collected any of it, and changes nothing", async () => {
     const { placed, rows } = await shopperOrder([{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }]);
-    await ordersModule.setLineFulfilment(acmeActor(), rows.find(row => row.vendorId === ids.acme)!.id, "preparing");
+    const lamp = rows.find(row => row.vendorId === ids.acme)!.id;
+    await ordersModule.setLineFulfilment(acmeActor(), lamp, "preparing");
+    await ordersModule.setLineFulfilment(acmeActor(), lamp, "shipped");
 
     await expect(ordersModule.cancelOrderForShopper(ids.shopper, placed.order.reference)).rejects.toMatchObject({ reason: "orders.cancelStarted" });
     expect(await statusOf(placed.order.id)).toBe("pending_payment");
     expect(await stockOf(ids.kettleVariant)).toBe(3);
     const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
-    expect(lines.map(line => line.fulfilment).sort()).toEqual(["pending", "preparing"]);
+    expect(lines.map(line => line.fulfilment).sort()).toEqual(["pending", "shipped"]);
   });
 
   it("refuses a second press, a collected order and somebody else's", async () => {

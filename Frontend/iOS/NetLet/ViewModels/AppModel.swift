@@ -203,6 +203,10 @@ final class AppModel {
     /// Whether a model can read a photo for search (`search.photoAvailable`),
     /// so the camera is drawn only where it does something.
     private(set) var photoSearchReady = false
+    /// How many days after delivery a return may be asked for — the
+    /// administrator's setting (`commerce.policy`), read at launch, so the
+    /// product page, checkout and the returns page quote what the server refuses by.
+    private(set) var returnWindowDays = ReferenceData.shared.rules.returnWindowDays
     /// The code a member of the affiliate programme shares on a product's
     /// address (3.7), or nil for anybody whose links would earn nothing — the
     /// web's `useMemberCode`. Asked on sign-in and after joining.
@@ -442,11 +446,12 @@ final class AppModel {
         case "orders":
             selectedTab = .account
             accountPath = NavigationPath([Route.orders])
-        case "order", "track", "refund", "rate":
-            // `track:`, `refund:` and `rate:` open the order with that sheet up.
+        case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress":
+            // `track:`, `refund:`, `rate:`, `warranty:`, `modify:`, `help:` and
+            // `orderAddress:` open the order with that sheet up.
             guard let value else { return }
             selectedTab = .account
-            orderSheet = parts[0] == "order" ? nil : parts[0]
+            orderSheet = parts[0] == "order" ? nil : parts[0] == "orderAddress" ? "address" : parts[0]
             accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
         case "profile":
             selectedTab = .account
@@ -645,7 +650,9 @@ final class AppModel {
         async let states = try? services.api.call(API.features)
         async let available = try? services.api.call(API.aiAvailable)
         async let photo = try? services.api.call(API.photoAvailable)
+        async let policy = try? services.api.call(API.returnPolicy)
         if let states = await states { features = states }
+        if let days = await policy?.returnWindowDays, days > 0 { returnWindowDays = days }
         ai = await available ?? AIAvailability(chat: false, catalog: false)
         photoSearchReady = await photo?.available ?? false
     }

@@ -19,6 +19,7 @@ import { gatewayConfigured, gatewayOrigin, guestSubject } from "../core/aiGatewa
 import { featureOn } from "./features.js";
 import { can, type Actor } from "../../../Shared/inventory/permissions.js";
 import { TOKEN_TTL_SECONDS, signGatewayToken, type GatewayScope } from "../../../Shared/ai/gateway.js";
+import { returnWindowDays } from "./settings.js";
 
 export type GatewaySession =
   | { available: false }
@@ -32,7 +33,9 @@ export async function gatewayAvailable(): Promise<boolean> {
 async function session(scope: GatewayScope, sub: string, vendor: number | null): Promise<GatewaySession> {
   if (!(await gatewayAvailable())) return { available: false };
   const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
-  const token = await signGatewayToken({ v: 1, scope, sub, vendor, exp }, ENV.aiGatewaySecret);
+  /* The chat quotes the return window, which only NetLet's server can read. */
+  const returnDays = scope === "chat" ? await returnWindowDays() : undefined;
+  const token = await signGatewayToken({ v: 1, scope, sub, vendor, exp, ...(returnDays ? { returnDays } : {}) }, ENV.aiGatewaySecret);
   return { available: true, url: gatewayOrigin()!, token, expiresAt: exp * 1000 };
 }
 

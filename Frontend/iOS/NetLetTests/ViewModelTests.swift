@@ -237,6 +237,39 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertEqual(model.passwordProblem, "auth.passwordRequired")
     }
 
+    /// The reset's code and the new password: held to the floor before
+    /// anything is sent, a wrong code said on the code box, and the right one
+    /// signing in — or handing a sign-up still waiting to its own code step.
+    func testAResetByCodeChecksFirstAndSignsIn() async {
+        let account = FakeAccountService()
+        let model = ResetByCodeModel(email: "noura@shop.test", account: account)
+        model.code = "12"
+        model.password = "short"
+        let refused = await model.finish()
+        XCTAssertNil(refused)
+        XCTAssertEqual(model.codeProblem, "auth.codeShape")
+        XCTAssertEqual(model.passwordProblem, "auth.ruleLength")
+        XCTAssertTrue(account.codeResets.isEmpty, "nothing is sent the server would refuse")
+
+        model.code = "١٢٣٤٥٦"
+        model.password = "a long new password"
+        let wrong = await model.finish()
+        XCTAssertNil(wrong)
+        XCTAssertEqual(account.codeResets.last?.code, "123456", "Arabic-Indic digits are read as digits")
+        XCTAssertEqual(model.refusal, "auth.codeWrong")
+        XCTAssertTrue(model.refusalIsCode)
+        model.codeChanged()
+        XCTAssertNil(model.refusal, "the refusal leaves with the fix")
+
+        account.resetWithCodeResult = .success(.signedIn(FakeAccountService.user))
+        let signed = await model.finish()
+        XCTAssertEqual(signed, .signedIn(FakeAccountService.user))
+
+        account.resetWithCodeResult = .success(.verify(email: "noura@shop.test"))
+        let waiting = await model.finish()
+        XCTAssertEqual(waiting, .verify(email: "noura@shop.test", password: "a long new password"))
+    }
+
     func testAWrongPasswordOffersTheReset() async {
         let model = AuthViewModel(account: FakeAccountService())
         model.email = "noura@shop.test"

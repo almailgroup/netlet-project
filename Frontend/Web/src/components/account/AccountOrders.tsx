@@ -27,7 +27,7 @@ import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
-import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
+import { useReturnWindow } from "@/hooks/useReturnWindow";
 import type { OrderProgress } from "@shared/commerce/orderProgress";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ChevronDown, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Star, Truck, type LucideIcon } from "lucide-react";
@@ -341,7 +341,17 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
 
         return (
           <>
-          <OrderActions reference={reference} detail={data} trackFirst={trackFirst} refundFirst={refundFirst} />
+          <OrderActions
+            reference={reference}
+            detail={data}
+            trackFirst={trackFirst}
+            refundFirst={refundFirst}
+            onRate={() => {
+              const button = firstRate.current;
+              button?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+              button?.focus({ preventScroll: true });
+            }}
+          />
           <ul className="space-y-4">
             {data.lines.map(line => {
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;
@@ -442,6 +452,7 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
  */
 function EmptyOrders() {
   const { t } = useTranslation();
+  const days = useReturnWindow();
   return (
     <div className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-6 sm:p-8">
       <span className="grid size-12 place-items-center rounded-2xl bg-[#e7edf5] text-[#0a285a]">
@@ -449,7 +460,7 @@ function EmptyOrders() {
       </span>
       <h3 className="type-product mt-4 text-lg text-[#0a285a]">{t("orders.emptyTitle")}</h3>
       <p className="mt-2 max-w-prose text-sm leading-6 ink-muted">{t("orders.emptyBody")}</p>
-      <p className="mt-4 max-w-prose text-xs leading-5 ink-muted">{t("returns.emptyNote", { days: String(RETURN_WINDOW_DAYS) })}</p>
+      <p className="mt-4 max-w-prose text-xs leading-5 ink-muted">{t("returns.emptyNote", { days: String(days) })}</p>
     </div>
   );
 }

@@ -99,7 +99,8 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   recommendations: { entries: [], audience: "shopper", defaultOn: true },
   boughtTogether: { entries: [], audience: "shopper", defaultOn: true },
   priceOffers: { entries: ["offers.request"], audience: "everyone", defaultOn: true },
-  returns: { entries: ["orders.requestReturn"], audience: "everyone", defaultOn: true },
+  /* After-sales: a return or refund, and a warranty claim (migration 0072). */
+  returns: { entries: ["orders.requestReturn", "warranty.file"], audience: "everyone", defaultOn: true },
   deliveryRatings: { entries: ["orders.rateDelivery"], audience: "shopper", defaultOn: true },
   damageClaims: { entries: ["orders.claimDamage", "dispatch.claims.file"], audience: "everyone", defaultOn: true },
   /* The public surfaces close — the phone lookup above all, which is the one

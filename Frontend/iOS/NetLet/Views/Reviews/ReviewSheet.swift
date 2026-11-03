@@ -34,7 +34,6 @@ struct ReviewSheet: View {
     @State private var title = ""
     @State private var words = ""
     @State private var photos: [String] = []
-    @State private var picked: [PhotosPickerItem] = []
     @State private var uploading = 0
     @State private var problem: Problem?
     @State private var sending = false
@@ -43,7 +42,6 @@ struct ReviewSheet: View {
     private enum Problem { case rating, words }
 
     private var rules: Rules.Account { ReferenceData.shared.rules.accountRules }
-    private var room: Int { max(0, rules.maxReviewPhotos - photos.count - uploading) }
 
     var body: some View {
         NavigationStack {
@@ -65,7 +63,13 @@ struct ReviewSheet: View {
                             : words.count > rules.maxReviewBody ? l.t("ios.tooLong", ["max": "\(rules.maxReviewBody)"]) : nil,
                         axis: .vertical
                     )
-                    photoRow
+                    ShopperPhotoStrip(
+                        photos: $photos,
+                        uploading: $uploading,
+                        max: rules.maxReviewPhotos,
+                        label: l.t("review.photosLabel"),
+                        hint: l.t("review.photosHint", ["max": "\(rules.maxReviewPhotos)"])
+                    )
                     Button {
                         Task { await submit() }
                     } label: {
@@ -106,12 +110,6 @@ struct ReviewSheet: View {
         .onChange(of: rating) { _, value in if problem == .rating, value > 0 { problem = nil } }
         .onChange(of: words) { _, _ in if problem == .words, ContactFilter.findings("\(title)\n\(words)").isEmpty { problem = nil } }
         .onChange(of: title) { _, _ in if problem == .words, ContactFilter.findings("\(title)\n\(words)").isEmpty { problem = nil } }
-        .onChange(of: picked) { _, items in
-            guard !items.isEmpty else { return }
-            let chosen = Array(items.prefix(room))
-            picked = []
-            Task { await upload(chosen) }
-        }
         .confirmationDialog(l.t("review.deleteWarning", ["name": target.productTitle]), isPresented: $confirming, titleVisibility: .visible) {
             Button(l.t("review.delete"), role: .destructive) {
                 guard let id = target.review?.id else { return }
@@ -169,80 +167,6 @@ struct ReviewSheet: View {
             }
             if problem == .rating {
                 Text(l.t("review.ratingRequired")).font(.inter(13, .semibold)).foregroundStyle(Brand.danger)
-            }
-        }
-    }
-
-    private var photoRow: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(l.t("review.photosLabel")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
-            Text(l.t("review.photosHint", ["max": "\(rules.maxReviewPhotos)"]))
-                .font(.inter(12))
-                .foregroundStyle(Brand.muted)
-                .fixedSize(horizontal: false, vertical: true)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(Array(photos.enumerated()), id: \.element) { index, photo in
-                        RemoteImage(reference: photo)
-                            .frame(width: 80, height: 80)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(alignment: .topTrailing) {
-                                Button {
-                                    photos.removeAll { $0 == photo }
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(Brand.navy)
-                                        .frame(width: 26, height: 26)
-                                        .background(Circle().fill(Color.white))
-                                        .overlay(Circle().stroke(Brand.line, lineWidth: 1))
-                                }
-                                .buttonStyle(.tap)
-                                .padding(4)
-                                .accessibilityLabel(l.t("review.removePhoto", ["index": "\(index + 1)"]))
-                            }
-                    }
-                    ForEach(0..<uploading, id: \.self) { _ in
-                        ProgressView()
-                            .tint(Brand.navy)
-                            .frame(width: 80, height: 80)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
-                            .accessibilityLabel(l.t("review.uploading"))
-                    }
-                    if room > 0 {
-                        PhotosPicker(selection: $picked, maxSelectionCount: room, matching: .images) {
-                            VStack(spacing: 4) {
-                                Image(systemName: "photo.badge.plus").font(.system(size: 20))
-                                Text(l.t("review.addPhoto")).font(.inter(11, .bold)).multilineTextAlignment(.center)
-                            }
-                            .foregroundStyle(Brand.navy)
-                            .frame(width: 80, height: 80)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, style: StrokeStyle(lineWidth: 1, dash: [4])))
-                        }
-                    }
-                }
-                .padding(.vertical, 6)
-            }
-        }
-    }
-
-    private func upload(_ items: [PhotosPickerItem]) async {
-        for item in items {
-            uploading += 1
-            defer { uploading -= 1 }
-            do {
-                guard let data = try await item.loadTransferable(type: Data.self) else { throw ImagePreparation.Problem.unreadable }
-                let jpeg = try ImagePreparation.jpeg(from: data, rules: ReferenceData.shared.rules.media)
-                let uploaded = try await app.services.seller.uploadReviewPhoto(jpeg: jpeg)
-                if photos.count < rules.maxReviewPhotos { photos.append(uploaded.url) }
-            } catch ImagePreparation.Problem.tooSmall {
-                Haptics.refused()
-                app.toast(l.t("media.tooSmall"))
-            } catch {
-                Haptics.refused()
-                let failure = APIError.from(error)
-                let key = failure.messageKey(knownKey: Phrasebook.shared.has)
-                app.toast(l.t(key == "error.serverProblem" ? "review.photoFailed" : key))
             }
         }
     }

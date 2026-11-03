@@ -13,7 +13,7 @@
  */
 import { eq } from "drizzle-orm";
 import { platformSettings, users } from "../../database/schema.js";
-import { normaliseSetting, resolveSettings, SETTING_KEYS, SETTINGS, type SettingKey } from "../../../Shared/settings.js";
+import { normaliseSetting, resolveSettings, returnWindowDaysOf, SETTING_KEYS, SETTINGS, type SettingKey } from "../../../Shared/settings.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
@@ -55,6 +55,7 @@ export async function listSettings(actor: Actor) {
     defaultValue: SETTINGS[key].defaultValue,
     min: SETTINGS[key].min,
     max: SETTINGS[key].max,
+    unit: SETTINGS[key].unit,
     updatedAt: byKey.get(key)?.updatedAt ?? null,
     updatedByEmail: byKey.get(key)?.updatedByEmail ?? null,
   }));
@@ -92,4 +93,14 @@ export async function setSetting(actor: Actor, key: SettingKey, value: string): 
     after: { value: normalised },
   });
   return normalised;
+}
+
+/**
+ * How many days after delivery a return may be asked for — the administrator's
+ * figure (`returns.windowDays`), or the code's fourteen. Read wherever a
+ * return is offered or refused, so the button and the API move together the
+ * moment it is changed.
+ */
+export async function returnWindowDays(db?: Db | null): Promise<number> {
+  return returnWindowDaysOf({ "returns.windowDays": await settingValue("returns.windowDays", db) });
 }

@@ -28,10 +28,17 @@
  *
  * **Only the rows somebody needs, on the owner's word** ("I only want the
  * options that are 100 percent needed"). Returns and Payment methods joined
- * the first card; the language and the currency, which were two rows of their
- * own, are inside Preferences, and its row names both ("English · KWD") so
- * neither is out of sight; Price requests and Subscribe & Save are rows only
- * for somebody who has one, since for everybody else they open an empty page.
+ * the first card; Price requests and Subscribe & Save are rows only for
+ * somebody who has one, since for everybody else they open an empty page.
+ *
+ * **Account information and the quick settings lead, on the owner's word**
+ * ("organize the customer's personal information and clearly display name,
+ * email and phone"; "country, currency and language clearly visible and
+ * directly accessible, rather than hidden inside Preferences"). The first
+ * card names the shopper, the email and the phone (or offers to add one),
+ * with the pencil to change them; `QuickSettings` follows it, each of its
+ * three rows changed where it is drawn, and Preferences keeps the delivery
+ * area and the notices.
  *
  * The tiles' pictures are what was ordered (`orders.list`'s own photos, the
  * newest orders first) and what was saved (`useProductsByIds`, the hearts in
@@ -44,7 +51,8 @@ import { MembershipCard } from "@/components/account/MembershipCard";
 import { Thumb } from "@/components/product/Thumb";
 import { PointsCoin } from "@/components/ui/PointsCoin";
 import { CountBadge } from "@/components/ui/CountBadge";
-import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
+import { QuickSettings } from "@/components/account/QuickSettings";
+import { formatPhone } from "@shared/commerce/wishlist";
 import { useFeature } from "@/hooks/useFeature";
 import { formatCount } from "@/lib/format";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -128,8 +136,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
   onSignOut: () => void;
 }) {
   const { t, locale } = useTranslation();
-  const currency = useDisplayCurrency();
   const signals = useAccountSignals();
+  const details = trpc.customer.details.get.useQuery(undefined, { staleTime: 60_000 });
   const { savedIds } = useCustomer();
   const orders = trpc.orders.list.useQuery({ pageSize: 4 }, { staleTime: 60_000 });
   const saved = useProductsByIds(savedIds.slice(0, 4));
@@ -181,6 +189,12 @@ export function AccountHome({ user, has, badge, onSignOut }: {
             <bdi>{user.name?.trim() || t("account.noName")}</bdi>
           </p>
           <p className="mt-0.5 truncate text-[14px] ink-muted"><bdi dir="ltr">{user.email}</bdi></p>
+          {/* The phone the driver calls, saved under Your profile — or a way to add one. */}
+          {details.data?.phone ? (
+            <p className="mt-0.5 truncate text-[14px] ink-muted"><bdi dir="ltr">{formatPhone(details.data.phone).startsWith("+") ? formatPhone(details.data.phone) : `+965 ${formatPhone(details.data.phone)}`}</bdi></p>
+          ) : details.isSuccess ? (
+            <Link href="/account/details" className="mt-0.5 inline-block text-[14px] font-semibold text-[#0a285a] underline underline-offset-2">{t("account.addPhone")}</Link>
+          ) : null}
         </div>
         <Link
           href="/account/details"
@@ -191,6 +205,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           <Pencil className="size-5" aria-hidden />
         </Link>
       </section>
+
+      <QuickSettings />
 
       {/* Only for a member (4.1): nobody can buy one yet. */}
       <MembershipCard />
@@ -256,11 +272,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
                       <ChevronRight className={CHEVRON} aria-hidden />
                     </button>
                   ) : (
-                    <RowLink
-                      row={row}
-                      waiting={badge(row.id)}
-                      value={row.id === "preferences" ? `${t(locale === "ar" ? "account.arabic" : "account.english")} · ${currency.code}` : null}
-                    />
+                    <RowLink row={row} waiting={badge(row.id)} />
                   )}
                 </li>
               ))}

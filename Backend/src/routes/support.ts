@@ -28,6 +28,8 @@ import { draftAvailable, draftReply } from "../services/supportDraft.js";
 import { resolveActor } from "../services/inventory.js";
 import { rowId } from "../core/schemas.js";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
+import { askAboutOrder, orderHelpAvailable } from "../services/orderHelp.js";
+import { MAX_ORDER_HELP_QUESTION, ORDER_HELP_TURNS } from "../../../Shared/commerce/orderHelp.js";
 
 async function guard<T>(work: () => Promise<T>): Promise<T> {
   try {
@@ -65,6 +67,23 @@ export const supportRouter = router({
       address: ENV.invoiceIssuerAddress,
     }),
   })),
+
+  /** Whether "Get help with this order" can answer with NetLet AI before a person. */
+  orderHelpAvailable: protectedProcedure.query(() => orderHelpAvailable()),
+
+  /**
+   * NetLet AI's answer about one of the shopper's own orders, from the order's
+   * facts (on the owner's word: "let the AI resolve the issue before any real
+   * reaction"). The facts are the server's own read; the turns are the
+   * conversation so far, the last the shopper's question.
+   */
+  orderHelp: protectedProcedure
+    .input(z.object({
+      reference: z.string().trim().min(1).max(64),
+      locale: z.enum(["en", "ar"]).default("en"),
+      turns: z.array(z.object({ role: z.enum(["shopper", "assistant"]), text: z.string().max(MAX_ORDER_HELP_QUESTION * 4) })).min(1).max(ORDER_HELP_TURNS),
+    }))
+    .mutation(({ ctx, input }) => askAboutOrder(ctx.user.id, input)),
 
   open: protectedProcedure
     .input(z.object({ topic: z.enum(SUPPORT_TOPICS), orderReference: z.string().trim().min(1).max(64).nullish(), body }))

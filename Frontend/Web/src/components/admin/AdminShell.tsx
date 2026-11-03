@@ -69,6 +69,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin/dispatch": <Truck className="size-4" />,
   "/admin/fulfilment": <Warehouse className="size-4" />,
   "/admin/returns": <RotateCcw className="size-4" />,
+  "/admin/warranty": <ShieldCheck className="size-4" />,
   "/admin/claims": <ShieldAlert className="size-4" />,
   "/admin/couriers": <Building2 className="size-4" />,
   "/admin/offers": <Handshake className="size-4" />,

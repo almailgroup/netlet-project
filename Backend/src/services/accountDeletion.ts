@@ -37,6 +37,7 @@ import {
   orders,
   pointEntries,
   returnRequests,
+  warrantyClaims,
   staffGrants,
   users,
   vendorMembers,
@@ -48,7 +49,7 @@ import { storeFor } from "../core/passwordStore.js";
 import { getDb } from "./db.js";
 import { balanceFor } from "./referral.js";
 
-export const DELETION_BLOCKERS = ["admin", "team", "orderOpen", "returnOpen", "cashOutOwed"] as const;
+export const DELETION_BLOCKERS = ["admin", "team", "orderOpen", "returnOpen", "warrantyOpen", "cashOutOwed"] as const;
 export type DeletionBlocker = (typeof DELETION_BLOCKERS)[number];
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -65,7 +66,7 @@ async function blockersFor(db: Reader, user: Pick<User, "id" | "role">): Promise
   if (user.role === "admin") found.push("admin");
 
   const exists = async (query: Promise<unknown[]>) => (await query).length > 0;
-  const [vendor, courier, grant, order, ret, cashOut] = await Promise.all([
+  const [vendor, courier, grant, order, ret, claim, cashOut] = await Promise.all([
     exists(db.select({ id: vendorMembers.userId }).from(vendorMembers).where(eq(vendorMembers.userId, user.id)).limit(1)),
     exists(db.select({ id: courierMembers.userId }).from(courierMembers).where(eq(courierMembers.userId, user.id)).limit(1)),
     exists(db.select({ id: staffGrants.userId }).from(staffGrants).where(eq(staffGrants.userId, user.id)).limit(1)),
@@ -86,6 +87,13 @@ async function blockersFor(db: Reader, user: Pick<User, "id" | "role">): Promise
         .where(and(eq(returnRequests.userId, user.id), inArray(returnRequests.status, [...OPEN_RETURN_STATUSES])))
         .limit(1),
     ),
+    /* A warranty claim a store is still answering or repairing: its outcome is the shopper's to read. */
+    exists(
+      db.select({ id: warrantyClaims.id })
+        .from(warrantyClaims)
+        .where(and(eq(warrantyClaims.userId, user.id), inArray(warrantyClaims.status, ["open", "accepted"])))
+        .limit(1),
+    ),
     exists(
       db.select({ id: pointEntries.id })
         .from(pointEntries)
@@ -96,6 +104,7 @@ async function blockersFor(db: Reader, user: Pick<User, "id" | "role">): Promise
   if (vendor || courier || grant) found.push("team");
   if (order) found.push("orderOpen");
   if (ret) found.push("returnOpen");
+  if (claim) found.push("warrantyOpen");
   if (cashOut) found.push("cashOutOwed");
   return found;
 }
@@ -147,6 +156,15 @@ export async function deleteAccount(user: User): Promise<DeletionOutcome> {
     if (photosTable?.present) {
       await tx.execute(sql`delete from media_files where uploaded_by = ${user.id} and id in (
         select rp.media_id from review_photos rp join reviews r on r.id = rp.review_id where r.user_id = ${user.id})`);
+    }
+    /* A warranty claim's photos are the shopper's too (migration 0072). */
+    const [claimsTable] = await tx
+      .select({ present: sql<boolean>`to_regclass('public.warranty_claims') is not null` })
+      .from(users)
+      .where(eq(users.id, user.id));
+    if (claimsTable?.present) {
+      await tx.execute(sql`delete from media_files where uploaded_by = ${user.id} and id in (
+        select jsonb_array_elements_text(wc.photos) from warranty_claims wc where wc.user_id = ${user.id})`);
     }
     await tx.delete(users).where(eq(users.id, user.id));
     return { deleted: true } as const;

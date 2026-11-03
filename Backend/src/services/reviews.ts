@@ -26,7 +26,7 @@ import { askModel, modelAvailable, parseObject } from "./gemini.js";
 import { takeHourlyAllowance } from "./rateLimit.js";
 import { isMissingTable, describeError, violatesUnique } from "../core/describeError.js";
 import { contactFindings } from "../../../Shared/commerce/contactFilter.js";
-import { isMediaPath, mediaPath, type StoredType } from "../../../Shared/commerce/media.js";
+import { isMediaPath, mediaIdOf, mediaPath, type StoredType } from "../../../Shared/commerce/media.js";
 import { IMAGE_TYPES, MAX_IMAGE_BASE64, type CatalogImage } from "../../../Shared/ai/gateway.js";
 import {
   eligibilityFor,
@@ -90,7 +90,6 @@ export async function photosFor(reviewIds: number[], database?: Db): Promise<Map
 }
 
 /** The upload id inside a `/media/<id>.<ext>` path. */
-const mediaIdOf = (path: string) => path.slice("/media/".length).replace(/\.(?:webp|jpg)$/, "");
 
 /**
  * The photos a shopper is attaching, held to what they may attach: at most

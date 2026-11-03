@@ -28,7 +28,8 @@ import { gatewayErrorMessage } from "@/lib/aiGateway";
 import { useAIChat } from "@/hooks/useAIChat";
 import { ChatAnswer } from "@/components/assistant/ChatAnswer";
 import { contactFindings, type ContactKind } from "@shared/commerce/contactFilter";
-import { HELP_GROUPS, MAX_HELP_QUESTION } from "@shared/commerce/helpArticles";
+import { HELP_GROUPS, helpParams, MAX_HELP_QUESTION } from "@shared/commerce/helpArticles";
+import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { phoneLink, whatsappLink } from "@shared/commerce/support";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
@@ -161,6 +162,7 @@ function Contact() {
 
 function Answers() {
   const { t } = useTranslation();
+  const policy = { returnWindowDays: useReturnWindow() };
   return (
     <div className="mt-8 space-y-6">
       {HELP_GROUPS.map(group => (
@@ -174,7 +176,7 @@ function Answers() {
                   <ChevronDown className="size-4 shrink-0 text-[#536b8c] transition-transform group-open:rotate-180" aria-hidden />
                 </summary>
                 <div className="pb-4 text-[14px] leading-6 text-[#404553]">
-                  <p>{t(entry.answer, entry.params)}</p>
+                  <p>{t(entry.answer, helpParams(entry, policy))}</p>
                   {entry.link ? (
                     <Link href={entry.link.href} className="mt-2 inline-flex items-center gap-1 font-bold ink-accent hover:underline">
                       {t(entry.link.label)}<ArrowRight className="size-3.5 rtl:-scale-x-100" aria-hidden />

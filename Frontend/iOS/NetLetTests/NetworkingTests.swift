@@ -363,6 +363,94 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(OrderDetail.self, from: data), "an order without its record is not an order")
     }
 
+    /// The opened order as an after-sales centre (the web's `OrderActions`):
+    /// each action is drawn from the server's own answer. A paid, delivered
+    /// order can be claimed on and bought again and changes nothing else; a
+    /// pending one can be modified, re-addressed and cancelled; a claim says
+    /// where it stands.
+    func testTheAfterSalesCentreIsTheServersAnswers() async throws {
+        let paidAnswer = try await client.call(API.order, .init(reference: "NL-20261001-J7MWY"))
+        let paid = try XCTUnwrap(paidAnswer)
+        XCTAssertFalse(paid.change.changeable)
+        XCTAssertEqual(paid.change.reason, "orders.changePaid")
+        XCTAssertFalse(paid.changeAddress.changeable)
+        XCTAssertFalse(paid.mayModify, "a paid order has been to the door")
+        XCTAssertEqual(paid.warrantyClaimable.map(\.id), paid.lines.map(\.id), "what arrived can be claimed on")
+        XCTAssertTrue(paid.mayBuyAgain)
+        XCTAssertTrue(paid.warranty.isEmpty)
+
+        let waiting = TRPCClient(configuration: APIConfiguration(baseURL: URL(string: "https://demo.invalid")!), transport: DemoTransport(variant: "pending"))
+        let pendingAnswer = try await waiting.call(API.order, .init(reference: "NL-AS-PENDING"))
+        let pending = try XCTUnwrap(pendingAnswer)
+        XCTAssertTrue(pending.change.changeable)
+        XCTAssertTrue(pending.changeAddress.changeable)
+        XCTAssertTrue(pending.cancel.cancellable, "a line being prepared still cancels")
+        XCTAssertEqual(pending.changeableLines.count, 2)
+        XCTAssertTrue(pending.mayModify)
+        XCTAssertTrue(pending.warrantyClaimable.isEmpty, "nothing has arrived to claim on")
+        XCTAssertEqual(pending.lines.first?.warrantyEligibility?.reason, "warranty.notDelivered")
+
+        let filed = TRPCClient(configuration: APIConfiguration(baseURL: URL(string: "https://demo.invalid")!), transport: DemoTransport(variant: "claimed"))
+        let claimedAnswer = try await filed.call(API.order, .init(reference: "NL-WALK-001"))
+        let claimed = try XCTUnwrap(claimedAnswer)
+        let claim = try XCTUnwrap(claimed.warranty.first)
+        XCTAssertEqual(claim.stage, "waiting")
+        XCTAssertTrue(claim.mayWithdraw, "nobody has answered it yet")
+        XCTAssertEqual(WarrantyClaim.stageKey(claim.stage), "warranty.stageWaiting")
+        XCTAssertEqual(claimed.lines.first { $0.id == claim.orderItemId }?.warrantyEligibility?.reason, "warranty.openClaim")
+        XCTAssertEqual(claimed.warrantyClaimable.count, claimed.lines.count - 1, "one claim open per item")
+
+        // Quote then apply: the figure the driver collects before and after.
+        let quote = try await client.call(API.changeQuote, .init(reference: "NL-AS-PENDING", changes: [.init(lineId: 27, quantity: 2)]))
+        XCTAssertEqual(quote.lines.first?.from, 3)
+        XCTAssertEqual(quote.lines.first?.to, 2)
+        XCTAssertEqual(quote.owedBefore - quote.owedAfter, Money(fils: 24_375), "one lamp fewer to pay for")
+        XCTAssertTrue(quote.addedFees.isEmpty)
+        XCTAssertFalse(quote.codeLost)
+        _ = try await client.call(API.changeOrder, .init(reference: "NL-AS-PENDING", changes: [.init(lineId: 27, quantity: 2)], expectOwed: quote.owedAfter.amount))
+        let moved = try await client.call(API.changeOrderAddress, .init(reference: "NL-AS-PENDING", addressId: 2))
+        XCTAssertEqual(moved.owed, quote.owedAfter, "a store charges the same anywhere in Kuwait")
+        let again = try await client.call(API.buyAgain, .init(reference: "NL-WALK-001", cartId: nil))
+        XCTAssertEqual(again.added, 2)
+        XCTAssertNotNil(again.cartId)
+        let policy = try await client.call(API.returnPolicy)
+        XCTAssertEqual(policy.returnWindowDays, 14)
+
+        // Get help: no gateway here, so straight to a person.
+        let helpOn = try await client.call(API.orderHelpAvailable)
+        XCTAssertFalse(helpOn)
+        let help = try await client.call(API.orderHelp, .init(reference: "NL-AS-PENDING", locale: "en", turns: [.init(role: "shopper", text: "Where is my order?")]))
+        XCTAssertEqual(help.kind, "unavailable")
+
+        // The warranty desk: the shopper by first name alone, and what may be done.
+        _ = try await client.call(API.fileWarranty, .init(reference: "NL-WALK-001", orderItemId: 7, problem: "The screen flickers and goes black.", photos: []))
+        let desk = try await client.call(API.warrantyDesk, .init(waiting: true))
+        XCTAssertEqual(desk.first?.actions, ["accept", "decline"])
+        XCTAssertEqual(desk.first?.shopper, "Noura")
+        let waitingCount = try await client.call(API.warrantyWaiting)
+        XCTAssertEqual(waitingCount, 1)
+        _ = try await client.call(API.decideWarranty, .init(id: 2, accept: true, remedy: "repair", response: ""))
+        _ = try await client.call(API.completeWarranty, .init(id: 2, note: ""))
+        _ = try await client.call(API.withdrawWarranty, .init(id: 3))
+
+        // The return window is a setting of whole days beside the referral rates.
+        let settings = try await client.call(API.platformSettings)
+        let window = try XCTUnwrap(settings.first { $0.key == "returns.windowDays" })
+        XCTAssertTrue(window.isDays)
+        XCTAssertEqual(window.normalise("21"), "21")
+        XCTAssertNil(window.normalise("21.5"), "a window is whole days")
+        XCTAssertNil(window.normalise("0"))
+        XCTAssertNil(window.normalise("91"))
+        XCTAssertEqual(settings.first { $0.key == "referral.productPercent" }?.normalise("15"), "15.00")
+    }
+
+    /// The reset mail's code and a new password sign in (`auth.resetWithCode`).
+    func testAResetByCodeSignsIn() async throws {
+        let answer = try await client.call(API.resetWithCode, .init(email: "noura@example.test", code: "123456", password: "a-new-password", remember: true))
+        guard case .signedIn(let user) = answer else { return XCTFail("the reset signs in") }
+        XCTAssertEqual(user.email, "noura@example.test")
+    }
+
     func testTheAssistantIsDrawnOnlyWithAGatewayBehindIt() async throws {
         let available = try await client.call(API.aiAvailable)
         XCTAssertTrue(available.chat)

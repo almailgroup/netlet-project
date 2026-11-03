@@ -177,6 +177,16 @@ final class AuthViewModel {
         startCountdown()
     }
 
+    /// The reset's code signed into a sign-up still waiting on its own code:
+    /// the code step takes it from here, the server having sent one.
+    func waitForSignUpCode(email address: String, password typed: String) {
+        code = ""
+        submitted = false
+        refusal = nil
+        step = .code(email: address, password: typed, name: nil, fromRegister: false)
+        startCountdown()
+    }
+
     /// "Use a different email": back to the form, with what was typed.
     func backToForm() {
         step = .form

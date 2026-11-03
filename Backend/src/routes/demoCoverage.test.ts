@@ -35,6 +35,8 @@ const NOT_IN_DEMO = new Set([
   "auth.requestPasswordReset",
   // Reached only from a reset link in a mail the demo never sent.
   "auth.completeReset",
+  // Reached only with the code in that same mail.
+  "auth.resetWithCode",
   "auth.me",
   "search.refine",
 ]);

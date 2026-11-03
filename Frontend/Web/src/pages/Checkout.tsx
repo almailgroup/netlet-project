@@ -60,7 +60,7 @@ import { bagGroups, type BagGroup } from "@/lib/bagGroups";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { Banknote, CreditCard, Info, LoaderCircle, PackageCheck, RotateCcw, ShoppingBag, Smartphone, Store, Truck, Wallet } from "lucide-react";
-import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
+import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { cleanParts, hasParts, missingParts, partsProblems } from "@shared/commerce/kuwaitAddress";
 import { addressLineOf } from "@shared/commerce/addresses";
 import { arrivalFor, isDeliverySpeed, slowestSpeed, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
@@ -74,6 +74,7 @@ export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
   const { cart, refreshCart, settling, syncing } = useCart();
   const { t, tError, locale } = useTranslation();
+  const returnDays = useReturnWindow();
   const money = useMoney();
   const reading = useDisplayCurrency();
   const items = cart?.items ?? [];
@@ -318,7 +319,7 @@ export default function Checkout() {
                 </button>
               ) : null}
               <ul className="mt-4 space-y-1.5 border-t border-[#e6e9ef] pt-3 text-[12px] ink-muted">
-                <li className="flex items-center gap-2"><RotateCcw className="size-3.5 shrink-0" aria-hidden />{t("home.returnsWithin", { days: RETURN_WINDOW_DAYS })}</li>
+                <li className="flex items-center gap-2"><RotateCcw className="size-3.5 shrink-0" aria-hidden />{t("home.returnsWithin", { days: returnDays })}</li>
                 <li className="flex items-center gap-2"><Truck className="size-3.5 shrink-0 rtl:-scale-x-100" aria-hidden />{t("checkout.parcelsNote")}</li>
               </ul>
             </aside>

@@ -88,10 +88,6 @@ describe("plural forms", () => {
  */
 describe("sentences written for a constant", () => {
   it.each([
-    ["returns.howTo", RETURN_WINDOW_DAYS, "many", "يوماً"],
-    ["home.returnsWithin", RETURN_WINDOW_DAYS, "many", "يوماً"],
-    ["returnsPage.intro", RETURN_WINDOW_DAYS, "many", "يومًا"],
-    ["ios.tutorial.ordersBody", RETURN_WINDOW_DAYS, "many", "يوماً"],
     ["offers.sent", ASK_WINDOW_DAYS, "few", "أيام"],
     ["delivery.ratingClosed", DELIVERY_RATING_WINDOW_DAYS, "many", "يوماً"],
     ["claims.windowClosed", CLAIM_WINDOW_DAYS, "few", "أيام"],
@@ -100,5 +96,37 @@ describe("sentences written for a constant", () => {
   ] as const)("%s says %i in the right form", (key, value, band, word) => {
     expect(pluralCategory("ar", value)).toBe(band);
     expect(ar[key]).toContain(`{days} ${word}`);
+  });
+});
+
+/*
+ * The return window is an administrator's figure now (`returns.windowDays`,
+ * one to ninety days), so every sentence quoting it reads right at any of
+ * them — not only at the code's fourteen.
+ */
+describe("the return window at any figure", () => {
+  const KEYS = [
+    "returns.emptyNote", "returns.howTo", "help.a.returns", "returnsPage.intro", "home.returnsWithin",
+    "support.answerReturnClosed", "support.answerReturnPolicy", "returns.howToPaused", "terms.returns.window",
+    "sellerTerms.returns.window", "returns.window.body", "ios.tutorial.ordersBody",
+  ] as const;
+  it.each(KEYS)("%s", key => {
+    for (const days of [1, 2, 3, 10, 11, RETURN_WINDOW_DAYS, 90]) {
+      const params = { days, reference: "NL-1", date: "1 Jan", profile: "P", orders: "O" };
+      const arabic = translate("ar", key, params);
+      const english = translate("en", key, params);
+      if (days === 1) {
+        expect(arabic).toContain("يوم واحد");
+        expect(english).toContain("1 day");
+        expect(english).not.toContain("1 days");
+      } else if (days === 2) {
+        expect(arabic).toMatch(/يومان|يومين/);
+      } else if (days <= 10) {
+        expect(arabic).toContain(`${days} أيام`);
+      } else {
+        expect(arabic).toMatch(new RegExp(`${days} (يوماً|يومًا)`));
+      }
+      expect(arabic).not.toContain("{days}");
+    }
   });
 });

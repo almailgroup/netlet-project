@@ -1,39 +1,63 @@
 /**
- * What a shopper can do about an opened order, on the owner's word: track it,
- * cancel it while nothing has started, and ask for a refund on what arrived.
+ * The opened order as an after-sales centre, on the owner's word: "each
+ * order's detail page should function as a complete after-sales service
+ * center", with only the actions this order offers now.
  *
- * **Nothing here decides.** Whether the order can be cancelled is the server's
- * answer (`cancel`, from `shopperCancelState`), whether an item can be sent
- * back is the return window the server resolved per line, and the steps are
- * `stepsForOrder`'s — this file draws them and sends the presses.
+ * **Nothing here decides.** Each action is drawn from the server's own answer
+ * about this order — `cancel` (`shopperCancelState`), `change` and
+ * `changeAddress` (`Shared/commerce/orderChanges.ts`), each line's return
+ * window, warranty eligibility and review eligibility — so the page offers
+ * exactly what the API accepts, and the server asks every question again
+ * under a lock when the button is pressed.
  *
- * - **Track order** opens the order's parcels as steps — placed, being
- *   prepared, on the way, delivered — one line of steps per store, since a
- *   basket from three stores is three parcels. The dates drawn are the facts
- *   (placed, arrived); a date still to come is the store's estimate and says
- *   so. While a parcel is on the road the live map is under its steps, and
- *   the panel opens by itself.
- * - **Cancel order** asks first, in `ConfirmDialog`, and says what comes back.
- *   Once a store has started, the button is gone and a sentence says why and
- *   what to do instead — a missing button is not an answer.
- * - **Request a refund** asks which of the items still inside their return
- *   window, then why, and sends one return request per item, the per-item
- *   form's own call with the refund chosen.
+ * - **Track order** — each parcel as steps, the live map while one is on the road.
+ * - **Return / refund** — items still inside the return window (the
+ *   administrator's figure), one request per item; gone once the window shuts.
+ * - **Warranty** — a claim on something that stopped working, followed here.
+ * - **Buy again** — everything still for sale back in the bag at today's
+ *   price, naming what is not.
+ * - **Change address**, **Modify order**, **Cancel** — while no driver has it:
+ *   another saved address; a lower quantity or an item taken out, priced
+ *   before anything changes; the whole order. Once a driver has collected
+ *   part of it, receive it and return it — said in a sentence, never a button
+ *   that refuses.
+ * - **Rate & review** — what arrived and was paid for.
+ * - **Get help with this order** — NetLet AI from this order's facts, then a person.
  */
 import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
-import { Check, CircleX, PackageSearch, RotateCcw, Truck, Zap } from "lucide-react";
+import {
+  Check,
+  CircleX,
+  LifeBuoy,
+  MapPin,
+  PackageSearch,
+  PencilLine,
+  RotateCcw,
+  ShieldCheck,
+  ShoppingBag,
+  Star,
+  Truck,
+  Zap,
+} from "lucide-react";
+import { useLocation } from "wouter";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
 import { Thumb } from "@/components/product/Thumb";
 import { TrackParcels } from "@/components/account/TrackParcels";
 import { mayRequestReturn, REASON_LABEL, type Detail } from "@/components/account/LineReturn";
+import { OrderModify } from "@/components/account/OrderModify";
+import { OrderAddress } from "@/components/account/OrderAddress";
+import { WarrantyClaims, WarrantyForm } from "@/components/account/OrderWarranty";
+import { OrderHelp } from "@/components/account/OrderHelp";
+import { useCart } from "@/contexts/CartContext";
 import { useFeature } from "@/hooks/useFeature";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useShortDayFormat } from "@/hooks/useDateFormat";
 import { trpc } from "@/lib/trpc";
 import { MAX_RETURN_NOTE, RETURN_REASONS, type ReturnReason } from "@shared/commerce/returnRequests";
 import { TRACK_STEPS, type ParcelTrack, type TrackStep } from "@shared/commerce/orderTracking";
+import type { OrderHelpAction } from "@shared/commerce/orderHelp";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 const STEP_LABEL: Record<TrackStep, MessageKey> = {
@@ -44,51 +68,79 @@ const STEP_LABEL: Record<TrackStep, MessageKey> = {
 };
 
 /** A store's name inside one of our sentences keeps its own direction. */
-const isolate = (text: string) => `⁨${text}⁩`;
+const isolate = (text: string) => `\u2068${text}\u2069`;
 
 const ACTION = "glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9";
 
-export function OrderActions({ reference, detail, trackFirst = false, refundFirst = false }: {
+type Panel = "track" | "refund" | "warranty" | "modify" | "address" | "help";
+
+export function OrderActions({ reference, detail, trackFirst = false, refundFirst = false, onRate }: {
   reference: string;
   detail: Detail;
   trackFirst?: boolean;
   /** Opened from the list row's "Request a refund", or `&refund=1`: the form is open, in view and focused. */
   refundFirst?: boolean;
+  /** Rate & review: the order's first item to rate, in view and focused. */
+  onRate?: () => void;
 }) {
   const { t, tError } = useTranslation();
   const utils = trpc.useUtils();
   const returnsOn = useFeature("returns");
   const ids = useId();
-  const [tracking, setTracking] = useState(() => trackFirst || detail.steps.parcels.some(parcel => parcel.step === "onTheWay"));
-  const [refunding, setRefunding] = useState(refundFirst);
+  const [, navigate] = useLocation();
+  const { cartId, adoptCart } = useCart();
+  const [panel, setPanel] = useState<Panel | null>(() =>
+    refundFirst ? "refund" : trackFirst || detail.steps.parcels.some(parcel => parcel.step === "onTheWay") ? "track" : null,
+  );
   const [asking, setAsking] = useState(false);
 
   const refundable = returnsOn ? detail.lines.filter(line => mayRequestReturn(line, detail.returns)) : [];
+  const claimable = returnsOn ? detail.lines.filter(line => line.warrantyEligibility.allowed) : [];
+  const changeable = detail.change.changeable && detail.lines.some(line => line.changeable);
+  const rateable = detail.lines.some(line => !line.review && line.reviewEligibility.allowed);
+  const rebuyable = detail.lines.some(line => line.variantId !== null);
+
   /* Opened for the refund: the form is brought into view with its first box
      focused, since the press that asked for it is on the list above. */
   useEffect(() => {
     if (!refundFirst) return;
-    const panel = document.getElementById(`${ids}-refund`);
-    panel?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-    panel?.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
+    const region = document.getElementById(`${ids}-panel`);
+    region?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    region?.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
   }, [refundFirst, ids]);
+
   const refresh = () => {
     void utils.orders.get.invalidate({ reference });
     void utils.orders.list.invalidate();
     void utils.orders.onTheWay.invalidate();
   };
   const cancel = trpc.orders.cancel.useMutation({
-    onSuccess: () => {
-      setAsking(false);
-      toast.success(t("orders.cancelDone"));
-      refresh();
-    },
-    onError: error => {
-      setAsking(false);
-      toast.error(tError(error.message));
-      refresh();
-    },
+    onSuccess: () => { setAsking(false); toast.success(t("orders.cancelDone")); refresh(); },
+    onError: error => { setAsking(false); toast.error(tError(error.message)); refresh(); },
   });
+  const again = trpc.orders.buyAgain.useMutation({
+    onSuccess: async answer => {
+      if (answer.cartId) await adoptCart(answer.cartId);
+      if (answer.added > 0) {
+        toast.success(t("orders.buyAgainDone", { count: answer.added }), {
+          description: answer.skipped.length ? t("orders.buyAgainSkipped", { items: answer.skipped.map(skip => skip.title).join(", ") }) : undefined,
+          action: { label: t("product.viewCart"), onClick: () => navigate("/cart") },
+        });
+      } else {
+        toast.error(t("orders.buyAgainNone"));
+      }
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
+
+  const toggle = (next: Panel) => setPanel(current => (current === next ? null : next));
+  /* What an answer from NetLet AI points at: that panel, or that act. */
+  const act = (action: OrderHelpAction) => {
+    if (action === "cancel") { setAsking(true); return; }
+    if (action === "buyAgain") { again.mutate({ reference, cartId }); return; }
+    if (action === "rate") { onRate?.(); return; }
+    setPanel(action === "track" ? "track" : action === "refund" ? "refund" : action === "warranty" ? "warranty" : action === "modify" ? "modify" : "address");
+  };
 
   /* Said only while the order is still coming: an order that is over needs
      no sentence about why it cannot be cancelled. */
@@ -97,51 +149,57 @@ export function OrderActions({ reference, detail, trackFirst = false, refundFirs
     ? detail.cancel.reason
     : null;
 
+  const button = (key: Panel, icon: React.ReactNode, label: MessageKey, tone = "") => (
+    <button type="button" aria-expanded={panel === key} aria-controls={`${ids}-panel`} onClick={() => toggle(key)} className={`${ACTION} ${tone} ${panel === key ? "ring-2 ring-[#0a285a]/40" : ""}`}>
+      {icon}{t(label)}
+    </button>
+  );
+
   return (
     <div className="mb-4">
+      <h4 className="sr-only">{t("orders.afterSales")}</h4>
       <div className="flex flex-wrap gap-2">
-        {detail.steps.cancelled ? null : (
-          <button
-            type="button"
-            aria-expanded={tracking}
-            aria-controls={`${ids}-track`}
-            onClick={() => setTracking(open => !open)}
-            className={ACTION}
-          >
-            <Truck className="size-4 rtl:-scale-x-100" aria-hidden />{t("orders.track")}
-          </button>
-        )}
-        {refundable.length > 0 ? (
-          <button
-            type="button"
-            aria-expanded={refunding}
-            aria-controls={`${ids}-refund`}
-            onClick={() => setRefunding(open => !open)}
-            className={ACTION}
-          >
-            <RotateCcw className="size-4 rtl:-scale-x-100" aria-hidden />{t("orders.requestRefund")}
+        {detail.steps.cancelled ? null : button("track", <Truck className="size-4 rtl:-scale-x-100" aria-hidden />, "orders.track")}
+        {refundable.length > 0 ? button("refund", <RotateCcw className="size-4 rtl:-scale-x-100" aria-hidden />, "orders.requestRefund") : null}
+        {claimable.length > 0 ? button("warranty", <ShieldCheck className="size-4" aria-hidden />, "warranty.title") : null}
+        {rebuyable ? (
+          <button type="button" onClick={() => again.mutate({ reference, cartId })} disabled={again.isPending} className={ACTION}>
+            <ShoppingBag className="size-4" aria-hidden />{t("orders.buyAgain")}
           </button>
         ) : null}
+        {detail.changeAddress.changeable ? button("address", <MapPin className="size-4" aria-hidden />, "orders.changeAddress") : null}
+        {changeable ? button("modify", <PencilLine className="size-4" aria-hidden />, "orders.modify") : null}
         {detail.cancel.cancellable ? (
           <button type="button" onClick={() => setAsking(true)} className={`${ACTION} text-[#8c2f22]`}>
             <CircleX className="size-4" aria-hidden />{t("orders.cancelOrder")}
           </button>
         ) : null}
+        {rateable && onRate ? (
+          <button type="button" onClick={onRate} className={ACTION}>
+            <Star className="size-4 fill-[#ffb800] text-[#ffb800]" aria-hidden />{t("orders.rateItems")}
+          </button>
+        ) : null}
+        {button("help", <LifeBuoy className="size-4" aria-hidden />, "orders.getHelp")}
       </div>
       {whyNot ? <p className="mt-2 text-[12px] leading-5 ink-muted">{t(whyNot)}</p> : null}
 
-      <div id={`${ids}-track`} hidden={!tracking}>
-        {tracking ? <OrderTracking reference={reference} detail={detail} /> : null}
-      </div>
-      <div id={`${ids}-refund`} hidden={!refunding || refundable.length === 0}>
-        {refunding && refundable.length > 0 ? (
-          <RefundForm
-            reference={reference}
-            lines={refundable}
-            onDone={() => { setRefunding(false); refresh(); }}
-            onCancel={() => setRefunding(false)}
-          />
+      <WarrantyClaims detail={detail} onChanged={refresh} />
+
+      <div id={`${ids}-panel`}>
+        {panel === "track" ? <OrderTracking reference={reference} detail={detail} /> : null}
+        {panel === "refund" && refundable.length > 0 ? (
+          <RefundForm reference={reference} lines={refundable} onDone={() => { setPanel(null); refresh(); }} onCancel={() => setPanel(null)} />
         ) : null}
+        {panel === "warranty" && claimable.length > 0 ? (
+          <WarrantyForm reference={reference} detail={detail} onDone={() => { setPanel(null); refresh(); }} onCancel={() => setPanel(null)} />
+        ) : null}
+        {panel === "modify" && changeable ? (
+          <OrderModify reference={reference} detail={detail} onDone={() => { setPanel(null); refresh(); }} onCancel={() => setPanel(null)} />
+        ) : null}
+        {panel === "address" && detail.changeAddress.changeable ? (
+          <OrderAddress reference={reference} detail={detail} onDone={() => { setPanel(null); refresh(); }} onCancel={() => setPanel(null)} />
+        ) : null}
+        {panel === "help" ? <OrderHelp reference={reference} onAction={act} onClose={() => setPanel(null)} /> : null}
       </div>
 
       <ConfirmDialog

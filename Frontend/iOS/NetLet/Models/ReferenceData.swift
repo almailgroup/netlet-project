@@ -329,6 +329,42 @@ struct Rules: Decodable, Sendable {
         )
     }
 
+    /// My Profile's country and the order page's after-sales centre
+    /// (`Shared/commerce/country.ts`, `warranty.ts`, `orderHelp.ts`).
+    struct AfterSales: Decodable, Sendable {
+        struct Country: Decodable, Sendable, Hashable {
+            let code: String
+            let open: Bool
+        }
+
+        struct Warranty: Decodable, Sendable {
+            let minProblem: Int
+            let maxProblem: Int
+            let maxResponse: Int
+            let maxPhotos: Int
+            let remedies: [String]
+        }
+
+        struct Help: Decodable, Sendable {
+            let maxQuestion: Int
+            let turns: Int
+            let starters: [String]
+            let actions: [String]
+        }
+
+        let countries: [Country]
+        let homeCountry: String
+        let warranty: Warranty
+        let help: Help
+
+        static let fallback = AfterSales(
+            countries: ["KW", "SA", "AE", "QA", "BH", "OM"].map { Country(code: $0, open: $0 == "KW") },
+            homeCountry: "KW",
+            warranty: Warranty(minProblem: 10, maxProblem: 1000, maxResponse: 600, maxPhotos: 4, remedies: ["repair", "replace", "refund"]),
+            help: Help(maxQuestion: 500, turns: 6, starters: [], actions: [])
+        )
+    }
+
     /// The session cookie's name (`COOKIE_NAME` in `Shared/const.ts`).
     let sessionCookie: String
     let maxLineQuantity: Int
@@ -342,6 +378,7 @@ struct Rules: Decodable, Sendable {
     /// The floor on a password being set (`MIN_PASSWORD_LENGTH`), the server's own.
     var minPasswordLength: Int? = nil
     var profile: ProfileLimits? = nil
+    var afterSales: AfterSales? = nil
 
     /// The profile's rules, or the fallback when the export predates them.
     var profileRules: ProfileLimits { profile ?? .fallback }
@@ -353,6 +390,7 @@ struct Rules: Decodable, Sendable {
     var accountRules: Account { account ?? .fallback }
     var orderRules: Orders { orders ?? .fallback }
     var aiRules: AI { ai ?? .fallback }
+    var afterSalesRules: AfterSales { afterSales ?? .fallback }
 }
 
 /// Everything the app reads from `Shared/` rather than from the network: the

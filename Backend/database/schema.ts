@@ -1695,6 +1695,67 @@ export const returnRequests = pgTable(
   ]
 );
 
+/* --------------------------------------------------------------- warranty --- */
+
+/**
+ * Where a warranty claim stands. `open` waits for the store (or NetLet); an
+ * `accepted` repair waits for the store to say it is done, and an accepted
+ * replacement or refund travels as a return request (`return_request_id`)
+ * the returns desk already collects, receives and pays; `declined` says why.
+ */
+export const warrantyStatus = pgEnum("warranty_status", ["open", "accepted", "declined", "completed", "withdrawn"]);
+
+/**
+ * A shopper's warranty claim on something that arrived and has stopped
+ * working (migration 0072, on the owner's word: "submit warranty claims and
+ * track their progress").
+ *
+ * One table, the claim its own row: anchored to the order line it is about,
+ * so a claim is only ever on something the shopper actually bought and was
+ * delivered, and frozen to the store that sold it. The shopper's words and up
+ * to four photos (`media_files` ids, uploaded the way a review's are); the
+ * store's answer — a repair, a replacement or a refund, or a refusal with its
+ * reason — in its own words. A replacement or refund is handed to the returns
+ * desk as an approved return request, so the money and the stock move through
+ * the one pipeline that already moves them, and the claim points at it.
+ *
+ * At most one open or accepted claim per line (the partial unique index), for
+ * the reason a return has one: two tabs beat a read-then-insert check.
+ */
+export const warrantyClaims = pgTable(
+  "warranty_claims",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    orderItemId: integer("order_item_id").notNull().references(() => orderItems.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    status: warrantyStatus("status").notNull().default("open"),
+    /** What stopped working, in the shopper's words. */
+    problem: text("problem").notNull(),
+    /** Up to four `media_files` ids, in the order given. */
+    photos: jsonb("photos").$type<string[]>().notNull().default([]),
+    /** What the store will do: `repair`, `replace` or `refund`. Null until it answers. */
+    remedy: varchar("remedy", { length: 10 }),
+    /** The store's or NetLet's words to the shopper: how the repair works, or why not. */
+    response: text("response"),
+    /** The return request a replacement or refund travels as. */
+    returnRequestId: integer("return_request_id").references(() => returnRequests.id, { onDelete: "set null" }),
+    decidedBy: integer("decided_by").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    uniqueIndex("warranty_claims_open_unique")
+      .on(table.orderItemId)
+      .where(sql`${table.status} in ('open', 'accepted')`),
+    index("warranty_claims_vendor_idx").on(table.vendorId, table.status),
+    index("warranty_claims_user_idx").on(table.userId),
+  ]
+);
+
 /**
  * The feature switchboard (2.3): one row per feature an administrator has
  * changed. A feature with no row is on — a fresh database behaves exactly as

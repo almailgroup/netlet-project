@@ -1,0 +1,1 @@
+{"result":{"data":{"json":{"status":"signedIn","user":{"id":1,"email":"noura@example.test","name":"Noura Al-Sabah","role":"user","createdAt":"2026-11-01T13:00:31.887Z","lastSignedIn":"2026-11-03T08:45:17.536Z"}},"meta":{"values":{"user.createdAt":["Date"],"user.lastSignedIn":["Date"]}}}}}

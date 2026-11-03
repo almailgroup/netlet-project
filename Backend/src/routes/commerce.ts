@@ -37,6 +37,7 @@ import { bundlesForVariant } from "../services/bundles.js";
 import { publishedDepartmentCounts, publishedSubcategoryCounts } from "../services/inventory.js";
 import { AddressError, setLineDestination } from "../services/addresses.js";
 import { TRPCError } from "@trpc/server";
+import { returnWindowDays } from "../services/settings.js";
 
 /**
  * Which language to read merchant data in.
@@ -108,6 +109,13 @@ export const commerceRouter = router({
    * there. Prices are still charged in dinars.
    */
   currencyRates: publicProcedure.query(() => currencyRates()),
+  /**
+   * The shop's policy figures a page quotes — today the return window, which
+   * an administrator sets (`returns.windowDays`). One figure for everybody,
+   * so the product page, checkout and the returns page say the number the
+   * order page then holds the shopper to.
+   */
+  policy: publicProcedure.query(async () => ({ returnWindowDays: await returnWindowDays() })),
   /** The home page's Bestsellers: units sold over the last ninety days. */
   bestsellers: publicProcedure
     .input(z.object({ locale: localeSchema }).optional())

@@ -89,6 +89,9 @@ import { BULK_UPLOAD_LIMIT, COLUMNS, DEPARTMENT_WORDS, MAX_CATEGORISE_ROWS, temp
 import { MAX_INBOUND_LINES, MAX_INBOUND_UNITS } from "../../../Shared/commerce/netletFulfilment.js";
 import { MAX_CLAIM_RESPONSE } from "../../../Shared/commerce/damageClaims.js";
 import { COMMON_NATIONALITIES, COUNTRY_CODES, EARLIEST_BIRTHDAY, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
+import { HOME_COUNTRY, SHOP_COUNTRIES } from "../../../Shared/commerce/country.js";
+import { MAX_WARRANTY_PHOTOS, MAX_WARRANTY_PROBLEM, MAX_WARRANTY_RESPONSE, MIN_WARRANTY_PROBLEM, WARRANTY_REMEDIES } from "../../../Shared/commerce/warranty.js";
+import { MAX_ORDER_HELP_QUESTION, ORDER_HELP_ACTIONS, ORDER_HELP_STARTERS, ORDER_HELP_TURNS } from "../../../Shared/commerce/orderHelp.js";
 import {
   AD_CAPACITY, AD_RATES, AD_SLOTS, BANNER_ASPECT, BANNER_HEADLINE_MAX, BANNER_MAX_WIDTH, BANNER_MIN_WIDTH, BANNER_NOTE_MAX, MAX_AD_DAYS, MAX_AD_LEAD_DAYS,
 } from "../../../Shared/commerce/adBookings.js";
@@ -272,6 +275,21 @@ export function buildResources(): Record<string, string> {
         commonNationalities: COMMON_NATIONALITIES,
         namePartMax: NAME_PART_MAX,
         earliestBirthday: EARLIEST_BIRTHDAY,
+      },
+      /* My Profile's country, and the order page's after-sales centre: the
+         warranty form's limits and "Get help with this order"'s
+         (`country.ts`, `warranty.ts`, `orderHelp.ts`). */
+      afterSales: {
+        countries: SHOP_COUNTRIES,
+        homeCountry: HOME_COUNTRY,
+        warranty: {
+          minProblem: MIN_WARRANTY_PROBLEM,
+          maxProblem: MAX_WARRANTY_PROBLEM,
+          maxResponse: MAX_WARRANTY_RESPONSE,
+          maxPhotos: MAX_WARRANTY_PHOTOS,
+          remedies: WARRANTY_REMEDIES,
+        },
+        help: { maxQuestion: MAX_ORDER_HELP_QUESTION, turns: ORDER_HELP_TURNS, starters: ORDER_HELP_STARTERS, actions: ORDER_HELP_ACTIONS },
       },
     }),
     /* `rankBySearch`'s folding and synonyms, for a search the app answers

@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 70 tables, 748 columns, 130 indexes, 158 foreign keys, 20 enums, what later migrations dropped, and the seed rows.
+-- Checks 71 tables, 764 columns, 133 indexes, 164 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -92,6 +92,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('vendor_members', 'created_at:nd,id:pnd,role:nd,user_id:n,vendor_id:n', 'vendor_members_user_id_idx,vendor_members_vendor_user_unique:u', 'user_id>users:c,vendor_id>vendors:c'),
   ('vendor_warnings', 'created_at:nd,expires_at:n,id:pnd,issued_by,product_id,reason:n,vendor_id:n,withdrawn_at,withdrawn_by', 'vendor_warnings_vendor_idx', 'issued_by>users:n,product_id>products:n,vendor_id>vendors:c,withdrawn_by>users:n'),
   ('vendors', 'accepts_cod:nd,accepts_offers:nd,address_line,auto_publish:nd,badges:nd,cod_ceiling,commission_fixed,commission_percent:nd,contact_email,contact_phone,created_at:nd,delivery_courier_id,delivery_flat,delivery_free_over,delivery_mode:nd,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,fast_delivery_fee,fast_delivery_speed,governorate,id:pnd,licence_expires_at,licence_number,logo_url,name:n,name_ar,payout_iban,slug:n,status:nd,subscription_percent,under_platform_licence:nd,updated_at:nd,warnings_since', 'vendors_slug_unique:u', 'delivery_courier_id>couriers:n'),
+  ('warranty_claims', 'completed_at,created_at:nd,decided_at,decided_by,id:pnd,order_id:n,order_item_id:n,photos:nd,problem:n,remedy,response,return_request_id,status:nd,updated_at:nd,user_id,vendor_id', 'warranty_claims_open_unique:uw,warranty_claims_user_idx,warranty_claims_vendor_idx', 'decided_by>users:n,order_id>orders:c,order_item_id>order_items:c,return_request_id>return_requests:n,user_id>users:n,vendor_id>vendors:n'),
   ('wishlist_items', 'bought_at,claimed_at,claimed_by,created_at:nd,id:pnd,note,product_id:n,quantity:nd,updated_at:nd,wishlist_id:n', 'wishlist_items_list_id_idx,wishlist_items_list_product_unique:u', 'claimed_by>users:n,wishlist_id>wishlists:c'),
   ('wishlists', 'created_at:nd,id:pnd,owner_name,share_token:n,title:n,updated_at:nd,user_id:n,visibility:nd', 'wishlists_share_token_unique:u,wishlists_user_id_idx', 'user_id>users:c')
 ),
@@ -115,6 +116,7 @@ expected_enums (type_name, labels) AS (VALUES
   ('user_role', 'user,admin'),
   ('vendor_role', 'staff,manager,owner'),
   ('vendor_status', 'pending,approved,suspended'),
+  ('warranty_status', 'open,accepted,declined,completed,withdrawn'),
   ('wishlist_visibility', 'private,public')
 ),
 retired (kind, table_name, object_name) AS (VALUES
@@ -241,7 +243,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 70 tables' AS object,
+    count(*) || ' of 71 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -255,7 +257,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 70 tables, 748 columns, 130 indexes, 158 foreign keys, 20 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 71 tables, 764 columns, 133 indexes, 164 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

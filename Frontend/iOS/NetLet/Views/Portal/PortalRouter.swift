@@ -16,6 +16,7 @@ struct PortalRouter: View {
         case .stock: PortalStockView()
         case .offers: PortalOffersView()
         case .returns: PortalReturnsView()
+        case .warranty: PortalWarrantyView()
         case .team: PortalTeamView()
         case .payouts: PortalPayoutsView()
         case .bundles: PortalBundlesView()
