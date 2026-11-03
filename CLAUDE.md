@@ -2240,9 +2240,12 @@ owner's word** ("remove the nationality completely from the profile page,
 it's not needed"): its card, its chips and country list, `COUNTRY_CODES`, the
 API's field and the privacy policy's mention, on the web and in the app. An
 installed app that still sends one has it dropped by the schema, neither kept
-nor refused (`profileDetails.test.ts`). **`customer_profiles.nationality` is
-still a column**, unread and unwritten: dropping it is a migration, which waits
-on the owner's word like every schema change. **The name is kept in its parts and `users.name` is written from
+nor refused (`profileDetails.test.ts`). **The column went too, on the owner's
+word** (migration 0075, `DROP COLUMN`, which takes its check with it). **A
+dropped column goes the other way round from an added one**: the code that no
+longer names it is deployed first and the SQL pasted after, because Drizzle
+selects every column it knows, so a drop pasted ahead of the deploy fails every
+read of the table until the deploy lands. **The name is kept in its parts and `users.name` is written from
 them**, so every page that greets a shopper reads what it always did; an
 account with no parts yet is offered its display name split at the first space,
 a guess shown and never saved for it. **The phone

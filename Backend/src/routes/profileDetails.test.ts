@@ -107,9 +107,10 @@ describe("the profile's details", () => {
     await expect(as(user).customer.details.save({ birthday: "2999-01-01" })).rejects.toMatchObject({ message: "profile.birthdayInvalid" });
   });
 
-  /* The owner took nationality off the profile. An installed app from before
-     still sends it; the schema drops the key, so it is neither refused nor
-     kept, and the answer never names it. */
+  /* The owner took nationality off the profile, and then the column
+     (migration 0075). An installed app from before still sends it; the schema
+     drops the key, so it is neither refused nor kept, and the answer never
+     names it. */
   it("takes no nationality, even from an older app", async () => {
     const user = await freshUser("older@example.test");
     const caller = as(user).customer.details.save as unknown as (input: Record<string, unknown>) => Promise<Record<string, unknown>>;
@@ -118,7 +119,7 @@ describe("the profile's details", () => {
     expect(answer).not.toHaveProperty("nationality");
     expect(await as(user).customer.details.get()).not.toHaveProperty("nationality");
     const [row] = await db.select().from(customerProfiles).where(eq(customerProfiles.userId, user.id));
-    expect(row.nationality).toBeNull();
+    expect(row).not.toHaveProperty("nationality");
   });
 
   it("is each shopper's own", async () => {

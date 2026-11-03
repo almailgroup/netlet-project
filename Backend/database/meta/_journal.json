@@ -526,6 +526,13 @@
       "when": 1793731242128,
       "tag": "0074_product_discount_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1793742806345,
+      "tag": "0075_drop_nationality",
+      "breakpoints": true
     }
   ]
 }

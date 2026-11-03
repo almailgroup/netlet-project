@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 73 tables, 779 columns, 135 indexes, 172 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 73 tables, 778 columns, 135 indexes, 172 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -41,7 +41,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('customer_addresses', 'address_line:n,address_notes,apartment,area,avenue,block,building,contact_name,contact_phone,created_at:nd,floor,governorate,id:pnd,label:n,paci_number,pin,street,updated_at:nd,user_id:n', 'customer_addresses_user_idx', 'user_id>users:c'),
   ('customer_notification_preferences', 'created_at:nd,enabled:nd,id:pnd,kind:n,updated_at:nd,user_id:n', 'customer_notification_user_id_idx,customer_notification_user_kind_unique:u', 'user_id>users:c'),
   ('customer_preferences', 'cart_id,created_at:nd,delivery_zone_id,id:pnd,locale,notify_email:nd,updated_at:nd,user_id:n,wishlist_phone', 'customer_preferences_user_id_unique:u,customer_preferences_wishlist_phone_unique:uw', 'user_id>users:c'),
-  ('customer_profiles', 'birthday,first_name,gender,last_name,nationality,phone,updated_at:nd,user_id:pn', '', 'user_id>users:c'),
+  ('customer_profiles', 'birthday,first_name,gender,last_name,phone,updated_at:nd,user_id:pn', '', 'user_id>users:c'),
   ('damage_claims', 'awarded_amount,claimed_amount:n,courier_id,courier_responded_at,courier_response,created_at:nd,decided_at,decided_by,decision_note,description:n,evidence_url,filed_as:n,filed_by,id:pnd,line_ids:n,order_id:n,parcel_key:n,status:nd,updated_at:nd,vendor_id,vendor_name', 'damage_claims_courier_idx,damage_claims_open_unique:uw,damage_claims_order_idx', 'courier_id>couriers:n,decided_by>users:n,filed_by>users:n,order_id>orders:c,vendor_id>vendors:n'),
   ('delivery_ratings', 'comment,condition,conduct,courier_id,created_at:nd,id:pnd,order_id:n,parcel_key:n,rating:n,speed,updated_at:nd,user_id:n,vendor_id,vendor_name', 'delivery_ratings_courier_idx,delivery_ratings_parcel_unique:u,delivery_ratings_vendor_idx', 'courier_id>couriers:n,order_id>orders:c,user_id>users:c,vendor_id>vendors:n'),
   ('discount_code_products', 'code_id:n,product_id:n', '', 'code_id>discount_codes:c,product_id>products:c'),
@@ -125,6 +125,7 @@ retired (kind, table_name, object_name) AS (VALUES
   ('index', '', 'product_variants_sku_unique'),
   ('index', '', 'users_firebase_uid_unique'),
   ('column', 'users', 'firebase_uid'),
+  ('column', 'customer_profiles', 'nationality'),
   ('table', '', 'conversation_messages'),
   ('table', '', 'conversations')
 ),
@@ -259,7 +260,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 73 tables, 779 columns, 135 indexes, 172 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 73 tables, 778 columns, 135 indexes, 172 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

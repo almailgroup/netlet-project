@@ -196,8 +196,9 @@ export const customerPreferences = pgTable(
 /*
  * What "Your profile" holds beyond the sign-in email and the password
  * (`Shared/commerce/profileDetails.ts`): the name in its parts, a phone,
- * a gender, a birthday, a nationality. One row per shopper, made the first
- * time one is saved.
+ * a gender, a birthday. One row per shopper, made the first time one is
+ * saved. The nationality was a column here until the owner took it off the
+ * profile and then asked for the column to go too (migration 0075).
  *
  * A table of its own rather than columns on `users`, so every read of
  * `users` — sign-in, the session check, the portal's people — stays what it
@@ -217,13 +218,8 @@ export const customerProfiles = pgTable(
     phone: varchar("phone", { length: 16 }),
     gender: gender("gender"),
     birthday: date("birthday", { mode: "string" }),
-    /** An ISO 3166-1 code from `COUNTRY_CODES`. */
-    nationality: char("nationality", { length: 2 }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
-  },
-  table => [
-    check("customer_profiles_nationality_code", sql`${table.nationality} is null or ${table.nationality} ~ '^[A-Z]{2}$'`),
-  ]
+  }
 );
 
 /** Saved ("wishlisted") products. The product id is the storefront handle/id. */
