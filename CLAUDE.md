@@ -8000,7 +8000,12 @@ autoclosures, which cannot be async, so the value is awaited first. And
 `deletionCheck` collided with a product's, and a nested `API.DeletionCheck`
 would have shadowed the top-level type the product's used — the account's
 are `accountDeletionCheck` and `AccountDeletionCheck`. Grep both files for a
-name before adding one. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
+name before adding one. And **a synthesised decoder requires every
+non-optional key, a default value or not**: `var scope: String = "order"`
+does not make `scope` optional in the JSON, so a field added to an answer
+the app already decodes is an optional, or the type writes its own
+`init(from:)` with `decodeIfPresent` (`DiscountCode`), or every recording
+from before it fails `FixtureDecodingTests`. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
 green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also
