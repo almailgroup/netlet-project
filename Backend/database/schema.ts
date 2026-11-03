@@ -1757,6 +1757,46 @@ export const warrantyClaims = pgTable(
 );
 
 /**
+ * Frequently bought (migration 0073, on the owner's word): the products a
+ * shopper buys again and again, each at the size or option they buy and the
+ * amount they usually take, to put back in the bag in one press.
+ *
+ * Its own table, not a kind of wishlist or a flag on Saved: a wishlist is what
+ * somebody would like, Saved is what they keep to come back to, and this is
+ * what they already buy — three answers to three questions, and a list that
+ * answered two of them would answer neither. Nothing here places an order;
+ * every row only ever becomes a line in the bag, and checkout is still the
+ * shopper's own press.
+ *
+ * `product_id` is written from the variant's own row by the server, never
+ * taken from the request, so the two cannot disagree; a variant or a product
+ * deleted takes its rows with it, and an account deleted takes them all.
+ */
+export const frequentItems = pgTable(
+  "frequent_items",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    productId: integer("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    variantId: integer("variant_id")
+      .notNull()
+      .references(() => productVariants.id, { onDelete: "cascade" }),
+    /** The amount the shopper usually takes — what one press puts in the bag. */
+    quantity: integer("quantity").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("frequent_items_user_product_variant_unique").on(table.userId, table.productId, table.variantId),
+    index("frequent_items_user_idx").on(table.userId),
+    check("frequent_items_quantity_range", sql`${table.quantity} between 1 and 99`),
+  ]
+);
+
+/**
  * The feature switchboard (2.3): one row per feature an administrator has
  * changed. A feature with no row is on — a fresh database behaves exactly as
  * it did before switches existed — so the table records decisions, not a
@@ -3359,6 +3399,7 @@ export type InsertUser = typeof users.$inferInsert;
 export type CustomerPreference = typeof customerPreferences.$inferSelect;
 export type InsertCustomerPreference = typeof customerPreferences.$inferInsert;
 
+export type FrequentItem = typeof frequentItems.$inferSelect;
 export type SavedProduct = typeof savedProducts.$inferSelect;
 export type InsertSavedProduct = typeof savedProducts.$inferInsert;
 

@@ -71,6 +71,7 @@ import { ProductCard, shareProduct } from "@/components/product/ProductCard";
 import { rememberProductLink } from "@/lib/referral";
 import { useMemberCode } from "@/hooks/useMemberCode";
 import { ShareAndEarn } from "@/components/product/ShareAndEarn";
+import { FrequentButton } from "@/components/product/FrequentButton";
 import { VariantPicker, imageIndexForVariant } from "@/components/product/VariantPicker";
 import { FollowProduct } from "@/components/product/FollowProduct";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -1448,6 +1449,9 @@ export default function ProductDetail() {
             <SubscribePanel product={product} variant={selectedVariant} quantity={quantity} />
 
             <div className="mt-3"><FollowProduct product={product} compact /></div>
+
+            {/* What the shopper buys again and again: this option, this many (migration 0073). */}
+            <FrequentButton product={product} variant={selectedVariant} quantity={quantity} />
 
             {/* Below the buy buttons, not above them: the ordinary way to buy
                 this is at the price on the page, and a shop that leads with

@@ -1,0 +1,187 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "items": [
+          {
+            "id": 38,
+            "productId": "2",
+            "variantId": "2",
+            "quantity": 4,
+            "addedAt": "2026-11-03T13:39:45.793Z",
+            "product": {
+              "id": "2",
+              "handle": "copper-kettle",
+              "title": "Copper Kettle",
+              "description": "",
+              "descriptionHtml": "",
+              "productType": "Home & Kitchen",
+              "vendor": "Acme Home",
+              "vendorSlug": "acme-home",
+              "vendorBadges": [
+                "fastShipping"
+              ],
+              "deliverySpeed": "two_to_four",
+              "deliveryProvider": null,
+              "tags": [],
+              "attributes": [],
+              "media": [
+                {
+                  "url": "/departments/home-and-kitchen.webp",
+                  "altText": "Copper Kettle",
+                  "kind": "image",
+                  "posterUrl": null
+                }
+              ],
+              "images": [
+                {
+                  "url": "/departments/home-and-kitchen.webp",
+                  "altText": "Copper Kettle"
+                }
+              ],
+              "priceRange": {
+                "min": {
+                  "amount": "11.250",
+                  "currencyCode": "KWD"
+                },
+                "max": {
+                  "amount": "11.250",
+                  "currencyCode": "KWD"
+                }
+              },
+              "options": [],
+              "variants": [
+                {
+                  "id": "2",
+                  "title": "Default",
+                  "sku": "COPPER-KETTLE",
+                  "price": {
+                    "amount": "11.250",
+                    "currencyCode": "KWD"
+                  },
+                  "compareAtPrice": {
+                    "amount": "14.500",
+                    "currencyCode": "KWD"
+                  },
+                  "memberPrice": null,
+                  "availableForSale": true,
+                  "preorder": null,
+                  "maxQuantity": 19,
+                  "measure": {
+                    "unit": "each",
+                    "stepAmount": 1
+                  },
+                  "selectedOptions": []
+                }
+              ],
+              "addons": [],
+              "sizeChart": null,
+              "subscription": null,
+              "reviewSummary": null,
+              "subcategory": "kitchen-appliances"
+            }
+          },
+          {
+            "id": 37,
+            "productId": "1",
+            "variantId": "1",
+            "quantity": 2,
+            "addedAt": "2026-11-03T13:39:45.766Z",
+            "product": {
+              "id": "1",
+              "handle": "harbour-lamp",
+              "title": "Harbour Desk Lamp",
+              "description": "",
+              "descriptionHtml": "",
+              "productType": "Home & Kitchen",
+              "vendor": "Acme Home",
+              "vendorSlug": "acme-home",
+              "vendorBadges": [
+                "fastShipping"
+              ],
+              "deliverySpeed": "two_to_four",
+              "deliveryProvider": null,
+              "tags": [],
+              "attributes": [],
+              "media": [
+                {
+                  "url": "/departments/home-and-kitchen.webp",
+                  "altText": "Harbour Desk Lamp",
+                  "kind": "image",
+                  "posterUrl": null
+                }
+              ],
+              "images": [
+                {
+                  "url": "/departments/home-and-kitchen.webp",
+                  "altText": "Harbour Desk Lamp"
+                }
+              ],
+              "priceRange": {
+                "min": {
+                  "amount": "24.375",
+                  "currencyCode": "KWD"
+                },
+                "max": {
+                  "amount": "24.375",
+                  "currencyCode": "KWD"
+                }
+              },
+              "options": [],
+              "variants": [
+                {
+                  "id": "1",
+                  "title": "Default",
+                  "sku": "HARBOUR-LAMP",
+                  "price": {
+                    "amount": "24.375",
+                    "currencyCode": "KWD"
+                  },
+                  "compareAtPrice": {
+                    "amount": "32.000",
+                    "currencyCode": "KWD"
+                  },
+                  "memberPrice": null,
+                  "availableForSale": true,
+                  "preorder": null,
+                  "maxQuantity": 19,
+                  "measure": {
+                    "unit": "each",
+                    "stepAmount": 1
+                  },
+                  "selectedOptions": []
+                }
+              ],
+              "addons": [],
+              "sizeChart": null,
+              "subscription": null,
+              "reviewSummary": null,
+              "subcategory": "furniture"
+            }
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "items.0.addedAt": [
+            "Date"
+          ],
+          "items.1.addedAt": [
+            "Date"
+          ]
+        },
+        "referentialEqualities": {
+          "items.0.product.priceRange.min": [
+            "items.0.product.priceRange.max",
+            "items.0.product.variants.0.price"
+          ],
+          "items.1.product.priceRange.min": [
+            "items.1.product.priceRange.max",
+            "items.1.product.variants.0.price"
+          ]
+        }
+      }
+    }
+  }
+}

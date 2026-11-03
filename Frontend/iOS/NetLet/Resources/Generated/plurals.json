@@ -8,6 +8,18 @@
       "one": "عرض النتيجة الوحيدة لـ ”{query}“"
     }
   },
+  "frequent.boughtTimes": {
+    "param": "count",
+    "en": {
+      "one": "Bought once"
+    },
+    "ar": {
+      "one": "اشتريته مرة واحدة",
+      "two": "اشتريته مرتين",
+      "many": "اشتريته {count} مرة",
+      "other": "اشتريته {count} مرة"
+    }
+  },
   "cart.itemCount": {
     "param": "count",
     "en": {

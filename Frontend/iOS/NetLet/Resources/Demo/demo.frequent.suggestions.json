@@ -1,0 +1,1008 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "productId": "28",
+          "variantId": "28",
+          "timesBought": 2,
+          "lastQuantity": 2,
+          "lastBought": "2026-09-28T15:17:27.485Z",
+          "product": {
+            "id": "28",
+            "handle": "walk-cutting-board",
+            "title": "Bamboo cutting board",
+            "description": "A good bamboo cutting board for every day.",
+            "descriptionHtml": "<p>A good bamboo cutting board for every day.</p>",
+            "productType": "Home & Kitchen",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/home-and-kitchen.webp",
+                "altText": "Bamboo cutting board",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/home-and-kitchen.webp",
+                "altText": "Bamboo cutting board"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "5.500",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "5.500",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "28",
+                "title": "Default",
+                "sku": "WALK-CUTTING-BOARD",
+                "price": {
+                  "amount": "5.500",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": {
+              "average": 4,
+              "count": 1
+            },
+            "subcategory": null
+          }
+        },
+        {
+          "productId": "27",
+          "variantId": "27",
+          "timesBought": 2,
+          "lastQuantity": 2,
+          "lastBought": "2026-09-23T15:17:27.485Z",
+          "product": {
+            "id": "27",
+            "handle": "walk-4k-monitor",
+            "title": "4K monitor",
+            "description": "A good 4k monitor for every day.",
+            "descriptionHtml": "<p>A good 4k monitor for every day.</p>",
+            "productType": "Electronics",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [
+              "Back to School"
+            ],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/electronics.webp",
+                "altText": "4K monitor",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/electronics.webp",
+                "altText": "4K monitor"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "95.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "95.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "27",
+                "title": "Default",
+                "sku": "WALK-4K-MONITOR",
+                "price": {
+                  "amount": "95.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": {
+              "average": 3.8,
+              "count": 6
+            },
+            "subcategory": "computers"
+          }
+        },
+        {
+          "productId": "26",
+          "variantId": "26",
+          "timesBought": 1,
+          "lastQuantity": 2,
+          "lastBought": "2026-11-01T15:17:27.485Z",
+          "product": {
+            "id": "26",
+            "handle": "walk-arabic-coffee",
+            "title": "Arabic coffee 500 g",
+            "description": "A good arabic coffee 500 g for every day.",
+            "descriptionHtml": "<p>A good arabic coffee 500 g for every day.</p>",
+            "productType": "Grocery",
+            "vendor": "Gulf Grocers",
+            "vendorSlug": "gulf-grocers",
+            "vendorBadges": [],
+            "deliverySpeed": "next_day",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/grocery.webp",
+                "altText": "Arabic coffee 500 g",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/grocery.webp",
+                "altText": "Arabic coffee 500 g"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "4.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "4.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "26",
+                "title": "Default",
+                "sku": "WALK-ARABIC-COFFEE",
+                "price": {
+                  "amount": "4.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "beverages"
+          }
+        },
+        {
+          "productId": "25",
+          "variantId": "25",
+          "timesBought": 1,
+          "lastQuantity": 1,
+          "lastBought": "2026-11-01T15:17:27.485Z",
+          "product": {
+            "id": "25",
+            "handle": "walk-leather-belt",
+            "title": "Leather belt",
+            "description": "A good leather belt for every day.",
+            "descriptionHtml": "<p>A good leather belt for every day.</p>",
+            "productType": "Style",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/style.webp",
+                "altText": "Leather belt",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/style.webp",
+                "altText": "Leather belt"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "8.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "8.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "25",
+                "title": "Default",
+                "sku": "WALK-LEATHER-BELT",
+                "price": {
+                  "amount": "8.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "accessories"
+          }
+        },
+        {
+          "productId": "3",
+          "variantId": "3",
+          "timesBought": 1,
+          "lastQuantity": 2,
+          "lastBought": "2026-10-31T13:00:32.154Z",
+          "product": {
+            "id": "3",
+            "handle": "basmati-rice",
+            "title": "Basmati rice 5 kg",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "Grocery",
+            "vendor": "Gulf Grocers",
+            "vendorSlug": "gulf-grocers",
+            "vendorBadges": [],
+            "deliverySpeed": "next_day",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/grocery.webp",
+                "altText": "Basmati rice 5 kg",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/grocery.webp",
+                "altText": "Basmati rice 5 kg"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "4.750",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "4.750",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "3",
+                "title": "Default",
+                "sku": "BASMATI-RICE",
+                "price": {
+                  "amount": "4.750",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": {
+                  "amount": "5.900",
+                  "currencyCode": "KWD"
+                },
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 18,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "pantry"
+          }
+        },
+        {
+          "productId": "38",
+          "variantId": "38",
+          "timesBought": 1,
+          "lastQuantity": 1,
+          "lastBought": "2026-10-13T15:17:27.485Z",
+          "product": {
+            "id": "38",
+            "handle": "walk-lip-balm",
+            "title": "Lip balm",
+            "description": "A good lip balm for every day.",
+            "descriptionHtml": "<p>A good lip balm for every day.</p>",
+            "productType": "Beauty",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/beauty.webp",
+                "altText": "Lip balm",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/beauty.webp",
+                "altText": "Lip balm"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "1.500",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "1.500",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "38",
+                "title": "Default",
+                "sku": "WALK-LIP-BALM",
+                "price": {
+                  "amount": "1.500",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "skincare"
+          }
+        },
+        {
+          "productId": "37",
+          "variantId": "37",
+          "timesBought": 1,
+          "lastQuantity": 2,
+          "lastBought": "2026-10-13T15:17:27.485Z",
+          "product": {
+            "id": "37",
+            "handle": "walk-e-toothbrush",
+            "title": "Electric toothbrush",
+            "description": "A good electric toothbrush for every day.",
+            "descriptionHtml": "<p>A good electric toothbrush for every day.</p>",
+            "productType": "Electronics",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/electronics.webp",
+                "altText": "Electric toothbrush",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/electronics.webp",
+                "altText": "Electric toothbrush"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "16.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "16.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "37",
+                "title": "Default",
+                "sku": "WALK-E-TOOTHBRUSH",
+                "price": {
+                  "amount": "16.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": null
+          }
+        },
+        {
+          "productId": "36",
+          "variantId": "36",
+          "timesBought": 1,
+          "lastQuantity": 2,
+          "lastBought": "2026-10-11T15:17:27.485Z",
+          "product": {
+            "id": "36",
+            "handle": "walk-hand-mixer",
+            "title": "Hand mixer",
+            "description": "A good hand mixer for every day.",
+            "descriptionHtml": "<p>A good hand mixer for every day.</p>",
+            "productType": "Home & Kitchen",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/home-and-kitchen.webp",
+                "altText": "Hand mixer",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/home-and-kitchen.webp",
+                "altText": "Hand mixer"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "13.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "13.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "36",
+                "title": "Default",
+                "sku": "WALK-HAND-MIXER",
+                "price": {
+                  "amount": "13.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "kitchen-appliances"
+          }
+        },
+        {
+          "productId": "35",
+          "variantId": "35",
+          "timesBought": 1,
+          "lastQuantity": 2,
+          "lastBought": "2026-10-11T15:17:27.485Z",
+          "product": {
+            "id": "35",
+            "handle": "walk-yoga-mat",
+            "title": "Yoga mat",
+            "description": "A good yoga mat for every day.",
+            "descriptionHtml": "<p>A good yoga mat for every day.</p>",
+            "productType": "Style",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/style.webp",
+                "altText": "Yoga mat",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/style.webp",
+                "altText": "Yoga mat"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "11.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "11.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "35",
+                "title": "Default",
+                "sku": "WALK-YOGA-MAT",
+                "price": {
+                  "amount": "11.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "sportswear"
+          }
+        },
+        {
+          "productId": "31",
+          "variantId": "31",
+          "timesBought": 1,
+          "lastQuantity": 1,
+          "lastBought": "2026-10-08T15:17:27.485Z",
+          "product": {
+            "id": "31",
+            "handle": "walk-vacuum-flask",
+            "title": "Vacuum flask",
+            "description": "A good vacuum flask for every day.",
+            "descriptionHtml": "<p>A good vacuum flask for every day.</p>",
+            "productType": "Home & Kitchen",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [
+              "winter",
+              "الشتاء"
+            ],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/home-and-kitchen.webp",
+                "altText": "Vacuum flask",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/home-and-kitchen.webp",
+                "altText": "Vacuum flask"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "7.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "7.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "31",
+                "title": "Default",
+                "sku": "WALK-VACUUM-FLASK",
+                "price": {
+                  "amount": "7.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "home-appliances"
+          }
+        },
+        {
+          "productId": "30",
+          "variantId": "30",
+          "timesBought": 1,
+          "lastQuantity": 1,
+          "lastBought": "2026-10-08T15:17:27.485Z",
+          "product": {
+            "id": "30",
+            "handle": "walk-perfume-50",
+            "title": "Perfume 50 ml",
+            "description": "A good perfume 50 ml for every day.",
+            "descriptionHtml": "<p>A good perfume 50 ml for every day.</p>",
+            "productType": "Beauty",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/beauty.webp",
+                "altText": "Perfume 50 ml",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/beauty.webp",
+                "altText": "Perfume 50 ml"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "28.000",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "28.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "30",
+                "title": "Default",
+                "sku": "WALK-PERFUME-50",
+                "price": {
+                  "amount": "28.000",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "fragrance"
+          }
+        },
+        {
+          "productId": "34",
+          "variantId": "34",
+          "timesBought": 1,
+          "lastQuantity": 2,
+          "lastBought": "2026-10-03T15:17:27.485Z",
+          "product": {
+            "id": "34",
+            "handle": "walk-sunscreen-50",
+            "title": "Sunscreen SPF 50",
+            "description": "A good sunscreen spf 50 for every day.",
+            "descriptionHtml": "<p>A good sunscreen spf 50 for every day.</p>",
+            "productType": "Beauty",
+            "vendor": "Acme Home",
+            "vendorSlug": "acme-home",
+            "vendorBadges": [
+              "fastShipping"
+            ],
+            "deliverySpeed": "two_to_four",
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/departments/beauty.webp",
+                "altText": "Sunscreen SPF 50",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/departments/beauty.webp",
+                "altText": "Sunscreen SPF 50"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "7.500",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "7.500",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "34",
+                "title": "Default",
+                "sku": "WALK-SUNSCREEN-50",
+                "price": {
+                  "amount": "7.500",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 25,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "skincare"
+          }
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.lastBought": [
+            "Date"
+          ],
+          "1.lastBought": [
+            "Date"
+          ],
+          "2.lastBought": [
+            "Date"
+          ],
+          "3.lastBought": [
+            "Date"
+          ],
+          "4.lastBought": [
+            "Date"
+          ],
+          "5.lastBought": [
+            "Date"
+          ],
+          "6.lastBought": [
+            "Date"
+          ],
+          "7.lastBought": [
+            "Date"
+          ],
+          "8.lastBought": [
+            "Date"
+          ],
+          "9.lastBought": [
+            "Date"
+          ],
+          "10.lastBought": [
+            "Date"
+          ],
+          "11.lastBought": [
+            "Date"
+          ]
+        },
+        "referentialEqualities": {
+          "0.product.priceRange.min": [
+            "0.product.priceRange.max",
+            "0.product.variants.0.price"
+          ],
+          "1.product.priceRange.min": [
+            "1.product.priceRange.max",
+            "1.product.variants.0.price"
+          ],
+          "2.product.priceRange.min": [
+            "2.product.priceRange.max",
+            "2.product.variants.0.price"
+          ],
+          "3.product.priceRange.min": [
+            "3.product.priceRange.max",
+            "3.product.variants.0.price"
+          ],
+          "4.product.priceRange.min": [
+            "4.product.priceRange.max",
+            "4.product.variants.0.price"
+          ],
+          "5.product.priceRange.min": [
+            "5.product.priceRange.max",
+            "5.product.variants.0.price"
+          ],
+          "6.product.priceRange.min": [
+            "6.product.priceRange.max",
+            "6.product.variants.0.price"
+          ],
+          "7.product.priceRange.min": [
+            "7.product.priceRange.max",
+            "7.product.variants.0.price"
+          ],
+          "8.product.priceRange.min": [
+            "8.product.priceRange.max",
+            "8.product.variants.0.price"
+          ],
+          "9.product.priceRange.min": [
+            "9.product.priceRange.max",
+            "9.product.variants.0.price"
+          ],
+          "10.product.priceRange.min": [
+            "10.product.priceRange.max",
+            "10.product.variants.0.price"
+          ],
+          "11.product.priceRange.min": [
+            "11.product.priceRange.max",
+            "11.product.variants.0.price"
+          ]
+        }
+      }
+    }
+  }
+}

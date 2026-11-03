@@ -34,6 +34,8 @@ enum Route: Hashable {
     case order(reference: String)
     /// Every return the shopper asked for — the web's `/account/returns`.
     case returns
+    /// What the shopper buys again and again — the web's `/account/frequent`.
+    case frequent
     /// How the shopper pays and the cards they save — the web's `/account/payments`.
     case payments
     case profile
@@ -117,6 +119,7 @@ enum Route: Hashable {
             switch segments[1] {
             case "orders": return query["order"].map { .order(reference: $0) } ?? .orders
             case "returns": return .returns
+            case "frequent": return .frequent
             case "payments": return .payments
             case "details": return .profile
             case "security": return .security
@@ -446,6 +449,9 @@ final class AppModel {
         case "orders":
             selectedTab = .account
             accountPath = NavigationPath([Route.orders])
+        case "frequent":
+            selectedTab = .account
+            accountPath = NavigationPath([Route.frequent])
         case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress":
             // `track:`, `refund:`, `rate:`, `warranty:`, `modify:`, `help:` and
             // `orderAddress:` open the order with that sheet up.
@@ -559,7 +565,7 @@ final class AppModel {
     func open(_ route: Route) {
         switch route {
         case .orders, .order, .profile, .addresses, .preferences, .notifications, .wishlists, .wishlist, .offers,
-             .reviews, .help, .supportThread, .rewards, .affiliate, .subscriptions, .invoice:
+             .reviews, .help, .supportThread, .rewards, .affiliate, .subscriptions, .invoice, .frequent:
             if session.isSignedIn { push(route) } else { openAccount(route) }
         case .listings, .newListing, .portal:
             if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }

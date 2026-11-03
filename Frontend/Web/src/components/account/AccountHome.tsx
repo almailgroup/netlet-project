@@ -68,6 +68,7 @@ import {
   CreditCard,
   Gift,
   LifeBuoy,
+  ListRestart,
   LogOut,
   MapPin,
   Megaphone,
@@ -104,6 +105,7 @@ type Row = {
  */
 const CARDS: Row[][] = [
   [
+    { id: "frequent", label: "frequent.section", icon: ListRestart },
     { id: "returns", label: "account.sectionReturns", icon: RotateCcw },
     { id: "addresses", label: "address.book", icon: MapPin },
     { id: "payments", label: "account.sectionPayments", icon: CreditCard },

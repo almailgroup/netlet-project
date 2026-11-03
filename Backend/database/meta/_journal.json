@@ -512,6 +512,13 @@
       "when": 1793693266957,
       "tag": "0072_warranty_claims",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1793711968286,
+      "tag": "0073_frequent_items",
+      "breakpoints": true
     }
   ]
 }

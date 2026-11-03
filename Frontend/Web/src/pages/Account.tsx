@@ -44,6 +44,7 @@ import { SellerMode } from "@/components/account/SellerMode";
 import { AccountOrders } from "@/components/account/AccountOrders";
 import { AccountPayments } from "@/components/account/AccountPayments";
 import { AccountReturns } from "@/components/account/AccountReturns";
+import { AccountFrequent } from "@/components/account/AccountFrequent";
 import { AccountNotifications } from "@/components/account/AccountNotifications";
 import { WishlistManager } from "@/components/account/WishlistManager";
 import { AccountReviews } from "@/components/account/AccountReviews";
@@ -79,6 +80,7 @@ type Entry = {
 const ENTRIES: Entry[] = [
   { id: "orders", label: "account.sectionOrders", hint: "account.hint.orders" },
   { id: "returns", label: "account.sectionReturns", hint: "account.hint.returns" },
+  { id: "frequent", label: "frequent.section", hint: "account.hint.frequent" },
   { id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions" },
   { id: "saved", label: "footer.savedItems", hint: "account.hint.saved", href: "/saved" },
   { id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists" },
@@ -104,6 +106,7 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
   switch (id) {
     case "orders": return <AccountOrders />;
     case "returns": return <AccountReturns />;
+    case "frequent": return <AccountFrequent />;
     case "payments": return <AccountPayments />;
     case "subscriptions": return <AccountSubscriptions />;
     case "wishlists": return <WishlistManager />;

@@ -254,6 +254,7 @@ private struct ProductPage: View {
                     SubscribePanel(product: product, variant: variant, quantity: model.quantity)
                 }
                 FollowButton(product: product)
+                FrequentProductButton(product: product, variant: model.variant ?? product.leadVariant, quantity: model.quantity)
                 if let variant = model.variant ?? product.leadVariant {
                     PriceRequestPanel(variant: variant)
                 }

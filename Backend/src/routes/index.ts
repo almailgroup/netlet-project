@@ -27,6 +27,7 @@ import { helpRouter } from "./help.js";
 import { financeRouter } from "./finance.js";
 import { reviewsRouter } from "./reviews.js";
 import { warrantyRouter } from "./warranty.js";
+import { frequentRouter } from "./frequent.js";
 import { searchRouter } from "./search.js";
 import { togetherRouter } from "./together.js";
 import { wishlistsRouter } from "./wishlists.js";
@@ -62,6 +63,7 @@ export const appRouter = router({
   finance: financeRouter,
   reviews: reviewsRouter,
   warranty: warrantyRouter,
+  frequent: frequentRouter,
   search: searchRouter,
   together: togetherRouter,
   wishlists: wishlistsRouter,

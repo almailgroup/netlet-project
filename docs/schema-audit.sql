@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 71 tables, 764 columns, 133 indexes, 164 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 72 tables, 770 columns, 135 indexes, 167 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -49,6 +49,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('driver_positions', 'accuracy_m,courier_id:n,position:n,recorded_at:nd,user_id:pn', '', 'courier_id>couriers:c,user_id>users:c'),
   ('feature_switches', 'enabled:n,key:pn,updated_at:nd,updated_by', '', 'updated_by>users:n'),
   ('followed_products', 'back_in_stock:nd,created_at:nd,id:pnd,last_notified_price,price_drop:nd,product_id:n,updated_at:nd,user_id:n', 'followed_products_product_id_idx,followed_products_user_id_idx,followed_products_user_product_unique:u', 'user_id>users:c'),
+  ('frequent_items', 'created_at:nd,id:pnd,product_id:n,quantity:nd,user_id:n,variant_id:n', 'frequent_items_user_idx,frequent_items_user_product_variant_unique:u', 'product_id>products:c,user_id>users:c,variant_id>product_variants:c'),
   ('fulfilment_centres', 'active:nd,address_line:n,created_at:nd,governorate:n,id:pnd,name:n,pack_fee_per_unit', '', ''),
   ('fulfilment_charges', 'amount:n,centre_id:n,created_at:nd,id:pnd,order_item_id,order_reference:n,rate_per_unit:n,units:n,vendor_id:n', 'fulfilment_charges_line_unique:u,fulfilment_charges_vendor_idx', 'centre_id>fulfilment_centres:r,order_item_id>order_items:n,vendor_id>vendors:c'),
   ('gift_card_uses', 'amount:n,created_at:nd,gift_card_id:n,id:pnd,order_id', 'gift_card_uses_card_idx', 'gift_card_id>gift_cards:c,order_id>orders:n'),
@@ -243,7 +244,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 71 tables' AS object,
+    count(*) || ' of 72 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -257,7 +258,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 71 tables, 764 columns, 133 indexes, 164 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 72 tables, 770 columns, 135 indexes, 167 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

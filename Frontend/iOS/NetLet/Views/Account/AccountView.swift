@@ -59,7 +59,7 @@ struct AccountView: View {
     /// both; Price requests and Subscribe & Save are rows only for somebody
     /// who has one (`holdings`).
     private static let cards: [[String]] = [
-        ["returns", "addresses", "payments", "wishlists", "reviews", "offers", "subscriptions"],
+        ["frequent", "returns", "addresses", "payments", "wishlists", "reviews", "offers", "subscriptions"],
         ["preferences"],
         ["selling"],
         ["security", "signout"],
@@ -604,6 +604,7 @@ struct AccountEntry: Identifiable, Hashable {
     static let all: [AccountEntry] = [
         AccountEntry(id: "orders", label: "account.sectionOrders", hint: "account.hint.orders", symbol: "shippingbox", group: "account.groupShopping"),
         AccountEntry(id: "returns", label: "account.sectionReturns", hint: "account.hint.returns", symbol: "arrow.uturn.backward", group: "account.groupShopping"),
+        AccountEntry(id: "frequent", label: "frequent.section", hint: "account.hint.frequent", symbol: "arrow.clockwise.circle", group: "account.groupShopping"),
         AccountEntry(id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions", symbol: "repeat", group: "account.groupShopping"),
         AccountEntry(id: "saved", label: "footer.savedItems", hint: "account.hint.saved", symbol: "heart", group: "account.groupShopping"),
         AccountEntry(id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists", symbol: "gift", group: "account.groupShopping"),
@@ -626,6 +627,7 @@ struct AccountEntry: Identifiable, Hashable {
         switch id {
         case "orders": return .orders
         case "returns": return .returns
+        case "frequent": return .frequent
         case "payments": return .payments
         case "subscriptions": return .subscriptions
         case "saved": return .saved

@@ -202,6 +202,7 @@ private struct RouteDestination: View {
         case .orders: OrdersView()
         case .order(let reference): OrderDetailView(reference: reference)
         case .returns: ReturnsView()
+        case .frequent: FrequentView()
         case .payments: PaymentMethodsView()
         case .profile: ProfileView()
         case .security: AccountSecurityView()

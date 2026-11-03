@@ -1,0 +1,16 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "entries": [
+          {
+            "id": 37,
+            "variantId": "1",
+            "quantity": 2
+          }
+        ]
+      }
+    }
+  }
+}

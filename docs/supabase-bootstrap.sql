@@ -1991,6 +1991,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS "warranty_claims_open_unique" ON "warranty_cla
 CREATE INDEX IF NOT EXISTS "warranty_claims_vendor_idx" ON "warranty_claims" USING btree ("vendor_id","status");
 CREATE INDEX IF NOT EXISTS "warranty_claims_user_idx" ON "warranty_claims" USING btree ("user_id");
 
+-- ===== 0073_frequent_items.sql =====
+CREATE TABLE IF NOT EXISTS "frequent_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"product_id" integer NOT NULL,
+	"variant_id" integer NOT NULL,
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "frequent_items_quantity_range" CHECK ("frequent_items"."quantity" between 1 and 99)
+);
+DO $$ BEGIN
+  ALTER TABLE "frequent_items" ADD CONSTRAINT "frequent_items_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "frequent_items" ADD CONSTRAINT "frequent_items_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "frequent_items" ADD CONSTRAINT "frequent_items_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "frequent_items_user_product_variant_unique" ON "frequent_items" USING btree ("user_id","product_id","variant_id");
+CREATE INDEX IF NOT EXISTS "frequent_items_user_idx" ON "frequent_items" USING btree ("user_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2034,6 +2059,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  73 AS migrations_in_this_file,
+  74 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -1004,3 +1004,88 @@ struct BoughtTogetherShelf: View {
         }
     }
 }
+
+// MARK: - Frequently bought
+
+/// "Add to Frequently bought" — the web's `FrequentButton`, under Follow:
+/// keeps the option chosen on the page and the amount in its stepper, which is
+/// what a regular purchase is. Pressed again it takes that option off; while
+/// it is on, a link opens the list. A guest is taken to sign in, since the
+/// list is the account's, and before migration 0073 is pasted nothing is drawn.
+struct FrequentProductButton: View {
+    let product: Product
+    let variant: ProductVariant?
+    let quantity: Int
+    @State private var answer: FrequentForProduct?
+    @State private var working = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    private var entry: FrequentForProduct.Entry? {
+        guard let variant else { return nil }
+        return answer?.entries.first { $0.variantId == variant.id }
+    }
+
+    var body: some View {
+        // A VStack, not a Group: a `.task` on a Group with nothing in it never runs.
+        VStack(spacing: 0) {
+            if let productId = Int(product.id), let variant, Int(variant.id) != nil, answer?.ready != false {
+                VStack(spacing: 6) {
+                    Button {
+                        Task { await toggle(productId: productId, variant: variant) }
+                    } label: {
+                        Label(entry != nil ? l.t("frequent.productOn") : l.t("frequent.productAdd"),
+                              systemImage: entry != nil ? "checkmark" : "arrow.clockwise.circle")
+                            .font(.inter(14, .bold))
+                            .foregroundStyle(entry != nil ? Color.white : Brand.navy)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(entry != nil ? Brand.navy : Color.white))
+                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: entry != nil ? 0 : 1))
+                    }
+                    .buttonStyle(.action)
+                    .disabled(working)
+                    .accessibilityAddTraits(entry != nil ? .isSelected : [])
+                    if entry != nil {
+                        Button(l.t("frequent.productOpen")) { app.open(.frequent) }
+                            .font(.inter(12, .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .buttonStyle(.tap)
+                            .frame(minHeight: 32)
+                    } else {
+                        Text(l.t("frequent.productNote"))
+                            .font(.inter(12))
+                            .foregroundStyle(Brand.muted)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .task(id: "\(product.id):\(app.session.isSignedIn)") { await load() }
+    }
+
+    private func load() async {
+        guard app.session.isSignedIn, let productId = Int(product.id) else { answer = nil; return }
+        answer = try? await app.services.api.call(API.frequentForProduct, .init(productId: productId))
+    }
+
+    private func toggle(productId: Int, variant: ProductVariant) async {
+        guard app.session.isSignedIn else {
+            app.openAccount(nil)
+            return
+        }
+        guard let variantId = Int(variant.id) else { return }
+        working = true
+        defer { working = false }
+        if let entry {
+            if await app.attempt(done: "frequent.removed", {
+                _ = try await app.services.api.call(API.frequentRemove, .init(id: entry.id))
+            }) { await load() }
+        } else {
+            if await app.attempt(done: "frequent.addedToList", {
+                _ = try await app.services.api.call(API.frequentAdd, .init(productId: productId, variantId: variantId, quantity: max(1, quantity)))
+            }) { await load() }
+        }
+    }
+}

@@ -45,6 +45,16 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
     en: { one: "See the 1 result for “{query}”" },
     ar: { one: "عرض النتيجة الوحيدة لـ ”{query}“" },
   },
+  "frequent.boughtTimes": {
+    param: "count",
+    en: { one: "Bought once" },
+    ar: {
+      one: "اشتريته مرة واحدة",
+      two: "اشتريته مرتين",
+      many: "اشتريته {count} مرة",
+      other: "اشتريته {count} مرة",
+    },
+  },
   "cart.itemCount": {
     param: "count",
     en: { one: "1 item" },

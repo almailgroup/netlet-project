@@ -202,6 +202,8 @@ jobs:
             shot 74-order-modify "$lang" modify:NL-AS-PENDING pending
             shot 75-order-address "$lang" orderAddress:NL-AS-PENDING pending
             shot 76-portal-warranty "$lang" portal:/admin/warranty shopper
+            # Frequently bought: the list with its usual amounts and what was bought before.
+            shot 77-frequent "$lang" frequent shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

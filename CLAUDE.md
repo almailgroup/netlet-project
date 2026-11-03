@@ -5196,6 +5196,50 @@ product, into Saved, and is refused another shopper's item. Seen at 390 in
 both languages: the dialog clean in axe, Escape keeping the item, each move
 saying where it went.
 
+## Frequently bought
+
+**What a shopper buys again and again is a list of its own, on the owner's
+word** — not Saved (kept to come back to) and not a wishlist (wanted, maybe
+shared): the option they buy and the amount they usually take
+(`frequent_items`, migration 0073, approved by the owner;
+`Shared/commerce/frequentItems.ts` the rule, pure;
+`Backend/src/services/frequentItems.ts` the database half; `frequent.*`). One
+row per shopper, product and option, so "this size, this many" is the thing
+kept; at most `MAX_FREQUENT_ITEMS` (100); the amount is `frequentQuantity`,
+one to the bag's line ceiling, a check on the column as well.
+
+**It reorders by filling the bag, never by ordering**: each row's Add to cart
+puts its usual amount in the bag through the bag's own queue, and "Add all to
+cart" does that for every row that can go in; checkout is still the
+shopper's press, and the page's first line says so. One press never asks for
+more than there is — `frequentAddable`, the usual amount held to the option's
+`maxQuantity` less what the bag already holds — so a row with no room says so
+rather than offering a press the bag would refuse. A sold-out option is
+marked; one whose product has left the shop stays, named and marked, with its
+bin, because a row that vanished would read as one the shopper never added.
+The usual amount is changed where it is drawn and written once the presses
+stop (500ms), and the bin asks first (`ConfirmDialog`, the system's alert in
+the app).
+
+**"From your past orders" fills it in one press each**: `frequentSuggestions`
+reads the shopper's own lines — not cancelled, returned, an exchange's
+zero-priced replacement or on a cancelled order — counts the separate orders
+each option was bought in, offers the last amount taken, most often bought
+first, at most `FREQUENT_SUGGESTIONS`, never one already on the list and only
+what the shop still shows. **The product page adds the option chosen at the
+amount in its stepper** (`FrequentButton`, `FrequentProductButton` in the
+app), under Follow, and takes it off when pressed again; a guest is offered
+the sign-in.
+
+**Before 0073 is pasted it is closed, not broken**: every read answers
+`ready: false` on a missing table (`isMissingTable`), the page says the list
+is not open yet, the product page draws no button, and a write refuses with
+`frequent.unavailable`. `frequentItems.test.ts` renames the table away. The
+page is `/account/frequent` (the first row of the account's first card), the
+app's `FrequentView` (`Route.frequent`, `-NetLetOpen frequent`, picture 77),
+recorded as `demo.frequent.*`; the privacy policy names it and
+`LEGAL_UPDATED` moved.
+
 ## Admin portal
 
 `/admin` is one application for admins and vendors both, not two. The pages
@@ -6640,9 +6684,10 @@ anything NetLet actually needs is on the server.
 **What every shopper downloads first is the home page and nothing it does not
 draw.** The main bundle was 759 KB (229 KB gzipped) and went to 640 KB (191 KB);
 features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
-with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, then 832 KB (244 KB), the home page's shelves with their department tabs, the occasions' calendar and their words in both languages, then 837 KB (245 KB), the reviews' words in both languages, and is 870 KB
-(254 KB) now, the after-sales centre's words — warranty, changing an order,
-help with it, recovery by code — in both languages, nearly
+with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, then 832 KB (244 KB), the home page's shelves with their department tabs, the occasions' calendar and their words in both languages, then 837 KB (245 KB), the reviews' words in both languages, then 870 KB
+(254 KB), the after-sales centre's words — warranty, changing an order,
+help with it, recovery by code — in both languages, and is 875 KB (255 KB)
+now, Frequently bought's words in both languages, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

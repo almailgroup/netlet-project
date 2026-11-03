@@ -443,6 +443,21 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("warranty.notFound");
     case "orders.myReturns":
       return [];
+    /*
+     * Frequently bought keeps an account's own list, and the demo has no
+     * account and no orders to suggest from — so it is empty and ready, and
+     * the product page's button has nowhere to keep anything.
+     */
+    case "frequent.list":
+      return { ready: true, items: [] };
+    case "frequent.forProduct":
+      return { ready: true, entries: [] };
+    case "frequent.suggestions":
+      return [];
+    case "frequent.add":
+    case "frequent.setQuantity":
+    case "frequent.remove":
+      throw new Error("frequent.unavailable");
     case "orders.onTheWay":
       return { count: 0, latest: null };
 

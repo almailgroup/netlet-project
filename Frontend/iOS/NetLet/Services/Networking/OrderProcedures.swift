@@ -165,3 +165,38 @@ extension API {
     /// The return window an administrator set (`commerce.policy`).
     static let returnPolicy = Procedure<NoInput, ReturnPolicy>(query: "commerce.policy")
 }
+
+/// Frequently bought (migration 0073): the shopper's own list of what they
+/// buy again and again — the web's `/account/frequent`.
+extension API {
+    struct FrequentProduct: Encodable, Sendable {
+        let productId: Int
+    }
+
+    struct AddFrequent: Encodable, Sendable {
+        let productId: Int
+        let variantId: Int
+        let quantity: Int
+    }
+
+    struct FrequentQuantity: Encodable, Sendable {
+        let id: Int
+        let quantity: Int
+    }
+
+    struct FrequentId: Encodable, Sendable {
+        let id: Int
+    }
+
+    struct FrequentSaved: Decodable, Sendable {
+        let id: Int
+        let quantity: Int
+    }
+
+    static let frequentList = Procedure<LocaleOnly, FrequentList>(query: "frequent.list")
+    static let frequentForProduct = Procedure<FrequentProduct, FrequentForProduct>(query: "frequent.forProduct")
+    static let frequentSuggestions = Procedure<LocaleOnly, [FrequentSuggestion]>(query: "frequent.suggestions")
+    static let frequentAdd = Procedure<AddFrequent, FrequentSaved>(mutation: "frequent.add")
+    static let frequentSetQuantity = Procedure<FrequentQuantity, FrequentSaved>(mutation: "frequent.setQuantity")
+    static let frequentRemove = Procedure<FrequentId, Acknowledged>(mutation: "frequent.remove")
+}
