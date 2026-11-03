@@ -152,3 +152,27 @@ describe("the store's desk", () => {
     expect((await warranty.claimsForShopperOrder(ids.shopper, ids.order))[0]).toMatchObject({ stage: "done" });
   });
 });
+
+describe("before migration 0072 is pasted", () => {
+  /*
+   * The code deploys before the owner pastes the bootstrap, and every order a
+   * shopper opens reads the claims — so a missing table has to read as "no
+   * claims" rather than failing the order page.
+   */
+  it("reads as no claims, offers no warranty, and says so when one is filed", async () => {
+    await db.execute("alter table warranty_claims rename to warranty_claims_away");
+    try {
+      const states = await warranty.warrantyStateForLines([{ id: ids.line, fulfilment: "delivered", deliveredAt: new Date(), productId: ids.lamp }]);
+      expect(states.get(ids.line)).toEqual({ eligibility: { allowed: false, reason: "warranty.unavailable" }, terms: "12 months" });
+      expect(await warranty.claimsForShopperOrder(ids.shopper, ids.order)).toEqual([]);
+      expect(await warranty.listClaims(acme())).toEqual([]);
+      expect(await warranty.countOpenClaims(acme())).toBe(0);
+      await expect(file()).rejects.toThrow("warranty.unavailable");
+      const { deletionCheck } = await import("./accountDeletion.js");
+      const check = await deletionCheck({ id: ids.shopper, role: "user" });
+      expect(check.blockers).not.toContain("warrantyOpen");
+    } finally {
+      await db.execute("alter table warranty_claims_away rename to warranty_claims");
+    }
+  });
+});

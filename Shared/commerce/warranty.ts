@@ -38,7 +38,9 @@ export type WarrantyBlock =
   | "warranty.notDelivered"
   | "warranty.returned"
   | "warranty.openClaim"
-  | "warranty.openReturn";
+  | "warranty.openReturn"
+  /* Migration 0072 not yet applied to this database: no claim can be stored. */
+  | "warranty.unavailable";
 
 export function isRemedy(value: unknown): value is WarrantyRemedy {
   return typeof value === "string" && (WARRANTY_REMEDIES as readonly string[]).includes(value);

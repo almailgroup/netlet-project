@@ -2769,6 +2769,13 @@ returning, done, declined, withdrawn). A claim nobody has answered can be
 withdrawn. NetLet's administrators answer any claim, a store its own; the
 overview counts the waiting ones. Deleting an account is refused while a claim
 is open, and takes a closed claim's photos with it.
+**Every order reads this table, so a missing one reads as no claims**
+(`orNone` in `warranty.ts`): the code deploys before the owner pastes 0072,
+and until then every order opened on the live site failed. Missing, a line is
+not offered the Warranty button (`warranty.unavailable`), filing says so, the
+desk is empty and its tile zero; the account-deletion check asks `to_regclass`
+first, because it runs inside a transaction a failed read would abort.
+`warranty.test.ts` renames the table away and opens an order.
 
 **Get help with this order is NetLet AI first, then a person**
 (`Shared/commerce/orderHelp.ts`, `Backend/src/services/orderHelp.ts`,

@@ -66,6 +66,13 @@ async function blockersFor(db: Reader, user: Pick<User, "id" | "role">): Promise
   if (user.role === "admin") found.push("admin");
 
   const exists = async (query: Promise<unknown[]>) => (await query).length > 0;
+  /* Before migration 0072 is pasted there is no claims table, and this check
+     runs inside the deletion's transaction, where a failed read aborts the
+     rest — so it asks whether the table is there rather than catching. */
+  const [claimsTable] = await db
+    .select({ present: sql<boolean>`to_regclass('public.warranty_claims') is not null` })
+    .from(users)
+    .where(eq(users.id, user.id));
   const [vendor, courier, grant, order, ret, claim, cashOut] = await Promise.all([
     exists(db.select({ id: vendorMembers.userId }).from(vendorMembers).where(eq(vendorMembers.userId, user.id)).limit(1)),
     exists(db.select({ id: courierMembers.userId }).from(courierMembers).where(eq(courierMembers.userId, user.id)).limit(1)),
@@ -88,12 +95,14 @@ async function blockersFor(db: Reader, user: Pick<User, "id" | "role">): Promise
         .limit(1),
     ),
     /* A warranty claim a store is still answering or repairing: its outcome is the shopper's to read. */
-    exists(
-      db.select({ id: warrantyClaims.id })
-        .from(warrantyClaims)
-        .where(and(eq(warrantyClaims.userId, user.id), inArray(warrantyClaims.status, ["open", "accepted"])))
-        .limit(1),
-    ),
+    claimsTable?.present
+      ? exists(
+        db.select({ id: warrantyClaims.id })
+          .from(warrantyClaims)
+          .where(and(eq(warrantyClaims.userId, user.id), inArray(warrantyClaims.status, ["open", "accepted"])))
+          .limit(1),
+      )
+      : Promise.resolve(false),
     exists(
       db.select({ id: pointEntries.id })
         .from(pointEntries)

@@ -29,7 +29,7 @@ import {
   type WarrantyRemedy,
 } from "../../../Shared/commerce/warranty.js";
 import { getDb } from "./db.js";
-import { violatesUnique } from "../core/describeError.js";
+import { isMissingTable, violatesUnique } from "../core/describeError.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -47,6 +47,26 @@ async function handle(): Promise<Db> {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
   return db;
+}
+
+/**
+ * A read of the claims that answers `none` while the table is missing.
+ *
+ * The code deploys before the owner pastes migration 0072, and every order a
+ * shopper opens reads this table — so without this, every opened order on the
+ * live site failed until the paste. A missing table reads as "no claims", the
+ * Warranty button is not offered (`warranty.unavailable`), and filing says so;
+ * the review photos' rule (`isMissingTable`). Only reads outside a
+ * transaction come through here: inside one, a failed statement aborts the
+ * rest, which is why the account-deletion check asks `to_regclass` instead.
+ */
+async function orNone<T>(read: () => Promise<T>, none: T): Promise<T> {
+  try {
+    return await read();
+  } catch (error) {
+    if (isMissingTable(error)) return none;
+    throw error;
+  }
 }
 
 /** The store's warranty as it typed it on the product, or null — shown beside the claim, never parsed. */
@@ -94,7 +114,8 @@ export async function fileClaim(
     .limit(1);
   if (!line) throw new WarrantyRefused("warranty.notFound");
 
-  const claims = await db.select({ status: warrantyClaims.status }).from(warrantyClaims).where(eq(warrantyClaims.orderItemId, line.id));
+  const claims = await orNone(() => db.select({ status: warrantyClaims.status }).from(warrantyClaims).where(eq(warrantyClaims.orderItemId, line.id)), null);
+  if (!claims) throw new WarrantyRefused("warranty.unavailable");
   const returns = await db.select({ status: returnRequests.status }).from(returnRequests).where(eq(returnRequests.orderItemId, line.id));
   const eligible = warrantyEligibility(line, claims, returns);
   if (!eligible.allowed) throw new WarrantyRefused(eligible.reason);
@@ -136,7 +157,7 @@ export async function withdrawClaim(userId: number, id: number): Promise<void> {
 /** Every claim on one of the shopper's orders, newest first, with where each stands. */
 export async function claimsForShopperOrder(userId: number, orderId: number) {
   const db = await handle();
-  const rows = await db
+  const rows = await orNone(() => db
     .select({
       id: warrantyClaims.id,
       orderItemId: warrantyClaims.orderItemId,
@@ -153,7 +174,7 @@ export async function claimsForShopperOrder(userId: number, orderId: number) {
     .from(warrantyClaims)
     .leftJoin(returnRequests, eq(returnRequests.id, warrantyClaims.returnRequestId))
     .where(and(eq(warrantyClaims.orderId, orderId), eq(warrantyClaims.userId, userId)))
-    .orderBy(desc(warrantyClaims.createdAt), desc(warrantyClaims.id));
+    .orderBy(desc(warrantyClaims.createdAt), desc(warrantyClaims.id)), []);
   const paths = await photoPaths(db, rows.flatMap(row => row.photos ?? []));
   return rows.map(row => ({
     ...row,
@@ -167,11 +188,15 @@ export async function claimsForShopperOrder(userId: number, orderId: number) {
 export async function warrantyStateForLines(lines: { id: number; fulfilment: string; deliveredAt: Date | null; productId: number | null }[]) {
   const db = await handle();
   const ids = lines.map(line => line.id);
-  const claims = ids.length ? await db.select({ orderItemId: warrantyClaims.orderItemId, status: warrantyClaims.status }).from(warrantyClaims).where(inArray(warrantyClaims.orderItemId, ids)) : [];
+  const claims = ids.length
+    ? await orNone(() => db.select({ orderItemId: warrantyClaims.orderItemId, status: warrantyClaims.status }).from(warrantyClaims).where(inArray(warrantyClaims.orderItemId, ids)), null)
+    : [];
   const returns = ids.length ? await db.select({ orderItemId: returnRequests.orderItemId, status: returnRequests.status }).from(returnRequests).where(inArray(returnRequests.orderItemId, ids)) : [];
   const terms = await warrantyTerms(db, lines.map(line => line.productId));
   return new Map(lines.map(line => [line.id, {
-    eligibility: warrantyEligibility(line, claims.filter(claim => claim.orderItemId === line.id), returns.filter(request => request.orderItemId === line.id)),
+    eligibility: claims
+      ? warrantyEligibility(line, claims.filter(claim => claim.orderItemId === line.id), returns.filter(request => request.orderItemId === line.id))
+      : { allowed: false as const, reason: "warranty.unavailable" as const },
     terms: line.productId === null ? null : terms.get(line.productId) ?? null,
   }]));
 }
@@ -186,7 +211,7 @@ function assertDesk(actor: Actor) {
 export async function listClaims(actor: Actor, filter: { waiting?: boolean } = {}) {
   assertDesk(actor);
   const db = await handle();
-  const rows = await db
+  const rows = await orNone(() => db
     .select({
       id: warrantyClaims.id,
       reference: orders.reference,
@@ -218,7 +243,7 @@ export async function listClaims(actor: Actor, filter: { waiting?: boolean } = {
       desc(warrantyClaims.createdAt),
       desc(warrantyClaims.id),
     )
-    .limit(WARRANTY_PAGE);
+    .limit(WARRANTY_PAGE), []);
   const paths = await photoPaths(db, rows.flatMap(row => row.photos ?? []));
   const terms = await warrantyTerms(db, rows.map(row => row.productId));
   return rows.map(({ shopperName, productId, ...row }) => ({
@@ -237,7 +262,7 @@ export async function countOpenClaims(actor: Actor): Promise<number> {
   if (actor.kind !== "admin" && actor.kind !== "vendor") return 0;
   try { assertDesk(actor); } catch { return 0; }
   const db = await handle();
-  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(warrantyClaims).where(and(scope(actor), eq(warrantyClaims.status, "open")));
+  const [row] = await orNone(() => db.select({ n: sql<number>`count(*)::int` }).from(warrantyClaims).where(and(scope(actor), eq(warrantyClaims.status, "open"))), []);
   return row?.n ?? 0;
 }
 
