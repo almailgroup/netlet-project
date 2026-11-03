@@ -28,17 +28,21 @@ import type { ChangeQuote } from "@shared/commerce/orderChanges";
 const CARD = "mt-3 rounded-2xl border border-[#d5dfeb] bg-white p-4";
 const STEP = "grid size-11 place-items-center rounded-full border border-[#d5dfeb] bg-white text-[#0a285a] disabled:opacity-40 pointer-fine:size-8";
 
-export function OrderModify({ reference, detail, onDone, onCancel }: {
+export function OrderModify({ reference, detail, lineId, remove = false, onDone, onCancel }: {
   reference: string;
   detail: Detail;
+  /** From an item's ⋯: that item alone. */
+  lineId?: number;
+  /** "Cancel this item": it starts at none, for the shopper to review. */
+  remove?: boolean;
   onDone: () => void;
   onCancel: () => void;
 }) {
   const { t, tError, locale } = useTranslation();
   const ids = useId();
   const utils = trpc.useUtils();
-  const lines = detail.lines.filter(line => line.changeable);
-  const [wanted, setWanted] = useState<Record<number, number>>({});
+  const lines = detail.lines.filter(line => line.changeable && (lineId === undefined || line.id === lineId));
+  const [wanted, setWanted] = useState<Record<number, number>>(() => (remove && lineId !== undefined ? { [lineId]: 0 } : {}));
   const [quote, setQuote] = useState<ChangeQuote | null>(null);
   const [asking, setAsking] = useState(false);
   const money = (amount: string) => formatMoney(amount, { currencyCode: detail.order.currency, locale });
@@ -80,7 +84,9 @@ export function OrderModify({ reference, detail, onDone, onCancel }: {
 
   return (
     <section aria-labelledby={`${ids}-title`} className={CARD}>
-      <h4 id={`${ids}-title`} className="text-[14px] font-extrabold text-[#0a285a]">{t("orders.modify")}</h4>
+      <h4 id={`${ids}-title`} className="text-[14px] font-extrabold text-[#0a285a]">
+        {t(lineId === undefined ? "orders.modify" : remove ? "orders.cancelItem" : "orders.changeQuantity")}
+      </h4>
       <p className="mt-1 text-[12px] leading-5 ink-muted">{t("orders.modifyNote")}</p>
       <ul className="mt-3 space-y-3">
         {lines.map(line => {

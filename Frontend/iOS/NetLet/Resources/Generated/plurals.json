@@ -20,6 +20,14 @@
       "other": "اشتريته {count} مرة"
     }
   },
+  "checkout.confirmStores": {
+    "param": "count",
+    "ar": {
+      "two": "من متجرين",
+      "many": "من {count} متجرًا",
+      "other": "من {count} متجر"
+    }
+  },
   "cart.itemCount": {
     "param": "count",
     "en": {

@@ -21,7 +21,7 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
 import { Thumb } from "@/components/product/Thumb";
 import { ParcelCare } from "@/components/account/ParcelCare";
-import { LineReturn } from "@/components/account/LineReturn";
+import { LineReturnStatus } from "@/components/account/LineReturn";
 import { useFeature } from "@/hooks/useFeature";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
@@ -36,7 +36,7 @@ import { useEffect, useRef, useState } from "react";
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
-import { OrderActions } from "@/components/account/OrderActions";
+import { OrderAfterSales, OrderLineMenu, OrderLinePanel } from "@/components/account/OrderActions";
 
 /**
  * The words for each state, and its colour.
@@ -322,16 +322,20 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const [rating, setRating] = useState<ReviewTarget | null>(null);
-  /* Opened from the row's "Rate your items": the first item to rate, in view and focused. */
-  const firstRate = useRef<HTMLButtonElement>(null);
-  const loaded = Boolean(detail.data);
+  const rate = (lineId: number) => {
+    const line = detail.data?.lines.find(entry => entry.id === lineId);
+    if (line) setRating({ orderItemId: line.id, productTitle: line.productTitle, photo: line.photo ?? null, review: line.review });
+  };
+  /* Opened from the row's "Rate your items": the first item to rate, its
+     review form open — the press that asked for it is on the list above. */
+  const rated = useRef(false);
   useEffect(() => {
-    if (!rateFirst || !loaded) return;
-    const button = firstRate.current;
-    if (!button) return;
-    button.scrollIntoView({ block: "center", behavior: "instant" as ScrollBehavior });
-    button.focus({ preventScroll: true });
-  }, [rateFirst, loaded]);
+    if (!rateFirst || rated.current || !detail.data) return;
+    rated.current = true;
+    const first = detail.data.lines.find(line => !line.review && line.reviewEligibility.allowed);
+    if (first) rate(first.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rateFirst, detail.data]);
 
   return (
     <QueryGate audience="shopper" queries={[detail]}>
@@ -340,26 +344,20 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
         if (!data) return <p className="text-sm ink-muted">{t("orders.detailMissing")}</p>;
 
         return (
-          <>
-          <OrderActions
-            reference={reference}
-            detail={data}
-            trackFirst={trackFirst}
-            refundFirst={refundFirst}
-            onRate={() => {
-              const button = firstRate.current;
-              button?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-              button?.focus({ preventScroll: true });
-            }}
-          />
+          <OrderAfterSales reference={reference} detail={data} trackFirst={trackFirst} refundFirst={refundFirst} onRate={rate}>
           <ul className="space-y-4">
             {data.lines.map(line => {
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;
               return (
-                <li key={line.id} className="flex gap-3">
+                <li key={line.id}>
+                  <div className="flex gap-3">
                   <Thumb src={line.photo ?? null} alt="" className="size-14 shrink-0 rounded-xl border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-5" />} />
                   <div className="min-w-0 flex-1">
-                    <p dir="auto" className="type-product truncate text-sm text-[#0a285a]">{line.productTitle}</p>
+                    <div className="flex items-start gap-2">
+                      <p dir="auto" className="type-product line-clamp-2 min-w-0 flex-1 pt-1.5 text-sm text-[#0a285a]">{line.productTitle}</p>
+                      {/* Everything that can be done with this item, on the owner's word. */}
+                      <OrderLineMenu line={line} />
+                    </div>
                     {line.variantTitle ? <p dir="auto" className="truncate text-xs ink-muted">{line.variantTitle}</p> : null}
                     {/* Where this one went (3.2.6), when it did not go where
                         the rest of the order went — read off the line's own
@@ -393,19 +391,18 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                         <span className="text-[12px] font-semibold ink-muted">{t(line.returnState.reason)}</span>
                       )}
                     </div>
-                    <LineReview
-                      line={line}
-                      buttonRef={line.id === data.lines.find(entry => !entry.review && entry.reviewEligibility.allowed)?.id ? firstRate : undefined}
-                      onOpen={() => setRating({ orderItemId: line.id, productTitle: line.productTitle, photo: line.photo ?? null, review: line.review })}
-                    />
-                    <LineReturn reference={reference} currency={data.order.currency} line={line} requests={data.returns} />
+                    {line.review ? <LineReview review={line.review} /> : null}
+                    <LineReturnStatus reference={reference} currency={data.order.currency} line={line} requests={data.returns} />
                   </div>
+                  </div>
+                  {/* What the item's ⋯ opened, the item's full width. */}
+                  <OrderLinePanel line={line} />
                 </li>
               );
             })}
 
-            {/* How a return works, said once at the foot. Each line carries its
-                own button where a return is open; this is the policy behind it. */}
+            {/* How a return works, said once at the foot. Each item's ⋯ offers
+                the return where one is open; this is the policy behind it. */}
             <li className="rounded-xl bg-[#e7edf5] p-4">
               <p className="text-xs leading-5 ink-muted">{t(returnsOn ? "returns.howTo" : "returns.howToPaused", { days: String(data.windowDays) })}</p>
             </li>
@@ -435,7 +432,7 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
               onDone={() => { setRating(null); void detail.refetch(); void utils.orders.list.invalidate(); void utils.reviews.mine.invalidate(); }}
             />
           ) : null}
-          </>
+          </OrderAfterSales>
         );
       }}
     </QueryGate>
@@ -466,42 +463,16 @@ function EmptyOrders() {
 }
 
 /**
- * Rate one item from the opened order (the owner's "rate and review products
- * … directly from the My Orders section"): "Rate this item" while it may be
- * rated (`reviewEligibility`, the rule `reviews.write` refuses with), or the
- * stars given and where the review stands, with a way to change it. Nothing
- * for an item not yet delivered or paid for — the return line beside it
- * already says why.
+ * An item's review, once written: its stars and where it stands. Writing one
+ * and changing it are the item's ⋯ ("Rate this item", "Edit your review"),
+ * on the owner's word — the rule is `reviewEligibility`, which `reviews.write`
+ * refuses with.
  */
-function LineReview({ line, buttonRef, onOpen }: {
-  line: { productTitle: string; review: MyReview | null; reviewEligibility: { allowed: boolean } };
-  buttonRef?: React.Ref<HTMLButtonElement>;
-  onOpen: () => void;
-}) {
-  const { t } = useTranslation();
-  if (line.review) {
-    return (
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <StarRow value={line.review.rating} />
-        <ReviewStatePill state={line.review.state} />
-        <button type="button" onClick={onOpen} className="pressable inline-flex min-h-11 items-center rounded-full px-2 text-[12px] font-extrabold text-[#0a285a] underline underline-offset-2 pointer-fine:min-h-8">
-          {t("review.edit")}
-          <span className="sr-only">: <bdi>{line.productTitle}</bdi></span>
-        </button>
-      </div>
-    );
-  }
-  if (!line.reviewEligibility.allowed) return null;
+function LineReview({ review }: { review: MyReview }) {
   return (
-    <button
-      ref={buttonRef}
-      type="button"
-      onClick={onOpen}
-      className="glass type-control pressable mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
-    >
-      <Star className="size-4 fill-[#ffb800] text-[#ffb800]" aria-hidden />
-      {t("review.rateItem")}
-      <span className="sr-only">: <bdi>{line.productTitle}</bdi></span>
-    </button>
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <StarRow value={review.rating} />
+      <ReviewStatePill state={review.state} />
+    </div>
   );
 }

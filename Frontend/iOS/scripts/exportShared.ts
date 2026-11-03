@@ -88,7 +88,7 @@ import { MAX_SIZE_LABEL, MAX_SIZES, MEASURE_BOUNDS, MEASURES } from "../../../Sh
 import { BULK_UPLOAD_LIMIT, COLUMNS, DEPARTMENT_WORDS, MAX_CATEGORISE_ROWS, templateCsv } from "../../../Shared/inventory/bulkUpload.js";
 import { MAX_INBOUND_LINES, MAX_INBOUND_UNITS } from "../../../Shared/commerce/netletFulfilment.js";
 import { MAX_CLAIM_RESPONSE } from "../../../Shared/commerce/damageClaims.js";
-import { COMMON_NATIONALITIES, COUNTRY_CODES, EARLIEST_BIRTHDAY, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
+import { EARLIEST_BIRTHDAY, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
 import { HOME_COUNTRY, SHOP_COUNTRIES } from "../../../Shared/commerce/country.js";
 import { MAX_WARRANTY_PHOTOS, MAX_WARRANTY_PROBLEM, MAX_WARRANTY_RESPONSE, MIN_WARRANTY_PROBLEM, WARRANTY_REMEDIES } from "../../../Shared/commerce/warranty.js";
 import { MAX_ORDER_HELP_QUESTION, ORDER_HELP_ACTIONS, ORDER_HELP_STARTERS, ORDER_HELP_TURNS } from "../../../Shared/commerce/orderHelp.js";
@@ -269,10 +269,8 @@ export function buildResources(): Record<string, string> {
         maxDraftImages: MAX_IMAGES,
       },
       /* "Your profile"'s details (`Shared/commerce/profileDetails.ts`): the
-         countries a nationality can be, the chips, and the limits. */
+         limits of a name and a birthday. */
       profile: {
-        countries: COUNTRY_CODES,
-        commonNationalities: COMMON_NATIONALITIES,
         namePartMax: NAME_PART_MAX,
         earliestBirthday: EARLIEST_BIRTHDAY,
       },

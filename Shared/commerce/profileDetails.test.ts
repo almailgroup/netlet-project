@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   birthdayProblem,
-  COMMON_NATIONALITIES,
   composeName,
-  COUNTRY_CODES,
-  isCountryCode,
   nameProblem,
   profilePhone,
   splitName,
@@ -39,13 +36,5 @@ describe("the profile's details", () => {
     expect(birthdayProblem("2023-02-29", "2026-10-27")).toBe("profile.birthdayInvalid");
     expect(birthdayProblem("2024-02-29", "2026-10-27")).toBeNull();
     expect(birthdayProblem("17/05/1990", "2026-10-27")).toBe("profile.birthdayInvalid");
-  });
-
-  it("knows every country once, and draws its chips from them", () => {
-    expect(new Set(COUNTRY_CODES).size).toBe(COUNTRY_CODES.length);
-    for (const code of COMMON_NATIONALITIES) expect(isCountryCode(code)).toBe(true);
-    expect(isCountryCode("KW")).toBe(true);
-    expect(isCountryCode("EU")).toBe(false);
-    expect(isCountryCode("kw")).toBe(false);
   });
 });

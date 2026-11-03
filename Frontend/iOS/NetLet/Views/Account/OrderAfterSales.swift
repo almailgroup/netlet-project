@@ -128,6 +128,8 @@ struct WarrantyStagePill: View {
 struct WarrantySheet: View {
     let reference: String
     let detail: OrderDetail
+    /// From an item's ⋯: that item alone.
+    var lineId: Int? = nil
     let done: () -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -140,7 +142,7 @@ struct WarrantySheet: View {
     @State private var sending = false
 
     private var rules: Rules.AfterSales.Warranty { ReferenceData.shared.rules.afterSalesRules.warranty }
-    private var lines: [OrderLine] { detail.warrantyClaimable }
+    private var lines: [OrderLine] { detail.warrantyClaimable.filter { lineId == nil || $0.id == lineId } }
 
     /// `problemIssue`, the server's own refusal asked early.
     private var issue: String? {
@@ -276,6 +278,10 @@ private struct ChoiceRow: View {
 struct OrderModifySheet: View {
     let reference: String
     let detail: OrderDetail
+    /// From an item's ⋯: that item alone.
+    var lineId: Int? = nil
+    /// "Cancel this item": it starts at none, for the shopper to review.
+    var remove = false
     let done: () -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -285,7 +291,7 @@ struct OrderModifySheet: View {
     @State private var asking = false
     @State private var applying = false
 
-    private var lines: [OrderLine] { detail.changeableLines }
+    private var lines: [OrderLine] { detail.changeableLines.filter { lineId == nil || $0.id == lineId } }
 
     private var changes: [API.LineChange] {
         lines.compactMap { line in
@@ -339,7 +345,7 @@ struct OrderModifySheet: View {
                 .padding(16)
             }
             .background(Brand.ground)
-            .navigationTitle(l.t("orders.modify"))
+            .navigationTitle(l.t(lineId == nil ? "orders.modify" : remove ? "orders.cancelItem" : "orders.changeQuantity"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -349,6 +355,9 @@ struct OrderModifySheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .onAppear {
+            if remove, let lineId, wanted[lineId] == nil { wanted[lineId] = 0 }
+        }
     }
 
     private func row(_ line: OrderLine) -> some View {

@@ -13,13 +13,11 @@
  * an answer, and a missing button is not.
  */
 import { useState } from "react";
-import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
-import { useFeature } from "@/hooks/useFeature";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { blocksNewReturn, MAX_RETURN_NOTE, RETURN_REASONS, type ReturnKind, type ReturnReason } from "@shared/commerce/returnRequests";
 import type { AppRouter } from "../../../../../Backend/src/routes";
@@ -61,37 +59,23 @@ export function mayRequestReturn(line: Pick<Line, "id" | "returnState">, request
   return line.returnState.returnable && !requests.some(request => request.orderItemId === line.id && blocksNewReturn(request.status));
 }
 
-export function LineReturn({ reference, currency, line, requests }: { reference: string; currency: string; line: Line; requests: Request[] }) {
+/**
+ * Where one line's latest request stands, under the line: its kind and state,
+ * what happens next, and Withdraw while it can be. Withdrawn ones say nothing.
+ * The request itself is started from the line's ⋯ (`LineReturnForm`).
+ */
+export function LineReturnStatus({ reference, currency, line, requests }: { reference: string; currency: string; line: Line; requests: Request[] }) {
   const { t, tError, locale } = useTranslation();
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
-  const [open, setOpen] = useState(false);
-  const [kind, setKind] = useState<ReturnKind>("refund");
-  const [reason, setReason] = useState<ReturnReason>("damaged");
-  const [note, setNote] = useState("");
-  /* Switched off (2.3): no new requests. One already made carries on — the
-     status, the withdraw button and the seller's side all keep working. */
-  const on = useFeature("returns");
-
   const latest = requests.find(request => request.orderItemId === line.id) ?? null;
-  const refresh = () => void utils.orders.get.invalidate({ reference });
-
-  const ask = trpc.orders.requestReturn.useMutation({
-    onSuccess: reply => {
-      setOpen(false);
-      toast.success(t(reply.status === "approved" ? "returns.toastApproved" : reply.status === "declined" ? "returns.toastDeclined" : "returns.toastRequested"));
-      refresh();
-    },
-    onError: error => toast.error(tError(error.message)),
-  });
   const cancel = trpc.orders.cancelReturn.useMutation({
-    onSuccess: () => { toast.success(t("returns.toastCancelled")); refresh(); },
+    onSuccess: () => { toast.success(t("returns.toastCancelled")); void utils.orders.get.invalidate({ reference }); },
     onError: error => toast.error(tError(error.message)),
   });
-
   const money = (amount: string) => formatMoney(amount, { currencyCode: currency, locale });
-  /* The latest request's state, whatever it is — withdrawn ones say nothing. */
-  const status = latest && latest.status !== "cancelled" ? (
+  if (!latest || latest.status === "cancelled") return null;
+  return (
     <div className="mt-2 rounded-xl border border-[#e6e9ef] bg-[#fbfcfe] px-3 py-2">
       <p className="text-[12px] font-extrabold text-[#0a285a]">
         {t(latest.kind === "exchange" ? "returns.kindExchange" : "returns.kindRefund")} · {t(STATUS_LABEL[latest.status] ?? "returns.statusRequested")}
@@ -114,57 +98,59 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
           type="button"
           disabled={cancel.isPending}
           onClick={() => cancel.mutate({ requestId: latest.id })}
-          className="pressable mt-1 text-[12px] font-extrabold text-[#8c2f22] underline disabled:opacity-60"
+          className="pressable mt-1 inline-flex min-h-11 items-center text-[12px] font-extrabold text-[#8c2f22] underline disabled:opacity-60 pointer-fine:min-h-0"
         >
           {t("returns.withdraw")}
         </button>
       ) : null}
     </div>
-  ) : null;
+  );
+}
 
-  const mayAsk = on && mayRequestReturn(line, requests);
-  if (!mayAsk) return status;
-
-  if (!open) {
-    return (
-      <>
-      {status}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="glass type-control pressable mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5"
-      >
-        <RotateCcw className="size-3.5 rtl:-scale-x-100" aria-hidden />{t("returns.start")}
-      </button>
-      </>
-    );
-  }
+/** Return or exchange one line: refund or a swap, why, and a note. */
+export function LineReturnForm({ reference, line, onDone, onCancel }: { reference: string; line: Line; onDone: () => void; onCancel: () => void }) {
+  const { t, tError } = useTranslation();
+  const utils = trpc.useUtils();
+  const [kind, setKind] = useState<ReturnKind>("refund");
+  const [reason, setReason] = useState<ReturnReason>("damaged");
+  const [note, setNote] = useState("");
+  const ask = trpc.orders.requestReturn.useMutation({
+    onSuccess: reply => {
+      toast.success(t(reply.status === "approved" ? "returns.toastApproved" : reply.status === "declined" ? "returns.toastDeclined" : "returns.toastRequested"));
+      void utils.orders.get.invalidate({ reference });
+      void utils.orders.list.invalidate();
+      onDone();
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
 
   return (
     <form
-      className="mt-3 rounded-xl border border-[#d5dfeb] bg-white p-3"
+      className="mt-3 rounded-2xl border border-[#d5dfeb] bg-white p-4"
+      aria-label={t("returns.start")}
       onSubmit={event => {
         event.preventDefault();
         ask.mutate({ reference, orderItemId: line.id, kind, reason, note: note.trim() || null });
       }}
     >
-      <fieldset>
+      <h4 className="text-[14px] font-extrabold text-[#0a285a]">{t("returns.start")}</h4>
+      <fieldset className="mt-3">
         <legend className="text-[12px] font-extrabold ink-muted">{t("returns.whatInstead")}</legend>
-        <div className="mt-1 flex flex-wrap gap-3">
+        <div className="mt-1 flex flex-wrap gap-x-4">
           {(["refund", "exchange"] as const).map(option => (
-            <label key={option} className="flex items-center gap-1.5 text-[13px] text-[#0a285a]">
-              <input type="radio" name={`kind-${line.id}`} checked={kind === option} onChange={() => setKind(option)} className="accent-[#0a285a]" />
+            <label key={option} className="flex min-h-11 items-center gap-2 text-[14px] text-[#0a285a]">
+              <input type="radio" name={`kind-${line.id}`} checked={kind === option} onChange={() => setKind(option)} className="size-4 accent-[#0a285a]" />
               {t(option === "refund" ? "returns.kindRefund" : "returns.kindExchange")}
             </label>
           ))}
         </div>
       </fieldset>
-      <label className="mt-3 block">
+      <label className="mt-2 block">
         <span className="block text-[12px] font-extrabold ink-muted">{t("returns.why")}</span>
         <Select
           value={reason}
           onChange={event => setReason(event.target.value as ReturnReason)}
-          className="mt-1 h-10 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a]"
+          className="mt-1 h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3 text-[13px] text-[#0a285a]"
         >
           {RETURN_REASONS.map(option => <option key={option} value={option}>{t(REASON_LABEL[option])}</option>)}
         </Select>
@@ -183,10 +169,10 @@ export function LineReturn({ reference, currency, line, requests }: { reference:
       </label>
       <p className="mt-2 text-[12px] leading-5 ink-muted">{t("returns.howItWorks")}</p>
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="submit" disabled={ask.isPending} className="glass-navy type-control pressable rounded-full px-4 py-2 disabled:opacity-60">
+        <button type="submit" disabled={ask.isPending} className="glass-navy type-control pressable min-h-11 rounded-full px-4 py-2 disabled:opacity-60 pointer-fine:min-h-9">
           {t("returns.submit")}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="glass type-control pressable rounded-full px-4 py-2">
+        <button type="button" onClick={onCancel} className="glass type-control pressable min-h-11 rounded-full px-4 py-2 pointer-fine:min-h-9">
           {t("claims.cancel")}
         </button>
       </div>

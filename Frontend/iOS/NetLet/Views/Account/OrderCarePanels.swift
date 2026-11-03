@@ -65,7 +65,8 @@ struct LineReturnPanel: View {
     let line: OrderLine
     let detail: OrderDetail
     let reload: () async -> Void
-    @State private var open = false
+    /// Opened from the item's ⋯ ("Return or exchange"), on the owner's word.
+    @Binding var open: Bool
     @State private var kind = "refund"
     @State private var reason = "damaged"
     @State private var note = ""
@@ -80,21 +81,8 @@ struct LineReturnPanel: View {
             if let latest = detail.latestReturn(for: line), latest.status != "cancelled" {
                 status(latest)
             }
-            if app.features.isOn("returns") && detail.mayAskReturn(for: line) {
-                if open { form } else {
-                    Button {
-                        open = true
-                    } label: {
-                        Label(l.t("returns.start"), systemImage: "arrow.uturn.backward")
-                            .font(.inter(13, .semibold))
-                            .foregroundStyle(Brand.navy)
-                            .padding(.horizontal, 12)
-                            .frame(minHeight: 36)
-                            .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.3), lineWidth: 1))
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.tap)
-                }
+            if open, app.features.isOn("returns"), detail.mayAskReturn(for: line) {
+                form
             }
         }
     }

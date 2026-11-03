@@ -75,6 +75,7 @@ import { Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from 
 import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
 import { Link, useLocation, useSearch } from "wouter";
+import { AppDownloadLink } from "@/components/layout/AppDownload";
 
 /*
  * The address book, with its form and its map picker, loads when the delivery
@@ -376,6 +377,9 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
               {t("rail.deals.title")}
             </Link>
           ) : null}
+          {/* The app, under the cart, on the owner's word: its QR card opens
+              for a pointer resting on it (`AppDownloadLink`). */}
+          <AppDownloadLink className={dealsDrawn ? "" : "ms-auto"} />
         </div>
       </nav>
       {deliveryOpen ? <Suspense fallback={null}><DeliveryZoneDialog open onClose={() => setDeliveryOpen(false)} /></Suspense> : null}

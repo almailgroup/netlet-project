@@ -1,39 +1,32 @@
 /**
- * The phone, the gender, the birthday and the nationality on "Your profile",
- * drawn to the owner's reference (Noon's "Your profile"). Every one is
- * optional and none is shown to a store; the phone is the one that does
- * something — checkout starts with it as the number the driver calls.
+ * The phone, the gender and the birthday on "Your profile", drawn to the
+ * owner's reference (Noon's "Your profile"). Every one is optional and none
+ * is shown to a store; the phone is the one that does something — checkout
+ * starts with it as the number the driver calls. The nationality was here
+ * too, and the owner took it off as not needed.
  *
  * The rules are `Shared/commerce/profileDetails.ts`, asked here as somebody
  * types and again by the server. The phone and the birthday are typed, so
- * they have a Save; a gender and a country are one press each, so the press is
- * the save, and pressing the chosen one again takes it away.
- *
- * Countries are named by the browser in the page's language
- * (`Intl.DisplayNames`), so the list needs no words of its own: the common
- * ones are chips, and "View all" is every country, searchable.
+ * they have a Save; a gender is one press, so the press is the save, and
+ * pressing the chosen one again takes it away.
  */
 import { FloatingField, ProfileCard, primary } from "@/components/account/profileParts";
-import { useOverlay } from "@/hooks/useOverlay";
 import { useTranslation } from "@/hooks/useTranslation";
 import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import {
   birthdayProblem,
-  COMMON_NATIONALITIES,
-  COUNTRY_CODES,
   type Gender,
   type ProfileDetails,
   profilePhone,
 } from "@shared/commerce/profileDetails";
 import { formatPhone } from "@shared/commerce/wishlist";
 import { kuwaitDay } from "@shared/kuwaitDay";
-import { foldText } from "@shared/commerce/search";
-import { Check, ChevronRight, LoaderCircle, Search, X } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Check, LoaderCircle } from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 
-type Patch = { phone?: string | null; gender?: Gender | null; birthday?: string | null; nationality?: string | null };
+type Patch = { phone?: string | null; gender?: Gender | null; birthday?: string | null };
 
 export function ProfileDetailCards({ details, onFail }: { details: ProfileDetails | null; onFail: (error: { message: string }) => void }) {
   const { t } = useTranslation();
@@ -52,7 +45,6 @@ export function ProfileDetailCards({ details, onFail }: { details: ProfileDetail
       <PhoneCard stored={details?.phone ?? null} saving={save.isPending} onSave={phone => send({ phone })} />
       <GenderCard value={details?.gender ?? null} onChoose={gender => void send({ gender })} />
       <BirthdayCard stored={details?.birthday ?? null} saving={save.isPending} onSave={birthday => send({ birthday })} />
-      <NationalityCard value={details?.nationality ?? null} onChoose={nationality => void send({ nationality })} />
     </>
   );
 }
@@ -177,133 +169,5 @@ function BirthdayCard({ stored, saving, onSave }: { stored: string | null; savin
         </div>
       </form>
     </ProfileCard>
-  );
-}
-
-/** Every country, named in the page's language, in that language's order. */
-function useCountries() {
-  const { locale } = useTranslation();
-  return useMemo(() => {
-    const names = new Intl.DisplayNames([locale], { type: "region" });
-    return COUNTRY_CODES
-      .map(code => ({ code, name: names.of(code) ?? code }))
-      .sort((a, b) => a.name.localeCompare(b.name, locale));
-  }, [locale]);
-}
-
-function NationalityCard({ value, onChoose }: { value: string | null; onChoose: (nationality: string | null) => void }) {
-  const { t } = useTranslation();
-  const countries = useCountries();
-  const nameOf = (code: string) => countries.find(country => country.code === code)?.name ?? code;
-  const [listOpen, setListOpen] = useState(false);
-  const chips: string[] = [...COMMON_NATIONALITIES];
-  if (value && !chips.includes(value)) chips.unshift(value);
-
-  const choose = (code: string) => {
-    pressHaptic();
-    onChoose(value === code ? null : code);
-  };
-
-  return (
-    <ProfileCard title={t("profile.nationalityTitle")} note={t("profile.nationalityNote")}>
-      <div className="flex flex-wrap gap-2">
-        {chips.map(code => {
-          const chosen = value === code;
-          return (
-            <button
-              key={code}
-              type="button"
-              aria-pressed={chosen}
-              onClick={() => choose(code)}
-              className={`pressable inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-[14px] font-semibold transition-colors ${chosen ? "border-[#0a285a] bg-[#0a285a] text-white hover:bg-[#0d3372]" : "border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"}`}
-            >
-              {chosen ? <Check className="size-4" aria-hidden /> : null}
-              {nameOf(code)}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => setListOpen(true)}
-          className="pressable tint-on-hover inline-flex min-h-11 items-center gap-1 rounded-full bg-[#f1f2f6] pe-3 ps-4 text-[14px] font-semibold text-[#1f2a44]"
-        >
-          {t("profile.viewAll")}
-          <ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
-        </button>
-      </div>
-      {listOpen ? <CountryList countries={countries} value={value} onChoose={code => { setListOpen(false); if (code !== value) onChoose(code); }} onClose={() => setListOpen(false)} /> : null}
-    </ProfileCard>
-  );
-}
-
-/** Every country, searchable: a sheet on a phone, a card on a wide screen. */
-function CountryList({ countries, value, onChoose, onClose }: {
-  countries: { code: string; name: string }[];
-  value: string | null;
-  onChoose: (code: string) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const titleId = useId();
-  const searchRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState("");
-  useOverlay(true, onClose);
-  useEffect(() => {
-    const timer = window.setTimeout(() => searchRef.current?.focus(), 40);
-    return () => window.clearTimeout(timer);
-  }, []);
-  const folded = foldText(query.trim());
-  const shown = folded ? countries.filter(country => foldText(country.name).includes(folded)) : countries;
-
-  return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-[#061b3b]/50 sm:items-center sm:p-4" onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onClick={event => event.stopPropagation()}
-        className="flex max-h-[85svh] w-full max-w-[460px] flex-col rounded-t-3xl bg-[#fffdf9] shadow-[0_24px_60px_rgba(10,40,90,.28)] sm:max-h-[80vh] sm:rounded-3xl"
-      >
-        <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-5">
-          <h2 id={titleId} className="text-lg font-extrabold text-[#0a285a]">{t("profile.chooseNationality")}</h2>
-          <button type="button" onClick={onClose} aria-label={t("common.cancel")} className="pressable -me-2 grid size-11 shrink-0 place-items-center rounded-full text-[#0a285a]">
-            <X className="size-5" aria-hidden />
-          </button>
-        </div>
-        <div className="px-5 pb-3">
-          <label className="flex h-12 items-center gap-2 rounded-2xl border border-[#d5dfeb] bg-white px-4 focus-within:border-[#0a285a] focus-within:ring-2 focus-within:ring-[#0a285a]/15">
-            <Search className="size-4 shrink-0 text-[#536b8c]" aria-hidden />
-            <span className="sr-only">{t("profile.countrySearch")}</span>
-            <input
-              ref={searchRef}
-              value={query}
-              onChange={event => setQuery(event.target.value)}
-              placeholder={t("profile.countrySearch")}
-              className="type-body w-full bg-transparent text-[16px] text-[#0a285a] outline-none placeholder:text-[#8a9ab3]"
-            />
-          </label>
-        </div>
-        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          {shown.length === 0 ? (
-            <li className="px-3 py-6 text-center text-sm ink-muted">{t("profile.countryNone")}</li>
-          ) : shown.map(country => {
-            const chosen = country.code === value;
-            return (
-              <li key={country.code}>
-                <button
-                  type="button"
-                  aria-pressed={chosen}
-                  onClick={() => { pressHaptic(); onChoose(country.code); }}
-                  className="pressable flex min-h-12 w-full items-center justify-between gap-3 rounded-xl px-3 text-start text-[15px] text-[#0a285a] hover:bg-[#f0f2f5]"
-                >
-                  <span className={chosen ? "font-bold" : ""}>{country.name}</span>
-                  {chosen ? <Check className="size-4 shrink-0" aria-hidden /> : null}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </div>
   );
 }

@@ -483,7 +483,7 @@ final class ProfileViewModelTests: XCTestCase {
 
     func testStoredPartsAndDetailsFillTheCards() async {
         let account = FakeAccountService()
-        account.details = ProfileDetails(firstName: "Abdul Rahman", lastName: "Al-Ali", phone: "+96555001122", gender: "male", birthday: "1990-05-17", nationality: "KW")
+        account.details = ProfileDetails(firstName: "Abdul Rahman", lastName: "Al-Ali", phone: "+96555001122", gender: "male", birthday: "1990-05-17")
         let model = ProfileViewModel(account: account, user: FakeAccountService.user)
         await model.load()
         XCTAssertEqual(model.firstName, "Abdul Rahman")
@@ -516,10 +516,8 @@ final class ProfileViewModelTests: XCTestCase {
         XCTAssertEqual(try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last)), #"{"json":{"gender":"female"}}"#)
         await model.choose(gender: "female")
         XCTAssertEqual(try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last)), #"{"json":{"gender":null}}"#, "the chosen one pressed again takes it away")
-        await model.toggle(nationality: "KW")
-        XCTAssertEqual(model.details.nationality, "KW")
-        await model.toggle(nationality: "KW")
-        XCTAssertNil(model.details.nationality)
+        await model.removeBirthday()
+        XCTAssertEqual(try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last)), #"{"json":{"birthday":null}}"#)
     }
 
     func testAPhoneThatIsNotKuwaitiIsSaidRatherThanSent() async {

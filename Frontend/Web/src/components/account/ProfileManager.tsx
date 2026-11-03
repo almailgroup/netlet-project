@@ -1,13 +1,13 @@
 /**
  * "Your profile", drawn to the owner's reference (Noon's "Your profile"): the
- * name as a first and a last name side by side, then the phone, the gender,
- * the birthday and the nationality (`ProfileDetailCards`), then the address
+ * name as a first and a last name side by side, then the phone, the gender
+ * and the birthday (`ProfileDetailCards`), then the address
  * somebody signs in with. **The password is Account security's, on the
  * owner's word** (`SecurityCards`): that page is the password and deleting
  * the account, and nothing else.
  *
  * Each card is its own decision with its own Save — or, for a choice made in
- * one press (a gender, a country), saved as it is pressed — because one Save
+ * one press (a gender), saved as it is pressed — because one Save
  * across all of them would change a password somebody only opened the page to
  * correct a spelling in.
  *

@@ -17,7 +17,6 @@ import { getDb } from "./db.js";
 import { isMissingTable } from "../core/describeError.js";
 import {
   birthdayProblem,
-  isCountryCode,
   NO_DETAILS,
   profilePhone,
   type Gender,
@@ -46,7 +45,6 @@ export async function detailsFor(userId: number): Promise<ProfileDetails> {
         phone: customerProfiles.phone,
         gender: customerProfiles.gender,
         birthday: customerProfiles.birthday,
-        nationality: customerProfiles.nationality,
       })
       .from(customerProfiles)
       .where(eq(customerProfiles.userId, userId));
@@ -79,7 +77,6 @@ export type DetailsPatch = {
   phone?: string | null;
   gender?: Gender | null;
   birthday?: string | null;
-  nationality?: string | null;
 };
 
 /**
@@ -105,10 +102,6 @@ export async function saveDetails(userId: number, patch: DetailsPatch, now = new
       if (problem) throw new ProfileDetailsError(problem);
     }
     changes.birthday = patch.birthday;
-  }
-  if (patch.nationality !== undefined) {
-    if (patch.nationality !== null && !isCountryCode(patch.nationality)) throw new ProfileDetailsError("profile.nationalityInvalid");
-    changes.nationality = patch.nationality;
   }
   if (Object.keys(changes).length === 0) return detailsFor(userId);
 

@@ -1,84 +1,89 @@
 import SwiftUI
 
+/// What is open over the order — a sheet, and from an item's ⋯ the item it
+/// is about (`lineId`); "Cancel this item" opens the change at none (`remove`).
+struct OrderSheet: Identifiable, Hashable {
+    enum Kind: String { case track, refund, warranty, modify, address, help }
+    let kind: Kind
+    var lineId: Int? = nil
+    var remove = false
+    var id: String { "\(kind.rawValue)-\(lineId ?? 0)-\(remove)" }
+}
+
 /// The opened order as an after-sales centre, on the owner's word — the
-/// web's `OrderActions`: only the actions this order offers now. Nothing here
-/// decides: cancelling is the server's `cancel`, changing it is `change` and
-/// `changeAddress`, what may go back is each line's return window (the
-/// administrator's figure), a warranty claim each line's eligibility, and the
-/// steps are `stepsForOrder`'s — and the server asks every one again under a
-/// lock when it is pressed.
+/// web's `OrderAfterSales`: only the actions this order offers now, **each
+/// item's behind a ⋯ of its own** (`OrderLineMenu`, on the owner's word: "let
+/// these options be in a 3 dot icon for each product. The user can select a
+/// specific product with the options"), and what is about the whole order —
+/// tracking every parcel, a refund across items, the warranty, changing the
+/// address, modifying, buying everything again, help, cancelling — behind the
+/// ⋯ beside "In this order". They were one row of pills over the items.
 ///
-/// Track order, Request a refund, Warranty, Buy again, Change delivery
-/// address, Modify order and Cancel while no driver has it, Rate your items,
-/// and Get help with this order — NetLet AI first, then a person.
+/// Nothing here decides: cancelling is the server's `cancel`, changing it is
+/// `change` and `changeAddress`, what may go back is each line's return window
+/// (the administrator's figure), a warranty claim each line's eligibility, and
+/// the steps are `stepsForOrder`'s — and the server asks every one again under
+/// a lock when it is pressed.
 struct OrderActionsBar: View {
     let reference: String
     let detail: OrderDetail
     let reload: () async -> Void
-    /// Rate your items: the order's first item to rate, in its sheet.
-    var onRate: (() -> Void)? = nil
+    /// The sheet over the order, shared with each item's ⋯.
+    @Binding var sheet: OrderSheet?
+    /// Rate one item, in its sheet.
+    var onRate: ((OrderLine) -> Void)? = nil
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
-    @State private var sheet: Sheet?
     /// What an answer from NetLet AI pointed at, opened once the help sheet is down.
     @State private var next: String?
     @State private var asking = false
     @State private var cancelling = false
     @State private var rebuying = false
 
-    enum Sheet: String, Identifiable {
-        case track, refund, warranty, modify, address, help
-        var id: String { rawValue }
-    }
-
     private var refundable: [OrderLine] { app.features.isOn("returns") ? detail.refundable : [] }
     private var claimable: [OrderLine] { app.features.isOn("returns") ? detail.warrantyClaimable : [] }
     private var trackable: Bool { detail.steps.map { !$0.cancelled } ?? false }
-    private var rateable: Bool { onRate != nil && detail.lines.contains(where: \.mayRate) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            FlowLayout(spacing: 8) {
-                if trackable {
-                    action("orders.track", "shippingbox") { sheet = .track }
-                }
-                if !refundable.isEmpty {
-                    action("orders.requestRefund", "arrow.uturn.backward") { sheet = .refund }
-                }
-                if !claimable.isEmpty {
-                    action("warranty.title", "checkmark.shield") { sheet = .warranty }
-                }
-                if detail.mayBuyAgain {
-                    action("orders.buyAgain", "bag") { Task { await buyAgain() } }
-                        .disabled(rebuying)
-                }
-                if detail.changeAddress.changeable {
-                    action("orders.changeAddress", "mappin.and.ellipse") { sheet = .address }
-                }
-                if detail.mayModify {
-                    action("orders.modify", "square.and.pencil") { sheet = .modify }
-                }
-                if detail.cancel.cancellable {
-                    Button { asking = true } label: {
-                        Label(l.t("orders.cancelOrder"), systemImage: "xmark.circle")
+            HStack(spacing: 12) {
+                Text(l.t("orders.inThisOrder"))
+                    .font(.inter(15, .heavy))
+                    .foregroundStyle(Brand.navy)
+                    .accessibilityAddTraits(.isHeader)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Menu {
+                    if trackable {
+                        Button { open(.track) } label: { Label(l.t("orders.track"), systemImage: "shippingbox") }
                     }
-                    .buttonStyle(OrderActionStyle(danger: true))
-                    .disabled(cancelling)
-                }
-                if rateable, let onRate {
-                    Button(action: onRate) {
-                        Label {
-                            Text(l.t("orders.rateItems"))
-                        } icon: {
-                            Image(systemName: "star.fill").foregroundStyle(Brand.star)
-                        }
+                    if !refundable.isEmpty {
+                        Button { open(.refund) } label: { Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward") }
                     }
-                    .buttonStyle(OrderActionStyle())
+                    if !claimable.isEmpty {
+                        Button { open(.warranty) } label: { Label(l.t("warranty.title"), systemImage: "checkmark.shield") }
+                    }
+                    if detail.changeAddress.changeable {
+                        Button { open(.address) } label: { Label(l.t("orders.changeAddress"), systemImage: "mappin.and.ellipse") }
+                    }
+                    if detail.mayModify {
+                        Button { open(.modify) } label: { Label(l.t("orders.modify"), systemImage: "square.and.pencil") }
+                    }
+                    if detail.mayBuyAgain {
+                        Button { Haptics.action(); Task { await buyAgain() } } label: { Label(l.t("orders.buyAgainAll"), systemImage: "bag") }
+                            .disabled(rebuying)
+                    }
+                    Button { open(.help) } label: { Label(l.t("orders.getHelp"), systemImage: "lifepreserver") }
+                    if detail.cancel.cancellable {
+                        Divider()
+                        Button(role: .destructive) { Haptics.action(); asking = true } label: { Label(l.t("orders.cancelOrder"), systemImage: "xmark.circle") }
+                            .disabled(cancelling)
+                    }
+                } label: {
+                    OrderMenuFace()
                 }
-                action("orders.getHelp", "lifepreserver") { sheet = .help }
+                .menuOrder(.fixed)
+                .accessibilityLabel(l.t("orders.orderMenu"))
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(l.t("orders.afterSales"))
             if let why = detail.cancelRefusal {
                 Text(l.t(why))
                     .font(.inter(13))
@@ -89,28 +94,31 @@ struct OrderActionsBar: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(item: $sheet, onDismiss: openNext) { which in
-            switch which {
+            switch which.kind {
             case .track:
                 if let steps = detail.steps {
-                    TrackOrderSheet(reference: reference, steps: steps, lines: detail.lines)
+                    TrackOrderSheet(reference: reference, steps: steps, lines: detail.lines, lineId: which.lineId)
                 }
             case .refund:
                 RefundSheet(reference: reference, lines: refundable, done: { Task { await reload() } })
             case .warranty:
-                WarrantySheet(reference: reference, detail: detail, done: { Task { await reload() } })
+                WarrantySheet(reference: reference, detail: detail, lineId: which.lineId, done: { Task { await reload() } })
             case .modify:
-                OrderModifySheet(reference: reference, detail: detail, done: { Task { await reload() } })
+                OrderModifySheet(reference: reference, detail: detail, lineId: which.lineId, remove: which.remove, done: { Task { await reload() } })
             case .address:
                 OrderAddressSheet(reference: reference, detail: detail, done: { Task { await reload() } })
             case .help:
-                OrderHelpSheet(reference: reference) { action in next = action }
+                OrderHelpSheet(reference: reference) { action in
+                    next = action
+                    sheetLine = which.lineId
+                }
             }
         }
         .onAppear {
             // The screenshots' hooks (`track:`, `refund:`, `warranty:`…); `rate` is the order's own.
-            guard let asked = app.orderSheet, asked != "rate", let which = Sheet(rawValue: asked) else { return }
+            guard let asked = app.orderSheet, asked != "rate", let kind = OrderSheet.Kind(rawValue: asked) else { return }
             app.orderSheet = nil
-            if offers(which) { sheet = which }
+            if offers(kind) { sheet = OrderSheet(kind: kind) }
         }
         .alert(l.t("orders.cancelAsk"), isPresented: $asking) {
             Button(l.t("orders.cancelOrder"), role: .destructive) { Task { await cancel() } }
@@ -120,17 +128,15 @@ struct OrderActionsBar: View {
         }
     }
 
-    private func action(_ key: String, _ symbol: String, run: @escaping () -> Void) -> some View {
-        Button(action: run) {
-            Label(l.t(key), systemImage: symbol)
-        }
-        .buttonStyle(OrderActionStyle())
+    private func open(_ kind: OrderSheet.Kind) {
+        Haptics.action()
+        sheet = OrderSheet(kind: kind)
     }
 
     /// Whether this order offers what a sheet is for — a hook or an answer
     /// pointing at something the order no longer has opens nothing.
-    private func offers(_ which: Sheet) -> Bool {
-        switch which {
+    private func offers(_ kind: OrderSheet.Kind) -> Bool {
+        switch kind {
         case .track: return trackable
         case .refund: return !refundable.isEmpty
         case .warranty: return !claimable.isEmpty
@@ -141,20 +147,27 @@ struct OrderActionsBar: View {
     }
 
     /// An answer from NetLet AI pointed at a panel or an act; it runs once the
-    /// help sheet is down, so two sheets are never asked for at once.
+    /// help sheet is down, so two sheets are never asked for at once — about
+    /// the item it was asked from, when it was.
     private func openNext() {
         guard let action = next else { return }
         next = nil
+        let item = detail.lines.first { $0.id == sheetLine }
+        sheetLine = nil
         switch action {
         case "cancel": if detail.cancel.cancellable { asking = true }
         case "buyAgain": Task { await buyAgain() }
-        case "rate": onRate?()
+        case "rate":
+            if let line = item ?? detail.lines.first(where: \.mayRate) { onRate?(line) }
         case "track", "refund", "warranty", "modify", "address":
-            let target: Sheet = action == "track" ? .track : action == "refund" ? .refund : action == "warranty" ? .warranty : action == "modify" ? .modify : .address
-            if offers(target) { sheet = target }
+            let kind: OrderSheet.Kind = action == "track" ? .track : action == "refund" ? .refund : action == "warranty" ? .warranty : action == "modify" ? .modify : .address
+            if offers(kind) { sheet = OrderSheet(kind: kind, lineId: kind == .address || kind == .refund ? nil : item?.id) }
         default: return
         }
     }
+
+    /// The item the help sheet was opened from, kept for what its answer points at.
+    @State private var sheetLine: Int?
 
     private func cancel() async {
         cancelling = true
@@ -196,6 +209,84 @@ struct OrderActionsBar: View {
     }
 }
 
+/// The ⋯ that opens a menu on the order page: a round 44-point target, the
+/// web's `LinePopover` face.
+struct OrderMenuFace: View {
+    var body: some View {
+        Image(systemName: "ellipsis")
+            .font(.system(size: 17, weight: .bold))
+            .foregroundStyle(Brand.navy)
+            .frame(width: 36, height: 36)
+            .background(Circle().fill(Brand.tint))
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
+    }
+}
+
+/// One item's ⋯ — the web's `OrderLineMenu`: what can be done with this item
+/// now, and nothing else. Track it, return or exchange it, claim its warranty,
+/// change its quantity or cancel it while no driver has it, rate it, buy it
+/// again, and get help with it.
+struct OrderLineMenu: View {
+    let line: OrderLine
+    let detail: OrderDetail
+    @Binding var sheet: OrderSheet?
+    /// The item whose return form is open under it.
+    @Binding var returning: Int?
+    let rate: () -> Void
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let returnsOn = app.features.isOn("returns")
+        let changeable = detail.change.changeable && line.changeable == true
+        Menu {
+            if detail.steps.map({ !$0.cancelled }) ?? false, line.fulfilment != "cancelled" {
+                Button { open(.track) } label: { Label(l.t("orders.trackItem"), systemImage: "shippingbox") }
+            }
+            if returnsOn, detail.mayAskReturn(for: line) {
+                Button { Haptics.action(); returning = line.id } label: { Label(l.t("returns.start"), systemImage: "arrow.uturn.backward") }
+            }
+            if returnsOn, line.warrantyEligibility?.allowed == true {
+                Button { open(.warranty) } label: { Label(l.t("warranty.title"), systemImage: "checkmark.shield") }
+            }
+            if changeable, line.quantity > 1 {
+                Button { open(.modify) } label: { Label(l.t("orders.changeQuantity"), systemImage: "square.and.pencil") }
+            }
+            if line.review != nil || line.mayRate {
+                Button { Haptics.action(); rate() } label: { Label(l.t(line.review == nil ? "review.rateItem" : "review.edit"), systemImage: "star") }
+            }
+            if let variant = line.variantId {
+                Button {
+                    Haptics.action()
+                    Task {
+                        if await app.cart.add(variantId: String(variant), quantity: line.quantity) {
+                            app.toast(l.t("cart.added", ["name": line.productTitle]))
+                        } else {
+                            Haptics.refused()
+                            app.toast(l.t("orders.buyAgainNone"))
+                        }
+                    }
+                } label: { Label(l.t("orders.buyAgain"), systemImage: "bag") }
+            }
+            Button { open(.help) } label: { Label(l.t("orders.helpItem"), systemImage: "lifepreserver") }
+            if changeable {
+                Divider()
+                Button(role: .destructive) { open(.modify, remove: true) } label: { Label(l.t("orders.cancelItem"), systemImage: "xmark.circle") }
+            }
+        } label: {
+            OrderMenuFace()
+        }
+        .menuOrder(.fixed)
+        .accessibilityLabel(l.t("orders.lineMenu", ["name": line.productTitle]))
+    }
+
+    private func open(_ kind: OrderSheet.Kind, remove: Bool = false) {
+        Haptics.action()
+        sheet = OrderSheet(kind: kind, lineId: line.id, remove: remove)
+    }
+}
+
 /// A pill that sizes to its words: white with a light rim, navy words — the
 /// web's `glass` pill — and the shop's red for cancelling.
 struct OrderActionStyle: ButtonStyle {
@@ -221,23 +312,30 @@ struct TrackOrderSheet: View {
     let reference: String
     let steps: OrderSteps
     let lines: [OrderLine]
+    /// From an item's ⋯: the parcel that item is in.
+    var lineId: Int? = nil
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
+
+    private var parcels: [ParcelSteps] {
+        guard let lineId else { return steps.parcels }
+        return steps.parcels.filter { $0.lineIds.contains(lineId) }
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    ForEach(steps.parcels) { parcel in
+                    ForEach(parcels) { parcel in
                         ParcelStepsCard(parcel: parcel, placedAt: steps.placedAt, lines: lines)
                     }
-                    if steps.parcels.contains(where: { $0.promise != nil && $0.promise?.kind != "madeToOrder" }) {
+                    if parcels.contains(where: { $0.promise != nil && $0.promise?.kind != "madeToOrder" }) {
                         Text(l.t("track.estimate"))
                             .font(.inter(13))
                             .foregroundStyle(Brand.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    if steps.parcels.contains(where: { $0.step == "onTheWay" }) {
+                    if parcels.contains(where: { $0.step == "onTheWay" }) {
                         TrackingPanel(reference: reference)
                     }
                 }

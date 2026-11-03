@@ -186,7 +186,6 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
         if let phone = patch.phone { details.phone = phone.value.flatMap(PhoneNumber.normalise) }
         if let gender = patch.gender { details.gender = gender.value }
         if let birthday = patch.birthday { details.birthday = birthday.value }
-        if let nationality = patch.nationality { details.nationality = nationality.value }
         return details
     }
     func changePassword(current: String, new: String) async throws {}

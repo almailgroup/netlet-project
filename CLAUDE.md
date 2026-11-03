@@ -141,12 +141,13 @@ at the bottom", and the first redraw — the same house, person, cart and grid
 at the same size, with words — read to them as no change at all, so two
 directions were drawn for them and they chose the one after their picture of
 a shop's bar, then asked for its Deals tab, in its order. A rounded house with
-its door; three squares and a sparkle for the departments; a price tag for
-the deals, tilted 45° with its square end at the top right and the hole cut
-out of the chosen tag (`knockout`: a mask on the web, the clear blend mode in
-the app) — it was a bag with a percent sign until the owner sent a picture of
-a tag ("make the deals icon like this"), and `roundedPolygon` draws it as
-lines and cubics the app can parse; a person in a circle; the cart with its
+its door; three squares and a sparkle for the departments; **a percent sign
+for the deals, and nothing else, on the owner's word** ("change the icon of
+deals to %. Percentage icon only") — two rings and the stroke between them,
+the rings filled when chosen; it was a price tag after a picture the owner
+sent, and a bag with a percent sign before that, and `knockout` (a path drawn
+clear: a mask on the web, the clear blend mode in the app) went unused with
+the tag's hole; a person in a circle; the cart with its
 wheels. One 24 grid, one heavier line (2), round caps and
 joins, each an outline and a filled form, drawn 28px. The paths are
 absolute M, L, H, V, C and Z alone, so the app draws them from
@@ -1662,15 +1663,21 @@ there are no uppercase eyebrows over them — a 10px tracked-out label restating
 the heading below it is the most recognisable mark of generated design there
 is, and it does nothing at all in Arabic, which has no capitals.
 
-**A wide screen carries an App Store badge in its bottom start corner, on the
-owner's word** (`AppDownload` in `components/layout/`, drawn by the shell):
-Apple's black pill with the Apple mark (Simple Icons' drawing, CC0), the left
-in English and the right in Arabic, because the assistant holds the end
-corner; a phone has none, since a phone cannot scan its own screen. A press
-opens one plain window — the QR code, "Scan this QR code to download the
-NetLet application." and "For iOS only." — the shop's modal (`useOverlay`,
-Close focused, Escape back to the badge), the `qrcode` library fetched only
-then. **The code is a template until the app is published**:
+**"Download the NetLet app" ends a wide screen's department row, under the
+cart, on the owner's word** (`AppDownloadLink` in `components/layout/`): it
+was an App Store badge in the screen's bottom corner first, and the owner
+asked for the words under the cart and a card on hover, after a picture of a
+shop's own. A pointer resting on it, the keyboard reaching it or a press opens
+the card — the QR code with NetLet's mark in its middle (correction level H, so
+the mark hides nothing the code needs), "Download the NetLet app", "Scan the
+QR code to download", Apple's black App Store pill (Simple Icons' mark, CC0)
+and "For iOS only." — which stays while the pointer crosses onto it
+(`LEAVE_MS`), closes on leaving, Escape (focus back on the link) or a press
+elsewhere, and drops in by a transform (`.app-card`). The disclosure pattern,
+not a modal. **No Google Play button**: there is no Android app, and a button
+leading nowhere is the dead-control rule. A phone has none, since a phone
+cannot scan its own screen. The `qrcode` library is fetched only when the card
+first opens. **The code is a template until the app is published**:
 `APP_STORE_URL` (`content/appDownload.ts`) opens the shop for now, so a scan
 goes somewhere real, and becomes the App Store address in that one place.
 
@@ -2215,21 +2222,24 @@ the web (`ProfileManager`) and in the app. The label never moves, so the
 sign-in form's rule against one that lifts as you type still holds.
 
 **And it holds what the reference holds, on the owner's word** (migration
-0070): a first and a last name side by side, a phone, a gender, a birthday and
-a nationality, each its own card — the phone and the birthday with a Save, a
-gender or a country saved as it is pressed and taken away by pressing it
-again, because one Save across them would change a password somebody opened
-the page to correct a spelling in. `Shared/commerce/profileDetails.ts` is the
-rule, pure (both names needed, 60 each; a Kuwaiti number, the wishlist's
-`normalisePhone`; a real date from 1900 to today's Kuwaiti day; one of
-`COUNTRY_CODES`), and `customer.details` and `auth.updateNameParts` refuse what
-it refuses. **The name is kept in its parts and `users.name` is written from
+0070): a first and a last name side by side, a phone, a gender and a birthday,
+each its own card — the phone and the birthday with a Save, a gender saved as
+it is pressed and taken away by pressing it again, because one Save across
+them would change a password somebody opened the page to correct a spelling
+in. `Shared/commerce/profileDetails.ts` is the rule, pure (both names needed,
+60 each; a Kuwaiti number, the wishlist's `normalisePhone`; a real date from
+1900 to today's Kuwaiti day), and `customer.details` and
+`auth.updateNameParts` refuse what it refuses. **The nationality went, on the
+owner's word** ("remove the nationality completely from the profile page,
+it's not needed"): its card, its chips and country list, `COUNTRY_CODES`, the
+API's field and the privacy policy's mention, on the web and in the app. An
+installed app that still sends one has it dropped by the schema, neither kept
+nor refused (`profileDetails.test.ts`). **`customer_profiles.nationality` is
+still a column**, unread and unwritten: dropping it is a migration, which waits
+on the owner's word like every schema change. **The name is kept in its parts and `users.name` is written from
 them**, so every page that greets a shopper reads what it always did; an
 account with no parts yet is offered its display name split at the first space,
-a guess shown and never saved for it. The countries are named by the browser
-and the phone in the page's language (`Intl.DisplayNames`,
-`localizedString(forRegionCode:)`) — Kuwait and the seven nationalities most
-people living here hold as chips, "View all" the rest, searchable. **The phone
+a guess shown and never saved for it. **The phone
 is the one that does anything**: checkout starts with it as the driver's
 number where the address chosen has none. None of it is shown to a store, the
 cards say so, and the privacy policy lists it.
@@ -2661,11 +2671,23 @@ value was not returned.
 
 **An opened order is an after-sales centre, on the owner's word** ("each
 order's detail page should function as a complete after-sales service center",
-with only the actions this order offers now): Track order, Request a refund,
-Warranty, Buy again, Change delivery address, Modify order, Cancel order, Rate
-your items and Get help with this order (`OrderActions` on the web,
-`OrderActionsBar` in the app, one sheet at a time). **Nothing on the page
-decides**: each button is drawn from the server's own answer on `orders.get` —
+with only the actions this order offers now) — **and each item's actions are
+behind a ⋯ of its own, also on the owner's word** ("let these options be in a
+3 dot icon for each product. The user can select a specific product with the
+options"); they were a row of buttons over the items, each asking afterwards
+which item it meant. An item's ⋯ (`OrderLineMenu`: the bag's `LinePopover` on
+the web — a sheet naming the item on a phone, a small menu from `sm` — and the
+system's `Menu` in the app) offers what that item can have done now: track it
+(its own parcel), return or exchange it, claim its warranty, change its
+quantity or cancel it before a driver has it, rate it or edit the review, buy
+it again, and get help with it; what it opens is drawn under that item
+(`OrderLinePanel`) or, in the app, a sheet about that item alone (`OrderSheet`
+with its `lineId`). **The order's own ⋯**, beside "In this order", keeps what
+is about the whole order: Track order, Request a refund across items, Warranty,
+Change delivery address, Modify order, Buy everything again, Get help with this
+order and Cancel order (`OrderAfterSales` on the web, `OrderActionsBar` in the
+app). An item's review and its return's state stay on the item, being what is
+true rather than something to do. **Nothing on the page decides**: each button is drawn from the server's own answer on `orders.get` —
 `cancel`, `change`, `changeAddress`, each line's `returnState`,
 `warrantyEligibility`, `reviewEligibility` and `changeable` — and the server
 asks every question again under a lock when it is pressed.
@@ -3997,9 +4019,41 @@ it leaves somebody scrolling a form for what it wants. The driver's number is
 required at checkout for that reason, though the API still takes an order
 without one.
 
-**Placing an order lands on it.** Checkout went to the account's front page,
-where the shopper had to find what they had just bought; it goes to
-`/account/orders?order=<reference>` now, which opens that order. On a phone the
+**Place order asks first, and the shopper stays on checkout**, on the owner's
+word ("it should ask you for confirmation of cart before switching to the
+homepage or any other page. So you should either confirm your purchase or back
+out. But it should stay in the checkout page"). It opens "Confirm your order"
+over the page (`ConfirmOrderDialog` on the web, `ConfirmOrderSheet` in the app):
+the items' pictures and count, the stores, where it goes and who the driver
+calls, cash on delivery and what is collected at the door, with Confirm order
+and Back to checkout. Back — Escape, a press on the dim, the drag down in the
+app — leaves checkout as it was with nothing ordered, and it takes focus as the
+dialog opens, `ConfirmDialog`'s rule; only Confirm places the order, and while
+it is placing nothing closes it. A refusal puts it down and the page says why.
+
+**The order placed is said over checkout, with an animation and a sound**, on
+the owner's word ("for the order confirmation, add a sound and animation for
+it"): `OrderPlaced` (`OrderPlacedView` in the app, a full-screen cover) — a
+navy disc springs in, an orange ring spreads from it and fades, the tick draws
+itself and fourteen pieces in the brand's colours fly out and fall away, the
+words rising after (`.order-done-*`, transforms, opacities and a stroke's dash
+alone; drawn finished under reduced motion); the order number, what the driver
+collects, View your order and Continue shopping, focus on the first. **The
+sound is `order-placed`, the same on both**: a soft thump as the disc lands, a
+rising bell arpeggio in E major as the tick draws — the key the launch chime
+ends on — and a chord that rings out, about two seconds (23 KB as MP3 on the
+web, a WAV in the app). **A phone plays a page's sound only from inside a
+press**, and the order exists a round trip after Confirm, so `primeOrderChime`
+wakes an `AudioContext` and fetches the file in Confirm's own handler and
+`playOrderChime` plays it on the answer (`lib/orderChime.ts`); nothing there
+may throw, so a refused sound is a quiet order. The app's `OrderChime` is the
+launch chime's rule: `.ambient`, so the Ring/Silent switch silences it. A
+success buzz goes with it where a page may (`successHaptic`), the app's
+`Haptics.succeeded`. Escape views the order.
+
+**View your order lands on it.** Checkout used to go to the account's front
+page, where the shopper had to find what they had just bought; it goes to
+`/account/orders?order=<reference>`, which opens that order. On a phone the
 payment pill sits under the order number, so the number stays on one line —
 "NL-20261012-" over "3NJA9" read as two numbers to somebody saying it down a
 phone. Found by walking one order from a 375px checkout through the seller,
@@ -6715,8 +6769,9 @@ features since took it back to 799 KB (236 KB), and it went to 583 KB (170 KB),
 with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB (205 KB), then 716 KB (209 KB) — the bag's queue, the search box's own suggestions and the shelf memory — then 725 KB (212 KB), the requirement fixes' words in both languages, then 769 KB (223 KB) — the phone card's photo plus and stepper, the header's saved location, the account home's words and the wishlist question's, in both languages — then 772 KB (224 KB), the profile's cards and their words, then 773 KB (224 KB), the bag by store and its bar, then 786 KB (228 KB), the points coin and the affiliate programme's words in both languages, then 786 KB (230 KB), the bag's stock ceiling and its words, then 799 KB (233 KB), account security and deleting an account, and the cards' stars, then 809 KB (236 KB), the subcategories' names in both languages, then 813 KB (237 KB), the order page's track, cancel and refund words, then 817 KB (239 KB), the Returns and Payment methods pages' words and the tab bar's own icons, then 820 KB (240 KB), the app tutorial's words in both languages, then 821 KB (240 KB), the filter chips and the Sort | Filter pill, then 832 KB (244 KB), the home page's shelves with their department tabs, the occasions' calendar and their words in both languages, then 837 KB (245 KB), the reviews' words in both languages, then 870 KB
 (254 KB), the after-sales centre's words — warranty, changing an order,
 help with it, recovery by code — in both languages, then 875 KB (255 KB),
-Frequently bought's words in both languages, and is 879 KB (256 KB) now, the
-App Store badge and its window, nearly
+Frequently bought's words in both languages, then 879 KB (256 KB), the App
+Store badge and its window, and is 881 KB (256 KB) now, the app link under the
+cart and the confirmation's words, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -7194,9 +7249,8 @@ foot of "Your profile" (`AccountIdentityCard`), under a round back button and
 the title and `FloatingField`s — the web's cards one for one: the name in two
 boxes, the phone with `+965` before it (`FloatingField`'s `prefix`), two
 gender tiles, the birthday as a box that opens a wheel (`BirthdayDay` keeps it
-at noon in Kuwait, so no time zone moves it a day), and the nationality's
-chips with "View all" as a searchable sheet (`CountrySheet`, the countries
-from `rules.json`'s `profile` block); the rules are `Validation`'s twins of
+at noon in Kuwait, so no time zone moves it a day) — the nationality's card
+went with the web's; the rules are `Validation`'s twins of
 `profileDetails.ts`, tested on its cases, and checkout's view model starts
 from the account's phone as the web's does. The language is inside
 Preferences for somebody signed in (the web's rule, its row naming the
@@ -7373,7 +7427,11 @@ for a member, checkout names whose link a line came through, and the heart in
 the logo row and the cart's title opens Saved items with the hearts counted.
 
 **The after-sales centre is the app's too, sheet for sheet**
-(`OrderActionsBar`, `Views/Account/OrderAfterSales.swift`): Warranty, Modify
+(`OrderActionsBar`, `Views/Account/OrderAfterSales.swift`), behind the order's
+⋯ and each item's (`OrderLineMenu`, the system's `Menu`, the same sheets
+scoped to the item by `OrderSheet.lineId`; "Cancel this item" opens the change
+at none, `remove`); the screenshots name the confirmation's two
+(`-NetLetOpen confirmOrder`, `orderPlaced:<ref>`, 78 and 79): Warranty, Modify
 order (the quote, then Confirm at the figure it showed, asked again on
 `orders.changeMoved`), Change delivery address, Buy again (the answer's bag
 adopted, or the bag read again), Rate your items and Get help with this order,

@@ -246,6 +246,10 @@ struct OrderDetailView: View {
     @Environment(LanguageSettings.self) private var l
     /// The line being rated in `ReviewSheet`.
     @State private var rating: ReviewTarget?
+    /// The sheet over the order — its own ⋯'s, or an item's.
+    @State private var sheet: OrderSheet?
+    /// The item whose return form is open under it.
+    @State private var returning: Int?
 
     var body: some View {
         ModelHost(make: { OrderDetailViewModel(reference: reference, service: app.services.orders) }) { model in
@@ -264,8 +268,8 @@ struct OrderDetailView: View {
                     } else {
                         LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
                             VStack(alignment: .leading, spacing: 16) {
-                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }) {
-                                    if let line = detail.lines.first(where: \.mayRate) { rating = target(line) }
+                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet) { line in
+                                    rating = target(line)
                                 }
                                 lines(detail, reload: { await model.load() })
                                 OrderDocumentsList(documents: detail.documents)
@@ -305,6 +309,7 @@ struct OrderDetailView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 4) {
                             Text(line.productTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
+                                .fixedSize(horizontal: false, vertical: true)
                             if let variant = line.variantLabel {
                                 Text(variant).font(.caption).foregroundStyle(Brand.muted)
                             }
@@ -317,14 +322,21 @@ struct OrderDetailView: View {
                             Text(l.t("orders.quantityAndPrice", ["quantity": "\(line.quantity)", "price": line.unitPrice.formatted(l.current)]))
                                 .font(.caption)
                                 .foregroundStyle(Brand.muted)
+                            Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
                             StatusPill(label: OrderWording.line(line.fulfilment, language: l), tone: OrderTone.line(line.fulfilment))
                             returnWindow(line)
                         }
-                        Spacer()
-                        Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        // Everything that can be done with this item, on the owner's word.
+                        OrderLineMenu(line: line, detail: detail, sheet: $sheet, returning: $returning) { rating = target(line) }
+                            .padding(.top, -8)
+                            .padding(.trailing, -8)
                     }
-                    LineReviewRow(line: line) { rating = target(line) }
-                    LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload)
+                    LineReviewRow(line: line)
+                    LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload, open: Binding(
+                        get: { returning == line.id },
+                        set: { returning = $0 ? line.id : nil }
+                    ))
                 }
                 Divider()
             }
@@ -409,38 +421,18 @@ struct OrderDetailView: View {
     }
 }
 
-/// Rate one item from the opened order — the web's `LineReview`: "Rate this
-/// item" while it may be rated, or the stars given and where the review
-/// stands, with a way to change it. Nothing for an item not yet delivered or
-/// paid for; the return line above it already says why.
+/// An item's review, once written: its stars and where it stands — the
+/// web's `LineReview`. Writing one and changing it are the item's ⋯ ("Rate
+/// this item", "Edit your review"), on the owner's word.
 struct LineReviewRow: View {
     let line: OrderLine
-    let open: () -> Void
-    @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         if let review = line.review {
             HStack(spacing: 8) {
                 StarsView(rating: review.rating)
                 ReviewStatePill(state: review.state)
-                Button(l.t("review.edit"), action: open)
-                    .font(.inter(13, .bold))
-                    .foregroundStyle(Brand.navy)
-                    .underline()
-                    .frame(minHeight: 44)
-                    .buttonStyle(.tap)
-                    .accessibilityLabel(l.t("review.edit") + ": " + line.productTitle)
             }
-        } else if line.mayRate {
-            Button(action: open) {
-                Label {
-                    Text(l.t("review.rateItem"))
-                } icon: {
-                    Image(systemName: "star.fill").foregroundStyle(Brand.star)
-                }
-            }
-            .buttonStyle(OrderActionStyle())
-            .accessibilityLabel(l.t("review.rateItem") + ": " + line.productTitle)
         }
     }
 }

@@ -1,6 +1,6 @@
 /**
- * "Your profile"'s details — the name's parts, phone, gender, birthday and
- * nationality — against a real Postgres, and the minutes before the owner has
+ * "Your profile"'s details — the name's parts, phone, gender and birthday —
+ * against a real Postgres, and the minutes before the owner has
  * run the bootstrap, when the table is not there yet.
  */
 import { PGlite } from "@electric-sql/pglite";
@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { users } from "../../database/schema.js";
+import { customerProfiles, users } from "../../database/schema.js";
 import type { TrpcContext } from "../core/context.js";
 import type { ZodError } from "zod";
 import type { User } from "../../database/schema.js";
@@ -70,7 +70,7 @@ describe("the profile's details", () => {
   it("answers nothing saved for somebody who has saved nothing", async () => {
     const user = await freshUser("blank@example.test");
     expect(await as(user).customer.details.get()).toEqual({
-      firstName: null, lastName: null, phone: null, gender: null, birthday: null, nationality: null,
+      firstName: null, lastName: null, phone: null, gender: null, birthday: null,
     });
   });
 
@@ -94,26 +94,38 @@ describe("the profile's details", () => {
     const user = await freshUser("fields@example.test");
     await as(user).customer.details.save({ phone: "٥٠١٢ ٣٤٥٦" });
     await as(user).customer.details.save({ gender: "female" });
-    await as(user).customer.details.save({ birthday: "1990-05-17" });
-    const all = await as(user).customer.details.save({ nationality: "KW" });
-    expect(all).toMatchObject({ phone: "+96550123456", gender: "female", birthday: "1990-05-17", nationality: "KW" });
+    const all = await as(user).customer.details.save({ birthday: "1990-05-17" });
+    expect(all).toMatchObject({ phone: "+96550123456", gender: "female", birthday: "1990-05-17" });
 
     const cleared = await as(user).customer.details.save({ gender: null, phone: "" });
-    expect(cleared).toMatchObject({ phone: null, gender: null, birthday: "1990-05-17", nationality: "KW" });
+    expect(cleared).toMatchObject({ phone: null, gender: null, birthday: "1990-05-17" });
   });
 
   it("refuses what the form refuses, by the form's own keys", async () => {
     const user = await freshUser("refused@example.test");
     await expect(as(user).customer.details.save({ phone: "123" })).rejects.toMatchObject({ message: "wishlist.phoneInvalid" });
     await expect(as(user).customer.details.save({ birthday: "2999-01-01" })).rejects.toMatchObject({ message: "profile.birthdayInvalid" });
-    await expect(as(user).customer.details.save({ nationality: "EU" })).rejects.toMatchObject({ message: "profile.nationalityInvalid" });
+  });
+
+  /* The owner took nationality off the profile. An installed app from before
+     still sends it; the schema drops the key, so it is neither refused nor
+     kept, and the answer never names it. */
+  it("takes no nationality, even from an older app", async () => {
+    const user = await freshUser("older@example.test");
+    const caller = as(user).customer.details.save as unknown as (input: Record<string, unknown>) => Promise<Record<string, unknown>>;
+    const answer = await caller({ gender: "male", nationality: "KW" });
+    expect(answer).toMatchObject({ gender: "male" });
+    expect(answer).not.toHaveProperty("nationality");
+    expect(await as(user).customer.details.get()).not.toHaveProperty("nationality");
+    const [row] = await db.select().from(customerProfiles).where(eq(customerProfiles.userId, user.id));
+    expect(row.nationality).toBeNull();
   });
 
   it("is each shopper's own", async () => {
     const one = await freshUser("one@example.test");
     const two = await freshUser("two@example.test");
-    await as(one).customer.details.save({ nationality: "EG" });
-    expect((await as(two).customer.details.get()).nationality).toBeNull();
+    await as(one).customer.details.save({ birthday: "1985-01-02" });
+    expect((await as(two).customer.details.get()).birthday).toBeNull();
   });
 
   it("refuses a signed-out caller", async () => {
@@ -125,7 +137,7 @@ describe("the profile's details", () => {
   it("keeps the page and the display name working before the table exists", async () => {
     const user = await freshUser("early@example.test");
     await client.exec("drop table customer_profiles");
-    expect(await as(user).customer.details.get()).toMatchObject({ phone: null, nationality: null });
+    expect(await as(user).customer.details.get()).toMatchObject({ phone: null, birthday: null });
     expect((await as(user).auth.updateNameParts({ firstName: "Early", lastName: "Bird" })).name).toBe("Early Bird");
     await expect(as(user).customer.details.save({ gender: "male" })).rejects.toMatchObject({ message: "error.serverProblem" });
   });

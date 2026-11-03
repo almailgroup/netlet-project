@@ -1,7 +1,7 @@
 /**
  * What "Your profile" may hold beyond the sign-in email and the password —
  * the owner's reference (Noon's "Your profile"): a first and a last name, a
- * phone, a gender, a birthday and a nationality. Pure and shared, so the form
+ * phone, a gender and a birthday. Pure and shared, so the form
  * says what is wrong as somebody types and the server refuses the same thing.
  *
  * **Everything but the name is optional, and none of it is shown to a
@@ -26,48 +26,6 @@ export const NAME_PART_MAX = 60;
 
 /** The oldest birthday the form takes. */
 export const EARLIEST_BIRTHDAY = "1900-01-01";
-
-/**
- * Every country a nationality can be: ISO 3166-1's assigned codes, less the
- * uninhabited territories and the reserved ones, and with Kosovo (`XK`),
- * which ISO leaves user-assigned and everybody uses. The names come from the
- * browser and the phone in the page's own language (`Intl.DisplayNames`,
- * `Locale.localizedString(forRegionCode:)`), so nothing here is a word to
- * translate.
- */
-export const COUNTRY_CODES = [
-  "AD", "AE", "AF", "AG", "AI", "AL", "AM", "AO", "AR", "AS", "AT", "AU", "AW",
-  "AX", "AZ", "BA", "BB", "BD", "BE", "BF", "BG", "BH", "BI", "BJ", "BL", "BM",
-  "BN", "BO", "BQ", "BR", "BS", "BT", "BW", "BY", "BZ", "CA", "CC", "CD", "CF",
-  "CG", "CH", "CI", "CK", "CL", "CM", "CN", "CO", "CR", "CU", "CV", "CW", "CX",
-  "CY", "CZ", "DE", "DJ", "DK", "DM", "DO", "DZ", "EC", "EE", "EG", "EH", "ER",
-  "ES", "ET", "FI", "FJ", "FK", "FM", "FO", "FR", "GA", "GB", "GD", "GE", "GF",
-  "GG", "GH", "GI", "GL", "GM", "GN", "GP", "GQ", "GR", "GT", "GU", "GW", "GY",
-  "HK", "HN", "HR", "HT", "HU", "ID", "IE", "IL", "IM", "IN", "IQ", "IR", "IS",
-  "IT", "JE", "JM", "JO", "JP", "KE", "KG", "KH", "KI", "KM", "KN", "KP", "KR",
-  "KW", "KY", "KZ", "LA", "LB", "LC", "LI", "LK", "LR", "LS", "LT", "LU", "LV",
-  "LY", "MA", "MC", "MD", "ME", "MF", "MG", "MH", "MK", "ML", "MM", "MN", "MO",
-  "MP", "MQ", "MR", "MS", "MT", "MU", "MV", "MW", "MX", "MY", "MZ", "NA", "NC",
-  "NE", "NF", "NG", "NI", "NL", "NO", "NP", "NR", "NU", "NZ", "OM", "PA", "PE",
-  "PF", "PG", "PH", "PK", "PL", "PM", "PN", "PR", "PS", "PT", "PW", "PY", "QA",
-  "RE", "RO", "RS", "RU", "RW", "SA", "SB", "SC", "SD", "SE", "SG", "SH", "SI",
-  "SJ", "SK", "SL", "SM", "SN", "SO", "SR", "SS", "ST", "SV", "SX", "SY", "SZ",
-  "TC", "TD", "TG", "TH", "TJ", "TK", "TL", "TM", "TN", "TO", "TR", "TT", "TV",
-  "TW", "TZ", "UA", "UG", "US", "UY", "UZ", "VA", "VC", "VE", "VG", "VI", "VN",
-  "VU", "WF", "WS", "XK", "YE", "YT", "ZA", "ZM", "ZW",
-] as const;
-
-/**
- * The chips drawn before "View all": Kuwait, then the nationalities most of
- * the people living here hold, so most shoppers choose in one press.
- */
-export const COMMON_NATIONALITIES = ["KW", "IN", "EG", "BD", "PH", "PK", "SA", "SY"] as const;
-
-const COUNTRIES: ReadonlySet<string> = new Set(COUNTRY_CODES);
-
-export function isCountryCode(value: string): boolean {
-  return COUNTRIES.has(value);
-}
 
 /** A display name as a first word and the rest — the starting guess, never saved by itself. */
 export function splitName(name: string | null | undefined): { first: string; last: string } {
@@ -116,7 +74,6 @@ export type ProfileDetails = {
   phone: string | null;
   gender: Gender | null;
   birthday: string | null;
-  nationality: string | null;
 };
 
 export const NO_DETAILS: ProfileDetails = {
@@ -125,5 +82,4 @@ export const NO_DETAILS: ProfileDetails = {
   phone: null,
   gender: null,
   birthday: null,
-  nationality: null,
 };

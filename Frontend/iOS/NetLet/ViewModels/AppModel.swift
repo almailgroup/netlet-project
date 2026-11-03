@@ -258,6 +258,9 @@ final class AppModel {
     /// the list row's "Request a refund" and the screenshots' `track:` and
     /// `refund:` hooks.
     var orderSheet: String?
+    /// `-NetLetOpen confirmOrder` (Debug, for the screenshots): checkout with
+    /// "Confirm your order" up, once the bag and the address are read.
+    var confirmOrderOnOpen = false
     private(set) var memberCode: String?
     /// Whether this account has joined the affiliate programme, a suspended
     /// member included — what decides whether "Join" is offered. Nil until
@@ -444,6 +447,13 @@ final class AppModel {
         case "checkout":
             selectedTab = .cart
             cartPath = NavigationPath([Route.checkout])
+        case "confirmOrder":
+            selectedTab = .cart
+            confirmOrderOnOpen = true
+            cartPath = NavigationPath([Route.checkout])
+        case "orderPlaced":
+            selectedTab = .cart
+            cartPath = NavigationPath([Route.orderPlaced(reference: value ?? "NL-20261103-QRTVW")])
         case "account":
             selectedTab = .account
         case "orders":

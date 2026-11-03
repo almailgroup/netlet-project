@@ -316,14 +316,10 @@ struct Rules: Decodable, Sendable {
 
     /// "Your profile"'s details (`Shared/commerce/profileDetails.ts`).
     struct ProfileLimits: Decodable, Sendable {
-        let countries: [String]
-        let commonNationalities: [String]
         let namePartMax: Int
         let earliestBirthday: String
 
         static let fallback = ProfileLimits(
-            countries: ["KW", "IN", "EG", "BD", "PH", "PK", "SA", "SY"],
-            commonNationalities: ["KW", "IN", "EG", "BD", "PH", "PK", "SA", "SY"],
             namePartMax: 60,
             earliestBirthday: "1900-01-01"
         )

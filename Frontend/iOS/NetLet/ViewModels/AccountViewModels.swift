@@ -8,7 +8,7 @@ import Observation
 @MainActor
 final class ProfileViewModel {
     enum Form: Hashable {
-        case name, phone, gender, birthday, nationality, email, password
+        case name, phone, gender, birthday, email, password
     }
 
     var firstName = ""
@@ -113,15 +113,6 @@ final class ProfileViewModel {
     func removeBirthday() async {
         birthday = ""
         await save(.birthday, API.DetailsPatch(birthday: OrNull(nil)))
-    }
-
-    func choose(nationality code: String?) async {
-        await save(.nationality, API.DetailsPatch(nationality: OrNull(code)))
-    }
-
-    /// A chip pressed: chosen again, it is taken away.
-    func toggle(nationality code: String) async {
-        await choose(nationality: details.nationality == code ? nil : code)
     }
 
     private func save(_ form: Form, _ patch: API.DetailsPatch) async {

@@ -2,7 +2,8 @@
  * A small menu about one line of the bag, behind a round button on the line:
  * the "⋯" of what can be done with it (`LineMenu`) and the delivery button of
  * where it goes (`LineDestination`) share it, so the two open, move and close
- * alike.
+ * alike — and so does the ⋯ on each item of an opened order
+ * (`OrderLineMenu`), which names its item by `photo` and `title`.
  *
  * Two shapes, one at a time. On a phone it is a sheet from the foot of the
  * screen, naming the product over the rows — the thumb's reach; from `sm` a
@@ -35,8 +36,11 @@ export type LineAction = {
   run: () => void;
 };
 
-export function LinePopover({ item, title, label, short, trigger, actions, intro, active = false }: {
-  item: CartItem;
+export function LinePopover({ item, photo, title, label, short, trigger, actions, intro, active = false }: {
+  /** The bag's line, whose picture names it in the sheet… */
+  item?: CartItem;
+  /** …or the picture itself, for a line that is not the bag's. */
+  photo?: string | null;
   title: string;
   /** The button's and the menu's name. */
   label: string;
@@ -198,7 +202,7 @@ export function LinePopover({ item, title, label, short, trigger, actions, intro
                 mistaken for the one under it. */}
             <div className="mb-2 flex items-center gap-3 border-b border-[#eef1f5] px-2 pb-3">
               <span className="size-12 shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9]">
-                <Thumb src={item.image?.url} alt="" className="size-full object-cover" icon={<ShoppingBag className="size-4" />} />
+                <Thumb src={photo ?? item?.image?.url ?? null} alt="" className="size-full object-cover" icon={<ShoppingBag className="size-4" />} />
               </span>
               <span className="min-w-0">
                 <span dir="auto" className="line-clamp-2 text-[14px] font-extrabold leading-5 text-[#0a285a]">{title}</span>

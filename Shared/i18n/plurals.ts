@@ -55,6 +55,14 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
       other: "اشتريته {count} مرة",
     },
   },
+  "checkout.confirmStores": {
+    param: "count",
+    ar: {
+      two: "من متجرين",
+      many: "من {count} متجرًا",
+      other: "من {count} متجر",
+    },
+  },
   "cart.itemCount": {
     param: "count",
     en: { one: "1 item" },

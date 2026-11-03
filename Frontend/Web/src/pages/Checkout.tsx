@@ -27,6 +27,14 @@
  * Each store's parcel says when it comes — the seller's own band
  * (`deliverySpeed` on the line, `arrivalFor`), and nothing when the seller
  * stated none, since NetLet does not promise for a seller.
+ *
+ * **Place order asks before it places, and the shopper stays here**, on the
+ * owner's word ("it should ask you for confirmation … you should either
+ * confirm your purchase or back out. But it should stay in the checkout
+ * page"): it opens "Confirm your order" (`ConfirmOrderDialog`) over the page,
+ * and only its Confirm order places anything. The order placed is then said
+ * over the page too (`OrderPlaced`), with an animation and a sound, and the
+ * shopper leaves by their own press — it used to jump straight to the order.
  */
 import { lineTitle, storeName } from "@/lib/lineTitle";
 import { useCart } from "@/contexts/CartContext";
@@ -52,17 +60,20 @@ import { formatMoney } from "@/lib/format";
 import { convertFromDinars } from "@shared/commerce/currency";
 import AuthDialog from "@/components/auth/AuthDialog";
 import { addressToUse, readLastAddressId, rememberAddress } from "@/lib/lastAddress";
+import { ConfirmOrderDialog } from "@/components/checkout/ConfirmOrder";
+import { OrderPlaced } from "@/components/checkout/OrderPlaced";
+import { playOrderChime, primeOrderChime } from "@/lib/orderChime";
 import { heldClaims } from "@/lib/giftClaims";
 import { productLinks } from "@/lib/referral";
 import { BagSavings, useSavingsBill } from "@/components/cart/BagSavings";
-import { pressHaptic } from "@/lib/haptics";
+import { pressHaptic, refusedHaptic, successHaptic } from "@/lib/haptics";
 import { bagGroups, type BagGroup } from "@/lib/bagGroups";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { Banknote, CreditCard, Info, LoaderCircle, PackageCheck, RotateCcw, ShoppingBag, Smartphone, Store, Truck, Wallet } from "lucide-react";
 import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { cleanParts, hasParts, missingParts, partsProblems } from "@shared/commerce/kuwaitAddress";
-import { addressLineOf } from "@shared/commerce/addresses";
+import { addressLineIn, addressLineOf } from "@shared/commerce/addresses";
 import { arrivalFor, isDeliverySpeed, slowestSpeed, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
 import type { CartItem } from "@shared/commerce/types";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
@@ -73,7 +84,7 @@ const fieldClass = "h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
   const { cart, refreshCart, settling, syncing } = useCart();
-  const { t, tError, locale } = useTranslation();
+  const { t, tError, locale, isArabic } = useTranslation();
   const returnDays = useReturnWindow();
   const money = useMoney();
   const reading = useDisplayCurrency();
@@ -124,19 +135,29 @@ export default function Checkout() {
    * that the driver collected.
    */
   const utils = trpc.useUtils();
+  /* "Confirm your order" is open, holding the total it showed; then the
+     order placed, said over the page until the shopper leaves it. */
+  const [confirming, setConfirming] = useState<{ total: string } | null>(null);
+  const [placed, setPlaced] = useState<{ reference: string; total: string } | null>(null);
   const place = trpc.orders.place.useMutation({
     onSuccess: reply => {
-      toast.success(t("checkout.placed", { reference: reply.reference }));
+      setPlaced({ reference: reply.reference, total: confirming?.total ?? totalText ?? "" });
+      setConfirming(null);
+      successHaptic();
+      void playOrderChime();
       /* The basket has become the order, so the drawer's copy of it is stale —
          and the drawer's copy is the context's own, which an invalidated query
          does not reach. */
       void utils.commerce.cart.get.invalidate();
+      void utils.orders.list.invalidate();
       void refreshCart();
-      /* To the order just placed, open — not the account's front page, where
-         the shopper had to find what they had just bought. */
-      navigate(`/account/orders?order=${encodeURIComponent(reply.reference)}`);
     },
-    onError: error => toast.error(isMessageKey(error.message) ? t(error.message) : t("checkout.placeFailed")),
+    onError: error => {
+      /* Back to the page, whose own line says what stands in the way now. */
+      setConfirming(null);
+      refusedHaptic();
+      toast.error(isMessageKey(error.message) ? t(error.message) : t("checkout.placeFailed"));
+    },
   });
 
   /*
@@ -195,9 +216,17 @@ export default function Checkout() {
   const sharerNames = (via.data ?? []).map(sharer => sharer.displayName);
   const payable = { amount: bill.payable, currencyCode: "KWD" };
 
+  /* Place order asks first; nothing is placed until Confirm order. */
   const placeNow = () => {
-    if (!cart || !address) return;
+    if (!canPlace || !totalText) return;
     pressHaptic();
+    setConfirming({ total: totalText });
+  };
+  const confirmPlace = () => {
+    if (!cart || !address || place.isPending) return;
+    pressHaptic();
+    /* In the press itself: a phone plays the sound only from inside one. */
+    primeOrderChime();
     place.mutate({
       cartId: cart.id,
       paymentMethod: "cod",
@@ -348,6 +377,30 @@ export default function Checkout() {
             )}
           </div>
         </PhoneActionBar>
+      ) : null}
+      {confirming && cart && address ? (
+        <ConfirmOrderDialog
+          items={items}
+          itemCount={cart.itemCount}
+          storeCount={bagGroups(cart)?.length ?? 1}
+          addressLabel={address.label}
+          addressLine={addressLineIn(address, isArabic)}
+          contact={[contactName, normalisePhone(phone) ? formatPhone(normalisePhone(phone)!) : phone].filter(Boolean).join(" · ")}
+          total={confirming.total}
+          pending={place.isPending}
+          onConfirm={confirmPlace}
+          onClose={() => setConfirming(null)}
+        />
+      ) : null}
+      {placed ? (
+        <OrderPlaced
+          reference={placed.reference}
+          total={placed.total}
+          /* To the order just placed, open — not the account's front page,
+             where the shopper had to find what they had just bought. */
+          onView={() => navigate(`/account/orders?order=${encodeURIComponent(placed.reference)}`)}
+          onShop={() => navigate("/")}
+        />
       ) : null}
     </div>
   );

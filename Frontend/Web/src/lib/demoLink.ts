@@ -1004,7 +1004,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       return 0;
     case "customer.details.get":
     case "customer.details.save":
-      return { firstName: null, lastName: null, phone: null, gender: null, birthday: null, nationality: null };
+      return { firstName: null, lastName: null, phone: null, gender: null, birthday: null };
     case "customer.profile.update":
     case "customer.saved.set":
     case "customer.notifications.set":

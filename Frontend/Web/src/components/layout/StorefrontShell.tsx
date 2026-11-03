@@ -43,7 +43,6 @@
  * portal is a different application in everything but deployment.
  */
 import { ShopAssistant, useAssistantShown } from "@/components/assistant/ShopAssistant";
-import { AppDownload } from "@/components/layout/AppDownload";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StoreHeader } from "@/components/layout/StoreHeader";
@@ -196,7 +195,6 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
           {held || !footed ? null : <SiteFooter clearance={clearance} assistant={assistant} />}
           <MobileTabBar />
           {held ? null : <ShopAssistant product={chrome.assistantProduct} department={chrome.activeDepartment} />}
-          {held ? null : <AppDownload />}
         </div>
       </div>
     </ChromeContext.Provider>

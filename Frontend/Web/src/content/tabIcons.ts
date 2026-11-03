@@ -10,10 +10,11 @@
  * (`TAB_ICON_STROKE`, 2, heavier than before), round caps and joins, each
  * with an outline and a filled form: the current tab is filled, the rest
  * are outlines. A rounded house with its door; three squares and a sparkle
- * for the departments; a price tag for the deals, tilted with its hole at
- * the top, after a second picture the owner sent ("make the deals icon like
- * this"); a person in a circle; the cart with its two wheels. The words
- * stay each tab's name for a screen reader.
+ * for the departments; a percent sign for the deals, and nothing else, on
+ * the owner's word ("change the icon of deals to %. Percentage icon only") —
+ * it was a price tag after a picture they sent, and a bag before that; a
+ * person in a circle; the cart with its two wheels. The words stay each
+ * tab's name for a screen reader.
  *
  * Every path is absolute M, L, H, V, C and Z alone, so the app draws them
  * from `tabIcons.json` with a parser of a dozen lines (`TabIcon.swift`); the
@@ -22,15 +23,15 @@
  * shape is stroked at the same weight too, so it is exactly the size of its
  * outline and the icon does not shrink when chosen. A filled shape cannot
  * have a hole cut in it (one colour, nonzero fill), so the chosen forms keep
- * their inner lines — the person, the tag's hole — as their own pieces.
+ * their inner lines — the person — as their own pieces.
  */
 
 export const TAB_ICON_STROKE = 2;
 
 /**
  * One path of an icon. `knockout` draws it clear rather than in the icon's
- * colour — the hole cut out of the chosen Deals tag, which a one-colour fill
- * could not otherwise show.
+ * colour — a hole a one-colour fill could not otherwise show. No icon cuts
+ * one now (the Deals tag's hole went with the tag); both clients still read it.
  */
 export type TabIconPath = { d: string; mode: "stroke" | "fill" | "both"; knockout?: boolean };
 export type TabIconName = "home" | "categories" | "deals" | "profile" | "cart";
@@ -79,51 +80,10 @@ const HOUSE = "M3.6 10.4 L12 3.6 L20.4 10.4 V19.2 C20.4 20.2 19.6 21 18.6 21 H14
 const SQUARES = [roundSquare(3.2, 3.2, 7.4, 2), roundSquare(13.4, 3.2, 7.4, 2), roundSquare(3.2, 13.4, 7.4, 2)];
 const SPARKLE = "M17.2 12.6 C17.6 15 18.8 16.2 21.2 16.6 C18.8 17 17.6 18.2 17.2 20.6 C16.8 18.2 15.6 17 13.2 16.6 C15.6 16.2 16.8 15 17.2 12.6 Z";
 
-/**
- * A closed polygon with each corner rounded to its own radius, as lines and
- * cubic quarters the app's parser reads — the turn at a corner is cut back by
- * `r·tan(φ/2)` along both edges and bridged by a cubic whose handles are
- * `(4/3)·tan(φ/4)·r` long, the usual circular-arc fit.
- */
-function roundedPolygon(points: [number, number][], radii: number[]): string {
-  const count = points.length;
-  const corners = points.map(([x, y], index) => {
-    const [px, py] = points[(index + count - 1) % count];
-    const [nx, ny] = points[(index + 1) % count];
-    const inLength = Math.hypot(x - px, y - py);
-    const outLength = Math.hypot(nx - x, ny - y);
-    const ui = [(x - px) / inLength, (y - py) / inLength];
-    const uo = [(nx - x) / outLength, (ny - y) / outLength];
-    const turn = Math.acos(Math.max(-1, Math.min(1, ui[0] * uo[0] + ui[1] * uo[1])));
-    const r = radii[index];
-    const cut = r * Math.tan(turn / 2);
-    const handle = (4 / 3) * Math.tan(turn / 4) * r;
-    const start = [x - ui[0] * cut, y - ui[1] * cut];
-    const end = [x + uo[0] * cut, y + uo[1] * cut];
-    const c1 = [start[0] + ui[0] * handle, start[1] + ui[1] * handle];
-    const c2 = [end[0] - uo[0] * handle, end[1] - uo[1] * handle];
-    return { start, end, c1, c2 };
-  });
-  const parts = [`M${n(corners[0].end[0])} ${n(corners[0].end[1])}`];
-  for (let step = 1; step <= count; step += 1) {
-    const corner = corners[step % count];
-    parts.push(`L${n(corner.start[0])} ${n(corner.start[1])}`);
-    parts.push(`C${n(corner.c1[0])} ${n(corner.c1[1])} ${n(corner.c2[0])} ${n(corner.c2[1])} ${n(corner.end[0])} ${n(corner.end[1])}`);
-  }
-  parts.push("Z");
-  return parts.join(" ");
-}
-
-/* A price tag at 45°, the owner's picture: its square end up at the top
-   right, with a hole near that corner, and its flat end down at the bottom
-   left. Every corner is rounded. */
-const TAG = roundedPolygon(
-  [[21, 3], [13.2, 3], [2.6, 13.6], [10.4, 21.4], [21, 10.8]],
-  [2.4, 2.4, 2.4, 2.4, 2.4],
-);
-/* On the tag's middle line, near its square end. */
-const TAG_HOLE = circle(16.4, 7.6, 1.3);
-const TAG_HOLE_CUT = circle(16.4, 7.6, 1.55);
+/* A percent sign: two rings and the stroke between them, leaning as the
+   glyph does, from the bottom start to the top end. Chosen, the rings fill. */
+const PERCENT_RINGS = [circle(7.2, 7.2, 2.9), circle(16.8, 16.8, 2.9)];
+const PERCENT_STROKE = "M5.2 18.8 L18.8 5.2";
 
 /* A person in a circle. */
 const RING = circle(12, 12, 9.2);
@@ -146,15 +106,13 @@ export const TAB_ICONS: Record<TabIconName, TabIconDrawing> = {
     filled: [...SQUARES.map(d => ({ d, mode: "both" as const })), { d: SPARKLE, mode: "both" }],
   },
   deals: {
-    /* Chosen, the tag fills and its hole is cut out of it by the client
-       (`knockout`), so it still reads as a tag. */
     outline: [
-      { d: TAG, mode: "stroke" },
-      { d: TAG_HOLE, mode: "fill" },
+      ...PERCENT_RINGS.map(d => ({ d, mode: "stroke" as const })),
+      { d: PERCENT_STROKE, mode: "stroke" },
     ],
     filled: [
-      { d: TAG, mode: "both" },
-      { d: TAG_HOLE_CUT, mode: "fill", knockout: true },
+      ...PERCENT_RINGS.map(d => ({ d, mode: "both" as const })),
+      { d: PERCENT_STROKE, mode: "stroke" },
     ],
   },
   profile: {

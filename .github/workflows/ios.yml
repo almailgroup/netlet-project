@@ -204,6 +204,9 @@ jobs:
             shot 76-portal-warranty "$lang" portal:/admin/warranty shopper
             # Frequently bought: the list with its usual amounts and what was bought before.
             shot 77-frequent "$lang" frequent shopper
+            # Place order asks first, and the order placed is said over checkout.
+            shot 78-checkout-confirm "$lang" confirmOrder shopper
+            shot 79-order-placed "$lang" orderPlaced:NL-20261001-J7MWY shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

@@ -14,6 +14,12 @@ import SwiftUI
 /// others are drawn as coming** ("for now add multiple payment methods as a
 /// mockup design"): KNET, a card and Apple Pay, none choosable, so the page
 /// shows what paying will look like without a press on one leading anywhere.
+///
+/// **Place order asks before it places, and the shopper stays here**, on the
+/// owner's word: it opens "Confirm your order" (`ConfirmOrderSheet`), and only
+/// its Confirm order places anything; the order placed is then said over the
+/// page (`OrderPlacedView`) with an animation and a sound, and the shopper
+/// leaves by their own press — the web's `ConfirmOrderDialog` and `OrderPlaced`.
 struct CheckoutView: View {
     let path: Binding<NavigationPath>?
     @Environment(AppModel.self) private var app
@@ -49,6 +55,12 @@ private struct CheckoutForm: View {
     let path: Binding<NavigationPath>?
     @State private var adopted = false
     @FocusState private var phoneFocused: Bool
+    /// "Confirm your order" is up.
+    @State private var confirming = false
+    /// The order placed, waiting for the confirm sheet to finish going down.
+    @State private var landed: PlacedNotice?
+    /// The order placed, said over the page.
+    @State private var placed: PlacedNotice?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
@@ -107,7 +119,9 @@ private struct CheckoutForm: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 Button {
-                    Task { await place(address: address) }
+                    // Asks first; nothing is placed until Confirm order.
+                    guard !app.cart.syncing, cart != nil, address != nil else { return }
+                    confirming = true
                 } label: {
                     if model.placing {
                         HStack(spacing: 8) { ProgressView().tint(Brand.navy); Text(l.t("checkout.placing")) }
@@ -131,7 +145,48 @@ private struct CheckoutForm: View {
             .accessibilityElement(children: .contain)
             .accessibilityLabel(l.t("checkout.placeBar"))
         }
+        .sheet(isPresented: $confirming, onDismiss: {
+            if let landed {
+                placed = landed
+                self.landed = nil
+            }
+        }) {
+            if let cart, let address {
+                ConfirmOrderSheet(
+                    cart: cart,
+                    address: address,
+                    contact: contact(for: address),
+                    total: model.bill(for: cart).payable,
+                    placing: model.placing,
+                    onConfirm: { Task { await place(address: address) } },
+                    onBack: { confirming = false }
+                )
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .buttonStyle(HapticDefaultStyle())
+            }
+        }
+        .fullScreenCover(item: $placed) { notice in
+            OrderPlacedView(reference: notice.id, total: notice.total, onView: {
+                placed = nil
+                if let path {
+                    path.wrappedValue = NavigationPath([Route.order(reference: notice.id)])
+                } else {
+                    app.open(.order(reference: notice.id))
+                }
+            }, onShop: {
+                placed = nil
+                path?.wrappedValue = NavigationPath()
+                app.selectedTab = .home
+            })
+        }
         .task { await model.load(user: app.session.user) }
+        // `-NetLetOpen confirmOrder`: the screenshots' way to the sheet.
+        .task(id: app.delivery.loaded) {
+            guard app.confirmOrderOnOpen, app.delivery.loaded, app.cart.cart != nil, app.delivery.inUse != nil else { return }
+            app.confirmOrderOnOpen = false
+            confirming = true
+        }
         // A book with no address in the area in use starts from the one used
         // last here, else the first, and the area follows it: an order needs a
         // door, and this is the one the shopper picked most recently.
@@ -196,17 +251,28 @@ private struct CheckoutForm: View {
         return key == "error.serverProblem" ? "checkout.placeFailed" : key
     }
 
+    /// Who the driver calls, on what number, under the address in the sheet.
+    private func contact(for address: SavedAddress) -> String {
+        let name = address.contactName?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+            ?? app.session.user?.name?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        let phone = PhoneNumber.normalise(model.phone(for: address)).map(PhoneNumber.display)
+        return [name, phone].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    /// Confirm order, pressed in the sheet: the sheet goes down and the order
+    /// placed is said once it has. A refusal puts the sheet down too, and the
+    /// page says what stands in the way (`model.refusal`).
     private func place(address: SavedAddress?) async {
         guard !app.cart.syncing else { return }
-        guard let placed = await model.place(cart: app.cart.cart, address: address, accountName: app.session.user?.name) else {
+        let total = app.cart.cart.map { model.bill(for: $0).payable }
+        guard let order = await model.place(cart: app.cart.cart, address: address, accountName: app.session.user?.name) else {
             Haptics.refused()
+            confirming = false
             return
         }
-        Haptics.succeeded()
+        landed = PlacedNotice(id: order.reference, total: total)
+        confirming = false
         await app.cart.refresh()
-        if let path {
-            path.wrappedValue = NavigationPath([Route.orderPlaced(reference: placed.reference)])
-        }
     }
 }
 
@@ -470,48 +536,11 @@ struct OrderButtonStyle: ButtonStyle {
     }
 }
 
-/// The page an order lands on: its number, said to be read down a phone, and the way to it.
-struct OrderPlacedView: View {
-    let reference: String
-    let path: Binding<NavigationPath>?
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(Brand.success)
-                .accessibilityHidden(true)
-            Text(l.t("orders.reference"))
-                .font(.headline)
-                .foregroundStyle(Brand.muted)
-            Text(reference)
-                .font(.title2.monospaced().weight(.bold))
-                .foregroundStyle(Brand.navy)
-                .textSelection(.enabled)
-                .environment(\.layoutDirection, .leftToRight)
-            Text(l.t("checkout.placed", ["reference": reference]))
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Brand.ink)
-            Button(l.t("ios.order.view")) {
-                path?.wrappedValue = NavigationPath([Route.order(reference: reference)])
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            Button(l.t("header.continueShopping")) {
-                path?.wrappedValue = NavigationPath()
-                app.selectedTab = .home
-            }
-            .buttonStyle(SecondaryButtonStyle())
-        }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Brand.ground.ignoresSafeArea())
-        .navigationBarBackButtonHidden()
-        .navigationTitle(l.t("checkout.heading"))
-        .navigationBarTitleDisplayMode(.inline)
-    }
+/// The order just placed, as the confirmation over checkout shows it.
+struct PlacedNotice: Identifiable {
+    /// The order's reference.
+    let id: String
+    let total: Money?
 }
 
 /// The order summary at checkout: what the goods and delivery come to, what

@@ -1856,3 +1856,105 @@ html[data-page-arriving] .assistant-launcher {
     font-size: 16px !important;
   }
 }
+
+/*
+ * An order placed (`OrderPlaced`, on checkout), on the owner's word: the navy
+ * disc springs in, a ring spreads from it and fades, the tick draws itself,
+ * a burst of the brand's colours flies out and falls away, and the words rise
+ * in after. Transforms, opacities and a stroke's dash alone. At rest — and
+ * under reduced motion, which runs none of it — the tick is drawn, the words
+ * are in place, and the ring and the burst are not there.
+ */
+.order-done-ring,
+.order-done-bit {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .order-done-disc {
+    animation: order-done-pop 620ms cubic-bezier(0.2, 1.45, 0.4, 1) both;
+  }
+  .order-done-ring {
+    animation: order-done-ring 900ms 140ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+  .order-done-tick {
+    stroke-dasharray: 1;
+    animation: order-done-draw 420ms 260ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  }
+  .order-done-bit {
+    animation: order-done-burst 1000ms 200ms cubic-bezier(0.12, 0.75, 0.3, 1) both;
+  }
+  .order-done-rise {
+    animation: order-done-rise 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: var(--delay, 0ms);
+  }
+}
+@keyframes order-done-pop {
+  from {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  55% {
+    opacity: 1;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes order-done-ring {
+  from {
+    transform: scale(0.75);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+@keyframes order-done-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes order-done-burst {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.4);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), calc(var(--dy) + 26px)) rotate(var(--rot)) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes order-done-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/*
+ * The app's QR card under "Download the NetLet app" (`AppDownloadLink`): it
+ * drops a few pixels into place as it opens, by a transform and an opacity
+ * on the card alone. Still under reduced motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .app-card:not([hidden]) {
+    animation: app-card-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes app-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}

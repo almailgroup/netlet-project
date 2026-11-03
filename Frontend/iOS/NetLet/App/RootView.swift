@@ -181,6 +181,7 @@ extension View {
 private struct RouteDestination: View {
     let route: Route
     let path: Binding<NavigationPath>?
+    @Environment(AppModel.self) private var app
 
     var body: some View {
         switch route {
@@ -198,7 +199,15 @@ private struct RouteDestination: View {
         case .store(let slug): StoreView(slug: slug)
         case .saved: SavedView()
         case .checkout: CheckoutView(path: path)
-        case .orderPlaced(let reference): OrderPlacedView(reference: reference, path: path)
+        case .orderPlaced(let reference):
+            OrderPlacedView(reference: reference, onView: {
+                path?.wrappedValue = NavigationPath([Route.order(reference: reference)])
+            }, onShop: {
+                path?.wrappedValue = NavigationPath()
+                app.selectedTab = .home
+            })
+            .navigationBarBackButtonHidden()
+            .toolbar(.hidden, for: .tabBar)
         case .orders: OrdersView()
         case .order(let reference): OrderDetailView(reference: reference)
         case .returns: ReturnsView()

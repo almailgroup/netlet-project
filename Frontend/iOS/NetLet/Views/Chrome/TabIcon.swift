@@ -4,12 +4,12 @@ import UIKit
 /// The tab bar's five icons — the web's own drawing (`content/tabIcons.ts`,
 /// exported to `tabIcons.json`): bold and wordless, on the owner's word,
 /// after the picture they sent of a shop's bar — a rounded house, three
-/// squares and a sparkle, a price tag for the deals, a person
+/// squares and a sparkle, a percent sign for the deals, a person
 /// in a circle, the cart. An outline for each tab and a filled form for the
 /// one that is chosen, drawn here as template images the system tints — navy
 /// chosen, the bar's ink otherwise — so the tab bar stays Apple's own. A
-/// `knockout` path is cut out of what is drawn (the hole through the
-/// chosen tag), with the clear blend mode, since one tint cannot draw it.
+/// `knockout` path is cut out of what is drawn, with the clear blend mode,
+/// since one tint cannot draw it (none does now; the tag's hole was the one).
 ///
 /// The paths are absolute M, L, H, V, C and Z alone, the parser below being
 /// all it takes; a test draws every one.
@@ -64,7 +64,7 @@ enum TabIcon: String, CaseIterable {
         switch self {
         case .home: return "house"
         case .categories: return "square.grid.2x2"
-        case .deals: return "bag"
+        case .deals: return "percent"
         case .profile: return "person.crop.circle"
         case .cart: return "cart"
         }

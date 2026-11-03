@@ -20,6 +20,11 @@ export function pressHaptic(): void {
   buzz(10);
 }
 
+/** Something done that matters — an order placed: a knock and a firmer one, apart. */
+export function successHaptic(): void {
+  buzz([12, 60, 24]);
+}
+
 /** A press the shop refused — two short knocks, so it does not feel like the one that worked. */
 export function refusedHaptic(): void {
   buzz([14, 70, 14]);

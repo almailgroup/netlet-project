@@ -217,7 +217,6 @@ enum API {
         var phone: OrNull<String>?
         var gender: OrNull<String>?
         var birthday: OrNull<String>?
-        var nationality: OrNull<String>?
     }
 
     /// The name in its parts; the server writes the display name from them.

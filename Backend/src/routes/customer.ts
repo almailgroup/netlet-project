@@ -87,8 +87,8 @@ export const customerRouter = router({
     }),
   }),
   /**
-   * "Your profile"'s optional details — phone, gender, birthday, nationality
-   * and the name's parts (`Shared/commerce/profileDetails.ts`). The name is
+   * "Your profile"'s optional details — phone, gender and birthday — and
+   * the name's parts (`Shared/commerce/profileDetails.ts`). The name is
    * saved through `auth.updateNameParts`, which writes the display name too.
    * Each card saves only its own field; a null clears it.
    */
@@ -99,7 +99,6 @@ export const customerRouter = router({
         phone: z.string().max(32).nullable().optional(),
         gender: z.enum(GENDERS).nullable().optional(),
         birthday: z.string().max(10).nullable().optional(),
-        nationality: z.string().length(2).nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         try {

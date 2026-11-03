@@ -88,8 +88,6 @@ struct ProfileDetails: Decodable, Equatable, Sendable {
     var gender: String?
     /// `yyyy-mm-dd`.
     var birthday: String?
-    /// An ISO 3166 country code.
-    var nationality: String?
 
     static let none = ProfileDetails()
 
