@@ -92,6 +92,8 @@ import { EARLIEST_BIRTHDAY, NAME_PART_MAX } from "../../../Shared/commerce/profi
 import { HOME_COUNTRY, SHOP_COUNTRIES } from "../../../Shared/commerce/country.js";
 import { MAX_WARRANTY_PHOTOS, MAX_WARRANTY_PROBLEM, MAX_WARRANTY_RESPONSE, MIN_WARRANTY_PROBLEM, WARRANTY_REMEDIES } from "../../../Shared/commerce/warranty.js";
 import { MAX_ORDER_HELP_QUESTION, ORDER_HELP_ACTIONS, ORDER_HELP_STARTERS, ORDER_HELP_TURNS } from "../../../Shared/commerce/orderHelp.js";
+import { HELP_ISSUES, ITEM_ISSUES } from "../../../Shared/commerce/selfService.js";
+import { NOTICE_CATEGORIES } from "../../../Shared/commerce/noticeCategories.js";
 import {
   AD_CAPACITY, AD_RATES, AD_SLOTS, BANNER_ASPECT, BANNER_HEADLINE_MAX, BANNER_MAX_WIDTH, BANNER_MIN_WIDTH, BANNER_NOTE_MAX, MAX_AD_DAYS, MAX_AD_LEAD_DAYS,
 } from "../../../Shared/commerce/adBookings.js";
@@ -241,6 +243,14 @@ export function buildResources(): Record<string, string> {
         offerWindowDays: OFFER_WINDOW_DAYS,
         maxOfferNote: MAX_OFFER_NOTE,
         subscriptionIntervals: SUBSCRIPTION_INTERVALS,
+        /* What a shopper is told, in the five groups the settings draw (`noticeCategories.ts`). */
+        noticeCategories: NOTICE_CATEGORIES.map(category => ({
+          id: category.id,
+          title: category.title,
+          body: category.body,
+          preference: category.preference,
+          alwaysNote: category.alwaysNote,
+        })),
       },
       orders: {
         returnKinds: RETURN_KINDS,
@@ -287,7 +297,15 @@ export function buildResources(): Record<string, string> {
           maxPhotos: MAX_WARRANTY_PHOTOS,
           remedies: WARRANTY_REMEDIES,
         },
-        help: { maxQuestion: MAX_ORDER_HELP_QUESTION, turns: ORDER_HELP_TURNS, starters: ORDER_HELP_STARTERS, actions: ORDER_HELP_ACTIONS },
+        help: {
+          maxQuestion: MAX_ORDER_HELP_QUESTION,
+          turns: ORDER_HELP_TURNS,
+          starters: ORDER_HELP_STARTERS,
+          actions: ORDER_HELP_ACTIONS,
+          /* The help centre's issues, and the ones about one item (`selfService.ts`). */
+          issues: HELP_ISSUES,
+          itemIssues: ITEM_ISSUES,
+        },
       },
     }),
     /* `rankBySearch`'s folding and synonyms, for a search the app answers

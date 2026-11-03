@@ -44,7 +44,7 @@ export const MAX_DRAFT_TURN = 600;
 /** The longest draft the reply box is handed. */
 export const MAX_DRAFT = 1200;
 
-export type DraftAuthor = "shopper" | "staff" | "automatic";
+export type DraftAuthor = "shopper" | "staff" | "automatic" | "handover";
 
 /** One turn as the model sees it: who, and what — already rendered to text. */
 export type DraftTurn = { author: DraftAuthor; text: string };
@@ -88,7 +88,7 @@ export function draftBrief(topic: SupportTopic, facts: readonly string[], turns:
   };
 }
 
-const LABEL: Record<DraftAuthor, string> = { shopper: "Shopper", staff: "NetLet", automatic: "NetLet (automatic answer)" };
+const LABEL: Record<DraftAuthor, string> = { shopper: "Shopper", staff: "NetLet", automatic: "NetLet (automatic answer)", handover: "NetLet AI (what the help centre passed on)" };
 
 /** The brief as the model reads it: the facts, then the fenced conversation. */
 export function draftPrompt(brief: DraftBrief): string {

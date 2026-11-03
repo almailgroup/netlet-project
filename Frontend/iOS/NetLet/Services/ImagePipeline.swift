@@ -51,6 +51,17 @@ actor ImagePipeline {
         }
     }
 
+    /// How much the disk copy holds, in bytes — the storage panel's figure.
+    func diskUsage() -> Int { disk?.currentDiskUsage ?? 0 }
+
+    /// Empties both copies and forgets what failed — the storage panel's Clear
+    /// cache. Every picture is fetched again as it is next drawn.
+    func clear() {
+        disk?.removeAllCachedResponses()
+        refused = [:]
+        memory.removeAll()
+    }
+
     /// The bytes on disk: a cache of its own, so the catalogue's photos never
     /// push the API's answers out, or the other way round.
     static func makeDisk() -> URLCache {
@@ -200,6 +211,11 @@ actor ImagePipeline {
 /// The decoded pictures, by address and size, while the app runs — bounded by
 /// their pixels, so the system can take them back when it needs the memory.
 final class ImageMemory: @unchecked Sendable {
+    func removeAll() {
+        cache.removeAllObjects()
+        latest.removeAllObjects()
+    }
+
     private let cache: NSCache<NSString, UIImage> = {
         let cache = NSCache<NSString, UIImage>()
         cache.totalCostLimit = 120 * 1024 * 1024

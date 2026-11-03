@@ -46,6 +46,8 @@ enum Route: Hashable {
     // The account's sections, each the web's `/account/<section>`.
     case addresses
     case preferences
+    /// The products this phone opened, to look back over and clear (`/account/history`).
+    case history
     case notifications
     case wishlists
     case wishlist(id: Int)
@@ -125,6 +127,7 @@ enum Route: Hashable {
             case "security": return .security
             case "addresses": return .addresses
             case "preferences": return .preferences
+            case "history": return .history
             case "notifications": return .notifications
             case "wishlists": return .wishlists
             case "offers": return .offers
@@ -258,6 +261,9 @@ final class AppModel {
     /// the list row's "Request a refund" and the screenshots' `track:` and
     /// `refund:` hooks.
     var orderSheet: String?
+    /// `-NetLetOpen helpIssue:<reference>` (Debug, for the screenshots): the
+    /// order's help sheet with an issue already chosen.
+    var presetHelpIssue: String?
     /// `-NetLetOpen confirmOrder` (Debug, for the screenshots): checkout with
     /// "Confirm your order" up, once the bag and the address are read.
     var confirmOrderOnOpen = false
@@ -462,6 +468,13 @@ final class AppModel {
         case "frequent":
             selectedTab = .account
             accountPath = NavigationPath([Route.frequent])
+        case "helpIssue":
+            // The help sheet with "Damaged or defective" chosen: the answer from the order and its act.
+            guard let value else { return }
+            selectedTab = .account
+            orderSheet = "help"
+            presetHelpIssue = "damaged"
+            accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
         case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress":
             // `track:`, `refund:`, `rate:`, `warranty:`, `modify:`, `help:` and
             // `orderAddress:` open the order with that sheet up.

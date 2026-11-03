@@ -134,8 +134,52 @@ struct OrderHelpAnswer: Decodable, Hashable, Sendable {
     let kind: String
     var text: String? = nil
     var actions: [String]? = nil
+    /// Acts NetLet AI proposes, each done only on Confirm (`orderHelpPieces`).
+    var offers: [HelpOffer]? = nil
     var person: Bool? = nil
     var reason: String? = nil
+}
+
+/// One act the help centre offers (`HelpOffer` in `Shared/commerce/selfService.ts`):
+/// a return, cancelling the order or an item, buying again — each done on
+/// Confirm — or a panel to open (`open`) or an account page (`page`).
+struct HelpOffer: Decodable, Hashable, Sendable {
+    /// return, cancelOrder, cancelItem, buyAgain, open or page.
+    let kind: String
+    var lineId: Int? = nil
+    var returnKinds: [String]? = nil
+    var reasons: [String]? = nil
+    /// track, refund, returnForm, warranty, address, modify or rate.
+    var panel: String? = nil
+    /// security, profile, notifications, addresses or returns.
+    var to: String? = nil
+
+    /// An act the shopper confirms here, rather than a way somewhere else.
+    var isAct: Bool { kind != "open" && kind != "page" }
+}
+
+/// The help centre's answer to an issue about an order (`support.selfHelp`):
+/// what is true now, the acts that would settle it, whether a person is the
+/// next step, and the order's items to choose from.
+struct SelfHelpAnswer: Decodable, Sendable {
+    struct Item: Decodable, Hashable, Identifiable, Sendable {
+        let id: Int
+        let title: String
+        var variant: String? = nil
+        var photo: String? = nil
+        let fulfilment: String
+        var variantId: Int? = nil
+        let quantity: Int
+    }
+
+    let say: [SupportThread.Part]
+    let offers: [HelpOffer]
+    /// "next" or "offer".
+    let person: String
+    let items: [Item]
+
+    /// Asking which item before answering.
+    var picksItem: Bool { say.first?.key == "help.pickItem" && !items.isEmpty }
 }
 
 /// The shop's own returns policy, read live (`commerce.policy`) — the

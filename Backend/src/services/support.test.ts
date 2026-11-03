@@ -172,3 +172,40 @@ describe("drafting a reply", () => {
     await expect(drafts.draftAvailable(seller())).rejects.toThrow("FORBIDDEN:support.answer");
   });
 });
+
+describe("the help centre", () => {
+  it("hands a person the issue, the item and what was done, in place of a second automatic answer", async () => {
+    const found = await ordersModule.getOrderForUser(ids.noura, reference);
+    const lineId = found!.lines[0].id;
+    const { id } = await support.openConversation(ids.noura, {
+      topic: "return",
+      orderReference: reference,
+      body: "It arrived broken",
+      handover: { issue: "damaged", lineId, done: [{ act: "returnApproved", lineId }, { act: "cancelItem", lineId: 999_999 }] },
+    });
+    const thread = await support.conversationForStaff(admin(), id);
+    expect(thread.messages.map(message => message.author)).toEqual(["shopper", "handover"]);
+    /* The item is named from the order, and one that is not on it is nobody's. */
+    expect(thread.messages[1].answer).toEqual([
+      { key: "support.handover.title" },
+      { key: "support.handover.issue.damaged" },
+      { key: "support.handover.item", params: { item: "Lamp" } },
+      { key: "support.handover.did.returnApproved", params: { item: "Lamp" } },
+      { key: "support.handover.did.cancelItem", params: { item: "—" } },
+    ]);
+  });
+
+  it("answers an issue from the shopper's own order, and not from anybody else's", async () => {
+    const selfHelp = await import("./selfHelp.js");
+    const found = await ordersModule.getOrderForUser(ids.noura, reference);
+    const lineId = found!.lines[0].id;
+    const answer = await selfHelp.selfHelpFor(ids.noura, { issue: "damaged", reference, lineId, locale: "en" });
+    /* The lamp is with the driver: no return yet, but where it is. */
+    expect(answer!.say[0]).toEqual({ key: "help.item.notArrived", params: { item: "Lamp" } });
+    expect(answer!.offers).toEqual([{ kind: "open", panel: "track", lineId }]);
+    expect(answer!.items[0]).toMatchObject({ id: lineId, title: "Lamp", fulfilment: "shipped" });
+    expect(await selfHelp.selfHelpFor(ids.fahad, { issue: "damaged", reference, lineId, locale: "en" })).toBeNull();
+    const account = await selfHelp.selfHelpFor(ids.fahad, { issue: "account", reference: null, lineId: null, locale: "ar" });
+    expect(account!.offers.map(offer => offer.kind)).toEqual(["page", "page", "page", "page"]);
+  });
+});

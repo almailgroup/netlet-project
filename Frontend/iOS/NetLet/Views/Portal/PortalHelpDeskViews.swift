@@ -124,7 +124,7 @@ struct PortalSupportThreadView: View {
                     ForEach(thread.messages) { message in
                         Bubble(
                             mine: message.author == "staff",
-                            author: l.t(message.author == "automatic" ? "support.automaticSent" : message.author == "staff" ? "support.netlet" : "support.shopper"),
+                            author: l.t(message.author == "automatic" ? "support.automaticSent" : message.author == "handover" ? "support.handover.label" : message.author == "staff" ? "support.netlet" : "support.shopper"),
                             text: message.answer.map { parts in parts.map { l.t($0.key, $0.params) }.joined(separator: "\n\n") } ?? message.body ?? "",
                             stamp: OrderWording.dateTime(message.createdAt, language: l.current)
                         )

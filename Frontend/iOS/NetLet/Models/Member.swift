@@ -288,7 +288,7 @@ struct SupportThread: Decodable, Sendable {
 
     struct Message: Decodable, Identifiable, Hashable, Sendable {
         let id: Int
-        /// shopper, automatic or staff.
+        /// shopper, automatic, staff, or handover — what the help centre passed on.
         let author: String
         let body: String?
         let answer: [Part]?

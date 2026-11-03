@@ -31,7 +31,7 @@ import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NoticeDot } from "@/components/ui/CountBadge";
-import { Bell, ChevronDown, Gift, LayoutDashboard, LifeBuoy, LogOut, MapPin, Package, UserRound } from "lucide-react";
+import { Bell, ChevronDown, Gift, LayoutDashboard, LifeBuoy, LogOut, MapPin, Package, Store, UserRound } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
@@ -185,12 +185,12 @@ export function AccountMenu() {
           {entry("/account/wishlists", <Gift className="size-4" />, "account.sectionWishlists")}
           {entry("/account/addresses", <MapPin className="size-4" />, "address.book")}
           {entry("/account", <UserRound className="size-4" />, "header.menuAccount")}
-          {portal ? (
-            <>
-              <div role="separator" className="my-1 h-px bg-[#e6e9ef]" />
-              {entry("/admin", <LayoutDashboard className="size-4" />, portal)}
-            </>
-          ) : null}
+          {/* The portal for somebody who runs a store or the shop; for anybody
+              else the way to become a seller, on the owner's word. */}
+          <div role="separator" className="my-1 h-px bg-[#e6e9ef]" />
+          {portal
+            ? entry("/admin", <LayoutDashboard className="size-4" />, portal)
+            : me.isSuccess || me.isError ? entry("/sell", <Store className="size-4" />, "seller.becomeTitle") : null}
           <div role="separator" className="my-1 h-px bg-[#e6e9ef]" />
           <button
             type="button"

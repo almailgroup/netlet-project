@@ -1545,8 +1545,9 @@ is read as nothing. **Previously viewed is the device's own list**
 first and once, for `VIEWED_DAYS` (90); the shelf reads the products back by
 id (`commerce.products.byIds`), so the cards carry today's price and photo
 and one no longer on the shelf is not drawn; it is drawn from one, being this
-shopper's own history, with Clear in its heading, which empties the list and
-says so; it is read as the page appears, so a product opened from the shelf
+shopper's own history, with "Manage history" in its heading — managing it is
+the account's, on the owner's word (see "Browsing history" under The
+account); it is read as the page appears, so a product opened from the shelf
 joins it on the next visit and not under the finger. The privacy policy says
 all of it (`privacy.device.body`). The app keeps the same list in
 `UserDefaults` (`RecentlyViewed`, tested on the web's cases).
@@ -2188,6 +2189,38 @@ assistant icon for all the pages"): it was left off these two for a while,
 having covered the ends of the rows — the owner's screenshot had it over
 "Help from NetLet" — and now the page keeps room under its last row for it
 (`pb-[11rem]`), and it folds to its mark while the tab bar is away.
+
+**The seller portal has a door on the account's home, and every shopper sees
+one, on the owner's word** ("a clearly visible entry … easy switching between
+the shopping and seller experiences; users who are not sellers go to Become a
+Seller"): a card under the points (`SellerEntry` on the web, `SellerEntryCard`
+in the app) names the store and opens the portal for somebody in one — the
+portal has its own way back — and offers `/sell` to anybody else; the account
+menu does the same ("Sell on NetLet"). The server decides which
+(`inventory.me`); the Selling row went, being the card twice.
+
+**Browsing history is a row of the account, less prominent than the home's
+shelf, on the owner's word** ("keep management in the account … view, remove
+individual, clear all"; `/account/history`, `AccountHistory`, the app's
+`BrowsingHistoryView`): the products this device opened, newest first, read
+back by id, each with a remove (`forgetViewed`, the app's `forget`) and Clear
+all behind a confirmation, since it empties Previously viewed too. The home
+page keeps Previously viewed, its heading reading "Manage history".
+
+**Preferences holds the app's own settings too** (on the owner's word:
+"app storage usage display and clear cache where the operating system permits
+… Rate Our App through the official store"): the notification groups (see
+Notifications), **storage on this device** — the browser's own estimate and
+Clear cache, which empties the remembered shelves and the site's Cache Storage
+(`StoragePanel`), and in the app the pictures' disk copy, the remembered
+shelves and the URL cache (`StorageCard`, `ImagePipeline.clear`,
+`ShelfMemory.forget`) — never the session, the bag, the language or the
+history, which have their own controls; and **Rate our app, in the app alone**
+(`RateAppCard`): Apple's own rating window (`requestReview`), which iOS shows
+only for a copy from the App Store, so a TestFlight or Xcode build
+(`AppTransaction`'s environment) says the rating opens once NetLet is on the
+App Store instead of offering a press that would show nothing. The web and
+Android have none.
 
 **Account security is the password and deleting the account, and nothing
 else, on the owner's word** (`SecurityCards` on the web, `AccountSecurityView`
@@ -2836,20 +2869,30 @@ desk is empty and its tile zero; the account-deletion check asks `to_regclass`
 first, because it runs inside a transaction a failed read would abort.
 `warranty.test.ts` renames the table away and opens an order.
 
-**Get help with this order is NetLet AI first, then a person**
-(`Shared/commerce/orderHelp.ts`, `Backend/src/services/orderHelp.ts`,
-`support.orderHelp`; `OrderHelp`, `OrderHelpSheet`), on the owner's word ("let
-the AI resolve the issue before any real reaction"). The facts are the server's
-own read of this order — each line's state, what can still be cancelled or
-changed, whether a return or a claim is open to it — never the address, the
-phone or anything else about the shopper, and the question is held to the
-contact filter on both sides. The model may point at the buttons the order
-offers (`[[do: action]]`, only those, each once) and hand over
-(`[[person]]`); it never claims to have done anything. **A person is one press
-away always**, and the next step when the model hands over, does not answer,
-is switched off or the hour's allowance (`MAX_ORDER_HELP_PER_HOUR`) is spent:
-the conversation goes to NetLet's support with the order attached
-(`support.open`), and the reply arrives under Help from NetLet and the bell.
+**Get help with this order starts from what happened, then NetLet AI, then a
+person** (`Shared/commerce/selfService.ts`, `Shared/commerce/orderHelp.ts`,
+`support.selfHelp`, `support.orderHelp`; `OrderHelp`, `OrderHelpSheet`), on the
+owner's word ("let the AI resolve the issue before any real reaction", and
+then "perform authorized actions directly after receiving customer
+confirmation, rather than simply providing instructions"). It opens on the
+issues (see "The help centre" under Talking to NetLet), the item when it is
+about one — already chosen from an item's ⋯ — and the answer from this order's
+facts, with its acts as cards done on Confirm. **NetLet AI answers what that
+did not**, from the same facts (`issueFactsFrom`, the order page's own
+answer), told the issue and the item; the items are numbered for it, and it
+may propose an act on one (`[[do: return item=2 kind=refund
+reason=damaged]]`, `[[do: cancelItem item=1]]`, `[[do: cancel]]`,
+`[[do: buyAgain]]`) or a panel (`[[do: track]]`, `[[do: warranty item=1]]`…),
+at most two, each kept only if the order allows it now (`offerAllowed`) and
+drawn as the same card — never said to be done before the shopper confirms.
+The facts are never the address, the phone or anything else about the
+shopper, and the question is held to the contact filter on both sides. An
+older app reads `actions`, the panel names, which are still sent beside
+`offers`. **A person is one press away always**, and the next step when the
+answer says so, the model hands over, does not answer, is switched off or the
+hour's allowance (`MAX_ORDER_HELP_PER_HOUR`) is spent: the conversation goes
+to NetLet's support with the order attached and the handover (`support.open`),
+and the reply arrives under Help from NetLet and the bell.
 
 ## The finance panel
 
@@ -3909,6 +3952,55 @@ Worker — because the shopper's details have no business at a third party.
 Absent while the gateway is not configured or `ai` or `assistant` is off, like
 the product assistant.
 
+
+### The help centre
+
+**What happened is answered from the shopper's own order before anybody is
+asked, and the acts that settle it are done on Confirm** — on the owner's
+word: "the AI assistant should understand customer issues and provide
+immediate solutions … integrated with order management, shipping, returns,
+refunds and warranty … support should be the last resort, but easily
+accessible". `Shared/commerce/selfService.ts` is the rule, pure:
+
+- **Eight issues** (`HELP_ISSUES`): delayed order or delivery, damaged or
+  defective, wrong or missing item, return and refund, exchange, warranty,
+  payment, account. Five are about one item (`ITEM_ISSUES`), and the page asks
+  which before answering; the account's needs no order.
+- **`resolveIssue` answers from the order's facts** (`issueFactsFrom`, built
+  from `orderDetailForShopper` — the order page's own answer, moved out of the
+  router so both read one), as message keys, with the acts that would settle
+  it: a fault or a wrong item inside the window is a return or the same item
+  again, approved at once; an item not yet with a driver can be cancelled
+  instead; past the window, the store's warranty; a late parcel names the
+  store's day and a person to chase it; a payment problem says what is owed in
+  cash and goes to a person; never an exchange for a size, which the same item
+  again does not fix. `support.selfHelp` is the query, with the order's items
+  for the page that has not opened it.
+- **An act is a card that says exactly what will happen, done only on
+  Confirm**, through the call the item's own form makes — `orders.requestReturn`
+  with the reason chosen, `orders.cancel`, `orders.changeQuote` then
+  `orders.change` at the figure shown, `orders.buyAgain` — each of which asks
+  its own rule again under a lock. What needs words or photos (a warranty
+  claim, another reason, another address) opens its panel on the item instead.
+  The result is said in place.
+- **A person is handed everything** (on the owner's word: "all relevant order
+  details, issue descriptions, and previous actions should automatically be
+  transferred … customers should not have to repeat themselves"):
+  `support.open` takes a `handover` — the issue, the item and every act the
+  page did — and writes it as a message of its own (`author` "handover",
+  `handoverParts`, message keys), in place of a second automatic answer, the
+  item's title read from the order and never from the page. The shopper's own
+  words and what NetLet AI said are the message beside it. Both sides draw it as
+  "Passed on by NetLet AI", and a support draft reads it too.
+
+It is on the opened order (`OrderHelp`, `OrderHelpSheet`) and at the top of
+`/help` and the app's help centre (`IssueCentre` on both), where an issue then
+an order then an item leads to the same answer; a guest is asked to sign in.
+Measured on a production build against a local Postgres at 320, 390 and 1440 in
+both languages: Damaged on a delivered order approved a return at once, Late on
+a pending one offered Cancel the order, a person received the issue and the
+item, axe clean and no sideways scroll.
+
 ## Notifications
 
 **An event is told once, to the people it is about, in the inbox first.**
@@ -3957,6 +4049,25 @@ The inbox is `/account/notifications`: a page is marked read when it is
 opened, but the "New" tag stays for that visit, so the shopper still sees what
 was new. The header's dot, the account menu and the phone's Profile badge
 count it with the rest (`useAccountSignals`).
+
+**What a shopper hears is chosen in five groups, as a shop's settings are, on
+the owner's word** ("notification management similar to Amazon … essential
+security and transactional notifications should remain available";
+`Shared/commerce/noticeCategories.ts`, drawn by Preferences on the web and in
+the app, exported in `rules.json`): orders and delivery, deals, personalised
+offers, recommendations, and account and security. **There is no new switch**:
+each group is one of the four the account already keeps, or none, and what no
+switch silences — an order's confirmation, a cancellation, a refund, a
+back-in-stock for something followed, an answer to a price asked for — is said
+beside it as always on. `noticeCategories.test.ts` holds that every notice a
+shopper can be sent is in exactly one group and that a group's switch silences
+exactly what `NOTICE_RULES` says. **A changed password or sign-in email is a
+notice of its own, never silenced** (`account_password_changed`,
+`account_email_changed`, `tellAccountChanged`): changing either on Account
+security or Your profile, and a reset by link or by code, each tell the
+account once, by email too where it is configured, linking to Account
+security — how somebody learns a password they did not change was changed.
+The inbox links to the settings.
 
 ## Drawing
 
@@ -6855,8 +6966,10 @@ with the whole first download 35 KB smaller. It was 664 KB (194 KB), then 708 KB
 help with it, recovery by code — in both languages, then 875 KB (255 KB),
 Frequently bought's words in both languages, then 879 KB (256 KB), the App
 Store badge and its window, then 881 KB (256 KB), the app link under the
-cart and the confirmation's words, and is 887 KB (258 KB) now, the product
-codes' words in both languages, nearly
+cart and the confirmation's words, then 887 KB (258 KB), the product
+codes' words in both languages, and is 912 KB (265 KB) now, the help
+centre's, the notification groups' and the browsing history's words in both
+languages, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

@@ -85,6 +85,43 @@
       2,
       4,
       8
+    ],
+    "noticeCategories": [
+      {
+        "id": "orders",
+        "title": "notify.cat.orders.title",
+        "body": "notify.cat.orders.body",
+        "preference": "delivery_update",
+        "alwaysNote": "notify.cat.orders.always"
+      },
+      {
+        "id": "deals",
+        "title": "notify.cat.deals.title",
+        "body": "notify.cat.deals.body",
+        "preference": "price_drop",
+        "alwaysNote": "notify.cat.deals.always"
+      },
+      {
+        "id": "personal",
+        "title": "notify.cat.personal.title",
+        "body": "notify.cat.personal.body",
+        "preference": "bag_reminder",
+        "alwaysNote": "notify.cat.personal.always"
+      },
+      {
+        "id": "recommendations",
+        "title": "notify.cat.recommendations.title",
+        "body": "notify.cat.recommendations.body",
+        "preference": "new_arrival",
+        "alwaysNote": null
+      },
+      {
+        "id": "account",
+        "title": "notify.cat.account.title",
+        "body": "notify.cat.account.body",
+        "preference": null,
+        "alwaysNote": "notify.cat.account.always"
+      }
     ]
   },
   "orders": {
@@ -213,6 +250,23 @@
         "address",
         "buyAgain",
         "rate"
+      ],
+      "issues": [
+        "late",
+        "damaged",
+        "wrong",
+        "return",
+        "exchange",
+        "warranty",
+        "payment",
+        "account"
+      ],
+      "itemIssues": [
+        "damaged",
+        "wrong",
+        "return",
+        "exchange",
+        "warranty"
       ]
     }
   }

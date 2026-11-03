@@ -157,9 +157,11 @@ function StaffThread({ id }: { id: number }) {
             <ol className="mt-4 space-y-3">
               {data.messages.map(message => (
                 <li key={message.id} className={message.author === "staff" ? "flex justify-end" : "flex justify-start"}>
-                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 ${message.author === "staff" ? "bg-[#0a285a] text-white" : message.author === "automatic" ? "border border-[#cfd9e6] bg-[#f6f8fb]" : "bg-[#e7edf5]"}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-[14px] leading-6 ${message.author === "staff" ? "bg-[#0a285a] text-white" : message.author === "automatic" || message.author === "handover" ? "border border-[#cfd9e6] bg-[#f6f8fb]" : "bg-[#e7edf5]"}`}>
                     <p className={`text-[12px] font-semibold ${message.author === "staff" ? "text-[#d9e7f7]" : "ink-muted"}`}>
-                      {message.author === "automatic" ? <span className="inline-flex items-center gap-1"><Sparkles className="size-3" aria-hidden />{t("support.automaticSent")}</span> : t(message.author === "staff" ? "support.netlet" : "support.shopper")}
+                      {message.author === "automatic" || message.author === "handover"
+                        ? <span className="inline-flex items-center gap-1"><Sparkles className="size-3" aria-hidden />{t(message.author === "handover" ? "support.handover.label" : "support.automaticSent")}</span>
+                        : t(message.author === "staff" ? "support.netlet" : "support.shopper")}
                       {" · "}{formatDate(message.createdAt)}
                     </p>
                     {message.answer

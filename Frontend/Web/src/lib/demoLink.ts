@@ -11,6 +11,7 @@
  * returned here are handed straight to React Query.
  */
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
+import { resolveIssue, type HelpIssue } from "@shared/commerce/selfService";
 import { REFERENCE_RATES, RATES_AS_OF } from "@shared/commerce/currency";
 import { DEPARTMENTS } from "@shared/commerce/departments";
 import { correctionFor, productsInCategory, rankBySearch } from "@shared/commerce/browse";
@@ -441,6 +442,11 @@ function resolve(path: string, rawInput: unknown): unknown {
       return false;
     case "support.orderHelp":
       return { kind: "unavailable" };
+    /* The demo holds no orders: only the account's own answer is there to give. */
+    case "support.selfHelp": {
+      if (input.reference) throw new Error("orders.detailMissing");
+      return { ...resolveIssue((input.issue ?? "account") as HelpIssue, null, null, iso => iso.slice(0, 10)), items: [] };
+    }
     case "warranty.waitingCount":
       return 0;
     case "warranty.decide":

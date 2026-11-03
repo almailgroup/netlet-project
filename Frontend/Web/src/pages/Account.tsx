@@ -34,6 +34,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProfileManager, SecurityCards } from "@/components/account/ProfileManager";
 import { AccountHome } from "@/components/account/AccountHome";
 import { AccountIdentity } from "@/components/account/AccountIdentity";
+import { AccountHistory } from "@/components/account/AccountHistory";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AddressBook } from "@/components/account/AddressBook";
 import { AccountSubscriptions } from "@/components/account/AccountSubscriptions";
@@ -95,6 +96,7 @@ const ENTRIES: Entry[] = [
   { id: "addresses", label: "address.book", hint: "account.hint.addresses" },
   { id: "payments", label: "account.sectionPayments", hint: "account.hint.payments" },
   { id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences" },
+  { id: "history", label: "history.title", hint: "account.hint.history" },
   { id: "selling", label: "account.sectionSelling", hint: "account.hint.selling" },
 ];
 
@@ -120,6 +122,7 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
     case "security": return <SecurityCards />;
     case "addresses": return <AddressBook />;
     case "preferences": return <AccountPreferences />;
+    case "history": return <AccountHistory />;
     case "selling": return <SellerMode />;
     default: return null;
   }

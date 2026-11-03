@@ -108,9 +108,24 @@ struct OrderActionsBar: View {
             case .address:
                 OrderAddressSheet(reference: reference, detail: detail, done: { Task { await reload() } })
             case .help:
-                OrderHelpSheet(reference: reference) { action in
+                OrderHelpSheet(
+                    reference: reference,
+                    items: detail.lines.map { line in
+                        SelfHelpAnswer.Item(
+                            id: line.id,
+                            title: line.productTitle,
+                            variant: line.variantTitle == "Default" ? nil : line.variantTitle,
+                            photo: line.photo,
+                            fulfilment: line.fulfilment,
+                            variantId: line.variantId,
+                            quantity: line.quantity
+                        )
+                    },
+                    lineId: which.lineId,
+                    reload: { await reload() }
+                ) { action, line in
                     next = action
-                    sheetLine = which.lineId
+                    sheetLine = line ?? which.lineId
                 }
             }
         }

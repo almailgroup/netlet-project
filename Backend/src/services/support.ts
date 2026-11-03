@@ -33,6 +33,7 @@ import { getDb } from "./db.js";
 import { translate } from "../../../Shared/i18n/dictionary.js";
 import type { DraftTurn } from "../../../Shared/commerce/supportDraft.js";
 import { tellSupportAnswered } from "./notifications.js";
+import { handoverParts, MAX_HANDOVER_DONE, type HelpDone, type HelpIssue } from "../../../Shared/commerce/selfService.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -73,12 +74,13 @@ type OrderFacts = NonNullable<AnswerFacts["order"]>;
  * when the reference is not theirs. Read the same way the account page reads
  * it, so the answer cannot contradict the page beside it.
  */
-async function orderFacts(userId: number, reference: string, now: Date): Promise<{ orderId: number; facts: OrderFacts } | null> {
+async function orderFacts(userId: number, reference: string, now: Date): Promise<{ orderId: number; facts: OrderFacts; titles: Map<number, string> } | null> {
   const found = await getOrderForUser(userId, reference);
   if (!found) return null;
   const windowDays = await returnWindowDays();
   return {
     orderId: found.order.id,
+    titles: new Map(found.lines.map(line => [line.id, line.productTitle])),
     facts: {
       reference: found.order.reference,
       paymentMethod: found.order.paymentMethod ?? null,
@@ -91,8 +93,30 @@ async function orderFacts(userId: number, reference: string, now: Date): Promise
   };
 }
 
-/** Open a conversation, and answer it at once from the facts. */
-export async function openConversation(userId: number, input: { topic: SupportTopic; orderReference?: string | null; body: string }, now = new Date()) {
+/**
+ * What the help centre hands a person with the conversation (on the owner's
+ * word: "all relevant order details, issue descriptions, and previous actions
+ * should automatically be transferred"): the issue, the item, and what the
+ * page already did. The item's title is read from the order, never taken from
+ * the page, and an item that is not on it is dropped.
+ */
+export type HandoverInput = {
+  issue: HelpIssue | null;
+  lineId: number | null;
+  done: { act: HelpDone; lineId: number | null }[];
+};
+
+/**
+ * Open a conversation, and answer it at once from the facts — or, when the
+ * help centre hands it over, with what it passed on: NetLet AI has already
+ * answered by then, so the person is given the issue, the item and what was
+ * done instead of a second automatic answer.
+ */
+export async function openConversation(
+  userId: number,
+  input: { topic: SupportTopic; orderReference?: string | null; body: string; handover?: HandoverInput | null },
+  now = new Date(),
+) {
   const body = checked(input.body);
   const db = await handle();
   await assertUnderCeiling(db, userId, now);
@@ -105,12 +129,21 @@ export async function openConversation(userId: number, input: { topic: SupportTo
 
   let facts: OrderFacts | null = null;
   let orderId: number | null = null;
+  let titles = new Map<number, string>();
   if (input.orderReference) {
     const found = await orderFacts(userId, input.orderReference, now);
     if (!found) throw new SupportRefused("support.unknownOrder");
-    ({ orderId, facts } = found);
+    ({ orderId, facts, titles } = found);
   }
-  const answer = firstAnswer(input.topic, { order: facts, returnWindowDays: await returnWindowDays() });
+  const handover = input.handover ?? null;
+  const author = handover ? "handover" : "automatic";
+  const answer = handover
+    ? handoverParts({
+      issue: handover.issue,
+      item: handover.lineId === null ? null : titles.get(handover.lineId) ?? null,
+      done: handover.done.slice(0, MAX_HANDOVER_DONE).map(done => ({ act: done.act, item: done.lineId === null ? null : titles.get(done.lineId) ?? null })),
+    })
+    : firstAnswer(input.topic, { order: facts, returnWindowDays: await returnWindowDays() });
 
   return db.transaction(async tx => {
     const [conversation] = await tx
@@ -120,7 +153,7 @@ export async function openConversation(userId: number, input: { topic: SupportTo
     await tx.insert(supportMessages).values([
       { conversationId: conversation.id, author: "shopper", authorId: userId, body, createdAt: now },
       /* A moment later, so it reads after the question it answers. */
-      { conversationId: conversation.id, author: "automatic", answer, createdAt: new Date(now.getTime() + 1) },
+      { conversationId: conversation.id, author, answer, createdAt: new Date(now.getTime() + 1) },
     ]);
     return { id: conversation.id };
   });
@@ -171,7 +204,7 @@ export type SupportThread = {
   orderReference: string | null;
   status: SupportStatus;
   shopperName: string | null;
-  messages: { id: number; author: "shopper" | "staff" | "automatic"; body: string | null; answer: AnswerPart[] | null; createdAt: Date }[];
+  messages: { id: number; author: "shopper" | "staff" | "automatic" | "handover"; body: string | null; answer: AnswerPart[] | null; createdAt: Date }[];
 };
 
 async function thread(db: Db, conversation: typeof supportConversations.$inferSelect, shopperName: string | null): Promise<SupportThread> {
@@ -186,7 +219,7 @@ async function thread(db: Db, conversation: typeof supportConversations.$inferSe
     orderReference: conversation.orderReference,
     status: conversation.status,
     shopperName,
-    messages: messages.map(message => ({ ...message, author: message.author as "shopper" | "staff" | "automatic" })),
+    messages: messages.map(message => ({ ...message, author: message.author as "shopper" | "staff" | "automatic" | "handover" })),
   };
 }
 

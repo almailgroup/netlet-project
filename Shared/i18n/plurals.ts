@@ -400,6 +400,15 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
       few: "الإرجاع يظهر هنا أيضاً. بعد استلام القطعة سيكون أمامك {days} أيام لإرجاعها، وتُعرض المهلة المتبقية بجانب كل قطعة.",
     },
   },
+  "help.item.windowClosed": {
+    param: "days",
+    en: { one: "The 1-day return window for {item} has closed." },
+    ar: {
+      one: "انتهت مهلة الإرجاع (يوم واحد) لـ{item}.",
+      two: "انتهت مهلة الإرجاع (يومان) لـ{item}.",
+      few: "انتهت مهلة الإرجاع ({days} أيام) لـ{item}.",
+    },
+  },
   "returns.howTo": {
     param: "days",
     en: { one: "You have 1 day from delivery to return or exchange an item. Use the button beside it; damaged, faulty and wrong items are approved straight away." },

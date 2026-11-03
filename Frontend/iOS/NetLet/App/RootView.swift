@@ -219,6 +219,7 @@ private struct RouteDestination: View {
         case .newListing: NewListingView()
         case .addresses: AddressBookView()
         case .preferences: PreferencesView()
+        case .history: BrowsingHistoryView()
         case .notifications: NotificationsView()
         case .wishlists: WishlistsView()
         case .wishlist(let id): WishlistDetailView(listId: id)

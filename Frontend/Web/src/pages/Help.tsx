@@ -5,6 +5,10 @@
  * — or who only wanted to know how paying works — had nowhere to go. In the
  * order a lost shopper needs them:
  *
+ * - **What happened**, answered from the shopper's own order first
+ *   (`IssueCentre`, `support.selfHelp`), with the acts that settle it done on
+ *   Confirm and a person one press away — on the owner's word, "support should
+ *   be the last resort, but easily accessible".
  * - **Find an order** by its number and the email it was placed with, for
  *   somebody signed out (`help.lookupOrder`, throttled on misses); signed in,
  *   the orders page is one press away.
@@ -37,6 +41,7 @@ import { ArrowRight, ChevronDown, LoaderCircle, MessageCircle, Phone, Search, Sp
 import { useState } from "react";
 import { Link } from "wouter";
 import { GuideCard } from "@/components/guides/GuideCard";
+import { IssueCentre } from "@/components/help/IssueCentre";
 
 const KIND_LABEL: Record<ContactKind, MessageKey> = {
   phone: "chat.foundPhone",
@@ -54,6 +59,7 @@ export default function Help() {
   return (
     <PageBody width="reading">
       <PageHeading title={t("help.title")} note={t("help.intro")} />
+      <IssueCentre className={`${card} mb-4`} />
       <div className="grid gap-4 lg:grid-cols-2">
         <OrderLookup />
         <Contact />

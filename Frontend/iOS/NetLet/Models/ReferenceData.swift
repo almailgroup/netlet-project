@@ -218,11 +218,23 @@ struct Rules: Decodable, Sendable {
             let enabledByDefault: Bool
         }
 
+        /// What a shopper is told, in the five groups the settings draw
+        /// (`noticeCategories.ts`): each one of the switches above, or none
+        /// when it is always on.
+        struct NoticeCategory: Decodable, Hashable, Sendable {
+            let id: String
+            let title: String
+            let body: String
+            let preference: String?
+            let alwaysNote: String?
+        }
+
         let maxAddresses: Int
         let maxAddressLabel: Int
         let maxAddressLine: Int
         let maxAddressNotes: Int
         let notificationKinds: [NoticeKind]
+        let noticeCategories: [NoticeCategory]
         /// The params of a notice that hold an amount, drawn as money.
         let moneyParams: [String]
         let supportTopics: [String]
@@ -254,6 +266,13 @@ struct Rules: Decodable, Sendable {
                 .init(kind: "bag_reminder", label: "notification.bagReminder", enabledByDefault: false),
                 .init(kind: "new_arrival", label: "notification.newArrival", enabledByDefault: true),
                 .init(kind: "delivery_update", label: "notification.deliveryUpdate", enabledByDefault: true),
+            ],
+            noticeCategories: [
+                .init(id: "orders", title: "notify.cat.orders.title", body: "notify.cat.orders.body", preference: "delivery_update", alwaysNote: "notify.cat.orders.always"),
+                .init(id: "deals", title: "notify.cat.deals.title", body: "notify.cat.deals.body", preference: "price_drop", alwaysNote: "notify.cat.deals.always"),
+                .init(id: "personal", title: "notify.cat.personal.title", body: "notify.cat.personal.body", preference: "bag_reminder", alwaysNote: "notify.cat.personal.always"),
+                .init(id: "recommendations", title: "notify.cat.recommendations.title", body: "notify.cat.recommendations.body", preference: "new_arrival", alwaysNote: nil),
+                .init(id: "account", title: "notify.cat.account.title", body: "notify.cat.account.body", preference: nil, alwaysNote: "notify.cat.account.always"),
             ],
             moneyParams: ["price", "amount", "total"],
             supportTopics: ["order", "delivery", "return", "payment", "account", "other"],
@@ -346,6 +365,9 @@ struct Rules: Decodable, Sendable {
             let turns: Int
             let starters: [String]
             let actions: [String]
+            /// The help centre's issues, and the ones about one item (`selfService.ts`).
+            let issues: [String]
+            let itemIssues: [String]
         }
 
         let countries: [Country]
@@ -357,7 +379,11 @@ struct Rules: Decodable, Sendable {
             countries: ["KW", "SA", "AE", "QA", "BH", "OM"].map { Country(code: $0, open: $0 == "KW") },
             homeCountry: "KW",
             warranty: Warranty(minProblem: 10, maxProblem: 1000, maxResponse: 600, maxPhotos: 4, remedies: ["repair", "replace", "refund"]),
-            help: Help(maxQuestion: 500, turns: 6, starters: [], actions: [])
+            help: Help(
+                maxQuestion: 500, turns: 6, starters: [], actions: [],
+                issues: ["late", "damaged", "wrong", "return", "exchange", "warranty", "payment", "account"],
+                itemIssues: ["damaged", "wrong", "return", "exchange", "warranty"]
+            )
         )
     }
 

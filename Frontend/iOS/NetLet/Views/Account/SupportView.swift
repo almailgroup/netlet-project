@@ -338,7 +338,7 @@ struct SupportThreadView: View {
                                 ForEach(data.messages) { message in
                                     Bubble(
                                         mine: message.author == "shopper",
-                                        author: l.t(message.author == "automatic" ? "support.automatic" : message.author == "shopper" ? "support.you" : "support.netlet"),
+                                        author: l.t(message.author == "automatic" ? "support.automatic" : message.author == "handover" ? "support.handover.label" : message.author == "shopper" ? "support.you" : "support.netlet"),
                                         text: message.answer.map { parts in parts.map { l.t($0.key, $0.params) }.joined(separator: "\n\n") } ?? message.body ?? "",
                                         stamp: OrderWording.date(message.createdAt, language: l.current)
                                     )

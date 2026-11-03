@@ -207,6 +207,11 @@ jobs:
             # Place order asks first, and the order placed is said over checkout.
             shot 78-checkout-confirm "$lang" confirmOrder shopper
             shot 79-order-placed "$lang" orderPlaced:NL-20261001-J7MWY shopper
+            # The help centre: an issue answered from the order with its act, the
+            # help page's issues, the notification groups and the browsing history.
+            shot 80-order-help-issue "$lang" helpIssue:NL-20261001-J7MWY shopper
+            shot 81-help-centre "$lang" page:help shopper
+            shot 82-history "$lang" section:history shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

@@ -30,6 +30,8 @@ import { rowId } from "../core/schemas.js";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
 import { askAboutOrder, orderHelpAvailable } from "../services/orderHelp.js";
 import { MAX_ORDER_HELP_QUESTION, ORDER_HELP_TURNS } from "../../../Shared/commerce/orderHelp.js";
+import { HELP_DONE, HELP_ISSUES, MAX_HANDOVER_DONE } from "../../../Shared/commerce/selfService.js";
+import { selfHelpFor } from "../services/selfHelp.js";
 
 async function guard<T>(work: () => Promise<T>): Promise<T> {
   try {
@@ -81,12 +83,45 @@ export const supportRouter = router({
     .input(z.object({
       reference: z.string().trim().min(1).max(64),
       locale: z.enum(["en", "ar"]).default("en"),
+      /* What the shopper chose before asking, so the model starts from it. */
+      issue: z.enum(HELP_ISSUES).nullish(),
+      lineId: rowId.nullish(),
       turns: z.array(z.object({ role: z.enum(["shopper", "assistant"]), text: z.string().max(MAX_ORDER_HELP_QUESTION * 4) })).min(1).max(ORDER_HELP_TURNS),
     }))
     .mutation(({ ctx, input }) => askAboutOrder(ctx.user.id, input)),
 
+  /**
+   * The help centre's answer to an issue the shopper named (on the owner's
+   * word: "immediate solutions … integrated with order management, shipping,
+   * returns, refunds and warranty"): what is true of this order now, the acts
+   * that would settle it, and whether a person is the next step. Computed from
+   * the order page's own answer, never a model's.
+   */
+  selfHelp: protectedProcedure
+    .input(z.object({
+      issue: z.enum(HELP_ISSUES),
+      reference: z.string().trim().min(1).max(64).nullish(),
+      lineId: rowId.nullish(),
+      locale: z.enum(["en", "ar"]).default("en"),
+    }))
+    .query(async ({ ctx, input }) => {
+      const answer = await selfHelpFor(ctx.user.id, { issue: input.issue, reference: input.reference ?? null, lineId: input.lineId ?? null, locale: input.locale });
+      if (!answer) throw new TRPCError({ code: "NOT_FOUND", message: "orders.detailMissing" });
+      return answer;
+    }),
+
   open: protectedProcedure
-    .input(z.object({ topic: z.enum(SUPPORT_TOPICS), orderReference: z.string().trim().min(1).max(64).nullish(), body }))
+    .input(z.object({
+      topic: z.enum(SUPPORT_TOPICS),
+      orderReference: z.string().trim().min(1).max(64).nullish(),
+      body,
+      /* What the help centre passes on, so the shopper never says it twice. */
+      handover: z.object({
+        issue: z.enum(HELP_ISSUES).nullable(),
+        lineId: rowId.nullable(),
+        done: z.array(z.object({ act: z.enum(HELP_DONE), lineId: rowId.nullable() })).max(MAX_HANDOVER_DONE),
+      }).nullish(),
+    }))
     .mutation(({ ctx, input }) => guard(() => openConversation(ctx.user.id, input))),
 
   mine: protectedProcedure.query(({ ctx }) => guard(() => myConversations(ctx.user.id))),

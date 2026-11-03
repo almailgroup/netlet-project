@@ -236,7 +236,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
         {orderPanel?.kind === "address" && detail.changeAddress.changeable ? (
           <OrderAddress reference={reference} detail={detail} onDone={controls.done} onCancel={controls.close} />
         ) : null}
-        {orderPanel?.kind === "help" ? <OrderHelp reference={reference} onAction={action => act(action)} onClose={controls.close} /> : null}
+        {orderPanel?.kind === "help" ? <OrderHelp reference={reference} items={helpItems(detail)} onAction={(action, lineId) => act(action, lineId)} onClose={controls.close} /> : null}
       </div>
 
       {children}
@@ -328,9 +328,21 @@ export function OrderLinePanel({ line }: { line: Line }) {
       {panel.kind === "modify" && detail.change.changeable && line.changeable ? (
         <OrderModify key={panel.remove ? "remove" : "quantity"} reference={reference} detail={detail} lineId={line.id} remove={panel.remove} onDone={done} onCancel={close} />
       ) : null}
-      {panel.kind === "help" ? <OrderHelp reference={reference} onAction={action => act(action, line.id)} onClose={close} /> : null}
+      {panel.kind === "help" ? <OrderHelp reference={reference} items={helpItems(detail)} lineId={line.id} onAction={(action, lineId) => act(action, lineId ?? line.id)} onClose={close} /> : null}
     </div>
   );
+}
+
+/** The order's items as the help panel lists them. */
+function helpItems(detail: Detail) {
+  return detail.lines.map(line => ({
+    id: line.id,
+    title: line.productTitle,
+    variant: line.variantTitle && line.variantTitle !== "Default" ? line.variantTitle : null,
+    photo: line.photo ?? null,
+    variantId: line.variantId,
+    quantity: line.quantity,
+  }));
 }
 
 /**

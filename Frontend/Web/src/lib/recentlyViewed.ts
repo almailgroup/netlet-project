@@ -70,6 +70,18 @@ export function rememberViewed(id: string, now = Date.now()): Viewed[] {
   return next;
 }
 
+/** The list without one product — the browsing history's own remove. */
+export function withoutViewed(list: readonly Viewed[], id: string): Viewed[] {
+  return list.filter(entry => entry.id !== id);
+}
+
+export function forgetViewed(id: string, now = Date.now()): Viewed[] {
+  const next = withoutViewed(readViewed(now), id);
+  if (next.length) writeStored(KEY, JSON.stringify(next));
+  else removeStored(KEY);
+  return next;
+}
+
 export function clearViewed(): void {
   removeStored(KEY);
 }

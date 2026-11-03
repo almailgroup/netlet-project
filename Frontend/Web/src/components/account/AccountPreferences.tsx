@@ -1,5 +1,13 @@
 /**
- * The delivery area and what NetLet tells a shopper.
+ * The delivery area, what NetLet tells a shopper, and what the shop keeps on
+ * this device.
+ *
+ * **What NetLet tells a shopper is five groups, as a shop's settings are, on
+ * the owner's word** (`Shared/commerce/noticeCategories.ts`): orders and
+ * delivery, deals, personalised offers, recommendations, and account and
+ * security. Each switch is one of the four the account already keeps, and
+ * what no switch silences — an order's confirmation, a refund, a changed
+ * password — is said beside it as always on.
  *
  * **The language and the currency are on My Profile itself now, on the
  * owner's word** ("clearly visible and directly accessible from the My
@@ -13,12 +21,12 @@ import { trpc } from "@/lib/trpc";
 import {
   defaultNotificationPreferences,
   kuwaitDeliveryZones,
-  notificationKinds,
-  notificationLabelKeys,
   type NotificationKind,
 } from "@shared/customer";
+import { NOTICE_CATEGORIES } from "@shared/commerce/noticeCategories";
 import { SettingPanel } from "@/components/ui/SettingPanel";
-import { Bell, MapPin } from "lucide-react";
+import { StoragePanel } from "@/components/account/StoragePanel";
+import { Bell, MapPin, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
 
@@ -58,28 +66,45 @@ export function AccountPreferences() {
         </label>
       </SettingPanel>
 
-      <SettingPanel icon={<Bell className="size-5" />} title={t("account.notifications")} note={t("account.notificationsNote")}>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {notificationKinds.map(kind => {
-            const enabled = stored.get(kind) ?? defaultNotificationPreferences[kind];
+      <SettingPanel icon={<Bell className="size-5" />} title={t("notify.title")} note={t("notify.intro")}>
+        <ul className="space-y-2" aria-label={t("notify.title")}>
+          {NOTICE_CATEGORIES.map(category => {
+            const enabled = category.preference ? stored.get(category.preference) ?? defaultNotificationPreferences[category.preference] : true;
+            const id = `notify-${category.id}`;
             return (
-              <label
-                key={kind}
-                className="tint-on-hover flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[#d5dfeb] bg-[#f3f2ed] px-4 py-3 text-sm font-bold text-[#0a285a]"
-              >
-                <span>{t(notificationLabelKeys[kind])}</span>
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  disabled={setNotification.isPending}
-                  onChange={event => setNotification.mutate({ kind, enabled: event.target.checked })}
-                  className="size-4 accent-[#f2683a]"
-                />
-              </label>
+              <li key={category.id} className="rounded-xl border border-[#d5dfeb] bg-[#f8f9fc] px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <label htmlFor={category.preference ? id : undefined} className="block text-sm font-bold text-[#0a285a]">{t(category.title)}</label>
+                    <p id={`${id}-body`} className="mt-0.5 text-[12px] leading-5 ink-muted">{t(category.body)}</p>
+                  </div>
+                  {category.preference ? (
+                    <input
+                      id={id}
+                      type="checkbox"
+                      role="switch"
+                      checked={enabled}
+                      aria-describedby={`${id}-body`}
+                      disabled={setNotification.isPending}
+                      onChange={event => setNotification.mutate({ kind: category.preference!, enabled: event.target.checked })}
+                      className="mt-1 size-5 shrink-0 accent-[#0a285a]"
+                    />
+                  ) : (
+                    <span className="mt-0.5 shrink-0 rounded-full bg-[#e9f4ee] px-2.5 py-0.5 text-[12px] font-bold text-[#1f5e3a]">{t("notify.alwaysOn")}</span>
+                  )}
+                </div>
+                {category.alwaysNote && category.preference ? (
+                  <p className="mt-2 flex items-start gap-1.5 text-[12px] leading-5 text-[#1f5e3a]"><ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t(category.alwaysNote)}</p>
+                ) : category.alwaysNote ? (
+                  <p className="mt-2 text-[12px] leading-5 ink-muted">{t(category.alwaysNote)}</p>
+                ) : null}
+              </li>
             );
           })}
-        </div>
+        </ul>
       </SettingPanel>
+
+      <StoragePanel />
     </div>
   );
 }

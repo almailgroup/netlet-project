@@ -70,6 +70,9 @@ struct HelpCentreView: View {
     var body: some View {
         InfoPage(title: l.t("help.title"), note: l.t("help.intro")) {
             VStack(alignment: .leading, spacing: 16) {
+                // What happened, answered from the shopper's own order first,
+                // on the owner's word — support is the last resort, one press away.
+                IssueCentre()
                 HelpAskBox()
                 OrderLookupCard()
                 ContactCard()

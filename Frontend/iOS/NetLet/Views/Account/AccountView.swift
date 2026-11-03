@@ -60,8 +60,8 @@ struct AccountView: View {
     /// who has one (`holdings`).
     private static let cards: [[String]] = [
         ["frequent", "returns", "addresses", "payments", "wishlists", "reviews", "offers", "subscriptions"],
-        ["preferences"],
-        ["selling"],
+        // Browsing history, less prominent than the home's own shelf, on the owner's word.
+        ["preferences", "history"],
         ["security", "signout"],
     ]
 
@@ -103,6 +103,8 @@ struct AccountView: View {
                 if let offer = affiliateOffer {
                     affiliatePromo(offer)
                 }
+                // The seller portal's door, or Become a seller, on the owner's word.
+                SellerEntryCard()
                 ForEach(Array(Self.cards.enumerated()), id: \.offset) { index, ids in
                     let rows = ids.filter(onHome)
                     if index == Self.cards.count - 1 {
@@ -620,6 +622,7 @@ struct AccountEntry: Identifiable, Hashable {
         AccountEntry(id: "payments", label: "account.sectionPayments", hint: "account.hint.payments", symbol: "creditcard", group: "account.groupSettings"),
         AccountEntry(id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences", symbol: "slider.horizontal.3", group: "account.groupSettings"),
         AccountEntry(id: "selling", label: "account.sectionSelling", hint: "account.hint.selling", symbol: "storefront", group: "account.groupSettings"),
+        AccountEntry(id: "history", label: "history.title", hint: "account.hint.history", symbol: "clock.arrow.circlepath", group: "account.groupSettings"),
     ]
 
     /// The screen the tile opens.
@@ -642,6 +645,7 @@ struct AccountEntry: Identifiable, Hashable {
         case "security": return .security
         case "addresses": return .addresses
         case "preferences": return .preferences
+        case "history": return .history
         case "selling": return .portal("/admin")
         default: return nil
         }

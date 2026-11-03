@@ -52,6 +52,7 @@ import { captchaSiteKey, checkCaptcha } from "../core/captcha.js";
 import { isCodeShaped, normaliseCode } from "../../../Shared/auth/emailCode.js";
 import { touchLastSignedIn } from "../services/db.js";
 import { loadUser, updateUserEmail, updateUserName } from "../services/profile.js";
+import { tellAccountChanged } from "../services/notifications.js";
 import { deleteAccount, deletionCheck } from "../services/accountDeletion.js";
 import { saveNameParts } from "../services/profileDetails.js";
 import { composeName, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
@@ -433,6 +434,7 @@ export const authRouter = router({
         await revertEmail(current, current.email);
         throw emailTaken;
       }
+      await tellAccountChanged(updated.id, "email", { email: next });
       return toPublicUser(updated);
     }),
 
@@ -447,6 +449,7 @@ export const authRouter = router({
       await assertCurrentPassword(current, input.currentPassword);
 
       await setPassword(current, input.newPassword);
+      await tellAccountChanged(current.id, "password");
       return { changed: true } as const;
     }),
 
@@ -516,6 +519,7 @@ export const authRouter = router({
       const user = await signIn(email, input.password, landingFor(ctx.req));
       if (user === "unconfirmed") return { status: "verify" as const, email };
       if (!user) throw invalidCredentials;
+      await tellAccountChanged(user.id, "password");
       await clearAccountFailures(email);
       await touchLastSignedIn(user.id);
       await startSession(ctx, user, input.remember);
@@ -553,6 +557,7 @@ export const authRouter = router({
       const user = await signIn(email, input.password, landingFor(ctx.req));
       if (user === "unconfirmed") return { status: "verify" as const, email };
       if (!user) throw invalidCredentials;
+      await tellAccountChanged(user.id, "password");
       await clearAccountFailures(email);
       await touchLastSignedIn(user.id);
       await startSession(ctx, user, input.remember);

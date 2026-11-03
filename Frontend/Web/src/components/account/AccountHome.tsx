@@ -67,6 +67,7 @@ import {
   ChevronRight,
   CreditCard,
   Gift,
+  History,
   LifeBuoy,
   ListRestart,
   LogOut,
@@ -117,9 +118,8 @@ const CARDS: Row[][] = [
   [
     { id: "preferences", label: "account.sectionPreferences", icon: SlidersHorizontal },
     { id: "helpCentre", label: "footer.helpCentre", icon: LifeBuoy, href: "/help" },
-  ],
-  [
-    { id: "selling", label: "account.sectionSelling", icon: Store },
+    /* Less prominent than the home's own shelf, on the owner's word. */
+    { id: "history", label: "history.title", icon: History },
   ],
   [
     { id: "security", label: "account.security", icon: ShieldCheck },
@@ -241,6 +241,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
         </span>
       </Link>
 
+      <SellerEntry />
+
       {/* Affiliate marketing is this card and no row, on the owner's word:
           joining for somebody not in, the programme for a member — or for
           somebody who holds an account while the switch is off, since a
@@ -283,6 +285,38 @@ export function AccountHome({ user, has, badge, onSignOut }: {
         })}
       </nav>
     </div>
+  );
+}
+
+/**
+ * The seller portal's door, in plain sight (on the owner's word: "a clearly
+ * visible entry … easy switching between the shopping and seller
+ * experiences; users who are not sellers go to Become a Seller"). Somebody
+ * who runs a store is named it and taken to the portal, which has its own way
+ * back to the shop; anybody else is offered `/sell`. The server decides which
+ * (`inventory.me`), so nobody is shown a door that refuses them.
+ */
+function SellerEntry() {
+  const { t } = useTranslation();
+  const me = trpc.inventory.me.useQuery(undefined, { staleTime: 10 * 60 * 1000, retry: false });
+  const seller = Boolean(me.data && me.data.kind !== "customer");
+  const store = trpc.inventory.myStore.useQuery(undefined, { enabled: me.data?.kind === "vendor", staleTime: 10 * 60 * 1000, retry: false });
+  if (me.isPending) return null;
+  return (
+    <Link href={seller ? "/admin" : "/sell"} className={`${PANEL} flex items-center gap-4 p-4 hover:bg-[#f0f2f5] sm:p-5`}>
+      <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-[#eef2f8] text-[#0a285a]">
+        <Store className="size-6" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[16px] font-bold text-[#0a285a]">{t(seller ? "seller.cardTitle" : "seller.becomeTitle")}</span>
+        <span className="mt-0.5 block text-[13px] leading-5 ink-muted">
+          {seller
+            ? t("seller.cardBody", { store: store.data?.name ? `\u2068${store.data.name}\u2069` : t("account.sellerPlatform") })
+            : t("seller.becomeBody")}
+        </span>
+      </span>
+      <span className="shrink-0 rounded-full bg-[#0a285a] px-3.5 py-2 text-[13px] font-bold text-white">{t(seller ? "seller.open" : "seller.become")}</span>
+    </Link>
   );
 }
 

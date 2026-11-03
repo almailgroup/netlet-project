@@ -147,9 +147,11 @@ function Thread({ id }: { id: number }) {
               <ol className="space-y-2">
                 {data.messages.map(message => (
                   <li key={message.id} className={message.author === "shopper" ? "flex justify-end" : "flex justify-start"}>
-                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${message.author === "shopper" ? "bg-[#0a285a] text-white" : message.author === "automatic" ? "border border-[#d5dfeb] bg-[#f6f8fb] text-[#0a285a]" : "bg-[#e7edf5] text-[#0a285a]"}`}>
+                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${message.author === "shopper" ? "bg-[#0a285a] text-white" : message.author === "automatic" || message.author === "handover" ? "border border-[#d5dfeb] bg-[#f6f8fb] text-[#0a285a]" : "bg-[#e7edf5] text-[#0a285a]"}`}>
                       <p className={`text-[12px] font-semibold ${message.author === "shopper" ? "text-[#d9e7f7]" : "ink-muted"}`}>
-                        {message.author === "automatic" ? <span className="inline-flex items-center gap-1"><Sparkles className="size-3" aria-hidden />{t("support.automatic")}</span> : t(message.author === "shopper" ? "support.you" : "support.netlet")}
+                        {message.author === "automatic" || message.author === "handover"
+                          ? <span className="inline-flex items-center gap-1"><Sparkles className="size-3" aria-hidden />{t(message.author === "handover" ? "support.handover.label" : "support.automatic")}</span>
+                          : t(message.author === "shopper" ? "support.you" : "support.netlet")}
                         {" · "}{formatDate(message.createdAt)}
                       </p>
                       {message.answer

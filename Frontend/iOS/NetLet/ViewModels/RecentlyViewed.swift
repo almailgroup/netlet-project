@@ -48,9 +48,24 @@ final class RecentlyViewed {
         defaults.set(try? JSONEncoder().encode(entries), forKey: Self.key)
     }
 
+    /// Takes one product off — the browsing history's own remove (`forgetViewed`).
+    func forget(_ id: String) {
+        entries = Self.without(entries, id: id)
+        if entries.isEmpty {
+            defaults.removeObject(forKey: Self.key)
+        } else {
+            defaults.set(try? JSONEncoder().encode(entries), forKey: Self.key)
+        }
+    }
+
     func clear() {
         entries = []
         defaults.removeObject(forKey: Self.key)
+    }
+
+    /// The list without one product (`withoutViewed`).
+    nonisolated static func without(_ list: [Entry], id: String) -> [Entry] {
+        list.filter { $0.id != id }
     }
 
     /// The list with `id` put first, once (`withViewed`).

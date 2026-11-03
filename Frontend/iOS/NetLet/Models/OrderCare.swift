@@ -57,6 +57,8 @@ struct ShopperReturn: Decodable, Identifiable, Hashable, Sendable {
 /// already decided where a rule could decide it.
 struct RequestedReturn: Decodable, Sendable {
     let status: String
+    /// Why the shop's rules declined it at once, when they did.
+    var declineReason: String? = nil
 }
 
 /// What a delivery is rated on (3.4.4) — `RATING_PARTS` — and the overall,

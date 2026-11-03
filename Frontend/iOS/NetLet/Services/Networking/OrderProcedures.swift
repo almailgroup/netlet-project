@@ -157,10 +157,22 @@ extension API {
         let reference: String
         let locale: String
         let turns: [HelpTurn]
+        /// What the shopper chose before asking, so the model starts from it.
+        var issue: String? = nil
+        var lineId: Int? = nil
+    }
+
+    /// An issue to answer from the order (`support.selfHelp`); the account's needs no order.
+    struct SelfHelpAsk: Encodable, Sendable {
+        let issue: String
+        var reference: String? = nil
+        var lineId: Int? = nil
+        let locale: String
     }
 
     static let orderHelp = Procedure<AskOrderHelp, OrderHelpAnswer>(mutation: "support.orderHelp")
     static let orderHelpAvailable = Procedure<NoInput, Bool>(query: "support.orderHelpAvailable")
+    static let selfHelp = Procedure<SelfHelpAsk, SelfHelpAnswer>(query: "support.selfHelp")
 
     /// The return window an administrator set (`commerce.policy`).
     static let returnPolicy = Procedure<NoInput, ReturnPolicy>(query: "commerce.policy")

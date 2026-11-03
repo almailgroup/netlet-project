@@ -623,6 +623,23 @@ export async function tellApplicant(applicationId: number, kind: ApplicantNotice
   }
 }
 
+/* ------------------------------------------------------------- account --- */
+
+/**
+ * Tells somebody their password or sign-in email was changed — by them, by a
+ * reset, or by somebody holding their session. Once per change: the dedupe
+ * key is the moment of it. Never throws into the change it follows.
+ */
+export async function tellAccountChanged(userId: number, what: "password" | "email", params: Record<string, string> = {}, now = new Date()): Promise<void> {
+  await notifyQuietly({
+    userId,
+    kind: what === "password" ? "account_password_changed" : "account_email_changed",
+    params,
+    link: "/account/security",
+    dedupe: `account:${what}:${now.getTime()}`,
+  });
+}
+
 /* --------------------------------------------------------------- staff --- */
 
 /**

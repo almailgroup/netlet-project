@@ -71,6 +71,11 @@ function readAll(): Entry[] {
  * Each keeps the time it was read, so a page asks again behind it exactly as
  * it would for anything its own staleness rule calls old.
  */
+/** Empties the remembered shelves — the storage panel's Clear cache. They are read again from the server. */
+export function forgetShelves(): void {
+  removeStored(STORE_KEY);
+}
+
 export function restoreShelves(client: QueryClient, now = new Date()): void {
   const today = kuwaitDay(now);
   for (const entry of readAll()) {

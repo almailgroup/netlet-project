@@ -79,6 +79,23 @@ final class ShelfMemory: @unchecked Sendable {
         return Data(stored[stored.index(after: newline)...])
     }
 
+    /// How much the remembered shelves take on disk, in bytes.
+    func usage() -> Int {
+        guard let folder else { return 0 }
+        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+        return files.reduce(0) { total, file in total + ((try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+    }
+
+    /// Forgets every remembered shelf — the storage panel's Clear cache. They are read again from the server.
+    func forget() {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let folder else { return }
+        for file in (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? [] {
+            try? FileManager.default.removeItem(at: file)
+        }
+    }
+
     private func file(for request: URLRequest) -> URL? {
         guard let folder, let address = request.url?.absoluteString else { return nil }
         let name = SHA256.hash(data: Data(address.utf8)).map { String(format: "%02x", $0) }.joined()

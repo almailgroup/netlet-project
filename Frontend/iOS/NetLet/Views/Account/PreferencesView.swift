@@ -1,7 +1,9 @@
 import SwiftUI
 
 /// The account's preferences — the web's `AccountPreferences`: the delivery
-/// area and which notices the shopper hears. The language and the currency
+/// area, which notices the shopper hears in the five groups the web draws
+/// (`NoticeCategoriesList`), and the app's own settings: what it keeps on the
+/// phone with Clear cache (`StorageCard`) and Rate our app (`RateAppCard`). The language and the currency
 /// left for the Profile tab's Quick settings, on the owner's word ("clearly
 /// visible and directly accessible from the My Profile page").
 struct PreferencesView: View {
@@ -14,7 +16,9 @@ struct PreferencesView: View {
                 AccountSection(title: l.t("account.sectionPreferences"), hint: l.t("account.hint.preferences")) {
                     VStack(spacing: 14) {
                         panel(symbol: "mappin", title: "account.deliveryArea", note: "account.pricingUnconfigured") { area(model) }
-                        panel(symbol: "bell", title: "account.notifications", note: "account.notificationsNote") { notices(model) }
+                        panel(symbol: "bell", title: "notify.title", note: "notify.intro") { NoticeCategoriesList(model: model) }
+                        panel(symbol: "internaldrive", title: "storage.title", note: "storage.note") { StorageCard() }
+                        panel(symbol: "star", title: "ios.rate.title", note: "ios.rate.note") { RateAppCard() }
                     }
                 }
             }
@@ -62,23 +66,6 @@ struct PreferencesView: View {
             .accessibilityLabel(l.t("delivery.governorate"))
         }
     }
-
-    private func notices(_ model: PreferencesModel) -> some View {
-        VStack(spacing: 0) {
-            ForEach(ReferenceData.shared.rules.accountRules.notificationKinds, id: \.kind) { kind in
-                Toggle(isOn: Binding(
-                    get: { model.enabled(kind) },
-                    set: { on in Task { await app.attempt { try await model.set(kind.kind, enabled: on) } } }
-                )) {
-                    Text(l.t(kind.label)).font(.inter(14)).foregroundStyle(Brand.ink)
-                }
-                .tint(Brand.navy)
-                .disabled(model.switching)
-                .frame(minHeight: 48)
-                if kind != ReferenceData.shared.rules.accountRules.notificationKinds.last { Divider() }
-            }
-        }
-    }
 }
 
 @Observable
@@ -105,6 +92,11 @@ final class PreferencesModel {
     /// A kind the shopper never set reads its default (`defaultNotificationPreferences`).
     func enabled(_ kind: Rules.Account.NoticeKind) -> Bool {
         stored[kind.kind] ?? kind.enabledByDefault
+    }
+
+    /// The same, by the switch's name, as a notification group names it.
+    func enabled(_ kind: String) -> Bool {
+        stored[kind] ?? ReferenceData.shared.rules.accountRules.notificationKinds.first { $0.kind == kind }?.enabledByDefault ?? true
     }
 
     func set(_ kind: String, enabled: Bool) async throws {

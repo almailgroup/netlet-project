@@ -228,6 +228,40 @@ extension API {
         let topic: String
         var orderReference: String?
         let body: String
+        /// What the help centre passes on, so the shopper never says it twice.
+        var handover: Handover? = nil
+    }
+
+    /// The issue, the item and every act already done (`support.open`'s handover).
+    struct Handover: Encodable, Sendable {
+        struct Done: Encodable, Sendable, Hashable {
+            /// returnApproved, returnDeclined, returnWaiting, exchange…, cancelOrder, cancelItem, buyAgain or failed.
+            let act: String
+            let lineId: Int?
+
+            private enum CodingKeys: String, CodingKey { case act, lineId }
+
+            /// `lineId` is nullable, not optional: it is always sent.
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(act, forKey: .act)
+                try container.encode(lineId, forKey: .lineId)
+            }
+        }
+
+        let issue: String?
+        let lineId: Int?
+        let done: [Done]
+
+        private enum CodingKeys: String, CodingKey { case issue, lineId, done }
+
+        /// `issue` and `lineId` are nullable, not optional: always sent.
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(issue, forKey: .issue)
+            try container.encode(lineId, forKey: .lineId)
+            try container.encode(done, forKey: .done)
+        }
     }
 
     struct SupportReply: Encodable, Sendable {

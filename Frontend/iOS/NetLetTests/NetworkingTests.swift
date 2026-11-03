@@ -425,6 +425,22 @@ final class FixtureDecodingTests: XCTestCase {
         let help = try await client.call(API.orderHelp, .init(reference: "NL-AS-PENDING", locale: "en", turns: [.init(role: "shopper", text: "Where is my order?")]))
         XCTAssertEqual(help.kind, "unavailable")
 
+        // The help centre: an issue answered from the order, with the act it offers.
+        let selfHelp = try await client.call(API.selfHelp, .init(issue: "damaged", reference: "NL-20261001-J7MWY", lineId: 2, locale: "en"))
+        XCTAssertEqual(selfHelp.say.first?.key, "help.damaged.return")
+        XCTAssertEqual(selfHelp.offers.first?.kind, "return")
+        XCTAssertEqual(selfHelp.offers.first?.returnKinds, ["refund", "exchange"])
+        XCTAssertTrue(selfHelp.offers.first?.isAct == true)
+        XCTAssertFalse(selfHelp.picksItem)
+        XCTAssertEqual(selfHelp.items.first?.title, "USB-C charger 65W")
+        // The handover's nullable fields are sent as null, never left out.
+        let handover = API.Handover(issue: nil, lineId: nil, done: [.init(act: "cancelOrder", lineId: nil)])
+        let written = String(decoding: try JSONEncoder().encode(handover), as: UTF8.self)
+        XCTAssertTrue(written.contains("\"issue\":null"), written)
+        XCTAssertTrue(written.contains("\"lineId\":null"), written)
+        XCTAssertEqual(HelpIssues.doneForReturn(kind: "exchange", status: "requested"), "exchangeWaiting")
+        XCTAssertEqual(HelpIssues.topic("late"), "delivery")
+
         // The warranty desk: the shopper by first name alone, and what may be done.
         _ = try await client.call(API.fileWarranty, .init(reference: "NL-WALK-001", orderItemId: 7, problem: "The screen flickers and goes black.", photos: []))
         let desk = try await client.call(API.warrantyDesk, .init(waiting: true))

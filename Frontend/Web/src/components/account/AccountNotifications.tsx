@@ -95,6 +95,10 @@ export function AccountNotifications() {
             <section aria-labelledby="notices-list" className="rounded-[1.35rem] border border-[#d5dfeb] bg-white">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e7edf5] px-5 py-4">
                 <h3 id="notices-list" className="text-sm font-extrabold text-[#0a285a]">{t("notices.title")}</h3>
+                {/* What NetLet tells the shopper is chosen in five groups, under Preferences. */}
+                <Link href="/account/preferences" className="min-h-11 content-center rounded-full px-3 text-[13px] font-bold text-[#0a285a] underline underline-offset-4">
+                  {t("help.page.notifications")}
+                </Link>
                 {data.unread > 0 ? (
                   <button
                     type="button"

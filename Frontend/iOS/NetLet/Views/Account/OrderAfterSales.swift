@@ -614,22 +614,34 @@ struct OrderAddressSheet: View {
 
 // MARK: Get help with this order
 
-/// "Get help with this order" — NetLet AI answers first, from this order's
-/// facts (`support.orderHelp`), and points at the buttons the shopper can
-/// press themselves; it never claims to have done anything. A person is one
-/// press away, always, and the next step when the model hands over, cannot
-/// answer or is switched off: the conversation goes to NetLet's own support
-/// with the order attached, where a person reads every message.
+/// "Get help with this order" — the web's `OrderHelp`: it starts from what
+/// happened (the issues, `Shared/commerce/selfService.ts`), the item when it is
+/// about one — already chosen when opened from an item's ⋯ — and the answer
+/// from this order's own facts (`support.selfHelp`), with the acts that would
+/// settle it as cards done on Confirm. NetLet AI answers what that did not,
+/// and may propose an act of its own, drawn the same way. A person is one
+/// press away, always, handed the order, the issue, the item and every act
+/// already done, so nobody asks the shopper to say it again.
 struct OrderHelpSheet: View {
     let reference: String
-    /// What an answer's button opens — a panel on the order, or an act.
-    let act: (String) -> Void
+    let items: [SelfHelpAnswer.Item]
+    /// Opened from an item's ⋯: the item it is about.
+    var lineId: Int? = nil
+    /// Reads the order again after an act changed it.
+    let reload: () async -> Void
+    /// What an answer's button opens — a panel on the order, or an act — and the item it is about.
+    let act: (String, Int?) -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
+    @State private var issue: String?
+    @State private var itemId: Int?
+    @State private var answer: SelfHelpAnswer?
+    @State private var answering = false
+    @State private var done: [API.Handover.Done] = []
     @State private var turns: [API.HelpTurn] = []
-    /// Each assistant turn's buttons, by its place in `turns`.
-    @State private var buttons: [Int: [String]] = [:]
+    /// Each assistant turn's proposed acts, by its place in `turns`.
+    @State private var proposals: [Int: [HelpOffer]] = [:]
     @State private var draft = ""
     @State private var problem: String?
     @State private var asking = false
@@ -641,15 +653,46 @@ struct OrderHelpSheet: View {
 
     private var rules: Rules.AfterSales.Help { ReferenceData.shared.rules.afterSalesRules.help }
 
+    /// The issues an order can have, and the ones about one item.
+    private var issues: [String] {
+        lineId == nil ? rules.issues.filter { $0 != "account" } : rules.itemIssues + ["late"]
+    }
+
+    private var needsItem: Bool { issue.map { rules.itemIssues.contains($0) } == true && itemId == nil }
+
     var body: some View {
         NavigationStack {
             ScrollViewReader { reader in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 14) {
                         Text(l.t(modelOff ? "orderHelp.notePerson" : "orderHelp.note"))
                             .font(.inter(13))
                             .foregroundStyle(Brand.muted)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let issue {
+                            HStack {
+                                Text(l.t("help.issue.\(issue)")).font(.inter(15, .heavy)).foregroundStyle(Brand.navy)
+                                Spacer()
+                                Button(l.t("help.otherIssue")) { choose(nil) }
+                                    .font(.inter(13, .bold))
+                                    .foregroundStyle(Brand.navy)
+                            }
+                        } else {
+                            Text(l.t("help.issuesTitle")).font(.inter(15, .heavy)).foregroundStyle(Brand.navy)
+                            IssueChips(issues: issues) { choose($0) }
+                        }
+                        if needsItem {
+                            HelpItemPicker(items: items) { picked in
+                                itemId = picked
+                                Task { await loadAnswer() }
+                            }
+                        } else if issue != nil {
+                            if answering {
+                                ProgressView().tint(Brand.navy)
+                            } else if let answer {
+                                HelpAnswerView(reference: reference, answer: answer, items: items, reload: reload, open: open, record: record)
+                            }
+                        }
                         ForEach(Array(turns.enumerated()), id: \.offset) { index, turn in
                             bubble(turn, index: index).id(index)
                         }
@@ -659,14 +702,6 @@ struct OrderHelpSheet: View {
                                 Text(l.t("orderHelp.thinking")).font(.inter(13)).foregroundStyle(Brand.muted)
                             }
                             .id("thinking")
-                        }
-                        if turns.isEmpty && sentTo == nil {
-                            FlowLayout(spacing: 8) {
-                                ForEach(rules.starters, id: \.self) { key in
-                                    Button(l.t(key)) { send(l.t(key)) }
-                                        .buttonStyle(OrderActionStyle())
-                                }
-                            }
                         }
                         if let sentTo {
                             VStack(alignment: .leading, spacing: 8) {
@@ -682,9 +717,7 @@ struct OrderHelpSheet: View {
                             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.successFill))
                         } else {
                             composer
-                            if toPerson || turns.contains(where: { $0.role == "assistant" }) {
-                                personCard
-                            }
+                            if ready { personCard }
                         }
                     }
                     .padding(16)
@@ -705,9 +738,42 @@ struct OrderHelpSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .task {
+            itemId = lineId
+            if let preset = app.presetHelpIssue {
+                app.presetHelpIssue = nil
+                choose(preset)
+            }
             if let available = try? await app.services.api.call(API.orderHelpAvailable) { modelOff = !available }
         }
     }
+
+    private var ready: Bool {
+        issue != nil || turns.contains { $0.role == "shopper" } || !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func choose(_ next: String?) {
+        Haptics.tap()
+        issue = next
+        itemId = lineId
+        answer = nil
+        if next != nil, !needsItem { Task { await loadAnswer() } }
+    }
+
+    private func loadAnswer() async {
+        guard let issue else { return }
+        answering = true
+        defer { answering = false }
+        answer = try? await app.services.api.call(API.selfHelp, .init(issue: issue, reference: reference, lineId: itemId, locale: l.current.rawValue))
+    }
+
+    /// A panel an answer opens, as the order's own actions name it; the sheet goes down first.
+    private func open(_ panel: String, _ line: Int?) {
+        let action = panel == "returnForm" ? "refund" : panel
+        dismiss()
+        act(action, line)
+    }
+
+    private func record(_ entry: API.Handover.Done) { done.append(entry) }
 
     private func bubble(_ turn: API.HelpTurn, index: Int) -> some View {
         let mine = turn.role == "shopper"
@@ -723,28 +789,21 @@ struct OrderHelpSheet: View {
                     .font(.inter(14))
                     .foregroundStyle(mine ? Color.white : Brand.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                if let actions = buttons[index], !actions.isEmpty {
-                    FlowLayout(spacing: 6) {
-                        ForEach(actions, id: \.self) { action in
-                            Button(l.t(Self.label(action))) {
-                                dismiss()
-                                act(action)
-                            }
-                            .buttonStyle(OrderActionStyle())
-                        }
-                    }
+                if let offers = proposals[index], !offers.isEmpty {
+                    HelpOffersView(reference: reference, offers: offers, items: items, reload: reload, open: open, record: record)
                 }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(mine ? Brand.navy : Color.white))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(mine ? Color.clear : Brand.cardLine, lineWidth: 1))
-            if !mine { Spacer(minLength: 40) }
+            if !mine { Spacer(minLength: 24) }
         }
     }
 
     private var composer: some View {
         VStack(alignment: .leading, spacing: 6) {
+            Text(l.t(issue == nil ? "orderHelp.ask" : "help.askAI")).font(.inter(12, .heavy)).foregroundStyle(Brand.muted)
             HStack(alignment: .bottom, spacing: 8) {
                 TextField(l.t("orderHelp.ask"), text: $draft, axis: .vertical)
                     .lineLimit(1...5)
@@ -777,8 +836,9 @@ struct OrderHelpSheet: View {
     }
 
     private var personCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(l.t(toPerson ? "orderHelp.personNext" : "orderHelp.personAlways"))
+        let next = toPerson || answer?.person == "next"
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(l.t(next ? "orderHelp.personNext" : "orderHelp.personAlways"))
                 .font(.inter(13))
                 .foregroundStyle(Brand.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -791,15 +851,15 @@ struct OrderHelpSheet: View {
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(opening || (turns.isEmpty && draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+            .disabled(opening || !ready)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(toPerson ? Brand.accentWash : Brand.tint))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(next ? Brand.accentWash : Brand.tint))
     }
 
     /// `orderHelpProblem`: something to ask, short enough, and no contact details.
-    private func issue(_ words: String) -> String? {
+    private func issueWith(_ words: String) -> String? {
         if words.isEmpty { return "orderHelp.empty" }
         if words.count > rules.maxQuestion { return "orderHelp.tooLong" }
         if !ContactFilter.findings(words).isEmpty { return "orderHelp.contact" }
@@ -808,7 +868,7 @@ struct OrderHelpSheet: View {
 
     private func send(_ text: String) {
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let found = issue(words) {
+        if let found = issueWith(words) {
             Haptics.refused()
             problem = found
             boxFocused = true
@@ -829,14 +889,14 @@ struct OrderHelpSheet: View {
         defer { asking = false }
         let sent = Array(turns.suffix(rules.turns))
         do {
-            let answer = try await app.services.api.call(API.orderHelp, .init(reference: reference, locale: l.current.rawValue, turns: sent))
-            switch answer.kind {
+            let reply = try await app.services.api.call(API.orderHelp, .init(reference: reference, locale: l.current.rawValue, turns: sent, issue: issue, lineId: itemId))
+            switch reply.kind {
             case "answer":
-                turns.append(API.HelpTurn(role: "assistant", text: answer.text ?? ""))
-                buttons[turns.count - 1] = answer.actions ?? []
-                if answer.person == true { toPerson = true }
+                turns.append(API.HelpTurn(role: "assistant", text: reply.text ?? ""))
+                proposals[turns.count - 1] = reply.offers ?? []
+                if reply.person == true { toPerson = true }
             case "refused":
-                problem = answer.reason ?? "orderHelp.contact"
+                problem = reply.reason ?? "orderHelp.contact"
             case "tooMany":
                 problem = "orderHelp.tooMany"
                 toPerson = true
@@ -852,18 +912,20 @@ struct OrderHelpSheet: View {
         }
     }
 
-    /// What a person reads: the shopper's questions and what NetLet AI said.
+    /// What a person reads: the shopper's questions and what NetLet AI said, or the issue's name.
     private var transcript: String {
         let lines = turns.map { "\($0.role == "shopper" ? "Me" : "NetLet AI"): \($0.text)" }.joined(separator: "\n")
-        let text = lines.isEmpty ? draft.trimmingCharacters(in: .whitespacesAndNewlines) : lines
+        let typed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = !lines.isEmpty ? lines : !typed.isEmpty ? typed : issue.map { l.t("help.issue.\($0)") } ?? ""
         return String(text.suffix(1800))
     }
 
     private func handOver() async {
         opening = true
         defer { opening = false }
+        let handover = issue != nil || !done.isEmpty || itemId != nil ? API.Handover(issue: issue, lineId: itemId, done: done) : nil
         do {
-            let opened = try await app.services.api.call(API.openSupport, .init(topic: "order", orderReference: reference, body: transcript))
+            let opened = try await app.services.api.call(API.openSupport, .init(topic: HelpIssues.topic(issue), orderReference: reference, body: transcript, handover: handover))
             Haptics.succeeded()
             app.toast(l.t("orderHelp.sentToPerson"))
             sentTo = opened.id

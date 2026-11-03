@@ -18,13 +18,10 @@ import {
   cancelOrderForShopper,
   FulfilmentRefused,
   getOrderFor,
-  getOrderForUser,
   listOrdersFor,
-  lineForShopper,
   listOrdersForUser,
   orderForShopper,
   OrderCancelRefused,
-  orderStepsFor,
   OrderRefused,
   placeOrder,
   ordersOnTheWay,
@@ -33,14 +30,12 @@ import {
   setLineFulfilment,
 } from "../services/orders.js";
 import { resolveActor } from "../services/inventory.js";
-import { fileClaim, parcelsForShopper, ParcelCareRefused, rateDelivery } from "../services/parcelCare.js";
+import { fileClaim, ParcelCareRefused, rateDelivery } from "../services/parcelCare.js";
 import { MAX_DELIVERY_COMMENT } from "../../../Shared/commerce/deliveryRatings.js";
 import { MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js";
-import { cancelReturn, requestReturn, returnsForShopper, returnsForShopperOrder, ReturnRefused } from "../services/returns.js";
-import { documentsForShopperOrder } from "../services/invoices.js";
+import { cancelReturn, requestReturn, returnsForShopper, ReturnRefused } from "../services/returns.js";
 import { MAX_RETURN_NOTE, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
 import { fraudUnseen, markFraudSeen, referralWatch, reviewWatch, riskForOrders } from "../services/fraud.js";
-import { lineEligibility, myReviewsForLines } from "../services/reviews.js";
 import { createGiftCard, listVouchers, PromotionRefused, saveDiscountCode } from "../services/vouchers.js";
 import { CODE_FUNDERS, CODE_SCOPES } from "../../../Shared/commerce/lineCodes.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
@@ -52,12 +47,8 @@ import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
 import { trackOrder, TrackingError } from "../services/tracking.js";
 import { checkVoucherAllowed, recordVoucherMiss } from "../services/rateLimit.js";
-import { returnStateFor } from "../../../Shared/commerce/returns.js";
-import { returnWindowDays } from "../services/settings.js";
-import { shopperCancelState } from "../../../Shared/commerce/orderCancel.js";
-import { addressChangeState, lineMayChange, shopperChangeState } from "../../../Shared/commerce/orderChanges.js";
 import { applyOrderChange, buyAgain, changeOrderAddress, OrderChangeRefused, quoteOrderChange } from "../services/orderChanges.js";
-import { claimsForShopperOrder, warrantyStateForLines } from "../services/warranty.js";
+import { orderDetailForShopper } from "../services/orderDetail.js";
 
 /** The lines a shopper asks to change: each named once, a quantity of nought taking it out. */
 const lineChanges = z
@@ -123,74 +114,7 @@ export const ordersRouter = router({
 
   get: protectedProcedure
     .input(z.object({ reference: z.string().min(1).max(64) }))
-    .query(async ({ ctx, input }) => {
-      const found = await getOrderForUser(ctx.user.id, input.reference);
-      if (!found) return null;
-
-      const now = new Date();
-      /* The administrator's return window, so the button and the refusal agree. */
-      const windowDays = await returnWindowDays();
-      /* The shopper's own reviews of these lines, so each says "Rate this
-         item" or what was written and whether it is shown yet. */
-      const reviewed = await myReviewsForLines(ctx.user.id, found.lines.map(line => line.id));
-      /* Whether each delivered item may be claimed on, and the store's own warranty words. */
-      const warrantyFor = await warrantyStateForLines(found.lines);
-      return {
-        order: orderForShopper(found.order),
-        windowDays,
-        /* What can be done about each parcel once it is at the door — rate the
-           delivery (3.4.4), report damage (3.4.2) — resolved with the server's
-           clock for the reason the return window is. */
-        parcels: await parcelsForShopper(ctx.user.id, input.reference, now),
-        /* Each line's return requests (3.2.8), newest first, so a line can say
-           where its return stands rather than only whether one is allowed. */
-        returns: await returnsForShopperOrder(ctx.user.id, found.order.id),
-        /* The invoice and any credit notes (3.6.6), issued here if a write
-           at collection or refund missed them. */
-        documents: await documentsForShopperOrder(ctx.user.id, input.reference),
-        /* Whether the shopper may take it back themselves, and if not why —
-           the rule `orders.cancel` asks again under a lock. */
-        cancel: shopperCancelState(found.order, found.lines),
-        /* What else can still be changed before a driver has it — an item, a
-           quantity, the address — each the rule `orders.change` and
-           `orders.changeAddress` ask again under a lock. */
-        change: shopperChangeState(found.order, found.lines),
-        changeAddress: addressChangeState(found.order, found.lines),
-        /* Each parcel as steps for "Track order", with the store's estimate. */
-        steps: await orderStepsFor(found.order, found.lines),
-        /* Warranty claims on its lines (migration 0072), newest first, with where each stands. */
-        warranty: await claimsForShopperOrder(ctx.user.id, found.order.id),
-        lines: found.lines.map(line => ({
-          ...lineForShopper(line),
-          /*
-           * `order_items.delivered_at` is real now, so the window is measured
-           * from when the goods arrived rather than from `updatedAt`. That
-           * stand-in was wrong in a known direction — a vendor editing the
-           * line pushed the window out — and this is the one line the old
-           * comment promised would change when the column landed.
-           *
-           * The date outlives the status on purpose: a line delivered and then
-           * returned keeps its arrival date, which is what lets the return
-           * window and a review both still make sense afterwards.
-           */
-          returnState: returnStateFor(
-            found.order,
-            { fulfilment: line.fulfilment, deliveredAt: line.deliveredAt },
-            now,
-            windowDays,
-          ),
-          review: reviewed.get(line.id) ?? null,
-          /* Whether it may be rated now — `eligibilityFor`, the rule `reviews.write` refuses with. */
-          reviewEligibility: lineEligibility(found.order, line, reviewed.has(line.id)),
-          /* A warranty claim: whether one may be filed now, and what the store says it covers. */
-          warrantyEligibility: warrantyFor.get(line.id)?.eligibility ?? { allowed: false as const, reason: "warranty.notDelivered" as const },
-          warrantyTerms: warrantyFor.get(line.id)?.terms ?? null,
-          /* Whether the shopper may still cancel it or lower its quantity: in
-             the store's hands, unpaid, and not part of a set. */
-          changeable: found.order.status === "pending_payment" && lineMayChange(line) && line.bundleId === null,
-        })),
-      };
-    }),
+    .query(({ ctx, input }) => orderDetailForShopper(ctx.user.id, input.reference)),
 
   /**
    * Rate how one parcel was delivered (3.4.4), or change the rating.

@@ -318,8 +318,8 @@ struct RecommendedRail: View {
 /// owner's word; the web's `RecentlyViewedRail`. The list is the phone's own
 /// (`RecentlyViewed`) and the products are read back by id, so the cards
 /// carry today's price and photo and one no longer on the shelf is not drawn.
-/// Drawn from one, being this shopper's own history; Clear empties the list
-/// and says so. Read as the page appears, so a product opened from the shelf
+/// Drawn from one, being this shopper's own history; its heading opens
+/// Browsing history, where it is managed. Read as the page appears, so a product opened from the shelf
 /// joins it on the next visit and not under the finger.
 struct RecentlyViewedRail: View {
     @State private var products: [Product] = []
@@ -329,10 +329,10 @@ struct RecentlyViewedRail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !products.isEmpty {
-                TabbedShelf(title: l.t("rail.viewed.title"), products: products, tabs: false, viewAllKey: "rail.viewed.clear", viewAllChevron: false) {
-                    app.viewed.clear()
-                    products = []
-                    app.toast(l.t("rail.viewed.cleared"))
+                // Managing it is the account's, on the owner's word: one product
+                // off, or all of them, under Browsing history.
+                TabbedShelf(title: l.t("rail.viewed.title"), products: products, tabs: false, viewAllKey: "history.manage", viewAllChevron: true) {
+                    app.open(.history)
                 }
             }
         }
