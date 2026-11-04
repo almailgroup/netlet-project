@@ -66,15 +66,22 @@ final class PreviewUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Quick view"].exists, "A tap opened the preview rather than the product.")
     }
 
-    /// The preview's Add to cart says it worked where the finger is.
+    /// The preview's Add to cart says it worked where the finger is: the tick
+    /// for a moment, then the bag's own line ("In your cart") for as long as
+    /// the product is in it. The tick is 1.6s and a tap waits for the app to
+    /// settle first, which on a busy runner can outlast it — so either one is
+    /// the answer, and the line is checked absent before the press.
     func testThePreviewAddsToTheBag() {
         let app = launch("preview:basmati-rice-5kg")
         XCTAssertTrue(app.staticTexts["Quick view"].waitForExistence(timeout: 30), "The preview never opened.")
         let add = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Add")).firstMatch
         XCTAssertTrue(add.waitForExistence(timeout: 10), "The preview has no Add to cart.")
+        let inBag = app.staticTexts["In your cart"]
+        XCTAssertFalse(inBag.exists, "The product was in the bag before the press.")
         add.tap()
-        XCTAssertTrue(app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Added")).firstMatch.waitForExistence(timeout: 8),
-                      "Add to cart in the preview said nothing.")
+        let answer = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@ OR label == %@", "Added", "In your cart")).firstMatch
+        XCTAssertTrue(answer.waitForExistence(timeout: 10), "Add to cart in the preview said nothing.")
     }
 
     // MARK: Helpers

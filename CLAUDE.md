@@ -8008,6 +8008,10 @@ opens the product. iOS 17 keeps the button and the SwiftUI hold.
 **A hold is proved by holding**: `PreviewUITests` holds a card's photo on
 all products and the home page, in English and Arabic, and its words; taps a
 photo for the product page; and presses the preview's Add to cart and Close.
+**A moment on screen is not a test's answer**: Add to cart's tick lasts 1.6s,
+and a tap returns only once the app has settled, which on a busy runner
+outlasted it once — so the test takes the tick or the bag's own "In your
+cart", whichever it finds, having checked the line absent before the press.
 **`NetLetUITests` is the proof, and the first UI test target the app has**:
 it opens the home page in both languages, all products, Categories, a product
 and the account from the recordings and moves each the ways a thumb does —
