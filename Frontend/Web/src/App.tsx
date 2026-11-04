@@ -17,6 +17,9 @@ import { shelvedProduct } from "@/hooks/useCatalog";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazyPage, type Preloadable } from "@/lib/lazyPage";
 import { isWaiting, setPageResolver, subscribeWaiting, useReadyLocation } from "@/lib/readyNavigation";
+import { PORTAL_DOMAIN, PORTAL_SIDE, portalHref, portalHrefs, portalSideForPath, usePortalLocation } from "@/lib/portalHost";
+import { internalPath, portalSideFor } from "@shared/portal";
+import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -127,6 +130,29 @@ function RouteFallback() {
       <PageFallback />
     </div>
   );
+}
+
+/**
+ * The portal's old addresses on the shop's, once the portal has its own
+ * (`PORTAL_DOMAIN`): `netlet.net/admin/orders` opens `vendor.netlet.net/orders`
+ * for a store and `admin.netlet.net/orders` for NetLet's staff, so a bookmark,
+ * an older email or the account page's own link still lands. Somebody not
+ * signed in on the shop goes by the page (`portalSideForPath`); each portal
+ * sends on anybody who belongs on the other (`AdminLayout`).
+ */
+function PortalMove() {
+  const { t } = useTranslation();
+  const [location] = useLocation();
+  const search = useSearch();
+  const { isAuthenticated, loading } = useAuth();
+  const me = trpc.inventory.me.useQuery(undefined, { enabled: isAuthenticated });
+  const settled = !loading && (!isAuthenticated || !me.isLoading);
+  useEffect(() => {
+    if (!settled) return;
+    const side = portalSideFor(me.data) ?? portalSideForPath(location);
+    window.location.replace(portalHref(side, `${location}${search ? `?${search}` : ""}${window.location.hash}`));
+  }, [settled, me.data, location, search]);
+  return <p role="status" className="container py-10 text-[14px] ink-muted">{t("admin.loading")}</p>;
 }
 
 /** /dashboard/x -> /admin/x, replacing history so Back does not bounce. */
@@ -375,7 +401,9 @@ const startupParser = (route: string) => {
  * arrived, or failed — a failure is the page's to say when it draws.
  */
 export function preloadFirstPage(pathname: string = window.location.pathname): Promise<void> {
-  const path = BASE_PATH && pathname.startsWith(BASE_PATH) ? pathname.slice(BASE_PATH.length) || "/" : pathname;
+  const bare = BASE_PATH && pathname.startsWith(BASE_PATH) ? pathname.slice(BASE_PATH.length) || "/" : pathname;
+  /* On a portal address, `/orders` is the app's `/admin/orders` (`portalHost`). */
+  const path = PORTAL_SIDE ? internalPath(bare) : bare;
   const pieces = piecesFor(startupParser as Parameters<typeof matchRoute>[0], path);
   return Promise.all(pieces.map(piece => piece.preload())).then(() => undefined, () => undefined);
 }
@@ -446,7 +474,9 @@ function Router() {
   return (
     // `base` keeps <Link> and useLocation correct when the app is served from a
     // sub-directory (GitHub Pages). It is "" for a root deployment.
-    <WouterRouter base={BASE_PATH} hook={useReadyLocation}>
+    // On a portal address the address bar leaves the portal's `/admin` off,
+    // and a link to a shop page draws the shop's own address (`portalHost`).
+    <WouterRouter base={BASE_PATH} hook={PORTAL_SIDE ? usePortalLocation : useReadyLocation} hrefs={PORTAL_SIDE ? portalHrefs : undefined}>
       <NavigationProgress />
       <ReferralCapture />
       <ScrollMemory />
@@ -455,6 +485,8 @@ function Router() {
         <Switch>
           {ROUTES.filter(route => route.frame === "bare").map(route => <Route key={route.path} path={route.path} component={route.page} />)}
           {/* The portal, in one frame that stays put while its pages change. */}
+          {/* The portal lives on its own addresses once it has them. */}
+          {PORTAL_DOMAIN && !PORTAL_SIDE ? <Route path={ADMIN_AREA} component={PortalMove} /> : null}
           <Route path={ADMIN_AREA}>
             <AdminLayout>
               <Switch>

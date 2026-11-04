@@ -5,6 +5,7 @@ import path from "node:path";
 import { defineConfig, type Plugin } from "vite";
 import type { Rollup } from "vite";
 import { routeTable, routesFromApp } from "./Frontend/Web/build/routePreloads";
+import { portalDomain } from "./Shared/portal";
 
 /**
  * Each shopping address's code, fetched the moment the page arrives rather
@@ -30,7 +31,10 @@ function routePreloads(): Plugin {
         const { table, unplaced } = routeTable(routes, chunks, base);
         if (unplaced.length) console.warn(`[route preloads] no chunk found for ${unplaced.join(", ")}`);
         return [
-          { tag: "script", attrs: { type: "application/json", id: "netlet-routes" }, children: JSON.stringify(table).replace(/</g, "\\u003c"), injectTo: "head-prepend" as const },
+          /* `portal` is the domain the portals hang from (`Shared/portal.ts`), so
+             the preloader reads `admin.netlet.net/orders` as the app's
+             `/admin/orders`; null while the move is off. */
+          { tag: "script", attrs: { type: "application/json", id: "netlet-routes" }, children: JSON.stringify({ ...table, portal: portalDomain(process.env.PORTAL_DOMAIN) }).replace(/</g, "\\u003c"), injectTo: "head-prepend" as const },
           { tag: "script", attrs: { src: `${base}route-preload.js`, async: true }, injectTo: "head-prepend" as const },
         ];
       },
@@ -59,6 +63,9 @@ export default defineConfig({
     },
   },
   envDir: path.resolve(import.meta.dirname),
+  // `PORTAL_DOMAIN` is the server's setting and the page's too: one value in
+  // Vercel moves the portal to its own addresses (`Shared/portal.ts`).
+  envPrefix: ["VITE_", "PORTAL_DOMAIN"],
   root: path.resolve(import.meta.dirname, "Frontend", "Web"),
   publicDir: path.resolve(import.meta.dirname, "Frontend", "Web", "public"),
   build: {

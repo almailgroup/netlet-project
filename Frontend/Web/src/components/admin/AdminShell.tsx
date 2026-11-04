@@ -30,10 +30,14 @@ import { can, type Actor, type Capability } from "@shared/inventory/permissions"
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
 import { logoImage } from "@/lib/brandAssets";
-import { ArrowLeft, BadgeCheck, BookOpen, Boxes, Building2, ChevronDown, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ChevronDown, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { createContext, Suspense, useContext, useEffect, useState, type ReactNode } from "react";
-import { Link, Redirect, useLocation } from "wouter";
+import { Link, Redirect, useLocation, useSearch } from "wouter";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { PORTAL_SIDE, portalHref } from "@/lib/portalHost";
+import { portalSideFor, type PortalSide } from "@shared/portal";
 
 const ROLE_LABEL: Record<string, MessageKey> = {
   admin: "admin.roleAdmin",
@@ -153,7 +157,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   /* The frame outlives the page now, so a phone's open menu closes on any
      move, not only on a press inside it. */
   useEffect(() => setMenuOpen(false), [location]);
-  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
+  const search = useSearch();
+  /* On a portal's own address the portal keeps its own sign-in, so it has
+     its own way out, asked first like the shop's. */
+  const [signOutOpen, setSignOutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   /*
    * The demo build is a signed-out guest everywhere — there is no server to
    * sign in to. The admin portal is the one page where that would show nothing
@@ -170,10 +179,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   if (!reachable) {
+    /* The sign-in page of the address this is, coming back to this page. */
+    const here = `${location}${search ? `?${search}` : ""}`;
     return (
       <Frame>
         <h1 className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.signInFirst")}</h1>
-        <Link href="/account" className={`${buttonClass.primary} mt-5`}>
+        <Link href={`/signin?next=${encodeURIComponent(here)}`} className={`${buttonClass.primary} mt-5`}>
           {t("header.signIn")}
         </Link>
       </Frame>
@@ -198,6 +209,13 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
+
+  /* Each portal has its own address (`PORTAL_DOMAIN`): somebody who belongs
+     on the other one is sent there, on the same page. */
+  const belongs = portalSideFor(actor);
+  if (PORTAL_SIDE && belongs && belongs !== PORTAL_SIDE) {
+    return <Frame><MoveToPortal side={belongs} address={`${location}${search ? `?${search}` : ""}`} /></Frame>;
+  }
 
   /* The menu is `ADMIN_MENU` (`content/adminMenu.ts`), which the iOS app
      reads too; this frame adds each link's icon. */
@@ -276,8 +294,41 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           <span className="ms-auto shrink-0 rounded-full bg-[#e7edf5] px-2.5 py-1 text-[12px] font-semibold text-[#0a285a] md:ms-0">
             {t(roleLabelKey(actor))}
           </span>
+          {PORTAL_SIDE ? (
+            <button
+              type="button"
+              onClick={() => setSignOutOpen(true)}
+              aria-label={t("header.signOut")}
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"
+            >
+              <LogOut className="size-4" aria-hidden />
+              <span className="hidden sm:inline">{t("header.signOut")}</span>
+            </button>
+          ) : null}
         </div>
       </header>
+      {PORTAL_SIDE ? (
+        <ConfirmDialog
+          open={signOutOpen}
+          tone="danger"
+          icon={<LogOut className="size-5" />}
+          title={t("account.signOutTitle")}
+          body={t("account.signOutBody")}
+          confirmLabel={t("header.signOut")}
+          pending={signingOut}
+          onClose={() => setSignOutOpen(false)}
+          onConfirm={async () => {
+            setSigningOut(true);
+            try {
+              await logout();
+              toast.success(t("header.signedOut"));
+              setSignOutOpen(false);
+            } finally {
+              setSigningOut(false);
+            }
+          }}
+        />
+      ) : null}
 
       <div className="container grid gap-6 py-6 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:py-8">
         <nav aria-label={t("admin.title")} className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pb-6">
@@ -315,6 +366,15 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     </div>
     </ActorContext.Provider>
   );
+}
+
+/** Sends this tab to the portal its person belongs on, on the same page. */
+function MoveToPortal({ side, address }: { side: PortalSide; address: string }) {
+  const { t } = useTranslation();
+  useEffect(() => {
+    window.location.replace(portalHref(side, `${address}${window.location.hash}`));
+  }, [side, address]);
+  return <p role="status" className="text-[14px] ink-muted">{t("admin.loading")}</p>;
 }
 
 function Frame({ children }: { children: ReactNode }) {

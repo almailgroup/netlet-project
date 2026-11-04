@@ -60,6 +60,7 @@ import { translate, type LocaleCode } from "../../../Shared/i18n/dictionary.js";
 import { fromFils, toFils } from "../../../Shared/money.js";
 import { clampPage, offsetFor } from "../../../Shared/pagination.js";
 import { emailConfigured, noticeEmail, sendEmail, siteOrigin } from "../core/email.js";
+import { isPortalPath, portalDomain, portalUrl } from "../../../Shared/portal.js";
 import { describeError } from "../core/describeError.js";
 import { getDb } from "./db.js";
 
@@ -198,6 +199,19 @@ function emailMoney(locale: LocaleCode, amount: string): string {
   return new Intl.NumberFormat(locale === "ar" ? "ar-KW-u-nu-latn" : "en-KW", { style: "currency", currency: "KWD" }).format(value);
 }
 
+/**
+ * Where an email's button goes: the shop's address, or for a portal page the
+ * portal's own (`PORTAL_DOMAIN`, `Shared/portal.ts`) — NetLet's staff to the
+ * admin one, a store's team and an applicant to the vendor one — so the press
+ * lands where its reader signs in rather than on a page that sends them on.
+ */
+export function emailLink(origin: string, link: string | null, audience: string | undefined): string | null {
+  if (!link) return null;
+  const portal = portalDomain(process.env.PORTAL_DOMAIN);
+  if (portal && isPortalPath(link)) return portalUrl(audience === "staff" ? "admin" : "vendor", portal, link);
+  return origin ? `${origin}${link}` : null;
+}
+
 function renderEmail(
   to: string,
   locale: LocaleCode,
@@ -213,7 +227,7 @@ function renderEmail(
     subject: sentence.length > 90 ? `${sentence.slice(0, 87)}…` : sentence,
     sentence,
     action: translate(locale, "notice.emailOpen"),
-    link: origin && notice.link ? `${origin}${notice.link}` : null,
+    link: emailLink(origin, notice.link, audience),
     footer: translate(locale, audience === "seller" ? "notice.emailFooterSeller" : audience === "staff" ? "notice.emailFooterStaff" : "notice.emailFooter"),
     preferencesLink: origin ? `${origin}/account/preferences` : null,
   });

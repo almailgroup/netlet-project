@@ -29,6 +29,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { privatePageMeta } from "@shared/seo";
 import { returnPath } from "@shared/auth/returnPath";
+import { PORTAL_SIDE } from "@/lib/portalHost";
 
 export default function SignIn() {
   const { t } = useTranslation();
@@ -41,8 +42,11 @@ export default function SignIn() {
   const [resetting, setResetting] = useState(false);
 
   const query = search ? `?${search}` : "";
-  const next = returnPath(new URLSearchParams(search).get("next"));
-  const registering = onSignup || onRegister;
+  /* On a portal's own address this page signs in to the portal: no Create
+     account, and the portal's overview is where it comes back to. */
+  const asked = new URLSearchParams(search).get("next");
+  const next = PORTAL_SIDE && !asked ? "/admin" : returnPath(asked);
+  const registering = !PORTAL_SIDE && (onSignup || onRegister);
   const mode: AuthMode = registering ? "register" : resetting ? "reset" : "signin";
 
   usePageMeta(privatePageMeta(t(registering ? "auth.createTitle" : "auth.signInTitle")));
@@ -83,6 +87,7 @@ export default function SignIn() {
           onDone={() => navigate(next, { replace: true })}
           heading="h1"
           autoFocus
+          signInOnly={Boolean(PORTAL_SIDE)}
         />
       </main>
 

@@ -58,6 +58,7 @@ import { privatePageMeta } from "@shared/seo";
 import type { AppRouter } from "../../../../../Backend/src/routes";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Select } from "@/components/ui/Select";
+import { shopHref } from "@/lib/portalHost";
 
 type Booking = inferRouterOutputs<AppRouter>["ads"]["list"]["rows"][number];
 
@@ -292,7 +293,7 @@ function BookingRow({ booking, showStore }: { booking: Booking; showStore: boole
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <p className="min-w-0 text-[15px] font-bold">
           {booking.productHandle
-            ? <a href={`/products/${booking.productHandle}`} className="hover:underline"><bdi>{booking.productTitle}</bdi></a>
+            ? <a href={shopHref(`/products/${booking.productHandle}`)} className="hover:underline"><bdi>{booking.productTitle}</bdi></a>
             : <bdi>{booking.productTitle}</bdi>}
           {showStore ? <span className="text-[13px] font-semibold ink-muted"> · <bdi>{booking.vendorName}</bdi></span> : null}
         </p>
@@ -463,7 +464,7 @@ function BannerReview({ booking }: { booking: Booking }) {
     <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[13px] text-[#0a285a] sm:p-5">
       <p className="text-[15px] font-bold">
         {booking.productHandle
-          ? <a href={`/products/${booking.productHandle}`} className="hover:underline"><bdi>{booking.productTitle}</bdi></a>
+          ? <a href={shopHref(`/products/${booking.productHandle}`)} className="hover:underline"><bdi>{booking.productTitle}</bdi></a>
           : <bdi>{booking.productTitle}</bdi>}
         <span className="text-[13px] font-semibold ink-muted"> · <bdi>{booking.vendorName}</bdi></span>
       </p>

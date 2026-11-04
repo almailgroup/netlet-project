@@ -32,12 +32,14 @@ const WELCOME = streetImage;
 /* Its phone copy, half the bytes, for a band a phone draws 390 wide. */
 const WELCOME_PHONE = heroSlides.find(slide => slide.src === streetImage)?.phone ?? null;
 
-export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus }: {
+export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus, signInOnly }: {
   mode: AuthMode;
   onModeChange: (mode: AuthMode) => void;
   onDone?: () => void;
   heading: "h1" | "h2";
   autoFocus?: boolean;
+  /** No Create account: the portal's own sign-in (`AuthForm`). */
+  signInOnly?: boolean;
 }) {
   return (
     /* On a phone the screen reaches the edges, past the page's own gutter and
@@ -58,7 +60,7 @@ export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus }: {
         }`}
       >
         <div className="mx-auto w-full max-w-[400px]">
-          <AuthForm mode={mode} onModeChange={onModeChange} onDone={onDone} heading={heading} autoFocus={autoFocus} />
+          <AuthForm mode={mode} onModeChange={onModeChange} onDone={onDone} heading={heading} autoFocus={autoFocus} signInOnly={signInOnly} />
         </div>
       </section>
 

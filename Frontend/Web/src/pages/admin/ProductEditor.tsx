@@ -42,6 +42,7 @@ import { StoreAvatar } from "@/components/admin/StoreAvatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
 import { OPTION_NAME_MAX, OPTION_VALUE_MAX, optionPairs, optionPairsProblem, optionsDistinguish, optionsRecord, varyingOptionNames, type OptionPair } from "@shared/inventory/variantOptions";
+import { shopHref } from "@/lib/portalHost";
 
 const REASONS = STOCK_REASONS;
 
@@ -259,7 +260,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           <>
             <StatusPill status={row.status} />
             {row.status === "published" ? (
-              <a href={`/products/${encodeURIComponent(row.handle)}`} target="_blank" rel="noreferrer" className={buttonClass.secondary}>
+              <a href={shopHref(`/products/${encodeURIComponent(row.handle)}`)} target="_blank" rel="noreferrer" className={buttonClass.secondary}>
                 <ExternalLink className="size-4" aria-hidden />{t("admin.viewInShop")}
               </a>
             ) : null}

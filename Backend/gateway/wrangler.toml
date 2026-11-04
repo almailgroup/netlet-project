@@ -14,9 +14,11 @@ preview_urls = false
 [vars]
 # The pages allowed to call from a browser: scheme and host exactly, comma-
 # separated, no trailing slash. NetLet's own domain both ways — the shop is
-# served at netlet.net and nowhere else. A preview deployment's address is not
-# here: each is different, and a preview has no business spending the key.
-ALLOWED_ORIGINS = "https://netlet.net,https://www.netlet.net"
+# served at netlet.net and nowhere else — and the portal's two addresses
+# (Shared/portal.ts), where the new-product form drafts with AI. A preview
+# deployment's address is not here: each is different, and a preview has no
+# business spending the key.
+ALLOWED_ORIGINS = "https://netlet.net,https://www.netlet.net,https://admin.netlet.net,https://vendor.netlet.net"
 GEMINI_MODEL = "gemini-2.5-flash"
 
 # Ceilings, counted by Cloudflare at the edge. A period is 10 or 60 seconds.

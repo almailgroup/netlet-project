@@ -76,6 +76,15 @@ export function sitemapXml(siteUrl: string, entries: SitemapEntry[]): string {
  * behind a session, and `/api/` answers nothing a crawler can read. Listing
  * them keeps a crawl budget on the catalog.
  */
+/**
+ * The portal's own addresses (`Shared/portal.ts`) are for people with an
+ * account there and nobody else, so they ask every crawler to stay out and
+ * name no sitemap.
+ */
+export function portalRobotsTxt(): string {
+  return ["# NetLet's portal", "User-agent: *", "Disallow: /", ""].join("\n");
+}
+
 export function robotsTxt(siteUrl: string): string {
   return [
     "# NetLet",

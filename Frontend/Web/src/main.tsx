@@ -11,6 +11,7 @@ import superjson from "superjson";
 import App, { preloadFirstPage } from "./App";
 import { storedLocale } from "@/contexts/CustomerContext";
 import { prefetchRouteData } from "@/lib/routeData";
+import { PORTAL_SIDE } from "@/lib/portalHost";
 import { rememberShelves, restoreShelves } from "@/lib/shelfMemory";
 import { catchEmailReturn } from "@/lib/emailReturn";
 import { installHistoryDepth } from "@/lib/inAppBack";
@@ -149,6 +150,14 @@ catchEmailReturn();
 /* Every history entry from here on knows how deep into the visit it is, so a
    page's own way back can go back rather than forward (`inAppBack`). */
 installHistoryDepth();
+/* A portal's own address is kept out of every index (`portalHost`); the
+   server says so too, in robots.txt and a header. */
+if (PORTAL_SIDE) {
+  const robots = document.createElement("meta");
+  robots.name = "robots";
+  robots.content = "noindex, nofollow";
+  document.head.appendChild(robots);
+}
 const firstPage = preloadFirstPage();
 if (!DEMO_MODE) {
   restoreShelves(queryClient);

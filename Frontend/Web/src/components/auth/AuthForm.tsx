@@ -134,6 +134,7 @@ export function AuthForm({
   heading: Heading = "h2",
   titleId,
   autoFocus = false,
+  signInOnly = false,
 }: {
   mode: AuthMode;
   onModeChange: (mode: AuthMode) => void;
@@ -144,6 +145,11 @@ export function AuthForm({
   titleId?: string;
   /** Focus the first box on arrival. A dialog or a page of its own does; a section of a page does not. */
   autoFocus?: boolean;
+  /**
+   * Signing in and resetting only, with no Create account: the portal's own
+   * address (`portalHost`), where an account is one a store or NetLet made.
+   */
+  signInOnly?: boolean;
 }) {
   const { t, tError, locale } = useTranslation();
   const utils = trpc.useUtils();
@@ -410,7 +416,7 @@ export function AuthForm({
       <Heading id={headingId} className={titleClass}>
         {t(isReset ? "auth.resetTitle" : "auth.welcome")}
       </Heading>
-      {isReset ? <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">{t("auth.resetNote")}</p> : <ModeSwitch mode={mode} onChoose={go} />}
+      {isReset ? <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">{t("auth.resetNote")}</p> : signInOnly ? null : <ModeSwitch mode={mode} onChoose={go} />}
 
       {/* Somebody who followed a friend's link is told what it gets them, on
           the form where they are deciding whether to register at all (3.1.14). */}

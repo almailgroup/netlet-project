@@ -22,6 +22,8 @@ import { createTRPCQueryUtils } from "@trpc/react-query";
 import type { CreateTRPCClient } from "@trpc/client";
 import type { AppRouter } from "../../../../Backend/src/routes";
 import { searchTermFrom } from "@shared/commerce/browse";
+import { PORTAL_SIDE } from "@/lib/portalHost";
+import { internalPath } from "@shared/portal";
 import { BASE_PATH } from "@/lib/basePath";
 import { catalogInput, productInput } from "@/hooks/useCatalog";
 import type { LocaleCode } from "@shared/i18n/dictionary";
@@ -40,7 +42,9 @@ export function prefetchRouteData(
   location: { pathname: string; search: string } = window.location,
 ): void {
   const utils = createTRPCQueryUtils({ client, queryClient });
-  const path = location.pathname.startsWith(BASE_PATH) ? location.pathname.slice(BASE_PATH.length) || "/" : location.pathname;
+  const bare = location.pathname.startsWith(BASE_PATH) ? location.pathname.slice(BASE_PATH.length) || "/" : location.pathname;
+  /* On a portal's own address, `/orders` is the app's `/admin/orders`. */
+  const path = PORTAL_SIDE ? internalPath(bare) : bare;
   const ask = (work: Promise<unknown>) => void work.catch(() => undefined);
   ask(utils.auth.me.prefetch());
 

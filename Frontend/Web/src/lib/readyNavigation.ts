@@ -70,10 +70,14 @@ const inAppPath = (to: string) => {
   return path === BASE_PATH ? "/" : path.startsWith(`${BASE_PATH}/`) ? path.slice(BASE_PATH.length) : path;
 };
 
-/** Moves to `to` (an address with the base path on) once its page's code is here. */
-export function navigateWhenReady(to: string, options?: Options) {
+/**
+ * Moves to `to` (an address with the base path on) once its page's code is
+ * here. `page` is the app's own path for it where the address bar's differs —
+ * on a portal address, `/orders` is the app's `/admin/orders` (`portalHost`).
+ */
+export function navigateWhenReady(to: string, options?: Options, page?: string) {
   const mine = ++ticket;
-  const fetchPage = pending(inAppPath(to));
+  const fetchPage = pending(inAppPath(page ?? to));
   if (!fetchPage) {
     setWaiting(false);
     go(to, options);

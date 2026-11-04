@@ -5596,6 +5596,58 @@ the overview, products and orders are fetched while the browser is idle.
 Measured on a production build, across eight menu presses at 1440 and four at
 390: the bar and the menu never left the screen, and no outline was drawn.
 
+**The portal has addresses of its own, on the owner's word:
+`admin.netlet.net` for NetLet's staff and `vendor.netlet.net` for the stores
+and the delivery companies** (`Shared/portal.ts` the rule, pure;
+`lib/portalHost.ts` the browser's half). It is the same deployment and the
+same route table: on a portal address the address bar leaves the portal's
+`/admin` off (`/orders` there is the app's `/admin/orders`), through a
+location hook of its own (`usePortalLocation`) and the router's `hrefs`
+(`portalHrefs`), so every `<Link href="/admin/…">` and every
+`navigate("/admin/…")` already written stays as it is. The sign-in, an
+invoice and the legal pages keep their own paths there (`KEPT`); a shop page
+— a product opened from the placements desk, the "Back to the store" link — is
+the shop's full address (`shopHref`), never a portal page of the same name.
+**It is switched on by `PORTAL_DOMAIN`** (`netlet.net`), read by the server
+from its environment and by the page when it is built (`envPrefix`), so it
+needs a deploy; unset — on a preview, on a laptop, and on the live site until
+both names answer — the portal stays at `/admin` and nothing changes
+(`docs/VERCEL.md` is the setup, in order). Set:
+
+- **Who goes where is who they are** (`portalSideFor`): an administrator, and
+  an employee holding a grant, on the admin one; a store's team and a delivery
+  company's people on the vendor one; a shopper on neither. The shop's own
+  `/admin/…` forwards (`PortalMove`) by the account once signed in, or by the
+  page while signed out (`portalSideForPath`: a page a store's owner or a
+  courier could open is the vendor one's), keeping the rest of the address. A
+  signed-in person on the other portal is sent to theirs (`MoveToPortal`).
+- **Each address keeps its own sign-in.** The session cookie is the host's
+  own, so signing in on the shop does not sign anybody into a portal, which is
+  the point of a separate address. A portal's sign-in page has no Create
+  account — nobody registers a store's login there — and lands on the
+  overview, or the page it was sent from. The portal's bar carries Sign out,
+  behind the same confirmation as the shop's, since the account page it would
+  otherwise be on is on the shop's address.
+- **Mail links to the portal it is for**: a notice whose link is a portal
+  page goes to the admin one when it is to the staff and to the vendor one
+  otherwise (`emailLink`); a reset or confirmation asked for on a portal comes
+  back to that portal's sign-in (`linkLanding`), which is why Supabase's
+  Redirect URLs list both.
+- **Search engines are kept out four ways**, since a portal is nothing a
+  search should find: `robots.txt` says `Disallow: /` (`portalRobotsTxt`),
+  `sitemap.xml` is a 404, `vercel.json` sends `X-Robots-Tag` for those hosts,
+  and the page adds a `noindex` meta. The page-head rewrites skip the two
+  hosts (`missing`), because `/products/12` there is a portal page, not the
+  shop's product; `route-preload.js` maps the path the same way, and so does
+  `routeData`.
+
+Measured on a production build with `PORTAL_DOMAIN=netlet.localhost` (Chrome
+resolves `*.localhost` itself and does not upgrade it): signed-out `/orders`
+offers the sign-in and lands on Orders after it, every menu link drew without
+`/admin`, a store's owner opening the admin address was sent to the vendor one
+and an administrator the other way, the shop's `/admin/people` forwarded to the
+admin one with its query, the cookie stayed on its own host, and no page error.
+
 Which links appear comes from `can()` — the same pure function the server
 guards with. **A hidden link is a courtesy, never a control.** Pass `need` to
 `AdminShell` so a route typed into the address bar refuses too: without it,
@@ -7338,6 +7390,12 @@ product is absent from the index for the same reason it is absent from the shop.
 The origin is never written down. `SITE_URL` wins when a canonical domain has
 been decided; otherwise it is the origin that answered the request, which is
 right on a preview deployment and on a laptop with nothing to configure.
+
+**On Vercel both were the page until the portal's addresses came.** The
+function answers them, but `vercel.json` sent every path that is not a file to
+`index.html`, so `netlet.net/robots.txt` and `/sitemap.xml` were the shop's
+HTML and a crawler read neither. Both are rewritten to the function now, ahead
+of the page.
 
 ### GitHub Pages
 

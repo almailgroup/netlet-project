@@ -23,31 +23,81 @@
     },
     {
       "source": "/products/:handle",
-      "destination": "/api?__page=/products/:handle"
+      "destination": "/api?__page=/products/:handle",
+      "missing": [
+        {
+          "type": "host",
+          "value": "^(admin|vendor)\\..+$"
+        }
+      ]
     },
     {
       "source": "/category/:slug",
-      "destination": "/api?__page=/category/:slug"
+      "destination": "/api?__page=/category/:slug",
+      "missing": [
+        {
+          "type": "host",
+          "value": "^(admin|vendor)\\..+$"
+        }
+      ]
     },
     {
       "source": "/stores/:slug",
-      "destination": "/api?__page=/stores/:slug"
+      "destination": "/api?__page=/stores/:slug",
+      "missing": [
+        {
+          "type": "host",
+          "value": "^(admin|vendor)\\..+$"
+        }
+      ]
     },
     {
       "source": "/stores",
-      "destination": "/api?__page=/stores"
+      "destination": "/api?__page=/stores",
+      "missing": [
+        {
+          "type": "host",
+          "value": "^(admin|vendor)\\..+$"
+        }
+      ]
     },
     {
       "source": "/categories",
-      "destination": "/api?__page=/categories"
+      "destination": "/api?__page=/categories",
+      "missing": [
+        {
+          "type": "host",
+          "value": "^(admin|vendor)\\..+$"
+        }
+      ]
     },
     {
       "source": "/guides/:slug",
-      "destination": "/api?__page=/guides/:slug"
+      "destination": "/api?__page=/guides/:slug",
+      "missing": [
+        {
+          "type": "host",
+          "value": "^(admin|vendor)\\..+$"
+        }
+      ]
     },
     {
       "source": "/guides",
-      "destination": "/api?__page=/guides"
+      "destination": "/api?__page=/guides",
+      "missing": [
+        {
+          "type": "host",
+          "value": "^(admin|vendor)\\..+$"
+        }
+      ]
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/api"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api"
     },
     {
       "source": "/((?!assets/).*)",
@@ -70,6 +120,21 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "^(admin|vendor)\\..+$"
+        }
+      ],
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
         }
       ]
     }

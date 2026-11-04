@@ -163,6 +163,37 @@ host moves all of these with it: Supabase's Site URL and Redirect URLs, the
 Google Maps key's allowed websites, the MapKit token's domain, reCAPTCHA's
 domain list, `SITE_URL`, `ALLOWED_ORIGINS` and the app's address.
 
+### The portal's own addresses
+
+**The portal is `admin.netlet.net` for NetLet's staff and `vendor.netlet.net`
+for the stores and the delivery companies**, on the owner's word. It is the
+same deployment answering three names; one setting switches it on, and it must
+be the last step, because a portal link pointing at a name that does not answer
+yet is a dead link in every email. In this order:
+
+1. **Settings → Domains → Add**: `admin.netlet.net` and `vendor.netlet.net`,
+   both on Production (not a redirect).
+2. **At the DNS provider**: a `CNAME` for `admin` and one for `vendor`, each
+   with the value Vercel shows beside the domain. Wait until both read
+   "Valid Configuration"; the certificate follows by itself.
+3. **Supabase → Authentication → URL Configuration → Redirect URLs**: add
+   `https://admin.netlet.net/**` and `https://vendor.netlet.net/**`, so a reset
+   or confirmation mail asked for on a portal comes back to that portal's
+   sign-in (`linkLanding`).
+4. **Google Cloud → the Maps browser key**, if it is restricted to websites:
+   `https://admin.netlet.net/*` and `https://vendor.netlet.net/*`. (MapKit's
+   token and reCAPTCHA are not used on the portal's pages.)
+5. **Settings → Environment Variables**: `PORTAL_DOMAIN` = `netlet.net`, on
+   Production, then **Redeploy**. It is read when the site is built, so a
+   variable added without a deploy changes nothing.
+
+Unset, the portal stays at `netlet.net/admin` exactly as before — on a preview
+deployment and a laptop too. Set, `netlet.net/admin/...` forwards to the right
+portal (by the account once signed in, by the page otherwise), each portal
+keeps its own sign-in, and both tell search engines to stay away. The AI
+gateway already lists both origins (`ALLOWED_ORIGINS` in
+`Backend/gateway/wrangler.toml`), deployed by Workers Builds on the push.
+
 ## 4. Check it
 
 ```

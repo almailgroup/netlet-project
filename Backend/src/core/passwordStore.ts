@@ -61,6 +61,7 @@ import {
 import { hasLocalCode, issueLocalCode, takeLocalCode } from "./localCodes.js";
 import { siteOrigin } from "./email.js";
 import { checkPassword } from "../../../Shared/auth/passwordStrength.js";
+import { portalDomain, portalSideOfHost } from "../../../Shared/portal.js";
 import { createUser, deleteUserRow, findLoginByEmail, linkExternalUser } from "../services/logins.js";
 import { updateUserPasswordHash } from "../services/profile.js";
 import type { User } from "../../database/schema.js";
@@ -505,8 +506,24 @@ export async function setDisplayName(user: User, name: string | null): Promise<v
  * preview; otherwise the host the request came to.
  */
 export function linkLanding(requestOrigin?: string): string | undefined {
+  /* Asked from a portal's own address (`Shared/portal.ts`), a link comes back
+     there: each portal keeps its own sign-in. Supabase sends it only to an
+     address in the project's Redirect URLs, so both are listed there. */
+  const portal = portalDomain(process.env.PORTAL_DOMAIN);
+  if (portal && requestOrigin) {
+    const host = hostOf(requestOrigin);
+    if (host && portalSideOfHost(host, portal)) return `https://${host}/signin`;
+  }
   const origin = siteOrigin() || requestOrigin;
   return origin ? `${origin}/signin` : undefined;
+}
+
+function hostOf(origin: string): string | null {
+  try {
+    return new URL(origin).hostname;
+  } catch {
+    return null;
+  }
 }
 
 export async function sendReset(email: string, locale: "en" | "ar", returnTo = linkLanding()): Promise<void> {

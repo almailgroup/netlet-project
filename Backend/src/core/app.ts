@@ -25,7 +25,8 @@ import { DrawingRefused, cleanUpPhoto } from "../services/aiImages.js";
 import { getDb } from "../services/db.js";
 import { holdUntilConnectionsIdle } from "./connectionRelease.js";
 import { sitemapEntries } from "../services/sitemap.js";
-import { robotsTxt, sitemapXml } from "../../../Shared/sitemap.js";
+import { portalRobotsTxt, robotsTxt, sitemapXml } from "../../../Shared/sitemap.js";
+import { portalDomain, portalSideOfHost } from "../../../Shared/portal.js";
 import { timingSafeEqual } from "node:crypto";
 import { ENV } from "./env.js";
 import { runDueSubscriptions } from "../services/subscriptions.js";
@@ -135,11 +136,18 @@ export function createApp(): Express {
    * answered the request, so a Vercel preview, the production domain and a
    * laptop each name themselves correctly with nothing to configure.
    */
+  /* A portal's own address (`Shared/portal.ts`) is kept out of every index. */
+  const onPortal = (req: { hostname: string }) => portalSideOfHost(req.hostname, portalDomain(process.env.PORTAL_DOMAIN)) !== null;
+
   app.get("/robots.txt", (req, res) => {
-    res.type("text/plain").send(robotsTxt(siteOrigin(req)));
+    res.type("text/plain").send(onPortal(req) ? portalRobotsTxt() : robotsTxt(siteOrigin(req)));
   });
 
   app.get("/sitemap.xml", async (req, res) => {
+    if (onPortal(req)) {
+      res.status(404).type("text/plain").send("Not found");
+      return;
+    }
     try {
       res.type("application/xml").send(sitemapXml(siteOrigin(req), await sitemapEntries()));
     } catch (error) {
