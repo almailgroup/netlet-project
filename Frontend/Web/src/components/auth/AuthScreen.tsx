@@ -26,20 +26,21 @@
  */
 import { heroSlides, streetImage } from "@/lib/brandAssets";
 import { AuthForm, type AuthMode } from "./AuthForm";
+import type { PortalSide } from "@shared/portal";
 
 /* Found at build time: an empty match is no picture, never a missing file. */
 const WELCOME = streetImage;
 /* Its phone copy, half the bytes, for a band a phone draws 390 wide. */
 const WELCOME_PHONE = heroSlides.find(slide => slide.src === streetImage)?.phone ?? null;
 
-export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus, signInOnly }: {
+export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus, portal }: {
   mode: AuthMode;
   onModeChange: (mode: AuthMode) => void;
   onDone?: () => void;
   heading: "h1" | "h2";
   autoFocus?: boolean;
-  /** No Create account: the portal's own sign-in (`AuthForm`). */
-  signInOnly?: boolean;
+  /** The portal's own sign-in, under its name and with no Create account (`AuthForm`). */
+  portal?: PortalSide | null;
 }) {
   return (
     /* On a phone the screen reaches the edges, past the page's own gutter and
@@ -60,7 +61,7 @@ export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus, sig
         }`}
       >
         <div className="mx-auto w-full max-w-[400px]">
-          <AuthForm mode={mode} onModeChange={onModeChange} onDone={onDone} heading={heading} autoFocus={autoFocus} signInOnly={signInOnly} />
+          <AuthForm mode={mode} onModeChange={onModeChange} onDone={onDone} heading={heading} autoFocus={autoFocus} portal={portal} />
         </div>
       </section>
 

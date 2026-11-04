@@ -24,7 +24,7 @@ import { COOKIE_NAME } from "../../../Shared/const.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { checkPassword, MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
-import { SESSION_MAX_AGE_MS, SHORT_SESSION_MS, signSession } from "../core/auth.js";
+import { SESSION_MAX_AGE_MS, SHORT_SESSION_MS, signPortalPass, signSession, verifyPortalPass } from "../core/auth.js";
 import { getSessionCookieOptions } from "../core/cookies.js";
 import { recordAudit } from "../services/audit.js";
 import { ENV } from "../core/env.js";
@@ -56,7 +56,9 @@ import { tellAccountChanged } from "../services/notifications.js";
 import { deleteAccount, deletionCheck } from "../services/accountDeletion.js";
 import { saveNameParts } from "../services/profileDetails.js";
 import { composeName, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
-import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, type AttemptKind, type Caller } from "../services/rateLimit.js";
+import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, spendPortalPass, type AttemptKind, type Caller } from "../services/rateLimit.js";
+import { resolveActor } from "../services/inventory.js";
+import { isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
 import { recordReferral } from "../services/referral.js";
 import type { User } from "../../database/schema.js";
 
@@ -93,7 +95,13 @@ const newPassword = z
  * Sign-in also says whether to remember the device. Absent means yes, which is
  * what every caller before the box existed expected.
  */
-const signInInput = credentials.extend({ remember: z.boolean().optional() });
+const signInInput = credentials.extend({
+  remember: z.boolean().optional(),
+  /* Signed in on the shop by somebody who belongs on a portal: hand back a
+     pass that signs them in there too (`portalHandover`). The web asks; the
+     app, which has no portal address to open, does not. */
+  portal: z.boolean().optional(),
+});
 
 const registration = credentials.extend({
   password: newPassword,
@@ -246,6 +254,58 @@ async function assertNotThrottled(caller: Caller, kind: AttemptKind): Promise<vo
     cause: { retryAfterSeconds: verdict.retryAfterSeconds },
   });
 }
+
+type RequestLike = { protocol?: string; hostname?: string; headers?: { host?: string } };
+
+/** The host a request came to, without its port. */
+function hostOf(req: RequestLike): string {
+  return (req.hostname ?? req.headers?.host ?? "").replace(/:\d+$/, "").toLowerCase();
+}
+
+/**
+ * The domain the portals hang from, for this request: the setting, or — on a
+ * portal's own address, which is a portal by its name (`portalOfHost`) — the
+ * domain that address hangs from. Never guessed from the shop's own address,
+ * since a shop whose `admin.` name does not answer would send people nowhere.
+ */
+function portalDomainFor(req: RequestLike): string | null {
+  return portalDomain(process.env.PORTAL_DOMAIN) ?? portalOfHost(hostOf(req), null)?.domain ?? null;
+}
+
+/** A portal's origin as this request would reach it: the scheme and port it came in on. */
+function portalOriginFor(req: RequestLike, side: PortalSide, domain: string): string {
+  const port = /:(\d+)$/.exec(req.headers?.host ?? "")?.[1];
+  const scheme = req.protocol === "http" ? "http" : "https";
+  return `${scheme}://${side}.${domain}${port ? `:${port}` : ""}`;
+}
+
+/**
+ * Where somebody signed in here goes to be signed in on their portal too: the
+ * portal's sign-in page with a one-time pass in the address's fragment (never
+ * its path or query, so no server log, proxy or `Referer` carries it), and the
+ * page to land on after. Null for a shopper, while the portals have no
+ * addresses of their own, and on the portal they belong on already.
+ */
+async function portalHandover(
+  ctx: { req: RequestLike },
+  user: { id: number; role: string },
+  next: string | null,
+  remember: boolean,
+): Promise<{ side: PortalSide; url: string } | null> {
+  const domain = portalDomainFor(ctx.req);
+  if (!domain) return null;
+  const side = portalSideFor(await resolveActor(user));
+  if (!side) return null;
+  if (portalOfHost(hostOf(ctx.req), domain)?.side === side) return null;
+  const pass = await signPortalPass(user.id, side, remember);
+  const landing = next && isPortalPath(next) ? next : "/admin";
+  return { side, url: `${portalOriginFor(ctx.req, side, domain)}/signin?next=${encodeURIComponent(landing)}#pass=${pass}` };
+}
+
+/* One answer for every pass that cannot sign anybody in — expired, spent,
+   forged, for the other portal, or for an account that no longer belongs
+   there — so a page offered one cannot tell them apart. */
+const passRefused = new TRPCError({ code: "UNAUTHORIZED", message: "auth.portalPassRefused" });
 
 export const authRouter = router({
   /** Current user, or null. Cheap enough to call on every page load. */
@@ -586,8 +646,40 @@ export const authRouter = router({
     await clearAccountFailures(input.email);
     await touchLastSignedIn(user.id);
     await startSession(ctx, user, input.remember);
-    return toPublicUser(user);
+    return { ...toPublicUser(user), portal: input.portal ? await portalHandover(ctx, user, null, input.remember !== false) : null };
   }),
+
+  /**
+   * A pass onto the portal this account belongs on, for somebody already
+   * signed in here: the shop's own `/admin` sending a store's owner on, or one
+   * portal sending somebody who belongs on the other. Null when there is no
+   * portal to send them to.
+   */
+  portalPass: protectedProcedure
+    .input(z.object({ next: z.string().max(500).optional() }).optional())
+    .mutation(({ ctx, input }) => portalHandover(ctx, ctx.user, input?.next ?? null, true)),
+
+  /**
+   * Spends a pass on the portal it was made for, which signs its account in
+   * here — once. The account is asked again whether it belongs on this
+   * portal, since rights taken away in the minute a pass lives must not ride
+   * in on it.
+   */
+  portalHandoff: publicProcedure
+    .input(z.object({ pass: z.string().min(20).max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      assertConfigured();
+      const pass = await verifyPortalPass(input.pass);
+      if (!pass) throw passRefused;
+      const domain = portalDomainFor(ctx.req);
+      if (!domain || portalOfHost(hostOf(ctx.req), domain)?.side !== pass.side) throw passRefused;
+      const user = await loadUser(pass.userId);
+      if (!user || portalSideFor(await resolveActor(user)) !== pass.side) throw passRefused;
+      if (!(await spendPortalPass(pass.id))) throw passRefused;
+      await touchLastSignedIn(user.id);
+      await startSession(ctx, user, pass.remember);
+      return toPublicUser(user);
+    }),
 
   /**
    * What stands between the shopper and deleting their account, and the

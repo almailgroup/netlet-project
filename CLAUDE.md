@@ -5661,8 +5661,13 @@ the shop's full address (`shopHref`), never a portal page of the same name.
 **It is switched on by `PORTAL_DOMAIN`** (`netlet.net`), read by the server
 from its environment and by the page when it is built (`envPrefix`), so it
 needs a deploy; unset — on a preview, on a laptop, and on the live site until
-both names answer — the portal stays at `/admin` and nothing changes
-(`docs/VERCEL.md` is the setup, in order). Set:
+both names answer — the shop's `/admin` stays where it is (`docs/VERCEL.md` is
+the setup, in order). **An `admin.` or `vendor.` address is the portal by its
+own name, with the setting or without it** (`portalOfHost`): the owner opened
+`admin.netlet.net` the day both names first answered and was shown the shop,
+because the page read the setting when it was built and the deploy had not
+carried it. So the portal's own address never depends on a build; what still
+does is the shop sending its `/admin` on. Set:
 
 - **Who goes where is who they are** (`portalSideFor`): an administrator, and
   an employee holding a grant, on the admin one; a store's team and a delivery
@@ -5671,13 +5676,41 @@ both names answer — the portal stays at `/admin` and nothing changes
   page while signed out (`portalSideForPath`: a page a store's owner or a
   courier could open is the vendor one's), keeping the rest of the address. A
   signed-in person on the other portal is sent to theirs (`MoveToPortal`).
-- **Each address keeps its own sign-in.** The session cookie is the host's
-  own, so signing in on the shop does not sign anybody into a portal, which is
-  the point of a separate address. A portal's sign-in page has no Create
-  account — nobody registers a store's login there — and lands on the
-  overview, or the page it was sent from. The portal's bar carries Sign out,
-  behind the same confirmation as the shop's, since the account page it would
-  otherwise be on is on the shop's address.
+- **Each address keeps its own sign-in, and asks for it at once.** The
+  session cookie is the host's own, so signing in on the shop does not sign
+  anybody into a portal, which is the point of a separate address. Opened
+  signed out, any portal page *is* the sign-in, on the owner's word ("as soon
+  as you open it, it should ask you to sign in as an admin"): `AdminLayout`
+  sends it to `/signin?next=` that page, which on a portal is titled for it —
+  "NetLet Admin, sign in with your administrator account", "NetLet for
+  sellers, … your store's or your delivery company's account" — with no
+  Create account, since nobody registers a store's login there, and the
+  logo and the way back go to the shop's address rather than to the portal,
+  which would send them straight back. It used to be a page saying "sign in
+  first" over a button. A shopper who signs in there is told the account has
+  no access and offered "Sign in with another account". The portal's bar
+  carries Sign out, behind the same confirmation as the shop's, since the
+  account page it would otherwise be on is on the shop's address.
+- **The shop hands a sign-in on, by a one-time pass** (`portalPass.ts` on
+  both sides), on the owner's word ("put an admin's credentials … it should
+  automatically redirect you to admin.netlet.net, in a new page"). Signing in
+  on the shop as somebody who belongs on a portal answers with a pass
+  (`auth.login` with `portal`), and the portal opens in a new tab already
+  signed in, while the shop's tab stays the shop, signed in too; the toast
+  says so. The pass is a token of its own kind (another audience, so it is
+  never a session and a session never a pass), lasts `PORTAL_PASS_MS` (a
+  minute), names the account, the portal and whether the sign-in was to be
+  remembered, travels in the address's *fragment* (no server log, proxy or
+  `Referer` sees it), is taken out of the address before anything else reads
+  it, and is spent once (`spendPortalPass`: its id in `auth_attempts` under a
+  lock on the id, so two tabs offering it at once cannot both win). The portal
+  asks again whether the account still belongs there; one answer refuses every
+  bad pass (`auth.portalPassRefused`), and the sign-in form is then the way in
+  with a line saying so. The same pass carries the shop's own `/admin` on and
+  one portal's visitor to the other (`auth.portalPass`). A page may open a tab
+  only soon after a press, so a browser that refuses gets the toast's button,
+  whose own press opens it. A store's team and a delivery company's people are
+  handed on to the vendor portal the same way. The app never asks for a pass.
 - **Mail links to the portal it is for**: a notice whose link is a portal
   page goes to the admin one when it is to the staff and to the vendor one
   otherwise (`emailLink`); a reset or confirmation asked for on a portal comes
@@ -5697,6 +5730,16 @@ offers the sign-in and lands on Orders after it, every menu link drew without
 `/admin`, a store's owner opening the admin address was sent to the vendor one
 and an administrator the other way, the shop's `/admin/people` forwarded to the
 admin one with its query, the cookie stayed on its own host, and no page error.
+And again for the hand-on, on a build *without* the setting and a server with
+it: both portals opened straight onto their own sign-in at 320, 390 and 1440 in
+both languages, axe clean; an administrator signing in on the shop got a new
+tab on the admin portal, signed in, with the fragment gone, and the shop's tab
+stayed signed in; a store's owner the vendor one; a pass offered twice was
+refused with the line; a browser that blocked the tab got the button, which
+opened it signed in. **A portal address is built with the scheme and port the
+page is on** (`sameWay` on the page, `portalOriginFor` on the server), so the
+same code reaches `https://admin.netlet.net` live and
+`http://admin.netlet.localhost:5077` on a laptop.
 
 Which links appear comes from `can()` — the same pure function the server
 guards with. **A hidden link is a courtesy, never a control.** Pass `need` to

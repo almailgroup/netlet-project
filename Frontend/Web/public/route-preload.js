@@ -21,9 +21,12 @@
     var path = location.pathname;
     if (table.base !== "/" && path.indexOf(table.base) === 0) path = "/" + path.slice(table.base.length);
     /* On a portal's own address (Shared/portal.ts) the address bar leaves the
-       portal's /admin off: /orders there is the app's /admin/orders. */
-    var host = location.hostname.toLowerCase();
-    if (table.portal && (host === "admin." + table.portal || host === "vendor." + table.portal) && !/^\/(admin(\/|$)|signin$|invoices\/|terms$|privacy$|seller-agreement$)/.test(path)) {
+       portal's /admin off: /orders there is the app's /admin/orders. An
+       admin. or vendor. address is the portal by its own name, as there. */
+    var host = location.hostname.toLowerCase().replace(/\.$/, "");
+    var named = /^(admin|vendor)\.((?:[a-z0-9-]+\.)*[a-z0-9-]+)$/.exec(host);
+    var onPortal = named && (table.portal ? named[2] === table.portal : named[2].indexOf(".") !== -1 || named[2] === "localhost");
+    if (onPortal && !/^\/(admin(\/|$)|signin$|invoices\/|terms$|privacy$|seller-agreement$)/.test(path)) {
       path = path === "/" ? "/admin" : "/admin" + path;
     }
     for (var i = 0; i < table.routes.length; i++) {

@@ -147,11 +147,25 @@ function PortalMove() {
   const { isAuthenticated, loading } = useAuth();
   const me = trpc.inventory.me.useQuery(undefined, { enabled: isAuthenticated });
   const settled = !loading && (!isAuthenticated || !me.isLoading);
+  /* Somebody signed in here arrives signed in there too, by a one-time pass
+     (`portalPass`); anybody else meets that portal's own sign-in. */
+  const pass = trpc.auth.portalPass.useMutation();
+  const ask = pass.mutateAsync;
+  const asked = useRef(false);
   useEffect(() => {
-    if (!settled) return;
+    if (!settled || asked.current) return;
+    asked.current = true;
     const side = portalSideFor(me.data) ?? portalSideForPath(location);
-    window.location.replace(portalHref(side, `${location}${search ? `?${search}` : ""}${window.location.hash}`));
-  }, [settled, me.data, location, search]);
+    const address = `${location}${search ? `?${search}` : ""}`;
+    const plain = portalHref(side, `${address}${window.location.hash}`);
+    if (!isAuthenticated || !portalSideFor(me.data)) {
+      window.location.replace(plain);
+      return;
+    }
+    ask({ next: address })
+      .then(answer => window.location.replace(answer?.url ?? plain))
+      .catch(() => window.location.replace(plain));
+  }, [settled, isAuthenticated, me.data, location, search, ask]);
   return <p role="status" className="container py-10 text-[14px] ink-muted">{t("admin.loading")}</p>;
 }
 

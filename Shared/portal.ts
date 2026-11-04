@@ -31,21 +31,43 @@ const kept = (path: string) => KEPT.some(rule => rule.test(path));
 
 /**
  * The domain the subdomains hang from, from what somebody typed into a
- * setting: `netlet.net`, `https://netlet.net/` or `www.netlet.net` all read
- * as `netlet.net`; anything that is not a host name reads as off.
+ * setting: `netlet.net`, `https://netlet.net/`, `www.netlet.net` and even a
+ * portal's own `admin.netlet.net` all read as `netlet.net`; anything that is
+ * not a host name reads as off.
  */
 export function portalDomain(raw: string | null | undefined): string | null {
-  const host = (raw ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "").replace(/^www\./, "");
+  const host = (raw ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^(www|admin|vendor)\./, "");
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : null;
+}
+
+/* `admin.` or `vendor.` in front of a host name: `localhost` counts, since a
+   browser answers `admin.localhost` itself and that is how it is tried. */
+const PORTAL_HOST = /^(admin|vendor)\.((?:[a-z0-9-]+\.)*[a-z0-9-]+)$/;
+
+/**
+ * Which portal an address is, and the domain it hangs from — or null for the
+ * shop and for anywhere else.
+ *
+ * **An `admin.` or `vendor.` address is the portal by its own name**, with or
+ * without `PORTAL_DOMAIN`: the page reads that setting when it is built, so a
+ * setting changed without a deploy — or never made — left `admin.netlet.net`
+ * drawing the shop, which is what the owner found the day the two names first
+ * answered. With the setting made, an address under another domain is not a
+ * portal of this shop.
+ */
+export function portalOfHost(hostname: string, domain: string | null): { side: PortalSide; domain: string } | null {
+  const host = hostname.trim().toLowerCase().replace(/\.$/, "");
+  const match = PORTAL_HOST.exec(host);
+  if (!match) return null;
+  const [, side, rest] = match;
+  if (domain && rest !== domain) return null;
+  if (!domain && !rest.includes(".") && rest !== "localhost") return null;
+  return { side: side as PortalSide, domain: rest };
 }
 
 /** Which portal an address is, or null for the shop and for anywhere else. */
 export function portalSideOfHost(hostname: string, domain: string | null): PortalSide | null {
-  if (!domain) return null;
-  const host = hostname.trim().toLowerCase().replace(/\.$/, "");
-  if (host === `admin.${domain}`) return "admin";
-  if (host === `vendor.${domain}`) return "vendor";
-  return null;
+  return portalOfHost(hostname, domain)?.side ?? null;
 }
 
 export const portalOrigin = (side: PortalSide, domain: string) => `https://${side}.${domain}`;

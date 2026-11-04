@@ -18,9 +18,19 @@ import { Link } from "wouter";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { logoImage } from "@/lib/brandAssets";
+import { PORTAL_SIDE, shopHref } from "@/lib/portalHost";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-[13px] font-extrabold text-[#0a285a] transition-colors hover:bg-[#0a285a]/[.06]";
+
+/* On a portal's own address "/" is the portal, which sends somebody signed out
+   straight back to its sign-in; the logo and the way back are the shop's own
+   address there. */
+function HomeLink({ className, label, children }: { className: string; label?: string; children: ReactNode }) {
+  return PORTAL_SIDE
+    ? <a href={shopHref("/")} className={className} aria-label={label}>{children}</a>
+    : <Link href="/" className={className} aria-label={label}>{children}</Link>;
+}
 
 export function BareHeader({ note, skipLabel = "nav.skipToContent" }: {
   /** A short line beside the logo on a wide screen — checkout's "Pay on delivery". */
@@ -29,6 +39,7 @@ export function BareHeader({ note, skipLabel = "nav.skipToContent" }: {
 }) {
   const { t, isArabic } = useTranslation();
   const { toggleLocale } = useCustomer();
+
   return (
     <>
       <a
@@ -39,18 +50,18 @@ export function BareHeader({ note, skipLabel = "nav.skipToContent" }: {
       </a>
       <header className="border-b border-[#e6e9ef] bg-white">
         <div className="container flex h-[68px] items-center gap-2 lg:h-[76px]">
-          <Link href="/" className="me-auto flex shrink-0 items-center" aria-label={t("header.home")}>
+          <HomeLink className="me-auto flex shrink-0 items-center" label={t("header.home")}>
             <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[120px] object-contain lg:h-12 lg:max-w-[156px]" />
-          </Link>
+          </HomeLink>
           {note ? <div className="me-2 hidden items-center gap-2 text-[13px] font-semibold text-[#536b8c] sm:flex">{note}</div> : null}
           <button type="button" onClick={toggleLocale} title={t("header.changeLanguage")} className={plain}>
             <span lang={isArabic ? "en" : "ar"}>{t("header.language")}</span>
           </button>
-          <Link href="/" className={plain}>
+          <HomeLink className={plain}>
             <ArrowLeft className="size-4 shrink-0 rtl:-scale-x-100" aria-hidden />
             {/* The arrow alone on a phone; the words stay in the name. */}
             <span className="sr-only sm:not-sr-only">{t("header.continueShopping")}</span>
-          </Link>
+          </HomeLink>
         </div>
       </header>
     </>

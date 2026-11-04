@@ -14,6 +14,7 @@ import { prefetchRouteData } from "@/lib/routeData";
 import { PORTAL_SIDE } from "@/lib/portalHost";
 import { rememberShelves, restoreShelves } from "@/lib/shelfMemory";
 import { catchEmailReturn } from "@/lib/emailReturn";
+import { catchPortalPass } from "@/lib/portalPass";
 import { installHistoryDepth } from "@/lib/inAppBack";
 import "./index.css";
 
@@ -146,6 +147,9 @@ loadAnalytics();
  */
 /* Before anything reads the address: a link in Supabase's own email comes back
    with a token in it, which is taken out at once and the page made /signin. */
+/* And on a portal's address, a pass the shop handed on is taken out of it the
+   same way, before anything else reads it (`portalPass`). */
+catchPortalPass();
 catchEmailReturn();
 /* Every history entry from here on knows how deep into the visit it is, so a
    page's own way back can go back rather than forward (`inAppBack`). */

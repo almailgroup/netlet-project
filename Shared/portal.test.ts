@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { externalPath, internalPath, isPortalPath, portalDomain, portalSideFor, portalSideOfHost, portalUrl } from "./portal";
+import { externalPath, internalPath, isPortalPath, portalDomain, portalOfHost, portalSideFor, portalSideOfHost, portalUrl } from "./portal";
 
 describe("the portal's own addresses", () => {
   it("reads the setting as a domain or as off", () => {
@@ -9,6 +9,9 @@ describe("the portal's own addresses", () => {
     expect(portalDomain(undefined)).toBeNull();
     expect(portalDomain("not a host")).toBeNull();
     expect(portalDomain("localhost")).toBeNull();
+    // A portal's own address typed into the setting is still the shop's domain.
+    expect(portalDomain("admin.netlet.net")).toBe("netlet.net");
+    expect(portalDomain("https://vendor.netlet.net/orders")).toBe("netlet.net");
   });
 
   it("knows which portal an address is, and nothing else", () => {
@@ -18,8 +21,20 @@ describe("the portal's own addresses", () => {
     expect(portalSideOfHost("www.netlet.net", "netlet.net")).toBeNull();
     expect(portalSideOfHost("admin.netlet.net.evil.example", "netlet.net")).toBeNull();
     expect(portalSideOfHost("subadmin.netlet.net", "netlet.net")).toBeNull();
-    // Off: no address is a portal, so the portal stays at /admin.
-    expect(portalSideOfHost("admin.netlet.net", null)).toBeNull();
+  });
+
+  it("knows a portal by its own name when the setting was never made", () => {
+    expect(portalOfHost("admin.netlet.net", null)).toEqual({ side: "admin", domain: "netlet.net" });
+    expect(portalOfHost("vendor.netlet.net.", null)).toEqual({ side: "vendor", domain: "netlet.net" });
+    expect(portalOfHost("admin.localhost", null)).toEqual({ side: "admin", domain: "localhost" });
+    expect(portalOfHost("netlet.net", null)).toBeNull();
+    expect(portalOfHost("www.netlet.net", null)).toBeNull();
+    expect(portalOfHost("admin", null)).toBeNull();
+    expect(portalOfHost("admin.intranet", null)).toBeNull();
+    expect(portalOfHost("netlet-git-main.vercel.app", null)).toBeNull();
+    // With the setting made, only that domain's two names are portals.
+    expect(portalOfHost("admin.netlet.net", "netlet.net")).toEqual({ side: "admin", domain: "netlet.net" });
+    expect(portalOfHost("admin.example.com", "netlet.net")).toBeNull();
   });
 
   it("leaves the portal's /admin off the address bar and puts it back", () => {

@@ -464,3 +464,31 @@ export async function takeHourlyAllowance(userId: number, kind: "photoClean" | "
   return true;
 }
 
+
+/**
+ * Spends a portal pass (`signPortalPass`): true the first time its id is
+ * offered, false ever after. A pass travels in an address, so one that was
+ * copied, or opened twice, must not sign anybody in a second time.
+ *
+ * Kept in this table under a kind of its own, the bucket being the pass's id,
+ * and checked and written under a lock on that id, so two tabs offering one
+ * pass at the same moment cannot both find it unspent. A pass lasts a minute;
+ * a spent one is kept ten, then pruned, by its own kind alone.
+ */
+export async function spendPortalPass(id: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const bucket = `pass:${id}`.slice(0, 340);
+  const spent = await db.transaction(async tx => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${bucket}))`);
+    const [seen] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(authAttempts)
+      .where(and(eq(authAttempts.bucket, bucket), eq(authAttempts.kind, "portalPass")));
+    if ((seen?.n ?? 0) > 0) return false;
+    await tx.insert(authAttempts).values([{ bucket, kind: "portalPass" }]);
+    return true;
+  });
+  await db.delete(authAttempts).where(and(eq(authAttempts.kind, "portalPass"), lt(authAttempts.createdAt, new Date(Date.now() - 10 * 60 * 1000))));
+  return spent;
+}

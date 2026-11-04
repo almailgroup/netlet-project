@@ -39,6 +39,9 @@ const NOT_IN_DEMO = new Set([
   "auth.resetWithCode",
   "auth.me",
   "search.refine",
+  // The demo is one address with no portals of its own to hand a sign-in on to.
+  "auth.portalPass",
+  "auth.portalHandoff",
 ]);
 
 describe("demo mode", () => {

@@ -4,30 +4,44 @@
  * the links between the shop and the two portals.
  *
  * `PORTAL_DOMAIN` is read at build (`envPrefix` in `vite.config.ts`), so
- * setting it in Vercel and deploying is what moves the portal; unset, every
- * helper here answers what the app did before — the portal at `/admin` on
- * whichever address the shop is on.
+ * setting it in Vercel and deploying is what sends the shop's `/admin` on to
+ * the portals; unset, the shop keeps the portal at `/admin` as it did before.
+ * A tab on `admin.` or `vendor.` is the portal either way.
  */
 import { useBrowserLocation } from "wouter/use-browser-location";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
-import { externalPath, internalPath, isPortalPath, portalDomain, portalSideOfHost, portalUrl, shopOrigin, type PortalSide } from "@shared/portal";
+import { externalPath, internalPath, isPortalPath, portalDomain, portalOfHost, portalUrl, shopOrigin, type PortalSide } from "@shared/portal";
 import { ADMIN_MENU } from "@/content/adminMenu";
 import { appPath } from "@/lib/basePath";
 import { navigateWhenReady } from "@/lib/readyNavigation";
 
+/* The setting, as it was when the page was built. */
+const BUILT_DOMAIN = portalDomain(import.meta.env.PORTAL_DOMAIN as string | undefined);
+
+/* This tab's own address, read as a portal: `admin.` or `vendor.` in front is
+   the portal whether or not the build carried the setting (`portalOfHost`). */
+const HERE = typeof window === "undefined" ? null : portalOfHost(window.location.hostname, BUILT_DOMAIN);
+
 /** The domain the two portals hang from, or null while the move is off. */
-export const PORTAL_DOMAIN = portalDomain(import.meta.env.PORTAL_DOMAIN as string | undefined);
+export const PORTAL_DOMAIN = BUILT_DOMAIN ?? HERE?.domain ?? null;
 
 /** Which portal this tab is on, or null on the shop (and while the move is off). */
-export const PORTAL_SIDE: PortalSide | null =
-  typeof window === "undefined" ? null : portalSideOfHost(window.location.hostname, PORTAL_DOMAIN);
+export const PORTAL_SIDE: PortalSide | null = HERE?.side ?? null;
+
+/* An address on another of the three names, reached the way this tab was:
+   `https://` and no port on the live site, the port too on a laptop. */
+function sameWay(url: string): string {
+  if (typeof window === "undefined") return url;
+  const { protocol, port } = window.location;
+  return url.replace(/^https:\/\/([^/]+)/, (_, host: string) => `${protocol === "http:" ? "http" : "https"}://${host}${port ? `:${port}` : ""}`);
+}
 
 /**
  * Where an in-app `/admin` page is for somebody on one side: its own portal's
  * address while the move is on, and the path itself while it is off.
  */
 export function portalHref(side: PortalSide, address = "/admin"): string {
-  return PORTAL_DOMAIN ? portalUrl(side, PORTAL_DOMAIN, address) : appPath(address);
+  return PORTAL_DOMAIN ? sameWay(portalUrl(side, PORTAL_DOMAIN, address)) : appPath(address);
 }
 
 /**
@@ -36,12 +50,12 @@ export function portalHref(side: PortalSide, address = "/admin"): string {
  * shop's page and not a portal page of the same name.
  */
 export function shopHref(path: string): string {
-  return PORTAL_SIDE && PORTAL_DOMAIN ? `${shopOrigin(PORTAL_DOMAIN)}${path}` : appPath(path);
+  return PORTAL_SIDE && PORTAL_DOMAIN ? sameWay(`${shopOrigin(PORTAL_DOMAIN)}${path}`) : appPath(path);
 }
 
 /** What an in-app address is in the address bar of a portal: its own path, or the shop's full address. */
 function portalAddress(address: string): string {
-  return externalPath(address) ?? `${shopOrigin(PORTAL_DOMAIN!)}${address}`;
+  return externalPath(address) ?? sameWay(`${shopOrigin(PORTAL_DOMAIN!)}${address}`);
 }
 
 /**

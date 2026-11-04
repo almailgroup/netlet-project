@@ -16,8 +16,13 @@
  * `/login` and `/register` answer too, being what people type, and are
  * replaced by the two real addresses. Signed in already, the page goes
  * straight to `next` — or the account — rather than offering a form.
+ *
+ * **On a portal's own address it is that portal's sign-in** — "NetLet Admin"
+ * or "NetLet for sellers", with no Create account — and it is where the shop
+ * hands a sign-in on: arriving with a pass (`portalPass`), it spends the pass
+ * rather than asking, and says so while it does.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { BareHeader } from "@/components/layout/BareHeader";
@@ -30,6 +35,9 @@ import { DEMO_MODE } from "@/lib/demoMode";
 import { privatePageMeta } from "@shared/seo";
 import { returnPath } from "@shared/auth/returnPath";
 import { PORTAL_SIDE } from "@/lib/portalHost";
+import { dropPortalPass, peekPortalPass } from "@/lib/portalPass";
+import { trpc } from "@/lib/trpc";
+import { CircleAlert } from "lucide-react";
 
 export default function SignIn() {
   const { t } = useTranslation();
@@ -49,7 +57,7 @@ export default function SignIn() {
   const registering = !PORTAL_SIDE && (onSignup || onRegister);
   const mode: AuthMode = registering ? "register" : resetting ? "reset" : "signin";
 
-  usePageMeta(privatePageMeta(t(registering ? "auth.createTitle" : "auth.signInTitle")));
+  usePageMeta(privatePageMeta(t(registering ? "auth.createTitle" : PORTAL_SIDE ? `auth.portalTitle.${PORTAL_SIDE}` : "auth.signInTitle")));
 
   /* What people type, answered with the real address. */
   useEffect(() => {
@@ -57,10 +65,32 @@ export default function SignIn() {
     else if (onLogin) navigate(`/signin${query}`, { replace: true });
   }, [onRegister, onLogin, query, navigate]);
 
+  /* A pass the shop handed on, spent once; refused, the form is the way in. */
+  const utils = trpc.useUtils();
+  const [pass] = useState(() => peekPortalPass());
+  const [passRefused, setPassRefused] = useState(false);
+  const handoff = trpc.auth.portalHandoff.useMutation({
+    onSuccess: async () => {
+      await utils.auth.me.invalidate();
+      navigate(next, { replace: true });
+    },
+    onError: () => setPassRefused(true),
+  });
+  const spend = handoff.mutate;
+  /* Once: a pass offered twice is refused the second time. */
+  const offered = useRef(false);
+  useEffect(() => {
+    if (!pass || offered.current) return;
+    offered.current = true;
+    dropPortalPass();
+    spend({ pass });
+  }, [pass, spend]);
+  const handingOff = Boolean(pass) && !passRefused;
+
   /* Nothing to sign into twice. */
   useEffect(() => {
-    if (!loading && isAuthenticated) navigate(next, { replace: true });
-  }, [loading, isAuthenticated, next, navigate]);
+    if (!loading && isAuthenticated && !handingOff) navigate(next, { replace: true });
+  }, [loading, isAuthenticated, handingOff, next, navigate]);
 
   const changeMode = (to: AuthMode) => {
     setResetting(to === "reset");
@@ -81,14 +111,28 @@ export default function SignIn() {
             <strong className="text-[#0a285a]">{t("header.signInDisabled")}</strong> {t("header.signInDisabledNote")}
           </p>
         ) : null}
-        <AuthScreen
-          mode={mode}
-          onModeChange={changeMode}
-          onDone={() => navigate(next, { replace: true })}
-          heading="h1"
-          autoFocus
-          signInOnly={Boolean(PORTAL_SIDE)}
-        />
+        {handingOff ? (
+          <p role="status" className="mx-auto max-w-[400px] py-16 text-center text-[16px] font-semibold text-[#0a285a]">
+            {t("auth.portalSigningIn")}
+          </p>
+        ) : (
+          <>
+            {passRefused ? (
+              <p role="alert" className="mx-auto mb-6 flex max-w-[520px] items-start gap-2.5 rounded-xl border border-[#f0dcb0] bg-[#fdf6e7] px-4 py-3 text-[14px] leading-5 text-[#8c5a12]">
+                <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                {t("auth.portalPassRefused")}
+              </p>
+            ) : null}
+            <AuthScreen
+              mode={mode}
+              onModeChange={changeMode}
+              onDone={() => navigate(next, { replace: true })}
+              heading="h1"
+              autoFocus
+              portal={PORTAL_SIDE}
+            />
+          </>
+        )}
       </main>
 
     </div>

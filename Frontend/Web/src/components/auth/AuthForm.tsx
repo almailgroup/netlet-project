@@ -78,6 +78,9 @@ import { CODE_LENGTH, isCodeShaped, normaliseCode, RESEND_WAIT_SECONDS as CODE_R
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { clearReferral, storedReferral } from "@/lib/referral";
 import { clearEmailReturn, peekEmailReturn, type EmailReturn } from "@/lib/emailReturn";
+import { PORTAL_SIDE } from "@/lib/portalHost";
+import { openPortalTab } from "@/lib/portalPass";
+import type { PortalSide } from "@shared/portal";
 import { HumanCheck } from "./HumanCheck";
 
 export type AuthMode = "signin" | "register" | "reset";
@@ -134,7 +137,7 @@ export function AuthForm({
   heading: Heading = "h2",
   titleId,
   autoFocus = false,
-  signInOnly = false,
+  portal = null,
 }: {
   mode: AuthMode;
   onModeChange: (mode: AuthMode) => void;
@@ -146,10 +149,12 @@ export function AuthForm({
   /** Focus the first box on arrival. A dialog or a page of its own does; a section of a page does not. */
   autoFocus?: boolean;
   /**
-   * Signing in and resetting only, with no Create account: the portal's own
-   * address (`portalHost`), where an account is one a store or NetLet made.
+   * The portal whose own address this is (`portalHost`): signing in and
+   * resetting only, with no Create account — an account there is one a store
+   * or NetLet made — under that portal's own name, so whoever opens
+   * `admin.netlet.net` is asked to sign in as an administrator.
    */
-  signInOnly?: boolean;
+  portal?: PortalSide | null;
 }) {
   const { t, tError, locale } = useTranslation();
   const utils = trpc.useUtils();
@@ -219,16 +224,32 @@ export function AuthForm({
     onModeChange(next);
   };
 
-  const settle = async (displayName: string | null) => {
+  const settle = async (displayName: string | null, said?: string) => {
     await utils.auth.me.invalidate();
-    toast.success(displayName ? t("auth.welcomeName", { name: displayName.split(/\s+/)[0] }) : t("auth.signedIn"));
+    toast.success(said ?? (displayName ? t("auth.welcomeName", { name: displayName.split(/\s+/)[0] }) : t("auth.signedIn")));
     setPassword("");
     onDone?.();
   };
 
+  /*
+   * Somebody who belongs on a portal, signed in on the shop: the portal opens
+   * in a new tab, signed in by the pass the answer carried (`portalPass`), and
+   * this tab stays the shop, signed in too. Opened before anything else is
+   * awaited, while the press still lets a page open a tab; a browser that
+   * refuses is offered a button, whose own press opens it.
+   */
+  const handOn = (portalTab: { side: PortalSide; url: string }): string | undefined => {
+    if (openPortalTab(portalTab.url)) return t(`auth.portalOpened.${portalTab.side}`);
+    toast(t("auth.portalBlocked"), {
+      duration: 30_000,
+      action: { label: t(`auth.portalOpen.${portalTab.side}`), onClick: () => void openPortalTab(portalTab.url) },
+    });
+    return undefined;
+  };
+
   const resendCode = trpc.auth.resendCode.useMutation();
   const login = trpc.auth.login.useMutation({
-    onSuccess: user => void settle(user.name),
+    onSuccess: user => void settle(user.name, user.portal ? handOn(user.portal) : undefined),
     onError: (error, input) => {
       /* The right password, and a code that never came back: a fresh code, and
          the step that takes it. The one it was first sent may be long expired. */
@@ -317,7 +338,9 @@ export function AuthForm({
        from a dashboard template. It is here for when those are translated. */
     if (isReset) reset.mutate({ email: trimmed, locale });
     else if (isRegister) register.mutate({ email: trimmed, password, name: name.trim() || undefined, referral: storedReferral(), captcha: captcha ?? undefined });
-    else login.mutate({ email: trimmed, password, remember });
+    /* On the shop, a sign-in by somebody who belongs on a portal is handed on
+       to it; on a portal's own address there is nowhere further to go. */
+    else login.mutate({ email: trimmed, password, remember, portal: !PORTAL_SIDE });
   };
 
   /* Caps Lock, read from any key pressed in the form, and kept when the box
@@ -414,9 +437,13 @@ export function AuthForm({
           still while the switch under it changes what the form asks for; a
           reset is its own page and says so. */}
       <Heading id={headingId} className={titleClass}>
-        {t(isReset ? "auth.resetTitle" : "auth.welcome")}
+        {t(isReset ? "auth.resetTitle" : portal ? `auth.portalTitle.${portal}` : "auth.welcome")}
       </Heading>
-      {isReset ? <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">{t("auth.resetNote")}</p> : signInOnly ? null : <ModeSwitch mode={mode} onChoose={go} />}
+      {isReset
+        ? <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">{t("auth.resetNote")}</p>
+        : portal
+          ? <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">{t(`auth.portalNote.${portal}`)}</p>
+          : <ModeSwitch mode={mode} onChoose={go} />}
 
       {/* Somebody who followed a friend's link is told what it gets them, on
           the form where they are deciding whether to register at all (3.1.14). */}

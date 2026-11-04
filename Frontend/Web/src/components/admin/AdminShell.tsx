@@ -32,7 +32,7 @@ import { ADMIN_MENU } from "@/content/adminMenu";
 import { logoImage } from "@/lib/brandAssets";
 import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ChevronDown, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
-import { createContext, Suspense, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, Redirect, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -179,16 +179,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   if (!reachable) {
-    /* The sign-in page of the address this is, coming back to this page. */
+    /* Straight to the sign-in page of the address this is — on a portal's
+       own, that portal's sign-in — coming back to this page: a page saying
+       "sign in first" over a button was one more press for everybody. */
     const here = `${location}${search ? `?${search}` : ""}`;
-    return (
-      <Frame>
-        <h1 className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.signInFirst")}</h1>
-        <Link href={`/signin?next=${encodeURIComponent(here)}`} className={`${buttonClass.primary} mt-5`}>
-          {t("header.signIn")}
-        </Link>
-      </Frame>
-    );
+    return <Redirect to={`/signin?next=${encodeURIComponent(here)}`} replace />;
   }
 
   const actor = me.data;
@@ -202,9 +197,18 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       <Frame>
         <h1 className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.noAccess")}</h1>
         <p className="mt-2 max-w-md text-[14px] leading-6 text-[#536b8c]">{t("admin.noAccessNote")}</p>
-        <Link href="/" className={`${buttonClass.secondary} mt-5`}>
-          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.backToStore")}
-        </Link>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          {/* On a portal's own address this account is signed in to the
+              portal alone, so another account is one press away. */}
+          {PORTAL_SIDE ? (
+            <button type="button" onClick={() => void logout()} className={buttonClass.primary}>
+              {t("admin.otherAccount")}
+            </button>
+          ) : null}
+          <Link href="/" className={buttonClass.secondary}>
+            <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.backToStore")}
+          </Link>
+        </div>
       </Frame>
     );
   }
@@ -369,11 +373,24 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 }
 
 /** Sends this tab to the portal its person belongs on, on the same page. */
+/**
+ * Somebody on the other portal's address: sent to their own, on the same page,
+ * and signed in there by a one-time pass (`portalPass`) — each address keeps
+ * its own sign-in, and asking for it twice in a row is the seam showing.
+ * Without a pass (the server has no portal to hand on to) the address alone.
+ */
 function MoveToPortal({ side, address }: { side: PortalSide; address: string }) {
   const { t } = useTranslation();
+  const pass = trpc.auth.portalPass.useMutation();
+  const ask = pass.mutateAsync;
+  const asked = useRef(false);
   useEffect(() => {
-    window.location.replace(portalHref(side, `${address}${window.location.hash}`));
-  }, [side, address]);
+    if (asked.current) return;
+    asked.current = true;
+    ask({ next: address })
+      .then(answer => window.location.replace(answer?.url ?? portalHref(side, address)))
+      .catch(() => window.location.replace(portalHref(side, address)));
+  }, [ask, side, address]);
   return <p role="status" className="text-[14px] ink-muted">{t("admin.loading")}</p>;
 }
 

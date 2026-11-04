@@ -184,13 +184,18 @@ yet is a dead link in every email. In this order:
    `https://admin.netlet.net/*` and `https://vendor.netlet.net/*`. (MapKit's
    token and reCAPTCHA are not used on the portal's pages.)
 5. **Settings → Environment Variables**: `PORTAL_DOMAIN` = `netlet.net`, on
-   Production, then **Redeploy**. It is read when the site is built, so a
-   variable added without a deploy changes nothing.
+   Production, then **Redeploy** (Deployments → the latest → ⋯ → Redeploy).
+   The page reads it when the site is built, so a variable added without a
+   deploy does not reach the page.
 
-Unset, the portal stays at `netlet.net/admin` exactly as before — on a preview
-deployment and a laptop too. Set, `netlet.net/admin/...` forwards to the right
-portal (by the account once signed in, by the page otherwise), each portal
-keeps its own sign-in, and both tell search engines to stay away. The AI
+`admin.netlet.net` and `vendor.netlet.net` open the portal — signed out, its own
+sign-in — as soon as they answer, with or without the variable: the address
+itself says it is a portal. What the variable switches on is the shop's side:
+`netlet.net/admin/...` forwarding to the right portal (by the account once
+signed in, by the page otherwise), and an administrator or a store's team
+signing in on `netlet.net` getting their portal in a new tab, already signed in.
+Unset, the shop keeps the portal at `netlet.net/admin` as before — on a preview
+deployment and a laptop too. Both portals tell search engines to stay away. The AI
 gateway already lists both origins (`ALLOWED_ORIGINS` in
 `Backend/gateway/wrangler.toml`), deployed by Workers Builds on the push.
 
