@@ -7,7 +7,7 @@ import SwiftUI
 /// **Two boxes lead it, Shop by brand and Shop by stores, on the owner's
 /// word**: each opens its list (`BrandsView`, `StoresView`), the web's
 /// `/categories`. They were two sideways rows that pushed the departments
-/// down the screen.
+/// down the screen. Shop by brand is drawn only while the shop has a brand.
 struct CategoriesView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -18,7 +18,11 @@ struct CategoriesView: View {
                 Breadcrumbs(trail: [l.t("nav.categories")])
                 Text(l.t("nav.categories")).pageTitle()
                 HStack(spacing: 12) {
-                    wayIn(symbol: "tag", title: l.t("home.shopByBrand")) { app.push(.brands) }
+                    // Only while there is a brand to list: a box that opens
+                    // "No brands yet" leads nowhere, the departments' rule.
+                    if !app.shelf.brands.isEmpty {
+                        wayIn(symbol: "tag", title: l.t("home.shopByBrand")) { app.push(.brands) }
+                    }
                     wayIn(symbol: "storefront", title: l.t("categories.byStore")) { app.push(.stores) }
                 }
                 .padding(.top, 20)

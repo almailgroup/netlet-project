@@ -333,6 +333,8 @@ enum API {
         var categoryId: Int?
         /// "out" or "low".
         var stock: String?
+        /// Only products filed under no department.
+        var noDepartment: Bool?
     }
 
     struct NewListing: Encodable, Sendable {

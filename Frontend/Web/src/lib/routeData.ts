@@ -74,7 +74,11 @@ export function prefetchRouteData(
     ask(utils.commerce.bestsellers.prefetch({ locale }));
   }
   /* The Categories page opens each department onto its subcategories' counts. */
-  if (/^\/categories\/?$/.test(path)) ask(utils.commerce.subcategoryCounts.prefetch());
+  if (/^\/categories\/?$/.test(path)) {
+    ask(utils.commerce.subcategoryCounts.prefetch());
+    /* Whether "Shop by brand" is drawn at all. */
+    ask(utils.commerce.brands.prefetch());
+  }
   const store = /^\/stores\/([^/?#]+)\/?$/.exec(path);
   if (store) ask(utils.commerce.store.prefetch({ slug: decodeURIComponent(store[1]), locale }));
   /* The guides list is the help page's too. */

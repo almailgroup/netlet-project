@@ -249,7 +249,8 @@
       "archive",
       "draft",
       "reprice",
-      "restock"
+      "restock",
+      "department"
     ],
     "limit": 100,
     "minPercent": -90,

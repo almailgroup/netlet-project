@@ -43,7 +43,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { BareHeader } from "@/components/layout/BareHeader";
-import { CARD, PAGE_SPACE, PageHeading } from "@/components/layout/Page";
+import { BUTTON_PRIMARY, CARD, EmptyState, PAGE_SPACE, PageHeading } from "@/components/layout/Page";
 import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
 import { DeliveryZoneDialog, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
@@ -274,6 +274,10 @@ export default function Checkout() {
     return () => { document.removeEventListener("focusin", check); document.removeEventListener("focusout", later); };
   }, []);
 
+  /* Nothing to check out: said as the cart says it, not as a form with a
+     total of nothing. Not once an order is placed — the bag empties under the
+     confirmation, and the page it sits over stays as it was. */
+  const empty = !settling && !items.length && !placed && !place.isPending;
   const placeLabel = t(place.isPending ? "checkout.placing" : "checkout.placeOrder");
   const totalText = settling ? null : money(payable);
 
@@ -284,7 +288,12 @@ export default function Checkout() {
 
       <main id="main" tabIndex={-1} className={`container flex-1 outline-none ${PAGE_SPACE}`}>
         <div className="mx-auto w-full max-w-2xl lg:max-w-5xl">
-          <PageHeading title={t("checkout.heading")} note={t("checkout.confirmNote")} />
+          <PageHeading title={t("checkout.heading")} note={empty ? undefined : t("checkout.confirmNote")} />
+          {empty ? (
+            <EmptyState icon={<ShoppingBag className="size-6" />} title={t("cart.empty")} note={t("checkout.emptyNote")}>
+              <Link href="/" className={BUTTON_PRIMARY}>{t("header.continueShopping")}</Link>
+            </EmptyState>
+          ) : (
           <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-5">
             <div className="min-w-0 space-y-3">
               {/* Where it goes was chosen in the cart, line by line, on the
@@ -305,9 +314,11 @@ export default function Checkout() {
               <OrderItems />
               {/* A code, a gift card and points — right before the ways to
                   pay, open. */}
-              <section aria-label={t("cart.savingsHeading")} className={`${CARD} px-4 sm:px-5`}>
+              {/* BagSavings names itself as a region; a second label here was
+                  two landmarks with one name. */}
+              <div className={`${CARD} px-4 sm:px-5`}>
                 <BagSavings />
-              </section>
+              </div>
               <PaymentMethods />
             </div>
 
@@ -374,9 +385,10 @@ export default function Checkout() {
               </ul>
             </aside>
           </div>
+          )}
         </div>
       </main>
-      {items.length || settling ? (
+      {!empty && (items.length || settling) ? (
         <PhoneActionBar shown={placeBelow && !typing} label={t("checkout.placeBar")} overTabBar={false}>
           {blocker ? (
             <button type="button" onClick={fixBlocker} disabled={!fixable} className="mb-1.5 flex w-full items-start gap-1.5 rounded-lg px-1.5 py-1 text-start text-[13px] font-bold leading-5 ink-accent disabled:cursor-default">

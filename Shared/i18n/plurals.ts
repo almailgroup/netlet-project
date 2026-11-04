@@ -322,6 +322,11 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
     param: "count",
     ar: { two: "حقلان يحتاجان إلى مراجعة.", many: "{count} حقلاً تحتاج إلى مراجعة.", other: "{count} حقل تحتاج إلى مراجعة." },
   },
+  "admin.bulkDepartmentTitle": {
+    param: "count",
+    en: { one: "Move 1 product to a department" },
+    ar: { one: "نقل منتج واحد إلى قسم", two: "نقل منتجين إلى قسم", many: "نقل {count} منتجاً إلى قسم", other: "نقل {count} منتج إلى قسم" },
+  },
   "admin.bulkRestockTitle": {
     param: "count",
     en: { one: "Add stock to 1 product" },

@@ -4,7 +4,8 @@ import SwiftUI
 /// shelf with the status a shopper never sees, searched and narrowed on the
 /// server (a filter over the rows already fetched searches one page), every
 /// one opening its editor, and many at once published, archived, drafted,
-/// repriced or restocked through the single-product operation, so every
+/// repriced, restocked or moved to a department through the single-product
+/// operation, so every
 /// guard still applies and the answer names each one refused and why.
 struct PortalProductsView: View {
     @State private var rows: [SellerProduct] = []
@@ -15,6 +16,10 @@ struct PortalProductsView: View {
     @State private var search = ""
     @State private var status = "all"
     @State private var department: Int?
+    /// "No department": what a spreadsheet or a maker's page left unfiled.
+    @State private var noDepartment = false
+    /// For "Move to department": the department chosen.
+    @State private var moveTo: Int?
     @State private var stock: String?
     @State private var store: Int?
     @State private var categories: [Category] = []
@@ -80,18 +85,19 @@ struct PortalProductsView: View {
         .onChange(of: search) { Task { try? await Task.sleep(for: .milliseconds(300)); await reload() } }
         .onChange(of: status) { Task { await reload() } }
         .onChange(of: department) { Task { await reload() } }
+        .onChange(of: noDepartment) { Task { await reload() } }
         .onChange(of: stock) { Task { await reload() } }
         .onChange(of: store) { Task { await reload() } }
         .sheet(item: $deleting) { product in
             DeleteProductSheet(product: product) { Task { await reload() } }
         }
-        .confirmationDialog(bulkTitle, isPresented: Binding(get: { bulk != nil && bulk != "reprice" && bulk != "restock" }, set: { if !$0 { bulk = nil } }), titleVisibility: .visible) {
+        .confirmationDialog(bulkTitle, isPresented: Binding(get: { bulk != nil && bulk != "reprice" && bulk != "restock" && bulk != "department" }, set: { if !$0 { bulk = nil } }), titleVisibility: .visible) {
             Button(bulkConfirm) { Task { await runBulk() } }
             Button(l.t("common.cancel"), role: .cancel) { bulk = nil }
         } message: {
             Text(l.t("admin.bulkStatusBody"))
         }
-        .sheet(isPresented: Binding(get: { bulk == "reprice" || bulk == "restock" }, set: { if !$0 { bulk = nil } })) {
+        .sheet(isPresented: Binding(get: { bulk == "reprice" || bulk == "restock" || bulk == "department" }, set: { if !$0 { bulk = nil } })) {
             bulkAmountSheet
         }
     }
@@ -120,12 +126,16 @@ struct PortalProductsView: View {
             ])
             HStack(spacing: 8) {
                 Menu {
-                    Button(l.t("nav.allDepartments")) { department = nil }
+                    Button(l.t("nav.allDepartments")) { department = nil; noDepartment = false }
+                    Button(l.t("admin.filterNoDepartment")) { department = nil; noDepartment = true }
                     ForEach(categories) { category in
-                        Button(category.displayName(l.current)) { department = category.id }
+                        Button(category.displayName(l.current)) { department = category.id; noDepartment = false }
                     }
                 } label: {
-                    MenuField(text: department.flatMap { id in categories.first { $0.id == id }?.displayName(l.current) }, placeholder: l.t("nav.allDepartments"))
+                    MenuField(
+                        text: noDepartment ? l.t("admin.filterNoDepartment") : department.flatMap { id in categories.first { $0.id == id }?.displayName(l.current) },
+                        placeholder: l.t("nav.allDepartments")
+                    )
                 }
                 .accessibilityLabel(l.t("admin.filterDepartment"))
                 Menu {
@@ -259,6 +269,7 @@ struct PortalProductsView: View {
                 bulkButton("archive", l.t("admin.bulkArchive"), "archivebox")
                 bulkButton("draft", l.t("admin.bulkDraft"), "doc")
                 bulkButton("reprice", l.t("admin.bulkReprice"), "percent")
+                bulkButton("department", l.t("admin.bulkDepartment"), "folder")
                 if actor?.can("stock.adjust", vendorId: own) == true { bulkButton("restock", l.t("admin.bulkRestock"), "shippingbox") }
             }
         }
@@ -289,6 +300,7 @@ struct PortalProductsView: View {
         case "archive": return l.t("admin.bulkArchiveTitle", count)
         case "draft": return l.t("admin.bulkDraftTitle", count)
         case "reprice": return l.t("admin.bulkRepriceTitle", count)
+        case "department": return l.t("admin.bulkDepartmentTitle", count)
         default: return l.t("admin.bulkRestockTitle", count)
         }
     }
@@ -307,12 +319,25 @@ struct PortalProductsView: View {
         let repricing = bulk == "reprice"
         let percentValue = Double(percent.replacingOccurrences(of: "−", with: "-")) ?? .nan
         let amountValue = Int(amount) ?? 0
-        let problem = repricing ? (rules?.percentProblem(percentValue) ?? true) : (rules?.restockProblem(amountValue) ?? true)
+        let moving = bulk == "department"
+        let problem = moving ? moveTo == nil : repricing ? (rules?.percentProblem(percentValue) ?? true) : (rules?.restockProblem(amountValue) ?? true)
         return NavigationStack {
             VStack(alignment: .leading, spacing: 14) {
                 Text(bulkTitle).font(.inter(18, .bold)).foregroundStyle(Brand.navy)
-                Text(l.t(repricing ? "admin.bulkRepriceBody" : "admin.bulkRestockBody")).font(.inter(14)).foregroundStyle(Brand.body)
-                if repricing {
+                Text(l.t(moving ? "admin.bulkDepartmentBody" : repricing ? "admin.bulkRepriceBody" : "admin.bulkRestockBody")).font(.inter(14)).foregroundStyle(Brand.body)
+                if moving {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(l.t("admin.bulkDepartmentPick")).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                        Menu {
+                            ForEach(categories) { category in
+                                Button(category.displayName(l.current)) { moveTo = category.id }
+                            }
+                        } label: {
+                            MenuField(text: moveTo.flatMap { id in categories.first { $0.id == id }?.displayName(l.current) }, placeholder: l.t("admin.bulkDepartmentPick"))
+                        }
+                        .accessibilityLabel(l.t("admin.bulkDepartmentPick"))
+                    }
+                } else if repricing {
                     let example = Money(fils: Int((10_000 * (1 + (percentValue.isFinite ? percentValue : 0) / 100)).rounded()))
                     LabeledField(
                         label: l.t("admin.bulkPercent"), text: $percent,
@@ -343,6 +368,7 @@ struct PortalProductsView: View {
         var input = API.Bulk(ids: ids, action: action)
         if action == "reprice" { input.percent = Double(percent.replacingOccurrences(of: "−", with: "-")) }
         if action == "restock" { input.amount = Int(amount) }
+        if action == "department" { input.categoryId = moveTo }
         bulk = nil
         var result: BulkResult?
         guard await app.attempt(fallback: "admin.saveFailed", { result = try await app.services.api.call(API.bulkProducts, input) }), let result else { return }
@@ -369,7 +395,8 @@ struct PortalProductsView: View {
         let term = search.trimmingCharacters(in: .whitespaces)
         return API.SellerList(
             vendorId: store ?? own, page: page, pageSize: 30, query: term.isEmpty ? nil : term,
-            status: status == "all" ? nil : status, categoryId: department, stock: stock
+            status: status == "all" ? nil : status, categoryId: department, stock: stock,
+            noDepartment: noDepartment ? true : nil
         )
     }
 

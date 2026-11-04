@@ -152,6 +152,9 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "NO_WARRANTY") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.needsWarranty" });
     }
+    if (message === "NO_SUCH_DEPARTMENT") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.noSuchDepartment" });
+    }
     if (message === "EMAIL_TAKEN") {
       throw new TRPCError({ code: "CONFLICT", message: "admin.emailTaken" });
     }
@@ -442,6 +445,7 @@ export const inventoryRouter = router({
         query: z.string().trim().max(160).optional(),
         status: z.enum(["draft", "pending_review", "published", "archived"]).optional(),
         categoryId: rowId.optional(),
+        noDepartment: z.boolean().optional(),
         stock: z.enum(["out", "low"]).optional(),
         page: z.number().int().min(1).max(100_000).optional(),
         pageSize: z.number().int().min(1).max(200).optional(),
@@ -804,9 +808,14 @@ export const inventoryRouter = router({
         action: z.enum(BULK_ACTIONS),
         percent: z.number().min(MIN_PERCENT).max(MAX_PERCENT).optional(),
         amount: z.number().int().min(1).max(MAX_RESTOCK).optional(),
+        /** For `department`: the department every product moves to. */
+        categoryId: rowId.optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
+        if (input.action === "department" && input.categoryId === undefined) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "admin.noSuchDepartment" });
+        }
         if (input.action === "reprice" && (input.percent === undefined || percentProblem(input.percent))) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "admin.bulkPercentInvalid" });
         }
@@ -823,6 +832,8 @@ export const inventoryRouter = router({
                 case "archive": return setProductStatus(actor, id, "archived");
                 case "draft": return setProductStatus(actor, id, "draft");
                 case "reprice": return repriceProduct(actor, id, input.percent!);
+                /* The editor's own save, so its guard and its department check apply to each. */
+                case "department": return updateProduct(actor, id, { categoryId: input.categoryId! });
                 case "restock": {
                   const product = await getProduct(actor, id);
                   if (!product) throw new Error("NOT_FOUND");

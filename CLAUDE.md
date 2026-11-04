@@ -4214,6 +4214,13 @@ it leaves somebody scrolling a form for what it wants. The driver's number is
 required at checkout for that reason, though the API still takes an order
 without one.
 
+**An empty bag at checkout is said as the cart says it**: "Your cart is empty"
+and Continue shopping, never the code boxes, the ways to pay and a summary of
+KWD 0 under a Place order nobody can press — which is what a guest opening
+`/checkout` with nothing in the bag was shown. Not once an order is placed:
+the bag empties under the confirmation, and the page it sits over stays. The
+app's checkout is the same (`CheckoutView`'s `empty`).
+
 **Place order asks first, and the shopper stays on checkout**, on the owner's
 word ("it should ask you for confirmation of cart before switching to the
 homepage or any other page. So you should either confirm your purchase or back
@@ -5719,6 +5726,18 @@ every bag of tomatoes back into "each". The dialog is `ConfirmDialog`, which
 now takes a field under its sentence and `confirmDisabled` while that field
 holds what the server would refuse.
 
+**And it files products into a department** (`department`, with the
+`categoryId` chosen in the dialog), through `updateProduct` — the editor's own
+save, so its guard and its department check apply to each. The department
+filter offers "No department" (`noDepartment`) for what a spreadsheet or a
+maker's page left unfiled. It exists because a live check found 23 of the
+newest 24 products filed nowhere — a store's jewellery imported with no
+department, so Style counted none of it and no department page showed it.
+The app's portal list is the same (`PortalProductsView`). **A department id
+is checked before it is written** (`assertDepartment`, `NO_SUCH_DEPARTMENT`,
+`admin.noSuchDepartment`): it arrives from the form, and an unknown one reached
+the foreign key as a 500 on create and on save.
+
 `/admin` opens on counts rather than lists, because the first question on
 arriving is "is anything waiting for me". "Waiting on you" carries only what
 somebody must act on and hides a zero; standing totals sit below it. Every
@@ -6175,7 +6194,11 @@ as a `BrandTile`, each opening a search for it) or the stores (`/stores`, see
 "A store has a page") — and the department cards follow under "Shop by
 category". They were the brand and store rows for a while, which left the home
 page for here first; two boxes side by side keep the departments in the first
-screen. The app's Categories is the same (`wayIn`, `BrandsView`).
+screen. The app's Categories is the same (`wayIn`, `BrandsView`). **Shop by
+brand is drawn only while there is a brand to list** (`commerce.brands`, asked
+with the page, `routeData`; the app's `app.shelf.brands`): the live shop has
+none — no product carries a Brand row — and the box opened "No brands yet",
+which is a control that leads nowhere. Shop by stores then takes the row.
 
 **Each department has subcategories, and the Categories page lists them
 under a row of the departments' pictures, on the owner's word** ("when you tap
@@ -6933,6 +6956,19 @@ holds it. Where a non-id is a legitimate answer — `reviews.forProduct` takes t
 storefront's string id, which a demo build may make a handle — `rowIdText` is
 asked with `safeParse` and a miss is "no reviews", not a refusal.
 
+**An id from the browser names a row that may not exist, and a save may
+change nothing; neither is a 500.** A sweep of every procedure as a guest, a
+shopper, a store owner and an administrator, with inputs built from each
+procedure's own zod schema, found three and a fourth by hand: a bag line
+naming a set that does not exist or does not hold its variant (the foreign key
+— it is a plain line now, `bundlesHolding`), a product saved with nothing in
+the patch and a wishlist saved with nothing changed (Drizzle refuses an empty
+`set`, "No values to set" — nothing is written now), and a product created or
+saved under a department id that is not one (`assertDepartment`). Run that
+sweep after a round that adds procedures: count the calls that succeed as well
+as the ones that fail, or a sampler whose inputs are all refused by the schema
+passes having checked nothing (this one: 804 calls answered, none a 500).
+
 ## Browser storage
 
 **Reading `localStorage` is not a safe operation.** With site data blocked —
@@ -7168,7 +7204,8 @@ runs before the freeze. Vercel's own `attachDatabasePool` does this for the
 pools it knows, and postgres.js is not one. Measured against a real Postgres:
 twelve queries at once held five connections, and none was left 6.5 seconds
 later. **`/readyz` on the live site is `/api/readyz`**: `vercel.json` sends
-bare paths to the page, so `netlet.net/readyz` is the shop's 404.
+bare paths to the page, so `netlet.net/readyz` is the shop's 404 — which the
+Live check workflow's Health step asked for until it was moved to `/api/`.
 
 ### A missing asset is a 404, never the page
 

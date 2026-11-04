@@ -137,6 +137,13 @@ describe("owning a list", () => {
     await expect(salem.wishlists.addItem({ listId: nouras.id, productId: "9" })).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
+  /* Drizzle refuses an update with nothing in it; a save that changed nothing was a 500. */
+  it("treats a save with nothing in it as nothing to do, and still refuses another's list", async () => {
+    const [nouras] = await asShopper("noura").wishlists.mine();
+    await expect(asShopper("noura").wishlists.update({ listId: nouras.id })).resolves.toBeUndefined();
+    await expect(asShopper("salem").wishlists.update({ listId: nouras.id })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("refuses a signed-out caller entirely", async () => {
     await expect(asStranger().wishlists.mine()).rejects.toMatchObject({ code: "UNAUTHORIZED" });
   });

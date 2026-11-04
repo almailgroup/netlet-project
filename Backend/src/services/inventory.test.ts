@@ -232,6 +232,13 @@ describe("creating", () => {
   });
 
   /* Every product starts as "New product", so without this every one was /products/new-product-N. */
+  /* Drizzle refuses an update with nothing in it; a save that changed nothing was a 500. */
+  it("treats a save with nothing in it as nothing to do", async () => {
+    const made = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "Untouched lamp" });
+    const same = await inv.updateProduct(ownerActor(), made.id, {});
+    expect(same.title).toBe("Untouched lamp");
+  });
+
   it("re-makes a draft's address from its new name, and leaves a published one where it is", async () => {
     const first = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "New product" });
     const second = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "New product" });
@@ -246,6 +253,28 @@ describe("creating", () => {
 
     await db.update(products).set({ status: "published" }).where(eq(products.id, first.id));
     expect((await inv.updateProduct(ownerActor(), first.id, { title: "Copper Floor Lamp" })).handle).toBe("brass-floor-lamp");
+  });
+
+  /* A department id comes from the form; an unknown one reached the foreign
+     key as a 500. And what the list's "No department" filter narrows to is
+     what "Move to department" files, one product at a time through this save. */
+  it("refuses a department that does not exist, and files an unfiled product into one that does", async () => {
+    await expect(inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "Nowhere lamp", categoryId: 987654 }))
+      .rejects.toThrow("NO_SUCH_DEPARTMENT");
+    const unfiled = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "Unfiled ring" });
+    await expect(inv.updateProduct(ownerActor(), unfiled.id, { categoryId: 987654 })).rejects.toThrow("NO_SUCH_DEPARTMENT");
+
+    const listed = await inv.listProductsFor(ownerActor(), ids.acme, { noDepartment: true, pageSize: 200 });
+    expect(listed.rows.map(row => row.id)).toContain(unfiled.id);
+    expect(listed.rows.every(row => row.categoryId === null)).toBe(true);
+
+    const [style] = await db.insert(categories)
+      .values({ slug: "style", name: "Style", nameAr: "الأزياء", position: 4 })
+      .onConflictDoUpdate({ target: categories.slug, set: { name: "Style" } })
+      .returning({ id: categories.id });
+    await inv.updateProduct(ownerActor(), unfiled.id, { categoryId: style.id });
+    const after = await inv.listProductsFor(ownerActor(), ids.acme, { noDepartment: true, pageSize: 200 });
+    expect(after.rows.map(row => row.id)).not.toContain(unfiled.id);
   });
 
   /* A "Generate with AI" draft arrives with an Arabic description and rows by

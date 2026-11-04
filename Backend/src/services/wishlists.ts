@@ -192,15 +192,18 @@ export async function updateList(
   if (!existing) throw new WishlistError("notFound");
 
   const goingPrivate = patch.visibility === "private" && existing.visibility === "public";
+  const changes = {
+    ...(patch.title === undefined ? {} : { title: patch.title }),
+    ...(patch.visibility === undefined ? {} : { visibility: patch.visibility }),
+    ...(patch.ownerName === undefined ? {} : { ownerName: patch.ownerName }),
+    ...(goingPrivate ? { shareToken: newToken() } : {}),
+  };
+  /* A save that changes nothing writes nothing: Drizzle refuses an empty set. */
+  if (Object.keys(changes).length === 0) return;
 
   const result = await database
     .update(wishlists)
-    .set({
-      ...(patch.title === undefined ? {} : { title: patch.title }),
-      ...(patch.visibility === undefined ? {} : { visibility: patch.visibility }),
-      ...(patch.ownerName === undefined ? {} : { ownerName: patch.ownerName }),
-      ...(goingPrivate ? { shareToken: newToken() } : {}),
-    })
+    .set(changes)
     .where(and(eq(wishlists.id, listId), eq(wishlists.userId, userId)))
     .returning({ id: wishlists.id });
   if (result.length === 0) throw new WishlistError("notFound");

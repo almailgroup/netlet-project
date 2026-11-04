@@ -402,6 +402,8 @@ export async function listProductsFor(
     status?: (typeof productStatus.enumValues)[number];
     /** A department, by id. */
     categoryId?: number;
+    /** Only products filed under no department — what a "Move to department" is for. */
+    noDepartment?: boolean;
     /** `out`: a variant at nothing; `low`: one at or under its own threshold. */
     stock?: "out" | "low";
   } = {},
@@ -435,6 +437,7 @@ export async function listProductsFor(
       ? sql`(lower(${products.title}) like ${`%${term}%`} or lower(coalesce(${products.titleAr}, '')) like ${`%${term}%`} or ${products.handle} like ${`%${term}%`} or exists (select 1 from ${productVariants} where ${productVariants.productId} = ${products.id} and lower(coalesce(${productVariants.sku}, '')) like ${`%${term}%`}))`
       : undefined,
     request.categoryId ? eq(products.categoryId, request.categoryId) : undefined,
+    request.noDepartment && !request.categoryId ? isNull(products.categoryId) : undefined,
     /* On the server, like the search: a stock filter over one page reports a
        quiet shelf for a store whose empty products are on page four. Low is
        the variant's own threshold, the rule `/admin/stock` judges by. */
@@ -562,6 +565,16 @@ function handleSeed(title: string, attempt: number): string {
   return `${title} ${tail}`;
 }
 
+
+/**
+ * A department named by id must be one: the id comes from the form like the
+ * product's own does, and an unknown one reached the foreign key as a 500.
+ */
+async function assertDepartment(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, categoryId: number | null | undefined) {
+  if (categoryId === null || categoryId === undefined) return;
+  const [found] = await db.select({ id: categories.id }).from(categories).where(eq(categories.id, categoryId)).limit(1);
+  if (!found) throw new Error("NO_SUCH_DEPARTMENT");
+}
 /**
  * Runs a write that takes a product handle, and runs it again if another write
  * took that handle first.
@@ -616,6 +629,7 @@ export async function createProduct(actor: Actor, input: {
   const sku = input.variant?.sku?.trim() || null;
   const opening = input.variant?.stock ?? 0;
   await assertSkuFree(db, input.vendorId, sku);
+  await assertDepartment(db, input.categoryId);
   /* The rows are the department's, so its slug decides which survive. */
   const [category] = input.categoryId
     ? await db.select({ slug: categories.slug }).from(categories).where(eq(categories.id, input.categoryId)).limit(1)
@@ -843,6 +857,9 @@ export async function updateProduct(actor: Actor, productId: number, patch: {
   const row = (await db.select().from(products).where(eq(products.id, productId)).limit(1))[0];
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.edit", row.vendorId);
+  /* A save that changes nothing writes nothing: Drizzle refuses an empty set. */
+  if (Object.values(patch).every(value => value === undefined)) return getProduct(actor, productId);
+  await assertDepartment(db, patch.categoryId);
 
   /*
    * A product's address follows its name until anybody can see it. Every

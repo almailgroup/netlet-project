@@ -18,6 +18,7 @@
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import {
+  bundleItems,
   cartItemAddons,
   cartItems,
   carts,
@@ -922,6 +923,24 @@ async function buyableVariantIds(
   return new Set(rows.map(row => row.id));
 }
 
+/**
+ * Which of the sets the lines name actually hold that line's variant, as
+ * `bundleId:variantId`. A bundle id arrives from the browser like the variant
+ * does, so it is read back rather than trusted.
+ */
+async function bundlesHolding(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  lines: { variantId: number; bundleId: number | null }[],
+): Promise<Set<string>> {
+  const ids = [...new Set(lines.map(line => line.bundleId).filter((id): id is number => id !== null))];
+  if (!ids.length) return new Set();
+  const rows = await db
+    .select({ bundleId: bundleItems.bundleId, variantId: bundleItems.variantId })
+    .from(bundleItems)
+    .where(inArray(bundleItems.bundleId, ids));
+  return new Set(rows.map(row => `${row.bundleId}:${row.variantId}`));
+}
+
 async function putLines(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   cartId: string,
@@ -936,9 +955,13 @@ async function putLines(
     }))
     .filter(line => Number.isInteger(line.variantId) && line.quantity > 0);
   const buyable = await buyableVariantIds(db, wanted.map(line => line.variantId));
+  const sets = await bundlesHolding(db, wanted);
 
   for (const line of wanted) {
     if (!buyable.has(line.variantId)) continue;
+    /* A set that does not hold this variant — or does not exist — puts it in
+       the bag as a plain line. It reached the foreign key as a 500 before. */
+    if (line.bundleId !== null && !sets.has(`${line.bundleId}:${line.variantId}`)) line.bundleId = null;
     // Adding the same variant twice adds to the line rather than growing a
     // second one — which is what the composite unique is for.
     const [row] = await db

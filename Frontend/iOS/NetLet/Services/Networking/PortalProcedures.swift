@@ -135,6 +135,8 @@ extension API {
         let action: String
         var percent: Double?
         var amount: Int?
+        /// For "department": where every product moves.
+        var categoryId: Int?
     }
 
     static let bulkProducts = Procedure<Bulk, BulkResult>(mutation: "inventory.products.bulk")

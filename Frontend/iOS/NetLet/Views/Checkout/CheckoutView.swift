@@ -69,7 +69,24 @@ private struct CheckoutForm: View {
         let cart = app.cart.cart
         let address = app.delivery.inUse
         let blocker = app.delivery.loaded ? model.blocker(for: cart, address: address) : nil
+        // Nothing to check out: said as the cart says it, not as a form with a
+        // total of nothing. Not once an order is placed — the bag empties under
+        // the confirmation, and the page it sits over stays as it was.
+        let empty = !app.cart.settling && (cart?.isEmpty ?? true) && placed == nil && landed == nil && !model.placing
         ScrollView {
+            if empty {
+                EmptyStateView(
+                    systemImage: "bag",
+                    title: l.t("cart.empty"),
+                    note: l.t("checkout.emptyNote"),
+                    actionTitle: l.t("header.continueShopping")
+                ) {
+                    path?.wrappedValue = NavigationPath()
+                    app.selectedTab = .home
+                }
+                .card(padding: 0)
+                .padding(16)
+            } else {
             VStack(alignment: .leading, spacing: 12) {
                 Text(l.t("checkout.confirmNote"))
                     .font(.inter(14))
@@ -97,9 +114,11 @@ private struct CheckoutForm: View {
                 .padding(.horizontal, 4)
             }
             .padding(16)
+            }
         }
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom) {
+            if !empty {
             VStack(spacing: 6) {
                 if let blocker {
                     Button {
@@ -144,6 +163,7 @@ private struct CheckoutForm: View {
             .overlay(alignment: .top) { Divider() }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(l.t("checkout.placeBar"))
+            }
         }
         .sheet(isPresented: $confirming, onDismiss: {
             if let landed {

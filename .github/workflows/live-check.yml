@@ -23,10 +23,12 @@ jobs:
     env:
       BASE: ${{ inputs.base }}
     steps:
+      # Under /api: vercel.json sends every bare path to the page, so
+      # "$BASE/readyz" is the shop's own 404 rather than the function's answer.
       - name: Health
         run: |
-          curl -sS -m 30 "$BASE/healthz"; echo
-          curl -sS -m 30 "$BASE/readyz"; echo
+          curl -sS -m 30 "$BASE/api/healthz"; echo
+          curl -sS -m 30 "$BASE/api/readyz"; echo
 
       - name: The catalogue, as the app asks for it
         run: |

@@ -89,6 +89,10 @@ export default function Categories() {
     scroller.scrollBy({ left: at.left + at.width / 2 - (box.left + box.width / 2), behavior: still ? "instant" : "smooth" });
   }, [chosen.slug]);
 
+  /* The brands' own read, the one `/brands` lists (asked with the page, `routeData`). */
+  const brands = trpc.commerce.brands.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
+  const hasBrands = (brands.data?.length ?? 0) > 0;
+
   const countLine = (count: number) =>
     count === 0 ? t("browse.countNone") : count === 1 ? t("browse.countOne") : t("browse.countMany", { count });
   const placeholder = <span aria-hidden className="inline-block h-3 w-16 animate-pulse rounded-full bg-[#e6e9ef] align-middle" />;
@@ -104,8 +108,10 @@ export default function Categories() {
       <Breadcrumbs trail={[{ label: t("nav.categories") }]} />
       <PageHeading title={t("nav.categories")} />
       <ul className="mb-7 grid grid-cols-2 gap-3 sm:mb-9 sm:gap-4">
-        <li className="min-w-0"><WayIn href="/brands" icon={<Tags className="size-5" />} title={t("home.shopByBrand")} note={t("categories.byBrandNote")} /></li>
-        <li className="min-w-0"><WayIn href="/stores" icon={<Store className="size-5" />} title={t("categories.byStore")} note={t("categories.byStoreNote")} /></li>
+        {/* Only while there is a brand to list: a box that opens "No brands
+            yet" is a control that leads nowhere, the departments' rule. */}
+        {hasBrands ? <li className="min-w-0"><WayIn href="/brands" icon={<Tags className="size-5" />} title={t("home.shopByBrand")} note={t("categories.byBrandNote")} /></li> : null}
+        <li className={hasBrands ? "min-w-0" : "col-span-2 min-w-0"}><WayIn href="/stores" icon={<Store className="size-5" />} title={t("categories.byStore")} note={t("categories.byStoreNote")} /></li>
       </ul>
       <h2 id="departments-title" className="mb-3 text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:mb-4 sm:text-2xl">{t("home.shopByCategory")}</h2>
       {/* A sideways row on a phone, reaching the screen's edges so the tile cut

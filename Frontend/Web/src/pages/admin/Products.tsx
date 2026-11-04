@@ -41,7 +41,7 @@ import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
-import { Archive, FilePen, ImageOff, PackageCheck, PackagePlus, Percent, Search, Send, Trash2, Upload, X } from "lucide-react";
+import { Archive, FilePen, FolderInput, ImageOff, PackageCheck, PackagePlus, Percent, Search, Send, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -75,6 +75,8 @@ function ProductTable({ actor }: { actor: Actor }) {
   const [bulk, setBulk] = useState<BulkAction | null>(null);
   const [percent, setPercent] = useState("10");
   const [amount, setAmount] = useState("1");
+  /* For "Move to department": the department chosen, by id. */
+  const [moveTo, setMoveTo] = useState("");
   const [refused, setRefused] = useState<{ id: number; title: string; reason: string }[]>([]);
   const categories = trpc.inventory.categories.useQuery();
 
@@ -96,7 +98,7 @@ function ProductTable({ actor }: { actor: Actor }) {
   const products = trpc.inventory.products.list.useQuery(
     {
       page, query: term || undefined, status: filter === "all" ? undefined : filter, vendorId: storeId,
-      categoryId: Number(department) || undefined, stock: stockFilter || undefined,
+      categoryId: Number(department) || undefined, noDepartment: department === "none" || undefined, stock: stockFilter || undefined,
     },
     { placeholderData: previous => previous },
   );
@@ -142,12 +144,13 @@ function ProductTable({ actor }: { actor: Actor }) {
   const allOnPage = rows.length > 0 && rows.every(row => selected.has(row.id));
   const percentValue = Number(percent.replace("−", "-"));
   const amountValue = Number(amount);
-  const fieldProblem = bulk === "reprice" ? percentProblem(percentValue) : bulk === "restock" ? restockProblem(amountValue) : null;
+  const fieldProblem = bulk === "reprice" ? percentProblem(percentValue) : bulk === "restock" ? restockProblem(amountValue) : bulk === "department" && !Number(moveTo) ? "admin.noSuchDepartment" : null;
   const confirmBulk = () => runBulk.mutate({
     ids: Array.from(selected),
     action: bulk!,
     ...(bulk === "reprice" ? { percent: percentValue } : {}),
     ...(bulk === "restock" ? { amount: amountValue } : {}),
+    ...(bulk === "department" ? { categoryId: Number(moveTo) } : {}),
   });
   const mayCreate = can(actor, "product.create", ownVendor);
 
@@ -205,6 +208,8 @@ function ProductTable({ actor }: { actor: Actor }) {
           className={`${fieldClass} lg:w-48`}
         >
           <option value="">{t("nav.allDepartments")}</option>
+          {/* What a spreadsheet or a maker's page left unfiled, ready to move. */}
+          <option value="none">{t("admin.filterNoDepartment")}</option>
           {(categories.data ?? []).map(category => <option key={category.id} value={category.id}>{departmentName(category.name)}</option>)}
         </Select>
         <Select
@@ -241,6 +246,7 @@ function ProductTable({ actor }: { actor: Actor }) {
           <button type="button" onClick={() => setBulk("archive")} className={buttonClass.secondary}><Archive className="size-4" aria-hidden />{t("admin.bulkArchive")}</button>
           <button type="button" onClick={() => setBulk("draft")} className={buttonClass.secondary}><FilePen className="size-4" aria-hidden />{t("admin.bulkDraft")}</button>
           <button type="button" onClick={() => setBulk("reprice")} className={buttonClass.secondary}><Percent className="size-4" aria-hidden />{t("admin.bulkReprice")}</button>
+          <button type="button" onClick={() => setBulk("department")} className={buttonClass.secondary}><FolderInput className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.bulkDepartment")}</button>
           {can(actor, "stock.adjust", ownVendor) ? (
             <button type="button" onClick={() => setBulk("restock")} className={buttonClass.secondary}><PackageCheck className="size-4" aria-hidden />{t("admin.bulkRestock")}</button>
           ) : null}
@@ -416,9 +422,10 @@ function ProductTable({ actor }: { actor: Actor }) {
             : bulk === "archive" ? t("admin.bulkArchiveTitle", { count: selected.size })
             : bulk === "draft" ? t("admin.bulkDraftTitle", { count: selected.size })
             : bulk === "reprice" ? t("admin.bulkRepriceTitle", { count: selected.size })
+            : bulk === "department" ? t("admin.bulkDepartmentTitle", { count: selected.size })
             : t("admin.bulkRestockTitle", { count: selected.size })
         }
-        body={bulk === "reprice" ? t("admin.bulkRepriceBody") : bulk === "restock" ? t("admin.bulkRestockBody") : t("admin.bulkStatusBody")}
+        body={bulk === "reprice" ? t("admin.bulkRepriceBody") : bulk === "restock" ? t("admin.bulkRestockBody") : bulk === "department" ? t("admin.bulkDepartmentBody") : t("admin.bulkStatusBody")}
         confirmLabel={bulk === "publish" ? t("admin.publish") : bulk === "archive" ? t("admin.bulkArchive") : bulk === "draft" ? t("admin.bulkDraft") : t("admin.bulkApply")}
         pending={runBulk.isPending}
         confirmDisabled={fieldProblem !== null}
@@ -439,6 +446,14 @@ function ProductTable({ actor }: { actor: Actor }) {
             <input dir="ltr" inputMode="numeric" value={amount} onChange={event => setAmount(event.target.value)} aria-invalid={fieldProblem !== null} aria-describedby="bulk-amount-hint" className={`${fieldClass} mt-1.5`} />
             {fieldProblem ? <span id="bulk-amount-hint" className="mt-1.5 block text-[12px] leading-5 text-[#8c2f22]">{t(fieldProblem)}</span> : null}
           </label>
+        ) : bulk === "department" ? (
+          <div>
+            <label htmlFor="bulk-department" className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.bulkDepartmentPick")}</label>
+            <Select id="bulk-department" value={moveTo} onChange={event => setMoveTo(event.target.value)} className={`${fieldClass} mt-1.5`}>
+              <option value="" disabled>{t("admin.bulkDepartmentPick")}</option>
+              {(categories.data ?? []).map(category => <option key={category.id} value={category.id}>{departmentName(category.name)}</option>)}
+            </Select>
+          </div>
         ) : null}
       </ConfirmDialog>
     </>

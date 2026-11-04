@@ -10,7 +10,7 @@
  */
 import { fromFils, toFils } from "../money.js";
 
-export const BULK_ACTIONS = ["publish", "archive", "draft", "reprice", "restock"] as const;
+export const BULK_ACTIONS = ["publish", "archive", "draft", "reprice", "restock", "department"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 
 /** One page of the list at most: a bulk action is for what somebody can see. */

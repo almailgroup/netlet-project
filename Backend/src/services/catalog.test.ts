@@ -187,6 +187,17 @@ describe("the cart", () => {
     expect(after?.items[0].quantity).toBe(3);
   });
 
+  /* A set id arrives from the browser like the variant does. One naming no
+     set, or a set without this variant, used to reach the foreign key as a
+     500; it is a plain line now. */
+  it("puts a line naming a set that does not hold it in the bag as a plain line", async () => {
+    const created = await catalog.createCart([{ variantId: String(ids.lampSmall), quantity: 1, bundleId: 987654 }]);
+    expect(created?.items).toHaveLength(1);
+    const after = await catalog.addCartLines(created!.id, [{ variantId: String(ids.lampSmall), quantity: 1, bundleId: 987654 }]);
+    expect(after?.items[0].quantity).toBe(2);
+    expect(after?.items[0].bundleName ?? null).toBeNull();
+  });
+
   /* The stepper stops at 99; adding again used to add without limit. */
   it("stops a line at the ceiling however often it is added to", async () => {
     const created = await catalog.createCart([{ variantId: String(ids.lampSmall), quantity: 90 }]);
