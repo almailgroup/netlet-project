@@ -54,6 +54,10 @@ struct PointsCoin: View {
                 .offset(x: -5.5 * unit, y: -10.6 * unit)
         }
         .frame(width: size, height: size)
+        // A shape is mirrored on a right-to-left page: on the Arabic page the
+        // N read "И" and the gloss slid to the other side. The coin is a
+        // picture, the same on both pages, as the web's is.
+        .environment(\.layoutDirection, .leftToRight)
         .accessibilityHidden(true)
     }
 }

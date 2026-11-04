@@ -278,6 +278,9 @@ struct OrderPlacedView: View {
                         .trim(from: 0, to: ticked ? 1 : 0)
                         .stroke(Color.white, style: StrokeStyle(lineWidth: 5.2, lineCap: .round, lineJoin: .round))
                         .frame(width: 48, height: 48)
+                        // A shape is mirrored on a right-to-left page, and a
+                        // tick drawn backwards reads as a chevron.
+                        .environment(\.layoutDirection, .leftToRight)
                 }
                 .scaleEffect(shown ? 1 : 0.3)
                 .opacity(shown ? 1 : 0)

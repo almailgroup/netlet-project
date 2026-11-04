@@ -8318,6 +8318,21 @@ anyway, and a shape behind translucent glass would show through it. Not
 measured on a device here, which this sandbox cannot reach — Instruments'
 hitches template on a ProMotion iPhone is the check.
 
+**A drawn shape is mirrored on the Arabic page, so a picture says
+left-to-right.** SwiftUI flips a `Shape` under a right-to-left layout: the
+points coin's N read "И" and the order-placed tick read as a chevron, both
+found in the CI's Arabic pictures. `PointsCoin` and the tick carry
+`.environment(\.layoutDirection, .leftToRight)`; anything drawn that has a
+handedness — a letter, a tick, an arrow that is not meant to turn — needs the
+same. **A date is isolated** (`OrderWording.isolated`, first-strong, on every
+`date`, `dateTime` and `day`): an Arabic date carries right-to-left marks
+between its parts, so in a line that reads left to right — a Latin reference
+and a centre's name before it — "11/10/2026" was drawn "112026/10/" on the
+fulfilment and warranty desks. **The logo row's area name comes before the
+logo's box** (`layoutPriority`): the box reserved 130 for a logo 90 wide at
+40 tall, so "Choose area" read "Choose…"; the chevron now goes before the name
+is cut, the web's rule under 360px, which a pushed page's back arrow needs.
+
 **A new install opens on a tutorial, and it can always be skipped — on the
 owner's word** ("work on app tutorial, for a new user that downloads and opens
 the app. Explain how to login or create account and use the app. But make sure

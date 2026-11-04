@@ -277,6 +277,24 @@ struct LogoRow: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
+    private func areaLabel(_ place: String, chevron: Bool) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "mappin.and.ellipse")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(Brand.accentInk)
+            Text(place)
+                .font(.inter(14, .medium))
+                .foregroundStyle(Brand.navy)
+                .lineLimit(1)
+            if chevron {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Brand.navy)
+            }
+        }
+        .padding(.horizontal, 10)
+    }
+
     var body: some View {
         HStack(spacing: 4) {
             if let back {
@@ -289,8 +307,11 @@ struct LogoRow: View {
                 .accessibilityLabel(l.t("ios.back"))
             }
             Button(action: onLogo) {
+                // Its own width at 40 tall (the file is 968 × 431), and as
+                // narrow as 64 before the area's name gives way: its box took
+                // 130 first, so "Choose area" read "Choose…" beside empty room.
                 BundledImage(image: WebAssets.logo)
-                    .frame(maxWidth: 130, maxHeight: 40, alignment: .leading)
+                    .frame(minWidth: 64, maxWidth: 90, maxHeight: 40, alignment: .leading)
                     .frame(height: 40)
             }
             .buttonStyle(.tap)
@@ -300,26 +321,21 @@ struct LogoRow: View {
             Button {
                 app.deliveryOpen = true
             } label: {
-                // `.pressable`'s type, as every control on the web's bar.
-                HStack(spacing: 6) {
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Brand.accentInk)
-                    Text(place)
-                        .font(.inter(14, .medium))
-                        .foregroundStyle(Brand.navy)
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Brand.navy)
+                // `.pressable`'s type, as every control on the web's bar. The
+                // chevron goes before the name is cut, the web's rule under
+                // 360px — a pushed page's back arrow takes that room.
+                ViewThatFits(in: .horizontal) {
+                    areaLabel(place, chevron: true).fixedSize()
+                    areaLabel(place, chevron: false).fixedSize()
+                    areaLabel(place, chevron: false)
                 }
-                .padding(.horizontal, 10)
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
             .accessibilityLabel("\(l.t("home.deliverTo")) \(place)")
             .accessibilityHint(l.t("delivery.buttonTitle"))
+            .layoutPriority(1)
             // Saved items — the hearts — counted, for everybody, on the
             // owner's word: it opened the wishlists for somebody signed in for
             // a while, and the wishlists are a row of the account page now.

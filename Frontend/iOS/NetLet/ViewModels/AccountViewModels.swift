@@ -310,7 +310,7 @@ enum OrderWording {
         formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return formatter.string(from: date)
+        return isolated(formatter.string(from: date))
     }
 
     /// A day the server sends as `yyyy-mm-dd`, which is a Kuwaiti day already.
@@ -330,8 +330,15 @@ enum OrderWording {
         formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
-        return formatter.string(from: date)
+        return isolated(formatter.string(from: date))
     }
+
+    /// A date set apart from the line it sits in (first-strong isolate). An
+    /// Arabic date carries right-to-left marks between its parts, so inside a
+    /// line that reads left to right — a Latin reference and a centre's name
+    /// before it — its parts were reordered, and "11/10/2026" was drawn
+    /// "112026/10/". Isolated, it lays out as one piece wherever it lands.
+    static func isolated(_ text: String) -> String { "\u{2068}\(text)\u{2069}" }
 }
 
 /// A store's own listings.
