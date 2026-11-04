@@ -8415,7 +8415,10 @@ tests passed on rather than whatever `main` holds by then. **A run of the iOS
 workflow started by hand waits behind a push's rather than cancelling it**
 (`cancel-in-progress` only for a push): the first `share` run for previews,
 started while a push's tests ran, would have cancelled them — and with them
-that push's upload, since only a green push run uploads. Nothing that signs
+that push's upload, since only a green push run uploads. **The other way round
+it does cancel**: `cancel-in-progress` is the newcomer's, so a push of an app
+change cancels a `share` run already going, previews and all — start one after
+the last app push of a round, never before it. Nothing that signs
 lives in the repository: an App
 Store Connect API key (Admin, in four repository secrets the README names)
 lets `xcodebuild -exportArchive -allowProvisioningUpdates` make the
