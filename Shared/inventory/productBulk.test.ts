@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { percentProblem, restockProblem, scalePrice } from "./productBulk";
+import { brandProblem, percentProblem, restockProblem, scalePrice, withBrand } from "./productBulk";
 
 describe("bulk price changes", () => {
   it("move a price by a percentage to the fil, half up", () => {
@@ -22,5 +22,34 @@ describe("bulk price changes", () => {
     expect(restockProblem(0)).toBe("admin.bulkRestockInvalid");
     expect(restockProblem(2.5)).toBe("admin.bulkRestockInvalid");
     expect(restockProblem(12)).toBeNull();
+  });
+});
+
+describe("setting a brand on many products", () => {
+  it("adds the Brand row the filter reads, and replaces an earlier one wherever it sat", () => {
+    const rows = [
+      { namespace: "reviews", key: "brand", label: "Brand", value: "kept: a review's own" },
+      { namespace: "spec", key: "material", label: "Material", value: "Gold" },
+    ];
+    expect(withBrand(rows, "  Gemellry ")).toEqual([...rows, { namespace: "spec", key: "brand", label: "Brand", value: "Gemellry" }]);
+
+    const twice = [
+      { namespace: "spec", key: "brand", label: "Brand", value: "Old" },
+      { namespace: "spec", key: "material", label: "Material", value: "Gold" },
+      { namespace: "custom", key: "brand", label: "Brand", value: "Older" },
+    ];
+    expect(withBrand(twice, "Gemellry")).toEqual([
+      { namespace: "spec", key: "brand", label: "Brand", value: "Gemellry" },
+      { namespace: "spec", key: "material", label: "Material", value: "Gold" },
+    ]);
+  });
+
+  it("refuses nothing, too long, and a brand that is really a phone number or a link", () => {
+    expect(brandProblem("Gemellry")).toBeNull();
+    expect(brandProblem("جيميلري")).toBeNull();
+    expect(brandProblem("   ")).toBe("admin.bulkBrandInvalid");
+    expect(brandProblem("x".repeat(61))).toBe("admin.bulkBrandInvalid");
+    expect(brandProblem("Call 99887766")).toBe("admin.bulkBrandInvalid");
+    expect(brandProblem("shop.example.com")).toBe("admin.bulkBrandInvalid");
   });
 });

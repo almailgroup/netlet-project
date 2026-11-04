@@ -13,7 +13,7 @@ import { openingSpecs, warrantyRequired } from "../../../Shared/inventory/produc
 import { merchantWarranty } from "../../../Shared/commerce/productDetail.js";
 import { stockMoveProblem, type StockReason } from "../../../Shared/inventory/stockMoves.js";
 import { optionPairs, optionPairsProblem, optionsRecord } from "../../../Shared/inventory/variantOptions.js";
-import { percentProblem, scalePrice } from "../../../Shared/inventory/productBulk.js";
+import { brandProblem, percentProblem, scalePrice, withBrand } from "../../../Shared/inventory/productBulk.js";
 import { normaliseIban } from "../../../Shared/inventory/storeProfile.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
@@ -167,6 +167,24 @@ export async function setProductAttributes(
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.edit", row.vendorId);
   await db.update(products).set({ attributes }).where(eq(products.id, productId));
+}
+
+/**
+ * The product's Brand, set from the products list across many at once — the
+ * specification row `brandOf` reads, so the Brand filter, the search and
+ * `/brands` all see it. `withBrand` replaces any earlier brand row and keeps
+ * every other row; `brandProblem` holds the name to a length and the contact
+ * rule. `product.edit`, beside the query, against the product's own store.
+ */
+export async function setProductBrand(actor: Actor, productId: number, brand: string): Promise<void> {
+  const problem = brandProblem(brand);
+  if (problem) throw new Error(problem);
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [row] = await db.select({ vendorId: products.vendorId, attributes: products.attributes }).from(products).where(eq(products.id, productId)).limit(1);
+  if (!row) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.edit", row.vendorId);
+  await db.update(products).set({ attributes: withBrand(row.attributes ?? [], brand) }).where(eq(products.id, productId));
 }
 
 /**
@@ -404,6 +422,8 @@ export async function listProductsFor(
     categoryId?: number;
     /** Only products filed under no department — what a "Move to department" is for. */
     noDepartment?: boolean;
+    /** Only products with a photo still on another site — what "Copy photos to NetLet" is for. */
+    offSitePhotos?: boolean;
     /** `out`: a variant at nothing; `low`: one at or under its own threshold. */
     stock?: "out" | "low";
   } = {},
@@ -438,6 +458,10 @@ export async function listProductsFor(
       : undefined,
     request.categoryId ? eq(products.categoryId, request.categoryId) : undefined,
     request.noDepartment && !request.categoryId ? isNull(products.categoryId) : undefined,
+    /* NetLet's own photos are `/media/...` paths; a full address is somebody else's server. */
+    request.offSitePhotos
+      ? sql`(exists (select 1 from ${productImages} where ${productImages.productId} = ${products.id} and ${productImages.kind} = 'image' and ${productImages.url} like 'https://%'))`
+      : undefined,
     /* On the server, like the search: a stock filter over one page reports a
        quiet shelf for a store whose empty products are on page four. Low is
        the variant's own threshold, the rule `/admin/stock` judges by. */

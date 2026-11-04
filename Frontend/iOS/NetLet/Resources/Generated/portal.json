@@ -250,12 +250,14 @@
       "draft",
       "reprice",
       "restock",
-      "department"
+      "department",
+      "brand"
     ],
     "limit": 100,
     "minPercent": -90,
     "maxPercent": 1000,
-    "maxRestock": 100000
+    "maxRestock": 100000,
+    "maxBrand": 60
   },
   "fulfilment": {
     "pending": [

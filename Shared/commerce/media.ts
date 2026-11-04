@@ -37,6 +37,22 @@ export const MAX_UPLOAD_BYTES = 1_500_000;
 /** How many photos one account may upload in an hour. */
 export const MAX_UPLOADS_PER_HOUR = 200;
 
+/**
+ * Photos copied onto NetLet from the site a product's gallery points at, per
+ * account an hour. Far more than an upload's ceiling, because this is one
+ * administrator moving a shop's whole gallery, not a seller adding photos —
+ * but still a ceiling, since every one is a fetch NetLet's server makes.
+ */
+export const MAX_PHOTO_COPIES_PER_HOUR = 1500;
+
+/**
+ * Whether a gallery photo lives on another site and can be copied onto
+ * NetLet. NetLet's own are stored as `/media/...` paths, never full addresses.
+ */
+export function isOffSite(url: string): boolean {
+  return /^https:\/\//i.test(url.trim());
+}
+
 export type StoredType = "image/webp" | "image/jpeg";
 
 const MEDIA_PATH = /^\/media\/[A-Za-z0-9_-]{16,64}\.(?:webp|jpg)$/;

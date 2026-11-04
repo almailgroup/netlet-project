@@ -4488,6 +4488,37 @@ about, so the model picks among the shop's departments and cannot add one; its
 answers are tagged as guesses like the words', and no model leaves the rows as
 they were.
 
+**A product's photos can be copied onto NetLet after the fact, on the owner's
+word** — the live shop drew every jewellery card from the seller's own
+server, 0.6 to 1.4 MB a photo, sent whole to a phone. "Copy photos to NetLet"
+on the products list (`lib/copyPhotos.ts`, `Backend/src/services/photoCopies.ts`)
+takes the selected products' gallery photos that are still full addresses
+(`isOffSite`; NetLet's own are `/media/...` paths), and for each: the server
+fetches the original through the maker's-page guard
+(`POST /api/media/copy/fetch`), the browser shrinks it with `preparePhoto`
+**with the fixes off** — the seller's framing kept, only made 1200px and WebP —
+and hands it back (`POST /api/media/copy/:imageId`), which stores the file and
+points the gallery row at it in one transaction, the old address in the
+predicate and kept as the file's `source_url`. **Both requests name the
+gallery photo by its id and never take an address**, so it is not a way to
+make the server fetch anything a caller types, and only somebody who may edit
+that product can ask. Its own hourly allowance (`MAX_PHOTO_COPIES_PER_HOUR`,
+1,500, counted on the fetch), far above an upload's 200, because it is one
+person moving a shop's gallery. Two at a time, a progress bar in the dialog,
+and a photo that cannot be read keeps its address. The list's "Photos on
+other sites" filter (`offSitePhotos`) is what to run it through, page by
+page. Web only, like fixing a spreadsheet's photos: it is a long batch an
+administrator runs at a desk. Measured through a stand-in internet serving a
+1600px picture: copied at 1200 × 675 and 71 KB, at 390 in Arabic and 1440.
+**The files live in Postgres** (`media_files.bytes`), about 70 KB a photo, so
+a thousand photos are about 70 MB of the database — worth knowing on a plan
+with a size ceiling.
+
+**`/media` is cached by Vercel's CDN for a day** (`s-maxage=86400` beside the
+browser's year): it sent `max-age` alone, which the CDN does not read, so
+every new visitor's photos were read out of Postgres by the function. A day
+rather than a year, so a photo taken back stops being served within one.
+
 ## Manufacturer images
 
 `Shared/commerce/manufacturerImages.ts` is the rule, pure; `Backend/src/services/manufacturerImages.ts`
@@ -5737,6 +5768,19 @@ The app's portal list is the same (`PortalProductsView`). **A department id
 is checked before it is written** (`assertDepartment`, `NO_SUCH_DEPARTMENT`,
 `admin.noSuchDepartment`): it arrives from the form, and an unknown one reached
 the foreign key as a 500 on create and on save.
+
+**And it sets a brand** (`brand`, `setProductBrand`), on the owner's word:
+the live shop had no product with a Brand row, so "Shop by brand" and the
+Brand filter were empty. `withBrand` writes the specification row `brandOf`
+reads, replacing an earlier one wherever it sat and keeping every other row;
+`brandProblem` holds it to `BRAND_MAX` (60) and the contact rule, since a
+brand is shown on every product it is set on. The dialog starts from the
+store's name when every selected product is one store's — a store that sells
+only its own brand is the usual case. **A store counting as its own brand
+automatically would need a column on `vendors`**, a migration not made. The
+app's portal list has it too (`maxBrand` and `brandProblem` in `portal.json`'s
+`bulk`). The filter row wraps from `lg` now: with a sixth filter, one line
+left the search box a sliver.
 
 `/admin` opens on counts rather than lists, because the first question on
 arriving is "is anything waiting for me". "Waiting on you" carries only what
@@ -7849,6 +7893,12 @@ that has to carry on by itself; flicks to the page's foot and back to its top
 The top and the foot are markers (`PageTopMarker`, `PageFootMarker`) drawn
 only under `-NetLetUITest` in a Debug build. It runs in the iOS workflow's
 tests, so a page that stops scrolling fails CI before it reaches TestFlight.
+**A drag that moves nothing says what was in the way**: the Arabic home page
+stood still under three drags in one run (171) and moved in every run before
+it, so the failure now names a system alert or a sheet over the app and the
+named elements under each point a drag started from, and keeps a screenshot
+with the run's results — a session here can read the message but not the
+artifact.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the

@@ -322,6 +322,26 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
     param: "count",
     ar: { two: "حقلان يحتاجان إلى مراجعة.", many: "{count} حقلاً تحتاج إلى مراجعة.", other: "{count} حقل تحتاج إلى مراجعة." },
   },
+  "admin.bulkBrandTitle": {
+    param: "count",
+    en: { one: "Set the brand of 1 product" },
+    ar: { one: "تحديد العلامة التجارية لمنتج واحد", two: "تحديد العلامة التجارية لمنتجين", many: "تحديد العلامة التجارية لـ {count} منتجاً", other: "تحديد العلامة التجارية لـ {count} منتج" },
+  },
+  "admin.bulkPhotosTitle": {
+    param: "count",
+    en: { one: "Copy 1 photo to NetLet" },
+    ar: { one: "نسخ صورة واحدة إلى نت لت", two: "نسخ صورتين إلى نت لت", many: "نسخ {count} صورة إلى نت لت", other: "نسخ {count} صورة إلى نت لت" },
+  },
+  "admin.bulkPhotosDone": {
+    param: "count",
+    en: { one: "1 photo copied to NetLet." },
+    ar: { one: "نُسخت صورة واحدة إلى نت لت.", two: "نُسخت صورتان إلى نت لت.", many: "نُسخت {count} صورة إلى نت لت.", other: "نُسخت {count} صورة إلى نت لت." },
+  },
+  "admin.bulkPhotosKept": {
+    param: "count",
+    en: { one: "1 photo could not be read and stays where it was." },
+    ar: { one: "تعذّرت قراءة صورة واحدة فبقيت في مكانها.", two: "تعذّرت قراءة صورتين فبقيتا في مكانهما.", many: "تعذّرت قراءة {count} صورة فبقيت في مكانها.", other: "تعذّرت قراءة {count} صورة فبقيت في مكانها." },
+  },
   "admin.bulkDepartmentTitle": {
     param: "count",
     en: { one: "Move 1 product to a department" },

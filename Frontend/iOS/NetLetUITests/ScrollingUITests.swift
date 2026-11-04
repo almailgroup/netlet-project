@@ -119,12 +119,50 @@ final class ScrollingUITests: XCTestCase {
             XCTFail("The page's top could not be read.", file: file, line: line)
             return
         }
-        drag(app, x: 0.28, from: 0.72)
-        drag(app, x: 0.72, from: 0.72)
-        drag(app, x: 0.5, from: 0.78)
+        let points = [CGVector(dx: 0.28, dy: 0.72), CGVector(dx: 0.72, dy: 0.72), CGVector(dx: 0.5, dy: 0.78)]
+        for point in points { drag(app, x: point.dx, from: point.dy) }
         let now = frame(of: top)?.minY
         let moved = now.map { $0 < start - distance } ?? true
-        XCTAssertTrue(moved, "Three drags left the page where it was (top at \(start), now \(now ?? -1)).", file: file, line: line)
+        if !moved { keepScreenshot(app) }
+        XCTAssertTrue(moved, "Three drags left the page where it was (top at \(start), now \(now ?? -1)). \(moved ? "" : surroundings(app, at: points))", file: file, line: line)
+    }
+
+    /// What was in the way, for a failure to say why a page did not move: a
+    /// system alert or a sheet over the app, and the named elements under each
+    /// point a drag started from, innermost last. The Arabic home page once
+    /// stood still under three drags in one run and moved in every other, and
+    /// a failure that says only "it did not move" cannot be told apart from
+    /// one that will happen on a phone.
+    private func surroundings(_ app: XCUIApplication, at points: [CGVector]) -> String {
+        var notes: [String] = []
+        let system = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.allElementsBoundByIndex.map(\.label)
+        if !system.isEmpty { notes.append("system alert up: \(system.joined(separator: ", "))") }
+        if app.alerts.count > 0 { notes.append("an alert is up") }
+        if app.sheets.count > 0 { notes.append("a sheet is up") }
+        guard let root = try? app.snapshot() else { return notes.joined(separator: "; ") }
+        let size = root.frame.size
+        for point in points {
+            let at = CGPoint(x: size.width * point.dx, y: size.height * point.dy)
+            var found: [String] = []
+            collect(root, containing: at, into: &found)
+            notes.append("under (\(Int(at.x)), \(Int(at.y))): \(found.suffix(4).joined(separator: " > "))")
+        }
+        return notes.joined(separator: "; ")
+    }
+
+    private func collect(_ node: XCUIElementSnapshot, containing point: CGPoint, into found: inout [String]) {
+        guard node.frame.contains(point) else { return }
+        let name = [node.identifier, node.label].filter { !$0.isEmpty }.joined(separator: " / ")
+        if !name.isEmpty { found.append(String(name.prefix(40))) }
+        for child in node.children { collect(child, containing: point, into: &found) }
+    }
+
+    /// The screen as the failure found it, kept with the run's results.
+    private func keepScreenshot(_ app: XCUIApplication) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Where the drags left the page"
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     /// Flicks up until the page's foot is on the screen, then down until its

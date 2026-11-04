@@ -38,9 +38,17 @@ struct PortalRules: Decodable, Sendable {
         let minPercent: Double
         let maxPercent: Double
         let maxRestock: Int
+        /// The longest brand "Set brand" takes (`BRAND_MAX`).
+        let maxBrand: Int?
 
         func percentProblem(_ percent: Double) -> Bool { !(percent.isFinite && percent != 0 && percent >= minPercent && percent <= maxPercent) }
         func restockProblem(_ amount: Int) -> Bool { !(amount >= 1 && amount <= maxRestock) }
+        /// `brandProblem`: a brand is shown to every shopper, so it is held to a
+        /// length and the contact rule, as the server holds it.
+        func brandProblem(_ brand: String) -> Bool {
+            let name = brand.trimmingCharacters(in: .whitespacesAndNewlines)
+            return name.isEmpty || name.count > (maxBrand ?? 60) || !ContactFilter.findings(name).isEmpty
+        }
     }
 
     let menu: [Group]

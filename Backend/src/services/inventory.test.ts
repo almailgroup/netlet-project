@@ -11,7 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { categories, followedProducts, products, productVariants, stockMovements, users, vendorMembers, vendors } from "../../database/schema.js";
+import { categories, followedProducts, productImages, products, productVariants, stockMovements, users, vendorMembers, vendors } from "../../database/schema.js";
 import type { Actor } from "../../../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
@@ -275,6 +275,31 @@ describe("creating", () => {
     await inv.updateProduct(ownerActor(), unfiled.id, { categoryId: style.id });
     const after = await inv.listProductsFor(ownerActor(), ids.acme, { noDepartment: true, pageSize: 200 });
     expect(after.rows.map(row => row.id)).not.toContain(unfiled.id);
+  });
+
+  /* The products list's "Set brand": the row the Brand filter reads, guarded by the product's own store. */
+  it("sets a product's brand, and refuses another store's product", async () => {
+    const made = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "Branded ring" });
+    await inv.setProductBrand(ownerActor(), made.id, "Gemellry");
+    const [saved] = await db.select().from(products).where(eq(products.id, made.id));
+    expect(saved.attributes.filter(row => row.key === "brand")).toEqual([{ namespace: "spec", key: "brand", label: "Brand", value: "Gemellry" }]);
+    await expect(inv.setProductBrand(ownerActor(), ids.otherProduct, "Gemellry")).rejects.toThrow(/FORBIDDEN/);
+    await expect(inv.setProductBrand(ownerActor(), made.id, "Call 99887766")).rejects.toThrow("admin.bulkBrandInvalid");
+  });
+
+  /* What "Copy photos to NetLet" works through: a photo still on another site. */
+  it("narrows the list to products with a photo on another site", async () => {
+    const away = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "Photo elsewhere" });
+    const home = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "Photo at home" });
+    await db.insert(productImages).values([
+      { productId: away.id, url: "https://shop.example/a.jpg", position: 0 },
+      { productId: home.id, url: "/media/abcdefghijklmnopqrstuvwx.jpg", position: 0 },
+      { productId: home.id, url: "https://shop.example/clip.mp4", position: 1, kind: "video" },
+    ]);
+    const listed = await inv.listProductsFor(ownerActor(), ids.acme, { offSitePhotos: true, pageSize: 200 });
+    const found = listed.rows.map(row => row.id);
+    expect(found).toContain(away.id);
+    expect(found).not.toContain(home.id);
   });
 
   /* A "Generate with AI" draft arrives with an Arabic description and rows by

@@ -34,6 +34,7 @@ import { attachContract, DocumentRefused, readDocument, uploadDocument } from ".
 import { can } from "../../../Shared/inventory/permissions.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, type DocumentKind } from "../../../Shared/inventory/applicationDocuments.js";
 import { fetchManufacturerImage, ImportRefused } from "../services/manufacturerImages.js";
+import { copyPhoto, fetchPhotoToCopy, PhotoCopyRefused } from "../services/photoCopies.js";
 import { authenticateRequest } from "./auth.js";
 import { resolveActor } from "../services/inventory.js";
 
@@ -263,6 +264,54 @@ export function createApp(): Express {
   });
 
   /**
+   * A product's photo copied onto NetLet from the site its gallery points at
+   * (`photoCopies.ts`): the original fetched by the server for the browser to
+   * shrink, then the shrunk copy stored and put in the gallery in its place.
+   * Both name the gallery photo by its id and never take an address, so
+   * neither is a way to make the server fetch something a caller typed. The
+   * first takes JSON and the second an image body, neither of which an HTML
+   * form on another site can send, under the Lax session cookie.
+   */
+  const photoCopyStatus = (reason: string) =>
+    reason === "media.notAllowed" ? 403 : reason === "media.copyTooMany" ? 429 : reason === "media.copyGone" ? 409 : reason === "manufacturer.unreachable" ? 502 : 400;
+  app.post("/api/media/copy/fetch", async (req, res) => {
+    try {
+      if (!req.is("application/json")) { res.status(415).json({ error: "media.copyGone" }); return; }
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
+      const imageId = Number(req.body?.imageId);
+      if (!Number.isInteger(imageId) || imageId < 1 || imageId > 2_147_483_647) { res.status(400).json({ error: "media.copyGone" }); return; }
+      const image = await fetchPhotoToCopy(await resolveActor(user), imageId);
+      res.set({
+        "Content-Type": image.type,
+        "Content-Length": String(image.bytes.length),
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+      });
+      res.end(image.bytes);
+    } catch (error) {
+      if (error instanceof PhotoCopyRefused) { res.status(photoCopyStatus(error.reason)).json({ error: error.reason }); return; }
+      console.error(`[media] photo copy fetch failed: ${describeError(error)}`);
+      res.status(502).json({ error: "manufacturer.unreachable" });
+    }
+  });
+  app.post("/api/media/copy/:imageId", express.raw({ type: ["image/webp", "image/jpeg"], limit: "1600kb" }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
+      if (!/^\d{1,9}$/.test(req.params.imageId)) { res.status(400).json({ error: "media.copyGone" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "media.notAnImage" }); return; }
+      const saved = await copyPhoto(await resolveActor(user), Number(req.params.imageId), new Uint8Array(req.body), req.headers["content-type"] ?? "");
+      res.status(201).json(saved);
+    } catch (error) {
+      if (error instanceof PhotoCopyRefused) { res.status(photoCopyStatus(error.reason)).json({ error: error.reason }); return; }
+      console.error(`[media] photo copy failed: ${describeError(error)}`);
+      res.status(500).json({ error: "media.failed" });
+    }
+  });
+
+  /**
    * A seller application document (3.3.1): a licence, a civil ID, a bank
    * letter. The body is the file; its kind and name ride in headers, the name
    * URI-encoded. The same reasons the photo upload above is safe from another
@@ -342,7 +391,12 @@ export function createApp(): Express {
       if (!found) { res.status(404).type("text/plain").send("Not found"); return; }
       res.set({
         "Content-Type": found.contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        /* A year in the browser, and a day in Vercel's CDN (`s-maxage`, which
+           is the only thing it reads): without it every new visitor's photos
+           were read out of Postgres by the function. A day, not a year, so a
+           photo taken back — a review's, a deleted product's — stops being
+           served within one. */
+        "Cache-Control": "public, max-age=31536000, s-maxage=86400, immutable",
         "Content-Length": String(found.bytes.length),
       });
       res.end(Buffer.from(found.bytes));

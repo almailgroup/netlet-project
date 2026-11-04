@@ -11,7 +11,7 @@
  */
 import { arabicTitleAvailable, draftArabicTitle } from "../services/arabicTitle.js";
 import { salesSummary } from "../services/salesSummary.js";
-import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, percentProblem, restockProblem } from "../../../Shared/inventory/productBulk.js";
+import { BRAND_MAX, BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, brandProblem, percentProblem, restockProblem } from "../../../Shared/inventory/productBulk.js";
 import { STOCK_REASONS } from "../../../Shared/inventory/stockMoves.js";
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../../Shared/inventory/storeProfile.js";
@@ -60,6 +60,7 @@ import {
   stockHistory,
   myStore,
   setProductAttributes,
+  setProductBrand,
   setProductDeliverySpeed,
   setProductSizeChart,
   setProductSizeClass,
@@ -446,6 +447,7 @@ export const inventoryRouter = router({
         status: z.enum(["draft", "pending_review", "published", "archived"]).optional(),
         categoryId: rowId.optional(),
         noDepartment: z.boolean().optional(),
+        offSitePhotos: z.boolean().optional(),
         stock: z.enum(["out", "low"]).optional(),
         page: z.number().int().min(1).max(100_000).optional(),
         pageSize: z.number().int().min(1).max(200).optional(),
@@ -810,11 +812,16 @@ export const inventoryRouter = router({
         amount: z.number().int().min(1).max(MAX_RESTOCK).optional(),
         /** For `department`: the department every product moves to. */
         categoryId: rowId.optional(),
+        /** For `brand`: the brand every product carries. */
+        brand: z.string().trim().max(BRAND_MAX).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         if (input.action === "department" && input.categoryId === undefined) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "admin.noSuchDepartment" });
+        }
+        if (input.action === "brand" && (input.brand === undefined || brandProblem(input.brand))) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "admin.bulkBrandInvalid" });
         }
         if (input.action === "reprice" && (input.percent === undefined || percentProblem(input.percent))) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "admin.bulkPercentInvalid" });
@@ -834,6 +841,7 @@ export const inventoryRouter = router({
                 case "reprice": return repriceProduct(actor, id, input.percent!);
                 /* The editor's own save, so its guard and its department check apply to each. */
                 case "department": return updateProduct(actor, id, { categoryId: input.categoryId! });
+                case "brand": return setProductBrand(actor, id, input.brand!);
                 case "restock": {
                   const product = await getProduct(actor, id);
                   if (!product) throw new Error("NOT_FOUND");

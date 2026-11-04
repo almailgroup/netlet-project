@@ -69,7 +69,7 @@ import { DEPARTMENT_QUESTIONS, MAX_DESCRIPTION as MAX_BRIEF_DESCRIPTION, MAX_QUE
 import { GATEWAY_ROUTES, MAX_CHAT_TEXT, MAX_CHAT_TURNS, MAX_IMAGES, MAX_NOTES } from "../../../Shared/ai/gateway.js";
 import { ADMIN_ONLY, COURIER_CAPABILITIES, GRANTABLE, NEEDS, RANK } from "../../../Shared/inventory/permissions.js";
 import { ADMIN_MENU } from "../../Web/src/content/adminMenu.js";
-import { BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT } from "../../../Shared/inventory/productBulk.js";
+import { BRAND_MAX, BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT } from "../../../Shared/inventory/productBulk.js";
 import { MAX_PHOTO_CHARS, PHOTO_MAX_EDGE } from "../../../Shared/commerce/photoSearch.js";
 import { FULFILMENT_STATES, nextStates } from "../../../Shared/commerce/fulfilment.js";
 import { MAX_BANK_REFERENCE } from "../../../Shared/commerce/payoutRuns.js";
@@ -322,7 +322,7 @@ export function buildResources(): Record<string, string> {
     "portal.json": json({ menu: ADMIN_MENU, ranks: RANK, needs: NEEDS, adminOnly: ADMIN_ONLY, courier: COURIER_CAPABILITIES,
       /* What an administrator may grant one account on its own (3.3.9). */
       grantable: GRANTABLE,
-      bulk: { actions: BULK_ACTIONS, limit: BULK_LIMIT, minPercent: MIN_PERCENT, maxPercent: MAX_PERCENT, maxRestock: MAX_RESTOCK },
+      bulk: { actions: BULK_ACTIONS, limit: BULK_LIMIT, minPercent: MIN_PERCENT, maxPercent: MAX_PERCENT, maxRestock: MAX_RESTOCK, maxBrand: BRAND_MAX },
       /* Where a line may move next (`nextStates`), so the desk offers only the
          moves the server would take; and the payout schedule's own days. */
       fulfilment: Object.fromEntries(FULFILMENT_STATES.map(state => [state, nextStates(state)])),

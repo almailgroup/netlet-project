@@ -41,14 +41,16 @@ import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
-import { Archive, FilePen, FolderInput, ImageOff, PackageCheck, PackagePlus, Percent, Search, Send, Trash2, Upload, X } from "lucide-react";
+import { Archive, FilePen, FolderInput, ImageDown, ImageOff, PackageCheck, PackagePlus, Percent, Search, Send, Tag, Trash2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Notice } from "@/components/admin/ui";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { isMessageKey } from "@shared/i18n/dictionary";
-import { percentProblem, restockProblem, scalePrice, type BulkAction } from "@shared/inventory/productBulk";
+import { BRAND_MAX, brandProblem, percentProblem, restockProblem, scalePrice, type BulkAction } from "@shared/inventory/productBulk";
+import { isOffSite } from "@shared/commerce/media";
+import { copyPhotosToNetlet, type CopyRun } from "@/lib/copyPhotos";
 import { Link, useLocation, useSearch } from "wouter";
 import { Select } from "@/components/ui/Select";
 
@@ -71,12 +73,19 @@ function ProductTable({ actor }: { actor: Actor }) {
   const [deleting, setDeleting] = useState<{ id: number; title: string } | null>(null);
   const [department, setDepartment] = useState("");
   const [stockFilter, setStockFilter] = useState<"" | "out" | "low">("");
+  /* "Photos on other sites": what "Copy photos to NetLet" is for. */
+  const [photoFilter, setPhotoFilter] = useState<"" | "offsite">("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulk, setBulk] = useState<BulkAction | null>(null);
   const [percent, setPercent] = useState("10");
   const [amount, setAmount] = useState("1");
   /* For "Move to department": the department chosen, by id. */
   const [moveTo, setMoveTo] = useState("");
+  /* For "Set brand": the name typed, started from the store's when every selected product is one store's. */
+  const [brand, setBrand] = useState("");
+  /* "Copy photos to NetLet": open, and how far a run has got. */
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copyProgress, setCopyProgress] = useState<{ done: number; total: number } | null>(null);
   const [refused, setRefused] = useState<{ id: number; title: string; reason: string }[]>([]);
   const categories = trpc.inventory.categories.useQuery();
 
@@ -99,11 +108,12 @@ function ProductTable({ actor }: { actor: Actor }) {
     {
       page, query: term || undefined, status: filter === "all" ? undefined : filter, vendorId: storeId,
       categoryId: Number(department) || undefined, noDepartment: department === "none" || undefined, stock: stockFilter || undefined,
+      offSitePhotos: photoFilter === "offsite" || undefined,
     },
     { placeholderData: previous => previous },
   );
   /* What is selected is what is on screen: a new page or filter starts again. */
-  useEffect(() => setSelected(new Set()), [page, term, filter, storeId, department, stockFilter]);
+  useEffect(() => setSelected(new Set()), [page, term, filter, storeId, department, stockFilter, photoFilter]);
   const utils = trpc.useUtils();
   const runBulk = trpc.inventory.products.bulk.useMutation({
     onSuccess: (result, input) => {
@@ -127,6 +137,8 @@ function ProductTable({ actor }: { actor: Actor }) {
   };
 
   const rows = products.data?.rows ?? [];
+  /* Any filter at all: an empty list then means nothing matches, not an empty shelf. */
+  const narrowed = Boolean(term || filter !== "all" || department || stockFilter || photoFilter);
   const ownVendor = actor.kind === "vendor" ? actor.vendorId : undefined;
   /* Always for an administrator, who reads every store's shelf; a seller's list is all theirs. */
   const showVendor = actor.kind === "admin" || new Set(rows.map(row => row.vendorId)).size > 1;
@@ -144,13 +156,40 @@ function ProductTable({ actor }: { actor: Actor }) {
   const allOnPage = rows.length > 0 && rows.every(row => selected.has(row.id));
   const percentValue = Number(percent.replace("−", "-"));
   const amountValue = Number(amount);
-  const fieldProblem = bulk === "reprice" ? percentProblem(percentValue) : bulk === "restock" ? restockProblem(amountValue) : bulk === "department" && !Number(moveTo) ? "admin.noSuchDepartment" : null;
+  const fieldProblem = bulk === "reprice" ? percentProblem(percentValue) : bulk === "restock" ? restockProblem(amountValue)
+    : bulk === "department" && !Number(moveTo) ? "admin.noSuchDepartment" : bulk === "brand" ? brandProblem(brand) : null;
+  /* The gallery photos of what is selected that still live on another site. */
+  const offSite = rows.filter(row => selected.has(row.id)).flatMap(row => row.images)
+    .filter(image => image.kind !== "video" && isOffSite(image.url)).map(image => image.id);
+  const openBrand = () => {
+    const stores = new Set(rows.filter(row => selected.has(row.id)).map(row => row.vendorName ?? ""));
+    const [only] = stores;
+    setBrand(stores.size === 1 && only ? only.slice(0, BRAND_MAX) : "");
+    setBulk("brand");
+  };
+  const runCopy = async () => {
+    setCopyProgress({ done: 0, total: offSite.length });
+    let run: CopyRun;
+    try {
+      run = await copyPhotosToNetlet(offSite, (done, total) => setCopyProgress({ done, total }));
+    } finally {
+      setCopyProgress(null);
+    }
+    setCopyOpen(false);
+    /* The copied ones may leave the list under "Photos on other sites"; a selection of rows not shown is a bar about nothing. */
+    setSelected(new Set());
+    if (run.copied) toast.success(t("admin.bulkPhotosDone", { count: run.copied }));
+    if (run.stoppedBy) toast.error(t(isMessageKey(run.stoppedBy) ? run.stoppedBy : "media.copyTooMany"));
+    else if (run.kept) toast.error(t("admin.bulkPhotosKept", { count: run.kept }));
+    void utils.inventory.products.list.invalidate();
+  };
   const confirmBulk = () => runBulk.mutate({
     ids: Array.from(selected),
     action: bulk!,
     ...(bulk === "reprice" ? { percent: percentValue } : {}),
     ...(bulk === "restock" ? { amount: amountValue } : {}),
     ...(bulk === "department" ? { categoryId: Number(moveTo) } : {}),
+    ...(bulk === "brand" ? { brand: brand.trim() } : {}),
   });
   const mayCreate = can(actor, "product.create", ownVendor);
 
@@ -178,8 +217,10 @@ function ProductTable({ actor }: { actor: Actor }) {
         ) : null}
       />
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="relative min-w-0 flex-1">
+      {/* Wraps from lg: six filters and the status row no longer fit one
+          line, and squeezed into one the search box was a sliver. */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+        <div className="relative min-w-0 flex-1 lg:min-w-[18rem]">
           <Search className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 ink-muted" aria-hidden />
           <input
             type="search"
@@ -222,6 +263,15 @@ function ProductTable({ actor }: { actor: Actor }) {
           <option value="low">{t("admin.stockLow")}</option>
           <option value="out">{t("admin.stockOut")}</option>
         </Select>
+        <Select
+          value={photoFilter}
+          onChange={event => { setPhotoFilter(event.target.value as "" | "offsite"); setPage(1); }}
+          aria-label={t("admin.filterPhotos")}
+          className={`${fieldClass} lg:w-52`}
+        >
+          <option value="">{t("admin.photosAny")}</option>
+          <option value="offsite">{t("admin.photosOffSite")}</option>
+        </Select>
         {/* A segmented control rather than a dropdown: five states read at a
             glance, and the one in force is visible without opening anything. */}
         <div role="group" aria-label={t("admin.filterStatus")} className="hide-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-[#eef1f5] p-1">
@@ -247,6 +297,8 @@ function ProductTable({ actor }: { actor: Actor }) {
           <button type="button" onClick={() => setBulk("draft")} className={buttonClass.secondary}><FilePen className="size-4" aria-hidden />{t("admin.bulkDraft")}</button>
           <button type="button" onClick={() => setBulk("reprice")} className={buttonClass.secondary}><Percent className="size-4" aria-hidden />{t("admin.bulkReprice")}</button>
           <button type="button" onClick={() => setBulk("department")} className={buttonClass.secondary}><FolderInput className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.bulkDepartment")}</button>
+          <button type="button" onClick={openBrand} className={buttonClass.secondary}><Tag className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.bulkBrand")}</button>
+          <button type="button" onClick={() => setCopyOpen(true)} className={buttonClass.secondary}><ImageDown className="size-4" aria-hidden />{t("admin.bulkPhotos")}</button>
           {can(actor, "stock.adjust", ownVendor) ? (
             <button type="button" onClick={() => setBulk("restock")} className={buttonClass.secondary}><PackageCheck className="size-4" aria-hidden />{t("admin.bulkRestock")}</button>
           ) : null}
@@ -270,8 +322,8 @@ function ProductTable({ actor }: { actor: Actor }) {
           <QueryGate queries={[products]}>{() => null}</QueryGate>
         ) : rows.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-6 py-14 text-center">
-            <p className="text-[15px] font-bold text-[#0a285a]">{t(term || filter !== "all" ? "admin.noMatches" : "admin.noProducts")}</p>
-            {!term && filter === "all" ? (
+            <p className="text-[15px] font-bold text-[#0a285a]">{t(narrowed ? "admin.noMatches" : "admin.noProducts")}</p>
+            {!narrowed ? (
               <>
                 <p className="mx-auto mt-2 max-w-xs text-[14px] leading-6 text-[#536b8c]">{t("admin.noProductsNote")}</p>
                 {mayCreate ? (
@@ -423,9 +475,10 @@ function ProductTable({ actor }: { actor: Actor }) {
             : bulk === "draft" ? t("admin.bulkDraftTitle", { count: selected.size })
             : bulk === "reprice" ? t("admin.bulkRepriceTitle", { count: selected.size })
             : bulk === "department" ? t("admin.bulkDepartmentTitle", { count: selected.size })
+            : bulk === "brand" ? t("admin.bulkBrandTitle", { count: selected.size })
             : t("admin.bulkRestockTitle", { count: selected.size })
         }
-        body={bulk === "reprice" ? t("admin.bulkRepriceBody") : bulk === "restock" ? t("admin.bulkRestockBody") : bulk === "department" ? t("admin.bulkDepartmentBody") : t("admin.bulkStatusBody")}
+        body={bulk === "reprice" ? t("admin.bulkRepriceBody") : bulk === "restock" ? t("admin.bulkRestockBody") : bulk === "department" ? t("admin.bulkDepartmentBody") : bulk === "brand" ? t("admin.bulkBrandBody") : t("admin.bulkStatusBody")}
         confirmLabel={bulk === "publish" ? t("admin.publish") : bulk === "archive" ? t("admin.bulkArchive") : bulk === "draft" ? t("admin.bulkDraft") : t("admin.bulkApply")}
         pending={runBulk.isPending}
         confirmDisabled={fieldProblem !== null}
@@ -453,6 +506,36 @@ function ProductTable({ actor }: { actor: Actor }) {
               <option value="" disabled>{t("admin.bulkDepartmentPick")}</option>
               {(categories.data ?? []).map(category => <option key={category.id} value={category.id}>{departmentName(category.name)}</option>)}
             </Select>
+          </div>
+        ) : bulk === "brand" ? (
+          <label className="block">
+            <span className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.bulkBrandName")}</span>
+            <input dir="auto" value={brand} maxLength={BRAND_MAX} onChange={event => setBrand(event.target.value)} aria-invalid={fieldProblem !== null && brand.trim() !== ""} aria-describedby="bulk-brand-hint" className={`${fieldClass} mt-1.5`} />
+            <span id="bulk-brand-hint" className={`mt-1.5 block text-[12px] leading-5 ${fieldProblem && brand.trim() ? "text-[#8c2f22]" : "ink-muted"}`}>
+              {fieldProblem && brand.trim() ? t(fieldProblem) : t("admin.bulkBrandHint")}
+            </span>
+          </label>
+        ) : null}
+      </ConfirmDialog>
+
+      {/* Its own dialog, because it is a run in this browser rather than one
+          request: it says how far it has got and cannot be put down mid-run. */}
+      <ConfirmDialog
+        open={copyOpen}
+        title={t("admin.bulkPhotosTitle", { count: offSite.length })}
+        body={offSite.length ? t("admin.bulkPhotosBody") : t("admin.bulkPhotosNone")}
+        confirmLabel={t("admin.bulkPhotos")}
+        pending={copyProgress !== null}
+        confirmDisabled={offSite.length === 0}
+        onClose={() => { if (!copyProgress) setCopyOpen(false); }}
+        onConfirm={() => { void runCopy(); }}
+      >
+        {copyProgress ? (
+          <div>
+            <p role="status" className="text-[13px] font-semibold text-[#0a285a]">{t("admin.bulkPhotosProgress", { done: copyProgress.done, total: copyProgress.total })}</p>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e6e9ef]" aria-hidden>
+              <div className="h-full rounded-full bg-[#0a285a] transition-[width]" style={{ width: `${copyProgress.total ? Math.round((copyProgress.done / copyProgress.total) * 100) : 0}%` }} />
+            </div>
           </div>
         ) : null}
       </ConfirmDialog>
