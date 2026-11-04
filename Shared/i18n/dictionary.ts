@@ -4217,6 +4217,7 @@ export const en = {
   "auth.emailTaken": "That email is already registered.",
   "auth.invalidCredentials": "Email or password is incorrect.",
   "auth.tooManyAttempts": "Too many attempts. Wait a few minutes and try again.",
+  "error.tooManyRequests": "That was a lot of requests at once. Wait a moment and try again.",
 
   // --- checkout ------------------------------------------------------
   "checkout.heading": "Checkout",
@@ -8641,6 +8642,7 @@ export const ar: Record<MessageKey, string> = {
   "auth.emailTaken": "هذا البريد الإلكتروني مسجّل بالفعل.",
   "auth.invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
   "auth.tooManyAttempts": "محاولات كثيرة. انتظر بضع دقائق ثم أعد المحاولة.",
+  "error.tooManyRequests": "طلبات كثيرة في وقت واحد. انتظر لحظة ثم أعد المحاولة.",
 
   // --- checkout ------------------------------------------------------
   "checkout.heading": "إتمام الطلب",

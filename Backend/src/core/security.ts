@@ -8,7 +8,7 @@
 import compression from "compression";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
-import type { Express, RequestHandler } from "express";
+import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
 import { ENV } from "./env.js";
 import { COOKIE_NAME } from "../../../Shared/const.js";
 import { MAP_TILE_ORIGIN } from "../../../Shared/commerce/geo.js";
@@ -99,12 +99,59 @@ const CONTENT_SECURITY_POLICY = {
  * on for credential guessing, which `Backend/src/services/rateLimit.ts` counts in Postgres
  * where every instance can see it.
  */
+/** Which ceiling a request is over, written on it for `createContext` to read. */
+export type Throttled = "auth" | "api";
+type Marked = { netletThrottled?: Throttled };
+
+export function throttledAs(req: unknown): Throttled | undefined {
+  return (req as Marked).netletThrottled;
+}
+
+/**
+ * What a request over a ceiling is answered with. **The API's own refusal,
+ * never the limiter's**: the limiter answered in plain text ("Too many
+ * requests…") and the site's client could read none of it, so a shopper
+ * browsing quickly — or one of many behind a mobile network's one address —
+ * met "Unexpected token 'T'… is not valid JSON" where a sentence belonged,
+ * and a page that drew it as a failure. Found by the browser sweep, which
+ * browses as quickly as anybody. A tRPC request is marked and passed on, and
+ * the base procedure refuses it as `TOO_MANY_REQUESTS` with a message key, in
+ * the shape a batch and a stream both read; `createContext` skips the session
+ * lookup for it, so a flood still costs no database read. Anything else is
+ * answered here, as JSON with a key.
+ */
+const overCeiling = (kind: Throttled) => (req: Request, res: Response, next: NextFunction) => {
+  if (req.originalUrl.startsWith("/api/trpc")) {
+    const marked = req as Marked;
+    marked.netletThrottled = marked.netletThrottled ?? kind;
+    next();
+    return;
+  }
+  res.status(429).json({ error: kind === "auth" ? "auth.tooManyAttempts" : "error.tooManyRequests" });
+};
+
 export const authRateLimit: RequestHandler = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { error: "Too many sign-in attempts. Try again in a few minutes." },
+  handler: overCeiling("auth"),
+});
+
+/**
+ * Signing in, counted on failures alone — the Postgres throttle's rule
+ * (`rateLimit.ts`). Counting every sign-in meant twenty people signing in
+ * correctly from one office, or one mobile network's shared address, locked
+ * the next one out for a quarter of an hour; a wrong password is what a
+ * guessing attack is made of, and only that is counted now.
+ */
+export const signInRateLimit: RequestHandler = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  handler: overCeiling("auth"),
 });
 
 /** A far looser ceiling for everything else, to blunt scraping and floods. */
@@ -113,6 +160,7 @@ export const apiRateLimit: RequestHandler = rateLimit({
   limit: 300,
   standardHeaders: "draft-7",
   legacyHeaders: false,
+  handler: overCeiling("api"),
   // Signed-in shoppers get their own bucket, so one busy office network does
   // not throttle everyone behind it.
   keyGenerator: (req) => {

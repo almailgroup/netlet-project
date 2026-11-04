@@ -16,7 +16,7 @@ import express, { type Express } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routes/index.js";
 import { createContext } from "./context.js";
-import { applySecurity, apiRateLimit, authRateLimit } from "./security.js";
+import { applySecurity, apiRateLimit, authRateLimit, signInRateLimit } from "./security.js";
 import { appleMapToken } from "./maps.js";
 import { sql } from "drizzle-orm";
 import { describeError } from "./describeError.js";
@@ -536,7 +536,7 @@ export function createApp(): Express {
     }
   });
 
-  app.use("/api/trpc/auth.login", authRateLimit);
+  app.use("/api/trpc/auth.login", signInRateLimit);
   app.use("/api/trpc/auth.register", authRateLimit);
   app.use("/api/trpc/auth.verifyEmail", authRateLimit);
   app.use("/api/trpc/auth.resendCode", authRateLimit);

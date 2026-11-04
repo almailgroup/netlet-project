@@ -127,8 +127,20 @@ const refuseSwitchedOff = t.middleware(async ({ path, next }) => {
   return next();
 });
 
-/** Every procedure starts here, so every procedure refuses a NUL and a switched-off entry. */
-const base = t.procedure.use(refuseNul).use(refuseSwitchedOff);
+/**
+ * A request over one of `security.ts`'s ceilings, refused in the API's own
+ * shape with a key the page says in words — the limiter's plain-text answer
+ * was unreadable to the client. First, so nothing else runs for it.
+ */
+const refuseThrottled = t.middleware(({ ctx, next }) => {
+  if (ctx.throttled) {
+    throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: ctx.throttled === "auth" ? "auth.tooManyAttempts" : "error.tooManyRequests" });
+  }
+  return next();
+});
+
+/** Every procedure starts here, so every procedure refuses a flood, a NUL and a switched-off entry. */
+const base = t.procedure.use(refuseThrottled).use(refuseNul).use(refuseSwitchedOff);
 
 export const publicProcedure = base;
 

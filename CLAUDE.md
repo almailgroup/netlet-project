@@ -617,6 +617,22 @@ many are warm and it resets whenever one recycles. `Backend/src/services/rateLim
 in a table every instance shares, and `Shared/auth/rateLimit.ts` is the policy,
 pure.
 
+**A request over the coarse ceiling is the API's own refusal, never the
+limiter's.** The limiter answered in plain text ("Too many requests…"), which
+the site's client cannot read, so somebody browsing quickly — or one of many
+shoppers behind a mobile network's one address — met "Unexpected token 'T'…
+is not valid JSON" and a page drawn as a failure; the browser sweep found it
+by browsing as fast as anybody. Now the limiter marks a tRPC request
+(`overCeiling` in `Backend/src/core/security.ts`), `createContext` skips the
+session lookup for it, and the base procedure refuses it as
+`TOO_MANY_REQUESTS` with `error.tooManyRequests` (sign-in's ceiling:
+`auth.tooManyAttempts`), in the shape both the stream and the batch read; a
+route outside the API gets the key as JSON. **Signing in counts failures
+alone there too** (`signInRateLimit`, `skipSuccessfulRequests`), the Postgres
+rule: counting every sign-in let twenty people signing in correctly from one
+office lock the next out for a quarter of an hour. `throttle.test.ts` drives
+it through the site's own links.
+
 Two keys, because each catches what the other cannot see: by address alone, one
 office NAT hitting the ceiling locks out the whole building; by account alone,
 nothing stops one host spraying a common password across a thousand addresses.
