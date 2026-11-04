@@ -30,6 +30,18 @@ jobs:
           curl -sS -m 30 "$BASE/api/healthz"; echo
           curl -sS -m 30 "$BASE/api/readyz"; echo
 
+      # The function's answers, not the page: the portal's addresses say
+      # Disallow and have no sitemap, once PORTAL_DOMAIN is set and they answer.
+      - name: robots.txt and sitemap.xml
+        run: |
+          host=$(printf '%s' "$BASE" | sed -E 's#^https?://##; s#/.*$##; s#^www\.##')
+          for origin in "$BASE" "https://admin.$host" "https://vendor.$host"; do
+            for file in robots.txt sitemap.xml; do
+              curl -sS -m 30 -o body.txt -w "$origin/$file: HTTP %{http_code}, %{content_type}\n" "$origin/$file" || { echo "$origin/$file: no answer"; continue; }
+              head -c 300 body.txt; echo
+            done
+          done
+
       - name: The catalogue, as the app asks for it
         run: |
           for locale in en ar; do
