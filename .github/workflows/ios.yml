@@ -213,6 +213,8 @@ jobs:
             shot 80-order-help-issue "$lang" helpIssue:NL-20261001-J7MWY shopper
             shot 81-help-centre "$lang" page:help shopper
             shot 82-history "$lang" section:history shopper
+            # Your profile, with its photo card first (the shop keeps photos in the recording).
+            shot 83-your-profile "$lang" profile shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is
