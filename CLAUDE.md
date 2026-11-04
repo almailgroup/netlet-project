@@ -7164,9 +7164,10 @@ help with it, recovery by code — in both languages, then 875 KB (255 KB),
 Frequently bought's words in both languages, then 879 KB (256 KB), the App
 Store badge and its window, then 881 KB (256 KB), the app link under the
 cart and the confirmation's words, then 887 KB (258 KB), the product
-codes' words in both languages, and is 912 KB (265 KB) now, the help
+codes' words in both languages, then 912 KB (265 KB), the help
 centre's, the notification groups' and the browsing history's words in both
-languages, nearly
+languages, and is 925 KB (268 KB) now, the new sign-in, the portal's own
+addresses and the profile photo, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
