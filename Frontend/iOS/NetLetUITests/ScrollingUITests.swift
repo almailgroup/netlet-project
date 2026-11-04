@@ -123,29 +123,54 @@ final class ScrollingUITests: XCTestCase {
         for point in points { drag(app, x: point.dx, from: point.dy) }
         let now = frame(of: top)?.minY
         let moved = now.map { $0 < start - distance } ?? true
-        if !moved { keepScreenshot(app) }
-        XCTAssertTrue(moved, "Three drags left the page where it was (top at \(start), now \(now ?? -1)). \(moved ? "" : surroundings(app, at: points))", file: file, line: line)
+        guard !moved else { return }
+        keepScreenshot(app)
+        let seen = surroundings(app, at: points)
+        // Once more after a pause: a page that moves now was not ready for the
+        // first three; one that still does not is not taking drags at all.
+        sleep(5)
+        drag(app, x: 0.5, from: 0.6)
+        let later = frame(of: top).map { "top at \($0.minY)" } ?? "top gone off the screen"
+        XCTFail("Three drags left the page where it was (top at \(start), now \(now ?? -1)). A fourth, five seconds later: \(later). \(seen)", file: file, line: line)
     }
 
-    /// What was in the way, for a failure to say why a page did not move: a
-    /// system alert or a sheet over the app, and the named elements under each
-    /// point a drag started from, innermost last. The Arabic home page once
-    /// stood still under three drags in one run and moved in every other, and
-    /// a failure that says only "it did not move" cannot be told apart from
-    /// one that will happen on a phone.
+    /// What was in the way, for a failure to say why a page did not move. The
+    /// Arabic home page stood still under three drags in runs 171 and 173 and
+    /// moved in every other, with nothing *named* under any of the points —
+    /// which cannot tell a page whose shelves had not arrived from a drag that
+    /// never reached the scroll. So it says: a system alert, an alert or a
+    /// sheet over the app, a keyboard, every page-top and page-foot marker
+    /// drawn (a second top would be read in place of this page's and never
+    /// move; a foot on the screen is a page too short to scroll), the tall
+    /// scroll views and their frames, and every element under each point,
+    /// named or not, innermost last.
     private func surroundings(_ app: XCUIApplication, at points: [CGVector]) -> String {
         var notes: [String] = []
         let system = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.allElementsBoundByIndex.map(\.label)
         if !system.isEmpty { notes.append("system alert up: \(system.joined(separator: ", "))") }
         if app.alerts.count > 0 { notes.append("an alert is up") }
         if app.sheets.count > 0 { notes.append("a sheet is up") }
+        if app.keyboards.count > 0 { notes.append("a keyboard is up") }
         guard let root = try? app.snapshot() else { return notes.joined(separator: "; ") }
+        // Every marker, not the first: a second page drawn somewhere with its
+        // own top would be read in this one's place and never move.
+        for name in ["page-top", "page-foot"] {
+            var places: [CGRect] = []
+            gather(root, identifier: name, into: &places)
+            let ys = places.map { String(Int($0.minY)) }.joined(separator: ", ")
+            let drawn = places.isEmpty ? "not drawn" : "\(places.count) at y " + ys
+            notes.append("\(name): \(drawn) on a screen \(Int(root.frame.height)) tall")
+        }
+        var scrolls: [CGRect] = []
+        gather(root, type: .scrollView, into: &scrolls)
+        let tall = scrolls.filter { $0.height > 300 }.map { "\(Int($0.minX)),\(Int($0.minY)) \(Int($0.width))×\(Int($0.height))" }
+        notes.append("tall scroll views: \(tall.isEmpty ? "none" : tall.joined(separator: " | "))")
         let size = root.frame.size
         for point in points {
             let at = CGPoint(x: size.width * point.dx, y: size.height * point.dy)
             var found: [String] = []
             collect(root, containing: at, into: &found)
-            notes.append("under (\(Int(at.x)), \(Int(at.y))): \(found.suffix(4).joined(separator: " > "))")
+            notes.append("under (\(Int(at.x)), \(Int(at.y))): \(found.suffix(7).joined(separator: " > "))")
         }
         return notes.joined(separator: "; ")
     }
@@ -153,8 +178,41 @@ final class ScrollingUITests: XCTestCase {
     private func collect(_ node: XCUIElementSnapshot, containing point: CGPoint, into found: inout [String]) {
         guard node.frame.contains(point) else { return }
         let name = [node.identifier, node.label].filter { !$0.isEmpty }.joined(separator: " / ")
-        if !name.isEmpty { found.append(String(name.prefix(40))) }
+        let kind = Self.kind(node.elementType)
+        found.append(name.isEmpty ? kind : "\(kind) “\(String(name.prefix(32)))”")
         for child in node.children { collect(child, containing: point, into: &found) }
+    }
+
+    private func gather(_ node: XCUIElementSnapshot, type: XCUIElement.ElementType, into found: inout [CGRect]) {
+        if node.elementType == type { found.append(node.frame) }
+        for child in node.children { gather(child, type: type, into: &found) }
+    }
+
+    private func gather(_ node: XCUIElementSnapshot, identifier: String, into found: inout [CGRect]) {
+        if node.identifier == identifier { found.append(node.frame) }
+        for child in node.children { gather(child, identifier: identifier, into: &found) }
+    }
+
+    /// A short word for an element's type, for a failure message.
+    private static func kind(_ type: XCUIElement.ElementType) -> String {
+        switch type {
+        case .application: return "app"
+        case .window: return "window"
+        case .scrollView: return "scroll"
+        case .collectionView: return "collection"
+        case .cell: return "cell"
+        case .button: return "button"
+        case .staticText: return "text"
+        case .image: return "image"
+        case .keyboard: return "keyboard"
+        case .key: return "key"
+        case .textField: return "field"
+        case .searchField: return "search"
+        case .sheet: return "sheet"
+        case .tabBar: return "tabBar"
+        case .other: return "other"
+        default: return "type\(type.rawValue)"
+        }
     }
 
     /// The screen as the failure found it, kept with the run's results.

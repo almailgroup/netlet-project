@@ -7909,11 +7909,16 @@ The top and the foot are markers (`PageTopMarker`, `PageFootMarker`) drawn
 only under `-NetLetUITest` in a Debug build. It runs in the iOS workflow's
 tests, so a page that stops scrolling fails CI before it reaches TestFlight.
 **A drag that moves nothing says what was in the way**: the Arabic home page
-stood still under three drags in one run (171) and moved in every run before
-it, so the failure now names a system alert or a sheet over the app and the
-named elements under each point a drag started from, and keeps a screenshot
-with the run's results — a session here can read the message but not the
-artifact.
+stood still under three drags in runs 171 and 173 (exactly where it started,
+184 points down, both times) and moved in every run before them, and the
+first diagnosis — the *named* elements under each point — found none, which
+cannot tell shelves that had not arrived from a drag that never reached the
+scroll. So the failure now says a system alert, an alert, a sheet or a
+keyboard over the app, where the page's foot is (on the screen means the page
+was too short to scroll), the tall scroll views' frames, every element under
+each point by type, named or not, and whether a fourth drag five seconds
+later moved it; it keeps a screenshot with the run's results — a session here
+can read the message but not the artifact.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the
