@@ -2232,10 +2232,15 @@ shelves and the URL cache (`StorageCard`, `ImagePipeline.clear`,
 `ShelfMemory.forget`) — never the session, the bag, the language or the
 history, which have their own controls; and **Rate our app, in the app alone**
 (`RateAppCard`): Apple's own rating window (`requestReview`), which iOS shows
-only for a copy from the App Store, so a TestFlight or Xcode build
-(`AppTransaction`'s environment) says the rating opens once NetLet is on the
-App Store instead of offering a press that would show nothing. The web and
-Android have none.
+only for a copy from the App Store, so a TestFlight or Xcode build says the
+rating opens once NetLet is on the App Store instead of offering a press that
+would show nothing. **Which copy it is is read without asking StoreKit**
+(`fromAppStore`: a Debug or simulator build, or a TestFlight copy's
+`sandboxReceipt`): it asked `AppTransaction.shared`, which on a phone holding
+no transaction for the app puts up the system's "Sign in to Apple Account"
+prompt as Preferences opens — the CI's pictures carried it over every screen
+taken after that one, the Arabic sign-in among them. The web and Android have
+none.
 
 **Account security is the password and deleting the account, and nothing
 else, on the owner's word** (`SecurityCards` on the web, `AccountSecurityView`

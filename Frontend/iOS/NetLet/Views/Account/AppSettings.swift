@@ -167,16 +167,23 @@ struct RateAppCard: View {
                 .buttonStyle(SecondaryButtonStyle())
             }
         }
-        .task { onStore = await Self.fromAppStore() }
+        .onAppear { onStore = Self.fromAppStore() }
     }
 
-    /// Whether this copy came from the App Store, not TestFlight or Xcode.
-    static func fromAppStore() async -> Bool {
-        guard let result = try? await AppTransaction.shared else { return false }
-        switch result {
-        case .verified(let transaction): return transaction.environment == .production
-        case .unverified: return false
-        }
+    /// Whether this copy came from the App Store, not TestFlight or Xcode —
+    /// read without asking StoreKit. `AppTransaction.shared` was the first
+    /// answer, and on a phone holding no transaction for the app (an Xcode
+    /// build, the simulator) it puts up the system's "Sign in to Apple
+    /// Account" prompt the moment Preferences opens: the CI's pictures had it
+    /// over every screen taken after that one. A release build reaches a
+    /// phone only through TestFlight or the App Store, and TestFlight's
+    /// carries a sandbox receipt.
+    static func fromAppStore() -> Bool {
+        #if DEBUG || targetEnvironment(simulator)
+        return false
+        #else
+        return Bundle.main.appStoreReceiptURL?.lastPathComponent != "sandboxReceipt"
+        #endif
     }
 }
 
