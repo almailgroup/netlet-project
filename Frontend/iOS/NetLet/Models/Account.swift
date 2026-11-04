@@ -75,6 +75,15 @@ struct Acknowledged: Decodable, Sendable {
     init() {}
 }
 
+/// The account's profile photo (`customer.photo.get`,
+/// `Shared/commerce/profilePhoto.ts`): where to read it, and whether the shop
+/// keeps one yet — `ready` is false until migration 0076 is run, and nothing
+/// is offered then. Shown to its owner alone.
+struct ProfilePhotoInfo: Decodable, Equatable, Sendable {
+    let ready: Bool
+    let url: String?
+}
+
 /// "Your profile"'s details beyond the sign-in email and the password
 /// (`customer.details.get`, `Shared/commerce/profileDetails.ts`). Everything
 /// is optional and none of it is shown to a store; the phone is what checkout

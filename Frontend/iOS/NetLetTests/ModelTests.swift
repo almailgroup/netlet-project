@@ -976,3 +976,65 @@ final class ReviewMathTests: XCTestCase {
         XCTAssertEqual(ReviewMath.percent([:], count: 0), [1: 0, 2: 0, 3: 0, 4: 0, 5: 0])
     }
 }
+
+/// The profile photo (`Shared/commerce/profilePhoto.ts`): a square made on the
+/// phone, shown once saved, forgotten at sign-out.
+@MainActor
+final class ProfilePhotoTests: XCTestCase {
+    private func picture(_ width: CGFloat, _ height: CGFloat) -> UIImage {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: CGSize(width: width, height: height), format: format).image { context in
+            UIColor.orange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        }
+    }
+
+    func testAPhotoIsMadeTheSquareTheServerTakes() throws {
+        let wide = try ImagePreparation.squareJPEG(from: picture(800, 600), edge: 512, minEdge: 300, maxBytes: 400_000)
+        let read = try XCTUnwrap(UIImage(data: wide.data))
+        XCTAssertEqual(read.size.width * read.scale, 512)
+        XCTAssertEqual(read.size.height * read.scale, 512)
+        XCTAssertLessThanOrEqual(wide.data.count, 400_000)
+        // A small picture is drawn up to the upload floor rather than refused.
+        let small = try ImagePreparation.squareJPEG(from: picture(200, 120), edge: 512, minEdge: 300, maxBytes: 400_000)
+        let smallRead = try XCTUnwrap(UIImage(data: small.data))
+        XCTAssertEqual(smallRead.size.width * smallRead.scale, 300)
+        XCTAssertEqual(smallRead.size.height * smallRead.scale, 300)
+    }
+
+    func testThePhotoIsShownSavedRemovedAndForgottenAtSignOut() async throws {
+        let account = FakeAccountService()
+        account.photo = ProfilePhotoInfo(ready: true, url: "/api/profile/photo/2?v=1")
+        account.photoBytes["/api/profile/photo/2?v=1"] = picture(512, 512).jpegData(compressionQuality: 0.8)
+        let model = ProfilePhotoModel(account: account)
+        await model.load()
+        XCTAssertTrue(model.ready)
+        XCTAssertTrue(model.hasPhoto)
+        XCTAssertNotNil(model.image)
+
+        let square = try ImagePreparation.squareJPEG(from: picture(640, 640), edge: 512, minEdge: 300, maxBytes: 400_000)
+        try await model.save(square)
+        XCTAssertEqual(account.photoUploads.count, 1)
+        XCTAssertTrue(model.hasPhoto)
+        XCTAssertNotNil(model.image, "shown at once, without asking for it back")
+
+        try await model.remove()
+        XCTAssertFalse(model.hasPhoto)
+        XCTAssertNil(model.image)
+
+        await model.load()
+        model.signedOut()
+        XCTAssertFalse(model.ready)
+        XCTAssertNil(model.image)
+    }
+
+    func testNothingIsOfferedBeforeTheShopKeepsPhotos() async {
+        let account = FakeAccountService()
+        account.photo = ProfilePhotoInfo(ready: false, url: nil)
+        let model = ProfilePhotoModel(account: account)
+        await model.load()
+        XCTAssertFalse(model.ready)
+        XCTAssertFalse(model.hasPhoto)
+    }
+}

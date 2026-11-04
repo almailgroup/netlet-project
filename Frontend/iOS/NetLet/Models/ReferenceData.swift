@@ -247,6 +247,9 @@ struct Rules: Decodable, Sendable {
         let maxReviewPhotos: Int
         /// How many reviews a product page asks for at a time (`REVIEW_PAGE`).
         let reviewPage: Int
+        /// The square a profile photo is made at, and what it may weigh (`profilePhoto.ts`).
+        let profilePhotoEdge: Int
+        let maxProfilePhotoBytes: Int
         /// How long a product link keeps counting after it is opened (3.7).
         let productLinkDays: Int
         let minAffiliatePayoutFils: Int
@@ -277,7 +280,7 @@ struct Rules: Decodable, Sendable {
             moneyParams: ["price", "amount", "total"],
             supportTopics: ["order", "delivery", "return", "payment", "account", "other"],
             maxSupportMessage: 2000, maxOpenConversations: 5, ratingMax: 5, maxReviewTitle: 120, maxReviewBody: 2000,
-            maxReviewPhotos: 4, reviewPage: 10,
+            maxReviewPhotos: 4, reviewPage: 10, profilePhotoEdge: 512, maxProfilePhotoBytes: 400_000,
             productLinkDays: 30, minAffiliatePayoutFils: 5000, minCashOutPoints: 1000, maxLists: 12, maxListItems: 200,
             claimHoldDays: 14, askWindowDays: 7, offerWindowDays: 3, maxOfferNote: 400,
             subscriptionIntervals: [1, 2, 4, 8]

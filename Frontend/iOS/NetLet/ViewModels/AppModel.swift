@@ -153,6 +153,8 @@ final class AppModel {
     let language: LanguageSettings
     let session: SessionModel
     let cart: CartModel
+    /// The account's profile photo, drawn on the Profile tab and "Your profile".
+    let profilePhoto: ProfilePhotoModel
     let saved: SavedModel
     /// What this phone looked at lately, for the home page's "Previously viewed" and the picks.
     let viewed: RecentlyViewed
@@ -308,6 +310,7 @@ final class AppModel {
         self.isDemo = isDemo
         session = SessionModel(account: services.account)
         cart = CartModel(service: services.cart, defaults: cartDefaults)
+        profilePhoto = ProfilePhotoModel(account: services.account)
         saved = SavedModel(account: services.account, defaults: cartDefaults)
         viewed = RecentlyViewed(defaults: cartDefaults)
         shelf = HomeShelf(catalog: services.catalog, warm: HomeShelf.warmPhotos(resolve: services.configuration.resolve))
@@ -709,6 +712,7 @@ final class AppModel {
         affiliateJoined = nil
         signals.clear()
         delivery.signedOut()
+        profilePhoto.signedOut()
         await session.signOut()
         cart.forget()
         saved.signedOut()

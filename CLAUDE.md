@@ -2315,6 +2315,35 @@ still writes the display name, and only the new fields refuse
 (`error.serverProblem`). `profileDetails.test.ts` drops the table and checks
 all three.
 
+**A profile photo, on the owner's word** ("users can set profile picture for
+their profiles"; migration 0076, `profile_photos`; `Shared/commerce/profilePhoto.ts`
+the rule, `Backend/src/services/profilePhoto.ts` the database half). It is the
+circle wherever the account is named to its owner — the account home's card,
+the header's account control and "Your profile" (`ProfileAvatar`, the app's
+`ProfileAvatar`) — and the initials where there is none, or where it cannot be
+read. **It is shown to its owner and nobody else**, so it is never under
+`/media`, where every file is public under a random id and kept by the CDN for
+a day: it is a row of its own holding the bytes, read from
+`GET /api/profile/photo/<id>?v=<version>`, which answers only the account the
+path names (anybody else gets the same 404 as an account with none), as
+`private, no-cache` with the version as its ETag — the browser keeps a copy
+but asks each time, so the cookie is checked on every use and the next person
+on a shared device never sees it. It goes with the account by the cascade.
+**Chosen on "Your profile"** (`ProfilePhotoCard`, the app's the same): the
+browser's or the phone's own picker, the largest square from the centre at
+`PROFILE_PHOTO_EDGE` (512) made on the device (`prepareProfilePhoto`,
+`ImagePreparation.squareJPEG`) and shown in the circle before anything is sent,
+and Save sends it to `POST /api/media/profile` — the page's rule that each card
+is its own decision; Remove asks first. The server reads what it is from its
+own bytes, checks the square again (`profilePhotoProblem`) and counts
+`MAX_PROFILE_PHOTOS_PER_HOUR` only once the bytes have passed. **Until 0076 is
+pasted it is closed, not broken**: `customer.photo.get` answers `ready: false`,
+the card is not drawn and the circle is the initials, and a save says
+`profilePhoto.unavailable` without spending the hour (`profilePhoto.test.ts`
+renames the table away). The app keeps the picture in memory only, never in
+the image pipeline's disk cache, and forgets it at sign-out
+(`ProfilePhotoModel`). The privacy policy says it, and `LEGAL_UPDATED` moved.
+
 A section the account does not have — selling for somebody who does not sell,
 a switched-off programme they never joined, or a typo — goes back to the home
 rather than drawing an empty page. Signed out, every account address is the

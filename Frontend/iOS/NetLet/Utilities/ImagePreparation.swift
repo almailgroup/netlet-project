@@ -43,4 +43,33 @@ enum ImagePreparation {
         guard let smallest = drawn.jpegData(compressionQuality: 0.35) else { throw Problem.unreadable }
         return smallest
     }
+
+    /// A profile photo (`Shared/commerce/profilePhoto.ts`): the largest square
+    /// the picture holds, from its centre, at `edge` — or the picture's own
+    /// size when smaller, never under the upload floor, so a small picture is
+    /// drawn up rather than refused — under `maxBytes` as JPEG. The web's
+    /// `prepareProfilePhoto`; the server checks the square again.
+    static func squareJPEG(from image: UIImage, edge: Int, minEdge: Int, maxBytes: Int) throws -> (data: Data, image: UIImage) {
+        let width = image.size.width * image.scale
+        let height = image.size.height * image.scale
+        let side = min(width, height)
+        guard side > 0 else { throw Problem.unreadable }
+        let target = CGFloat(max(minEdge, min(Int(side.rounded(.down)), edge)))
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let factor = target / side
+        let drawn = UIGraphicsImageRenderer(size: CGSize(width: target, height: target), format: format).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: target, height: target))
+            // Drawn upright (`draw(in:)` honours the photo's orientation), centred on the square.
+            image.draw(in: CGRect(x: (target - width * factor) / 2, y: (target - height * factor) / 2, width: width * factor, height: height * factor))
+        }
+        for quality in [0.85, 0.75, 0.65, 0.5] as [CGFloat] {
+            if let encoded = drawn.jpegData(compressionQuality: quality), encoded.count <= maxBytes {
+                return (encoded, drawn)
+            }
+        }
+        throw Problem.unreadable
+    }
 }

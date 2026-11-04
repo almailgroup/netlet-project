@@ -91,6 +91,8 @@
     "maxReviewBody": 2000,
     "maxReviewPhotos": 4,
     "reviewPage": 10,
+    "profilePhotoEdge": 512,
+    "maxProfilePhotoBytes": 400000,
     "productLinkDays": 30,
     "minAffiliatePayoutFils": 5000,
     "minCashOutPoints": 1000,

@@ -31,6 +31,7 @@ import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NoticeDot } from "@/components/ui/CountBadge";
+import { ProfileAvatar, useProfilePhoto } from "@/components/account/ProfileAvatar";
 import { Bell, ChevronDown, Gift, LayoutDashboard, LifeBuoy, LogOut, MapPin, Package, Store, UserRound } from "lucide-react";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -52,6 +53,7 @@ const plain = "pressable flex h-11 shrink-0 items-center gap-2 rounded-xl px-3 t
 export function AccountMenu() {
   const { t } = useTranslation();
   const { user, loading, isAuthenticated, logout } = useAuth();
+  const photo = useProfilePhoto();
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
@@ -159,7 +161,13 @@ export function AccountMenu() {
         className={plain}
       >
         <span className="relative grid shrink-0 place-items-center">
-          <UserRound className="size-[19px]" aria-hidden />
+          {/* The shopper's own photo when they chose one — a small circle the
+              size of the icon it stands in for, so the bar does not move. */}
+          {photo.data?.url && user ? (
+            <ProfileAvatar user={user} size="size-[24px] -my-0.5" textClass="text-[10px]" />
+          ) : (
+            <UserRound className="size-[19px]" aria-hidden />
+          )}
           {/* A dot, not a count: the menu says how many and where. */}
           {unread ? <NoticeDot className="absolute -end-1.5 -top-1.5" /> : null}
         </span>

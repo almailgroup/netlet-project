@@ -9,10 +9,9 @@
  * was a card of its own design, a navy square of initials over a bold "Signed
  * in as", the one thing on the page still in the account's old look.
  *
- * The avatar is initials rather than an uploaded picture: NetLet has nowhere
- * to put an image yet, and a grey silhouette that never changes is furniture.
- * Initials at least identify the account at a glance, which is what an avatar
- * on a settings page is actually for.
+ * The avatar is the profile photo, or the initials (`ProfileAvatar`), on the
+ * home's card and at the top of "Your profile" — never a grey silhouette,
+ * which never changes and so identifies nobody.
  */
 import { PANEL } from "@/components/account/profileParts";
 import { SHOP_TIME_ZONE } from "@/hooks/useDateFormat";
@@ -28,21 +27,7 @@ type PublicUser = {
   lastSignedIn: string | Date;
 };
 
-/**
- * Up to two initials, from whatever we actually have.
- *
- * Falls back to the email when there is no display name, because a shopper
- * who never set one still deserves something other than a blank circle.
- * Non-Latin names work unchanged — the first character of each word is right
- * in Arabic too.
- */
-export function initialsFor(user: { name: string | null; email: string }): string {
-  const source = user.name?.trim() || user.email.split("@")[0] || "";
-  const words = source.split(/[\s._-]+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  if (words.length === 1) return [...words[0]].slice(0, 2).join("").toUpperCase();
-  return (([...words[0]][0] ?? "") + ([...words[1]][0] ?? "")).toUpperCase();
-}
+export { initialsFor } from "@/components/account/ProfileAvatar";
 
 export function AccountIdentity({ user }: { user: PublicUser }) {
   const { t, isArabic } = useTranslation();

@@ -131,7 +131,9 @@ struct AccountView: View {
         }
         .task {
             await app.signals.refresh()
+            async let photo: Void = app.profilePhoto.load()
             await loadPreviews()
+            await photo
             holdings.subscriptions = !((try? await app.services.api.call(API.standingOrders)) ?? []).isEmpty
             holdings.offers = !((try? await app.services.api.call(API.priceRequests)) ?? []).isEmpty
             if !app.features.isOn("affiliates") {
@@ -179,8 +181,8 @@ struct AccountView: View {
         savedPhotos = products.compactMap { $0.images.first?.url }
     }
 
-    /// Who is signed in: initials in a pale circle, the name as typed, the
-    /// email, and a pencil to change them.
+    /// Who is signed in: the profile photo or the initials in a pale circle,
+    /// the name as typed, the email, and a pencil to change them.
     /// The page's name, and the notifications in its end corner, on the
     /// owner's word — the bell replaced the Notifications row, with what is
     /// unread counted on it (`CountBadge`), the header's own bell.
@@ -215,12 +217,8 @@ struct AccountView: View {
 
     private func profileCard(_ user: User) -> some View {
         HStack(spacing: 16) {
-            Text(AccountIdentityCard.initials(user))
-                .font(.inter(22, .bold))
-                .foregroundStyle(Brand.navy)
-                .frame(width: 64, height: 64)
-                .background(Circle().fill(ProfileInk.chip))
-                .accessibilityHidden(true)
+            // The photo the shopper chose, or their initials (`ProfileAvatar`).
+            ProfileAvatar(user: user, size: 64)
             VStack(alignment: .leading, spacing: 2) {
                 Text(AccountIdentityCard.name(user, l))
                     .font(.inter(18, .bold))
@@ -557,12 +555,7 @@ struct AccountIdentityCard: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
-            Text(Self.initials(user))
-                .font(.inter(20, .heavy))
-                .foregroundStyle(.white)
-                .frame(width: 64, height: 64)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.navy))
-                .accessibilityHidden(true)
+            ProfileAvatar(user: user, size: 64)
             VStack(alignment: .leading, spacing: 2) {
                 Text(Self.name(user, l))
                     .font(.inter(20, .heavy))
@@ -668,6 +661,7 @@ struct ProfileView: View {
             ShopPage(header: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     RoundBackTitle(title: l.t("account.sectionProfile"))
+                    if let user = app.session.user { ProfilePhotoCard(user: user) }
                     ProfileForm(model: model)
                     if let user = app.session.user { AccountIdentityCard(user: user) }
                 }
@@ -676,7 +670,11 @@ struct ProfileView: View {
                 .padding(.bottom, 48)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .task { await model.load() }
+            .task {
+                async let photo: Void = app.profilePhoto.load()
+                await model.load()
+                await photo
+            }
         }
     }
 }

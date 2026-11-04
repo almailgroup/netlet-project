@@ -533,6 +533,13 @@
       "when": 1793742806345,
       "tag": "0075_drop_nationality",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1793796189739,
+      "tag": "0076_profile_photos",
+      "breakpoints": true
     }
   ]
 }

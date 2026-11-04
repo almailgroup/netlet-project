@@ -46,6 +46,7 @@ import { MONEY_PARAMS } from "../../../Shared/commerce/notices.js";
 import { MAX_OPEN_CONVERSATIONS, MAX_SUPPORT_MESSAGE, SUPPORT_TOPICS } from "../../../Shared/commerce/support.js";
 import { GUIDE_SUMMARY_MAX, GUIDE_TITLE_MAX, GUIDE_TOPIC_MAX, MAX_GUIDE_STEPS, STEP_BODY_MAX, STEP_TITLE_MAX } from "../../../Shared/commerce/guides.js";
 import { MAX_REVIEW_BODY, MAX_REVIEW_PHOTOS, MAX_REVIEW_TITLE, RATING_MAX, REVIEW_PAGE } from "../../../Shared/commerce/reviews.js";
+import { MAX_PROFILE_PHOTO_BYTES, PROFILE_PHOTO_EDGE } from "../../../Shared/commerce/profilePhoto.js";
 import { MAX_AFFILIATE_PERCENT, MIN_AFFILIATE_PAYOUT_FILS } from "../../../Shared/commerce/affiliate.js";
 import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "../../../Shared/commerce/membership.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
@@ -235,6 +236,8 @@ export function buildResources(): Record<string, string> {
         maxReviewBody: MAX_REVIEW_BODY,
         maxReviewPhotos: MAX_REVIEW_PHOTOS,
         reviewPage: REVIEW_PAGE,
+        profilePhotoEdge: PROFILE_PHOTO_EDGE,
+        maxProfilePhotoBytes: MAX_PROFILE_PHOTO_BYTES,
         productLinkDays: PRODUCT_LINK_DAYS,
         minAffiliatePayoutFils: Number(MIN_AFFILIATE_PAYOUT_FILS),
         minCashOutPoints: MIN_CASH_OUT_POINTS,

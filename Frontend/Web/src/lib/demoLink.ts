@@ -1016,6 +1016,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.details.get":
     case "customer.details.save":
       return { firstName: null, lastName: null, phone: null, gender: null, birthday: null };
+    // Nowhere to keep a photo in the demo, so none is offered.
+    case "customer.photo.get":
+    case "customer.photo.remove":
+      return { ready: false, url: null };
     case "customer.profile.update":
     case "customer.saved.set":
     case "customer.notifications.set":

@@ -1353,6 +1353,25 @@ export const mediaFiles = pgTable(
 );
 
 /**
+ * A shopper's profile photo (`Shared/commerce/profilePhoto.ts`): one row per
+ * account, overwritten when it changes and gone with the account. The bytes
+ * live here rather than in `media_files`, because everything there is public
+ * under a random id and this is shown to its owner alone; `updated_at` is the
+ * version in the address it is read from.
+ */
+export const profilePhotos = pgTable("profile_photos", {
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  contentType: varchar("content_type", { length: 32 }).notNull(),
+  bytes: bytea("bytes").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  byteSize: integer("byte_size").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Where a driver is now (3.4.3) — one row per driver, overwritten, never a
  * trail. Written only while the driver has chosen to share from the dispatch
  * board, and deleted when they stop. The rules are `Shared/commerce/tracking.ts`.

@@ -45,7 +45,7 @@
  * the order given), at most four each; nothing yet is said in words rather
  * than drawn as empty boxes.
  */
-import { initialsFor } from "@/components/account/AccountIdentity";
+import { ProfileAvatar } from "@/components/account/ProfileAvatar";
 import { PANEL } from "@/components/account/profileParts";
 import { MembershipCard } from "@/components/account/MembershipCard";
 import { Thumb } from "@/components/product/Thumb";
@@ -180,9 +180,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
       </div>
 
       <section aria-label={t("account.yourWay")} className={`${PANEL} flex items-center gap-4 p-4 sm:p-5`}>
-        <span aria-hidden className="grid size-16 shrink-0 place-items-center rounded-full bg-[#f1f2f6] text-[22px] font-bold text-[#0a285a]">
-          {initialsFor(user)}
-        </span>
+        {/* The photo the shopper chose, or their initials (`ProfileAvatar`). */}
+        <ProfileAvatar user={user} size="size-16" textClass="text-[22px]" />
         <div className="min-w-0 flex-1">
           {/* Wraps rather than truncating: cut on an Arabic page, a Latin
               name lost its first letters, and it is what somebody reads to be

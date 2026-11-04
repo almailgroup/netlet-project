@@ -31,6 +31,7 @@ import { timingSafeEqual } from "node:crypto";
 import { ENV } from "./env.js";
 import { runDueSubscriptions } from "../services/subscriptions.js";
 import { MediaError, readMedia, saveReviewPhoto, saveUpload } from "../services/media.js";
+import { ProfilePhotoError, readProfilePhoto, setProfilePhoto } from "../services/profilePhoto.js";
 import { attachContract, DocumentRefused, readDocument, uploadDocument } from "../services/applicationDocuments.js";
 import { can } from "../../../Shared/inventory/permissions.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, type DocumentKind } from "../../../Shared/inventory/applicationDocuments.js";
@@ -201,6 +202,55 @@ export function createApp(): Express {
       }
       console.error(`[media] review photo failed: ${describeError(error)}`);
       res.status(500).json({ error: "media.failed" });
+    }
+  });
+
+  /**
+   * A shopper's profile photo (`Shared/commerce/profilePhoto.ts`): a square
+   * the device cropped, checked again here, kept as the account's one photo.
+   * Never under `/media` — it is read back only by the account it belongs to.
+   */
+  const profileBody = express.raw({ type: ["image/webp", "image/jpeg"], limit: "450kb" });
+  app.post("/api/media/profile", (req, res, next) => profileBody(req, res, error => {
+    if (error) { res.status(413).json({ error: "media.tooLarge" }); return; }
+    next();
+  }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "profilePhoto.signIn" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "media.notAnImage" }); return; }
+      res.status(201).json(await setProfilePhoto(user.id, new Uint8Array(req.body), req.headers["content-type"] ?? ""));
+    } catch (error) {
+      if (error instanceof ProfilePhotoError) {
+        res.status(error.reason === "media.tooMany" ? 429 : error.reason === "profilePhoto.unavailable" ? 503 : 400).json({ error: error.reason });
+        return;
+      }
+      console.error(`[media] profile photo failed: ${describeError(error)}`);
+      res.status(500).json({ error: "media.failed" });
+    }
+  });
+
+  /**
+   * The photo, to the account it belongs to and nobody else — anybody else,
+   * signed out or another account, gets the same 404 as an account with none.
+   * `private, no-cache` with the version as the ETag: the browser keeps a copy
+   * but asks each time, so the cookie is checked on every use and a device's
+   * next person never sees the last one's photo, while a revisit costs a 304.
+   */
+  app.get("/api/profile/photo/:userId", async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user || String(user.id) !== req.params.userId) { res.status(404).type("text/plain").send("Not found"); return; }
+      const found = await readProfilePhoto(user.id);
+      if (!found) { res.status(404).type("text/plain").send("Not found"); return; }
+      const tag = `"p${found.version}"`;
+      res.set({ "Cache-Control": "private, no-cache", ETag: tag, Vary: "Cookie" });
+      if (req.headers["if-none-match"] === tag) { res.status(304).end(); return; }
+      res.set({ "Content-Type": found.contentType, "Content-Length": String(found.bytes.length), "X-Content-Type-Options": "nosniff" });
+      res.end(Buffer.from(found.bytes));
+    } catch (error) {
+      console.error(`[media] profile photo read failed: ${describeError(error)}`);
+      res.status(503).type("text/plain").send("Unavailable");
     }
   });
 

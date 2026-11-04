@@ -32,10 +32,67 @@ protocol AccountServicing: Sendable {
     func wish(_ productId: String, visibility: String, title: String) async throws -> WishAnswer
     func unwish(_ productId: String) async throws
     func wishedProducts() async throws -> [String]
+    /// The profile photo (`customer.photo.get`), its bytes from its owner's
+    /// own route, and choosing or removing one.
+    func profilePhoto() async throws -> ProfilePhotoInfo
+    func profilePhotoData(path: String) async throws -> Data?
+    func uploadProfilePhoto(jpeg: Data) async throws -> ProfilePhotoInfo
+    func removeProfilePhoto() async throws -> ProfilePhotoInfo
+}
+
+extension AccountServicing {
+    /// A stand-in with no photo keeps none, as a shop before migration 0076 does.
+    func profilePhoto() async throws -> ProfilePhotoInfo { ProfilePhotoInfo(ready: false, url: nil) }
+    func profilePhotoData(path: String) async throws -> Data? { nil }
+    func uploadProfilePhoto(jpeg: Data) async throws -> ProfilePhotoInfo {
+        throw APIError.server(code: "BAD_REQUEST", message: "profilePhoto.unavailable", status: 503)
+    }
+    func removeProfilePhoto() async throws -> ProfilePhotoInfo { ProfilePhotoInfo(ready: false, url: nil) }
 }
 
 struct AccountService: AccountServicing {
     let client: TRPCClient
+
+    func profilePhoto() async throws -> ProfilePhotoInfo { try await client.call(API.profilePhoto) }
+
+    func removeProfilePhoto() async throws -> ProfilePhotoInfo { try await client.call(API.removeProfilePhoto) }
+
+    /// The photo's bytes from `GET /api/profile/photo/<id>`, which answers the
+    /// account it names and nobody else — the session cookie is what it reads.
+    func profilePhotoData(path: String) async throws -> Data? {
+        var request = URLRequest(url: client.configuration.url(path: path))
+        request.setValue("image/*", forHTTPHeaderField: "Accept")
+        let (data, response) = try await client.transport.send(request)
+        return response.statusCode == 200 ? data : nil
+    }
+
+    /// The photo goes up as its own bytes (`POST /api/media/profile`), not
+    /// JSON; the server reads what it is from its own header and answers
+    /// `{ "error": "…" }` when it refuses one.
+    func uploadProfilePhoto(jpeg: Data) async throws -> ProfilePhotoInfo {
+        var request = URLRequest(url: client.configuration.url(path: "/api/media/profile"))
+        request.httpMethod = "POST"
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = jpeg
+        let answer: (Data, HTTPURLResponse)
+        do {
+            answer = try await client.transport.send(request)
+        } catch {
+            throw APIError.from(error)
+        }
+        let (data, response) = answer
+        if (200..<300).contains(response.statusCode) {
+            do {
+                return try JSONDecoder().decode(ProfilePhotoInfo.self, from: data)
+            } catch {
+                throw APIError.decoding(String(describing: error))
+            }
+        }
+        let reason = (try? JSONDecoder().decode(ProfilePhotoRefusal.self, from: data))?.error ?? "media.failed"
+        let code = response.statusCode == 401 ? "UNAUTHORIZED" : response.statusCode == 429 ? "TOO_MANY_REQUESTS" : "BAD_REQUEST"
+        throw APIError.server(code: code, message: reason, status: response.statusCode)
+    }
 
     func currentUser() async throws -> User? { try await client.call(API.me) }
 
@@ -123,4 +180,8 @@ struct AccountService: AccountServicing {
     }
 
     func wishedProducts() async throws -> [String] { try await client.call(API.wishedIds) }
+}
+
+private struct ProfilePhotoRefusal: Decodable {
+    let error: String
 }

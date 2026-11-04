@@ -2053,6 +2053,21 @@ END $$;
 -- ===== 0075_drop_nationality.sql =====
 ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "nationality";
 
+-- ===== 0076_profile_photos.sql =====
+CREATE TABLE IF NOT EXISTS "profile_photos" (
+	"user_id" integer PRIMARY KEY NOT NULL,
+	"content_type" varchar(32) NOT NULL,
+	"bytes" "bytea" NOT NULL,
+	"width" integer NOT NULL,
+	"height" integer NOT NULL,
+	"byte_size" integer NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "profile_photos" ADD CONSTRAINT "profile_photos_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2096,6 +2111,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  76 AS migrations_in_this_file,
+  77 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

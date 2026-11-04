@@ -181,6 +181,22 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
 
     func profileDetails() async throws -> ProfileDetails { details }
 
+    var photo = ProfilePhotoInfo(ready: true, url: nil)
+    var photoBytes: [String: Data] = [:]
+    var photoUploads: [Data] = []
+
+    func profilePhoto() async throws -> ProfilePhotoInfo { photo }
+    func profilePhotoData(path: String) async throws -> Data? { photoBytes[path] }
+    func uploadProfilePhoto(jpeg: Data) async throws -> ProfilePhotoInfo {
+        photoUploads.append(jpeg)
+        photo = ProfilePhotoInfo(ready: true, url: "/api/profile/photo/2?v=\(photoUploads.count)")
+        return photo
+    }
+    func removeProfilePhoto() async throws -> ProfilePhotoInfo {
+        photo = ProfilePhotoInfo(ready: photo.ready, url: nil)
+        return photo
+    }
+
     func saveProfileDetails(_ patch: API.DetailsPatch) async throws -> ProfileDetails {
         detailPatches.append(patch)
         if let phone = patch.phone { details.phone = phone.value.flatMap(PhoneNumber.normalise) }

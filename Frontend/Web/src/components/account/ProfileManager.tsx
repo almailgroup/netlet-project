@@ -1,6 +1,6 @@
 /**
  * "Your profile", drawn to the owner's reference (Noon's "Your profile"): the
- * name as a first and a last name side by side, then the phone, the gender
+ * profile photo (`ProfilePhotoCard`), the name as a first and a last name side by side, then the phone, the gender
  * and the birthday (`ProfileDetailCards`), then the address
  * somebody signs in with. **The password is Account security's, on the
  * owner's word** (`SecurityCards`): that page is the password and deleting
@@ -27,6 +27,7 @@ import { nameProblem, NAME_PART_MAX, splitName } from "@shared/commerce/profileD
 import { ProfileDetailCards } from "@/components/account/ProfileDetailCards";
 import { FloatingField, ProfileCard, primary, secondary } from "@/components/account/profileParts";
 import { DeleteAccount } from "@/components/account/DeleteAccount";
+import { ProfilePhotoCard } from "@/components/account/ProfilePhoto";
 import { Check, Eye, EyeOff, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -43,6 +44,7 @@ export function ProfileManager({ user }: { user: PublicUser }) {
 
   return (
     <div className="space-y-3">
+      <ProfilePhotoCard user={user} />
       <NameForm user={user} parts={details.data ? { first: details.data.firstName, last: details.data.lastName } : null} onSaved={refresh} onFail={fail} />
       <ProfileDetailCards details={details.data ?? null} onFail={fail} />
       <EmailForm user={user} onSaved={refresh} onFail={fail} />

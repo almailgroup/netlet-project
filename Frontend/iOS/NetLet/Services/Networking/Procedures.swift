@@ -244,6 +244,8 @@ enum API {
     /// The name in its parts; the server writes the display name from them.
     static let updateNameParts = Procedure<NameParts, User>(mutation: "auth.updateNameParts")
     static let profileDetails = Procedure<NoInput, ProfileDetails>(query: "customer.details.get")
+    static let profilePhoto = Procedure<NoInput, ProfilePhotoInfo>(query: "customer.photo.get")
+    static let removeProfilePhoto = Procedure<NoInput, ProfilePhotoInfo>(mutation: "customer.photo.remove")
     static let saveProfileDetails = Procedure<DetailsPatch, ProfileDetails>(mutation: "customer.details.save")
     static let changePassword = Procedure<ChangePassword, Acknowledged>(mutation: "auth.changePassword")
     /// Named for the account: `deletionCheck` is a product's (`PortalProcedures`).

@@ -1087,6 +1087,9 @@ final class FixtureDecodingTests: XCTestCase {
         let named = try await shopper.call(API.updateNameParts, .init(firstName: "Noura", lastName: "Al-Sabah"))
         XCTAssertEqual(named.name, "Noura Al-Sabah")
         XCTAssertEqual(try TRPCClient.encodeInput(API.DetailsPatch()), #"{"json":{}}"#, "nothing set, nothing sent")
+        // The profile photo: the shop keeps one, and the demo shopper has none yet.
+        let photo = try await shopper.call(API.profilePhoto)
+        XCTAssertEqual(photo, ProfilePhotoInfo(ready: true, url: nil))
     }
 
     func testAProcedureWithNoRecordingIsNotFoundRatherThanInvented() async {

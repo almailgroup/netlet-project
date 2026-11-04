@@ -25,6 +25,7 @@ import {
 import { MAX_LABEL, MAX_LINE, MAX_NOTES } from "../../../Shared/commerce/addresses.js";
 import { detailsFor, ProfileDetailsError, saveDetails } from "../services/profileDetails.js";
 import { GENDERS } from "../../../Shared/commerce/profileDetails.js";
+import { photoFor, removeProfilePhoto } from "../services/profilePhoto.js";
 
 const zoneIdSchema = z.string().refine(value => kuwaitDeliveryZones.some(zone => zone.id === value), "Unknown delivery zone");
 const notificationKindSchema = z.enum(notificationKinds);
@@ -108,6 +109,16 @@ export const customerRouter = router({
           throw error;
         }
       }),
+  }),
+  /**
+   * The account's profile photo (`Shared/commerce/profilePhoto.ts`): where to
+   * read it, and whether the shop has the table for it yet. It is set by
+   * `POST /api/media/profile`, since a photo is not JSON, and read by its
+   * owner alone.
+   */
+  photo: router({
+    get: protectedProcedure.query(({ ctx }) => photoFor(ctx.user.id)),
+    remove: protectedProcedure.mutation(({ ctx }) => removeProfilePhoto(ctx.user.id)),
   }),
   /**
    * Products the shopper asked to be told about.
