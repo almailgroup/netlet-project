@@ -9,19 +9,18 @@
  * **One column, the form alone.** It was a card with a navy panel of selling
  * points beside the form; on a wide screen the eye went to the panel, and on a
  * phone the panel was hidden anyway. A dialog somebody opened to sign in is
- * for signing in. What every order carries — delivery across Kuwait, cash on
- * delivery, the return window — sits in one quiet line at its foot.
+ * for signing in — and the line of order facts that later sat at its foot went
+ * too, on the owner's word ("no unnecessary stuff").
  *
  * **On a phone it is the whole screen**, not a card floating over the shop:
  * the keyboard takes half of a 390px screen, and a card with a margin round it
  * left the password box under the keyboard. From `sm` up it is a card.
  */
-import { RotateCcw, Truck, Wallet, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { logoImage } from "@/lib/brandAssets";
-import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { DiscButton } from "@/components/ui/DiscButton";
 import { AuthForm, type AuthMode } from "./AuthForm";
 
@@ -61,39 +60,11 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }: {
             </DiscButton>
           </div>
 
-          <div className="flex-1 px-5 pb-8 pt-6 sm:px-9 sm:pb-9 sm:pt-7">
+          <div className="flex-1 px-5 pb-8 pt-6 sm:px-9 sm:pb-9 sm:pt-6">
             <AuthForm mode={mode} onModeChange={setMode} onDone={onClose} titleId={titleId} autoFocus />
           </div>
-
-          <OrderFacts className="border-t border-[#ebe9e1] bg-[#f7f6f2] px-5 py-4 sm:px-9" />
         </div>
       </div>
     </div>
-  );
-}
-
-/**
- * The three things every order carries, said once at the foot of the form —
- * true of every order, so a fair thing to put beside a password box, where a
- * slogan or an invented count of happy customers would not be.
- */
-export function OrderFacts({ className = "", tone = "light" }: { className?: string; tone?: "light" | "dark" }) {
-  const { t } = useTranslation();
-  const days = useReturnWindow();
-  const facts = [
-    { icon: Truck, label: t("checkout.builtForKuwait") },
-    { icon: Wallet, label: t("home.payOnDelivery") },
-    { icon: RotateCcw, label: t("home.returnsWithin", { days }) },
-  ];
-  const dark = tone === "dark";
-  return (
-    <ul className={`flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] font-semibold ${dark ? "text-[#c9d4e2]" : "text-[#3d5170]"} ${className}`}>
-      {facts.map(fact => (
-        <li key={fact.label} className="flex items-center gap-1.5">
-          <fact.icon className={`size-3.5 shrink-0 ${dark ? "text-[#ffab85]" : "text-[#0a285a]"}`} aria-hidden />
-          {fact.label}
-        </li>
-      ))}
-    </ul>
   );
 }

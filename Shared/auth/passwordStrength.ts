@@ -42,9 +42,10 @@ export type PasswordVerdict = {
  * Deliberately short: a real breach list belongs on the server behind an API,
  * and shipping one to the browser would be megabytes. This catches the
  * keyboard-mashing that a strength meter exists to discourage, and says so
- * rather than pretending to be a breach check.
+ * rather than pretending to be a breach check. Exported to the app
+ * (`rules.json`), whose meter is this function in Swift.
  */
-const COMMON = [
+export const COMMON_PASSWORDS = [
   "password", "passw0rd", "qwerty", "letmein", "welcome", "iloveyou",
   "admin", "administrator", "netlet", "kuwait", "123456", "12345678",
   "abc123", "monkey", "dragon", "football", "baseball", "sunshine",
@@ -66,7 +67,7 @@ function isCommon(password: string): boolean {
 
   const lower = password.toLowerCase();
   const core = lower.replace(/[^a-z]/g, "");
-  return COMMON.some(word => core === word || lower === word);
+  return COMMON_PASSWORDS.some(word => core === word || lower === word);
 }
 
 export function checkPassword(password: string): PasswordVerdict {

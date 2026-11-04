@@ -398,36 +398,46 @@ replaced by the real two. The page's header is checkout's bare one, because the
 search field is what somebody leaves a sign-in page for half-way through a
 password.
 
-**The dialog is one column, the form alone.** It had a navy panel of selling
-points beside the form, which drew the eye from the form on a wide screen and
-was hidden on a phone anyway. The pages keep that content, because a page has
-the room and somebody deciding whether to register is reading it — as **one
-card in two halves**: the form on white, and a flat navy panel (an orange edge,
-no gradient or blur) with three things the account does and the three facts
-every order carries, beside it on a wide screen and under it on a phone. The
-form and some notes loose on the pearl read as two things; one card reads as
-the shop's door. The department pictures were on it and the owner asked for a
-picture of the marketplace instead: `Frontend/Web/src/assets/auth/welcome.webp`,
-NetLet's own street with the van being loaded, edge to edge across the panel's
-top because its edges are the panel's navy. It is picked up at build time by
-`import.meta.glob`, so replacing it is dropping in another file, and with none
-the panel is its words alone rather than an empty frame.
+**The sign-in is the title, the switch, the boxes and one button, and
+nothing else, on the owner's word** ("perfect, user friendly and
+understandable — simple, sleek, no unnecessary stuff"). "Welcome to NetLet"
+(`auth.welcome`) holds still over the Sign in | Create account switch
+(`ModeSwitch`, its white pill sliding to the other half as it is pressed, a
+cut under reduced motion), so nothing above the switch moves when it is
+pressed; then the email and password, "Keep me signed in" and "Forgot your
+password?" on one row, and Sign in. Creating an account adds the name
+(optional, no hint), a two-tick password line, Google's box, Continue, and
+under it one quiet line saying a 6-digit code comes next and one saying that
+continuing agrees to the Terms of use and the Privacy policy, each a link
+opened in a new tab (the app: over the form) so reading them loses nothing
+typed. What went, and why each was there before: a navy panel of three
+things the account does and the three facts every order carries (beside the
+form on a wide screen, under it for another screen and a half on a phone);
+a line that the password travels encrypted; the note under "Keep me signed
+in"; the hint under the name; the "Step 1 of 2" bar; the password's three
+optional chips; the line of order facts at the dialog's foot; and the
+sign-in page's footer. Each was true, and together they made a form read
+like a contract.
 
-**On a phone the page is a screen of its own, not a card on the page**, on the
-owner's word ("make the login and sign-up page better"): the street is a band
-across the top (its phone copy), and the form is a white panel rising over its
-foot with rounded corners — the shape a phone's own apps open on — reaching the
-screen's edges, where the card's margin had taken 40px from every box. The
-navy panel follows the form without its picture. **Signing in and creating an
-account are two halves of one switch at the top of the form** (`ModeSwitch`,
-in the dialog too), which replaced "New to NetLet? Create a NetLet account" at
-the form's foot, two screens under the box somebody had landed in on a phone;
-on a phone the 26px heading saying the switch's words again is `sr-only`, and
-the line under it leads. axe clean on `/signin`, `/signup` and a signed-out
-`/account` at 390 and 1440 in both languages, and in the dialog.
+**The dialog is one column, the form alone**: the logo, Close, and the form.
+**The pages are the form and a picture of NetLet** (`AuthScreen`): from `lg`
+a card in two halves, the form and NetLet's street filling the other half
+however tall the form is; below `lg` the street is a band across the top and
+the form a white panel rising over its foot with rounded corners — on a phone
+reaching the screen's edges, the shape a phone's own apps open on, and from
+`sm` the top of a narrower card. The picture is
+`Frontend/Web/src/assets/auth/welcome.webp`, NetLet's own street with the van
+being loaded, picked up at build time by `import.meta.glob`, so replacing it
+is dropping in another file, and with none the card is the form alone. The
+signed-out `/account` on a phone is the sheet to the screen's foot, its
+ground white rather than pearl under it (`usePageChrome`'s `sheet`). Measured
+at 320, 390 and 1440 in both languages: axe clean on `/signin`, `/signup`, a
+signed-out `/account`, the dialog, the refusals, the reset and the code step;
+a sign-up through the emailed code lands on the account.
 
 **Create account proves the address before anything exists.** It is two steps,
-said as "Step 1 of 2": the details (and Google's box, below), then a six-digit
+said under Continue before it is pressed ("We'll email you a 6-digit code to
+confirm it's you"): the details (and Google's box, below), then a six-digit
 code emailed to the address. `auth.register` sends the code and makes nothing;
 `auth.verifyEmail` takes it back with everything the form still holds and makes
 the account then. Supabase sends it — `/auth/v1/signup` with the anon key, so
@@ -490,12 +500,17 @@ What the form does, each for a reason:
   made at `gmial.com` has no way back in once its password is forgotten. It
   offers and never corrects: `mail.com`, `outlook.sa` and `.om` (Oman, next
   door) are somebody's real address.
-- **The password can be shown, and its rules are a checklist from the start.**
+- **The password can be shown, and its rules are two ticks from the start.**
   `Shared/auth/passwordStrength.ts` returns the unmet rules, not just a score.
-  Only length and a common-shape check block, and are ticks; case, a number and
-  a symbol are a row labelled optional, because composition rules that refuse a
-  long passphrase in favour of `P@ss1` make passwords worse. `ProfileManager`'s
-  new password draws the same `PasswordChecklist`.
+  Only length and a common-shape check block, and they are the two ticks on
+  one line, with a thin strength bar and its word once something is typed;
+  nothing asks for a case, a number or a symbol, because composition rules
+  that refuse a long passphrase in favour of `P@ss1` make passwords worse (they
+  still raise the score). `ProfileManager`'s new password and the reset's draw
+  the same `PasswordChecklist`, and the app's `PasswordMeter` is the same line
+  over `Validation.checkPassword` — `checkPassword` in Swift, on its test's
+  cases, with `COMMON_PASSWORDS` exported in `rules.json`, so the app now says
+  "Not easy to guess" before the server does.
 - **A refusal offers the next step**: a wrong password offers the reset (and
   selects the password for retyping), a taken address offers signing in with
   it, keeping the address.
@@ -7925,11 +7940,16 @@ the same rule (see Recommendations).
 
 **Signing in is the web's phone design too**: NetLet's street as a band across
 the top of the Profile tab, the form a white panel rising over its foot with
-rounded corners, the same Sign in / Create account switch (the chosen half
-sliding white on the grey track), the step bar when creating an account, the
-password line, and the navy panel of what the account does edge to edge below.
-The heading the switch repeats is VoiceOver's, on the line under it. In a sheet
-there is no band; the sheet has its own title.
+rounded corners, "Welcome to NetLet" over the same Sign in / Create account
+switch (the chosen half sliding white on the grey track), the boxes, the
+password's two ticks and strength bar (`PasswordMeter`), one button and, for a
+new account, the two quiet lines under it, the terms and privacy links opening
+over the form (`LegalSheet`). The code is six boxes over one field
+(`CodeBoxes`, the web's), sent by itself on the sixth digit; the reset's code
+is the same boxes. The navy panel of what the account does, the step bar, the
+name's hint and the line about encryption went with the web's. In a sheet
+there is no band and the bar carries Close alone. Help and information (the
+language and currency first, for a guest) stays under the form, apart from it.
 
 **The requirement fixes are in the app too**: the Fraud watch desk, "Find
 similar" on the product photo, the hold on a card (below), the size the

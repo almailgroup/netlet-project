@@ -10,14 +10,15 @@
  *
  * **The header is bare, as checkout's is**: the logo home, the language, and a
  * way back to the shop. The search field and the departments are what a
- * shopper leaves a sign-in page for, half-way through typing a password.
+ * shopper leaves a sign-in page for, half-way through typing a password, and
+ * there is no footer for the same reason.
  *
  * `/login` and `/register` answer too, being what people type, and are
  * replaced by the two real addresses. Signed in already, the page goes
  * straight to `next` — or the account — rather than offering a form.
  */
 import { useEffect, useState } from "react";
-import { Link, useLocation, useRoute, useSearch } from "wouter";
+import { useLocation, useRoute, useSearch } from "wouter";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { BareHeader } from "@/components/layout/BareHeader";
 import { PAGE_SPACE } from "@/components/layout/Page";
@@ -64,10 +65,13 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-[#0a285a]">
+    <div className="flex min-h-screen flex-col bg-background text-[#0a285a] max-sm:bg-white">
       <BareHeader skipLabel="auth.skipToForm" />
 
-      <main id="main" tabIndex={-1} className={`container flex-1 outline-none ${PAGE_SPACE}`}>
+      {/* The card in the middle of what the header leaves on a wide screen;
+          nothing under it — the footer's three links were somewhere else to
+          go from a page somebody came to sign in on. */}
+      <main id="main" tabIndex={-1} className={`container flex-1 outline-none ${PAGE_SPACE} lg:flex lg:flex-col lg:justify-center`}>
         {DEMO_MODE ? (
           <p role="note" className="mx-auto mb-6 max-w-[1080px] rounded-xl border border-[#e3e1d9] bg-white px-4 py-3 text-[14px] text-[#3d5170]">
             <strong className="text-[#0a285a]">{t("header.signInDisabled")}</strong> {t("header.signInDisabledNote")}
@@ -82,13 +86,6 @@ export default function SignIn() {
         />
       </main>
 
-      <footer className="border-t border-[#e3e1d9] bg-white">
-        <nav aria-label={t("footer.service")} className="container flex flex-wrap items-center gap-x-6 gap-y-2 py-5 text-[13px] font-semibold">
-          <Link href="/help" className="rounded text-[#3d5170] hover:text-[#0a285a]">{t("footer.contact")}</Link>
-          <Link href="/returns" className="rounded text-[#3d5170] hover:text-[#0a285a]">{t("footer.returns")}</Link>
-          <Link href="/sell" className="rounded text-[#3d5170] hover:text-[#0a285a]">{t("footer.sellWithUs")}</Link>
-        </nav>
-      </footer>
     </div>
   );
 }

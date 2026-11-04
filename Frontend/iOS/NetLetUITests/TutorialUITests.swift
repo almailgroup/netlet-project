@@ -49,8 +49,9 @@ final class TutorialUITests: XCTestCase {
         XCTAssertTrue(create.exists, "The last page offers no Create account.")
         create.tap()
         XCTAssertTrue(waitForAbsence(app.staticTexts["Pay at the door, follow every parcel"], timeout: 6), "Create account left the tutorial up.")
-        let firstStep = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Step 1 of 2")).firstMatch
-        XCTAssertTrue(firstStep.waitForExistence(timeout: 6), "Create account did not open the form at its first step.")
+        // Creating an account is the form with the name box, which signing in has not.
+        let firstStep = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Your name")).firstMatch
+        XCTAssertTrue(firstStep.waitForExistence(timeout: 6), "Create account did not open the form on creating an account.")
     }
 
     /// A swipe turns the page, as a thumb expects.

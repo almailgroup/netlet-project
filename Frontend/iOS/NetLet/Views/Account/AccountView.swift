@@ -772,10 +772,7 @@ private struct ProfileForm: View {
         card(.password, title: "account.password", note: "account.passwordNote", done: "account.passwordChanged") {
             FloatingField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
             FloatingField(label: l.t("account.newPassword"), text: $model.newPassword, content: .newPassword, secure: true, leftToRight: true)
-            Text(l.t("auth.ruleLength"))
-                .font(.inter(12))
-                .foregroundStyle(Brand.muted)
-                .fixedSize(horizontal: false, vertical: true)
+            PasswordMeter(password: model.newPassword)
         } action: {
             saveButton(.password, enabled: true) { _ = await model.savePassword() }
         }

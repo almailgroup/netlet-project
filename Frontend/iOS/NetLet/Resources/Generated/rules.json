@@ -1,6 +1,26 @@
 {
   "sessionCookie": "app_session_id",
   "minPasswordLength": 8,
+  "commonPasswords": [
+    "password",
+    "passw0rd",
+    "qwerty",
+    "letmein",
+    "welcome",
+    "iloveyou",
+    "admin",
+    "administrator",
+    "netlet",
+    "kuwait",
+    "123456",
+    "12345678",
+    "abc123",
+    "monkey",
+    "dragon",
+    "football",
+    "baseball",
+    "sunshine"
+  ],
   "maxLineQuantity": 99,
   "returnWindowDays": 14,
   "listing": {

@@ -55,6 +55,7 @@ import { AuthScreen } from "@/components/auth/AuthScreen";
 import type { AuthMode } from "@/components/auth/AuthForm";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { PageBody, TITLE } from "@/components/layout/Page";
+import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useFeature } from "@/hooks/useFeature";
@@ -138,6 +139,8 @@ export default function Account() {
   const [, navigate] = useLocation();
   const [onSection, params] = useRoute("/account/:section");
   const signals = useAccountSignals();
+  /* Signed out, the page is the sign-in sheet, white to the phone's foot. */
+  usePageChrome({ sheet: !loading && !isAuthenticated });
   /* The round arrow says where it goes: the account home when that is the
      page behind (or there is none in this visit), "Back" otherwise. */
   const from = cameFrom();

@@ -399,6 +399,8 @@ struct Rules: Decodable, Sendable {
     let ai: AI?
     /// The floor on a password being set (`MIN_PASSWORD_LENGTH`), the server's own.
     var minPasswordLength: Int? = nil
+    /// The shapes the password meter calls easy to guess (`COMMON_PASSWORDS`).
+    var commonPasswords: [String]? = nil
     var profile: ProfileLimits? = nil
     var afterSales: AfterSales? = nil
 
@@ -407,6 +409,9 @@ struct Rules: Decodable, Sendable {
 
     /// The password floor, or the same number when the file predates it.
     var passwordFloor: Int { minPasswordLength ?? 8 }
+
+    /// The common shapes, or none when the file predates them.
+    var commonPasswordList: [String] { commonPasswords ?? [] }
 
     /// The account's rules, or the same numbers when the file predates them.
     var accountRules: Account { account ?? .fallback }

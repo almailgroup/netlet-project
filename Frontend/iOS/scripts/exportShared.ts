@@ -27,7 +27,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "nod
 import path from "node:path";
 import { en, ar } from "../../../Shared/i18n/dictionary.js";
 import { PLURAL_FORMS } from "../../../Shared/i18n/plurals.js";
-import { MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
+import { COMMON_PASSWORDS, MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
 import { OCCASIONS } from "../../../Shared/commerce/occasions.js";
 import { subcategoriesOf } from "../../../Shared/commerce/subcategories.js";
@@ -200,6 +200,8 @@ export function buildResources(): Record<string, string> {
       sessionCookie: COOKIE_NAME,
       /* The floor on a password being set — the server's own (`newPassword`). */
       minPasswordLength: MIN_PASSWORD_LENGTH,
+      /* The shapes the meter calls easy to guess (`checkPassword`). */
+      commonPasswords: COMMON_PASSWORDS,
       maxLineQuantity: MAX_LINE_QUANTITY,
       returnWindowDays: RETURN_WINDOW_DAYS,
       listing: {

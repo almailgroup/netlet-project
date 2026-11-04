@@ -129,6 +129,7 @@ jobs:
             shot 03-product "$lang" product:basmati-rice-5kg ""
             shot 04-search "$lang" search:rice ""
             shot 05-sign-in "$lang" account ""
+            shot 05b-sign-up "$lang" signup ""
             shot 06-cart "$lang" cart shopper
             shot 07-checkout "$lang" checkout shopper
             shot 08-orders "$lang" orders shopper

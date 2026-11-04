@@ -14,13 +14,79 @@ enum Validation {
         return nil
     }
 
-    /// The new-password floor's first rule. The rest — "not easy to guess" — is
-    /// the server's, and comes back as `auth.passwordTooWeak`.
+    /// Why a new password cannot be saved, or nil: the two rules the meter
+    /// ticks (`checkPassword`), the form's and the server's own.
     static func newPasswordProblem(_ password: String) -> String? {
         if password.isEmpty { return "auth.passwordRequired" }
-        if password.count < ReferenceData.shared.rules.passwordFloor { return "auth.ruleLength" }
-        return nil
+        return checkPassword(password).acceptable ? nil : "auth.passwordNeedsRules"
     }
+
+    // MARK: The password meter — `Shared/auth/passwordStrength.ts`
+
+    /// How good a password is and which rules it has not met — the web's
+    /// `checkPassword`, rule for rule, on the same cases. Lengths are counted
+    /// in UTF-16 units, as JavaScript counts them, so the two agree on an
+    /// emoji. Only `length` and `notCommon` block; the rest raise the score.
+    struct PasswordVerdict: Equatable {
+        enum Band: String { case weak, fair, good, strong }
+        let score: Int
+        let band: Band
+        let unmet: [String]
+        let acceptable: Bool
+    }
+
+    static func checkPassword(
+        _ password: String,
+        floor: Int = ReferenceData.shared.rules.passwordFloor,
+        common: [String] = ReferenceData.shared.rules.commonPasswordList
+    ) -> PasswordVerdict {
+        let units = password.utf16.count
+        let scalars = password.unicodeScalars
+        let hasLower = scalars.contains(where: isLowerLetter)
+        let hasUpper = scalars.contains(where: isUpperLetter)
+        let hasDigit = scalars.contains(where: isDigit)
+        let hasOther = scalars.contains { !isLowerLetter($0) && !isUpperLetter($0) && !isDigit($0) }
+        var unmet: [String] = []
+        if units < floor { unmet.append("length") }
+        if !(hasLower && hasUpper) { unmet.append("case") }
+        if !hasDigit { unmet.append("number") }
+        if !hasOther { unmet.append("symbol") }
+        if units > 0 && isCommonPassword(password, common: common) { unmet.append("notCommon") }
+        if units == 0 { return PasswordVerdict(score: 0, band: .weak, unmet: unmet, acceptable: false) }
+
+        var score = 0.0
+        if units >= floor { score += 1 }
+        if units >= 14 { score += 1 }
+        if units >= 20 { score += 1 }
+        if !unmet.contains("case") { score += 1 }
+        if !unmet.contains("number") { score += 0.5 }
+        if !unmet.contains("symbol") { score += 0.5 }
+        if unmet.contains("notCommon") { score = min(score, 1) }
+        if unmet.contains("length") { score = min(score, 1) }
+        let whole = max(0, min(4, Int(score.rounded(.toNearestOrAwayFromZero))))
+        let band: PasswordVerdict.Band = whole <= 1 ? .weak : whole == 2 ? .fair : whole == 3 ? .good : .strong
+        return PasswordVerdict(score: whole, band: band, unmet: unmet, acceptable: !unmet.contains("length") && !unmet.contains("notCommon"))
+    }
+
+    /// One character over and over, a digit ladder, or a common word under its
+    /// digits and punctuation — matched against the whole core, never a part of it.
+    private static func isCommonPassword(_ password: String, common: [String]) -> Bool {
+        let units = Array(password.utf16)
+        if units.count >= 2, units.allSatisfy({ $0 == units[0] }) { return true }
+        for ladder in ["0123456789", "1234567890", "9876543210", "1234567", "7654321"] where password.hasPrefix(ladder) {
+            if password.dropFirst(ladder.count).unicodeScalars.allSatisfy(isDigit) { return true }
+        }
+        let lower = password.lowercased()
+        var core = String.UnicodeScalarView()
+        core.append(contentsOf: lower.unicodeScalars.filter(isLowerLetter))
+        let coreWord = String(core)
+        return common.contains { $0 == coreWord || $0 == lower }
+    }
+
+    /* ASCII alone, as the web's `[a-z]`, `[A-Z]` and `\d` are. */
+    private static func isLowerLetter(_ scalar: Unicode.Scalar) -> Bool { (97...122).contains(scalar.value) }
+    private static func isUpperLetter(_ scalar: Unicode.Scalar) -> Bool { (65...90).contains(scalar.value) }
+    private static func isDigit(_ scalar: Unicode.Scalar) -> Bool { (48...57).contains(scalar.value) }
 
     // MARK: Your profile — `Shared/commerce/profileDetails.ts`
 

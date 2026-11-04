@@ -57,8 +57,11 @@ type Chrome = {
   activeDepartment: string | null;
   /** The product a page is about, keyed so a new object for the same one changes nothing. */
   assistantProduct: { key: string; brief: ProductBrief; image: string | null } | null;
+  /** The page's ground on a phone: white where the page is one white sheet
+      to the screen's foot — the signed-out account page — pearl otherwise. */
+  sheet: boolean;
 };
-const NO_CHROME: Chrome = { activeDepartment: null, assistantProduct: null };
+const NO_CHROME: Chrome = { activeDepartment: null, assistantProduct: null, sheet: false };
 /** How long a page counts as arriving, past its own entrance (180ms). */
 const ARRIVAL_MS = 220;
 
@@ -73,13 +76,14 @@ export function usePageChrome(chrome: Partial<Chrome>) {
   const report = useContext(ChromeContext);
   const activeDepartment = chrome.activeDepartment ?? null;
   const assistantProduct = chrome.assistantProduct ?? null;
+  const sheet = chrome.sheet ?? false;
   const productKey = assistantProduct?.key ?? null;
   const product = useRef(assistantProduct);
   product.current = assistantProduct;
   useLayoutEffect(() => {
-    report({ activeDepartment, assistantProduct: product.current });
+    report({ activeDepartment, assistantProduct: product.current, sheet });
     return () => report(NO_CHROME);
-  }, [report, activeDepartment, productKey]);
+  }, [report, activeDepartment, productKey, sheet]);
 }
 
 /* A floating bar of the page's own sits above the tab bar on these. */
@@ -129,7 +133,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
   const [chrome, setChrome] = useState<Chrome>(NO_CHROME);
   const report = useCallback((next: Chrome) => {
     setChrome(current => (
-      current.activeDepartment === next.activeDepartment && current.assistantProduct?.key === next.assistantProduct?.key ? current : next
+      current.activeDepartment === next.activeDepartment && current.assistantProduct?.key === next.assistantProduct?.key && current.sheet === next.sheet ? current : next
     ));
   }, []);
   /*
@@ -167,7 +171,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
 
   return (
     <ChromeContext.Provider value={report}>
-      <div className="flex min-h-screen flex-col bg-background text-[#0a285a] print:min-h-0 print:bg-white">
+      <div className={`flex min-h-screen flex-col bg-background text-[#0a285a] print:min-h-0 print:bg-white ${chrome.sheet ? "max-sm:bg-white" : ""}`}>
         {/* `contents`, so the bar's sticky box is the page's and not a
             wrapper's the height of the bar. */}
         <div className={printed ? "contents print:hidden" : "contents"}>

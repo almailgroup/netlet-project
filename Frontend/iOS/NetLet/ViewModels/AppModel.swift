@@ -462,6 +462,10 @@ final class AppModel {
             cartPath = NavigationPath([Route.orderPlaced(reference: value ?? "NL-20261103-QRTVW")])
         case "account":
             selectedTab = .account
+        case "signup":
+            // The signed-out Profile tab on creating an account.
+            selectedTab = .account
+            authModePreset = .register
         case "orders":
             selectedTab = .account
             accountPath = NavigationPath([Route.orders])

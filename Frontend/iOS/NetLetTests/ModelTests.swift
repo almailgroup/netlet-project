@@ -179,8 +179,49 @@ final class ValidationTests: XCTestCase {
     }
 
     func testANewPasswordNeedsTenCharacters() {
-        XCTAssertEqual(Validation.newPasswordProblem("short"), "auth.ruleLength")
+        XCTAssertEqual(Validation.newPasswordProblem("short"), "auth.passwordNeedsRules")
+        XCTAssertEqual(Validation.newPasswordProblem("Password123!"), "auth.passwordNeedsRules")
+        XCTAssertEqual(Validation.newPasswordProblem(""), "auth.passwordRequired")
         XCTAssertNil(Validation.newPasswordProblem("long enough phrase"))
+    }
+
+    /// The meter is `Shared/auth/passwordStrength.ts` in Swift, held to its
+    /// own test's cases, with the common shapes read from the exported rules.
+    func testThePasswordMeterAgreesWithTheWeb() {
+        XCTAssertFalse(ReferenceData.shared.rules.commonPasswordList.isEmpty)
+        let empty = Validation.checkPassword("")
+        XCTAssertEqual(empty.score, 0)
+        XCTAssertFalse(empty.acceptable)
+        XCTAssertEqual(empty.unmet, ["length", "case", "number", "symbol"])
+
+        XCTAssertTrue(Validation.checkPassword("Aa1!Aa1").unmet.contains("length"))
+        XCTAssertFalse(Validation.checkPassword("Aa1!Aa1!").unmet.contains("length"))
+
+        let passphrase = Validation.checkPassword("correct horse battery staple")
+        XCTAssertGreaterThanOrEqual(passphrase.score, Validation.checkPassword("Xk9#mQ2$vZ").score)
+        XCTAssertTrue(passphrase.acceptable)
+
+        let common = Validation.checkPassword("Password123!")
+        XCTAssertTrue(common.unmet.contains("notCommon"))
+        XCTAssertLessThanOrEqual(common.score, 1)
+        XCTAssertFalse(common.acceptable)
+
+        XCTAssertTrue(Validation.checkPassword("correct horse password staple").acceptable)
+        XCTAssertTrue(Validation.checkPassword("my-kuwait-harbour-walk").acceptable)
+        XCTAssertTrue(Validation.checkPassword("passw0rd").unmet.contains("notCommon"))
+        XCTAssertTrue(Validation.checkPassword("qwerty_1").unmet.contains("notCommon"))
+        XCTAssertTrue(Validation.checkPassword("aaaaaaaaaaaa").unmet.contains("notCommon"))
+        XCTAssertTrue(Validation.checkPassword("1234567890123").unmet.contains("notCommon"))
+
+        let lower = Validation.checkPassword("lowercaseonly")
+        XCTAssertEqual(lower.unmet, ["case", "number", "symbol"])
+        XCTAssertTrue(lower.acceptable)
+
+        XCTAssertEqual(Validation.checkPassword("sho1!Ab").band, .weak)
+        XCTAssertEqual(Validation.checkPassword("ReasonablePassphrase1!").band, .strong)
+        for candidate in ["", "a", "aB1!", String(repeating: "x", count: 200)] {
+            XCTAssertTrue((0...4).contains(Validation.checkPassword(candidate).score))
+        }
     }
 
     func testFoldsArabicIndicDigitsInACode() {

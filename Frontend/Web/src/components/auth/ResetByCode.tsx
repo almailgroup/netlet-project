@@ -74,7 +74,7 @@ export function ResetByCode({ email, remember = true, onSignedIn, onVerify, auto
   };
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-5">
+    <form onSubmit={submit} noValidate className="space-y-4">
       {/* So a password manager files the new password under the right account. */}
       <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
       <div>
@@ -98,7 +98,7 @@ export function ResetByCode({ email, remember = true, onSignedIn, onVerify, auto
 
       <div>
         <label htmlFor={id("password")} className={labelClass}>{t("account.newPassword")}</label>
-        <div className="relative mt-2">
+        <div className="relative mt-1.5">
           <input
             id={id("password")}
             ref={passwordInput}

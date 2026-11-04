@@ -5,6 +5,15 @@
  * the `/signin` and `/signup` pages a link can point at, and `/account` while
  * signed out. Three copies is how a rule gets fixed in one and not the others.
  *
+ * **It is the title, the switch, the boxes and one button, and nothing else,
+ * on the owner's word** ("perfect, user friendly and understandable — simple,
+ * sleek, no unnecessary stuff"). "Welcome to NetLet" holds still over the
+ * Sign in | Create account switch; what creating an account involves is one
+ * quiet line under its button. The line about the password travelling
+ * encrypted, the note under "Keep me signed in", the hint under the name, the
+ * step bar and the password's three optional chips all went: each was true,
+ * and together they made a form read like a contract.
+ *
  * Credentials go to NetLet's own `auth.login` / `auth.register`, which set an
  * httpOnly session cookie, so nothing token-shaped is ever held in JavaScript.
  * There is no social sign-in: it needs a provider configured and a redirect the
@@ -27,9 +36,10 @@
  *   pointer came up, so the press landed on nothing — on a phone, after Caps
  *   Lock had been said, "Create an account" took two taps.
  * - **The password can be shown, Caps Lock is said while it is on**, and on
- *   sign-up the two rules that block are a checklist from the start rather
- *   than a list of failures afterwards. The rest only make it stronger, and say
- *   so: composition rules that refuse a long passphrase make passwords worse.
+ *   sign-up the two rules that block are two ticks from the start rather
+ *   than a list of failures afterwards, with a strength bar once something is
+ *   typed. Nothing asks for a symbol: composition rules that refuse a long
+ *   passphrase make passwords worse.
  * - **A refusal offers the next step.** A wrong password offers the reset; a
  *   taken address offers signing in with it.
  * - **"Keep me signed in"** is on by default; off, the session ends with the
@@ -39,8 +49,9 @@
  *   same whether or not the address has an account, so it cannot be used to
  *   ask who is registered.
  * - **An account is made from an address somebody has shown they read.**
- *   Create account is two steps: the details and Google's "I'm not a robot"
- *   box, then a six-digit code sent to the address. Nothing is made until the
+ *   Create account is two steps — the details and Google's "I'm not a robot"
+ *   box, then a six-digit code sent to the address — said under its button
+ *   before it is pressed. Nothing is made until the
  *   code comes back, and the form keeps everything typed in the first step,
  *   so "use a different email" loses nothing else. A sign-in with the right
  *   password on an account whose code never came back goes to the same step
@@ -52,9 +63,10 @@
  *   sign-up link left a shopper on a page that said nothing.
  */
 import { trpc } from "@/lib/trpc";
+import { appPath } from "@/lib/basePath";
 import { ResetByCode } from "@/components/auth/ResetByCode";
 import {
-  ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, LoaderCircle, Lock, MailCheck,
+  ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, LoaderCircle, MailCheck,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -95,15 +107,10 @@ const BAND_FILL = {
   strong: "#1d6b40",
 } as const;
 
-/** The two rules that block, then the three that only strengthen. */
+/** The two rules that block — the only two the form names. */
 const REQUIRED: { rule: PasswordRule; label: MessageKey }[] = [
   { rule: "length", label: "auth.ruleLength" },
   { rule: "notCommon", label: "auth.ruleNotCommon" },
-];
-const STRONGER: { rule: PasswordRule; label: MessageKey }[] = [
-  { rule: "case", label: "auth.ruleCase" },
-  { rule: "number", label: "auth.ruleNumber" },
-  { rule: "symbol", label: "auth.ruleSymbol" },
 ];
 
 /** A refusal and, where there is one, what to do about it. */
@@ -381,16 +388,7 @@ export function AuthForm({
 
   return (
     <div>
-      {isReset ? (
-        <button
-          type="button"
-          onClick={() => go("signin")}
-          className="-ms-1 mb-5 inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-[14px] font-semibold text-[#0a285a]"
-        >
-          <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
-          {t("auth.resetBack")}
-        </button>
-      ) : null}
+      {isReset ? <BackToSignIn onClick={() => go("signin")} /> : null}
 
       {arrival && mode === "signin" ? (
         <p
@@ -406,19 +404,13 @@ export function AuthForm({
         </p>
       ) : null}
 
-      {isReset ? null : <ModeSwitch mode={mode} onChoose={go} />}
-
-      {isRegister ? <Steps step={1} /> : null}
-
-      {/* On a phone the switch above says where the shopper is, so the heading
-          saying it again in 26px is for a screen reader alone there; the
-          line under it leads. A wide screen has the room for both. */}
-      <Heading id={headingId} className={`text-[26px] font-extrabold leading-tight text-[#0a285a] sm:text-[28px] ${isReset ? "" : "max-sm:sr-only"}`}>
-        {t(isReset ? "auth.resetTitle" : isRegister ? "auth.createTitle" : "auth.signInTitle")}
+      {/* One title for signing in and creating an account alike, so it holds
+          still while the switch under it changes what the form asks for; a
+          reset is its own page and says so. */}
+      <Heading id={headingId} className={titleClass}>
+        {t(isReset ? "auth.resetTitle" : "auth.welcome")}
       </Heading>
-      <p className={`text-[15px] leading-6 text-[#536b8c] ${isReset ? "mt-2" : "sm:mt-2"}`}>
-        {t(isReset ? "auth.resetNote" : isRegister ? "auth.createNote" : "auth.signInNote")}
-      </p>
+      {isReset ? <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">{t("auth.resetNote")}</p> : <ModeSwitch mode={mode} onChoose={go} />}
 
       {/* Somebody who followed a friend's link is told what it gets them, on
           the form where they are deciding whether to register at all (3.1.14). */}
@@ -428,7 +420,7 @@ export function AuthForm({
         </p>
       ) : null}
 
-      <form onSubmit={submit} onKeyDown={readCapsLock} onKeyUp={readCapsLock} noValidate className="mt-7 space-y-5">
+      <form onSubmit={submit} onKeyDown={readCapsLock} onKeyUp={readCapsLock} noValidate className="mt-6 space-y-4">
         {isRegister ? (
           <div>
             <label htmlFor={id("name")} className={labelClass}>
@@ -443,10 +435,8 @@ export function AuthForm({
               autoComplete="name"
               dir="auto"
               maxLength={255}
-              aria-describedby={id("name-hint")}
-              className={`${inputClass} mt-2`}
+              className={`${inputClass} mt-1.5`}
             />
-            <p id={id("name-hint")} className={hintClass}>{t("auth.nameHint")}</p>
           </div>
         ) : null}
 
@@ -468,7 +458,7 @@ export function AuthForm({
             maxLength={320}
             aria-invalid={showEmailIssue ? true : undefined}
             aria-describedby={describe(showEmailIssue && id("email-issue"), suggestion && id("email-suggest"))}
-            className={`${inputClass} mt-2`}
+            className={`${inputClass} mt-1.5`}
           />
           {showEmailIssue ? <Issue id={id("email-issue")}>{t(emailIssue)}</Issue> : null}
           {suggestion && !showEmailIssue ? (
@@ -483,7 +473,7 @@ export function AuthForm({
         {!isReset ? (
           <div>
             <label htmlFor={id("password")} className={labelClass}>{t("auth.password")}</label>
-            <div className="relative mt-2">
+            <div className="relative mt-1.5">
               <input
                 id={id("password")}
                 ref={passwordRef}
@@ -505,16 +495,7 @@ export function AuthForm({
                    at the page's end, the left, and the room goes there. */
                 className={`${inputClass} pe-12 rtl:pe-4 rtl:ps-12`}
               />
-              <button
-                type="button"
-                onClick={() => setReveal(shown => !shown)}
-                aria-pressed={reveal}
-                aria-label={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
-                title={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
-                className="absolute end-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"
-              >
-                {reveal ? <EyeOff className="size-[18px]" aria-hidden /> : <Eye className="size-[18px]" aria-hidden />}
-              </button>
+              <RevealButton shown={reveal} onToggle={() => setReveal(shown => !shown)} />
             </div>
             {capsLock ? (
               <p id={id("caps")} className="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-[#8c5a12]">
@@ -527,24 +508,23 @@ export function AuthForm({
         ) : null}
 
         {mode === "signin" ? (
-          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg">
+          /* One row: the box somebody leaves ticked, and the way back in for
+             somebody whose password was just refused, under the box they are
+             looking at. */
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <label className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg">
               <input
                 type="checkbox"
                 checked={remember}
                 onChange={event => setRemember(event.target.checked)}
-                aria-describedby={id("remember-note")}
-                className="mt-0.5 size-[18px] shrink-0 cursor-pointer accent-[#0a285a]"
+                className="size-[18px] shrink-0 cursor-pointer accent-[#0a285a]"
               />
-              <span>
-                <span className="block text-[14px] font-semibold text-[#0a285a]">{t("auth.remember")}</span>
-                <span id={id("remember-note")} className="block text-[12px] leading-5 text-[#536b8c]">{t("auth.rememberNote")}</span>
-              </span>
+              <span className="text-[14px] font-medium text-[#0a285a]">{t("auth.remember")}</span>
             </label>
             <button
               type="button"
               onClick={() => go("reset")}
-              className="rounded text-[14px] font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]"
+              className="min-h-11 rounded text-[14px] font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]"
             >
               {t("auth.forgot")}
             </button>
@@ -552,7 +532,7 @@ export function AuthForm({
         ) : null}
 
         {refusal ? (
-          <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]">
+          <div role="alert" className={alertClass}>
             <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <div>
               <p>{tError(refusal.message)}</p>
@@ -581,38 +561,87 @@ export function AuthForm({
           </div>
         ) : null}
 
-        {isRegister ? <p className="text-[13px] leading-5 text-[#536b8c]">{t("auth.terms")}</p> : null}
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-wait disabled:opacity-80"
-        >
-          {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-          {t(pending ? busyLabel : isReset ? "auth.resetSend" : isRegister ? "auth.continue" : "header.signIn")}
-        </button>
+        <div className={isReset ? "pt-1" : "pt-2"}>
+          <button type="submit" disabled={pending} className={primaryClass}>
+            {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+            {t(pending ? busyLabel : isReset ? "auth.resetSend" : isRegister ? "auth.continue" : "header.signIn")}
+          </button>
+        </div>
         {isRegister ? (
-          <p className="flex items-start gap-2 text-[13px] leading-5 text-[#536b8c]">
-            <MailCheck className="mt-0.5 size-4 shrink-0 text-[#0a285a]" aria-hidden />
-            {t("auth.codeWillBeSent")}
-          </p>
+          /* What happens next and what agreeing means, said once, quietly,
+             where the press is. */
+          <div className="space-y-1.5 text-center text-[13px] leading-5 text-[#536b8c] [text-wrap:balance]">
+            <p>{t("auth.codeWillBeSent")}</p>
+            <AgreeLine />
+          </div>
         ) : null}
       </form>
-
-      <p className="mt-7 flex items-start gap-2 text-[12px] leading-5 text-[#536b8c]">
-        <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-        {t("auth.secureNote")}
-      </p>
     </div>
   );
 }
 
+/** The reset's way back, at the top of every page of it. */
+function BackToSignIn({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="-ms-1 mb-5 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-[14px] font-semibold text-[#0a285a]"
+    >
+      <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
+      {t("auth.resetBack")}
+    </button>
+  );
+}
+
+/** The eye in a password box, the same in every one of them. */
+function RevealButton({ shown, onToggle }: { shown: boolean; onToggle: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={shown}
+      aria-label={t(shown ? "auth.hidePassword" : "auth.showPassword")}
+      title={t(shown ? "auth.hidePassword" : "auth.showPassword")}
+      className="absolute end-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"
+    >
+      {shown ? <EyeOff className="size-[18px]" aria-hidden /> : <Eye className="size-[18px]" aria-hidden />}
+    </button>
+  );
+}
+
 /**
- * Sign in or create an account, as two halves of one switch at the top of the
- * form — the way a phone's own apps open on it, and one press either way. It
+ * "By continuing, you agree to NetLet's Terms of use and Privacy policy",
+ * each a link — opened in a new tab, so reading them does not lose what was
+ * typed in the form.
+ */
+function AgreeLine() {
+  const { t } = useTranslation();
+  const marker = "⁣";
+  const [before, rest = ""] = t("auth.agreeTerms", { terms: marker, privacy: marker }).split(marker);
+  const [between = "", after = ""] = rest.split(marker);
+  const link = "font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]";
+  return (
+    <p>
+      {before}
+      <a href={appPath("/terms")} target="_blank" rel="noopener" className={link}>{t("footer.terms")}</a>
+      {between}
+      <a href={appPath("/privacy")} target="_blank" rel="noopener" className={link}>{t("footer.privacy")}</a>
+      {after}
+    </p>
+  );
+}
+
+/**
+ * Sign in or create an account, as two halves of one switch under the title —
+ * the way a phone's own apps open on it, and one press either way. It
  * replaced "New to NetLet? Create a NetLet account" at the form's foot, which
  * on a phone was two screens under the box somebody had just landed in. The
- * one chosen is white on the grey track; pressing it again does nothing.
+ * one chosen is a white pill on the grey track that slides to the other half
+ * as it is pressed (a cut under reduced motion); pressing it again does
+ * nothing.
  */
 function ModeSwitch({ mode, onChoose }: { mode: AuthMode; onChoose: (mode: AuthMode) => void }) {
   const { t } = useTranslation();
@@ -620,8 +649,15 @@ function ModeSwitch({ mode, onChoose }: { mode: AuthMode; onChoose: (mode: AuthM
     { mode: "signin", label: t("header.signIn") },
     { mode: "register", label: t("auth.modeRegister") },
   ] as const;
+  const second = mode === "register";
   return (
-    <div role="group" aria-label={t("auth.modeSwitch")} className="mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-[#eef0f4] p-1">
+    <div role="group" aria-label={t("auth.modeSwitch")} className="relative mt-5 grid grid-cols-2 rounded-2xl bg-[#eef0f4] p-1">
+      <span
+        aria-hidden
+        className={`absolute inset-y-1 start-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-[0_1px_3px_rgba(10,40,90,.12),0_4px_12px_rgba(10,40,90,.06)] transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ${
+          second ? "translate-x-full rtl:-translate-x-full" : ""
+        }`}
+      />
       {choices.map(choice => {
         const on = mode === choice.mode;
         return (
@@ -630,10 +666,8 @@ function ModeSwitch({ mode, onChoose }: { mode: AuthMode; onChoose: (mode: AuthM
             type="button"
             aria-pressed={on}
             onClick={() => { if (!on) { pressHaptic(); onChoose(choice.mode); } }}
-            className={`flex h-11 min-w-0 items-center justify-center rounded-xl px-3 text-[15px] transition-[background-color,box-shadow,color] duration-200 ${
-              on
-                ? "bg-white font-bold text-[#0a285a] shadow-[0_1px_3px_rgba(10,40,90,.12),0_4px_12px_rgba(10,40,90,.06)]"
-                : "font-semibold text-[#3d5170] hover:bg-[#0a285a]/[.06]"
+            className={`relative flex h-11 min-w-0 items-center justify-center rounded-xl bg-transparent px-3 text-[15px] transition-colors duration-200 ${
+              on ? "font-bold text-[#0a285a]" : "font-semibold text-[#3d5170] hover:text-[#0a285a]"
             }`}
           >
             <span className="truncate">{choice.label}</span>
@@ -648,7 +682,11 @@ function ModeSwitch({ mode, onChoose }: { mode: AuthMode; onChoose: (mode: AuthM
 const inputClass =
   "block h-12 w-full rounded-xl border border-[#c9d4e2] bg-white px-4 text-[16px] text-[#0a285a] outline-none transition placeholder:text-[#8494aa] hover:border-[#9fb0c6] focus:border-[#0a285a] focus:ring-4 focus:ring-[#0a285a]/10 aria-[invalid=true]:border-[#b3261e] aria-[invalid=true]:focus:ring-[#b3261e]/15";
 const labelClass = "block text-[14px] font-semibold text-[#0a285a]";
-const hintClass = "mt-1.5 text-[13px] leading-5 text-[#536b8c]";
+const titleClass = "text-[26px] font-extrabold leading-tight tracking-[-0.01em] text-[#0a285a] outline-none sm:text-[28px]";
+const primaryClass =
+  "flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-wait disabled:opacity-80";
+const alertClass = "flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]";
+const linkClass = "rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a] disabled:cursor-default disabled:text-[#536b8c] disabled:no-underline";
 
 function Issue({ id, children }: { id: string; children: React.ReactNode }) {
   return (
@@ -680,21 +718,20 @@ function EmailSuggestion({ id, suggestion, onTake }: { id: string; suggestion: s
 }
 
 /**
- * What the password needs, from the start rather than after a refusal.
- *
- * The two that block are ticks; the three that only strengthen are a row of
- * their own under a label saying so, so nobody thinks a symbol is required.
- * The bar arrives with the first character, because an empty box is not a
- * weak password, it is an unanswered question. The account page's new
- * password draws the same list, so the two say the same thing.
+ * What the password needs, from the start rather than after a refusal: the
+ * two rules that block, as two ticks in one line, and once something is typed
+ * a thin bar with its strength in a word. Nothing else — the case, number and
+ * symbol advice that used to follow was a second list under the first, and
+ * the bar already says how strong it is. The account page's new password and
+ * the reset's draw the same one, so the three say the same thing.
  */
 export function PasswordChecklist({ id, verdict, typed }: { id: string; verdict: ReturnType<typeof checkPassword>; typed: boolean }) {
   const { t } = useTranslation();
   const met = (rule: PasswordRule) => typed && !verdict.unmet.includes(rule);
   return (
-    <div className="mt-3 rounded-xl bg-[#f6f7f9] px-4 py-3.5">
+    <div className="mt-2.5">
       {typed ? (
-        <div className="mb-3 flex items-center gap-3">
+        <div className="mb-2 flex items-center gap-3">
           <div
             className="flex flex-1 gap-1"
             role="meter"
@@ -707,51 +744,35 @@ export function PasswordChecklist({ id, verdict, typed }: { id: string; verdict:
             {[0, 1, 2, 3].map(segment => (
               <span
                 key={segment}
-                className="h-1.5 flex-1 rounded-full transition-colors"
-                style={{ background: segment < Math.max(verdict.score, 1) ? BAND_FILL[verdict.band] : "#dde3eb" }}
+                className="h-1 flex-1 rounded-full transition-colors"
+                style={{ background: segment < Math.max(verdict.score, 1) ? BAND_FILL[verdict.band] : "#e3e7ee" }}
               />
             ))}
           </div>
-          <span className="text-[12px] font-bold text-[#0a285a]">{t(BAND_LABEL[verdict.band])}</span>
+          <span className="min-w-12 text-end text-[12px] font-bold text-[#0a285a]">{t(BAND_LABEL[verdict.band])}</span>
         </div>
       ) : null}
-      {/* What the box is described by: the two that block, not the advice. */}
+      {/* What the box is described by: the two rules that block. */}
       <div id={id}>
-      <p className="sr-only">{t("auth.requirements")}</p>
-      <ul className="space-y-1.5">
-        {REQUIRED.map(item => {
-          const done = met(item.rule);
-          const failed = typed && item.rule === "notCommon" && !done;
-          return (
-            <li key={item.rule} className={`flex items-center gap-2 text-[13px] leading-5 ${done ? "text-[#1f5e3a]" : failed ? "text-[#a3261c]" : "text-[#536b8c]"}`}>
-              <span className={`grid size-4 shrink-0 place-items-center rounded-full ${done ? "bg-[#2f7d4f] text-white" : failed ? "bg-[#a3261c] text-white" : "border border-[#b6c2d2]"}`} aria-hidden>
-                {done ? <Check className="size-3" strokeWidth={3} /> : failed ? <span className="text-[10px] font-bold leading-none">!</span> : null}
-              </span>
-              <span>
-                {t(item.label)}
-                <span className="sr-only"> — {t(done ? "auth.ruleMet" : "auth.ruleNotMet")}</span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+        <p className="sr-only">{t("auth.requirements")}</p>
+        <ul className="flex flex-wrap gap-x-4 gap-y-1">
+          {REQUIRED.map(item => {
+            const done = met(item.rule);
+            const failed = typed && item.rule === "notCommon" && !done;
+            return (
+              <li key={item.rule} className={`flex items-center gap-1.5 text-[13px] leading-5 ${done ? "text-[#1f5e3a]" : failed ? "text-[#a3261c]" : "text-[#536b8c]"}`}>
+                <span className={`grid size-4 shrink-0 place-items-center rounded-full transition-colors ${done ? "bg-[#2f7d4f] text-white" : failed ? "bg-[#a3261c] text-white" : "border border-[#b6c2d2]"}`} aria-hidden>
+                  {done ? <Check className="size-3" strokeWidth={3} /> : failed ? <span className="text-[10px] font-bold leading-none">!</span> : null}
+                </span>
+                <span>
+                  {t(item.label)}
+                  <span className="sr-only"> — {t(done ? "auth.ruleMet" : "auth.ruleNotMet")}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
       </div>
-      <p className="mt-3 text-[12px] font-semibold text-[#536b8c]">{t("auth.strongerWith")}</p>
-      <ul className="mt-1.5 flex flex-wrap gap-1.5">
-        {STRONGER.map(item => {
-          const done = met(item.rule);
-          return (
-            <li
-              key={item.rule}
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] font-semibold ${done ? "border-[#2f7d4f]/30 bg-[#e9f4ee] text-[#1f5e3a]" : "border-[#d5dce6] bg-white text-[#536b8c]"}`}
-            >
-              {done ? <Check className="size-3" strokeWidth={3} aria-hidden /> : null}
-              {t(item.label)}
-              <span className="sr-only"> — {t(done ? "auth.ruleMet" : "auth.ruleNotMet")}</span>
-            </li>
-          );
-        })}
-      </ul>
     </div>
   );
 }
@@ -811,27 +832,20 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={onBack}
-        className="-ms-1 mb-5 inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-[14px] font-semibold text-[#0a285a]"
-      >
-        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
-        {t("auth.resetBack")}
-      </button>
-      <Heading id={headingId} className="text-[26px] font-extrabold leading-tight text-[#0a285a] sm:text-[28px]">
+      <BackToSignIn onClick={onBack} />
+      <Heading id={headingId} className={titleClass}>
         {t("auth.newPasswordTitle")}
       </Heading>
       <p className="mt-2 text-[15px] leading-6 text-[#536b8c]">
         {arrival.email ? <>{before}<bdi dir="ltr" className="font-bold text-[#0a285a]">{arrival.email}</bdi>{after}</> : t("auth.newPasswordNote")}
       </p>
 
-      <form onSubmit={submit} noValidate className="mt-7 space-y-5">
+      <form onSubmit={submit} noValidate className="mt-6 space-y-4">
         {/* So a password manager files the new password under the right account. */}
         {arrival.email ? <input type="email" name="email" autoComplete="username" value={arrival.email} readOnly hidden /> : null}
         <div>
           <label htmlFor={id("password")} className={labelClass}>{t("account.newPassword")}</label>
-          <div className="relative mt-2">
+          <div className="relative mt-1.5">
             <input
               id={id("password")}
               ref={input}
@@ -846,23 +860,14 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
               aria-describedby={[showIssue && id("issue"), id("rules")].filter(Boolean).join(" ")}
               className={`${inputClass} pe-12 rtl:pe-4 rtl:ps-12`}
             />
-            <button
-              type="button"
-              onClick={() => setReveal(shown => !shown)}
-              aria-pressed={reveal}
-              aria-label={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
-              title={t(reveal ? "auth.hidePassword" : "auth.showPassword")}
-              className="absolute end-1.5 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"
-            >
-              {reveal ? <EyeOff className="size-[18px]" aria-hidden /> : <Eye className="size-[18px]" aria-hidden />}
-            </button>
+            <RevealButton shown={reveal} onToggle={() => setReveal(shown => !shown)} />
           </div>
           {showIssue ? <Issue id={id("issue")}>{t(issue)}</Issue> : null}
           <PasswordChecklist id={id("rules")} verdict={verdict} typed={password.length > 0} />
         </div>
 
         {refusal ? (
-          <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]">
+          <div role="alert" className={alertClass}>
             <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <div>
               <p>{tError(refusal)}</p>
@@ -875,11 +880,7 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
           </div>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={complete.isPending || expired}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-not-allowed disabled:opacity-80"
-        >
+        <button type="submit" disabled={complete.isPending || expired} className={`${primaryClass} disabled:cursor-not-allowed`}>
           {complete.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
           {t(complete.isPending ? "auth.signingIn" : "auth.newPasswordSave")}
         </button>
@@ -893,7 +894,7 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
  * password on the same screen (`ResetByCode`, on the owner's word), and the
  * two things somebody waiting for a mail does next — send it again, or fix the
  * address. "Send again" waits half a minute, which is about how long a mail
- * takes. The link in the mail still works for anybody who opens it instead.
+ * takes. The link in the same mail still works for anybody who opens it instead.
  */
 function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onResend, onDifferent, onBack, onSignedIn, onVerify }: {
   email: string;
@@ -909,70 +910,62 @@ function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onRes
   onVerify: (email: string, password: string) => void;
 }) {
   const { t } = useTranslation();
-  const marker = "⁣";
+  const marker = "\u2063";
   const [before, after = ""] = t("auth.resetSentBody", { email: marker }).split(marker);
   return (
     <div>
-      <span className="grid size-14 place-items-center rounded-2xl bg-[#e9f4ee] text-[#1f5e3a]">
-        <MailCheck className="size-7" aria-hidden />
-      </span>
-      <Heading ref={headingRef} id={headingId} tabIndex={-1} className="mt-6 text-[26px] font-extrabold leading-tight text-[#0a285a] outline-none sm:text-[28px]">
+      <BackToSignIn onClick={onBack} />
+      <MailTile />
+      <Heading ref={headingRef} id={headingId} tabIndex={-1} className={`mt-5 ${titleClass}`}>
         {t("auth.resetSentTitle")}
       </Heading>
-      <p className="mt-3 text-[15px] leading-6 text-[#3d5170]">
+      <p className="mt-2 text-[15px] leading-6 text-[#3d5170]">
         {before}<bdi dir="ltr" className="font-bold text-[#0a285a]">{email}</bdi>{after}
       </p>
-      <p className="mt-3 text-[14px] leading-6 text-[#536b8c]">{t("auth.resetSentTip")}</p>
 
-      <div className="mt-7">
+      <div className="mt-6">
         <ResetByCode email={email} onSignedIn={onSignedIn} onVerify={onVerify} autoFocus={false} />
       </div>
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[14px]">
-        <button
-          type="button"
-          onClick={onResend}
-          disabled={wait > 0 || sending}
-          className="rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a] disabled:cursor-default disabled:text-[#536b8c] disabled:no-underline"
-        >
-          {sending ? t("auth.sending") : wait > 0 ? t("auth.resendIn", { seconds: wait }) : t("auth.resend")}
-        </button>
-        <button
-          type="button"
-          onClick={onDifferent}
-          className="rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]"
-        >
-          {t("auth.differentEmail")}
-        </button>
-      </div>
-      <button
-        type="button"
-        onClick={onBack}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-1 py-1 text-[14px] font-semibold text-[#0a285a]"
-      >
-        <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
-        {t("auth.resetBack")}
-      </button>
+      <NotArrived
+        resendLabel={sending ? t("auth.sending") : wait > 0 ? t("auth.resendIn", { seconds: wait }) : t("auth.resend")}
+        resendDisabled={wait > 0 || sending}
+        onResend={onResend}
+        onDifferent={onDifferent}
+      />
     </div>
   );
 }
 
+/** The envelope over a "check your email" page, quiet and the same on both. */
+function MailTile() {
+  return (
+    <span className="grid size-12 place-items-center rounded-2xl bg-[#eef2f8] text-[#0a285a]">
+      <MailCheck className="size-6" aria-hidden />
+    </span>
+  );
+}
+
 /**
- * Where Create account is: the details, then the code. Two steps said as two,
- * because the second is an email somebody has to go and open, and a form that
- * says so up front is not a surprise half-way through.
+ * Under a code that has not come: where to look, then the two ways on —
+ * another one, or a different address — on one line.
  */
-function Steps({ step }: { step: 1 | 2 }) {
+function NotArrived({ resendLabel, resendDisabled, onResend, onDifferent }: {
+  resendLabel: string;
+  resendDisabled: boolean;
+  onResend: () => void;
+  onDifferent: () => void;
+}) {
   const { t } = useTranslation();
   return (
-    <div className="mb-5">
-      <p className="text-[13px] font-semibold text-[#536b8c]">
-        {t("auth.stepOf", { step, total: 2 })}
-        <span aria-hidden> · </span>
-        <span className="text-[#0a285a]">{t(step === 1 ? "auth.stepDetails" : "auth.stepConfirm")}</span>
-      </p>
-      <div className="mt-2 flex gap-1.5" aria-hidden>
-        <span className="h-1 flex-1 rounded-full bg-[#f2683a]" />
-        <span className={`h-1 flex-1 rounded-full ${step === 2 ? "bg-[#f2683a]" : "bg-[#e3e7ee]"}`} />
+    <div className="mt-6 border-t border-[#ebe9e1] pt-5 text-[14px]">
+      <p className="leading-6 text-[#536b8c]">{t("auth.codeTip")}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1">
+        <button type="button" onClick={onResend} disabled={resendDisabled} className={`min-h-11 ${linkClass}`}>
+          {resendLabel}
+        </button>
+        <button type="button" onClick={onDifferent} className={`min-h-11 ${linkClass}`}>
+          {t("auth.differentEmail")}
+        </button>
       </div>
     </div>
   );
@@ -1068,19 +1061,18 @@ function CodeStep({ awaiting, Heading, headingId, resending, onDone, onDifferent
 
   return (
     <div>
-      {awaiting.from === "register" ? <Steps step={2} /> : null}
-      <span className="grid size-14 place-items-center rounded-2xl bg-[#fdeee8] text-[#a44a2b]">
-        <MailCheck className="size-7" aria-hidden />
-      </span>
-      <Heading id={headingId} className="mt-6 text-[26px] font-extrabold leading-tight text-[#0a285a] sm:text-[28px]">
+      <MailTile />
+      <Heading id={headingId} className={`mt-5 ${titleClass}`}>
         {t("auth.verifyTitle")}
       </Heading>
-      <p id={`${ownId}-body`} className="mt-3 text-[15px] leading-6 text-[#3d5170]">
+      <p id={`${ownId}-body`} className="mt-2 text-[15px] leading-6 text-[#3d5170]">
         {before}<bdi dir="ltr" className="font-bold text-[#0a285a]">{awaiting.email}</bdi>{after}
       </p>
 
-      <form onSubmit={submit} noValidate className="mt-7">
-        <label htmlFor={`${ownId}-code`} className={labelClass}>{t("auth.codeLabel")}</label>
+      <form onSubmit={submit} noValidate className="mt-6">
+        {/* The sentence above says what goes in the boxes; the label is for
+            a screen reader, which hears the boxes as one field. */}
+        <label htmlFor={`${ownId}-code`} className="sr-only">{t("auth.codeLabel")}</label>
         <CodeBoxes
           id={`${ownId}-code`}
           inputRef={input}
@@ -1092,46 +1084,30 @@ function CodeStep({ awaiting, Heading, headingId, resending, onDone, onDifferent
         {issue ? <Issue id={`${ownId}-issue`}>{t(issue)}</Issue> : null}
 
         {refusal && refusal !== "auth.codeShape" ? (
-          <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]">
+          <div role="alert" className={`mt-4 ${alertClass}`}>
             <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <p>{tError(refusal)}</p>
           </div>
         ) : null}
         {resentTo && !refusal ? (
-          <p role="status" className="mt-5 flex items-start gap-2 rounded-xl bg-[#e9f4ee] px-4 py-3 text-[14px] leading-5 text-[#1f5e3a]">
+          <p role="status" className="mt-4 flex items-start gap-2 rounded-xl bg-[#e9f4ee] px-4 py-3 text-[14px] leading-5 text-[#1f5e3a]">
             <Check className="mt-0.5 size-4 shrink-0" aria-hidden />
             {t("auth.codeResent", { email: resentTo })}
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          disabled={verify.isPending}
-          className="mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-wait disabled:opacity-80"
-        >
+        <button type="submit" disabled={verify.isPending} className={`mt-5 ${primaryClass}`}>
           {verify.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
           {t(verify.isPending ? "auth.verifying" : awaiting.from === "register" ? "auth.verifyCreate" : "auth.verifySignIn")}
         </button>
       </form>
 
-      <p className="mt-5 text-[14px] leading-6 text-[#536b8c]">{t("auth.codeTip")}</p>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[14px]">
-        <button
-          type="button"
-          onClick={() => resend.mutate({ email: awaiting.email })}
-          disabled={wait > 0 || resend.isPending || resending}
-          className="rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a] disabled:cursor-default disabled:text-[#536b8c] disabled:no-underline"
-        >
-          {resend.isPending || resending ? t("auth.sending") : wait > 0 ? t("auth.resendCodeIn", { seconds: wait }) : t("auth.resendCode")}
-        </button>
-        <button
-          type="button"
-          onClick={onDifferent}
-          className="rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]"
-        >
-          {t("auth.differentEmail")}
-        </button>
-      </div>
+      <NotArrived
+        resendLabel={resend.isPending || resending ? t("auth.sending") : wait > 0 ? t("auth.resendCodeIn", { seconds: wait }) : t("auth.resendCode")}
+        resendDisabled={wait > 0 || resend.isPending || resending}
+        onResend={() => resend.mutate({ email: awaiting.email })}
+        onDifferent={onDifferent}
+      />
     </div>
   );
 }

@@ -26,40 +26,42 @@ private struct ResetByCodeForm: View {
     @Environment(LanguageSettings.self) private var l
     @FocusState private var focus: Field?
 
-    enum Field { case code, password }
+    enum Field: Hashable { case code, password }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            LabeledField(
-                label: l.t("auth.codeLabel"),
-                text: $model.code,
-                placeholder: "000000",
-                problem: model.tried ? (model.codeProblem ?? (model.refusalIsCode ? model.refusal : nil)) : nil,
-                keyboard: .numberPad,
-                content: .oneTimeCode,
-                leftToRight: true
-            )
-            .focused($focus, equals: .code)
-            .onChange(of: model.code) { _, value in
-                model.codeChanged()
-                // A whole code moves on to the password, the way a phone's own fields do.
-                if Validation.normaliseCode(value).count == 6, model.password.isEmpty { focus = .password }
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(l.t("auth.codeLabel"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Brand.ink)
+                    .accessibilityHidden(true)
+                CodeBoxes(
+                    code: $model.code,
+                    label: l.t("auth.codeLabel"),
+                    invalid: model.tried && (model.codeProblem != nil || model.refusalIsCode),
+                    focus: $focus,
+                    field: .code
+                )
+                .onChange(of: model.code) { _, value in
+                    model.codeChanged()
+                    // A whole code moves on to the password, the way a phone's own fields do.
+                    if Validation.normaliseCode(value).count == 6, model.password.isEmpty { focus = .password }
+                }
+                FieldProblem(key: model.tried ? (model.codeProblem ?? (model.refusalIsCode ? model.refusal : nil)) : nil)
             }
-            LabeledField(
-                label: l.t("account.newPassword"),
-                text: $model.password,
-                problem: model.tried ? model.passwordProblem : nil,
-                content: .newPassword,
-                secure: true,
-                leftToRight: true
-            )
-            .focused($focus, equals: .password)
-            .onChange(of: model.password) { _, _ in model.passwordChanged() }
-            let long = model.password.count >= ReferenceData.shared.rules.passwordFloor
-            Label(l.t("auth.ruleLength"), systemImage: long ? "checkmark.circle.fill" : "circle")
-                .font(.footnote)
-                .foregroundStyle(long ? Brand.success : Brand.muted)
-                .accessibilityValue(l.t(long ? "auth.ruleMet" : "auth.ruleNotMet"))
+            VStack(alignment: .leading, spacing: 10) {
+                LabeledField(
+                    label: l.t("account.newPassword"),
+                    text: $model.password,
+                    problem: model.tried ? model.passwordProblem : nil,
+                    content: .newPassword,
+                    secure: true,
+                    leftToRight: true
+                )
+                .focused($focus, equals: .password)
+                .onChange(of: model.password) { _, _ in model.passwordChanged() }
+                PasswordMeter(password: model.password)
+            }
             if let refusal = model.refusal, !model.refusalIsCode {
                 FieldProblem(key: refusal)
             }

@@ -248,7 +248,7 @@ final class AuthViewModelTests: XCTestCase {
         let refused = await model.finish()
         XCTAssertNil(refused)
         XCTAssertEqual(model.codeProblem, "auth.codeShape")
-        XCTAssertEqual(model.passwordProblem, "auth.ruleLength")
+        XCTAssertEqual(model.passwordProblem, "auth.passwordNeedsRules")
         XCTAssertTrue(account.codeResets.isEmpty, "nothing is sent the server would refuse")
 
         model.code = "١٢٣٤٥٦"
