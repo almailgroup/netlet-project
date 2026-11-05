@@ -365,9 +365,15 @@ function SpeedChoice({ item, title }: { item: CartItem; title: string }) {
  * on its way the delivery and the total are the server's last, so they are
  * drawn fainter and the region says it is busy until the answer lands.
  */
-export function BagSummary({ checkoutRef, heading = false, onCheckout }: {
+export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn = false }: {
   checkoutRef?: (node: HTMLButtonElement | null) => void;
   heading?: boolean;
+  /**
+   * The page's floating bar is Checkout just now. This one is then behind the
+   * phone's glass tab bar, where its orange tinted the whole bar, so it fades
+   * out and leaves the keyboard and a screen reader to the bar's.
+   */
+  standIn?: boolean;
   /** What Checkout does instead of going straight there — the cart page asks for an address first. */
   onCheckout?: () => void;
 } = {}) {
@@ -415,7 +421,7 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout }: {
       {/* Read in another currency, the figure charged is said too. */}
       {shown ? <p className="mt-2 text-[12px] font-semibold leading-5 text-[#0a285a]">{t("currency.paidInDinars", { amount: dinars(cart.total) })}</p> : null}
       <p className="mt-2 text-[12px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
-      <button ref={checkoutRef} onClick={onCheckout ?? proceedToCheckout} className="glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold">
+      <button ref={checkoutRef} onClick={onCheckout ?? proceedToCheckout} inert={standIn} className={`glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold transition-opacity duration-200 ${standIn ? "opacity-0" : ""}`}>
         {t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" />
       </button>
     </div>

@@ -436,20 +436,20 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
   },
   "returns.howTo": {
     param: "days",
-    en: { one: "You have 1 day from delivery to return or exchange an item. Use the button beside it; damaged, faulty and wrong items are approved straight away." },
+    en: { one: "You have 1 day from delivery to return or exchange an item. Choose Return or exchange from its ⋯ menu; damaged, faulty and wrong items are approved straight away." },
     ar: {
-      one: "أمامك يوم واحد من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. استخدم الزر بجانبها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً.",
-      two: "أمامك يومان من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. استخدم الزر بجانبها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً.",
-      few: "أمامك {days} أيام من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. استخدم الزر بجانبها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً.",
+      one: "أمامك يوم واحد من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. اختر «إرجاع أو استبدال» من قائمة ⋯ الخاصة بها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً.",
+      two: "أمامك يومان من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. اختر «إرجاع أو استبدال» من قائمة ⋯ الخاصة بها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً.",
+      few: "أمامك {days} أيام من تاريخ الاستلام لإرجاع أي قطعة أو استبدالها. اختر «إرجاع أو استبدال» من قائمة ⋯ الخاصة بها؛ تُقبل القطع التالفة والمعيبة والخاطئة فوراً.",
     },
   },
   "help.a.returns": {
     param: "days",
-    en: { one: "Within 1 day of delivery, open the order and press Return or exchange beside the item. Damaged, faulty and wrong items are approved straight away." },
+    en: { one: "Within 1 day of delivery, open the order and choose Return or exchange from the item's ⋯ menu. Damaged, faulty and wrong items are approved straight away." },
     ar: {
-      one: "خلال يوم واحد من الاستلام، افتح الطلب واضغط «إرجاع أو استبدال» بجانب القطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا.",
-      two: "خلال يومين من الاستلام، افتح الطلب واضغط «إرجاع أو استبدال» بجانب القطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا.",
-      few: "خلال {days} أيام من الاستلام، افتح الطلب واضغط «إرجاع أو استبدال» بجانب القطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا.",
+      one: "خلال يوم واحد من الاستلام، افتح الطلب واختر «إرجاع أو استبدال» من قائمة ⋯ الخاصة بالقطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا.",
+      two: "خلال يومين من الاستلام، افتح الطلب واختر «إرجاع أو استبدال» من قائمة ⋯ الخاصة بالقطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا.",
+      few: "خلال {days} أيام من الاستلام، افتح الطلب واختر «إرجاع أو استبدال» من قائمة ⋯ الخاصة بالقطعة. تُقبل القطع التالفة والمعيبة والخاطئة فورًا.",
     },
   },
   "returnsPage.intro": {

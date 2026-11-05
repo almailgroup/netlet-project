@@ -330,7 +330,7 @@ struct SupportThreadView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.supportThread, .init(id: conversationId)) } }) { thread in
-            ShopPage(header: false, refresh: { await thread.load() }) {
+            ShopPage(header: false, refresh: { await thread.load() }, assistant: false) {
                 AccountSection(title: thread.value.map { l.t(SupportView.topicLabel($0.topic)) } ?? l.t("support.section"), hint: l.t("support.askNote")) {
                     LoadStateView(state: thread.state, retry: { await thread.load() }) { data in
                         VStack(alignment: .leading, spacing: 14) {

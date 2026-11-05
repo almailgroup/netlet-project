@@ -4,7 +4,7 @@
  * profile page").
  *
  * A return is started from its order (Request a refund, or Return or exchange
- * beside the item), because that is where the item and its window are; this
+ * under the item's ⋯), because that is where the item and its window are; this
  * page is where somebody comes back to ask "where is my refund". So each row
  * is the item as the order froze it, with today's photo to know it by, what
  * was asked (a refund or an exchange), where it has got to — the opened

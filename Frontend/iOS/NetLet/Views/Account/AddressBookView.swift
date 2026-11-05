@@ -242,7 +242,6 @@ private struct AddressFormBody: View {
             AddressConfirmSheet(model: model) {
                 Task { await save() }
             }
-            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
         }
     }
@@ -388,6 +387,7 @@ struct AddressConfirmSheet: View {
                     }
                 }
                 .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                 Button {
@@ -402,6 +402,7 @@ struct AddressConfirmSheet: View {
                     .disabled(model.saving)
             }
             .padding(20)
+            .sheetFit()
         }
         .background(Brand.ground.ignoresSafeArea())
         .environment(\.layoutDirection, l.layoutDirection)

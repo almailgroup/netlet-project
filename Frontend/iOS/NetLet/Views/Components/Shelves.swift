@@ -612,3 +612,35 @@ struct ShelfSkeleton: View {
         .accessibilityHidden(true)
     }
 }
+
+/// Two columns of tiles, each as tall as the tallest of them all — a `Grid`
+/// sizes each row on its own, so a title that wrapped made one row taller than
+/// the other. Placed from the leading edge; SwiftUI mirrors a custom layout on
+/// a right-to-left page, as it does `FlowLayout`. The account's four tiles and
+/// the help centre's issues; a tile fills the height it is given
+/// (`maxHeight: .infinity`), or it sits in the middle of its slot.
+struct TileGrid: Layout {
+    var spacing: CGFloat = 12
+
+    private func tileHeight(_ subviews: Subviews, column: CGFloat) -> CGFloat {
+        subviews.map { $0.sizeThatFits(ProposedViewSize(width: column, height: nil)).height }.max() ?? 0
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 360
+        let column = max((width - spacing) / 2, 0)
+        let rows = (subviews.count + 1) / 2
+        let height = tileHeight(subviews, column: column)
+        return CGSize(width: width, height: CGFloat(rows) * height + CGFloat(max(rows - 1, 0)) * spacing)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let column = max((bounds.width - spacing) / 2, 0)
+        let height = tileHeight(subviews, column: column)
+        for (index, subview) in subviews.enumerated() {
+            let x = bounds.minX + CGFloat(index % 2) * (column + spacing)
+            let y = bounds.minY + CGFloat(index / 2) * (height + spacing)
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: column, height: height))
+        }
+    }
+}

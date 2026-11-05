@@ -94,40 +94,7 @@ struct OrderActionsBar: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .sheet(item: $sheet, onDismiss: openNext) { which in
-            switch which.kind {
-            case .track:
-                if let steps = detail.steps {
-                    TrackOrderSheet(reference: reference, steps: steps, lines: detail.lines, lineId: which.lineId)
-                }
-            case .refund:
-                RefundSheet(reference: reference, lines: refundable, done: { Task { await reload() } })
-            case .warranty:
-                WarrantySheet(reference: reference, detail: detail, lineId: which.lineId, done: { Task { await reload() } })
-            case .modify:
-                OrderModifySheet(reference: reference, detail: detail, lineId: which.lineId, remove: which.remove, done: { Task { await reload() } })
-            case .address:
-                OrderAddressSheet(reference: reference, detail: detail, done: { Task { await reload() } })
-            case .help:
-                OrderHelpSheet(
-                    reference: reference,
-                    items: detail.lines.map { line in
-                        SelfHelpAnswer.Item(
-                            id: line.id,
-                            title: line.productTitle,
-                            variant: line.variantTitle == "Default" ? nil : line.variantTitle,
-                            photo: line.photo,
-                            fulfilment: line.fulfilment,
-                            variantId: line.variantId,
-                            quantity: line.quantity
-                        )
-                    },
-                    lineId: which.lineId,
-                    reload: { await reload() }
-                ) { action, line in
-                    next = action
-                    sheetLine = line ?? which.lineId
-                }
-            }
+            sheetContent(which).languageDirection()
         }
         .onAppear {
             // The screenshots' hooks (`track:`, `refund:`, `warranty:`…); `rate` is the order's own.
@@ -140,6 +107,45 @@ struct OrderActionsBar: View {
             Button(l.t("orders.keepOrder"), role: .cancel) {}
         } message: {
             Text(l.t("orders.cancelBody"))
+        }
+    }
+
+    /// What the sheet over the order draws, for which act and which item.
+    @ViewBuilder
+    private func sheetContent(_ which: OrderSheet) -> some View {
+        switch which.kind {
+        case .track:
+            if let steps = detail.steps {
+                TrackOrderSheet(reference: reference, steps: steps, lines: detail.lines, lineId: which.lineId)
+            }
+        case .refund:
+            RefundSheet(reference: reference, lines: refundable, done: { Task { await reload() } })
+        case .warranty:
+            WarrantySheet(reference: reference, detail: detail, lineId: which.lineId, done: { Task { await reload() } })
+        case .modify:
+            OrderModifySheet(reference: reference, detail: detail, lineId: which.lineId, remove: which.remove, done: { Task { await reload() } })
+        case .address:
+            OrderAddressSheet(reference: reference, detail: detail, done: { Task { await reload() } })
+        case .help:
+            OrderHelpSheet(
+                reference: reference,
+                items: detail.lines.map { line in
+                    SelfHelpAnswer.Item(
+                        id: line.id,
+                        title: line.productTitle,
+                        variant: line.variantTitle == "Default" ? nil : line.variantTitle,
+                        photo: line.photo,
+                        fulfilment: line.fulfilment,
+                        variantId: line.variantId,
+                        quantity: line.quantity
+                    )
+                },
+                lineId: which.lineId,
+                reload: { await reload() }
+            ) { action, line in
+                next = action
+                sheetLine = line ?? which.lineId
+            }
         }
     }
 

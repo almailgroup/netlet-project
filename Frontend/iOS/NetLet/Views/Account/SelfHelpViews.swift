@@ -388,7 +388,10 @@ struct IssueCentre: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(l.t("help.issuesTitle")).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
             Text(l.t("help.issuesIntro")).font(.inter(14)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+            // Every tile as tall as the tallest, its icon and words at its
+            // top: in a lazy grid a short tile sat in the middle of a row a
+            // two-line one had made taller, so no two rows lined up.
+            TileGrid(spacing: 8) {
                 ForEach(issues, id: \.self) { each in
                     tile(each)
                 }
@@ -438,7 +441,7 @@ struct IssueCentre: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 84, maxHeight: .infinity, alignment: .topLeading)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(chosen ? Brand.tint : Color.white))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.cardLine, lineWidth: chosen ? 1.5 : 1))
         }

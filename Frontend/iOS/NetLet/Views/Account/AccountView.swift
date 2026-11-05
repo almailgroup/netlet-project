@@ -44,9 +44,9 @@ struct AccountView: View {
         }
     }
 
-    /// The cards of rows, top to bottom: what somebody shops with, their
-    /// settings, what they run, and the account itself. "signout" is the one
-    /// row that is not a section.
+    /// The cards of rows, top to bottom: what somebody shops with, and their
+    /// settings. Signing out is not among them: it is a card of its own, the
+    /// last thing on the page, under the seller's and the affiliate cards.
     ///
     /// **"Help from NetLet" and the affiliate programme are not rows, on the
     /// owner's word** — each was on the page twice. The help centre
@@ -64,7 +64,6 @@ struct AccountView: View {
         ["returns", "addresses", "payments", "wishlists", "reviews", "offers", "subscriptions"],
         // Browsing history, less prominent than the home's own shelf, on the owner's word.
         ["preferences", "history"],
-        ["signout"],
     ]
 
     /// What the affiliate card offers: joining, or the programme itself.
@@ -86,9 +85,7 @@ struct AccountView: View {
                 topRow
                 profileCard(user)
                 // Four tiles, two by two, above the quick settings, on the
-                // owner's word: what was ordered, saved and bought often, and
-                // the points. A row of two is as tall as its taller tile.
-                // Four tiles, every one the height of the tallest: a title
+                // owner's word — every one the height of the tallest: a title
                 // that wraps ("Frequently bought" on a small phone, or at a
                 // larger text size) makes its row no taller than the other,
                 // and the pictures sit on one line at the foot — the web's
@@ -111,13 +108,8 @@ struct AccountView: View {
                 // Country, currency and language on the page itself, on the owner's word.
                 QuickSettingsCard()
                 MembershipCard()
-                ForEach(Array(Self.cards.enumerated()), id: \.offset) { index, ids in
+                ForEach(Array(Self.cards.enumerated()), id: \.offset) { _, ids in
                     let rows = ids.filter(onHome)
-                    if index == Self.cards.count - 1 {
-                        // What the footer carried, before the account's own
-                        // card, so signing out stays the last thing on the page.
-                        MoreFromNetLet()
-                    }
                     if !rows.isEmpty {
                         VStack(spacing: 0) {
                             ForEach(Array(rows.enumerated()), id: \.element) { index, id in
@@ -129,12 +121,20 @@ struct AccountView: View {
                         .panel()
                     }
                 }
+                // What the footer carried: the help centre, the guides, the tutorial and the terms.
+                MoreFromNetLet()
                 // The seller portal's door, or Become a seller, and Affiliate
                 // marketing — the web's cards — at the foot, on the owner's word.
                 SellerEntryCard()
                 if let offer = affiliateOffer {
                     affiliatePromo(offer)
                 }
+                // Signing out is the page's last thing, on the owner's word
+                // ("the sign out option should be at the last, bottom"): a card
+                // of its own under the seller's and the affiliate cards.
+                row("signout")
+                    .padding(.horizontal, 20)
+                    .panel()
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
@@ -498,7 +498,6 @@ struct AccountView: View {
     /// Price requests and Subscribe & Save, the shopper has one — for anybody
     /// else they open an empty page. Their screens stay open to a link.
     private func onHome(_ id: String) -> Bool {
-        if id == "signout" { return true }
         guard entries.contains(where: { $0.id == id }) else { return false }
         switch id {
         case "offers": return holdings.offers
@@ -1057,35 +1056,5 @@ private struct TileTitle: View {
             .lineLimit(2)
             .minimumScaleFactor(0.9)
             .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// Two columns of tiles, each as tall as the tallest of them all — a `Grid`
-/// sizes each row on its own, so a title that wrapped made one row taller than
-/// the other. Placed from the leading edge; SwiftUI mirrors a custom layout on
-/// a right-to-left page, as it does `FlowLayout`.
-private struct TileGrid: Layout {
-    var spacing: CGFloat = 12
-
-    private func tileHeight(_ subviews: Subviews, column: CGFloat) -> CGFloat {
-        subviews.map { $0.sizeThatFits(ProposedViewSize(width: column, height: nil)).height }.max() ?? 0
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? 360
-        let column = max((width - spacing) / 2, 0)
-        let rows = (subviews.count + 1) / 2
-        let height = tileHeight(subviews, column: column)
-        return CGSize(width: width, height: CGFloat(rows) * height + CGFloat(max(rows - 1, 0)) * spacing)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let column = max((bounds.width - spacing) / 2, 0)
-        let height = tileHeight(subviews, column: column)
-        for (index, subview) in subviews.enumerated() {
-            let x = bounds.minX + CGFloat(index % 2) * (column + spacing)
-            let y = bounds.minY + CGFloat(index / 2) * (height + spacing)
-            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: column, height: height))
-        }
     }
 }

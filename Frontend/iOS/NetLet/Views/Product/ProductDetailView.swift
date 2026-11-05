@@ -70,7 +70,7 @@ private struct ProductPage: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product) {
+        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product, assistantFolded: true) {
             VStack(alignment: .leading, spacing: 0) {
                 Breadcrumbs(trail: crumbs)
                 ProductPhotos(product: product, index: $model.imageIndex) { photos = .photos }

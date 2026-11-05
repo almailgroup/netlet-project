@@ -809,7 +809,7 @@ struct ReviewsSection: View {
                 page = next
             }
         }
-        .sheet(item: $viewing) { photos in ReviewPhotoViewer(photos: photos) }
+        .sheet(item: $viewing) { photos in ReviewPhotoViewer(photos: photos).languageDirection() }
     }
 
     private func summaryCard(_ summary: ProductReviewsPage.Summary, written: Int) -> some View {

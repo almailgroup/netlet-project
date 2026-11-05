@@ -129,6 +129,7 @@ struct ReviewsView: View {
             .task { await lines.load() }
             .sheet(item: $writing) { target in
                 ReviewSheet(target: target) { Task { await lines.load() } }
+                    .languageDirection()
             }
         }
     }

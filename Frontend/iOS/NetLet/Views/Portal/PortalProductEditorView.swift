@@ -37,6 +37,7 @@ struct PortalProductEditorView: View {
         .task { await prepare() }
         .sheet(item: $deleting) { row in
             DeleteProductSheet(product: row) { dismiss() }
+                .languageDirection()
         }
     }
 

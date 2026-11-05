@@ -41,6 +41,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
@@ -62,6 +63,8 @@ export default function Cart() {
   usePageMeta(privatePageMeta("Your cart"));
   const items = cart?.items.length ?? 0;
   const [checkoutRef, checkoutBelow] = useBeyondScreen("bottom", TAB_BAR_REACH);
+  /* The floating bar is a phone's alone (`lg:hidden`), and so is standing in for it. */
+  const wide = useMediaQuery("(min-width: 1024px)");
   const delivery = useDeliveryAddress();
   const details = trpc.customer.details.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 60_000 });
 
@@ -124,7 +127,7 @@ export default function Cart() {
               />
               <BagLines layout="page" />
             </div>
-            <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading onCheckout={goToCheckout} /></aside>
+            <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading onCheckout={goToCheckout} standIn={checkoutBelow && !wide} /></aside>
             {/* Under Checkout, on the owner's word — on a phone after the
                 summary, on a wide screen under both columns — so the bag and
                 what it costs come first. It sat directly under the lines. */}

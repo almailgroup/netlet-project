@@ -49,7 +49,9 @@ struct PinField: View {
                         .foregroundStyle(Brand.navy)
                         .fixedSize(horizontal: false, vertical: true)
                 } icon: {
-                    Image(systemName: "mappin.circle.fill").foregroundStyle(Brand.accentInk)
+                    // A tick, not a pin: the map above already shows the pin,
+                    // and a filled pin in a circle this small read as a "!".
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Brand.success)
                 }
                 HStack(spacing: 10) {
                     Button(l.t("pin.move")) { picking = true }

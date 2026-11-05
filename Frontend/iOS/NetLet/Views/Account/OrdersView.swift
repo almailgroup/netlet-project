@@ -289,6 +289,7 @@ struct OrderDetailView: View {
             .task { await model.load() }
             .sheet(item: $rating) { target in
                 ReviewSheet(target: target) { Task { await model.load() } }
+                    .languageDirection()
             }
         }
     }

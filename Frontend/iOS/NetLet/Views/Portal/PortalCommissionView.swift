@@ -64,6 +64,7 @@ struct PortalCommissionView: View {
                 }
             }
             .presentationDetents([.medium])
+            .languageDirection()
         }
     }
 

@@ -2165,10 +2165,13 @@ foot, because "Frequently bought" wraps on a 320px phone and a row of its own
 height read as a broken grid; the balance shrinks with the screen rather than
 being cut ("1,…" at 320). Then Quick settings, the membership card, every
 section as a row in white cards — an outline icon, the name, what is waiting,
-a chevron — with dashed lines between, and signing out in red, still asking
-first; **and last, the seller card and the affiliate card, on the owner's
-word** ("move Sell on NetLet and affiliate marketing to the bottom of the
-profile page"), under signing out, being offers rather than the account.
+a chevron — with dashed lines between; then the seller card and the
+affiliate card, on the owner's word ("move Sell on NetLet and affiliate
+marketing to the bottom of the profile page"), being offers rather than the
+account; **and signing out last of all, on the owner's word** ("the sign out
+option should be at the last, bottom"): one red row in a card of its own
+under the offers, still asking first. The app's Help and information card sits
+between the rows and the offers, so its Sign out is the page's last row too.
 
 **Name, email and phone lead it, and Country, Currency and Language follow,
 on the owner's word** ("clearly visible and directly accessible from the My
@@ -2412,7 +2415,7 @@ invoice, a guide in the portal, a store, a gift list's link — says so under a
 heading, never "could not load" over a Try again that cannot find it, and never
 offers to print or share what is not there.
 
-Signing out is a plain row at the foot of the home, still asking first. It sat in a red "danger zone" box, which dressed the most
+Signing out is a plain row at the very foot of the home, in a card of its own, still asking first. It sat in a red "danger zone" box, which dressed the most
 ordinary thing anybody does on an account page as a hazard. "Your activity"
 went too: its two cards repeated what the Saved and Orders tiles say.
 
@@ -3422,7 +3425,9 @@ screen instead**: the button folds to its mark beside it (`useAssistantMark`,
 so the assistant stays on those pages too (see Browsing). On a wide screen the footer leaves room under it.
 **It is on every page, the header-less account and cart included, and folds
 to its mark on a scroll down** — both on the owner's word; see the tab bar's
-slide under Buttons and "The account".
+slide under Buttons and "The account". The app's one exception is a
+conversation with NetLet's people, and its product page has the mark alone
+(see the quality pass under "iOS app").
 
 **It waits while a page arrives** (`data-page-arriving`, set by
 `StorefrontShell` for `ARRIVAL_MS` after every move, the app's `settled`), on
@@ -8359,6 +8364,48 @@ fulfilment and warranty desks. **The logo row's area name comes before the
 logo's box** (`layoutPriority`): the box reserved 130 for a logo 90 wide at
 40 tall, so "Choose area" read "Choose…"; the chevron now goes before the name
 is cut, the web's rule under 360px, which a pushed page's back arrow needs.
+
+**A sheet takes the page's direction by hand** (`.languageDirection()`, on
+every sheet's content). A sheet or a full-screen cover is a hosting controller
+of its own and reads its direction from the phone's language, not from the
+page that opened it, so on a phone set to English every order sheet — Track,
+Refund, Warranty, Modify, Address, Help — and the review sheet came up left to
+right on the Arabic page, Close at the left and each row unmirrored under
+Arabic words. `SheetDirectionUITests` opens Track in both languages and checks
+which side Close is on. A new `.sheet` or `.fullScreenCover` wears it.
+
+**A quality pass over the CI's pictures in both languages found six more,
+each now fixed**:
+
+- **"Need help?" steps out of the way where it covered what the page is
+  for.** A conversation with NetLet's people has no assistant (`ShopPage`'s
+  `assistant: false` on `SupportThreadView`) — it sat over the reply box and
+  Send, a second "help" over the help; the web's thread is inline in a list,
+  its Send at the start, and needed nothing. A product page has the mark
+  alone (`assistantFolded`): at rest the pill sat on the product's name and
+  price, which the app draws lower on the first screen than the web does
+  (measured on the web at 390: the seller's line is under that corner, the
+  name 100px above it), and the page has its own assistant panel besides.
+- **The cart's own Checkout fades out while the floating bar stands in for
+  it**, on the web and in the app: it was behind the glass tab bar, and its
+  orange tinted the whole bar orange. Hidden, it is `inert` on the web and
+  hidden from VoiceOver in the app, so the bar's is the one button.
+- **The help centre's issues are equal tiles** (`TileGrid`, now shared from
+  `Shelves.swift`): in a lazy grid a one-line tile sat in the middle of a row
+  a two-line one had made taller, so no row lined up.
+- **A portal page names itself once**: the bar's title shows only after the
+  page's own large title has scrolled away (`PortalScreen`), as Settings and
+  Mail do — it read "Orders" over "Orders" on every desk.
+- **"Is this your address?" is as tall as what it holds** (`sheetFit()`, a
+  `.height` detent from the content's measured height): at `.large` it was a
+  map, a card and two buttons over half a screen of nothing. Its address card
+  is the sheet's width.
+- **A saved pin is marked with a tick**, not a filled pin in a circle, which
+  at that size read as "!".
+
+And the order page's line on returns named "the button beside it", from
+before an item's actions moved behind its ⋯; it names the ⋯ menu now, and so
+do the help page's answer and the returns page.
 
 **A new install opens on a tutorial, and it can always be skipped — on the
 owner's word** ("work on app tutorial, for a new user that downloads and opens

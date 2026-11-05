@@ -3,18 +3,31 @@ import SwiftUI
 /// A portal page's frame — the web's `AdminShell` page with its `PageHeader`:
 /// the title and one line on what the page holds, on the pearl ground, under
 /// the system's own navigation bar, since the portal is outside the shop's frame.
+///
+/// **The bar names the page only once the page's own title has scrolled
+/// away**, as Settings and Mail do: both at once read "Orders" over "Orders"
+/// on every desk. `navigationTitle` stays, for the back button's menu.
 struct PortalScreen<Content: View>: View {
     let title: String
     var intro: String?
     var refresh: (() async -> Void)?
     @ViewBuilder var content: () -> Content
     @Environment(LanguageSettings.self) private var l
+    @State private var titleGone = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title).pageTitle().fixedSize(horizontal: false, vertical: true)
+                        .background {
+                            GeometryReader { proxy in
+                                Color.clear
+                                    .onChange(of: proxy.frame(in: .named(PortalScreenSpace.name)).maxY < 0, initial: true) { _, gone in
+                                        if gone != titleGone { titleGone = gone }
+                                    }
+                            }
+                        }
                     if let intro {
                         Text(intro).font(.inter(14)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
                     }
@@ -25,12 +38,28 @@ struct PortalScreen<Content: View>: View {
             .padding(.bottom, 32)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .coordinateSpace(.named(PortalScreenSpace.name))
         .modifier(PortalRefresh(action: refresh))
         .background(Brand.pearl.ignoresSafeArea())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(title)
+                    .font(.inter(16, .semibold))
+                    .foregroundStyle(Brand.ink)
+                    .lineLimit(1)
+                    .opacity(titleGone ? 1 : 0)
+                    .accessibilityHidden(!titleGone)
+                    .animation(.easeOut(duration: 0.15), value: titleGone)
+            }
+        }
         .environment(\.layoutDirection, l.layoutDirection)
     }
+}
+
+private enum PortalScreenSpace {
+    static let name = "portal.screen"
 }
 
 private struct PortalRefresh: ViewModifier {

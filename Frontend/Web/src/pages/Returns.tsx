@@ -8,7 +8,7 @@
  * a fault on the seller's side is approved at once, a change of mind too
  * except on a perishable department, anything else waits for a person, and an
  * exchange with nothing left on the shelf becomes a refund. The button goes to
- * the orders, where a return is actually started, beside the item.
+ * the orders, where a return is actually started, from the item's ⋯.
  */
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";

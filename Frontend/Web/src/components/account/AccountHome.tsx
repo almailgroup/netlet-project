@@ -4,8 +4,8 @@
  * pencil to change it, four tiles — the last things ordered, saved and
  * bought often, and the points — then the quick settings, the sections as
  * rows in white cards (an icon, a name and a chevron, dashed lines between
- * them), signing out in red, still asking first, and the seller's and the
- * affiliate programme's cards last.
+ * them), the seller's and the affiliate programme's cards, and last of all
+ * signing out in red, still asking first.
  *
  * **Four tiles above the quick settings, and the seller's and the affiliate
  * cards at the foot, on the owner's word** ("make frequently bought and
@@ -99,8 +99,8 @@ type Row = {
 };
 
 /*
- * The cards, top to bottom: what somebody shops with, their settings and
- * help, and signing out, the one row that is not a section. Price requests
+ * The cards, top to bottom: what somebody shops with, and their settings and
+ * help; signing out is a card of its own at the page's foot. Price requests
  * and Subscribe & Save are rows only while the shopper has one (`has`).
  * Frequently bought is a tile now, and the password and deleting the account
  * are "Your profile"'s, under the pencil.
@@ -120,9 +120,6 @@ const CARDS: Row[][] = [
     { id: "helpCentre", label: "footer.helpCentre", icon: LifeBuoy, href: "/help" },
     /* Less prominent than the home's own shelf, on the owner's word. */
     { id: "history", label: "history.title", icon: History },
-  ],
-  [
-    { id: "signout", label: "header.signOut", icon: LogOut },
   ],
 ];
 
@@ -270,21 +267,13 @@ export function AccountHome({ user, has, badge, onSignOut }: {
 
       <nav aria-label={t("account.menu")} className="space-y-3">
         {CARDS.map((rows, index) => {
-          const shown = rows.filter(row => row.id === "signout" || row.href || has(row.id));
+          const shown = rows.filter(row => row.href || has(row.id));
           if (!shown.length) return null;
           return (
             <ul key={index} className={`${PANEL} divide-y divide-dashed divide-[#e3e6ec] px-5`}>
               {shown.map(row => (
                 <li key={row.id}>
-                  {row.id === "signout" ? (
-                    <button type="button" onClick={onSignOut} className="-mx-5 flex min-h-[64px] w-[calc(100%+2.5rem)] items-center gap-3.5 px-5 text-start hover:bg-[#fdf5f3]">
-                      <LogOut className="size-[22px] shrink-0 text-[#c2362a]" strokeWidth={1.75} aria-hidden />
-                      <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t(row.label)}</span>
-                      <ChevronRight className={CHEVRON} aria-hidden />
-                    </button>
-                  ) : (
-                    <RowLink row={row} waiting={badge(row.id)} />
-                  )}
+                  <RowLink row={row} waiting={badge(row.id)} />
                 </li>
               ))}
             </ul>
@@ -313,6 +302,17 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           <span className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[#0a285a]">{t(affiliate === "join" ? "affiliate.promoJoin" : "affiliate.promoOpen")}</span>
         </Link>
       ) : null}
+
+      {/* Signing out is the page's last thing, on the owner's word ("the sign
+          out option should be at the last, bottom"), under the seller's and
+          the affiliate cards — a card of its own, still asking first. */}
+      <div className={`${PANEL} px-5`}>
+        <button type="button" onClick={onSignOut} className="-mx-5 flex min-h-[64px] w-[calc(100%+2.5rem)] items-center gap-3.5 rounded-[inherit] px-5 text-start hover:bg-[#fdf5f3]">
+          <LogOut className="size-[22px] shrink-0 text-[#c2362a]" strokeWidth={1.75} aria-hidden />
+          <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t("header.signOut")}</span>
+          <ChevronRight className={CHEVRON} aria-hidden />
+        </button>
+      </div>
     </div>
   );
 }

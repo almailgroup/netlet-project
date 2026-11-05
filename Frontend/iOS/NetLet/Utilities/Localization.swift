@@ -175,6 +175,31 @@ final class LanguageSettings {
     }
 }
 
+/// The page's own direction, for what a sheet or a cover draws.
+///
+/// A sheet is drawn in a hosting controller of its own, which takes its
+/// layout direction from the phone's system language rather than from the
+/// page that opened it — so on the Arabic page of a phone set to English,
+/// every order sheet (Track, Refund, Rate, Warranty, Help, Modify, Change
+/// address) came up left to right, Close on the wrong side and each item's
+/// row unmirrored, while the words in it were Arabic. Whatever a sheet or a
+/// cover presents wears this, as the address form and checkout's
+/// confirmation already did by hand.
+struct LanguageDirection: ViewModifier {
+    @Environment(LanguageSettings.self) private var l
+
+    func body(content: Content) -> some View {
+        content.environment(\.layoutDirection, l.layoutDirection)
+    }
+}
+
+extension View {
+    /// Draws this in the page's language's direction — every sheet's content.
+    func languageDirection() -> some View {
+        modifier(LanguageDirection())
+    }
+}
+
 extension Bundle {
     /// A bundled file's bytes, or empty data when it is missing.
     func resource(_ name: String, _ ext: String) -> Data {

@@ -176,6 +176,13 @@ struct CartView: View {
                                 }
                         }
                     }
+                    // While the floating bar stands in for it, this one is
+                    // behind the tab bar, and its orange showed through the
+                    // glass as an orange tab bar. The floating bar is the
+                    // button then, to the eye and to VoiceOver alike.
+                    .opacity(checkoutBelow ? 0 : 1)
+                    .accessibilityHidden(checkoutBelow)
+                    .animation(.easeOut(duration: 0.18), value: checkoutBelow)
             }
             .card()
             // Under Checkout, on the owner's word: the bag and what it costs
