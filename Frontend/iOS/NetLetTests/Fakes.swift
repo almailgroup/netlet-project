@@ -78,6 +78,18 @@ final class SlowCartService: CartServicing, @unchecked Sendable {
     var reads = 0
     var quantities: [Int] = []
 
+    /// While held, a quantity change waits here until the test lets it go,
+    /// rather than for `pause` alone: a test that needs the first press still
+    /// on its way when the next ones arrive decides when the server answers.
+    /// Racing the 80ms pause failed on a busy runner, where the first answer
+    /// came back before the second press was queued.
+    var held: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return isHeld }
+        set { lock.lock(); isHeld = newValue; lock.unlock() }
+    }
+    private let lock = NSLock()
+    private var isHeld = false
+
     init(template: Cart, pause: Duration = .milliseconds(80)) {
         self.template = template
         self.pause = pause
@@ -104,6 +116,7 @@ final class SlowCartService: CartServicing, @unchecked Sendable {
 
     func setQuantity(_ cartId: String, lineId: String, quantity: Int) async throws -> Cart? {
         quantities.append(quantity)
+        while held { try await Task.sleep(for: .milliseconds(5)) }
         try await Task.sleep(for: pause)
         if refuse { throw URLError(.badServerResponse) }
         return stored

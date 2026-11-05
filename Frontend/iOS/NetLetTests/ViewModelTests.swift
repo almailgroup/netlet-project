@@ -104,6 +104,8 @@ final class CartQueueTests: XCTestCase {
         let line = try XCTUnwrap(cart.cart?.items.first)
         func drawn() -> Int? { cart.cart?.items.first { $0.lineId == line.lineId }?.quantity }
 
+        // The first press's answer waits until the other two are pressed.
+        service.held = true
         let first = Task { await cart.setQuantity(lineId: line.lineId, to: 3) }
         await settle { service.quantities.count == 1 }
         let second = Task { await cart.setQuantity(lineId: line.lineId, to: 4) }
@@ -111,6 +113,7 @@ final class CartQueueTests: XCTestCase {
         let third = Task { await cart.setQuantity(lineId: line.lineId, to: 5) }
         await settle { drawn() == 5 }
         XCTAssertEqual(drawn(), 5, "every press is drawn while the first is on its way")
+        service.held = false
         _ = await first.value
         _ = await second.value
         _ = await third.value

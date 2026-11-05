@@ -237,13 +237,20 @@ final class ScrollingUITests: XCTestCase {
         // where it stopped: a number while it is drawn, "·" once it is not.
         var trace: [String] = []
         var flicks = 0
-        while !onScreen(foot) && flicks < 25 {
+        var reached = false
+        while !reached && flicks < 25 {
             app.swipeUp(velocity: .fast)
             flicks += 1
+            // Read once the flick has come to rest. Mid-flick the foot can be
+            // above where it rests, in the bounce at the end, and a shelf still
+            // arriving pushes it down again: read then, run 42024263241 saw the
+            // foot "reached" after two flicks and then at 995, under the screen.
+            sleep(1)
             trace.append(frame(of: top).map { String(Int($0.minY)) } ?? "·")
+            reached = onScreen(foot)
         }
         let elsewhere = app.buttons["Back"].exists || app.sheets.count > 0 ? " — and the flicks had left the page (a Back button or a sheet is up)" : ""
-        XCTAssertTrue(onScreen(foot), "\(flicks) flicks never reached the page's foot. Top after each: \(trace.joined(separator: " ")); foot \(frame(of: foot).map { "at \(Int($0.minY))" } ?? "not drawn")\(elsewhere).", file: file, line: line)
+        XCTAssertTrue(reached, "\(flicks) flicks never reached the page's foot. Top after each: \(trace.joined(separator: " ")); foot \(frame(of: foot).map { "at \(Int($0.minY))" } ?? "not drawn")\(elsewhere).", file: file, line: line)
         flicks = 0
         while !(onScreen(top) && (frame(of: top)?.minY ?? 0) > 40) && flicks < 25 {
             app.swipeDown(velocity: .fast)
