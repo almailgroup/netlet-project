@@ -8092,7 +8092,16 @@ keyboard over the app, where the page's foot is (on the screen means the page
 was too short to scroll), the tall scroll views' frames, every element under
 each point by type, named or not, and whether a fourth drag five seconds
 later moved it; it keeps a screenshot with the run's results — a session here
-can read the message but not the artifact.
+can read the message but not the artifact. **The third sighting answered most
+of those questions and not the last**: the English home page, in a screenshot
+run (42035349693) on a commit whose push run had passed every scrolling test.
+Nothing was over the app, the foot was not drawn (the page was long), each
+drag landed on the page's own scroll view, the page sat exactly where it
+started (184 → 184), and a fourth drag five seconds later moved it 263 points.
+Nothing on the home page scrolls by itself — the logo's press is the only
+`scrollTo` — so for some seconds after launch, sometimes, the page does not
+take a drag. Not reproduced off a Mac; the next step is a device or a
+simulator under Instruments in the first ten seconds after launch.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the
