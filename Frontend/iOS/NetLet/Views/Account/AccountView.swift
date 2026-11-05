@@ -578,7 +578,7 @@ enum AccountName {
         return words.first.map { String($0.prefix(2)).uppercased() } ?? "?"
     }
 
-    static func name(_ user: User, _ l: LanguageSettings) -> String {
+    @MainActor static func name(_ user: User, _ l: LanguageSettings) -> String {
         user.name?.trimmingCharacters(in: .whitespaces).isEmpty == false ? user.name! : l.t("account.noName")
     }
 }
