@@ -47,8 +47,8 @@ enum HelpIssues {
     /// An account page an answer sends a shopper to, and its name.
     static func page(_ to: String) -> (route: Route, label: String) {
         switch to {
-        case "security": return (.security, "help.page.security")
-        case "profile": return (.profile, "help.page.profile")
+        // Account security went into "Your profile"; an older answer may still name it.
+        case "security", "profile": return (.profile, "help.page.profile")
         case "notifications": return (.preferences, "help.page.notifications")
         case "addresses": return (.addresses, "help.page.addresses")
         default: return (.returns, "help.page.returns")

@@ -1,49 +1,52 @@
 /**
  * `/account`'s home, drawn the way the delivery apps people here use draw
  * theirs, on the owner's word (a picture of one): who is signed in with a
- * pencil to change it, two tiles showing the last things ordered and saved,
- * the points balance, then the sections as rows in white cards — an icon, a
- * name and a chevron, dashed lines between them. Signing out is the last row
- * of the last card, red, and still asks first.
+ * pencil to change it, four tiles — the last things ordered, saved and
+ * bought often, and the points — then the quick settings, the sections as
+ * rows in white cards (an icon, a name and a chevron, dashed lines between
+ * them), signing out in red, still asking first, and the seller's and the
+ * affiliate programme's cards last.
  *
- * It was tiles in four headed groups, each with a line on what it held, under
- * a welcome heading and an identity card with the dates. The dates moved into
- * "Your profile" (`AccountIdentity`), where somebody checking their account
- * looks; the rows say what they are by their names.
+ * **Four tiles above the quick settings, and the seller's and the affiliate
+ * cards at the foot, on the owner's word** ("make frequently bought and
+ * NetLet points … like the my orders and saved items, so all should be in 4
+ * boxes, and move them on top of the quick settings; move the sell on NetLet
+ * and affiliate marketing to the bottom"). Frequently bought was a row and
+ * the points a row of their own; they are tiles beside Orders and Saved now,
+ * Frequently bought showing what is on the list, the points the coin and the
+ * balance. **Account security is not a row any more**: the password and
+ * deleting the account are on "Your profile", under the pencil.
  *
  * **Every row is a section the account has** (`entries`, the page's own list
  * with the hidden ones taken out), so a switched-off programme or a seller's
- * row never appears for somebody who cannot open it. Orders and Saved are the
- * tiles, the points are their own row, and everything else is a row: what
- * somebody shops with, what talks to them, what they run, then the account
- * itself. What is waiting is said on the row ("2 unread"), from
- * `useAccountSignals`, the header's own reader.
+ * row never appears for somebody who cannot open it. What is waiting is said
+ * on the row ("2 unread"), from `useAccountSignals`, the header's own reader.
  *
- * **Help is the help centre's row, and the affiliate programme is the card
- * at the top, on the owner's word** — each was on the page twice. "Help from
- * NetLet" went: the help centre's "Message NetLet" opens the same
- * conversation, and an answer from NetLet is a notice under the bell, which
- * opens it too. The affiliate row went: the card above the rows offers
- * joining to somebody not in and opens the programme for a member.
+ * **Help is the help centre's row, and the affiliate programme is its card,
+ * on the owner's word** — each was on the page twice. "Help from NetLet"
+ * went: the help centre's "Message NetLet" opens the same conversation, and
+ * an answer from NetLet is a notice under the bell, which opens it too. The
+ * affiliate row went: the card offers joining to somebody not in and opens
+ * the programme for a member.
  *
  * **Only the rows somebody needs, on the owner's word** ("I only want the
  * options that are 100 percent needed"). Returns and Payment methods joined
  * the first card; Price requests and Subscribe & Save are rows only for
  * somebody who has one, since for everybody else they open an empty page.
  *
- * **Account information and the quick settings lead, on the owner's word**
- * ("organize the customer's personal information and clearly display name,
- * email and phone"; "country, currency and language clearly visible and
- * directly accessible, rather than hidden inside Preferences"). The first
- * card names the shopper, the email and the phone (or offers to add one),
- * with the pencil to change them; `QuickSettings` follows it, each of its
- * three rows changed where it is drawn, and Preferences keeps the delivery
- * area and the notices.
+ * **Account information leads, on the owner's word** ("organize the
+ * customer's personal information and clearly display name, email and
+ * phone"): the first card names the shopper, the email and the phone (or
+ * offers to add one), with the pencil to change them. `QuickSettings`
+ * ("country, currency and language clearly visible and directly accessible")
+ * follows the tiles, each of its three rows changed where it is drawn, and
+ * Preferences keeps the delivery area and the notices.
  *
  * The tiles' pictures are what was ordered (`orders.list`'s own photos, the
- * newest orders first) and what was saved (`useProductsByIds`, the hearts in
- * the order given), at most four each; nothing yet is said in words rather
- * than drawn as empty boxes.
+ * newest orders first), what was saved (`useProductsByIds`, the hearts in the
+ * order given) and what is on Frequently bought (`frequent.list`, the page's
+ * own query), at most four each; nothing yet is said in words rather than
+ * drawn as empty boxes.
  */
 import { ProfileAvatar } from "@/components/account/ProfileAvatar";
 import { PANEL } from "@/components/account/profileParts";
@@ -69,7 +72,6 @@ import {
   Gift,
   History,
   LifeBuoy,
-  ListRestart,
   LogOut,
   MapPin,
   Megaphone,
@@ -77,7 +79,6 @@ import {
   Pencil,
   Repeat,
   RotateCcw,
-  ShieldCheck,
   SlidersHorizontal,
   Star,
   Store,
@@ -99,14 +100,13 @@ type Row = {
 
 /*
  * The cards, top to bottom: what somebody shops with, their settings and
- * help, what they run, and the account itself. "signout" is the one row that
- * is not a section. Price requests and Subscribe & Save are rows only while
- * the shopper has one (`has`); the language and the currency are inside
- * Preferences, whose row names both.
+ * help, and signing out, the one row that is not a section. Price requests
+ * and Subscribe & Save are rows only while the shopper has one (`has`).
+ * Frequently bought is a tile now, and the password and deleting the account
+ * are "Your profile"'s, under the pencil.
  */
 const CARDS: Row[][] = [
   [
-    { id: "frequent", label: "frequent.section", icon: ListRestart },
     { id: "returns", label: "account.sectionReturns", icon: RotateCcw },
     { id: "addresses", label: "address.book", icon: MapPin },
     { id: "payments", label: "account.sectionPayments", icon: CreditCard },
@@ -122,7 +122,6 @@ const CARDS: Row[][] = [
     { id: "history", label: "history.title", icon: History },
   ],
   [
-    { id: "security", label: "account.security", icon: ShieldCheck },
     { id: "signout", label: "header.signOut", icon: LogOut },
   ],
 ];
@@ -144,6 +143,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
   const orders = trpc.orders.list.useQuery({ pageSize: 4 }, { staleTime: 60_000 });
   const saved = useProductsByIds(savedIds.slice(0, 4));
   const rewards = trpc.rewards.mine.useQuery(undefined, { staleTime: 60_000 });
+  /* The Frequently bought page's own query, so opening the tile finds it answered. */
+  const frequent = trpc.frequent.list.useQuery({ locale }, { staleTime: 30_000, enabled: has("frequent") });
   const affiliatesOn = useFeature("affiliates");
   const member = trpc.affiliates.code.useQuery(undefined, { enabled: affiliatesOn, staleTime: 5 * 60_000 });
 
@@ -159,6 +160,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
 
   const orderPhotos = [...new Set((orders.data?.rows ?? []).flatMap(row => row.summary?.photos ?? []))].slice(0, 4);
   const savedPhotos = saved.products.map(product => product.images[0]?.url ?? null).slice(0, 4);
+  const frequentPhotos = [...new Set((frequent.data?.items ?? []).map(item => item.product?.images[0]?.url ?? null).filter(Boolean))].slice(0, 4);
 
   return (
     <div className="mx-auto max-w-2xl space-y-3">
@@ -207,12 +209,10 @@ export function AccountHome({ user, has, badge, onSignOut }: {
         </Link>
       </section>
 
-      <QuickSettings />
-
-      {/* Only for a member (4.1): nobody can buy one yet. */}
-      <MembershipCard />
-
-      <div className="grid grid-cols-2 gap-3">
+      {/* Four tiles, two by two, on the owner's word: what was ordered, saved
+          and bought often, and the points. Each row of the grid is as tall as
+          its taller tile, so two tiles side by side always line up. */}
+      <div className="grid auto-rows-fr grid-cols-2 gap-3">
         <PreviewTile
           href="/account/orders"
           title={t("account.myOrders")}
@@ -229,36 +229,44 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           empty={t("saved.emptyTitle")}
           waiting={null}
         />
+        {has("frequent") ? (
+          <PreviewTile
+            href="/account/frequent"
+            title={t("frequent.section")}
+            photos={frequentPhotos}
+            loading={frequent.isPending}
+            empty={t("frequent.emptyTitle")}
+            waiting={null}
+          />
+        ) : null}
+        <PreviewTile
+          href="/account/rewards"
+          title={t("account.points")}
+          photos={[]}
+          loading={false}
+          empty=""
+          waiting={null}
+          label={rewards.data ? `${t("account.points")}, ${t("rewards.balance", { points: formatCount(rewards.data.balance, locale) })}` : undefined}
+          body={
+            /* The coin and the number alone: the tile's title already says
+               "NetLet points", and "1,200 points" broke onto two lines in a
+               phone's half-width tile. */
+            <span aria-hidden className="mt-3 flex aspect-[4/1.3] items-center gap-2 overflow-hidden rounded-xl bg-[#fff6ef] px-2 min-[360px]:gap-2.5 min-[360px]:px-3">
+              <PointsCoin size={28} />
+              {/* Shrinks with a narrow phone rather than being cut: "1,…" on a
+                  320px screen said nothing. */}
+              <span className="min-w-0 whitespace-nowrap text-[clamp(15px,5.2vw,22px)] font-extrabold tabular-nums text-[#0a285a]">
+                {rewards.data ? formatCount(rewards.data.balance, locale) : "—"}
+              </span>
+            </span>
+          }
+        />
       </div>
 
-      <Link href="/account/rewards" className={`${PANEL} flex min-h-[68px] items-center gap-3.5 px-5 py-3 hover:bg-[#f0f2f5]`}>
-        <PointsCoin size={26} />
-        <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t("account.points")}</span>
-        <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#f1f2f6] py-2 pe-2.5 ps-3.5 text-[15px] font-bold text-[#1f2a44]">
-          {rewards.data ? t("rewards.balance", { points: formatCount(rewards.data.balance, locale) }) : "—"}
-          <ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
-        </span>
-      </Link>
+      <QuickSettings />
 
-      <SellerEntry />
-
-      {/* Affiliate marketing is this card and no row, on the owner's word:
-          joining for somebody not in, the programme for a member — or for
-          somebody who holds an account while the switch is off, since a
-          switch closes the door and never locks anybody in. Drawn once the
-          server has answered, so it never says Join to a member. */}
-      {affiliate ? (
-        <Link href="/account/affiliate" className="flex items-center gap-4 overflow-hidden rounded-[1.35rem] bg-[#0a285a] p-4 text-white hover:bg-[#0d3372] sm:p-5">
-          <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10">
-            <Megaphone className="size-6 text-[#ffab85]" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[16px] font-bold">{t("affiliate.section")}</span>
-            <span className="mt-0.5 block text-[13px] leading-5 text-[#d6deea]">{t(affiliate === "join" ? "affiliate.promoBody" : "affiliate.promoMemberBody")}</span>
-          </span>
-          <span className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[#0a285a]">{t(affiliate === "join" ? "affiliate.promoJoin" : "affiliate.promoOpen")}</span>
-        </Link>
-      ) : null}
+      {/* Only for a member (4.1): nobody can buy one yet. */}
+      <MembershipCard />
 
       <nav aria-label={t("account.menu")} className="space-y-3">
         {CARDS.map((rows, index) => {
@@ -283,6 +291,28 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           );
         })}
       </nav>
+
+      {/* The seller portal's door and the affiliate programme, at the foot
+          of the page, on the owner's word. */}
+      <SellerEntry />
+
+      {/* Affiliate marketing is this card and no row, on the owner's word:
+          joining for somebody not in, the programme for a member — or for
+          somebody who holds an account while the switch is off, since a
+          switch closes the door and never locks anybody in. Drawn once the
+          server has answered, so it never says Join to a member. */}
+      {affiliate ? (
+        <Link href="/account/affiliate" className="flex items-center gap-4 overflow-hidden rounded-[1.35rem] bg-[#0a285a] p-4 text-white hover:bg-[#0d3372] sm:p-5">
+          <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10">
+            <Megaphone className="size-6 text-[#ffab85]" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[16px] font-bold">{t("affiliate.section")}</span>
+            <span className="mt-0.5 block text-[13px] leading-5 text-[#d6deea]">{t(affiliate === "join" ? "affiliate.promoBody" : "affiliate.promoMemberBody")}</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[#0a285a]">{t(affiliate === "join" ? "affiliate.promoJoin" : "affiliate.promoOpen")}</span>
+        </Link>
+      ) : null}
     </div>
   );
 }
@@ -336,18 +366,24 @@ function RowLink({ row, waiting, value = null }: { row: Row; waiting: string | n
 
 /**
  * A tile with a title and the last few pictures of what is in it — orders,
- * or saved things — or a line saying there is nothing yet.
+ * saved or frequently bought things — or a line saying there is nothing yet;
+ * or a body of its own (the points' coin and balance) in the same place.
  */
-function PreviewTile({ href, title, photos, loading, empty, waiting }: {
+function PreviewTile({ href, title, photos, loading, empty, waiting, body: own, label }: {
   href: string;
   title: string;
   photos: (string | null)[];
   loading: boolean;
   empty: string;
   waiting: string | null;
+  body?: ReactNode;
+  /** The link's name when its body is drawn for the eye alone. */
+  label?: string;
 }) {
   let body: ReactNode;
-  if (photos.length) {
+  if (own) {
+    body = own;
+  } else if (photos.length) {
     body = (
       <div aria-hidden className="mt-3 flex">
         {photos.map((photo, index) => (
@@ -367,12 +403,15 @@ function PreviewTile({ href, title, photos, loading, empty, waiting }: {
     body = <p className="mt-3 flex aspect-[4/1.3] items-center rounded-xl bg-[#f4f6f9] px-3 text-[13px] leading-snug ink-muted">{empty}</p>;
   }
   return (
-    <Link href={href} className={`${PANEL} block p-3.5 hover:bg-[#f0f2f5] sm:p-4`}>
+    // Four tiles in two rows, every one the height of the tallest: a title
+    // that wraps on a narrow phone ("Frequently bought" at 320) makes its row
+    // no taller than the other, and the pictures sit on one line at the foot.
+    <Link href={href} aria-label={label} className={`${PANEL} flex flex-col p-3.5 hover:bg-[#f0f2f5] sm:p-4`}>
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="text-[17px] font-bold text-[#0a285a]">{title}</span>
+        <span className="text-[15px] font-bold leading-snug text-[#0a285a] min-[360px]:text-[16px] sm:text-[17px]">{title}</span>
         {waiting ? <span className="rounded-full bg-[#f2683a] px-2 py-0.5 text-[12px] font-bold text-[#0a285a]">{waiting}</span> : null}
       </span>
-      {body}
+      <div className="mt-auto">{body}</div>
     </Link>
   );
 }

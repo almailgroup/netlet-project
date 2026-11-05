@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Deleting your own account, on Account security — on the owner's word, and
+/// Deleting your own account, at the foot of "Your profile" — on the owner's word, and
 /// the web's `DeleteAccount` (`auth.deletionCheck`, `auth.deleteAccount`).
 ///
 /// The card says what goes, with the points balance by its figure, and what

@@ -1,7 +1,7 @@
 /**
  * A new password from the six-digit code in the reset mail — on the owner's
  * word ("password recovery using a verification code sent to the registered
- * email"). The sign-in form's reset ends here, and so does Account security's
+ * email"). The sign-in form's reset ends here, and so does "Your profile"'s
  * "Forgot your current password?": the code and the new password on one
  * screen, so nobody has to leave for the inbox's browser and come back.
  *

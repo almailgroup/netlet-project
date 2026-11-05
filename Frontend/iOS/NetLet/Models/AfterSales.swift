@@ -151,7 +151,8 @@ struct HelpOffer: Decodable, Hashable, Sendable {
     var reasons: [String]? = nil
     /// track, refund, returnForm, warranty, address, modify or rate.
     var panel: String? = nil
-    /// security, profile, notifications, addresses or returns.
+    /// profile, notifications, addresses or returns (an older answer may say
+    /// security, which is "Your profile" now).
     var to: String? = nil
 
     /// An act the shopper confirms here, rather than a way somewhere else.

@@ -18,7 +18,7 @@ struct ProfileAvatar: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                Text(AccountIdentityCard.initials(user))
+                Text(AccountName.initials(user))
                     .font(.inter(size * 0.34, .bold))
                     .foregroundStyle(Brand.navy)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

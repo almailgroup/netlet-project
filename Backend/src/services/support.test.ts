@@ -206,6 +206,6 @@ describe("the help centre", () => {
     expect(answer!.items[0]).toMatchObject({ id: lineId, title: "Lamp", fulfilment: "shipped" });
     expect(await selfHelp.selfHelpFor(ids.fahad, { issue: "damaged", reference, lineId, locale: "en" })).toBeNull();
     const account = await selfHelp.selfHelpFor(ids.fahad, { issue: "account", reference: null, lineId: null, locale: "ar" });
-    expect(account!.offers.map(offer => offer.kind)).toEqual(["page", "page", "page", "page"]);
+    expect(account!.offers.map(offer => offer.kind)).toEqual(["page", "page", "page"]);
   });
 });

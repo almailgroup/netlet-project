@@ -649,7 +649,8 @@ export async function tellAccountChanged(userId: number, what: "password" | "ema
     userId,
     kind: what === "password" ? "account_password_changed" : "account_email_changed",
     params,
-    link: "/account/security",
+    // "Your profile", where the password is changed (Account security went into it).
+    link: "/account/details",
     dedupe: `account:${what}:${now.getTime()}`,
   });
 }

@@ -31,9 +31,8 @@
 import { AccountAffiliate } from "@/components/account/AccountAffiliate";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { ProfileManager, SecurityCards } from "@/components/account/ProfileManager";
+import { ProfileManager } from "@/components/account/ProfileManager";
 import { AccountHome } from "@/components/account/AccountHome";
-import { AccountIdentity } from "@/components/account/AccountIdentity";
 import { AccountHistory } from "@/components/account/AccountHistory";
 import { AccountPreferences } from "@/components/account/AccountPreferences";
 import { AddressBook } from "@/components/account/AddressBook";
@@ -93,13 +92,19 @@ const ENTRIES: Entry[] = [
   { id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards" },
   { id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate" },
   { id: "details", label: "account.sectionProfile", hint: "account.hint.details" },
-  { id: "security", label: "account.security", hint: "account.hint.security" },
   { id: "addresses", label: "address.book", hint: "account.hint.addresses" },
   { id: "payments", label: "account.sectionPayments", hint: "account.hint.payments" },
   { id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences" },
   { id: "history", label: "history.title", hint: "account.hint.history" },
   { id: "selling", label: "account.sectionSelling", hint: "account.hint.selling" },
 ];
+
+/**
+ * Sections that became part of another, by their old address: Account
+ * security is "Your profile" now, on the owner's word, and a notice sent
+ * before — "your password was changed" — still links to it.
+ */
+const MOVED: Record<string, string> = { security: "details" };
 
 /** The account's one column: the home's width, in the middle of the page. */
 const COLUMN = "mx-auto max-w-2xl";
@@ -119,8 +124,7 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
     case "help": return <AccountSupport />;
     case "rewards": return <AccountRewards />;
     case "affiliate": return <AccountAffiliate />;
-    case "details": return <div className="space-y-3"><ProfileManager user={user} /><AccountIdentity user={user} /></div>;
-    case "security": return <SecurityCards />;
+    case "details": return <ProfileManager user={user} />;
     case "addresses": return <AddressBook />;
     case "preferences": return <AccountPreferences />;
     case "history": return <AccountHistory />;
@@ -199,7 +203,13 @@ export default function Account() {
     if (hash && ENTRIES.some(entry => entry.id === hash && !entry.href)) navigate(`/account/${hash}`, { replace: true });
   }, [onSection, navigate]);
 
-  const section = onSection ? entries.find(entry => entry.id === params?.section && !entry.href) ?? null : null;
+  /* An old address of a section that moved opens where it went. */
+  const moved = onSection && params?.section ? MOVED[params.section] : undefined;
+  useEffect(() => {
+    if (moved) navigate(`/account/${moved}`, { replace: true });
+  }, [moved, navigate]);
+
+  const section = onSection ? entries.find(entry => entry.id === (moved ?? params?.section) && !entry.href) ?? null : null;
   /* A section this account does not have — typed in, or from somebody else's link — is the home. */
   const settled = !loading && !me.isLoading;
   useEffect(() => {

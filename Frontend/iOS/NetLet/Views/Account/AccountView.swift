@@ -7,11 +7,12 @@ import SwiftUI
 /// Signed in it is the web's `AccountHome`, drawn the way the delivery apps
 /// people here use draw theirs, on the owner's word (a picture of one): no
 /// header — the page starts under the status bar — who is signed in with a
-/// pencil to change it, two tiles of the last things ordered and saved, the
-/// points, then every section as a row in white cards, dashed lines between
-/// them — the language and the currency inside Preferences, whose row names
-/// both — and signing out red at the foot, still asking first. The dates and the role moved to "Your
-/// details" (`AccountIdentityCard`), where somebody checking their account looks.
+/// pencil to change it, four tiles (the last things ordered, saved and bought
+/// often, and the points), the quick settings, every section as a row in white
+/// cards, dashed lines between them, signing out red, still asking first, and
+/// the seller's and the affiliate programme's cards at the foot — all on the
+/// owner's word. Account security is not a row: the password and deleting the
+/// account are on "Your profile", under the pencil.
 struct AccountView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -21,6 +22,7 @@ struct AccountView: View {
     @State private var holdings = Holdings()
     @State private var orderPhotos: [String]?
     @State private var savedPhotos: [String]?
+    @State private var frequentPhotos: [String]?
     @State private var points: Int?
     /// The phone the driver calls, saved under Your profile — nil until asked.
     @State private var phone: String??
@@ -54,15 +56,15 @@ struct AccountView: View {
     /// somebody not in and opening the programme for a member.
     ///
     /// **Only the rows somebody needs, on the owner's word** — the web's
-    /// `CARDS`. Returns and Payment methods joined the first card; the
-    /// language and the currency are inside Preferences, whose row names
-    /// both; Price requests and Subscribe & Save are rows only for somebody
-    /// who has one (`holdings`).
+    /// `CARDS`. Returns and Payment methods joined the first card; Price
+    /// requests and Subscribe & Save are rows only for somebody who has one
+    /// (`holdings`). Frequently bought is a tile now, and the password and
+    /// deleting the account are "Your profile"'s.
     private static let cards: [[String]] = [
-        ["frequent", "returns", "addresses", "payments", "wishlists", "reviews", "offers", "subscriptions"],
+        ["returns", "addresses", "payments", "wishlists", "reviews", "offers", "subscriptions"],
         // Browsing history, less prominent than the home's own shelf, on the owner's word.
         ["preferences", "history"],
-        ["security", "signout"],
+        ["signout"],
     ]
 
     /// What the affiliate card offers: joining, or the programme itself.
@@ -83,10 +85,15 @@ struct AccountView: View {
             VStack(alignment: .leading, spacing: 12) {
                 topRow
                 profileCard(user)
-                // Country, currency and language on the page itself, on the owner's word.
-                QuickSettingsCard()
-                MembershipCard()
-                HStack(alignment: .top, spacing: 12) {
+                // Four tiles, two by two, above the quick settings, on the
+                // owner's word: what was ordered, saved and bought often, and
+                // the points. A row of two is as tall as its taller tile.
+                // Four tiles, every one the height of the tallest: a title
+                // that wraps ("Frequently bought" on a small phone, or at a
+                // larger text size) makes its row no taller than the other,
+                // and the pictures sit on one line at the foot — the web's
+                // `auto-rows-fr`.
+                TileGrid(spacing: 12) {
                     previewTile(
                         title: l.t("account.myOrders"),
                         photos: orderPhotos,
@@ -96,15 +103,14 @@ struct AccountView: View {
                     previewTile(title: l.t("footer.savedItems"), photos: savedPhotos, empty: l.t("saved.emptyTitle"), waiting: nil) {
                         app.push(.saved)
                     }
+                    previewTile(title: l.t("frequent.section"), photos: frequentPhotos, empty: l.t("frequent.emptyTitle"), waiting: nil) {
+                        app.push(.frequent)
+                    }
+                    pointsTile
                 }
-                pointsRow
-                // Affiliate marketing, on the owner's word — the web's card,
-                // and the programme's only way in on this page.
-                if let offer = affiliateOffer {
-                    affiliatePromo(offer)
-                }
-                // The seller portal's door, or Become a seller, on the owner's word.
-                SellerEntryCard()
+                // Country, currency and language on the page itself, on the owner's word.
+                QuickSettingsCard()
+                MembershipCard()
                 ForEach(Array(Self.cards.enumerated()), id: \.offset) { index, ids in
                     let rows = ids.filter(onHome)
                     if index == Self.cards.count - 1 {
@@ -122,6 +128,12 @@ struct AccountView: View {
                         .padding(.horizontal, 20)
                         .panel()
                     }
+                }
+                // The seller portal's door, or Become a seller, and Affiliate
+                // marketing — the web's cards — at the foot, on the owner's word.
+                SellerEntryCard()
+                if let offer = affiliateOffer {
+                    affiliatePromo(offer)
                 }
             }
             .padding(.horizontal, 16)
@@ -152,14 +164,22 @@ struct AccountView: View {
         }
     }
 
-    /// The pictures on the two tiles and the points: the newest orders'
-    /// photos (`orders.list`), the first saved hearts (`commerce.products.byIds`).
+    /// The pictures on the tiles and the points: the newest orders' photos
+    /// (`orders.list`), the first saved hearts (`commerce.products.byIds`) and
+    /// what is on Frequently bought (`frequent.list`, the page's own call).
     private func loadPreviews() async {
         let api = app.services.api
         async let orders = try? api.call(API.orders, .init(page: 1, pageSize: 4))
         async let rewards = try? api.call(API.rewards)
         async let details = try? app.services.account.profileDetails()
+        async let frequent = try? api.call(API.frequentList, API.LocaleOnly(locale: l.current.rawValue))
         await loadSaved()
+        if let list = await frequent {
+            var seen = Set<String>()
+            frequentPhotos = list.items.compactMap { $0.product?.images.first?.url }.filter { seen.insert($0).inserted }.prefix(4).map { $0 }
+        } else if frequentPhotos == nil {
+            frequentPhotos = []
+        }
         if let found = await details { phone = .some(found.phone) } else if phone == nil { phone = .some(nil) }
         if let page = await orders {
             var seen = Set<String>()
@@ -220,7 +240,7 @@ struct AccountView: View {
             // The photo the shopper chose, or their initials (`ProfileAvatar`).
             ProfileAvatar(user: user, size: 64)
             VStack(alignment: .leading, spacing: 2) {
-                Text(AccountIdentityCard.name(user, l))
+                Text(AccountName.name(user, l))
                     .font(.inter(18, .bold))
                     .foregroundStyle(Brand.navy)
                     .fixedSize(horizontal: false, vertical: true)
@@ -276,9 +296,9 @@ struct AccountView: View {
     /// line saying there is nothing yet.
     private func previewTile(title: String, photos: [String]?, empty: String, waiting: String?, open: @escaping () -> Void) -> some View {
         Button(action: open) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 6) {
-                    Text(title).font(.inter(17, .bold)).foregroundStyle(Brand.navy).lineLimit(1).minimumScaleFactor(0.8)
+                    TileTitle(text: title)
                     if let waiting {
                         Text(waiting)
                             .font(.inter(11, .bold))
@@ -289,6 +309,7 @@ struct AccountView: View {
                             .lineLimit(1)
                     }
                 }
+                Spacer(minLength: 12)
                 GeometryReader { box in
                     let width = box.size.width * 0.29
                     Group {
@@ -322,7 +343,8 @@ struct AccountView: View {
                 .accessibilityHidden(true)
             }
             .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            // As tall as the tallest tile, its picture at the foot.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .panel()
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
@@ -330,34 +352,40 @@ struct AccountView: View {
         .accessibilityLabel(waiting.map { "\(title), \($0)" } ?? title)
     }
 
-    private var pointsRow: some View {
+    /// The points as a tile beside Frequently bought, on the owner's word —
+    /// the coin and the balance where the other tiles have their pictures.
+    private var pointsTile: some View {
         Button {
             app.push(.rewards)
         } label: {
-            HStack(spacing: 14) {
-                PointsCoin(size: 26)
-                Text(l.t("account.points"))
-                    .font(.inter(16, .medium))
-                    .foregroundStyle(Brand.ink)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                HStack(spacing: 4) {
-                    Text(points.map { l.t("rewards.balance", ["points": PointsFormat.count($0, l.current)]) } ?? "—")
-                        .font(.inter(15, .bold))
-                        .monospacedDigit()
-                    Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold))
+            VStack(alignment: .leading, spacing: 0) {
+                TileTitle(text: l.t("account.points"))
+                Spacer(minLength: 12)
+                GeometryReader { box in
+                    // The coin and the number alone: the title says what they
+                    // are, and "1,200 points" broke onto two lines in a tile.
+                    HStack(spacing: 10) {
+                        PointsCoin(size: 32)
+                        Text(points.map { PointsFormat.count($0, l.current) } ?? "—")
+                            .font(.inter(22, .heavy))
+                            .foregroundStyle(Brand.navy)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: box.size.width * 0.29 * 4 / 3, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(ProfileInk.pointsGround))
                 }
-                .foregroundStyle(Brand.ink)
-                .padding(.leading, 14)
-                .padding(.trailing, 10)
-                .frame(minHeight: 40)
-                .background(Capsule().fill(ProfileInk.chip))
+                .aspectRatio(2.6, contentMode: .fit)
             }
-            .padding(.horizontal, 20)
-            .frame(minHeight: 68)
-            .contentShape(Rectangle())
+            .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .panel()
+            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(PressFillStyle(cornerRadius: 24))
-        .panel()
+        .accessibilityLabel("\(l.t("account.points")), \(points.map { l.t("rewards.balance", ["points": PointsFormat.count($0, l.current)]) } ?? "")")
     }
 
     private func affiliatePromo(_ offer: AffiliateOffer) -> some View {
@@ -503,6 +531,8 @@ enum ProfileInk {
     static let chip = Color(red: 241 / 255, green: 242 / 255, blue: 246 / 255)
     static let icon = Color(red: 93 / 255, green: 107 / 255, blue: 130 / 255)
     static let signOutRed = Color(red: 194 / 255, green: 54 / 255, blue: 42 / 255)
+    /// The points tile's warm ground behind the coin, the web's `#fff6ef`.
+    static let pointsGround = Color(red: 1, green: 246 / 255, blue: 239 / 255)
 }
 
 /// The dashed line between two rows of a card, inset as the reference draws it.
@@ -536,12 +566,11 @@ extension View {
     }
 }
 
-/// Who is signed in, with the dates and the role — the web's `AccountIdentity`,
-/// at the top of "Your details".
-struct AccountIdentityCard: View {
-    let user: User
-    @Environment(LanguageSettings.self) private var l
-
+/// How an account is named on its own pages: the name as typed, or a line
+/// saying there is none, and the initials the circle draws without a photo.
+/// The card that drew them under "Signed in as" with the role went from "Your
+/// profile", on the owner's word.
+enum AccountName {
     static func initials(_ user: User) -> String {
         let source = user.name?.trimmingCharacters(in: .whitespaces).isEmpty == false ? user.name! : (user.email.split(separator: "@").first.map(String.init) ?? "")
         let words = source.split(whereSeparator: { " ._-".contains($0) })
@@ -551,38 +580,6 @@ struct AccountIdentityCard: View {
 
     static func name(_ user: User, _ l: LanguageSettings) -> String {
         user.name?.trimmingCharacters(in: .whitespaces).isEmpty == false ? user.name! : l.t("account.noName")
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            ProfileAvatar(user: user, size: 64)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(Self.name(user, l))
-                    .font(.inter(20, .heavy))
-                    .foregroundStyle(Brand.navy)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(l.t("account.identityEmail"))
-                    .font(.inter(12, .semibold))
-                    .foregroundStyle(Brand.muted)
-                    .padding(.top, 2)
-                Text("\u{2066}\(user.email)\u{2069}")
-                    .font(.inter(13, .bold))
-                    .foregroundStyle(Brand.muted)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Text(user.role == "admin" ? l.t("account.roleAdmin") : l.t("account.roleShopper"))
-                    .font(.inter(12, .bold))
-                    .foregroundStyle(Brand.navy)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(Brand.tint))
-                    .padding(.top, 8)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(20)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
     }
 }
 
@@ -610,7 +607,6 @@ struct AccountEntry: Identifiable, Hashable {
         AccountEntry(id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards", symbol: "person.2", group: "account.groupRewards"),
         AccountEntry(id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate", symbol: "megaphone", group: "account.groupRewards"),
         AccountEntry(id: "details", label: "account.sectionProfile", hint: "account.hint.details", symbol: "person.crop.circle", group: "account.groupSettings"),
-        AccountEntry(id: "security", label: "account.security", hint: "account.hint.security", symbol: "lock.shield", group: "account.groupSettings"),
         AccountEntry(id: "addresses", label: "address.book", hint: "account.hint.addresses", symbol: "mappin.and.ellipse", group: "account.groupSettings"),
         AccountEntry(id: "payments", label: "account.sectionPayments", hint: "account.hint.payments", symbol: "creditcard", group: "account.groupSettings"),
         AccountEntry(id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences", symbol: "slider.horizontal.3", group: "account.groupSettings"),
@@ -635,7 +631,6 @@ struct AccountEntry: Identifiable, Hashable {
         case "rewards": return .rewards
         case "affiliate": return .affiliate
         case "details": return .profile
-        case "security": return .security
         case "addresses": return .addresses
         case "preferences": return .preferences
         case "history": return .history
@@ -647,11 +642,12 @@ struct AccountEntry: Identifiable, Hashable {
 
 /// "Your profile", drawn to the owner's reference (Noon's "Your profile"): a
 /// round back button beside the title, then white cards whose boxes carry
-/// their labels inside the rim (`FloatingField`). The name, the sign-in email
-/// and the password are still three cards with three Saves — three different
-/// decisions, and one Save across them would change a password somebody only
-/// opened the page to fix a spelling in. The account's dates and role close
-/// the page.
+/// their labels inside the rim (`FloatingField`). The name, the details and
+/// the password are cards with Saves of their own — different decisions, and
+/// one Save across them would change a password somebody only opened the page
+/// to fix a spelling in. **Account security is this page now, on the owner's
+/// word**: the password, the code for a forgotten one and deleting the account
+/// close it, and the Sign-in email and "Signed in as" cards went from it.
 struct ProfileView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -663,7 +659,7 @@ struct ProfileView: View {
                     RoundBackTitle(title: l.t("account.sectionProfile"))
                     if let user = app.session.user { ProfilePhotoCard(user: user) }
                     ProfileForm(model: model)
-                    if let user = app.session.user { AccountIdentityCard(user: user) }
+                    DeleteAccountCard()
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
@@ -679,8 +675,8 @@ struct ProfileView: View {
     }
 }
 
-/// A page's round way back beside its title — "Your profile" and "Account
-/// security", one screen back to wherever they were opened from.
+/// A page's round way back beside its title — "Your profile" — one screen
+/// back to wherever it was opened from.
 struct RoundBackTitle: View {
     let title: String
     @Environment(LanguageSettings.self) private var l
@@ -710,42 +706,15 @@ struct RoundBackTitle: View {
     }
 }
 
-/// Account security, on the owner's word: the password, and deleting the
-/// account, and nothing else — the web's `/account/security`. The password is
-/// "Your profile"'s own card (`ProfileForm`'s `security`); the rest of the
-/// profile stays under the name's pencil.
-struct AccountSecurityView: View {
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
-            ShopPage(header: false) {
-                VStack(alignment: .leading, spacing: 16) {
-                    RoundBackTitle(title: l.t("account.security"))
-                    ProfileForm(model: model, security: true)
-                    DeleteAccountCard()
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .padding(.bottom, 48)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-}
-
 /// "Your profile", drawn to the owner's reference (Noon's "Your profile") and
 /// card for card the web's `ProfileManager`: the name in two boxes side by
-/// side, the phone, the gender and the birthday, then the address somebody
-/// signs in with. Each card is its own decision — a gender saves as it is
+/// side, the phone, the gender and the birthday, then the password and the
+/// way back in to it. Each card is its own decision — a gender saves as it is
 /// pressed, the rest have a Save. The nationality was a card too, and the
-/// owner took it off as not needed. **The password is
-/// Account security's**, on the owner's word: `security` draws it alone.
+/// owner took it off as not needed; the sign-in email was one, and went with
+/// Account security's move here.
 private struct ProfileForm: View {
     @Bindable var model: ProfileViewModel
-    /// Account security's card — the password — rather than the profile's.
-    var security = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var choosingBirthday = false
@@ -756,13 +725,10 @@ private struct ProfileForm: View {
     private enum Recovery { case idle, sending, sent }
 
     var body: some View {
-        if security {
-            VStack(spacing: 16) {
-                passwordCard
-                recoverCard
-            }
-        } else {
+        VStack(spacing: 16) {
             profileCards
+            passwordCard
+            recoverCard
         }
     }
 
@@ -875,18 +841,6 @@ private struct ProfileForm: View {
                         .frame(minHeight: 44)
                         .disabled(model.saving != nil)
                     }
-                }
-            }
-            card(.email, title: "account.signInEmail", note: "account.signInEmailNote", done: "account.emailChanged") {
-                FloatingField(label: l.t("auth.email"), text: $model.newEmail, keyboard: .emailAddress, content: .username, leftToRight: true)
-                FloatingField(label: l.t("account.currentPassword"), text: $model.emailPassword, content: .password, secure: true, leftToRight: true)
-                Text(l.t("account.currentPasswordWhy"))
-                    .font(.inter(12))
-                    .foregroundStyle(Brand.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            } action: {
-                saveButton(.email, enabled: true) {
-                    if let user = await model.saveEmail() { app.session.updated(user) }
                 }
             }
         }
@@ -1089,5 +1043,49 @@ struct MembershipCard: View {
             l.t("membership.benefitDeliveryOver", ["amount": Money(fils: $0).formatted(l.current)])
         } ?? l.t("membership.benefitDelivery")
         return [delivery, l.t("membership.benefitPrices"), l.t("membership.benefitPriority")]
+    }
+}
+
+/// A tile's title on the account home: up to two lines rather than shrunk to
+/// nothing, since the tiles are made one height whatever wraps.
+private struct TileTitle: View {
+    let text: String
+    var body: some View {
+        Text(text)
+            .font(.inter(16, .bold))
+            .foregroundStyle(Brand.navy)
+            .lineLimit(2)
+            .minimumScaleFactor(0.9)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Two columns of tiles, each as tall as the tallest of them all — a `Grid`
+/// sizes each row on its own, so a title that wrapped made one row taller than
+/// the other. Placed from the leading edge; SwiftUI mirrors a custom layout on
+/// a right-to-left page, as it does `FlowLayout`.
+private struct TileGrid: Layout {
+    var spacing: CGFloat = 12
+
+    private func tileHeight(_ subviews: Subviews, column: CGFloat) -> CGFloat {
+        subviews.map { $0.sizeThatFits(ProposedViewSize(width: column, height: nil)).height }.max() ?? 0
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 360
+        let column = max((width - spacing) / 2, 0)
+        let rows = (subviews.count + 1) / 2
+        let height = tileHeight(subviews, column: column)
+        return CGSize(width: width, height: CGFloat(rows) * height + CGFloat(max(rows - 1, 0)) * spacing)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let column = max((bounds.width - spacing) / 2, 0)
+        let height = tileHeight(subviews, column: column)
+        for (index, subview) in subviews.enumerated() {
+            let x = bounds.minX + CGFloat(index % 2) * (column + spacing)
+            let y = bounds.minY + CGFloat(index / 2) * (height + spacing)
+            subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: column, height: height))
+        }
     }
 }

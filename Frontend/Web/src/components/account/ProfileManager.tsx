@@ -1,20 +1,27 @@
 /**
  * "Your profile", drawn to the owner's reference (Noon's "Your profile"): the
- * profile photo (`ProfilePhotoCard`), the name as a first and a last name side by side, then the phone, the gender
- * and the birthday (`ProfileDetailCards`), then the address
- * somebody signs in with. **The password is Account security's, on the
- * owner's word** (`SecurityCards`): that page is the password and deleting
- * the account, and nothing else.
+ * profile photo (`ProfilePhotoCard`), the name as a first and a last name
+ * side by side, then the phone, the gender and the birthday
+ * (`ProfileDetailCards`), then the password and deleting the account
+ * (`DeleteAccount`).
+ *
+ * **Account security is this page now, on the owner's word** ("remove the
+ * account security, instead put all its functions in the edit profile page"):
+ * it was a page of its own, a row on the account's home, holding the password
+ * and the delete. **The sign-in email card and the dates went from here, also
+ * on the owner's word**: the email is said on the home's first card, and
+ * changing it is not offered on the page (`auth.changeEmail` stays on the
+ * server, unused by it).
  *
  * Each card is its own decision with its own Save — or, for a choice made in
  * one press (a gender), saved as it is pressed — because one Save
  * across all of them would change a password somebody only opened the page to
  * correct a spelling in.
  *
- * Email and password both ask for the current password again. A session left
- * open on a shared machine should not be enough to take an account over, and
- * moving the login address or the password is exactly what somebody doing that
- * would reach for. The server enforces it; this only asks.
+ * The password asks for the current one again. A session left open on a
+ * shared machine should not be enough to take an account over, and the
+ * password is exactly what somebody doing that would reach for. The server
+ * enforces it; this only asks.
  */
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -47,18 +54,6 @@ export function ProfileManager({ user }: { user: PublicUser }) {
       <ProfilePhotoCard user={user} />
       <NameForm user={user} parts={details.data ? { first: details.data.firstName, last: details.data.lastName } : null} onSaved={refresh} onFail={fail} />
       <ProfileDetailCards details={details.data ?? null} onFail={fail} />
-      <EmailForm user={user} onSaved={refresh} onFail={fail} />
-    </div>
-  );
-}
-
-/** Account security: the password, and deleting the account (`DeleteAccount`). */
-export function SecurityCards() {
-  const { t } = useTranslation();
-  const fail = (error: { message: string }) =>
-    toast.error(isMessageKey(error.message) ? t(error.message) : t("admin.saveFailed"));
-  return (
-    <div className="space-y-3">
       <PasswordForm onFail={fail} />
       <DeleteAccount />
     </div>
@@ -126,73 +121,6 @@ function NameForm({ user, parts, onSaved, onFail }: {
           {t("account.saveChanges")}
         </button>
       </form>
-    </ProfileCard>
-  );
-}
-
-function EmailForm({ user, onSaved, onFail }: {
-  user: PublicUser;
-  onSaved: () => void;
-  onFail: (error: { message: string }) => void;
-}) {
-  const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const save = trpc.auth.changeEmail.useMutation({
-    onSuccess: () => {
-      onSaved();
-      toast.success(t("account.emailChanged"));
-      setOpen(false); setEmail(""); setPassword("");
-    },
-    onError: onFail,
-  });
-
-  return (
-    <ProfileCard title={t("account.signInEmail")} note={t("account.signInEmailNote")}>
-      <div className="flex min-h-16 flex-col justify-center rounded-2xl border border-[#e6e9ef] bg-[#f8f9fb] px-4 py-2">
-        <span className="block text-[12px] font-medium ink-muted">{t("auth.email")}</span>
-        <span className="mt-0.5 block break-words text-[16px] font-medium text-[#0a285a]"><bdi dir="ltr">{user.email}</bdi></span>
-      </div>
-      {open ? (
-        <div className="mt-3 space-y-2.5">
-          <FloatingField
-            label={t("account.newEmail")}
-            leftToRight
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={event => setEmail(event.target.value)}
-          />
-          <FloatingField
-            label={t("account.currentPassword")}
-            leftToRight
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={event => setPassword(event.target.value)}
-          />
-          <p className="text-[12px] leading-4 ink-muted">{t("account.currentPasswordWhy")}</p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => save.mutate({ email: email.trim(), currentPassword: password })}
-              disabled={save.isPending || email.trim() === "" || password === ""}
-              className={primary}
-            >
-              {save.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
-              {t("account.saveChanges")}
-            </button>
-            <button onClick={() => { setOpen(false); setEmail(""); setPassword(""); }} className={secondary}>
-              {t("common.cancel")}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button onClick={() => setOpen(true)} className={`mt-3 ${secondary}`}>
-          {t("account.changeEmail")}
-        </button>
-      )}
     </ProfileCard>
   );
 }

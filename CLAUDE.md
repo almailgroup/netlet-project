@@ -528,8 +528,8 @@ What the form does, each for a reason:
   code going to that step. A wrong code counts as a `codeMiss`; with no Supabase
   the code is written to the server log (`localCodes.ts`). Supabase's "Reset
   Password" template has to print `{{ .Token }}` (`docs/SUPABASE-AUTH.md`).
-  Account security's "Forgot your current password?" is the same: a code to the
-  account's own email and the new password, on the card. By phone needs an SMS
+  "Your profile"'s "Forgot your current password?" is the same: a code to the
+  account's own email and the new password, on the password card. By phone needs an SMS
   provider, which NetLet does not have yet. It used to be a
   toast and a jump back to sign-in, which left somebody unsure whether anything
   had gone. Supabase composes and sends the mail through `/auth/v1/recover`, so
@@ -557,12 +557,15 @@ What the form does, each for a reason:
   only to an address on the Site URL's host or in its Redirect URLs**, and
   otherwise to the Site URL, so the Site URL is part of the setup.
 
-`ProfileManager` on `/account` is the other half: display name, sign-in email
-and password, each its own small form with its own Save. One Save across all
-three would change a password somebody opened the panel to fix a spelling in.
-**Email and password both re-ask for the current password** — a session left
-open on a shared machine should not be enough to take an account over, and
-those two are exactly what somebody doing that would reach for. `Backend/src/services/profile.ts`
+`ProfileManager` on `/account` is the other half: the name, the profile's own
+details and the password, each its own small form with its own Save. One Save
+across them would change a password somebody opened the panel to fix a
+spelling in. **The password re-asks for the current one** — a session left
+open on a shared machine should not be enough to take an account over. **The
+sign-in email is not changed from any page, on the owner's word**: its card
+went from "Your profile" with the identity card (see "The account"), and
+`auth.changeEmail` stays on the server, re-asking for the password, for the
+day a page offers it again. `Backend/src/services/profile.ts`
 holds the writes rather than `db.ts`, because functions inside `db.ts` call
 its module-local `getDb`, which nothing outside can redirect, so anything
 living there cannot be tested against a real database.
@@ -1781,7 +1784,7 @@ an account), who else sees what (the stores and the carrier, Vercel, Supabase,
 Google's reCAPTCHA, the map chosen, a model provider for the assistants and
 photo search, the browser's own speech service), the profile's own details
 (kept on the account, never shown to a store), the one sign-in cookie, and
-deleting the account from Account security (see "Deleting your account"). A
+deleting the account from "Your profile" (see "Deleting your account"). A
 paragraph about a service the deployment does not run — the analytics tool —
 is drawn only when the build configures it, and so are two more: email
 (Resend, only while it is configured) and the try-on (Google's image model,
@@ -2121,9 +2124,9 @@ It was a single page carrying fifteen sections — orders, messages, help,
 reviews, wishlists, price requests, points, the affiliate programme, selling,
 the profile, addresses, preferences, activity and signing out — 7,000px tall on
 a laptop and 8,300px on a phone, which had no menu at all, so changing a
-password meant scrolling past every parcel ever ordered. The home is now a
+password meant scrolling past every parcel ever ordered. The home became a
 short page of tiles in four groups (shopping, notifications and help, rewards,
-account settings), each tile saying in one line what it holds and, where there
+account settings) — since redrawn, below — each tile saying in one line what it holds and, where there
 is something, what is waiting — "1 on the way", "2 unread", from
 `useAccountSignals`, the header's own reader. A row opens
 `/account/<section>`: that section alone, under a round way back to the home
@@ -2142,21 +2145,30 @@ shelf — and the way between sections is the home's rows, the round back
 button and the header's account menu. **The account's one card is `PANEL`**
 (`profileParts.tsx`): the home's rows and tiles and every "Your profile" card
 wear it, and the profile's buttons are the home's pills — navy to save, white
-with a light rim for Cancel, "Change email" and "Change password", which were
-orange underlined words.
+with a light rim for Cancel and "Change password", which were orange
+underlined words.
 
 **The home is drawn like the delivery apps', on the owner's word** (a picture
 of Noon's profile; `AccountHome`): its name, "Your account", with the
 notifications as a bell in its end corner, the unread counted on it
 (`CountBadge`, also on the owner's word — it replaced the Notifications row);
 a card with the initials in a pale circle,
-the name, the email and a pencil to "Your profile"; two tiles, "My orders" and
-"Saved items", each showing the last four pictures (`orders.list`'s own photos,
-the hearts read by id) or saying there is nothing yet; "NetLet points" with the
-balance in a pill; then every section as a row in white cards — an outline
-icon, the name, what is waiting, a chevron — with dashed lines between,
-"Account security" (the password and deleting the account, `/account/security`)
-and signing out in red at the foot, still asking first.
+the name, the email and a pencil to "Your profile"; **four tiles, two by two,
+on the owner's word** ("make Frequently bought and NetLet points … like My
+orders and Saved items, so all should be in four boxes"): "My orders" and
+"Saved items", then "Frequently bought" and "NetLet points" — the first three
+showing the last four pictures (`orders.list`'s own photos, the hearts read by
+id, `frequent.list`'s products) or saying there is nothing yet, the points the
+coin and the balance on a pale orange plate. **Every tile is the height of the
+tallest** (`auto-rows-fr`; the app's `TileGrid`), with its picture at the
+foot, because "Frequently bought" wraps on a 320px phone and a row of its own
+height read as a broken grid; the balance shrinks with the screen rather than
+being cut ("1,…" at 320). Then Quick settings, the membership card, every
+section as a row in white cards — an outline icon, the name, what is waiting,
+a chevron — with dashed lines between, and signing out in red, still asking
+first; **and last, the seller card and the affiliate card, on the owner's
+word** ("move Sell on NetLet and affiliate marketing to the bottom of the
+profile page"), under signing out, being offers rather than the account.
 
 **Name, email and phone lead it, and Country, Currency and Language follow,
 on the owner's word** ("clearly visible and directly accessible from the My
@@ -2205,11 +2217,12 @@ information") — and the affiliate row went, leaving the card above the rows,
 which offers joining to somebody not in and opens the programme ("Open") for
 a member, or for somebody holding an account while the switch is off. Cards follow what somebody came to do: shopping with, being told
 things, running something, the account itself. The tiles in four headed groups
-and the welcome heading went; the dates moved to the foot of "Your profile"
-(`AccountIdentity`), drawn as the home's rows — an icon, the words, the date at
-the end — with the portal as one more row for an administrator, the role in a
-pill beside it. The date takes its own direction (`<bdi>`): forced left to
-right, an Arabic month name put the year first for an Arabic reader. **On a phone `/account` and `/cart` have no
+and the welcome heading went; the dates went to the foot of "Your profile" for a while and then
+off it, with the sign-in email's card, on the owner's word ("remove these
+two") — "Signed in as", member since, last signed in and the role told
+somebody nothing they came to change. An administrator reaches the portal by
+the seller card, which opens it for anybody the server says is not a
+shopper, and by the header's account menu. **On a phone `/account` and `/cart` have no
 header and no footer, on the owner's word** (`BARE_ON_PHONE` in
 `StorefrontShell`): the page starts under the status bar, ends with its own
 content — `<main>` keeps the room the footer left for the floating tab bar —
@@ -2224,7 +2237,7 @@ having covered the ends of the rows — the owner's screenshot had it over
 **The seller portal has a door on the account's home, and every shopper sees
 one, on the owner's word** ("a clearly visible entry … easy switching between
 the shopping and seller experiences; users who are not sellers go to Become a
-Seller"): a card under the points (`SellerEntry` on the web, `SellerEntryCard`
+Seller"): a card at the home's foot, above the affiliate card (`SellerEntry` on the web, `SellerEntryCard`
 in the app) names the store and opens the portal for somebody in one — the
 portal has its own way back — and offers `/sell` to anybody else; the account
 menu does the same ("Sell on NetLet"). The server decides which
@@ -2258,11 +2271,16 @@ prompt as Preferences opens — the CI's pictures carried it over every screen
 taken after that one, the Arabic sign-in among them. The web and Android have
 none.
 
-**Account security is the password and deleting the account, and nothing
-else, on the owner's word** (`SecurityCards` on the web, `AccountSecurityView`
-in the app); it and the name card's pencil had both opened "Your profile",
-which held the password among the name, phone and the rest. "Your profile"
-keeps everything else, the sign-in email included.
+**"Your profile" holds the password and deleting the account, on the
+owner's word** ("remove the account security, instead put all its functions
+in the edit profile page"): its cards are the photo, the name, the phone, the
+gender, the birthday, the password (with "Forgot your current password?" and
+its code) and, last, deleting the account (`ProfileManager` on the web,
+`ProfileView` in the app). Account security was a page of those two for a
+while (`/account/security`); a link to it — a notice, an old email, a
+bookmark — opens "Your profile" (`MOVED` in `Account.tsx`; the app's
+`AppModel.open` maps the segment to `.profile`), and the help centre's
+account issue offers "Your profile" in its place.
 
 **Deleting your account is a real delete, on the owner's word**
 (`Backend/src/services/accountDeletion.ts`, `auth.deletionCheck` and
@@ -4128,10 +4146,10 @@ beside it as always on. `noticeCategories.test.ts` holds that every notice a
 shopper can be sent is in exactly one group and that a group's switch silences
 exactly what `NOTICE_RULES` says. **A changed password or sign-in email is a
 notice of its own, never silenced** (`account_password_changed`,
-`account_email_changed`, `tellAccountChanged`): changing either on Account
-security or Your profile, and a reset by link or by code, each tell the
-account once, by email too where it is configured, linking to Account
-security — how somebody learns a password they did not change was changed.
+`account_email_changed`, `tellAccountChanged`): changing either, and a reset
+by link or by code, each tell the account once, by email too where it is
+configured, linking to "Your profile" (`/account/details`) — how somebody
+learns a password they did not change was changed.
 The inbox links to the settings.
 
 ## Drawing
@@ -7690,9 +7708,9 @@ the same form there, the new one then delivered to, and a guest's
 governorates — over
 `DeliveryModel`, which is the web's `addressInUse` (tested on the same cases)
 with checkout's own last-address key, so a choice here is where checkout
-starts. The Profile page is `AccountView`'s cards and rows, the dates at the
-foot of "Your profile" (`AccountIdentityCard`), under a round back button and
-the title and `FloatingField`s — the web's cards one for one: the name in two
+starts. The Profile page is `AccountView`'s four tiles (`TileGrid`), cards
+and rows, and "Your profile" is under a round back button and the title and
+`FloatingField`s — the web's cards one for one: the name in two
 boxes, the phone with `+965` before it (`FloatingField`'s `prefix`), two
 gender tiles, the birthday as a box that opens a wheel (`BirthdayDay` keeps it
 at noon in Kuwait, so no time zone moves it a day) — the nationality's card
@@ -7887,7 +7905,7 @@ two sheets at once). The claims are listed under the bar with Withdraw; the
 portal has the warranty desk (`PortalWarrantyView`, the overview's tile) and
 the return window on Features (`SettingsCard`, whole days). The Profile tab
 has the phone and Quick settings, Preferences lost the language and the
-currency, and sign-in's reset and Account security take the code
+currency, and sign-in's reset and "Your profile"'s password card take the code
 (`ResetByCodeModel`, tested on the fake service). The recorded pending order is
 `demo.orders.get.pending.json` and a claimed one `demo.orders.get.claimed.json`,
 each read through `DemoTransport`'s variant, and the screenshots run the

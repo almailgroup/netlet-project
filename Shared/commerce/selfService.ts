@@ -63,8 +63,12 @@ export function topicFor(issue: HelpIssue | null | undefined): SupportTopic {
 export const HELP_PANELS = ["track", "refund", "returnForm", "warranty", "address", "modify", "rate"] as const;
 export type HelpPanel = (typeof HELP_PANELS)[number];
 
-/** Account pages an answer can send a shopper to. */
-export const HELP_PAGES = ["security", "profile", "notifications", "addresses", "returns"] as const;
+/**
+ * Account pages an answer can send a shopper to. Account security went into
+ * "Your profile", on the owner's word, so the password and deleting the
+ * account are `profile` now.
+ */
+export const HELP_PAGES = ["profile", "notifications", "addresses", "returns"] as const;
 export type HelpPage = (typeof HELP_PAGES)[number];
 
 /** Reasons an exchange makes sense for: the same item again fixes a fault, never a size. */
@@ -170,7 +174,7 @@ export function resolveIssue(issue: HelpIssue, facts: IssueFacts | null, lineId:
   if (issue === "account") {
     return {
       say: [say("help.account.say")],
-      offers: [{ kind: "page", to: "security" }, { kind: "page", to: "profile" }, { kind: "page", to: "notifications" }, { kind: "page", to: "addresses" }],
+      offers: [{ kind: "page", to: "profile" }, { kind: "page", to: "notifications" }, { kind: "page", to: "addresses" }],
       person: "offer",
     };
   }

@@ -8,7 +8,7 @@ import Observation
 @MainActor
 final class ProfileViewModel {
     enum Form: Hashable {
-        case name, phone, gender, birthday, email, password
+        case name, phone, gender, birthday, password
     }
 
     var firstName = ""
@@ -17,8 +17,6 @@ final class ProfileViewModel {
     var phone = ""
     /// The birthday being chosen, `yyyy-mm-dd`, or empty.
     var birthday = ""
-    var newEmail = ""
-    var emailPassword = ""
     var currentPassword = ""
     var newPassword = ""
 
@@ -42,7 +40,6 @@ final class ProfileViewModel {
         lastName = guess.last
         savedFirst = guess.first
         savedLast = guess.last
-        newEmail = user?.email ?? ""
     }
 
     /// The details, once; an account with no name parts keeps the split of its
@@ -125,24 +122,8 @@ final class ProfileViewModel {
         birthday = answer.birthday ?? ""
     }
 
-    /// Email and password both ask again for the current password: an open
-    /// session on a shared phone should not be enough to take the account over.
-    func saveEmail() async -> User? {
-        if let problem = Validation.emailProblem(newEmail) {
-            problems[.email] = problem
-            return nil
-        }
-        if emailPassword.isEmpty {
-            problems[.email] = "auth.passwordRequired"
-            return nil
-        }
-        let user = await run(.email) {
-            try await self.account.changeEmail(self.newEmail.trimmingCharacters(in: .whitespacesAndNewlines), currentPassword: self.emailPassword)
-        }
-        if user != nil { emailPassword = "" }
-        return user
-    }
-
+    /// The password asks again for the current one: an open session on a
+    /// shared phone should not be enough to take the account over.
     func savePassword() async -> Bool {
         if currentPassword.isEmpty {
             problems[.password] = "auth.passwordRequired"

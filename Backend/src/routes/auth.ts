@@ -683,7 +683,7 @@ export const authRouter = router({
 
   /**
    * What stands between the shopper and deleting their account, and the
-   * points that would go with it — read by Account security before anybody
+   * points that would go with it — read by "Your profile" before anybody
    * presses Delete (`services/accountDeletion.ts`).
    */
   deletionCheck: protectedProcedure.query(({ ctx }) => deletionCheck(ctx.user)),

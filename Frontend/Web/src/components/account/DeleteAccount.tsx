@@ -1,5 +1,5 @@
 /**
- * Deleting your own account, on Account security — on the owner's word.
+ * Deleting your own account, at the foot of "Your profile" — on the owner's word.
  *
  * The card says what goes (and the points balance, by its figure) and what is
  * kept — the orders and their invoices, no longer linked to an account —

@@ -101,7 +101,13 @@ describe("self-service", () => {
 
   it("answers the account with its own pages, no order needed", () => {
     const answer = resolveIssue("account", null, null, day);
-    expect(answer.offers.map(offer => offer.kind)).toEqual(["page", "page", "page", "page"]);
+    // "Your profile" holds the password and deleting the account now, so
+    // there is no Account security page to send anybody to.
+    expect(answer.offers).toEqual([
+      { kind: "page", to: "profile" },
+      { kind: "page", to: "notifications" },
+      { kind: "page", to: "addresses" },
+    ]);
   });
 
   it("allows only what the order allows now", () => {

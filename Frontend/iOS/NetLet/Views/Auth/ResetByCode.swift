@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The reset mail's six-digit code and the new password, on one screen — the
 /// web's `ResetByCode`, drawn under sign-in's "Check your email" and under
-/// Account security's "Forgot your current password?". The link in the same
+/// "Your profile"'s "Forgot your current password?". The link in the same
 /// mail still works; this is the way the form asks for.
 struct ResetByCodeFields: View {
     let email: String

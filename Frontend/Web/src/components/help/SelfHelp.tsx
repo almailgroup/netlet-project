@@ -67,7 +67,6 @@ export const PANEL_LABEL: Record<HelpPanel, MessageKey> = {
 };
 
 const PAGE: Record<HelpPage, { href: string; label: MessageKey }> = {
-  security: { href: "/account/security", label: "help.page.security" },
   profile: { href: "/account/details", label: "help.page.profile" },
   notifications: { href: "/account/preferences", label: "help.page.notifications" },
   addresses: { href: "/account/addresses", label: "help.page.addresses" },

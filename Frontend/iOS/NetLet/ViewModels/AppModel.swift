@@ -39,8 +39,6 @@ enum Route: Hashable {
     /// How the shopper pays and the cards they save — the web's `/account/payments`.
     case payments
     case profile
-    /// The password and deleting the account — the web's `/account/security`.
-    case security
     case listings
     case newListing
     // The account's sections, each the web's `/account/<section>`.
@@ -124,7 +122,9 @@ enum Route: Hashable {
             case "frequent": return .frequent
             case "payments": return .payments
             case "details": return .profile
-            case "security": return .security
+            // Account security went into "Your profile", on the owner's word;
+            // a notice sent before still links to its old address.
+            case "security": return .profile
             case "addresses": return .addresses
             case "preferences": return .preferences
             case "history": return .history
@@ -492,9 +492,6 @@ final class AppModel {
         case "profile":
             selectedTab = .account
             accountPath = NavigationPath([Route.profile])
-        case "security":
-            selectedTab = .account
-            accountPath = NavigationPath([Route.security])
         case "sell":
             selectedTab = .account
             if session.seller?.inPortal == true { accountPath = NavigationPath([Route.portal("/admin")]) }

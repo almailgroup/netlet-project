@@ -214,7 +214,6 @@ private struct RouteDestination: View {
         case .frequent: FrequentView()
         case .payments: PaymentMethodsView()
         case .profile: ProfileView()
-        case .security: AccountSecurityView()
         case .listings: SellerListingsView()
         case .newListing: NewListingView()
         case .addresses: AddressBookView()

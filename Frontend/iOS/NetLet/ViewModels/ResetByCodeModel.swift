@@ -4,7 +4,7 @@ import Observation
 /// A new password from the six-digit code in the reset mail — the web's
 /// `ResetByCode`, on the owner's word ("password recovery using a
 /// verification code sent to the registered email"). Sign-in's reset ends
-/// here, and so does Account security's "Forgot your current password?": the
+/// here, and so does "Your profile"'s "Forgot your current password?": the
 /// code and the new password on one screen, so nobody has to leave for the
 /// mail's link and come back.
 ///
