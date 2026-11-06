@@ -79,7 +79,7 @@ beforeAll(async () => {
   await db.update(vendors).set({
     description: "We sell lamps.", descriptionAr: null,
     contactEmail: "owner@busy.test", contactPhone: "+96599887766", addressLine: "Block 1, Street 2",
-    licenceNumber: "LIC-1", payoutIban: "KW81CBKU0000000000001234560101", commissionPercent: "12.50",
+    licenceNumber: "LIC-1", payoutIban: "KW81CBKU0000000000001234560101", commissionPercent: "87.25",
     governorate: "hawalli", deliveryFlat: "1.500", deliveryFreeOver: "20.000", deliverySpeed: "next_day",
   }).where(eq(vendors.id, ids.busy));
 }, 60_000);
@@ -158,7 +158,9 @@ describe("getStorePage", () => {
   it("never carries the store's private details", async () => {
     const page = await catalog.getStorePage("busy", "en");
     const said = JSON.stringify(page);
-    for (const secret of ["owner@busy.test", "99887766", "Block 1", "LIC-1", "KW81", "12.5"]) expect(said).not.toContain(secret);
+    /* The rate is one no clock can print: it was 12.5, and a review written
+       at 11:53:12.516 carried it in its timestamp. */
+    for (const secret of ["owner@busy.test", "99887766", "Block 1", "LIC-1", "KW81", "87.25"]) expect(said).not.toContain(secret);
     expect(Object.keys(page!.store).sort()).toEqual(
       ["badges", "delivery", "description", "governorate", "logoUrl", "name", "products", "rating", "since", "slug"],
     );
