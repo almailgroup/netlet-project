@@ -70,7 +70,7 @@ import {
   updateSupabaseUser,
   type IdTokenUser,
 } from "../core/supabaseAuth.js";
-import { linkAppleAccount } from "../services/logins.js";
+import { keepOwnerAdmin, linkAppleAccount } from "../services/logins.js";
 
 /*
  * What signing in takes. **No length floor on the password**, only a cap:
@@ -201,9 +201,11 @@ const codeNotSent = new TRPCError({ code: "TOO_MANY_REQUESTS", message: "auth.co
  */
 async function startSession(
   ctx: { req: Parameters<typeof getSessionCookieOptions>[0]; res: { cookie: (name: string, value: string, options: object) => void } },
-  user: { id: number; email: string | null; role: string },
+  given: { id: number; email: string | null; role: string },
   remember = true,
 ): Promise<void> {
+  /* The shop's owner is an administrator whatever happened since (`core/owner.ts`). */
+  const user = await keepOwnerAdmin(given);
   /* Not remembered: a cookie with no expiry, which the browser drops when it
      closes, round a token that lapses in a day for a browser that keeps it. */
   if (remember === false) {

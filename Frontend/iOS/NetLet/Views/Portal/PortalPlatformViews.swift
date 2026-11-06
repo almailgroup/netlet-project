@@ -862,6 +862,7 @@ struct PortalPeopleView: View {
                     FlowLayout(spacing: 6) {
                         Text(person.shownName).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
                         if person.role == "admin" { StatusPill(label: l.t("admin.isAdmin"), tone: .shipped) }
+                        if person.owner == true { StatusPill(label: l.t("admin.ownerBadge"), tone: .shipped) }
                         if isSelf { Text(l.t("admin.you")).font(.inter(12, .semibold)).foregroundStyle(Brand.muted) }
                     }
                     Text(latin(person.email)).font(.inter(13)).foregroundStyle(Brand.body).lineLimit(1).truncationMode(.middle)
@@ -873,7 +874,14 @@ struct PortalPeopleView: View {
                 }
                 Spacer(minLength: 0)
             }
-            if person.role == "admin" {
+            if person.owner == true {
+                // The shop's owner stays an administrator: a line saying so,
+                // never a button the server would refuse.
+                Text(l.t("admin.ownerStays"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if person.role == "admin" {
                 Button { asking = .revoke(person) } label: { Label(l.t("admin.revokeAdmin"), systemImage: "shield.slash") }
                     .buttonStyle(PortalSmallButtonStyle(kind: .danger))
                     .disabled(busy)

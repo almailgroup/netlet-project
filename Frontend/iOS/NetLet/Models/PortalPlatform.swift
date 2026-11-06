@@ -141,6 +141,9 @@ struct PortalPerson: Decodable, Identifiable, Hashable, Sendable {
     let vendors: [Membership]
     /// Capabilities granted on their own (3.3.9): "vendor.setCommission".
     var grants: [String]? = nil
+    /// The shop's owner, whose administrator cannot be taken away. Absent
+    /// from a server before that rule, which reads as not the owner.
+    var owner: Bool? = nil
 
     var shownName: String { (name?.isEmpty == false ? name : nil) ?? email }
 }

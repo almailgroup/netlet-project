@@ -5913,6 +5913,19 @@ other at the same moment each saw two and each went ahead, leaving none. Run
 against the scratch Postgres three times, exactly one revocation lands each
 time.
 
+**The shop's owner stays an administrator, on the owner's word** ("make sure
+that this account stays as super admin"): the account `OWNER_EMAIL` names
+(`core/owner.ts`, compared folded). Made with that address it is an
+administrator from the start (`createUser`, by any door, Apple's included);
+nobody can revoke it (`setUserAdmin` refuses with `admin.ownerStays`, and
+`/admin/people` draws that sentence and an Owner pill where the Revoke button
+would be, on the web and in the app — `listPeople`'s `owner`); and every sign-in
+puts it back if anything else took it away, a hand edit in the database
+included (`keepOwnerAdmin`, in `startSession`, the one door every sign-in
+passes). An administrator cannot delete their own account, so the owner cannot
+either. It is all keyed on the setting, so the guarantee holds only while
+Vercel's `OWNER_EMAIL` names the owner's address.
+
 **Every admin list is paged, and always says how many there are.** The lists
 stopped at a fixed ceiling — 500 products, 100 vendors, 100 people, 50 low-stock
 rows — and said nothing, which is the same lie `QueryGate` was built to stop: a

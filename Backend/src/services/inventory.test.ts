@@ -591,6 +591,35 @@ describe("who reaches the admin panel", () => {
     await inv.setUserAdmin(adminActor(), ids.owner, false);
   });
 
+  /* On the owner's word: the account OWNER_EMAIL names stays an
+     administrator — nobody can take it away, and a sign-in puts it back if
+     anything else did. */
+  it("never lets anybody take the shop owner's administrator away", async () => {
+    const { ENV } = await import("../core/env.js");
+    const before = ENV.ownerEmail;
+    ENV.ownerEmail = " STAFF@acme.test ";
+    try {
+      await inv.setUserAdmin(adminActor(), ids.staff, true);
+      await expect(inv.setUserAdmin(adminActor(), ids.staff, false)).rejects.toThrow("OWNER_STAYS");
+      expect((await db.select().from(users).where(eq(users.id, ids.staff)))[0].role).toBe("admin");
+      const { rows } = await inv.listPeople(adminActor(), { query: "staff@" });
+      expect(rows.map(person => person.owner)).toEqual([true]);
+
+      // Taken away by hand in the database, it comes back at the next sign-in.
+      await db.update(users).set({ role: "user" }).where(eq(users.id, ids.staff));
+      const { keepOwnerAdmin } = await import("./logins.js");
+      const [row] = await db.select().from(users).where(eq(users.id, ids.staff));
+      expect((await keepOwnerAdmin(row)).role).toBe("admin");
+      expect((await db.select().from(users).where(eq(users.id, ids.staff)))[0].role).toBe("admin");
+      // Anybody else is left as they are.
+      const [other] = await db.select().from(users).where(eq(users.id, ids.owner));
+      expect((await keepOwnerAdmin(other)).role).toBe(other.role);
+    } finally {
+      ENV.ownerEmail = before;
+      await db.update(users).set({ role: "user" }).where(eq(users.id, ids.staff));
+    }
+  });
+
   it("adds somebody to a vendor by address, and takes them out again", async () => {
     await inv.addMemberByEmail(adminActor(), ids.other, "staff@acme.test", "manager");
     let members = await inv.listMembers(adminActor(), ids.other);

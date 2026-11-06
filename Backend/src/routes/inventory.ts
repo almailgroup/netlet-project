@@ -129,6 +129,9 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "LAST_ADMIN") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.lastAdmin" });
     }
+    if (message === "OWNER_STAYS") {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "admin.ownerStays" });
+    }
     // Opening a store: both are things the admin can fix in the form in front
     // of them, so they are named rather than reported as a failure.
     if (message === "SLUG_TAKEN") {

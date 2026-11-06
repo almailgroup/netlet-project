@@ -771,6 +771,9 @@ export const en = {
   "admin.noSuchAccount": "No account uses that address. They need to register first.",
   "admin.cannotDemoteSelf": "You cannot revoke your own access. Ask another administrator.",
   "admin.lastAdmin": "This is the only administrator. Promote somebody else first.",
+  /* The shop's owner (OWNER_EMAIL) is an administrator for good (`core/owner.ts`). */
+  "admin.ownerStays": "The shop's owner is always an administrator.",
+  "admin.ownerBadge": "Owner",
   "admin.joined": "Joined",
   "admin.lastSeen": "Last signed in",
   "admin.lowStockTitle": "Running low and out of stock",
@@ -5228,6 +5231,8 @@ export const ar: Record<MessageKey, string> = {
   "admin.noSuchAccount": "لا يوجد حساب بهذا العنوان. عليه التسجيل أولاً.",
   "admin.cannotDemoteSelf": "لا يمكنك سحب صلاحيتك بنفسك. اطلب ذلك من مسؤول آخر.",
   "admin.lastAdmin": "هذا هو المسؤول الوحيد. عيّن مسؤولاً آخر أولاً.",
+  "admin.ownerStays": "مالك المتجر مسؤول دائماً.",
+  "admin.ownerBadge": "المالك",
   "admin.joined": "تاريخ الانضمام",
   "admin.lastSeen": "آخر تسجيل دخول",
   "admin.lowStockTitle": "على وشك النفاد ونفد",

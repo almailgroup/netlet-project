@@ -14,7 +14,7 @@
  */
 import { eq } from "drizzle-orm";
 import { users, type User } from "../../database/schema.js";
-import { ENV } from "../core/env.js";
+import { isOwnerEmail } from "../core/owner.js";
 import { getDb, isDuplicateKeyError } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -70,7 +70,7 @@ export async function createUser(input: {
   if (await byEmail(db, email)) return null;
 
   // The owner, if configured, is an admin from the moment they register.
-  const role = ENV.ownerEmail && email === ENV.ownerEmail.trim().toLowerCase() ? "admin" : "user";
+  const role = isOwnerEmail(email) ? "admin" : "user";
 
   try {
     await db.insert(users).values({
@@ -148,6 +148,21 @@ export async function linkExternalUser(input: {
   return createUser({ email, ...credentials, name: input.name ?? null });
 }
 
+
+/**
+ * The owner's account is an administrator whatever happened to it since
+ * (`core/owner.ts`): asked at every sign-in, so a role taken away by hand in
+ * the database comes back the next time the owner signs in. Answers the row
+ * as it now stands.
+ */
+export async function keepOwnerAdmin<T extends { id: number; email: string | null; role: string }>(user: T): Promise<T> {
+  if (user.role === "admin" || !isOwnerEmail(user.email)) return user;
+  const db = await getDb();
+  if (!db) return user;
+  await db.update(users).set({ role: "admin" }).where(eq(users.id, user.id));
+  console.warn(`[auth] the owner's account ${user.id} was not an administrator; made one again`);
+  return { ...user, role: "admin" };
+}
 
 /**
  * What an Apple sign-in lands on.

@@ -144,6 +144,7 @@ function People({ selfId }: { selfId: number }) {
                         <p className="flex flex-wrap items-center gap-2 text-[15px] font-bold text-[#0a285a]">
                           <bdi>{name}</bdi>
                           {person.role === "admin" ? <Pill tone="navy">{t("admin.isAdmin")}</Pill> : null}
+                          {person.owner ? <Pill tone="navy">{t("admin.ownerBadge")}</Pill> : null}
                           {self ? <span className="text-[12px] font-semibold ink-muted">{t("admin.you")}</span> : null}
                         </p>
                         {/* An address is an address in any language — isolated so it
@@ -160,7 +161,11 @@ function People({ selfId }: { selfId: number }) {
                         </p>
                       </div>
 
-                      {person.role === "admin" ? (
+                      {person.owner ? (
+                        /* The shop's owner stays an administrator: no button the
+                           server would refuse, a line saying why instead. */
+                        <p className="max-w-[16rem] text-[13px] leading-5 ink-muted">{t("admin.ownerStays")}</p>
+                      ) : person.role === "admin" ? (
                         <button
                           type="button"
                           onClick={() => setAsking({ kind: "revoke", userId: person.id, name })}

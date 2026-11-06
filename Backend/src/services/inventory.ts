@@ -9,6 +9,7 @@
  * Reads that a shopper makes go through `publishedCatalog`, which has no actor
  * because it only ever returns published products of approved vendors.
  */
+import { isOwnerEmail } from "../core/owner.js";
 import { openingSpecs, warrantyRequired } from "../../../Shared/inventory/productDraft.js";
 import { merchantWarranty } from "../../../Shared/commerce/productDetail.js";
 import { stockMoveProblem, type StockReason } from "../../../Shared/inventory/stockMoves.js";
@@ -1920,6 +1921,8 @@ export type PersonRow = {
   vendors: { userId: number; vendorId: number; role: string; vendorName: string }[];
   /** What this account holds by grant (3.3.9). */
   grants: string[];
+  /** The shop's owner, whose administrator cannot be taken away. */
+  owner: boolean;
 };
 
 export async function listPeople(actor: Actor, options: { query?: string } & PageRequest = {}) {
@@ -1978,6 +1981,7 @@ export async function listPeople(actor: Actor, options: { query?: string } & Pag
       ...row,
       vendors: memberships.filter(m => m.userId === row.id),
       grants: granted.filter(grant => grant.userId === row.id).map(grant => grant.capability),
+      owner: isOwnerEmail(row.email),
     })),
     total,
     page,
@@ -1994,7 +1998,8 @@ export async function listPeople(actor: Actor, options: { query?: string } & Pag
  * administrator who can do it if it is really meant. And the last
  * administrator cannot be removed at all, for the same reason at the scale of
  * the whole platform: an installation with nobody who can approve a vendor or
- * grant a role is one that needs a database client to recover.
+ * grant a role is one that needs a database client to recover. And the shop's
+ * owner (`OWNER_EMAIL`) cannot be made anything less by anybody.
  */
 export async function setUserAdmin(actor: Actor, userId: number, isAdmin: boolean) {
   assertCan(actor, "platform.manageUsers");
@@ -2005,6 +2010,8 @@ export async function setUserAdmin(actor: Actor, userId: number, isAdmin: boolea
   if (!target) throw new Error("NOT_FOUND");
 
   if (!isAdmin && target.id === actor.userId) throw new Error("CANNOT_DEMOTE_SELF");
+  /* The shop's owner stays an administrator, on the owner's word (`core/owner.ts`). */
+  if (!isAdmin && isOwnerEmail(target.email)) throw new Error("OWNER_STAYS");
 
   await db.transaction(async tx => {
     if (!isAdmin) {
