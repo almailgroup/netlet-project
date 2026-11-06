@@ -70,7 +70,8 @@ import {
   updateSupabaseUser,
   type IdTokenUser,
 } from "../core/supabaseAuth.js";
-import { keepOwnerAdmin, linkAppleAccount } from "../services/logins.js";
+import { keepOwnerAdmin, linkProviderAccount } from "../services/logins.js";
+import { googleIosClientId, googleWebClientId, namesOf } from "../core/googleSignIn.js";
 
 /*
  * What signing in takes. **No length floor on the password**, only a cap:
@@ -331,25 +332,99 @@ const appleProof = z.object({
   code: z.string().max(2000).optional(),
 });
 
-const appleRefused = new TRPCError({ code: "UNAUTHORIZED", message: "auth.appleRefused" });
+type IdProvider = "apple" | "google";
 
-/** Whether Supabase has Apple switched on, read from its public settings. */
-async function appleAvailable(): Promise<boolean> {
-  return (await supabaseExternalProviders())?.apple === true;
+/** Each provider's own words for what can go wrong — message keys. */
+const PROVIDER_WORDS = {
+  apple: { unavailable: "auth.appleUnavailable", refused: "auth.appleRefused", unreachable: "auth.appleUnreachable", taken: "auth.appleEmailTaken", notThis: "auth.appleNotThisAccount" },
+  google: { unavailable: "auth.googleUnavailable", refused: "auth.googleRefused", unreachable: "auth.googleUnreachable", taken: "auth.googleEmailTaken", notThis: "auth.googleNotThisAccount" },
+} as const;
+
+/** Whether Supabase has a provider switched on, read from its public settings. */
+async function providerOn(provider: IdProvider): Promise<boolean> {
+  return (await supabaseExternalProviders())?.[provider] === true;
 }
 
 /**
- * Asks Supabase about an Apple token. A refusal is null; a Supabase that
+ * Asks Supabase about a provider's token. A refusal is null; a Supabase that
  * cannot be reached is the "could not reach the service" fault, never a
  * refusal of the person.
  */
-async function appleUser(proof: z.infer<typeof appleProof>): Promise<IdTokenUser | null> {
+async function providerUser(provider: IdProvider, proof: { idToken: string; nonce: string }): Promise<IdTokenUser | null> {
   try {
-    return await signInSupabaseWithIdToken("apple", proof.idToken, proof.nonce);
+    return await signInSupabaseWithIdToken(provider, proof.idToken, proof.nonce);
   } catch (error) {
-    console.error(`[auth] Apple sign-in could not reach Supabase: ${error instanceof Error ? error.message : String(error)}`);
-    throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "auth.appleUnreachable" });
+    console.error(`[auth] ${provider} sign-in could not reach Supabase: ${error instanceof Error ? error.message : String(error)}`);
+    throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: PROVIDER_WORDS[provider].unreachable });
   }
+}
+
+const providerSignInInput = appleProof.extend({
+  firstName: z.string().trim().max(NAME_PART_MAX).optional(),
+  lastName: z.string().trim().max(NAME_PART_MAX).optional(),
+  remember: z.boolean().optional(),
+  referral: z.string().trim().max(32).optional(),
+  portal: z.boolean().optional(),
+});
+
+/**
+ * Signs in — or opens an account — with Apple or Google. One door for both,
+ * since neither provider's sheet tells them apart: an account there NetLet
+ * has met signs into its account, and a new one is an account made now, its
+ * address already vouched for, so no code is emailed.
+ *
+ * Refused, never adopted, for an address another account holds by a
+ * password NetLet keeps itself (`linkProviderAccount`): that account signs in
+ * the way it was made. An account whose password Supabase holds is linked by
+ * Supabase, and lands here as the account it was.
+ */
+async function providerSignIn(
+  ctx: Parameters<typeof startSession>[0] & { req: RequestLike & { ip?: string } },
+  provider: IdProvider,
+  input: z.infer<typeof providerSignInInput>,
+) {
+  assertConfigured();
+  const words = PROVIDER_WORDS[provider];
+  const caller = callerOf(ctx);
+  await assertNotThrottled(caller, "login");
+  if (!(await providerOn(provider))) throw new TRPCError({ code: "PRECONDITION_FAILED", message: words.unavailable });
+
+  const found = await providerUser(provider, input);
+  if (!found || !found.email) {
+    await recordAuthAttempt(caller, "login");
+    throw new TRPCError({ code: "UNAUTHORIZED", message: words.refused });
+  }
+
+  /* Apple hands the name to the page, the first time only; Google's token
+     carries it every time. */
+  const fromToken = provider === "google" ? namesOf(input.idToken) : { first: null, last: null };
+  const first = input.firstName ?? fromToken.first ?? "";
+  const last = input.lastName ?? fromToken.last ?? "";
+  const name = first || last ? composeName(first, last) : found.name;
+  const link = await linkProviderAccount({ uid: found.uid, email: found.email, emailConfirmed: found.emailConfirmed, name });
+  if (link.kind === "taken") throw new TRPCError({ code: "CONFLICT", message: words.taken });
+
+  const user = link.user;
+  if (link.kind === "created") {
+    if (first && last) await saveNameParts(user.id, first, last);
+    if (input.referral) await recordReferral(user.id, input.referral);
+    /* An address somebody began registering with a password and never
+       confirmed, now confirmed by the provider: the password was typed by
+       whoever began that sign-up, who need not be the person holding the
+       provider's account, so it is replaced with one nobody knows. The owner
+       sets their own through Forgot your password. */
+    if (found.signedUp && found.providers.includes("email")) {
+      await updateSupabaseUser(found.uid, { password: randomBytes(32).toString("base64url") });
+    }
+  }
+
+  await touchLastSignedIn(user.id);
+  await startSession(ctx, user, input.remember);
+  return {
+    ...toPublicUser(user),
+    created: link.kind === "created",
+    portal: input.portal ? await portalHandover(ctx, user, null, input.remember !== false) : null,
+  };
 }
 
 export const authRouter = router({
@@ -363,74 +438,31 @@ export const authRouter = router({
   signupOptions: publicProcedure.query(() => ({ captchaSiteKey: captchaSiteKey() })),
 
   /**
-   * Which other ways in are switched on: Sign in with Apple in the app while
-   * Supabase has Apple on, and on the website too once a Services ID is set —
-   * `web` is that id, which the page hands Apple's own script.
+   * Which other ways in are switched on. Apple in the app while Supabase has
+   * Apple on, and on the website too once a Services ID is set — `web` is that
+   * id, which the page hands Apple's own script. Google wherever its client id
+   * for that side is set and Supabase has Google on — `web` and `ios` are the
+   * ids the page and the app hand Google.
    */
   providers: publicProcedure.query(async () => {
-    const apple = await appleAvailable();
-    return { apple: { app: apple, web: apple ? appleWebClientId() : null } };
+    const external = await supabaseExternalProviders();
+    const apple = external?.apple === true;
+    const google = external?.google === true;
+    return {
+      apple: { app: apple, web: apple ? appleWebClientId() : null },
+      google: { web: google ? googleWebClientId() : null, ios: google ? googleIosClientId() : null },
+    };
   }),
 
-  /**
-   * Signs in — or opens an account — with Apple. One door for both, since
-   * Apple's own sheet does not tell them apart: an Apple ID NetLet has met
-   * signs into its account, and a new one is an account made now, its address
-   * already vouched for by Apple, so no code is emailed.
-   *
-   * Refused, never adopted, for an address another account holds by a
-   * password NetLet keeps itself (`linkAppleAccount`): that account signs in
-   * the way it was made. An account whose password Supabase holds is linked
-   * by Supabase, and lands here as the account it was.
-   */
+  /** Signs in, or opens an account, with Apple (`providerSignIn`). */
   appleSignIn: publicProcedure
-    .input(appleProof.extend({
-      firstName: z.string().trim().max(NAME_PART_MAX).optional(),
-      lastName: z.string().trim().max(NAME_PART_MAX).optional(),
-      remember: z.boolean().optional(),
-      referral: z.string().trim().max(32).optional(),
-      portal: z.boolean().optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      assertConfigured();
-      const caller = callerOf(ctx);
-      await assertNotThrottled(caller, "login");
-      if (!(await appleAvailable())) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "auth.appleUnavailable" });
+    .input(providerSignInInput)
+    .mutation(({ ctx, input }) => providerSignIn(ctx, "apple", input)),
 
-      const apple = await appleUser(input);
-      if (!apple || !apple.email) {
-        await recordAuthAttempt(caller, "login");
-        throw appleRefused;
-      }
-
-      const first = input.firstName ?? "";
-      const last = input.lastName ?? "";
-      const name = first || last ? composeName(first, last) : null;
-      const link = await linkAppleAccount({ uid: apple.uid, email: apple.email, emailConfirmed: apple.emailConfirmed, name });
-      if (link.kind === "taken") throw new TRPCError({ code: "CONFLICT", message: "auth.appleEmailTaken" });
-
-      const user = link.user;
-      if (link.kind === "created") {
-        if (first && last) await saveNameParts(user.id, first, last);
-        if (input.referral) await recordReferral(user.id, input.referral);
-        /* An address somebody began registering with a password and never
-           confirmed, now confirmed by Apple: the password was typed by
-           whoever began that sign-up, who need not be the person holding the
-           Apple ID, so it is replaced with one nobody knows. The owner sets
-           their own through Forgot your password. */
-        if (apple.signedUp && apple.providers.includes("email")) {
-          await updateSupabaseUser(apple.uid, { password: randomBytes(32).toString("base64url") });
-        }
-      }
-
-      await touchLastSignedIn(user.id);
-      await startSession(ctx, user, input.remember);
-      return {
-        ...toPublicUser(user),
-        created: link.kind === "created",
-        portal: input.portal ? await portalHandover(ctx, user, null, input.remember !== false) : null,
-      };
-    }),
+  /** Signs in, or opens an account, with Google (`providerSignIn`). */
+  googleSignIn: publicProcedure
+    .input(providerSignInInput)
+    .mutation(({ ctx, input }) => providerSignIn(ctx, "google", input)),
 
   /**
    * How the signed-in account signs in, for the pages that ask for a password
@@ -442,9 +474,9 @@ export const authRouter = router({
     const user = ctx.user;
     if (user.supabaseUid) {
       const named = await supabaseUserProviders(user.supabaseUid);
-      if (named) return { password: named.includes("email"), apple: named.includes("apple") };
+      if (named) return { password: named.includes("email"), apple: named.includes("apple"), google: named.includes("google") };
     }
-    return { password: true, apple: false };
+    return { password: true, apple: false, google: false };
   }),
 
   /**
@@ -832,14 +864,17 @@ export const authRouter = router({
          Apple instead — and the code Apple hands back is what unlinks the
          Apple ID once the account is gone. */
       apple: appleProof.optional(),
+      /* A Google account the same way, by Google's confirmation. */
+      google: appleProof.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const current = await loadUser(ctx.user.id);
       if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
-      if (input.apple) {
-        const apple = await appleUser(input.apple);
-        if (!apple || !current.supabaseUid || apple.uid !== current.supabaseUid) {
-          throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.appleNotThisAccount" });
+      const confirmation = input.apple ? ("apple" as const) : input.google ? ("google" as const) : null;
+      if (confirmation) {
+        const found = await providerUser(confirmation, (input.apple ?? input.google)!);
+        if (!found || !current.supabaseUid || found.uid !== current.supabaseUid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: PROVIDER_WORDS[confirmation].notThis });
         }
       } else if (input.currentPassword) {
         await assertCurrentPassword(current, input.currentPassword);

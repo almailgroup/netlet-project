@@ -120,4 +120,10 @@ export const ENV = {
   appleSigninTeamId: (process.env.APPLE_SIGNIN_TEAM_ID || process.env.APPLE_MAPKIT_TEAM_ID || "").trim(),
   appleSigninKeyId: (process.env.APPLE_SIGNIN_KEY_ID ?? "").trim(),
   appleSigninPrivateKey: (process.env.APPLE_SIGNIN_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
+  /* Sign in with Google (core/googleSignIn.ts): the two OAuth client ids from
+     Google Cloud's Google Auth Platform → Clients. Public — the page and the
+     app hand them to Google — and each unset is no Google button there. Both
+     also go in Supabase's Google provider as its Client IDs. */
+  googleSigninWebClientId: (process.env.GOOGLE_SIGNIN_WEB_CLIENT_ID ?? "").trim(),
+  googleSigninIosClientId: (process.env.GOOGLE_SIGNIN_IOS_CLIENT_ID ?? "").trim(),
 };

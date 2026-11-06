@@ -47,8 +47,11 @@ final class AuthViewModel {
 
     /// Sign in with Apple is offered while the server says Supabase has it on.
     private(set) var appleOffered = false
+    /// Google's client id for the app, while the server offers Google.
+    private(set) var googleClientId: String?
     private var appleAsked = false
     private let apple = AppleSignIn()
+    private let google = GoogleSignIn()
 
     private let account: AccountServicing
     private var countdown: Task<Void, Never>?
@@ -80,12 +83,16 @@ final class AuthViewModel {
 
     /// A wrong password offers the reset; a taken address offers signing in with it.
     var offersReset: Bool { refusal == "auth.invalidCredentials" }
-    var offersSignIn: Bool { refusal == "auth.emailTaken" || (refusal == "auth.appleEmailTaken" && mode == .register) }
+    var offersSignIn: Bool {
+        refusal == "auth.emailTaken" || ((refusal == "auth.appleEmailTaken" || refusal == "auth.googleEmailTaken") && mode == .register)
+    }
 
     func prepare() async {
         if !appleAsked {
             appleAsked = true
-            appleOffered = (try? await account.signInWays())?.apple.app ?? false
+            let ways = try? await account.signInWays()
+            appleOffered = ways?.apple.app ?? false
+            googleClientId = ways?.google?.ios
         }
         guard mode == .register, captchaSiteKey == nil else { return }
         captchaSiteKey = (try? await account.signupOptions())?.captchaSiteKey
@@ -109,6 +116,29 @@ final class AuthViewModel {
         defer { working = false }
         do {
             return try await account.appleSignIn(proof, name: name)
+        } catch {
+            refusal = key(for: APIError.from(error))
+            return nil
+        }
+    }
+
+    /// "Continue with Google": the system's sign-in sheet onto Google's page,
+    /// then the server. Closing the sheet says nothing.
+    func signInWithGoogle(language: String) async -> User? {
+        guard let clientId = googleClientId else { return nil }
+        refusal = nil
+        let proof: GoogleProof?
+        do {
+            proof = try await google.ask(clientId: clientId, language: language)
+        } catch {
+            refusal = "auth.googleWindowFailed"
+            return nil
+        }
+        guard let proof else { return nil }
+        working = true
+        defer { working = false }
+        do {
+            return try await account.googleSignIn(proof)
         } catch {
             refusal = key(for: APIError.from(error))
             return nil

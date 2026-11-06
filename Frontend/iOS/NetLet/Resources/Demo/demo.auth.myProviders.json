@@ -3,7 +3,8 @@
     "data": {
       "json": {
         "password": true,
-        "apple": false
+        "apple": false,
+        "google": false
       }
     }
   }

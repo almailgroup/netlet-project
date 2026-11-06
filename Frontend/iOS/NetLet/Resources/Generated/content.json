@@ -296,6 +296,9 @@
                 "key": "privacy.who.apple"
               },
               {
+                "key": "privacy.who.googleSignIn"
+              },
+              {
                 "key": "privacy.who.placeLookup"
               },
               {

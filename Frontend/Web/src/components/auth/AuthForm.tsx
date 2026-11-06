@@ -16,10 +16,11 @@
  *
  * Credentials go to NetLet's own `auth.login` / `auth.register`, which set an
  * httpOnly session cookie, so nothing token-shaped is ever held in JavaScript.
- * Sign in with Apple is the one other way in (`AppleButton`), under an "or"
- * line beneath the form's own button, and only while the server says Apple is
- * on and the website has its Services ID; there is no other, because a
- * provider's button that does nothing is worse than none.
+ * Sign in with Apple and with Google are the other ways in (`AppleButton`,
+ * `GoogleButton`), under an "or" line beneath the form's own button, each only
+ * while the server says Supabase has it on and the website has its client id;
+ * there is no other, because a provider's button that does nothing is worse
+ * than none.
  *
  * What the form does for the person filling it in, each for a reason:
  *
@@ -85,7 +86,9 @@ import { openPortalTab } from "@/lib/portalPass";
 import type { PortalSide } from "@shared/portal";
 import { HumanCheck } from "./HumanCheck";
 import { AppleButton, OrDivider } from "./AppleButton";
+import { GoogleButton } from "./GoogleButton";
 import type { AppleProof } from "@/lib/appleSignIn";
+import type { GoogleProof } from "@/lib/googleSignIn";
 
 export type AuthMode = "signin" | "register" | "reset";
 
@@ -302,18 +305,30 @@ export function AuthForm({
      on in Supabase and the website has its Services ID. */
   const providers = trpc.auth.providers.useQuery(undefined, { enabled: !portal, staleTime: 5 * 60_000 });
   const appleClientId = portal || isReset ? null : providers.data?.apple.web ?? null;
-  const apple = trpc.auth.appleSignIn.useMutation({
-    onSuccess: user => {
+  const googleClientId = portal || isReset ? null : providers.data?.google?.web ?? null;
+  /* Apple and Google land the same way: a new account forgets the invitation
+     it used, and somebody who belongs on a portal is handed on to it. */
+  const providerAnswers = {
+    onSuccess: (user: { name: string | null; created: boolean; portal: { side: PortalSide; url: string } | null }) => {
       if (user.created) clearReferral();
       void settle(user.name, user.portal ? handOn(user.portal) : undefined);
     },
-    onError: error => setRefusal({ message: error.message, next: error.message === "auth.appleEmailTaken" && isRegister ? "signin" : undefined }),
-  });
+    onError: (error: { message: string }) => setRefusal({
+      message: error.message,
+      next: (error.message === "auth.appleEmailTaken" || error.message === "auth.googleEmailTaken") && isRegister ? "signin" : undefined,
+    }),
+  };
+  const apple = trpc.auth.appleSignIn.useMutation(providerAnswers);
+  const google = trpc.auth.googleSignIn.useMutation(providerAnswers);
   const withApple = (proof: AppleProof) => {
     setRefusal(null);
     apple.mutate({ ...proof, remember: isRegister ? true : remember, referral: storedReferral(), portal: !PORTAL_SIDE });
   };
-  const pending = login.isPending || register.isPending || reset.isPending || apple.isPending;
+  const withGoogle = (proof: GoogleProof) => {
+    setRefusal(null);
+    google.mutate({ ...proof, remember: isRegister ? true : remember, referral: storedReferral(), portal: !PORTAL_SIDE });
+  };
+  const pending = login.isPending || register.isPending || reset.isPending || apple.isPending || google.isPending;
 
   /* The heading, so what happened is the first thing read; the button pressed has gone. */
   useEffect(() => {
@@ -624,15 +639,25 @@ export function AuthForm({
           /* What happens next, said once, quietly, where the press is. */
           <p className="text-center text-[13px] leading-5 text-[#536b8c] [text-wrap:balance]">{t("auth.codeWillBeSent")}</p>
         ) : null}
-        {appleClientId ? (
-          <div className="space-y-4 pt-1">
-            <OrDivider />
-            <AppleButton
-              clientId={appleClientId}
-              busy={apple.isPending}
-              onProof={withApple}
-              onFailed={() => setRefusal({ message: "auth.appleWindowFailed" })}
-            />
+        {appleClientId || googleClientId ? (
+          <div className="space-y-3 pt-1">
+            <div className="pb-1"><OrDivider /></div>
+            {appleClientId ? (
+              <AppleButton
+                clientId={appleClientId}
+                busy={apple.isPending}
+                onProof={withApple}
+                onFailed={() => setRefusal({ message: "auth.appleWindowFailed" })}
+              />
+            ) : null}
+            {googleClientId ? (
+              <GoogleButton
+                clientId={googleClientId}
+                busy={google.isPending}
+                onProof={withGoogle}
+                onFailed={() => setRefusal({ message: "auth.googleWindowFailed" })}
+              />
+            ) : null}
           </div>
         ) : null}
         {isRegister ? (

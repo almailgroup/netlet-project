@@ -227,12 +227,21 @@ private struct AuthForm: View {
                     .frame(maxWidth: .infinity)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if model.appleOffered && model.mode != .reset {
-                VStack(spacing: 14) {
-                    OrDivider()
-                    AppleSignInButton(label: "auth.continueWithApple", working: model.working) {
-                        Task {
-                            if let user = await model.signInWithApple() { await app.signedIn(user) }
+            if (model.appleOffered || model.googleClientId != nil) && model.mode != .reset {
+                VStack(spacing: 12) {
+                    OrDivider().padding(.bottom, 2)
+                    if model.appleOffered {
+                        AppleSignInButton(label: "auth.continueWithApple", working: model.working) {
+                            Task {
+                                if let user = await model.signInWithApple() { await app.signedIn(user) }
+                            }
+                        }
+                    }
+                    if model.googleClientId != nil {
+                        GoogleSignInButton(label: "auth.continueWithGoogle", working: model.working) {
+                            Task {
+                                if let user = await model.signInWithGoogle(language: l.current.rawValue) { await app.signedIn(user) }
+                            }
                         }
                     }
                 }

@@ -86,6 +86,11 @@ describe("dictionary completeness", () => {
       "auth.continueWithApple", "auth.appleRefused", "auth.appleUnavailable", "auth.appleNotThisAccount",
       "auth.appleWindowFailed", "account.deleteWithApple", "account.deleteAppleNote", "account.deleteAppleInApp",
       "account.passwordAppleNote", "privacy.who.apple",
+      // Sign in with Google's button and what is said about it name Google as
+      // Google's own Arabic button does — "المتابعة باستخدام Google".
+      "auth.continueWithGoogle", "auth.googleRefused", "auth.googleUnavailable", "auth.googleNotThisAccount",
+      "auth.googleWindowFailed", "account.deleteWithGoogle", "account.deleteGoogleNote", "account.deleteGoogleInApp",
+      "account.passwordGoogleNote", "privacy.who.googleSignIn",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

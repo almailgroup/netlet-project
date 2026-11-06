@@ -24,6 +24,7 @@ let serial = 0;
 type Answer = { uid: string; email: string; emailConfirmed?: boolean; signedUp?: boolean; providers?: string[] } | null;
 let answer: Answer = null;
 let appleOn = true;
+let googleOn = true;
 const passwordsSet: string[] = [];
 const deletedUids: string[] = [];
 let providersOf: Record<string, string[]> = {};
@@ -68,7 +69,7 @@ beforeAll(async () => {
     return {
       ...actual,
       isSupabaseAuthConfigured: () => true,
-      supabaseExternalProviders: async () => ({ apple: appleOn, email: true }),
+      supabaseExternalProviders: async () => ({ apple: appleOn, google: googleOn, email: true }),
       signInSupabaseWithIdToken: async () =>
         answer && {
           uid: answer.uid,
@@ -90,6 +91,8 @@ beforeAll(async () => {
   vi.stubEnv("JWT_SECRET", "a-test-secret-for-signing-sessions-0123456789");
   vi.stubEnv("DATABASE_URL", "postgres://unused@localhost:5432/unused");
   vi.stubEnv("APPLE_SIGNIN_SERVICES_ID", "net.netlet.web");
+  vi.stubEnv("GOOGLE_SIGNIN_WEB_CLIENT_ID", "web-1.apps.googleusercontent.com");
+  vi.stubEnv("GOOGLE_SIGNIN_IOS_CLIENT_ID", "ios-1.apps.googleusercontent.com");
   vi.stubEnv("APPLE_SIGNIN_TEAM_ID", "TEAM123456");
   vi.stubEnv("APPLE_SIGNIN_KEY_ID", "KEY1234567");
   // A real P-256 key, made for this test, so the client secret is really signed.
@@ -103,6 +106,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   answer = null;
   appleOn = true;
+  googleOn = true;
 });
 
 function freshEmail(): string {
@@ -113,9 +117,13 @@ function freshEmail(): string {
 describe("Sign in with Apple", () => {
   it("says which ways in are on: the app's always with Apple on, the website's with its Services ID", async () => {
     const guest = appRouter.createCaller(contextFor(null));
-    expect(await guest.auth.providers()).toEqual({ apple: { app: true, web: "net.netlet.web" } });
+    expect(await guest.auth.providers()).toEqual({
+      apple: { app: true, web: "net.netlet.web" },
+      google: { web: "web-1.apps.googleusercontent.com", ios: "ios-1.apps.googleusercontent.com" },
+    });
     appleOn = false;
-    expect(await guest.auth.providers()).toEqual({ apple: { app: false, web: null } });
+    googleOn = false;
+    expect(await guest.auth.providers()).toEqual({ apple: { app: false, web: null }, google: { web: null, ios: null } });
   });
 
   it("opens an account for an Apple ID it has not met, with the name Apple gave, and signs in", async () => {
@@ -198,9 +206,11 @@ describe("Sign in with Apple", () => {
     const email = freshEmail();
     const [row] = await db.insert(users).values({ email, supabaseUid: `ways-${serial}` }).returning();
     const me = appRouter.createCaller(contextFor(row as User));
-    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false });
+    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: false });
     providersOf[`ways-${serial}`] = ["apple"];
-    expect(await me.auth.myProviders()).toEqual({ password: false, apple: true });
+    expect(await me.auth.myProviders()).toEqual({ password: false, apple: true, google: false });
+    providersOf[`ways-${serial}`] = ["email", "google"];
+    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: true });
     providersOf = {};
   });
 
@@ -252,6 +262,53 @@ describe("Sign in with Apple", () => {
       throw new Error("offline");
     });
     expect(await appRouter.createCaller(contextFor(row)).auth.deleteAccount({ apple: proof })).toEqual({ deleted: true });
+    expect(await rowOf(email)).toBeUndefined();
+  });
+});
+
+/** A Google identity token's shape, with the claims the server reads. */
+function googleToken(claims: object): string {
+  const part = (value: object) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${part({ alg: "RS256" })}.${part({ aud: "web-1.apps.googleusercontent.com", sub: "1077", ...claims })}.signature`;
+}
+
+describe("Sign in with Google", () => {
+  it("opens an account with the name Google's token carries, and lands on it again", async () => {
+    const email = freshEmail();
+    answer = { uid: `g-${serial}`, email, providers: ["google"] };
+    const proofG = { idToken: googleToken({ given_name: "Shelby", family_name: "Og" }), nonce: "a-nonce-long-enough-0123" };
+    const guest = appRouter.createCaller(contextFor(null));
+    expect(await guest.auth.googleSignIn(proofG)).toMatchObject({ email, name: "Shelby Og", created: true });
+    const row = await rowOf(email);
+    const [parts] = await db.select().from(customerProfiles).where(eq(customerProfiles.userId, row.id));
+    expect(parts).toMatchObject({ firstName: "Shelby", lastName: "Og" });
+    expect(await guest.auth.googleSignIn(proofG)).toMatchObject({ id: row.id, created: false });
+  });
+
+  it("refuses an address a password NetLet keeps holds, and a Google that is switched off", async () => {
+    const email = freshEmail();
+    const { hashPassword } = await import("../core/password.js");
+    await db.insert(users).values({ email, passwordHash: await hashPassword("a-long-enough-password") });
+    answer = { uid: `g-stranger-${serial}`, email, providers: ["google"] };
+    const proofG = { idToken: googleToken({}), nonce: "a-nonce-long-enough-0123" };
+    await expect(appRouter.createCaller(contextFor(null)).auth.googleSignIn(proofG))
+      .rejects.toMatchObject({ code: "CONFLICT", message: "auth.googleEmailTaken" });
+    googleOn = false;
+    await expect(appRouter.createCaller(contextFor(null)).auth.googleSignIn(proofG))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "auth.googleUnavailable" });
+  });
+
+  it("deletes a Google account confirmed with the same Google account, and only that one", async () => {
+    const email = freshEmail();
+    answer = { uid: `g-leaving-${serial}`, email, providers: ["google"] };
+    const proofG = { idToken: googleToken({}), nonce: "a-nonce-long-enough-0123" };
+    await appRouter.createCaller(contextFor(null)).auth.googleSignIn(proofG);
+    const row = (await rowOf(email)) as User;
+    const me = appRouter.createCaller(contextFor(row));
+    answer = { uid: "another-google-account", email: "other@example.com" };
+    await expect(me.auth.deleteAccount({ google: proofG })).rejects.toMatchObject({ message: "auth.googleNotThisAccount" });
+    answer = { uid: row.supabaseUid!, email };
+    expect(await me.auth.deleteAccount({ google: proofG })).toEqual({ deleted: true });
     expect(await rowOf(email)).toBeUndefined();
   });
 });

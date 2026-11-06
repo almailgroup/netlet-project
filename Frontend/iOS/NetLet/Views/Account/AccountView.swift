@@ -720,8 +720,9 @@ private struct ProfileForm: View {
     /// "Forgot your current password?": a six-digit code to the account's own
     /// email, and the new password with it, on this card (on the owner's word).
     @State private var recovering: Recovery = .idle
-    /// How the account signs in: one made with Apple has no password to
-    /// change, and sets one by the same emailed code a forgotten one is.
+    /// How the account signs in: one made with Apple or Google has no
+    /// password to change, and sets one by the same emailed code a forgotten
+    /// one is.
     @State private var ways: AccountSignInWays?
 
     private enum Recovery { case idle, sending, sent }
@@ -760,7 +761,7 @@ private struct ProfileForm: View {
                             .font(.inter(17, .bold))
                             .foregroundStyle(Brand.ink)
                             .accessibilityAddTraits(.isHeader)
-                        Text(l.t("account.passwordAppleNote"))
+                        Text(l.t(ways?.apple == true ? "account.passwordAppleNote" : "account.passwordGoogleNote"))
                             .font(.inter(14))
                             .foregroundStyle(Brand.muted)
                             .fixedSize(horizontal: false, vertical: true)

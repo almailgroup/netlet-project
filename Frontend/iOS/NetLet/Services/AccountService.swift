@@ -42,6 +42,7 @@ protocol AccountServicing: Sendable {
     /// sheet handed back, and how the signed-in account signs in.
     func signInWays() async throws -> SignInWays
     func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User
+    func googleSignIn(_ proof: GoogleProof) async throws -> User
     func accountSignInWays() async throws -> AccountSignInWays
 }
 
@@ -57,6 +58,9 @@ extension AccountServicing {
     func signInWays() async throws -> SignInWays { SignInWays(apple: .init(app: false, web: nil)) }
     func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User {
         throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.appleUnavailable", status: 412)
+    }
+    func googleSignIn(_ proof: GoogleProof) async throws -> User {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.googleUnavailable", status: 412)
     }
     func accountSignInWays() async throws -> AccountSignInWays { AccountSignInWays(password: true, apple: false) }
 }
@@ -115,6 +119,10 @@ struct AccountService: AccountServicing {
             idToken: proof.idToken, nonce: proof.nonce, code: proof.code,
             firstName: name.first, lastName: name.last, remember: true
         ))
+    }
+
+    func googleSignIn(_ proof: GoogleProof) async throws -> User {
+        try await client.call(API.googleSignIn, .init(idToken: proof.idToken, nonce: proof.nonce, remember: true))
     }
 
     func accountSignInWays() async throws -> AccountSignInWays { try await client.call(API.accountSignInWays) }

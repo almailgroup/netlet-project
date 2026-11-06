@@ -42,6 +42,10 @@ const CAPTCHA_FRAMES = CAPTCHA_SCRIPTS.length ? ["https://www.google.com/recaptc
 const APPLE_WEB_SIGN_IN = Boolean(ENV.appleSigninServicesId);
 const APPLE_SIGN_IN_SCRIPTS = APPLE_WEB_SIGN_IN ? ["https://appleid.cdn-apple.com"] : [];
 const APPLE_SIGN_IN_FRAMES = APPLE_WEB_SIGN_IN ? ["https://appleid.apple.com"] : [];
+/* Sign in with Google on the website is a popup onto Google's own page, which
+   hands the token back to `/google-return.html` on this origin — nothing of
+   Google's runs in this page, so the policy names nothing of Google's. */
+const GOOGLE_WEB_SIGN_IN = Boolean(ENV.googleSigninWebClientId);
 
 /*
  * The pin picker's two maps (3.2.7), each only while its keys are set — the
@@ -201,10 +205,11 @@ export function applySecurity(app: Express): void {
       // Only meaningful over HTTPS, which in development there is not.
       hsts: isProduction ? { maxAge: 15552000, includeSubDomains: true } : false,
       crossOriginEmbedderPolicy: false,
-      /* Apple's sign-in window answers this one through its opener, which the
-         default same-origin policy would cut. Kept tight while there is no
-         Apple button. */
-      crossOriginOpenerPolicy: { policy: APPLE_WEB_SIGN_IN ? "same-origin-allow-popups" : "same-origin" },
+      /* Apple's sign-in window answers this one through its opener, and
+         Google's popup is watched for being closed, both of which the default
+         same-origin policy would cut. Kept tight while there is neither
+         button. */
+      crossOriginOpenerPolicy: { policy: APPLE_WEB_SIGN_IN || GOOGLE_WEB_SIGN_IN ? "same-origin-allow-popups" : "same-origin" },
     }),
   );
 

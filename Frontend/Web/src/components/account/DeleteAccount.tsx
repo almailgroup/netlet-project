@@ -27,6 +27,7 @@ import { trpc } from "@/lib/trpc";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { CircleAlert, Trash2 } from "lucide-react";
 import { AppleButton, OrDivider } from "@/components/auth/AppleButton";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -52,8 +53,12 @@ export function DeleteAccount() {
   const ways = trpc.auth.myProviders.useQuery(undefined, { staleTime: 60_000 });
   const providers = trpc.auth.providers.useQuery(undefined, { staleTime: 5 * 60_000 });
   const appleAccount = ways.data?.apple === true;
+  const googleAccount = ways.data?.google === true;
   const hasPassword = ways.data?.password !== false;
   const appleClientId = appleAccount ? providers.data?.apple.web ?? null : null;
+  const googleClientId = googleAccount ? providers.data?.google?.web ?? null : null;
+  /* What the account signs in with, said once above the buttons that confirm. */
+  const confirmNote = appleAccount ? "account.deleteAppleNote" : "account.deleteGoogleNote";
 
   const remove = trpc.auth.deleteAccount.useMutation({
     onSuccess: async () => {
@@ -137,19 +142,30 @@ export function DeleteAccount() {
               <p className="text-[12px] leading-4 ink-muted">{t("account.deletePasswordNote")}</p>
             </div>
           ) : null}
-          {appleClientId ? (
+          {appleClientId || googleClientId ? (
             <>
-              {hasPassword ? <OrDivider /> : <p className="text-[13px] leading-5 ink-muted">{t("account.deleteAppleNote")}</p>}
-              <AppleButton
-                clientId={appleClientId}
-                label="account.deleteWithApple"
-                busy={remove.isPending}
-                onProof={proof => remove.mutate({ apple: { idToken: proof.idToken, nonce: proof.nonce, code: proof.code } })}
-                onFailed={() => toast.error(t("auth.appleWindowFailed"))}
-              />
+              {hasPassword ? <OrDivider /> : <p className="text-[13px] leading-5 ink-muted">{t(confirmNote)}</p>}
+              {appleClientId ? (
+                <AppleButton
+                  clientId={appleClientId}
+                  label="account.deleteWithApple"
+                  busy={remove.isPending}
+                  onProof={proof => remove.mutate({ apple: { idToken: proof.idToken, nonce: proof.nonce, code: proof.code } })}
+                  onFailed={() => toast.error(t("auth.appleWindowFailed"))}
+                />
+              ) : null}
+              {googleClientId ? (
+                <GoogleButton
+                  clientId={googleClientId}
+                  label="account.deleteWithGoogle"
+                  busy={remove.isPending}
+                  onProof={proof => remove.mutate({ google: proof })}
+                  onFailed={() => toast.error(t("auth.googleWindowFailed"))}
+                />
+              ) : null}
             </>
           ) : !hasPassword ? (
-            <p className="text-[13px] leading-5 ink-muted">{t("account.deleteAppleInApp")}</p>
+            <p className="text-[13px] leading-5 ink-muted">{t(appleAccount ? "account.deleteAppleInApp" : "account.deleteGoogleInApp")}</p>
           ) : null}
         </div>
       </ConfirmDialog>

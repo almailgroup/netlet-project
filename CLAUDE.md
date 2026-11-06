@@ -693,7 +693,7 @@ token grant does not. The page needs Apple's window to answer through its
 opener, so the opener policy is `same-origin-allow-popups` while the Services
 ID is set, and the CSP names Apple's script and page only then.
 
-**Which account it lands on is `linkAppleAccount`'s rule** (`services/logins.ts`),
+**Which account it lands on is `linkProviderAccount`'s rule** (`services/logins.ts`),
 narrower than sign-in's adoption. The Supabase user's uid first — which is how
 somebody who registered with a password and then chose Apple lands in the
 account they had, Supabase linking an identity with the same verified address
@@ -732,6 +732,33 @@ build Apple signed still carries them, which it does only once the App ID has
 the capability on in the Apple Developer site — read from the export's
 `DistributionSummary.plist`, since an upload straight to Apple leaves no
 `.ipa` behind (the first version looked for one and said nothing at all).
+
+**Sign in with Google is the second, on the owner's word** ("Now lets go for
+enabling google sign in"), under Apple's button, and the same in everything
+that matters: the token grant (`provider: "google"`), the nonce, the linking
+rule (`linkProviderAccount`, which Apple's became), no password until one is
+set, delete confirmed with Google; `providerSignIn` in `routes/auth.ts` is the
+one door both procedures call. **Nothing of Google's runs in the page**: the
+website's button (`GoogleButton`) is the shop's own, drawn to Google's branding
+rules (white, a grey rim, the four-colour G), and a press opens Google's
+consent page in a popup asking for an identity token straight back
+(`response_type=id_token`), to `/google-return.html` — a static page with its
+own script file (`public/google-return.js`) that takes the token out of the
+fragment, hands it over on a `BroadcastChannel` (which reaches the sign-in page
+whatever an opener policy did to `window.opener`) and closes. The popup is
+watched for closing so a change of mind is silent; a blocked popup is said.
+**The app uses no Google SDK**: `GoogleSignIn` opens Google in
+`ASWebAuthenticationSession`, asks for a code with PKCE for the iOS client,
+is called back on the client id's reversed scheme (which the session catches,
+so nothing is registered in the app) and trades the code at Google's token
+endpoint, which an iOS client may do without a secret. Both client ids come
+from the server (`auth.providers`' `google`), so a new one needs no app build.
+The name is the token's `given_name` and `family_name` (`namesOf`), every time,
+where Apple gives it once. The G is the website's paths, made absolute and
+drawn by `TabIcon.cgPath` (`GoogleMark`). Walked end to end on the website at
+320, 390 and 1440 in both languages against stand-ins for Google's page and
+Supabase — whose id-token check there compared the nonce's hash, as the real
+one does.
 
 The sign-in page carries what the account does, never seller counts or
 testimonials — invented numbers on a sign-in wall are checked once and never
@@ -1843,7 +1870,7 @@ full total before ordering, cash on delivery and a store's cash ceiling, each
 store's own delivery fee, `RETURN_WINDOW_DAYS` and the perishable exception,
 the contact filter; what is kept, what stays on the device (recent searches,
 remembered measurements — the language and the area do not, being synced for
-an account), who else sees what (the stores and the carrier, Vercel, Supabase, Apple for somebody who continues with it,
+an account), who else sees what (the stores and the carrier, Vercel, Supabase, Apple or Google for somebody who continues with either,
 Google's reCAPTCHA, the map chosen, a model provider for the assistants and
 photo search, the browser's own speech service), the profile's own details
 (kept on the account, never shown to a store), the one sign-in cookie, and

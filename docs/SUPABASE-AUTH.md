@@ -359,6 +359,58 @@ What NetLet does with it, for when somebody asks:
 
 ---
 
+## Sign in with Google
+
+**Continue with Google** sits under Apple's button on the website and in the
+app, and works the same way: Google issues an identity token, Supabase checks
+it, and NetLet keeps its own session cookie. Four places.
+
+**1. Google Cloud** — [console.cloud.google.com](https://console.cloud.google.com),
+a project called NetLet.
+
+- **Google Auth Platform → Branding**: app name NetLet, a support email and the
+  logo; home page `https://netlet.net`, privacy policy
+  `https://netlet.net/privacy`, terms `https://netlet.net/terms`; authorised
+  domain `netlet.net`; a developer contact email.
+- **Audience**: External, then **Publish app**, so it reads "In production".
+  While it reads "Testing", only the test users listed there can sign in.
+- **Clients → Create client → Web application**, "NetLet website":
+  authorised JavaScript origin `https://netlet.net`, authorised redirect URI
+  `https://netlet.net/google-return.html`. Copy its **Client ID**; the secret
+  is not needed.
+- **Clients → Create client → iOS**, "NetLet iPhone app", bundle ID
+  `com.netlet.marketplace`. Copy its **Client ID**.
+
+**2. Supabase** — **Authentication → Sign In / Providers → Google**.
+
+- **Enable**: on.
+- **Client IDs**: the web client's id and the iOS client's id, comma
+  separated.
+- **Client Secret (for OAuth)**: empty — that is Supabase's own redirect flow,
+  which NetLet does not use. If the dashboard will not save without one, paste
+  the web client's secret.
+- **Skip nonce checks**: **off**. The website and the app both send a nonce,
+  which is what stops a token lifted from another sign-in being replayed.
+- **Allow users without an email**: off. Save.
+
+**3. Vercel** — `GOOGLE_SIGNIN_WEB_CLIENT_ID` and `GOOGLE_SIGNIN_IOS_CLIENT_ID`,
+Production, then redeploy. The app reads its id from the server, so a new or
+changed one needs no new app build.
+
+**4. Check** — on `https://netlet.net/signin`, Continue with Google opens a
+popup onto Google, which closes itself and lands on the account; in the app,
+the button opens Google in the system's sign-in sheet. A popup blocker stops
+the website's; the form then asks for pop-ups to be allowed.
+
+What NetLet does with it is Apple's rule: one button signs in and makes
+accounts, the name comes from Google's token, an account with the same address
+in Supabase is the same account, an address held by a password NetLet keeps is
+refused, a Google account has no password until one is set by the emailed code,
+and deleting one confirms with Google. There is nothing to unlink: NetLet keeps
+no Google token.
+
+---
+
 ## One thing to check while you are in the dashboard
 
 Supabase exposes the `public` schema through its Data API, and that is separate

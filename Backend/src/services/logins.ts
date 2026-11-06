@@ -165,37 +165,37 @@ export async function keepOwnerAdmin<T extends { id: number; email: string | nul
 }
 
 /**
- * What an Apple sign-in lands on.
+ * What a sign-in with Apple or Google lands on.
  *
  * "existing" is the account the Supabase user already belonged to — found by
  * its uid, which is the case Supabase arranges itself when somebody who
- * registered with a password chooses Apple, since it links an identity with
- * the same verified address to the user it already has. "created" is a new
- * account. "taken" is an address another account holds by a credential Apple
- * did not check — a local password digest, or a different Supabase user —
- * which this refuses rather than adopts, so the answer is to sign in the way
- * that account was made.
+ * registered with a password chooses Apple or Google, since it links an
+ * identity with the same verified address to the user it already has.
+ * "created" is a new account. "taken" is an address another account holds by
+ * a credential the provider did not check — a local password digest, or a
+ * different Supabase user — which this refuses rather than adopts, so the
+ * answer is to sign in the way that account was made.
  */
-export type AppleLink = { kind: "existing" | "created"; user: User } | { kind: "taken" };
+export type ProviderLink = { kind: "existing" | "created"; user: User } | { kind: "taken" };
 
 /**
- * The NetLet row for a Supabase user who signed in with Apple.
+ * The NetLet row for a Supabase user who signed in with Apple or Google.
  *
  * Narrower than `linkExternalUser`, on purpose. That one adopts any row with
  * the address, because a password the service has just checked is proof the
- * caller owns the account; here the proof is Apple's that the caller owns an
- * Apple ID with this address, and an account that already signs in another
- * way keeps that way rather than gaining a second store. Only a row with no
- * credential at all is adopted, and only for an address Supabase holds as
- * confirmed — the one case `linkExternalUser` exists for, an account that was
- * a row before it was a login.
+ * caller owns the account; here the proof is the provider's that the caller
+ * owns an account there with this address, and a NetLet account that already
+ * signs in another way keeps that way rather than gaining a second store.
+ * Only a row with no credential at all is adopted, and only for an address
+ * Supabase holds as confirmed — the one case `linkExternalUser` exists for,
+ * an account that was a row before it was a login.
  */
-export async function linkAppleAccount(input: {
+export async function linkProviderAccount(input: {
   uid: string;
   email: string;
   emailConfirmed: boolean;
   name?: string | null;
-}): Promise<AppleLink> {
+}): Promise<ProviderLink> {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -217,7 +217,7 @@ export async function linkAppleAccount(input: {
   const created = await createUser({ email, supabaseUid: input.uid, name: input.name ?? null });
   if (created) return { kind: "created", user: created };
   /* Two sign-ins racing for one new address: the loser finds the winner's
-     row, which is the same Apple ID's. */
+     row, which is the same provider account's. */
   const raced = await db.select().from(users).where(eq(users.supabaseUid, input.uid)).limit(1);
   return raced[0] ? { kind: "existing", user: raced[0] } : { kind: "taken" };
 }

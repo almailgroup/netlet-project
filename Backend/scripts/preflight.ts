@@ -175,6 +175,14 @@ if (supabaseAuthMissing.length === 0) {
   else if (services) add("warn", "Sign in with Apple", `the website offers it, but ${revoking.join(", ")} missing, so a deleted account stays linked to its Apple ID`, "A Sign in with Apple key from developer.apple.com -> Keys; docs/SUPABASE-AUTH.md");
   else add("warn", "Sign in with Apple", "APPLE_SIGNIN_SERVICES_ID not set — the website has no Apple button (the app's needs only Apple on in Supabase)", "docs/SUPABASE-AUTH.md, Sign in with Apple");
 
+  /* Sign in with Google, a client id per side. Whether Google is on at all is
+     Supabase's switch, which this cannot see. */
+  const googleWeb = (process.env.GOOGLE_SIGNIN_WEB_CLIENT_ID ?? "").trim();
+  const googleIos = (process.env.GOOGLE_SIGNIN_IOS_CLIENT_ID ?? "").trim();
+  const sides = [googleWeb && "the website", googleIos && "the app"].filter(Boolean).join(" and ");
+  if (sides) add("ok", "Sign in with Google", `offered on ${sides}`);
+  else add("warn", "Sign in with Google", "GOOGLE_SIGNIN_WEB_CLIENT_ID and GOOGLE_SIGNIN_IOS_CLIENT_ID not set — no Google button", "docs/SUPABASE-AUTH.md, Sign in with Google");
+
   /* The pin picker's two maps. Neither is OpenStreetMap, which still works. */
   const google = Boolean((process.env.GOOGLE_MAPS_API_KEY ?? "").trim());
   const appleSigning = ["APPLE_MAPKIT_TEAM_ID", "APPLE_MAPKIT_KEY_ID", "APPLE_MAPKIT_PRIVATE_KEY"].filter(name => (process.env[name] ?? "").trim());

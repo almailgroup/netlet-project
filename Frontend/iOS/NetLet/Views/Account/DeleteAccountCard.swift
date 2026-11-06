@@ -22,7 +22,10 @@ struct DeleteAccountCard: View {
     @State private var check: API.AccountDeletionCheck?
     /// How the account signs in: an Apple account confirms with Apple.
     @State private var ways: AccountSignInWays?
+    /// Google's client id for the app, to confirm a Google account with.
+    @State private var googleClientId: String?
     @State private var apple = AppleSignIn()
+    @State private var google = GoogleSignIn()
     @State private var asking = false
     @State private var password = ""
     @State private var deleting = false
@@ -111,6 +114,10 @@ struct DeleteAccountCard: View {
                 Button(l.t("account.deleteWithApple"), role: .destructive) {
                     Task { await deleteWithApple() }
                 }
+            } else if ways?.google == true, ways?.password == false, googleClientId != nil {
+                Button(l.t("account.deleteWithGoogle"), role: .destructive) {
+                    Task { await deleteWithGoogle() }
+                }
             } else {
                 SecureField(l.t("account.currentPassword"), text: $password)
                     .textContentType(.password)
@@ -120,13 +127,33 @@ struct DeleteAccountCard: View {
             }
             Button(l.t("common.cancel"), role: .cancel) { password = "" }
         } message: {
-            Text(l.t(ways?.apple == true ? "account.deleteAppleNote" : "account.deletePasswordNote"))
+            Text(l.t(ways?.apple == true ? "account.deleteAppleNote"
+                : ways?.google == true && ways?.password == false && googleClientId != nil ? "account.deleteGoogleNote"
+                : "account.deletePasswordNote"))
         }
     }
 
     private func load() async {
         if let answer = try? await app.services.api.call(API.accountDeletionCheck) { check = answer }
         if ways == nil { ways = try? await app.services.account.accountSignInWays() }
+        if ways?.google == true, googleClientId == nil {
+            googleClientId = (try? await app.services.account.signInWays())?.google?.ios
+        }
+    }
+
+    /// Google's sheet, then the delete with the token it handed back.
+    private func deleteWithGoogle() async {
+        guard let clientId = googleClientId else { return }
+        let proof: GoogleProof?
+        do {
+            proof = try await google.ask(clientId: clientId, language: l.current.rawValue)
+        } catch {
+            Haptics.refused()
+            problem = "auth.googleWindowFailed"
+            return
+        }
+        guard let proof else { return }
+        await remove(.init(google: proof))
     }
 
     /// Apple's sheet, then the delete with what it handed back. Closing the
