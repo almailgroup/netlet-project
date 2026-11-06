@@ -44,7 +44,10 @@ struct AuthView: View {
         } else {
             // Signed out, the account page is the form itself, in the
             // shop's frame like every other page.
-            ShopPage(root: true, header: false) {
+            // The assistant as its mark alone: at rest the pill sat over
+            // Continue with Apple and Continue with Google on the first
+            // screen — the product page's rule.
+            ShopPage(root: true, header: false, assistantFolded: true) {
                 AuthForm(model: model, band: true)
                 // The app has no footer: its links, and for a guest the
                 // language and the currency, are under the form, apart from it.

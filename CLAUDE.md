@@ -3516,8 +3516,9 @@ so the assistant stays on those pages too (see Browsing). On a wide screen the f
 **It is on every page, the header-less account and cart included, and folds
 to its mark on a scroll down** — both on the owner's word; see the tab bar's
 slide under Buttons and "The account". The app's one exception is a
-conversation with NetLet's people, and its product page has the mark alone
-(see the quality pass under "iOS app").
+conversation with NetLet's people, and its product page and its signed-out
+Profile tab have the mark alone (see the quality pass under "iOS app") — on the
+second, the pill sat over Continue with Apple and Continue with Google at rest.
 
 **It waits while a page arrives** (`data-page-arriving`, set by
 `StorefrontShell` for `ARRIVAL_MS` after every move, the app's `settled`), on
