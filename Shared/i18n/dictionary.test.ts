@@ -81,6 +81,11 @@ describe("dictionary completeness", () => {
       // The header's badge is Apple's drawing, in English on either page; its
       // name carries the words it shows (WCAG 2.5.3), then says it in Arabic.
       "appDownload.badge",
+      // Sign in with Apple's button and what is said about it name Apple as
+      // Apple's own Arabic button does — "المتابعة باستخدام Apple".
+      "auth.continueWithApple", "auth.appleRefused", "auth.appleUnavailable", "auth.appleNotThisAccount",
+      "auth.appleWindowFailed", "account.deleteWithApple", "account.deleteAppleNote", "account.deleteAppleInApp",
+      "account.passwordAppleNote", "privacy.who.apple",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

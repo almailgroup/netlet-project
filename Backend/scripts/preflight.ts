@@ -163,6 +163,18 @@ if (supabaseAuthMissing.length === 0) {
   else if (site || secret) add("blocked", "Human check", `${site ? "RECAPTCHA_SECRET_KEY" : "RECAPTCHA_SITE_KEY"} missing, so the box is off`, "Both come from google.com/recaptcha/admin (v2, \"I'm not a robot\" checkbox)");
   else add("warn", "Human check", "RECAPTCHA_SITE_KEY and RECAPTCHA_SECRET_KEY not set — Create account has no \"I'm not a robot\" box", "google.com/recaptcha/admin -> v2 checkbox, with NetLet's domain");
 
+  /* Sign in with Apple's website half and its unlinking. Whether Apple is on
+     at all is Supabase's switch, which this cannot see. */
+  const services = (process.env.APPLE_SIGNIN_SERVICES_ID ?? "").trim();
+  const revoking = [
+    (process.env.APPLE_SIGNIN_TEAM_ID || process.env.APPLE_MAPKIT_TEAM_ID || "").trim() ? null : "APPLE_SIGNIN_TEAM_ID",
+    (process.env.APPLE_SIGNIN_KEY_ID ?? "").trim() ? null : "APPLE_SIGNIN_KEY_ID",
+    (process.env.APPLE_SIGNIN_PRIVATE_KEY ?? "").includes("PRIVATE KEY") ? null : "APPLE_SIGNIN_PRIVATE_KEY",
+  ].filter((name): name is string => Boolean(name));
+  if (services && revoking.length === 0) add("ok", "Sign in with Apple", `the website offers it (${services}), and a deleted account is unlinked from its Apple ID`);
+  else if (services) add("warn", "Sign in with Apple", `the website offers it, but ${revoking.join(", ")} missing, so a deleted account stays linked to its Apple ID`, "A Sign in with Apple key from developer.apple.com -> Keys; docs/SUPABASE-AUTH.md");
+  else add("warn", "Sign in with Apple", "APPLE_SIGNIN_SERVICES_ID not set — the website has no Apple button (the app's needs only Apple on in Supabase)", "docs/SUPABASE-AUTH.md, Sign in with Apple");
+
   /* The pin picker's two maps. Neither is OpenStreetMap, which still works. */
   const google = Boolean((process.env.GOOGLE_MAPS_API_KEY ?? "").trim());
   const appleSigning = ["APPLE_MAPKIT_TEAM_ID", "APPLE_MAPKIT_KEY_ID", "APPLE_MAPKIT_PRIVATE_KEY"].filter(name => (process.env[name] ?? "").trim());

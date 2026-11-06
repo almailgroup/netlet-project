@@ -504,6 +504,28 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(listings.rows.isEmpty)
     }
 
+    /// Sign in with Apple's answers decode, and the delete sends the one
+    /// confirmation it was given and nothing for the other.
+    func testSignInWithApple() async throws {
+        let ways = try await client.call(API.signInWays)
+        XCTAssertTrue(ways.apple.app)
+        let mine = try await client.call(API.accountSignInWays)
+        XCTAssertEqual(mine, AccountSignInWays(password: true, apple: false))
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        let withApple = String(decoding: try encoder.encode(API.DeleteAccount(apple: AppleProof(idToken: "token", nonce: "nonce", code: "code"))), as: UTF8.self)
+        XCTAssertEqual(withApple, #"{"apple":{"code":"code","idToken":"token","nonce":"nonce"}}"#)
+        let withPassword = String(decoding: try encoder.encode(API.DeleteAccount(currentPassword: "secret")), as: UTF8.self)
+        XCTAssertEqual(withPassword, #"{"currentPassword":"secret"}"#)
+
+        // The nonce Apple is handed is the SHA-256 of the one the server is sent.
+        XCTAssertEqual(AppleSignIn.sha256("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+        let nonce = AppleSignIn.randomNonce()
+        XCTAssertEqual(nonce.count, 64)
+        XCTAssertNotEqual(nonce, AppleSignIn.randomNonce())
+    }
+
     func testTheAccountSections() async throws {
         let features = try await client.call(API.features)
         XCTAssertTrue(features.isOn("wishlists"))

@@ -667,10 +667,71 @@ sign-in rule; past the ceiling every code is refused alike, the real one
 included, or the throttle would say which guess was right. The quote is not
 refetched on window focus, since asking again about a wrong code counts again.
 
-**There is no social sign-in, on purpose.** It needs a provider configured in
-the provider's console and a redirect the server has to trust; a button that
-looks like Google sign-in and does nothing is worse than no button. The
-sign-in page carries what the account does, never seller counts or
+**Sign in with Apple is the one other way in, on the owner's word**
+("enabling signing up and logging in with apple account"), on the website and
+in the app; there is still no Google or any other, because a button that looks
+like a provider's sign-in and does nothing is worse than no button. **It is
+drawn only while it works**: `auth.providers` asks Supabase's public settings
+whether Apple is on (cached five minutes per instance), and the website also
+needs its Services ID (`APPLE_SIGNIN_SERVICES_ID`); `docs/SUPABASE-AUTH.md` is
+the four-place setup. It is Apple's own black button with Apple's mark — the
+web's `AppleButton` under an "or" line beneath the form's own button, the app's
+`AppleSignInButton` drawn rather than the system's so its words follow the
+app's language — one door for signing in and opening an account, since
+Apple's window does not tell them apart, never on a portal's address.
+
+**Supabase checks the token; NetLet never asks Apple who somebody is.** The
+page (Apple's script, `lib/appleSignIn.ts`) or the app (`AppleSignIn`,
+AuthenticationServices) hands Apple a fresh nonce's SHA-256 and the server the
+nonce itself, and `auth.appleSignIn` spends the identity token on Supabase's
+`grant_type=id_token` (`signInSupabaseWithIdToken`), which checks Apple's
+signature, the audience against the dashboard's Client IDs (the bundle id and
+the Services ID) and the nonce — so a token lifted from another sign-in is
+refused — and the session is NetLet's own cookie, as for a password. No OAuth
+secret: Supabase's redirect flow needs one that expires every six months, the
+token grant does not. The page needs Apple's window to answer through its
+opener, so the opener policy is `same-origin-allow-popups` while the Services
+ID is set, and the CSP names Apple's script and page only then.
+
+**Which account it lands on is `linkAppleAccount`'s rule** (`services/logins.ts`),
+narrower than sign-in's adoption. The Supabase user's uid first — which is how
+somebody who registered with a password and then chose Apple lands in the
+account they had, Supabase linking an identity with the same verified address
+itself; else a new account, Apple having vouched for the address, so no code is
+emailed and the name Apple gives the first time is written into its parts.
+**An address an account holds by another credential is refused**
+(`auth.appleEmailTaken`), never adopted — the local digest, or another
+Supabase user — so Apple cannot become a second password store on somebody's
+account; only a row with no credential at all is adopted, for an address
+Supabase holds as confirmed. **A sign-up nobody confirmed that Apple then
+confirms has its password replaced with one nobody knows**: whoever typed it
+began that sign-up and need not be whoever holds the Apple ID.
+
+**An Apple account has no password, and is deleted by asking Apple.**
+`auth.myProviders` reads how the account signs in from Supabase's admin
+endpoint; "Your profile" then says there is no password yet and offers "Set a
+password", the emailed code a forgotten one gets, and deleting confirms with
+Apple instead (`deleteAccount`'s `apple`, the uid checked against the
+account's own). **Then the Apple ID is unlinked**, which Apple asks of every
+app offering it: the one-time code is traded for a refresh token and revoked
+with a client secret signed by a Sign in with Apple key
+(`core/appleSignIn.ts`, the token's own `aud` as client id), after the account
+is gone and never failing it. Without the key the account is still deleted and
+the link waits in the person's Apple ID settings. `appleSignIn.test.ts` holds
+each of these, and the website was walked end to end at 320, 390 and 1440 in
+both languages against a stand-in Supabase with Apple's script stood in.
+
+**The app's build carries the entitlement through an unsigned archive.**
+`Config/NetLet.entitlements` (`com.apple.developer.applesignin`) is the app
+target's `CODE_SIGN_ENTITLEMENTS`, but TestFlight archives unsigned and export
+signs with what the app's own signature says it needs — an unsigned app says
+nothing, and the build would reach phones with Apple's sheet failing. So the
+workflow ad-hoc signs the archived app with the entitlements before export
+(the step fails if they are not in it), and says after the upload whether the
+build Apple signed still carries them, which it does only once the App ID has
+the capability on in the Apple Developer site.
+
+The sign-in page carries what the account does, never seller counts or
 testimonials — invented numbers on a sign-in wall are checked once and never
 trusted again.
 
@@ -1780,7 +1841,7 @@ full total before ordering, cash on delivery and a store's cash ceiling, each
 store's own delivery fee, `RETURN_WINDOW_DAYS` and the perishable exception,
 the contact filter; what is kept, what stays on the device (recent searches,
 remembered measurements — the language and the area do not, being synced for
-an account), who else sees what (the stores and the carrier, Vercel, Supabase,
+an account), who else sees what (the stores and the carrier, Vercel, Supabase, Apple for somebody who continues with it,
 Google's reCAPTCHA, the map chosen, a model provider for the assistants and
 photo search, the browser's own speech service), the profile's own details
 (kept on the account, never shown to a store), the one sign-in cookie, and

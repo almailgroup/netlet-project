@@ -219,16 +219,33 @@ private struct AuthForm: View {
             .disabled(model.working)
             .padding(.top, model.mode == .reset ? 0 : 6)
             if model.mode == .register {
-                // What happens next and what agreeing means, said once, quietly.
-                VStack(spacing: 6) {
-                    Text(l.t("auth.codeWillBeSent"))
-                    agreeLine
+                // What happens next, said once, quietly.
+                Text(l.t("auth.codeWillBeSent"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if model.appleOffered && model.mode != .reset {
+                VStack(spacing: 14) {
+                    OrDivider()
+                    AppleSignInButton(label: "auth.continueWithApple", working: model.working) {
+                        Task {
+                            if let user = await model.signInWithApple() { await app.signedIn(user) }
+                        }
+                    }
                 }
-                .font(.inter(13))
-                .foregroundStyle(Brand.muted)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
+            }
+            if model.mode == .register {
+                // What agreeing means, for either button.
+                agreeLine
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.top, 24)

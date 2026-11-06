@@ -38,6 +38,11 @@ protocol AccountServicing: Sendable {
     func profilePhotoData(path: String) async throws -> Data?
     func uploadProfilePhoto(jpeg: Data) async throws -> ProfilePhotoInfo
     func removeProfilePhoto() async throws -> ProfilePhotoInfo
+    /// Sign in with Apple: whether it is on, signing in with what Apple's
+    /// sheet handed back, and how the signed-in account signs in.
+    func signInWays() async throws -> SignInWays
+    func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User
+    func accountSignInWays() async throws -> AccountSignInWays
 }
 
 extension AccountServicing {
@@ -48,6 +53,12 @@ extension AccountServicing {
         throw APIError.server(code: "BAD_REQUEST", message: "profilePhoto.unavailable", status: 503)
     }
     func removeProfilePhoto() async throws -> ProfilePhotoInfo { ProfilePhotoInfo(ready: false, url: nil) }
+    /// A stand-in offers no Apple, and every account has a password.
+    func signInWays() async throws -> SignInWays { SignInWays(apple: .init(app: false, web: nil)) }
+    func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.appleUnavailable", status: 412)
+    }
+    func accountSignInWays() async throws -> AccountSignInWays { AccountSignInWays(password: true, apple: false) }
 }
 
 struct AccountService: AccountServicing {
@@ -95,6 +106,18 @@ struct AccountService: AccountServicing {
     }
 
     func currentUser() async throws -> User? { try await client.call(API.me) }
+
+    func signInWays() async throws -> SignInWays { try await client.call(API.signInWays) }
+
+    /// Always kept signed in, as the password's sign-in is: a phone is somebody's own.
+    func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User {
+        try await client.call(API.appleSignIn, .init(
+            idToken: proof.idToken, nonce: proof.nonce, code: proof.code,
+            firstName: name.first, lastName: name.last, remember: true
+        ))
+    }
+
+    func accountSignInWays() async throws -> AccountSignInWays { try await client.call(API.accountSignInWays) }
 
     func signupOptions() async throws -> SignupOptions { try await client.call(API.signupOptions) }
 

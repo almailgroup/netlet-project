@@ -120,6 +120,18 @@ jobs:
             2>&1 | tee build/archive.log | grep --line-buffered -E "error:|\*\* ARCHIVE"
           exit "${PIPESTATUS[0]}"
 
+      # An unsigned archive carries no entitlements, and export signs with
+      # what the app's own signature says it needs — so without this the build
+      # would reach TestFlight without Sign in with Apple, and Apple's sheet
+      # would fail on the phone. An ad-hoc signature carrying the project's
+      # entitlements is what export then re-signs with Apple's identity.
+      - name: Entitlements
+        run: |
+          app=build/NetLet.xcarchive/Products/Applications/NetLet.app
+          codesign --force --sign - --entitlements Config/NetLet.entitlements --timestamp=none "$app"
+          codesign -d --entitlements - --xml "$app" 2>/dev/null | grep -q "com.apple.developer.applesignin" \
+            || { echo "::error::The archive does not carry the Sign in with Apple entitlement"; exit 1; }
+
       - name: Sign and upload
         id: upload
         continue-on-error: true
@@ -169,6 +181,21 @@ jobs:
             "${auth[@]}" \
             2>&1 | tee build/upload-signed.log | grep --line-buffered -vE "^\s*$"
           exit "${PIPESTATUS[0]}"
+
+      # Said, not failed: the upload has happened by now. A build without the
+      # entitlement means Sign in with Apple is not switched on for the App ID
+      # in the Apple Developer site (Identifiers → the app → Capabilities).
+      - name: Check the uploaded build
+        continue-on-error: true
+        run: |
+          ipa=$(ls build/export/*.ipa 2>/dev/null | head -1)
+          [ -n "$ipa" ] || exit 0
+          rm -rf build/ipa && mkdir -p build/ipa && unzip -q "$ipa" -d build/ipa
+          if codesign -d --entitlements - --xml build/ipa/Payload/NetLet.app 2>/dev/null | grep -q "com.apple.developer.applesignin"; then
+            echo "::notice title=Sign in with Apple::The uploaded build carries the Sign in with Apple entitlement."
+          else
+            echo "::warning title=Sign in with Apple::The uploaded build does not carry the Sign in with Apple entitlement. Switch it on for the App ID in the Apple Developer site, then run this again."
+          fi
 
       - name: Uploaded
         run: |

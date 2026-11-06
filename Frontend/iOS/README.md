@@ -131,6 +131,13 @@ The repository variable `NETLET_API_BASE_URL` (under *Variables*) points the
 build at another server than the xcconfig's; unset, it is the Vercel
 deployment.
 
+**Sign in with Apple needs its capability on the App ID**: Certificates,
+Identifiers & Profiles → Identifiers → `com.netlet.marketplace` → Capabilities
+→ Sign in with Apple. The app carries the entitlement
+(`Config/NetLet.entitlements`), and the workflow signs the unsigned archive
+with it before export and then says whether the uploaded build still carries
+it; `docs/SUPABASE-AUTH.md` has the rest of the setup.
+
 A run takes about fifteen minutes and names any secret that is missing. Apple
 then processes the build for ten to thirty minutes. In App Store Connect →
 the app → TestFlight → Internal Testing, add a group with yourself in it and

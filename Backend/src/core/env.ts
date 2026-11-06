@@ -109,4 +109,15 @@ export const ENV = {
   appleMapkitTeamId: process.env.APPLE_MAPKIT_TEAM_ID ?? "",
   appleMapkitKeyId: process.env.APPLE_MAPKIT_KEY_ID ?? "",
   appleMapkitPrivateKey: (process.env.APPLE_MAPKIT_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
+  /* Sign in with Apple (core/appleSignIn.ts). The Services ID is the
+     website's client id — public, the page hands it to Apple's own script —
+     and unset is no Apple button on the website; the app's button needs only
+     Apple switched on in Supabase. The team, key id and the .p8 key's contents
+     sign the request that unlinks NetLet from somebody's Apple ID when they
+     delete their account; unset, the account is still deleted and the link is
+     left for them to remove in their Apple ID settings. */
+  appleSigninServicesId: (process.env.APPLE_SIGNIN_SERVICES_ID ?? "").trim(),
+  appleSigninTeamId: (process.env.APPLE_SIGNIN_TEAM_ID || process.env.APPLE_MAPKIT_TEAM_ID || "").trim(),
+  appleSigninKeyId: (process.env.APPLE_SIGNIN_KEY_ID ?? "").trim(),
+  appleSigninPrivateKey: (process.env.APPLE_SIGNIN_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
 };

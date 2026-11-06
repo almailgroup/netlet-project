@@ -11,7 +11,10 @@
  *
  * Delete asks twice: the confirmation, and the password in it — a session
  * left open on a shared computer must not be enough to delete somebody, the
- * rule the email and password forms keep. Cancel takes focus as it opens, so
+ * rule the email and password forms keep. An account that signs in with
+ * Apple confirms with Apple instead, Apple's button standing in for the
+ * dialog's own, which also lets the server unlink NetLet from the Apple ID
+ * once the account is gone; one with a password too may use either. Cancel takes focus as it opens, so
  * a stray Enter gives the safe answer. Once the account is gone this device
  * forgets it as signing out does (`useAuth().logout`) and goes home.
  */
@@ -23,6 +26,7 @@ import { formatCount } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { CircleAlert, Trash2 } from "lucide-react";
+import { AppleButton, OrDivider } from "@/components/auth/AppleButton";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -45,6 +49,11 @@ export function DeleteAccount() {
   const check = trpc.auth.deletionCheck.useQuery(undefined, { refetchOnWindowFocus: true });
   const [asking, setAsking] = useState(false);
   const [password, setPassword] = useState("");
+  const ways = trpc.auth.myProviders.useQuery(undefined, { staleTime: 60_000 });
+  const providers = trpc.auth.providers.useQuery(undefined, { staleTime: 5 * 60_000 });
+  const appleAccount = ways.data?.apple === true;
+  const hasPassword = ways.data?.password !== false;
+  const appleClientId = appleAccount ? providers.data?.apple.web ?? null : null;
 
   const remove = trpc.auth.deleteAccount.useMutation({
     onSuccess: async () => {
@@ -109,20 +118,39 @@ export function DeleteAccount() {
         tone="danger"
         pending={remove.isPending}
         confirmDisabled={password === ""}
+        confirmHidden={!hasPassword}
         icon={<Trash2 className="size-5" />}
         onConfirm={() => remove.mutate({ currentPassword: password })}
         onClose={close}
       >
-        <div className="space-y-2">
-          <FloatingField
-            label={t("account.currentPassword")}
-            leftToRight
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={event => setPassword(event.target.value)}
-          />
-          <p className="text-[12px] leading-4 ink-muted">{t("account.deletePasswordNote")}</p>
+        <div className="space-y-3">
+          {hasPassword ? (
+            <div className="space-y-2">
+              <FloatingField
+                label={t("account.currentPassword")}
+                leftToRight
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+              />
+              <p className="text-[12px] leading-4 ink-muted">{t("account.deletePasswordNote")}</p>
+            </div>
+          ) : null}
+          {appleClientId ? (
+            <>
+              {hasPassword ? <OrDivider /> : <p className="text-[13px] leading-5 ink-muted">{t("account.deleteAppleNote")}</p>}
+              <AppleButton
+                clientId={appleClientId}
+                label="account.deleteWithApple"
+                busy={remove.isPending}
+                onProof={proof => remove.mutate({ apple: { idToken: proof.idToken, nonce: proof.nonce, code: proof.code } })}
+                onFailed={() => toast.error(t("auth.appleWindowFailed"))}
+              />
+            </>
+          ) : !hasPassword ? (
+            <p className="text-[13px] leading-5 ink-muted">{t("account.deleteAppleInApp")}</p>
+          ) : null}
         </div>
       </ConfirmDialog>
     </ProfileCard>

@@ -16,8 +16,10 @@
  *
  * Credentials go to NetLet's own `auth.login` / `auth.register`, which set an
  * httpOnly session cookie, so nothing token-shaped is ever held in JavaScript.
- * There is no social sign-in: it needs a provider configured and a redirect the
- * server trusts, and a Google button that does nothing is worse than none.
+ * Sign in with Apple is the one other way in (`AppleButton`), under an "or"
+ * line beneath the form's own button, and only while the server says Apple is
+ * on and the website has its Services ID; there is no other, because a
+ * provider's button that does nothing is worse than none.
  *
  * What the form does for the person filling it in, each for a reason:
  *
@@ -82,6 +84,8 @@ import { PORTAL_SIDE } from "@/lib/portalHost";
 import { openPortalTab } from "@/lib/portalPass";
 import type { PortalSide } from "@shared/portal";
 import { HumanCheck } from "./HumanCheck";
+import { AppleButton, OrDivider } from "./AppleButton";
+import type { AppleProof } from "@/lib/appleSignIn";
 
 export type AuthMode = "signin" | "register" | "reset";
 
@@ -293,7 +297,23 @@ export function AuthForm({
       else { setSentTo(input.email); setWait(RESEND_WAIT_SECONDS); }
     },
   });
-  const pending = login.isPending || register.isPending || reset.isPending;
+  /* Sign in with Apple, on the shop's own address only — a portal's accounts
+     are ones a store or NetLet made — and only while the server says Apple is
+     on in Supabase and the website has its Services ID. */
+  const providers = trpc.auth.providers.useQuery(undefined, { enabled: !portal, staleTime: 5 * 60_000 });
+  const appleClientId = portal || isReset ? null : providers.data?.apple.web ?? null;
+  const apple = trpc.auth.appleSignIn.useMutation({
+    onSuccess: user => {
+      if (user.created) clearReferral();
+      void settle(user.name, user.portal ? handOn(user.portal) : undefined);
+    },
+    onError: error => setRefusal({ message: error.message, next: error.message === "auth.appleEmailTaken" && isRegister ? "signin" : undefined }),
+  });
+  const withApple = (proof: AppleProof) => {
+    setRefusal(null);
+    apple.mutate({ ...proof, remember: isRegister ? true : remember, referral: storedReferral(), portal: !PORTAL_SIDE });
+  };
+  const pending = login.isPending || register.isPending || reset.isPending || apple.isPending;
 
   /* The heading, so what happened is the first thing read; the button pressed has gone. */
   useEffect(() => {
@@ -601,10 +621,23 @@ export function AuthForm({
           </button>
         </div>
         {isRegister ? (
-          /* What happens next and what agreeing means, said once, quietly,
-             where the press is. */
-          <div className="space-y-1.5 text-center text-[13px] leading-5 text-[#536b8c] [text-wrap:balance]">
-            <p>{t("auth.codeWillBeSent")}</p>
+          /* What happens next, said once, quietly, where the press is. */
+          <p className="text-center text-[13px] leading-5 text-[#536b8c] [text-wrap:balance]">{t("auth.codeWillBeSent")}</p>
+        ) : null}
+        {appleClientId ? (
+          <div className="space-y-4 pt-1">
+            <OrDivider />
+            <AppleButton
+              clientId={appleClientId}
+              busy={apple.isPending}
+              onProof={withApple}
+              onFailed={() => setRefusal({ message: "auth.appleWindowFailed" })}
+            />
+          </div>
+        ) : null}
+        {isRegister ? (
+          /* What agreeing means, for either button. */
+          <div className="text-center text-[13px] leading-5 text-[#536b8c] [text-wrap:balance]">
             <AgreeLine />
           </div>
         ) : null}

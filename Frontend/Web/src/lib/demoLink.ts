@@ -186,6 +186,13 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* No Google box in the demo: there is no server to ask Google with. */
     case "auth.signupOptions":
       return { captchaSiteKey: null };
+    /* Nor Apple: there is no Supabase to check Apple's token. */
+    case "auth.providers":
+      return { apple: { app: false, web: null } };
+    case "auth.myProviders":
+      return { password: true, apple: false };
+    case "auth.appleSignIn":
+      throw new TRPCClientError("auth.appleUnavailable");
     /* No keys in the demo, so the pin picker draws OpenStreetMap. */
     case "maps.providers":
       return { google: null, apple: false, drivingTimes: false };

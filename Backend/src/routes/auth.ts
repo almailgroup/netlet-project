@@ -61,6 +61,16 @@ import { resolveActor } from "../services/inventory.js";
 import { isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
 import { recordReferral } from "../services/referral.js";
 import type { User } from "../../database/schema.js";
+import { randomBytes } from "node:crypto";
+import { appleWebClientId, audienceOf, revokeAppleAuthorization } from "../core/appleSignIn.js";
+import {
+  signInSupabaseWithIdToken,
+  supabaseExternalProviders,
+  supabaseUserProviders,
+  updateSupabaseUser,
+  type IdTokenUser,
+} from "../core/supabaseAuth.js";
+import { linkAppleAccount } from "../services/logins.js";
 
 /*
  * What signing in takes. **No length floor on the password**, only a cap:
@@ -307,6 +317,39 @@ async function portalHandover(
    there — so a page offered one cannot tell them apart. */
 const passRefused = new TRPCError({ code: "UNAUTHORIZED", message: "auth.portalPassRefused" });
 
+/**
+ * What Apple hands the page or the app after a sign-in: the identity token,
+ * the nonce it was made for — raw here, hashed in what Apple signed — and the
+ * one-time authorization code, which is only needed to unlink the Apple ID
+ * when an account is deleted.
+ */
+const appleProof = z.object({
+  idToken: z.string().min(20).max(8000),
+  nonce: z.string().min(16).max(200),
+  code: z.string().max(2000).optional(),
+});
+
+const appleRefused = new TRPCError({ code: "UNAUTHORIZED", message: "auth.appleRefused" });
+
+/** Whether Supabase has Apple switched on, read from its public settings. */
+async function appleAvailable(): Promise<boolean> {
+  return (await supabaseExternalProviders())?.apple === true;
+}
+
+/**
+ * Asks Supabase about an Apple token. A refusal is null; a Supabase that
+ * cannot be reached is the "could not reach the service" fault, never a
+ * refusal of the person.
+ */
+async function appleUser(proof: z.infer<typeof appleProof>): Promise<IdTokenUser | null> {
+  try {
+    return await signInSupabaseWithIdToken("apple", proof.idToken, proof.nonce);
+  } catch (error) {
+    console.error(`[auth] Apple sign-in could not reach Supabase: ${error instanceof Error ? error.message : String(error)}`);
+    throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "auth.appleUnreachable" });
+  }
+}
+
 export const authRouter = router({
   /** Current user, or null. Cheap enough to call on every page load. */
   me: publicProcedure.query(({ ctx }) => (ctx.user ? toPublicUser(ctx.user) : null)),
@@ -316,6 +359,91 @@ export const authRouter = router({
    * Google's box, and the public key it draws with. Null is "no box".
    */
   signupOptions: publicProcedure.query(() => ({ captchaSiteKey: captchaSiteKey() })),
+
+  /**
+   * Which other ways in are switched on: Sign in with Apple in the app while
+   * Supabase has Apple on, and on the website too once a Services ID is set —
+   * `web` is that id, which the page hands Apple's own script.
+   */
+  providers: publicProcedure.query(async () => {
+    const apple = await appleAvailable();
+    return { apple: { app: apple, web: apple ? appleWebClientId() : null } };
+  }),
+
+  /**
+   * Signs in — or opens an account — with Apple. One door for both, since
+   * Apple's own sheet does not tell them apart: an Apple ID NetLet has met
+   * signs into its account, and a new one is an account made now, its address
+   * already vouched for by Apple, so no code is emailed.
+   *
+   * Refused, never adopted, for an address another account holds by a
+   * password NetLet keeps itself (`linkAppleAccount`): that account signs in
+   * the way it was made. An account whose password Supabase holds is linked
+   * by Supabase, and lands here as the account it was.
+   */
+  appleSignIn: publicProcedure
+    .input(appleProof.extend({
+      firstName: z.string().trim().max(NAME_PART_MAX).optional(),
+      lastName: z.string().trim().max(NAME_PART_MAX).optional(),
+      remember: z.boolean().optional(),
+      referral: z.string().trim().max(32).optional(),
+      portal: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      assertConfigured();
+      const caller = callerOf(ctx);
+      await assertNotThrottled(caller, "login");
+      if (!(await appleAvailable())) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "auth.appleUnavailable" });
+
+      const apple = await appleUser(input);
+      if (!apple || !apple.email) {
+        await recordAuthAttempt(caller, "login");
+        throw appleRefused;
+      }
+
+      const first = input.firstName ?? "";
+      const last = input.lastName ?? "";
+      const name = first || last ? composeName(first, last) : null;
+      const link = await linkAppleAccount({ uid: apple.uid, email: apple.email, emailConfirmed: apple.emailConfirmed, name });
+      if (link.kind === "taken") throw new TRPCError({ code: "CONFLICT", message: "auth.appleEmailTaken" });
+
+      const user = link.user;
+      if (link.kind === "created") {
+        if (first && last) await saveNameParts(user.id, first, last);
+        if (input.referral) await recordReferral(user.id, input.referral);
+        /* An address somebody began registering with a password and never
+           confirmed, now confirmed by Apple: the password was typed by
+           whoever began that sign-up, who need not be the person holding the
+           Apple ID, so it is replaced with one nobody knows. The owner sets
+           their own through Forgot your password. */
+        if (apple.signedUp && apple.providers.includes("email")) {
+          await updateSupabaseUser(apple.uid, { password: randomBytes(32).toString("base64url") });
+        }
+      }
+
+      await touchLastSignedIn(user.id);
+      await startSession(ctx, user, input.remember);
+      return {
+        ...toPublicUser(user),
+        created: link.kind === "created",
+        portal: input.portal ? await portalHandover(ctx, user, null, input.remember !== false) : null,
+      };
+    }),
+
+  /**
+   * How the signed-in account signs in, for the pages that ask for a password
+   * again: deleting the account confirms with Apple for an Apple account, and
+   * the password card says there is none to change. When Supabase cannot say,
+   * the answer is the password, as it always was.
+   */
+  myProviders: protectedProcedure.query(async ({ ctx }) => {
+    const user = ctx.user;
+    if (user.supabaseUid) {
+      const named = await supabaseUserProviders(user.supabaseUid);
+      if (named) return { password: named.includes("email"), apple: named.includes("apple") };
+    }
+    return { password: true, apple: false };
+  }),
 
   /**
    * The first half of registering: the human check, then a code to the address.
@@ -696,11 +824,26 @@ export const authRouter = router({
    * out with it.
    */
   deleteAccount: protectedProcedure
-    .input(z.object({ currentPassword: z.string().min(1).max(200) }))
+    .input(z.object({
+      currentPassword: z.string().min(1).max(200).optional(),
+      /* An Apple account has no password to ask for, so it confirms with
+         Apple instead — and the code Apple hands back is what unlinks the
+         Apple ID once the account is gone. */
+      apple: appleProof.optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       const current = await loadUser(ctx.user.id);
       if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
-      await assertCurrentPassword(current, input.currentPassword);
+      if (input.apple) {
+        const apple = await appleUser(input.apple);
+        if (!apple || !current.supabaseUid || apple.uid !== current.supabaseUid) {
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.appleNotThisAccount" });
+        }
+      } else if (input.currentPassword) {
+        await assertCurrentPassword(current, input.currentPassword);
+      } else {
+        throw wrongPassword;
+      }
       let outcome;
       try {
         outcome = await deleteAccount(current);
@@ -712,6 +855,10 @@ export const authRouter = router({
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: `account.deleteBlocked.${outcome.blockers[0] ?? "admin"}` });
       }
       ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
+      if (input.apple) {
+        const outcome = await revokeAppleAuthorization({ clientId: audienceOf(input.apple.idToken), code: input.apple.code });
+        if (outcome !== "revoked") console.warn(`[auth] deleted account ${current.id} left its Apple ID linked: ${outcome}`);
+      }
       return { deleted: true } as const;
     }),
 

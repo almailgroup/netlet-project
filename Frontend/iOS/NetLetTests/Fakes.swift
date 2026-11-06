@@ -153,6 +153,9 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
 
     func currentUser() async throws -> User? { nil }
     func signupOptions() async throws -> SignupOptions { SignupOptions(captchaSiteKey: nil) }
+    /// Whether the server says Supabase has Apple on.
+    var appleOn = false
+    func signInWays() async throws -> SignInWays { SignInWays(apple: .init(app: appleOn, web: nil)) }
     func signIn(email: String, password: String) async throws -> User { try signInResult.get() }
 
     func register(email: String, password: String, name: String?, captcha: String?) async throws -> RegistrationResult {

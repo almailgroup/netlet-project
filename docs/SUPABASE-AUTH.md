@@ -281,6 +281,84 @@ address, and ten wrong codes before it stops checking for a while.
 
 ---
 
+## Sign in with Apple
+
+Both the website and the iPhone app offer **Continue with Apple**. Supabase
+checks Apple's token; NetLet keeps its own session cookie as it does for a
+password. Four places, in this order.
+
+**1. Apple Developer** — [developer.apple.com](https://developer.apple.com/account)
+→ Certificates, Identifiers & Profiles.
+
+- **Identifiers → the app, `com.netlet.marketplace` → Capabilities → Sign in
+  with Apple → on**, as a primary App ID. Do this before the next app build
+  reaches TestFlight: the build now carries the entitlement, and Apple will not
+  sign it for an App ID without the capability.
+- **Identifiers → + → Services IDs**: description "NetLet website", identifier
+  `net.netlet.web`. Open it, tick **Sign in with Apple → Configure**: primary
+  App ID `com.netlet.marketplace`, domain `netlet.net`, return URL
+  `https://netlet.net/signin`. Save, then Continue and Register.
+- **Keys → +**: name it "NetLet Sign in with Apple", tick **Sign in with
+  Apple**, configure it with the primary App ID, register, and **download the
+  .p8 once** — Apple never shows it again. Note its **Key ID**, and your **Team
+  ID** (top right, or Membership details).
+- **Services → Sign in with Apple for Email Communication**: add `netlet.net`
+  (and the address NetLet's mail comes from). A shopper who hides their email
+  gets a `…@privaterelay.appleid.com` address, and Apple forwards only mail from
+  domains listed here — the sign-up code, a reset and order notices included.
+
+**2. Supabase** — **Authentication → Sign In / Providers → Apple**.
+
+- **Enable**: on.
+- **Client IDs**: `com.netlet.marketplace,net.netlet.web` — the app's bundle id
+  and the website's Services ID, comma separated. A token issued to anything
+  not listed is refused.
+- **Secret Key (for OAuth)**: leave it empty. That is for Supabase's own
+  redirect flow, and its secret expires every six months; NetLet hands Supabase
+  Apple's token directly (`grant_type=id_token`), which needs no secret. If the
+  dashboard will not save without one, generate it from the .p8 as it says and
+  ignore the expiry — nothing NetLet does reads it.
+- **Allow users without an email**: off. Every NetLet account has an address.
+- Save. The app's button appears within a few minutes (the server caches
+  Supabase's settings for five).
+
+**3. Vercel** — Settings → Environment Variables, then redeploy.
+
+| Name | Value |
+|---|---|
+| `APPLE_SIGNIN_SERVICES_ID` | `net.netlet.web` — turns on the website's button |
+| `APPLE_SIGNIN_TEAM_ID` | your Team ID (falls back to `APPLE_MAPKIT_TEAM_ID`) |
+| `APPLE_SIGNIN_KEY_ID` | the key's Key ID |
+| `APPLE_SIGNIN_PRIVATE_KEY` | the .p8 file's whole contents, `-----BEGIN PRIVATE KEY-----` to the end |
+
+The last three sign the request that unlinks NetLet from somebody's Apple ID
+when they delete their account, which Apple asks every app to make. Without
+them the account is still deleted; the link stays under the person's Apple ID
+settings until they remove it.
+
+**4. Check** — on `https://netlet.net/signin`, Continue with Apple opens
+Apple's window and lands on the account; in the app, the Profile tab's button
+opens Apple's sheet. `pnpm preflight` says whether the website's half and the
+unlinking are set.
+
+What NetLet does with it, for when somebody asks:
+
+- **One button signs in and makes accounts.** An Apple ID NetLet has met signs
+  into its account; a new one is an account made there and then — Apple has
+  vouched for the address, so no code is emailed. The name comes from Apple the
+  first time only.
+- **Somebody who registered with a password and then chooses Apple** lands in
+  the account they had: Supabase links an identity with the same verified
+  address to the user it already has.
+- **An address an account holds by a password NetLet keeps itself is refused**
+  ("This email already has a NetLet account"), never taken over — that account
+  signs in the way it was made.
+- **An account made with Apple has no password.** "Your profile" says so and
+  offers "Set a password", which emails the same six-digit code a forgotten one
+  does. Deleting it confirms with Apple instead of a password.
+
+---
+
 ## One thing to check while you are in the dashboard
 
 Supabase exposes the `public` schema through its Data API, and that is separate

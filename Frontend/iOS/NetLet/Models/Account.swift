@@ -44,6 +44,25 @@ struct SignupOptions: Decodable, Sendable {
     let captchaSiteKey: String?
 }
 
+/// Which other ways in the shop has switched on (`auth.providers`): Sign in
+/// with Apple in the app while Supabase has Apple on. `web` is the website's
+/// Services ID, which the app does not need.
+struct SignInWays: Decodable, Sendable {
+    struct Apple: Decodable, Sendable {
+        let app: Bool
+        let web: String?
+    }
+    let apple: Apple
+}
+
+/// How the signed-in account signs in (`auth.myProviders`): deleting it
+/// confirms with Apple for an Apple account, and the password card says there
+/// is none to change.
+struct AccountSignInWays: Decodable, Sendable, Equatable {
+    let password: Bool
+    let apple: Bool
+}
+
 /// The account's stored choices — the language, the delivery area and which
 /// bag is theirs (`customer.profile.get`).
 struct Profile: Decodable, Sendable {

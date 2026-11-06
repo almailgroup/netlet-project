@@ -1,0 +1,10 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "password": true,
+        "apple": false
+      }
+    }
+  }
+}

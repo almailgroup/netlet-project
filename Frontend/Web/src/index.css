@@ -526,6 +526,7 @@
   /* On navy the header's tint would be navy on navy, so it turns white — and
      back again for anything white sitting on the navy. */
   [class~="bg-[#0a285a]"],
+  [class~="bg-black"],
   .glass-navy {
     --hover-tint: rgb(255 255 255 / 0.12);
   }

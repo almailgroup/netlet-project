@@ -45,6 +45,11 @@ final class AuthViewModel {
     private(set) var resendWait = 0
     private(set) var resentTo: String?
 
+    /// Sign in with Apple is offered while the server says Supabase has it on.
+    private(set) var appleOffered = false
+    private var appleAsked = false
+    private let apple = AppleSignIn()
+
     private let account: AccountServicing
     private var countdown: Task<Void, Never>?
     static let resendWaitSeconds = 30
@@ -75,11 +80,39 @@ final class AuthViewModel {
 
     /// A wrong password offers the reset; a taken address offers signing in with it.
     var offersReset: Bool { refusal == "auth.invalidCredentials" }
-    var offersSignIn: Bool { refusal == "auth.emailTaken" }
+    var offersSignIn: Bool { refusal == "auth.emailTaken" || (refusal == "auth.appleEmailTaken" && mode == .register) }
 
     func prepare() async {
+        if !appleAsked {
+            appleAsked = true
+            appleOffered = (try? await account.signInWays())?.apple.app ?? false
+        }
         guard mode == .register, captchaSiteKey == nil else { return }
         captchaSiteKey = (try? await account.signupOptions())?.captchaSiteKey
+    }
+
+    /// "Continue with Apple": the system's sheet, then the server — one door
+    /// for signing in and for a new account, since Apple's sheet does not tell
+    /// them apart. Closing the sheet says nothing.
+    func signInWithApple() async -> User? {
+        refusal = nil
+        let answer: (AppleProof, AppleName)?
+        do {
+            answer = try await apple.ask()
+        } catch {
+            refusal = "auth.appleWindowFailed"
+            return nil
+        }
+        guard let answer else { return nil }
+        let (proof, name) = answer
+        working = true
+        defer { working = false }
+        do {
+            return try await account.appleSignIn(proof, name: name)
+        } catch {
+            refusal = key(for: APIError.from(error))
+            return nil
+        }
     }
 
     /// Submit. Answers the account when the shopper is now signed in.

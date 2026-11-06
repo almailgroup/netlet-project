@@ -150,6 +150,64 @@ export async function linkExternalUser(input: {
 
 
 /**
+ * What an Apple sign-in lands on.
+ *
+ * "existing" is the account the Supabase user already belonged to — found by
+ * its uid, which is the case Supabase arranges itself when somebody who
+ * registered with a password chooses Apple, since it links an identity with
+ * the same verified address to the user it already has. "created" is a new
+ * account. "taken" is an address another account holds by a credential Apple
+ * did not check — a local password digest, or a different Supabase user —
+ * which this refuses rather than adopts, so the answer is to sign in the way
+ * that account was made.
+ */
+export type AppleLink = { kind: "existing" | "created"; user: User } | { kind: "taken" };
+
+/**
+ * The NetLet row for a Supabase user who signed in with Apple.
+ *
+ * Narrower than `linkExternalUser`, on purpose. That one adopts any row with
+ * the address, because a password the service has just checked is proof the
+ * caller owns the account; here the proof is Apple's that the caller owns an
+ * Apple ID with this address, and an account that already signs in another
+ * way keeps that way rather than gaining a second store. Only a row with no
+ * credential at all is adopted, and only for an address Supabase holds as
+ * confirmed — the one case `linkExternalUser` exists for, an account that was
+ * a row before it was a login.
+ */
+export async function linkAppleAccount(input: {
+  uid: string;
+  email: string;
+  emailConfirmed: boolean;
+  name?: string | null;
+}): Promise<AppleLink> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  const byUid = await db.select().from(users).where(eq(users.supabaseUid, input.uid)).limit(1);
+  if (byUid[0]) return { kind: "existing", user: byUid[0] };
+
+  const email = input.email.trim().toLowerCase();
+  const existing = await byEmail(db, email);
+  if (existing) {
+    if (existing.supabaseUid || existing.passwordHash || !input.emailConfirmed) return { kind: "taken" };
+    await db
+      .update(users)
+      .set({ supabaseUid: input.uid, passwordHash: null, name: existing.name ?? input.name ?? null })
+      .where(eq(users.id, existing.id));
+    const adopted = await byEmail(db, email);
+    return adopted ? { kind: "existing", user: adopted } : { kind: "taken" };
+  }
+
+  const created = await createUser({ email, supabaseUid: input.uid, name: input.name ?? null });
+  if (created) return { kind: "created", user: created };
+  /* Two sign-ins racing for one new address: the loser finds the winner's
+     row, which is the same Apple ID's. */
+  const raced = await db.select().from(users).where(eq(users.supabaseUid, input.uid)).limit(1);
+  return raced[0] ? { kind: "existing", user: raced[0] } : { kind: "taken" };
+}
+
+/**
  * Removes an account's mirror row.
  *
  * Only for undoing one made moments earlier in the same request — see

@@ -34,6 +34,16 @@ const CAPTCHA_SCRIPTS = ENV.recaptchaSiteKey && ENV.recaptchaSecretKey
 const CAPTCHA_FRAMES = CAPTCHA_SCRIPTS.length ? ["https://www.google.com/recaptcha/", "https://recaptcha.google.com/recaptcha/"] : [];
 
 /*
+ * Sign in with Apple on the website, only while a Services ID is set: Apple's
+ * own script, and the page it opens. The page is a popup that hands the answer
+ * back to this window, which needs the opener kept — see the opener policy
+ * below.
+ */
+const APPLE_WEB_SIGN_IN = Boolean(ENV.appleSigninServicesId);
+const APPLE_SIGN_IN_SCRIPTS = APPLE_WEB_SIGN_IN ? ["https://appleid.cdn-apple.com"] : [];
+const APPLE_SIGN_IN_FRAMES = APPLE_WEB_SIGN_IN ? ["https://appleid.apple.com"] : [];
+
+/*
  * The pin picker's two maps (3.2.7), each only while its keys are set — the
  * hosts Google and Apple publish for their map scripts, tiles and data. Both
  * draw tiles in workers built from blobs.
@@ -61,8 +71,8 @@ const MAP_WORKERS = GOOGLE_MAPS || APPLE_MAPS ? ["blob:"] : [];
 
 const CONTENT_SECURITY_POLICY = {
   defaultSrc: ["'self'"],
-  scriptSrc: ["'self'", ...CAPTCHA_SCRIPTS, ...MAP_SCRIPTS],
-  frameSrc: ["'self'", ...CAPTCHA_FRAMES, ...MAP_FRAMES],
+  scriptSrc: ["'self'", ...CAPTCHA_SCRIPTS, ...MAP_SCRIPTS, ...APPLE_SIGN_IN_SCRIPTS],
+  frameSrc: ["'self'", ...CAPTCHA_FRAMES, ...MAP_FRAMES, ...APPLE_SIGN_IN_FRAMES],
   workerSrc: ["'self'", ...MAP_WORKERS],
   styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
   fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
@@ -74,7 +84,7 @@ const CONTENT_SECURITY_POLICY = {
   imgSrc: ["'self'", "data:", "blob:", ...(ENV.mediaHost ? [ENV.mediaHost, MAP_TILE_ORIGIN, ...MAP_IMAGES] : ["https:"])],
   // The catalog, the cart and checkout are all NetLet's own API; off-origin
   // is only the maps and the AI gateway, each while it is configured.
-  connectSrc: ["'self'", ...MAP_CONNECT, ...AI_GATEWAY],
+  connectSrc: ["'self'", ...MAP_CONNECT, ...AI_GATEWAY, ...APPLE_SIGN_IN_FRAMES],
   formAction: ["'self'"],
   frameAncestors: ["'none'"],
   objectSrc: ["'none'"],
@@ -191,6 +201,10 @@ export function applySecurity(app: Express): void {
       // Only meaningful over HTTPS, which in development there is not.
       hsts: isProduction ? { maxAge: 15552000, includeSubDomains: true } : false,
       crossOriginEmbedderPolicy: false,
+      /* Apple's sign-in window answers this one through its opener, which the
+         default same-origin policy would cut. Kept tight while there is no
+         Apple button. */
+      crossOriginOpenerPolicy: { policy: APPLE_WEB_SIGN_IN ? "same-origin-allow-popups" : "same-origin" },
     }),
   );
 

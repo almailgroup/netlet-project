@@ -126,6 +126,8 @@ type GoTrueUser = {
   user_metadata?: Record<string, unknown> | null;
   confirmation_sent_at?: string | null;
   invited_at?: string | null;
+  email_confirmed_at?: string | null;
+  app_metadata?: { providers?: unknown } | null;
 };
 
 function toUser(body: GoTrueUser, fallbackEmail: string): SupabaseUser | null {
@@ -408,6 +410,123 @@ export async function supabaseConfirmsEmailItself(): Promise<boolean | null> {
     if (!response.ok) return null;
     const body = (await response.json()) as { mailer_autoconfirm?: boolean };
     return typeof body.mailer_autoconfirm === "boolean" ? body.mailer_autoconfirm : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Signs in with an identity token another provider issued — Sign in with
+ * Apple's, from Apple's own window on the website or the system's sheet in
+ * the app.
+ *
+ * Supabase checks the token: Apple's signature, that it was issued to one of
+ * the Client IDs the dashboard lists for Apple (the app's bundle id and the
+ * website's Services ID), and that the nonce the page or the app made — sent
+ * here raw, handed to Apple hashed — is the one in the token, so a token lifted
+ * from another sign-in cannot be replayed. It answers with a session, which is
+ * read for its user and dropped, the password grant's rule. An address another
+ * account already holds, verified, is linked to that account by Supabase
+ * itself, so somebody who registered with a password and then chose Apple
+ * lands in the account they had.
+ *
+ * Null for a refusal of any kind — a bad or expired token, Apple switched off,
+ * an audience the dashboard does not list — with Supabase's reason in the log,
+ * since that reason is the one thing an administrator setting Apple up needs.
+ */
+export type IdTokenUser = SupabaseUser & {
+  /** Supabase holds the address as confirmed — Apple vouched for it. */
+  emailConfirmed: boolean;
+  /** Every way the user signs in, "email" for a password among them. */
+  providers: string[];
+};
+
+export async function signInSupabaseWithIdToken(provider: "apple", idToken: string, nonce: string): Promise<IdTokenUser | null> {
+  if (!isSupabaseAuthConfigured()) return null;
+
+  const response = await fetch(`${base()}/auth/v1/token?grant_type=id_token`, {
+    method: "POST",
+    headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({ provider, id_token: idToken, nonce }),
+  });
+
+  if ([400, 401, 403, 404, 422].includes(response.status)) {
+    console.warn(`[auth] Supabase refused the ${provider} sign-in: HTTP ${response.status}: ${await reasonFrom(response)}`);
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Supabase ${provider} sign-in failed with HTTP ${response.status}: ${await reasonFrom(response)}`);
+  }
+
+  const body = (await response.json()) as { user?: GoTrueUser };
+  const user = body.user ? toUser(body.user, "") : null;
+  if (!user || !body.user) return null;
+  const providers = Array.isArray(body.user.app_metadata?.providers)
+    ? body.user.app_metadata.providers.filter((name): name is string => typeof name === "string")
+    : [provider];
+  return { ...user, emailConfirmed: Boolean(body.user.email_confirmed_at), providers };
+}
+
+/**
+ * Which outside providers the project has switched on, from Supabase's public
+ * settings — the dashboard's Authentication → Sign In / Providers. Null when it
+ * cannot be told. Kept a few minutes per instance: the sign-in form asks on
+ * every visit, and a switch flipped in the dashboard reaching the form a few
+ * minutes later is no harm.
+ */
+let providerSettings: { at: number; external: Record<string, boolean> | null } | null = null;
+const PROVIDER_SETTINGS_MS = 5 * 60_000;
+
+export async function supabaseExternalProviders(): Promise<Record<string, boolean> | null> {
+  if (!isSupabaseAuthConfigured()) return null;
+  if (providerSettings && Date.now() - providerSettings.at < PROVIDER_SETTINGS_MS) return providerSettings.external;
+  let external: Record<string, boolean> | null = null;
+  try {
+    const response = await fetch(`${base()}/auth/v1/settings`, {
+      headers: anonHeaders(),
+      signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    });
+    if (response.ok) {
+      const body = (await response.json()) as { external?: Record<string, unknown> };
+      if (body.external && typeof body.external === "object") {
+        external = Object.fromEntries(Object.entries(body.external).map(([name, on]) => [name, on === true]));
+      }
+    }
+  } catch {
+    external = null;
+  }
+  /* A failed read is kept only a moment, so a blip does not hide the button
+     for five minutes. */
+  providerSettings = { at: external ? Date.now() : Date.now() - PROVIDER_SETTINGS_MS + 30_000, external };
+  return external;
+}
+
+/** For tests: forget the cached settings. */
+export function forgetProviderSettings(): void {
+  providerSettings = null;
+}
+
+/**
+ * The ways an account signs in, as Supabase holds them: "email" for a
+ * password, "apple" for Sign in with Apple. Null when it cannot be told —
+ * the caller then asks for the password, as it always has.
+ */
+export async function supabaseUserProviders(uid: string): Promise<string[] | null> {
+  if (!isSupabaseAuthConfigured()) return null;
+  try {
+    const response = await fetch(`${base()}/auth/v1/admin/users/${encodeURIComponent(uid)}`, {
+      headers: adminHeaders(),
+      signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { app_metadata?: { providers?: unknown }; identities?: { provider?: unknown }[] | null };
+    const named = new Set<string>();
+    if (Array.isArray(body.app_metadata?.providers)) {
+      for (const provider of body.app_metadata.providers) if (typeof provider === "string") named.add(provider);
+    }
+    for (const identity of body.identities ?? []) if (typeof identity?.provider === "string") named.add(identity.provider);
+    return [...named];
   } catch {
     return null;
   }

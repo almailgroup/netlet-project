@@ -12,12 +12,17 @@ import SwiftUI
 ///
 /// Delete asks twice: the system's own alert, and the password in it — a
 /// session left open on a shared phone must not be enough to delete
-/// somebody. Once the account is gone the app forgets it as signing out does
+/// somebody. An account that signs in with Apple confirms with Apple instead,
+/// which also lets the server unlink the Apple ID once the account is gone.
+/// Once the account is gone the app forgets it as signing out does
 /// (`AppModel.signOut`) and goes home.
 struct DeleteAccountCard: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var check: API.AccountDeletionCheck?
+    /// How the account signs in: an Apple account confirms with Apple.
+    @State private var ways: AccountSignInWays?
+    @State private var apple = AppleSignIn()
     @State private var asking = false
     @State private var password = ""
     @State private var deleting = false
@@ -102,19 +107,41 @@ struct DeleteAccountCard: View {
         .panel()
         .task { await load() }
         .alert(l.t("account.deleteConfirmTitle"), isPresented: $asking) {
-            SecureField(l.t("account.currentPassword"), text: $password)
-                .textContentType(.password)
-            Button(l.t("account.deleteStart"), role: .destructive) {
-                Task { await delete() }
+            if ways?.apple == true {
+                Button(l.t("account.deleteWithApple"), role: .destructive) {
+                    Task { await deleteWithApple() }
+                }
+            } else {
+                SecureField(l.t("account.currentPassword"), text: $password)
+                    .textContentType(.password)
+                Button(l.t("account.deleteStart"), role: .destructive) {
+                    Task { await delete() }
+                }
             }
             Button(l.t("common.cancel"), role: .cancel) { password = "" }
         } message: {
-            Text(l.t("account.deletePasswordNote"))
+            Text(l.t(ways?.apple == true ? "account.deleteAppleNote" : "account.deletePasswordNote"))
         }
     }
 
     private func load() async {
         if let answer = try? await app.services.api.call(API.accountDeletionCheck) { check = answer }
+        if ways == nil { ways = try? await app.services.account.accountSignInWays() }
+    }
+
+    /// Apple's sheet, then the delete with what it handed back. Closing the
+    /// sheet deletes nothing and says nothing.
+    private func deleteWithApple() async {
+        let answer: (AppleProof, AppleName)?
+        do {
+            answer = try await apple.ask(name: false)
+        } catch {
+            Haptics.refused()
+            problem = "auth.appleWindowFailed"
+            return
+        }
+        guard let answer else { return }
+        await remove(.init(apple: answer.0))
     }
 
     private func delete() async {
@@ -124,10 +151,14 @@ struct DeleteAccountCard: View {
             problem = "auth.wrongCurrentPassword"
             return
         }
+        await remove(.init(currentPassword: typed))
+    }
+
+    private func remove(_ input: API.DeleteAccount) async {
         deleting = true
         defer { deleting = false }
         do {
-            _ = try await app.services.api.call(API.deleteAccount, .init(currentPassword: typed))
+            _ = try await app.services.api.call(API.deleteAccount, input)
             Haptics.succeeded()
             await app.signOut()
             app.toast(l.t("account.deleted"))

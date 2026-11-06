@@ -25,6 +25,7 @@ export function ConfirmDialog({
   pending = false,
   icon,
   confirmDisabled = false,
+  confirmHidden = false,
   children,
   onConfirm,
   onClose,
@@ -45,6 +46,8 @@ export function ConfirmDialog({
   icon?: ReactNode;
   /** True while a field below the sentence holds something the act would refuse. */
   confirmDisabled?: boolean;
+  /** The act is a control of its own in `children` — Apple's button — so the dialog draws only the safe answer. */
+  confirmHidden?: boolean;
   /** A field the act needs — an amount, a percentage — drawn under the sentence. */
   children?: ReactNode;
   onConfirm: () => void;
@@ -89,7 +92,7 @@ export function ConfirmDialog({
         {children ? <div className="mt-4">{children}</div> : null}
 
         <div className="mt-6 flex flex-wrap gap-2.5">
-          <button
+          {confirmHidden ? null : <button
             type="button"
             onClick={onConfirm}
             disabled={pending || confirmDisabled}
@@ -99,7 +102,7 @@ export function ConfirmDialog({
           >
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
             {confirmLabel}
-          </button>
+          </button>}
           <button
             type="button"
             ref={cancelRef}

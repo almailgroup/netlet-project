@@ -1,0 +1,12 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "apple": {
+          "app": true,
+          "web": "net.netlet.web"
+        }
+      }
+    }
+  }
+}

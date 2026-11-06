@@ -153,9 +153,13 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
   // between creating a password and replacing one.
   const verdict = checkPassword(next);
   const rulesId = useId();
+  /* An account made with Apple has no password to type here; it is set by the
+     same emailed code a forgotten one is. */
+  const ways = trpc.auth.myProviders.useQuery(undefined, { staleTime: 60_000 });
+  const appleOnly = ways.data?.password === false;
 
   return (
-    <ProfileCard title={t("account.password")} note={t("account.passwordNote")}>
+    <ProfileCard title={t("account.password")} note={t(appleOnly ? "account.passwordAppleNote" : "account.passwordNote")}>
       {recovering === "sent" && user ? (
         <div className="space-y-4">
           <p role="status" className="text-[14px] leading-6 text-[#3d5170]">
@@ -235,6 +239,11 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
             </button>
           </div>
         </div>
+      ) : appleOnly && user ? (
+        <button type="button" onClick={() => sendCode.mutate({ email: user.email, locale })} disabled={sendCode.isPending} className={secondary}>
+          {sendCode.isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
+          {t("account.setPassword")}
+        </button>
       ) : (
         <button onClick={() => setOpen(true)} className={secondary}>
           {t("account.changePassword")}

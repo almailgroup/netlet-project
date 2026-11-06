@@ -273,6 +273,18 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertEqual(waiting, .verify(email: "noura@shop.test", password: "a long new password"))
     }
 
+    /// Continue with Apple is drawn only while the server says Apple is on.
+    func testAppleIsOfferedOnlyWhileTheServerSaysSo() async {
+        let account = FakeAccountService()
+        let off = AuthViewModel(account: account)
+        await off.prepare()
+        XCTAssertFalse(off.appleOffered)
+        account.appleOn = true
+        let on = AuthViewModel(account: account)
+        await on.prepare()
+        XCTAssertTrue(on.appleOffered)
+    }
+
     func testAWrongPasswordOffersTheReset() async {
         let model = AuthViewModel(account: FakeAccountService())
         model.email = "noura@shop.test"

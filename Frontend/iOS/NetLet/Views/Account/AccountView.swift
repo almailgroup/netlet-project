@@ -720,15 +720,21 @@ private struct ProfileForm: View {
     /// "Forgot your current password?": a six-digit code to the account's own
     /// email, and the new password with it, on this card (on the owner's word).
     @State private var recovering: Recovery = .idle
+    /// How the account signs in: one made with Apple has no password to
+    /// change, and sets one by the same emailed code a forgotten one is.
+    @State private var ways: AccountSignInWays?
 
     private enum Recovery { case idle, sending, sent }
+
+    private var appleOnly: Bool { ways?.password == false }
 
     var body: some View {
         VStack(spacing: 16) {
             profileCards
-            passwordCard
+            if !appleOnly { passwordCard }
             recoverCard
         }
+        .task { if ways == nil { ways = try? await app.services.account.accountSignInWays() } }
     }
 
     private var passwordCard: some View {
@@ -748,6 +754,18 @@ private struct ProfileForm: View {
     private var recoverCard: some View {
         if let user = app.session.user {
             VStack(alignment: .leading, spacing: 12) {
+                if appleOnly {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(l.t("account.password"))
+                            .font(.inter(17, .bold))
+                            .foregroundStyle(Brand.ink)
+                            .accessibilityAddTraits(.isHeader)
+                        Text(l.t("account.passwordAppleNote"))
+                            .font(.inter(14))
+                            .foregroundStyle(Brand.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
                 if recovering == .sent {
                     Text(l.t("account.recoverSent", ["email": "\u{2068}\(user.email)\u{2069}"]))
                         .font(.inter(14))
@@ -767,7 +785,7 @@ private struct ProfileForm: View {
                 } label: {
                     HStack(spacing: 8) {
                         if recovering == .sending { ProgressView().tint(Brand.navy) }
-                        Text(l.t("account.forgotCurrent"))
+                        Text(l.t(appleOnly ? "account.setPassword" : "account.forgotCurrent"))
                     }
                     .font(.inter(14, .bold))
                     .foregroundStyle(Brand.navy)

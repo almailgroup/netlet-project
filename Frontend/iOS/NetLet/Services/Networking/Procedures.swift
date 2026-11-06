@@ -186,9 +186,23 @@ enum API {
         let newPassword: String
     }
 
-    /// Deleting the account asks for the password again.
+    /// Deleting the account asks for the password again — or, for an account
+    /// that signs in with Apple, Apple's confirmation, whose code lets the
+    /// server unlink the Apple ID once the account is gone.
     struct DeleteAccount: Encodable, Sendable {
-        let currentPassword: String
+        var currentPassword: String?
+        var apple: AppleProof?
+    }
+
+    /// Signing in — or opening an account — with Apple (`auth.appleSignIn`).
+    /// The name is Apple's, given only the first time an Apple ID meets NetLet.
+    struct AppleSignInInput: Encodable, Sendable {
+        let idToken: String
+        let nonce: String
+        var code: String?
+        var firstName: String?
+        var lastName: String?
+        let remember: Bool
     }
 
     /// What stands between the shopper and deleting their account, and the
@@ -210,6 +224,10 @@ enum API {
 
     static let me = Procedure<NoInput, User?>(query: "auth.me")
     static let signupOptions = Procedure<NoInput, SignupOptions>(query: "auth.signupOptions")
+    /// Named for what it answers: `providers` alone reads like the maps'.
+    static let signInWays = Procedure<NoInput, SignInWays>(query: "auth.providers")
+    static let appleSignIn = Procedure<AppleSignInInput, User>(mutation: "auth.appleSignIn")
+    static let accountSignInWays = Procedure<NoInput, AccountSignInWays>(query: "auth.myProviders")
     static let signIn = Procedure<SignIn, User>(mutation: "auth.login")
     static let register = Procedure<Register, RegistrationResult>(mutation: "auth.register")
     static let verifyEmail = Procedure<Verify, User>(mutation: "auth.verifyEmail")
