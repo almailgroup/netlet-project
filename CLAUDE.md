@@ -729,7 +729,9 @@ nothing, and the build would reach phones with Apple's sheet failing. So the
 workflow ad-hoc signs the archived app with the entitlements before export
 (the step fails if they are not in it), and says after the upload whether the
 build Apple signed still carries them, which it does only once the App ID has
-the capability on in the Apple Developer site.
+the capability on in the Apple Developer site — read from the export's
+`DistributionSummary.plist`, since an upload straight to Apple leaves no
+`.ipa` behind (the first version looked for one and said nothing at all).
 
 The sign-in page carries what the account does, never seller counts or
 testimonials — invented numbers on a sign-in wall are checked once and never

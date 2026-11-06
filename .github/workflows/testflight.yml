@@ -187,11 +187,22 @@ jobs:
       # in the Apple Developer site (Identifiers → the app → Capabilities).
       - name: Check the uploaded build
         continue-on-error: true
+        # An upload straight to Apple leaves no .ipa behind, only the export's
+        # DistributionSummary.plist, which lists the entitlements each signed
+        # bundle carries; an export to disk leaves the .ipa to read instead.
         run: |
+          summary=build/export/DistributionSummary.plist
           ipa=$(ls build/export/*.ipa 2>/dev/null | head -1)
-          [ -n "$ipa" ] || exit 0
-          rm -rf build/ipa && mkdir -p build/ipa && unzip -q "$ipa" -d build/ipa
-          if codesign -d --entitlements - --xml build/ipa/Payload/NetLet.app 2>/dev/null | grep -q "com.apple.developer.applesignin"; then
+          if [ -f "$summary" ]; then
+            entitlements=$(cat "$summary")
+          elif [ -n "$ipa" ]; then
+            rm -rf build/ipa && mkdir -p build/ipa && unzip -q "$ipa" -d build/ipa
+            entitlements=$(codesign -d --entitlements - --xml build/ipa/Payload/NetLet.app 2>/dev/null)
+          else
+            echo "::notice title=Sign in with Apple::The export left nothing to read the entitlements from ($(ls build/export 2>/dev/null | tr '\n' ' '))."
+            exit 0
+          fi
+          if printf '%s' "$entitlements" | grep -q "com.apple.developer.applesignin"; then
             echo "::notice title=Sign in with Apple::The uploaded build carries the Sign in with Apple entitlement."
           else
             echo "::warning title=Sign in with Apple::The uploaded build does not carry the Sign in with Apple entitlement. Switch it on for the App ID in the Apple Developer site, then run this again."
