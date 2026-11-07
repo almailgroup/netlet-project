@@ -89,7 +89,8 @@ import { returnWindowDays } from "./settings.js";
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
 export type PlaceOrderDetails = {
-  email: string;
+  /** Null for an account made with a phone alone, until it adds an email. */
+  email: string | null;
   userId?: number | null;
   contactName?: string | null;
   contactPhone?: string | null;
@@ -831,7 +832,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         .values({
           reference: orderReference(new Date()),
           userId: details.userId ?? null,
-          email: details.email.trim().toLowerCase(),
+          email: details.email?.trim().toLowerCase() || null,
           itemsTotal: draft.totals.itemsTotal,
           deliveryTotal: draft.totals.deliveryTotal,
           /* Net of the points, so the column that says what is owed needs no

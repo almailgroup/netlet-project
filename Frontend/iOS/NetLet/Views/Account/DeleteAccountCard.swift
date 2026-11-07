@@ -14,6 +14,9 @@ import SwiftUI
 /// session left open on a shared phone must not be enough to delete
 /// somebody. An account that signs in with Apple confirms with Apple instead,
 /// which also lets the server unlink the Apple ID once the account is gone.
+/// An account made with a phone, which has no password, confirms with a code
+/// texted to its number — the web's card: the first alert texts it, the
+/// second takes it.
 /// Once the account is gone the app forgets it as signing out does
 /// (`AppModel.signOut`) and goes home.
 struct DeleteAccountCard: View {
@@ -28,6 +31,9 @@ struct DeleteAccountCard: View {
     @State private var google = GoogleSignIn()
     @State private var asking = false
     @State private var password = ""
+    /// The code texted to an account made with a phone, and its alert.
+    @State private var phoneCode = ""
+    @State private var askingCode = false
     @State private var deleting = false
     /// The server's refusal, said under the button.
     @State private var problem: String?
@@ -41,6 +47,11 @@ struct DeleteAccountCard: View {
         "warrantyOpen": "account.deleteBlocked.warrantyOpen",
         "cashOutOwed": "account.deleteBlocked.cashOutOwed",
     ]
+
+    /// No password, no Apple or Google, and a phone: the texted code confirms.
+    private var phoneAccount: Bool {
+        ways?.password == false && ways?.apple != true && ways?.google != true && app.session.user?.phone != nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -97,6 +108,18 @@ struct DeleteAccountCard: View {
                 }
                 .buttonStyle(.tap)
                 .disabled(check == nil || deleting)
+                // The second alert of a phone account's delete: the code.
+                .alert(l.t("account.deleteConfirmTitle"), isPresented: $askingCode) {
+                    TextField(l.t("account.deletePhoneCode"), text: $phoneCode)
+                        .keyboardType(.numberPad)
+                        .textContentType(.oneTimeCode)
+                    Button(l.t("account.deleteStart"), role: .destructive) {
+                        Task { await deleteWithPhoneCode() }
+                    }
+                    Button(l.t("common.cancel"), role: .cancel) { phoneCode = "" }
+                } message: {
+                    Text(l.t("auth.phoneCodeSent", ["phone": "\u{2066}\(AccountView.shownPhone(app.session.user?.phone ?? ""))\u{2069}"]))
+                }
             }
             if let problem {
                 Text(l.t(problem))
@@ -118,6 +141,10 @@ struct DeleteAccountCard: View {
                 Button(l.t("account.deleteWithGoogle"), role: .destructive) {
                     Task { await deleteWithGoogle() }
                 }
+            } else if phoneAccount {
+                Button(l.t("account.deleteWithPhone"), role: .destructive) {
+                    Task { await textCode() }
+                }
             } else {
                 SecureField(l.t("account.currentPassword"), text: $password)
                     .textContentType(.password)
@@ -127,9 +154,13 @@ struct DeleteAccountCard: View {
             }
             Button(l.t("common.cancel"), role: .cancel) { password = "" }
         } message: {
-            Text(l.t(ways?.apple == true ? "account.deleteAppleNote"
-                : ways?.google == true && ways?.password == false && googleClientId != nil ? "account.deleteGoogleNote"
-                : "account.deletePasswordNote"))
+            if phoneAccount {
+                Text(l.t("account.deletePhoneNote", ["phone": "\u{2066}\(AccountView.shownPhone(app.session.user?.phone ?? ""))\u{2069}"]))
+            } else {
+                Text(l.t(ways?.apple == true ? "account.deleteAppleNote"
+                    : ways?.google == true && ways?.password == false && googleClientId != nil ? "account.deleteGoogleNote"
+                    : "account.deletePasswordNote"))
+            }
         }
     }
 
@@ -169,6 +200,33 @@ struct DeleteAccountCard: View {
         }
         guard let answer else { return }
         await remove(.init(apple: answer.0))
+    }
+
+    /// Texts the account's own number a code, then asks for it.
+    private func textCode() async {
+        guard let phone = app.session.user?.phone else { return }
+        deleting = true
+        defer { deleting = false }
+        do {
+            try await app.services.account.phoneStart(phone)
+            phoneCode = ""
+            askingCode = true
+        } catch {
+            let failure = APIError.from(error)
+            guard failure != .cancelled else { return }
+            Haptics.refused()
+            problem = failure.messageKey(knownKey: Phrasebook.shared.has)
+        }
+    }
+
+    private func deleteWithPhoneCode() async {
+        let digits = Validation.normaliseCode(phoneCode)
+        phoneCode = ""
+        guard digits.count == 6 else {
+            problem = "auth.phoneCodeWrong"
+            return
+        }
+        await remove(.init(phoneCode: digits))
     }
 
     private func delete() async {

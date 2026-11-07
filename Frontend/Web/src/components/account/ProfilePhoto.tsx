@@ -21,7 +21,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ProfileCard, primary, secondary } from "@/components/account/profileParts";
 import { pressHaptic } from "@/lib/haptics";
 
-export function ProfilePhotoCard({ user }: { user: { name: string | null; email: string } }) {
+export function ProfilePhotoCard({ user }: { user: { name: string | null; email: string | null } }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const photo = useProfilePhoto();

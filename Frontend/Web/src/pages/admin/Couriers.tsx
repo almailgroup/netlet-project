@@ -217,9 +217,9 @@ function Members({ courierId }: { courierId: number }) {
               </div>
               <button
                 type="button"
-                aria-label={t("dispatch.removeMember", { id: isolate(row.name || row.email) })}
+                aria-label={t("dispatch.removeMember", { id: isolate(row.name || row.email || "") })}
                 disabled={remove.isPending}
-                onClick={() => setRemoving({ userId: row.userId, name: row.name || row.email })}
+                onClick={() => setRemoving({ userId: row.userId, name: row.name || row.email || "" })}
                 className={`${smallButtonClass.quietDanger} w-9 px-0`}
               >
                 <Trash2 className="size-4" aria-hidden />

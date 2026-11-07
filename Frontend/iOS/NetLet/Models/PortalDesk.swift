@@ -226,7 +226,8 @@ struct StoreMember: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
     let userId: Int
     let role: String
-    let email: String
+    /// Nil for an account made with a phone alone (migration 0077).
+    let email: String?
     let name: String?
 
     var shownName: String { (name?.isEmpty == false ? name : nil) ?? email }

@@ -520,7 +520,7 @@ export type CashOutRow = {
   id: number;
   userId: number;
   name: string | null;
-  email: string;
+  email: string | null;
   /** Referral points, or an affiliate's commission (3.7) — paid at different rates. */
   pot: Pot;
   points: number;

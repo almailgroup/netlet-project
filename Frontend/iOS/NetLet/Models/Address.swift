@@ -171,6 +171,21 @@ enum PhoneNumber {
         return "\(local.prefix(4)) \(local.dropFirst(4))"
     }
 
+    /// `kuwaitMobile` in `Shared/auth/phone.ts`: a Kuwaiti mobile — `+965` and
+    /// eight digits starting 4, 5, 6 or 9, the only numbers NetLet texts a
+    /// sign-in code to — or nil.
+    static func kuwaitMobile(_ raw: String) -> String? {
+        guard let phone = normalise(raw) else { return nil }
+        let first = phone.dropFirst(countryCode.count + 1).first
+        return first.map { "4569".contains($0) } == true ? phone : nil
+    }
+
+    /// `phoneProblem`: what is wrong with a typed number, as a message key.
+    static func signInProblem(_ raw: String) -> String? {
+        if raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "auth.phoneRequired" }
+        return kuwaitMobile(raw) == nil ? "auth.phoneInvalid" : nil
+    }
+
     /// `normalisePhone` in `Shared/commerce/wishlist.ts`: `+965` and eight
     /// digits, or nil for anything that is not a Kuwaiti number.
     static func normalise(_ raw: String) -> String? {

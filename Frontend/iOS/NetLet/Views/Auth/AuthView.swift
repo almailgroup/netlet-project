@@ -80,6 +80,8 @@ private struct AuthForm: View {
     @State private var legal: LegalSheet?
     /// The code last sent, so a whole code is sent once until it changes.
     @State private var lastTried: String?
+    /// "Continue with phone number" has the form's place while it is chosen.
+    @State private var phone: PhoneSignInModel?
 
     enum Field: Hashable {
         case name, email, password, code
@@ -96,6 +98,9 @@ private struct AuthForm: View {
                     .accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 0) {
+                if let phone {
+                    PhoneSignInSteps(model: phone, onSignedIn: { user in await app.signedIn(user) }, onBack: { self.phone = nil })
+                } else {
                 switch model.step {
                 case .form:
                     form
@@ -103,6 +108,7 @@ private struct AuthForm: View {
                     codeStep(email: email, fromRegister: fromRegister)
                 case .resetSent(let email):
                     resetSent(email: email)
+                }
                 }
             }
             .padding(.horizontal, 20)
@@ -127,6 +133,24 @@ private struct AuthForm: View {
             }
             .environment(\.layoutDirection, l.layoutDirection)
             .buttonStyle(HapticDefaultStyle())
+        }
+        .onAppear { takePhonePreset() }
+    }
+
+    /// The screenshots' `-NetLetOpen phone[:code|:email]` (Debug only).
+    private func takePhonePreset() {
+        guard band, phone == nil, let step = app.phoneSignInPreset else { return }
+        app.phoneSignInPreset = nil
+        switch step {
+        case "email":
+            phone = PhoneSignInModel(account: app.services.account, startAt: .email)
+        case "code":
+            let model = PhoneSignInModel(account: app.services.account)
+            model.typed = "50123456"
+            phone = model
+            Task { await model.sendCode() }
+        default:
+            phone = PhoneSignInModel(account: app.services.account)
         }
     }
 
@@ -230,9 +254,14 @@ private struct AuthForm: View {
                     .frame(maxWidth: .infinity)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if (model.appleOffered || model.googleClientId != nil) && model.mode != .reset {
+            if (model.phoneOffered || model.appleOffered || model.googleClientId != nil) && model.mode != .reset {
                 VStack(spacing: 12) {
                     OrDivider().padding(.bottom, 2)
+                    if model.phoneOffered {
+                        PhoneSignInButton {
+                            phone = PhoneSignInModel(account: app.services.account)
+                        }
+                    }
                     if model.appleOffered {
                         AppleSignInButton(label: "auth.continueWithApple", working: model.working) {
                             Task {
@@ -512,7 +541,7 @@ private struct AuthForm: View {
 
 /// What the server refused, in the web's pale red box, with the next step it
 /// offers under the words.
-private struct RefusalBox<Next: View>: View {
+struct RefusalBox<Next: View>: View {
     let key: String
     @ViewBuilder var next: () -> Next
     @Environment(LanguageSettings.self) private var l
@@ -542,7 +571,7 @@ private struct RefusalBox<Next: View>: View {
 }
 
 /// The envelope over a "check your email" page, quiet and the same on both.
-private struct MailTile: View {
+struct MailTile: View {
     var body: some View {
         Image(systemName: "envelope.badge")
             .font(.system(size: 22, weight: .medium))

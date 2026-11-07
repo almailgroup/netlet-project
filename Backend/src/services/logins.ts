@@ -12,7 +12,7 @@
  * would make a cycle, and a test that redirects `getDb` would then hand the
  * mock to one half of it and the real module to the other.
  */
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { users, type User } from "../../database/schema.js";
 import { isOwnerEmail } from "../core/owner.js";
 import { getDb, isDuplicateKeyError } from "./db.js";
@@ -220,6 +220,78 @@ export async function linkProviderAccount(input: {
      row, which is the same provider account's. */
   const raced = await db.select().from(users).where(eq(users.supabaseUid, input.uid)).limit(1);
   return raced[0] ? { kind: "existing", user: raced[0] } : { kind: "taken" };
+}
+
+/**
+ * The NetLet row for a phone a text-message code has just proven.
+ *
+ * By the Supabase user first, then by the number: an account already signing
+ * in with this phone is that account. Otherwise a new account with no email,
+ * which its owner may add later (`users_has_identifier` holds that it has the
+ * phone). A phone is one account's: a row holding it under another Supabase
+ * user — which only a hand edit could make — is "taken", never adopted.
+ *
+ * With no Supabase (`pnpm dev`, the code in the log) there is no uid, and the
+ * number alone is the account.
+ */
+export async function linkPhoneAccount(input: { uid: string | null; phone: string }): Promise<ProviderLink> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+
+  if (input.uid) {
+    const [byUid] = await db.select().from(users).where(eq(users.supabaseUid, input.uid)).limit(1);
+    if (byUid) {
+      if (byUid.phone !== input.phone) {
+        await db.update(users).set({ phone: input.phone }).where(eq(users.id, byUid.id));
+        return { kind: "existing", user: { ...byUid, phone: input.phone } };
+      }
+      return { kind: "existing", user: byUid };
+    }
+  }
+
+  const [byPhone] = await db.select().from(users).where(eq(users.phone, input.phone)).limit(1);
+  if (byPhone) {
+    if (!input.uid || byPhone.supabaseUid === input.uid) return { kind: "existing", user: byPhone };
+    if (byPhone.supabaseUid) return { kind: "taken" };
+    await db.update(users).set({ supabaseUid: input.uid }).where(eq(users.id, byPhone.id));
+    return { kind: "existing", user: { ...byPhone, supabaseUid: input.uid } };
+  }
+
+  try {
+    const [created] = await db
+      .insert(users)
+      .values({ email: null, phone: input.phone, supabaseUid: input.uid, role: "user", lastSignedIn: new Date() })
+      .returning();
+    return { kind: "created", user: created };
+  } catch (error) {
+    /* Two codes spent at once for one new number: the loser finds the winner's row. */
+    if (!isDuplicateKeyError(error)) throw error;
+    const [raced] = await db.select().from(users).where(eq(users.phone, input.phone)).limit(1);
+    return raced ? { kind: "existing", user: raced } : { kind: "taken" };
+  }
+}
+
+/**
+ * Gives an account with no email the address its owner has just proven, in
+ * the same statement that checks nobody else holds it. Null when somebody
+ * does — the unique index answers the race the check alone cannot.
+ */
+export async function addAccountEmail(userId: number, email: string): Promise<User | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const address = email.trim().toLowerCase();
+  if (await byEmail(db, address)) return null;
+  try {
+    const [updated] = await db
+      .update(users)
+      .set({ email: address })
+      .where(and(eq(users.id, userId), isNull(users.email)))
+      .returning();
+    return updated ?? null;
+  } catch (error) {
+    if (isDuplicateKeyError(error)) return null;
+    throw error;
+  }
 }
 
 /**

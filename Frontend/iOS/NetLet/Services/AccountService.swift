@@ -43,6 +43,12 @@ protocol AccountServicing: Sendable {
     func signInWays() async throws -> SignInWays
     func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User
     func googleSignIn(_ proof: GoogleProof) async throws -> User
+    /// Signing in with a phone: a code texted, then the code.
+    func phoneStart(_ phone: String) async throws
+    func phoneVerify(phone: String, code: String) async throws -> PhoneVerified
+    /// Adding an email to an account made with a phone.
+    func addEmailStart(_ email: String) async throws
+    func addEmailVerify(email: String, code: String) async throws -> User
     func accountSignInWays() async throws -> AccountSignInWays
 }
 
@@ -61,6 +67,18 @@ extension AccountServicing {
     }
     func googleSignIn(_ proof: GoogleProof) async throws -> User {
         throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.googleUnavailable", status: 412)
+    }
+    func phoneStart(_ phone: String) async throws {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.phoneUnavailable", status: 412)
+    }
+    func phoneVerify(phone: String, code: String) async throws -> PhoneVerified {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.phoneUnavailable", status: 412)
+    }
+    func addEmailStart(_ email: String) async throws {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.phoneUnavailable", status: 412)
+    }
+    func addEmailVerify(email: String, code: String) async throws -> User {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.phoneUnavailable", status: 412)
     }
     func accountSignInWays() async throws -> AccountSignInWays { AccountSignInWays(password: true, apple: false) }
 }
@@ -123,6 +141,23 @@ struct AccountService: AccountServicing {
 
     func googleSignIn(_ proof: GoogleProof) async throws -> User {
         try await client.call(API.googleSignIn, .init(idToken: proof.idToken, nonce: proof.nonce, remember: true))
+    }
+
+    func phoneStart(_ phone: String) async throws {
+        _ = try await client.call(API.phoneStart, .init(phone: phone))
+    }
+
+    /// Always kept signed in, as every other sign-in in the app is.
+    func phoneVerify(phone: String, code: String) async throws -> PhoneVerified {
+        try await client.call(API.phoneVerify, .init(phone: phone, code: code, remember: true))
+    }
+
+    func addEmailStart(_ email: String) async throws {
+        _ = try await client.call(API.addEmailStart, .init(email: email))
+    }
+
+    func addEmailVerify(email: String, code: String) async throws -> User {
+        try await client.call(API.addEmailVerify, .init(email: email, code: code))
     }
 
     func accountSignInWays() async throws -> AccountSignInWays { try await client.call(API.accountSignInWays) }

@@ -99,8 +99,21 @@ export const users = pgTable(
   "users",
   {
     id: serial("id").primaryKey(),
-    /** Login identifier. Normalised to lowercase before it ever reaches here. */
-    email: varchar("email", { length: 320 }).notNull(),
+    /**
+     * Login identifier. Normalised to lowercase before it ever reaches here.
+     * Null for an account made with a phone number alone (migration 0077),
+     * until its owner adds and confirms one; `users_has_identifier` holds
+     * that every account has one of the two.
+     */
+    email: varchar("email", { length: 320 }),
+    /**
+     * The mobile number an account signs in with by text-message code,
+     * `+965` and eight digits (`Shared/auth/phone.ts`). Confirmed by the code
+     * before it is ever written here, so it is a login identifier like the
+     * email, unique while set. Not the driver's number, which is the
+     * profile's (`customer_profiles.phone`) and may differ.
+     */
+    phone: varchar("phone", { length: 16 }),
     /**
      * scrypt digest with its parameters embedded, so the cost can be raised
      * later. Null for accounts whose password a hosted service holds.
@@ -134,6 +147,8 @@ export const users = pgTable(
     // Partial, so the many rows with no value here — every account on the
     // local digest — do not all collide on a single null.
     uniqueIndex("users_supabase_uid_unique").on(table.supabaseUid).where(sql`${table.supabaseUid} is not null`),
+    uniqueIndex("users_phone_unique").on(table.phone).where(sql`${table.phone} is not null`),
+    check("users_has_identifier", sql`${table.email} is not null or ${table.phone} is not null`),
   ]
 );
 
@@ -2155,7 +2170,8 @@ export const orders = pgTable(
      */
     reference: varchar("reference", { length: 24 }).notNull(),
     userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
-    email: varchar("email", { length: 320 }).notNull(),
+    /** Null for an order placed by an account made with a phone alone (0077). */
+    email: varchar("email", { length: 320 }),
     status: orderStatus("status").notNull().default("pending_payment"),
     currency: varchar("currency", { length: 3 }).notNull().default("KWD"),
 

@@ -504,6 +504,37 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(listings.rows.isEmpty)
     }
 
+    /// "Continue with phone number": the texted code's answers decode — an
+    /// account with no email, which asks for one — and the number rule is
+    /// `Shared/auth/phone.ts`'s, on its test's own cases.
+    func testSignInWithPhone() async throws {
+        let ways = try await client.call(API.signInWays)
+        XCTAssertEqual(ways.phone, true)
+        let started = try await client.call(API.phoneStart, .init(phone: "+96550123456"))
+        XCTAssertEqual(started.phone, "+96550123456")
+        let verified = try await client.call(API.phoneVerify, .init(phone: "+96550123456", code: "123456", remember: true))
+        XCTAssertNil(verified.user.email)
+        XCTAssertEqual(verified.user.phone, "+96550123456")
+        XCTAssertTrue(verified.created)
+        XCTAssertTrue(verified.needsEmail)
+        let added = try await client.call(API.addEmailVerify, .init(email: "noura@shop.test", code: "123456"))
+        XCTAssertEqual(added.email, "noura@shop.test")
+        let withCode = String(decoding: try JSONEncoder().encode(API.DeleteAccount(phoneCode: "123456")), as: UTF8.self)
+        XCTAssertEqual(withCode, #"{"phoneCode":"123456"}"#)
+
+        for (typed, phone) in [("50808606", "+96550808606"), ("+965 5080 8606", "+96550808606"), ("0096550808606", "+96550808606"),
+                               ("٥٠٨٠٨٦٠٦", "+96550808606"), ("9988-7766", "+96599887766"), ("41234567", "+96541234567"), ("6 123 4567", "+96561234567")] {
+            XCTAssertEqual(PhoneNumber.kuwaitMobile(typed), phone, typed)
+        }
+        for typed in ["22345678", "1234567", "+966501234567", "+447700900123", ""] {
+            XCTAssertNil(PhoneNumber.kuwaitMobile(typed), typed)
+        }
+        XCTAssertEqual(PhoneNumber.signInProblem(""), "auth.phoneRequired")
+        XCTAssertEqual(PhoneNumber.signInProblem("2234 5678"), "auth.phoneInvalid")
+        XCTAssertNil(PhoneNumber.signInProblem("5080 8606"))
+        XCTAssertEqual(AccountView.shownPhone("+96550808606"), "+965 5080 8606")
+    }
+
     /// Sign in with Apple's answers decode, and the delete sends the one
     /// confirmation it was given and nothing for the other.
     func testSignInWithApple() async throws {
@@ -511,7 +542,7 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(ways.apple.app)
         XCTAssertEqual(ways.google?.ios, "000000000000-netletios.apps.googleusercontent.com")
         let mine = try await client.call(API.accountSignInWays)
-        XCTAssertEqual(mine, AccountSignInWays(password: true, apple: false, google: false))
+        XCTAssertEqual(mine, AccountSignInWays(password: true, apple: false, google: false, phone: false))
 
         // Google calls an iOS client back on its reversed id, and a code is
         // traded with a form body percent-encoded as a form's is.

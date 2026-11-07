@@ -4,7 +4,11 @@ import Foundation
 /// the server's `PublicUser`, never the row behind it.
 struct User: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
-    let email: String
+    /// Nil for an account made with a phone number alone, until its owner
+    /// adds one (migration 0077).
+    let email: String?
+    /// The mobile number the account signs in with by text, `+965…`.
+    var phone: String? = nil
     let name: String?
     let role: String
     let createdAt: Date?
@@ -60,6 +64,9 @@ struct SignInWays: Decodable, Sendable {
     }
     let apple: Apple
     var google: Google? = nil
+    /// "Continue with phone number": Supabase has phone sign-in on and the
+    /// shop can text. Absent from a server before it, which reads as no.
+    var phone: Bool? = nil
 }
 
 /// How the signed-in account signs in (`auth.myProviders`): deleting it
@@ -70,6 +77,25 @@ struct AccountSignInWays: Decodable, Sendable, Equatable {
     let apple: Bool
     /// Absent from a server before Google, which reads as no.
     var google: Bool? = nil
+    /// The account signs in with its phone by a texted code.
+    var phone: Bool? = nil
+}
+
+/// What a texted code answers (`auth.phoneVerify`): the account, and whether
+/// it has no email yet — which is what has the form offer adding one.
+struct PhoneVerified: Decodable, Sendable {
+    let user: User
+    let created: Bool
+    let needsEmail: Bool
+
+    private enum CodingKeys: String, CodingKey { case created, needsEmail }
+
+    init(from decoder: Decoder) throws {
+        user = try User(from: decoder)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        created = try container.decodeIfPresent(Bool.self, forKey: .created) ?? false
+        needsEmail = try container.decodeIfPresent(Bool.self, forKey: .needsEmail) ?? false
+    }
 }
 
 /// The account's stored choices — the language, the delivery area and which

@@ -2757,6 +2757,8 @@ export async function sendMemberPasswordReset(actor: Actor, userId: number, loca
 
   const [target] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!target) throw new Error("NOT_FOUND");
+  /* An account made with a phone alone has no address to send a link to. */
+  if (!target.email) throw new Error("NO_EMAIL");
 
   await sendReset(target.email, locale);
 

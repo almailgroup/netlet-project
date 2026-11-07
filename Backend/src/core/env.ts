@@ -126,4 +126,12 @@ export const ENV = {
      also go in Supabase's Google provider as its Client IDs. */
   googleSigninWebClientId: (process.env.GOOGLE_SIGNIN_WEB_CLIENT_ID ?? "").trim(),
   googleSigninIosClientId: (process.env.GOOGLE_SIGNIN_IOS_CLIENT_ID ?? "").trim(),
+  /* Signing in with a phone number (core/smsHook.ts, core/sms.ts). The
+     secret Supabase shows when its "Send SMS" hook is made, which signs every
+     code it hands NetLet to text; unset, the hook answers nobody. SMS_LOG_ONLY
+     writes texts to the log instead of sending them — development only, and
+     ignored on Vercel's production deployment, where it would offer phone
+     sign-in with every code readable by whoever reads the log. */
+  smsHookSecret: (process.env.SMS_HOOK_SECRET ?? "").trim(),
+  smsLogOnly: process.env.SMS_LOG_ONLY === "true" && process.env.VERCEL_ENV !== "production",
 };

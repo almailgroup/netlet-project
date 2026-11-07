@@ -159,7 +159,7 @@ export async function submitApplication(userId: number): Promise<Row> {
 /* --------------------------------------------------------------- review --- */
 
 export type ApplicationRow = Row & {
-  applicantEmail: string;
+  applicantEmail: string | null;
   applicantName: string | null;
   /** Uploaded documents still waiting on a decision, which approving waits on too. */
   documentsWaiting: number;

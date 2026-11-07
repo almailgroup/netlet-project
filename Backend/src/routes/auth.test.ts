@@ -60,9 +60,10 @@ describe("auth.me", () => {
     // Pinned rather than merely spot-checked, so a field added to `users` has
     // to be admitted here on purpose before it can reach the client. The two
     // dates were admitted for the account page, which shows when the account
-    // was opened and last used.
+    // was opened and last used; the phone for an account that signs in with
+    // one, which the account page shows where an email would be.
     expect(Object.keys(me ?? {}).sort()).toEqual(
-      ["createdAt", "email", "id", "lastSignedIn", "name", "role"],
+      ["createdAt", "email", "id", "lastSignedIn", "name", "phone", "role"],
     );
   });
 });

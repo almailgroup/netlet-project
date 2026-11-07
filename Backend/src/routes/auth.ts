@@ -64,13 +64,26 @@ import type { User } from "../../database/schema.js";
 import { randomBytes } from "node:crypto";
 import { appleWebClientId, audienceOf, revokeAppleAuthorization } from "../core/appleSignIn.js";
 import {
+  deleteSupabaseUser,
+  isSupabaseAuthConfigured,
+  sendSupabasePhoneCode,
   signInSupabaseWithIdToken,
+  signUpSupabaseUser,
+  SupabaseEmailTaken,
+  SupabaseMailLimited,
+  SupabasePhoneOff,
   supabaseExternalProviders,
   supabaseUserProviders,
   updateSupabaseUser,
+  verifySupabasePhoneCode,
+  verifySupabaseSignupCode,
   type IdTokenUser,
 } from "../core/supabaseAuth.js";
-import { keepOwnerAdmin, linkProviderAccount } from "../services/logins.js";
+import { addAccountEmail, findLoginByEmail, keepOwnerAdmin, linkPhoneAccount, linkProviderAccount } from "../services/logins.js";
+import { kuwaitMobile } from "../../../Shared/auth/phone.js";
+import { issueLocalCode, takeLocalCode } from "../core/localCodes.js";
+import { smsReady } from "../core/sms.js";
+import { saveDetails, detailsFor } from "../services/profileDetails.js";
 import { googleIosClientId, googleWebClientId, namesOf } from "../core/googleSignIn.js";
 
 /*
@@ -150,12 +163,13 @@ const verification = credentials.extend({
  * opened and when it was last used — a shopper's own facts, and the ones that
  * make an unrecognised sign-in noticeable.
  */
-export type PublicUser = Pick<User, "id" | "email" | "name" | "role" | "createdAt" | "lastSignedIn">;
+export type PublicUser = Pick<User, "id" | "email" | "phone" | "name" | "role" | "createdAt" | "lastSignedIn">;
 
 function toPublicUser(user: User): PublicUser {
   return {
     id: user.id,
     email: user.email,
+    phone: user.phone,
     name: user.name,
     role: user.role,
     createdAt: user.createdAt,
@@ -427,6 +441,62 @@ async function providerSignIn(
   };
 }
 
+/**
+ * Whether "Continue with phone number" can be offered: with Supabase, its
+ * phone sign-in switched on and NetLet able to text (`smsReady`, with the
+ * hook's secret, since Supabase hands the code to the hook); with none
+ * (`pnpm dev`), always, the code going to the log.
+ */
+async function phoneReady(external?: Record<string, boolean> | null): Promise<boolean> {
+  if (!isSupabaseAuthConfigured()) return true;
+  const settings = external === undefined ? await supabaseExternalProviders() : external;
+  return settings?.phone === true && smsReady() && Boolean(ENV.smsHookSecret);
+}
+
+/** Has a code texted to a Kuwaiti mobile, by Supabase, or written to the log. */
+async function textCode(phone: string): Promise<void> {
+  if (!isSupabaseAuthConfigured()) {
+    issueLocalCode(phone, "phone");
+    return;
+  }
+  try {
+    await sendSupabasePhoneCode(phone);
+  } catch (error) {
+    if (error instanceof SupabaseMailLimited) throw codeNotSent;
+    if (error instanceof SupabasePhoneOff) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "auth.phoneUnavailable" });
+    console.error(`[auth] a phone code could not be sent: ${error instanceof Error ? error.message : String(error)}`);
+    throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "auth.phoneUnreachable" });
+  }
+}
+
+/** The Supabase user a texted code proves (no uid with no Supabase), or null. */
+async function checkTextedCode(phone: string, code: string): Promise<{ uid: string | null } | null> {
+  if (!isCodeShaped(code)) return null;
+  if (!isSupabaseAuthConfigured()) return takeLocalCode(phone, code, "phone") ? { uid: null } : null;
+  try {
+    const user = await verifySupabasePhoneCode(phone, code);
+    return user ? { uid: user.uid } : null;
+  } catch (error) {
+    console.error(`[auth] a phone code could not be checked: ${error instanceof Error ? error.message : String(error)}`);
+    throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "auth.phoneUnreachable" });
+  }
+}
+
+/** Whether any account already holds this address. */
+async function addressHeld(email: string): Promise<boolean> {
+  return Boolean(await findLoginByEmail(email));
+}
+
+/** The proven number as the driver's, unless the account already gave one. */
+async function rememberDriverPhone(userId: number, phone: string): Promise<void> {
+  try {
+    const details = await detailsFor(userId);
+    if (!details.phone) await saveDetails(userId, { phone });
+  } catch (error) {
+    console.warn(`[auth] the driver's number was not saved for account ${userId}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 export const authRouter = router({
   /** Current user, or null. Cheap enough to call on every page load. */
   me: publicProcedure.query(({ ctx }) => (ctx.user ? toPublicUser(ctx.user) : null)),
@@ -451,6 +521,7 @@ export const authRouter = router({
     return {
       apple: { app: apple, web: apple ? appleWebClientId() : null },
       google: { web: google ? googleWebClientId() : null, ios: google ? googleIosClientId() : null },
+      phone: await phoneReady(external),
     };
   }),
 
@@ -465,6 +536,161 @@ export const authRouter = router({
     .mutation(({ ctx, input }) => providerSignIn(ctx, "google", input)),
 
   /**
+   * "Continue with phone number", first half: a six-digit code by text to a
+   * Kuwaiti mobile (`kuwaitMobile`, the only numbers NetLet texts). The same
+   * reply whether the number has an account or not — signing in and opening
+   * one are one door — and every send counts, by address and by number, the
+   * sign-up code's `codeSend`; Google's "I'm not a robot" box guards it while
+   * it is configured, as it guards Create account, since every text costs.
+   */
+  phoneStart: publicProcedure
+    .input(z.object({ phone: z.string().trim().min(1).max(32), captcha: z.string().max(4000).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      assertConfigured();
+      const phone = kuwaitMobile(input.phone);
+      if (!phone) throw new TRPCError({ code: "BAD_REQUEST", message: "auth.phoneInvalid" });
+      if (!(await phoneReady())) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "auth.phoneUnavailable" });
+      const caller = callerOf(ctx, phone);
+      await assertNotThrottled(caller, "codeSend");
+      const human = await checkCaptcha(input.captcha, ctx.req.ip ?? null);
+      if (human === "unavailable") throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "auth.captchaUnavailable" });
+      if (human === "failed") throw new TRPCError({ code: "BAD_REQUEST", message: "auth.captchaFailed" });
+      await recordAuthAttempt(caller, "codeSend");
+      await textCode(phone);
+      return { sent: true as const, phone };
+    }),
+
+  /**
+   * The second half: the code, and the account it opens. An account already
+   * signing in with this number is that account; a new one has no email, and
+   * the answer's `needsEmail` is what has the form offer adding one, which
+   * its owner may skip. A wrong code counts as a `codeMiss`, by address and by
+   * number, the emailed code's ceiling.
+   */
+  phoneVerify: publicProcedure
+    .input(z.object({
+      phone: z.string().trim().min(1).max(32),
+      code: z.string().trim().min(1).max(20),
+      remember: z.boolean().optional(),
+      referral: z.string().trim().max(32).optional(),
+      portal: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      assertConfigured();
+      const phone = kuwaitMobile(input.phone);
+      if (!phone) throw new TRPCError({ code: "BAD_REQUEST", message: "auth.phoneInvalid" });
+      const caller = callerOf(ctx, phone);
+      await assertNotThrottled(caller, "codeMiss");
+      const code = normaliseCode(input.code);
+      if (!isCodeShaped(code)) {
+        await recordAuthAttempt(caller, "codeMiss");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "auth.codeShape" });
+      }
+      const proven = await checkTextedCode(phone, code);
+      if (!proven) {
+        await recordAuthAttempt(caller, "codeMiss");
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.phoneCodeWrong" });
+      }
+      const link = await linkPhoneAccount({ uid: proven.uid, phone });
+      if (link.kind === "taken") throw new TRPCError({ code: "CONFLICT", message: "auth.phoneTaken" });
+      const user = link.user;
+      if (link.kind === "created") {
+        if (input.referral) await recordReferral(user.id, input.referral);
+        /* The number just proven is the one a driver calls, until its owner
+           says otherwise; quietly skipped before migration 0070 is pasted. */
+        await rememberDriverPhone(user.id, phone);
+      }
+      await touchLastSignedIn(user.id);
+      await startSession(ctx, user, input.remember);
+      return {
+        ...toPublicUser(user),
+        created: link.kind === "created",
+        needsEmail: !user.email,
+        portal: input.portal ? await portalHandover(ctx, user, null, input.remember !== false) : null,
+      };
+    }),
+
+  /**
+   * Adding an email to an account made with a phone, first half: a code to
+   * the address, so a typo cannot hand the account to whoever holds it — an
+   * address is where a forgotten password is sent. Through Supabase's own
+   * sign-up mail, the "Confirm signup" template NetLet already prints the
+   * code in; the address it parks there is removed once the code comes back.
+   */
+  addEmailStart: protectedProcedure
+    .input(z.object({ email: z.string().trim().email().max(320) }))
+    .mutation(async ({ ctx, input }) => {
+      const current = await loadUser(ctx.user.id);
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
+      if (current.email) throw new TRPCError({ code: "BAD_REQUEST", message: "auth.emailAlreadyAdded" });
+      const email = input.email.trim().toLowerCase();
+      const caller = callerOf(ctx, email);
+      await assertNotThrottled(caller, "codeSend");
+      await recordAuthAttempt(caller, "codeSend");
+      if (await addressHeld(email)) throw emailTaken;
+      if (!isSupabaseAuthConfigured()) {
+        issueLocalCode(email, "add-email");
+        return { sent: true as const, email };
+      }
+      try {
+        const started = await signUpSupabaseUser({ email, password: randomBytes(32).toString("base64url"), returnTo: landingFor(ctx.req) });
+        /* A project that confirms addresses itself sends no code: there is
+           nothing to prove, so the address it made is taken back and the
+           form is told the mail could not be sent. */
+        if (started.kind === "confirmed") {
+          await deleteSupabaseUser(started.user.uid);
+          throw codeNotSent;
+        }
+      } catch (error) {
+        if (error instanceof SupabaseEmailTaken) throw emailTaken;
+        if (error instanceof SupabaseMailLimited) throw codeNotSent;
+        throw error;
+      }
+      return { sent: true as const, email };
+    }),
+
+  /** The second half: the code, then the address is the account's. */
+  addEmailVerify: protectedProcedure
+    .input(z.object({ email: z.string().trim().email().max(320), code: z.string().trim().min(1).max(20) }))
+    .mutation(async ({ ctx, input }) => {
+      const current = await loadUser(ctx.user.id);
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
+      if (current.email) throw new TRPCError({ code: "BAD_REQUEST", message: "auth.emailAlreadyAdded" });
+      const email = input.email.trim().toLowerCase();
+      const caller = callerOf(ctx, email);
+      await assertNotThrottled(caller, "codeMiss");
+      const code = normaliseCode(input.code);
+      if (!isCodeShaped(code)) {
+        await recordAuthAttempt(caller, "codeMiss");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "auth.codeShape" });
+      }
+      if (isSupabaseAuthConfigured()) {
+        const parked = await verifySupabaseSignupCode(email, code);
+        if (!parked) {
+          await recordAuthAttempt(caller, "codeMiss");
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.codeWrong" });
+        }
+        /* The address was parked on a Supabase user of its own to be proven;
+           proven, it moves to the account's. */
+        await deleteSupabaseUser(parked.uid);
+        if (current.supabaseUid) {
+          try {
+            await updateSupabaseUser(current.supabaseUid, { email, emailConfirmed: true });
+          } catch (error) {
+            if (error instanceof SupabaseEmailTaken) throw emailTaken;
+            throw error;
+          }
+        }
+      } else if (!takeLocalCode(email, code, "add-email")) {
+        await recordAuthAttempt(caller, "codeMiss");
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.codeWrong" });
+      }
+      const updated = await addAccountEmail(current.id, email);
+      if (!updated) throw emailTaken;
+      return toPublicUser(updated);
+    }),
+
+  /**
    * How the signed-in account signs in, for the pages that ask for a password
    * again: deleting the account confirms with Apple for an Apple account, and
    * the password card says there is none to change. When Supabase cannot say,
@@ -474,9 +700,11 @@ export const authRouter = router({
     const user = ctx.user;
     if (user.supabaseUid) {
       const named = await supabaseUserProviders(user.supabaseUid);
-      if (named) return { password: named.includes("email"), apple: named.includes("apple"), google: named.includes("google") };
+      if (named) return { password: named.includes("email"), apple: named.includes("apple"), google: named.includes("google"), phone: Boolean(user.phone) };
     }
-    return { password: true, apple: false, google: false };
+    /* An account made with a phone alone, with no Supabase to ask (`pnpm dev`). */
+    if (!user.email) return { password: false, apple: false, google: false, phone: true };
+    return { password: true, apple: false, google: false, phone: Boolean(user.phone) };
   }),
 
   /**
@@ -653,7 +881,7 @@ export const authRouter = router({
       const updated = await updateUserEmail(ctx.user.id, next);
       if (!updated) {
         // Put the store back, or the two disagree about the login address.
-        await revertEmail(current, current.email);
+        if (current.email) await revertEmail(current, current.email);
         throw emailTaken;
       }
       await tellAccountChanged(updated.id, "email", { email: next });
@@ -866,6 +1094,9 @@ export const authRouter = router({
       apple: appleProof.optional(),
       /* A Google account the same way, by Google's confirmation. */
       google: appleProof.optional(),
+      /* An account made with a phone confirms with a code texted to it
+         (`phoneStart` with the account's own number). */
+      phoneCode: z.string().trim().min(1).max(20).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const current = await loadUser(ctx.user.id);
@@ -875,6 +1106,14 @@ export const authRouter = router({
         const found = await providerUser(confirmation, (input.apple ?? input.google)!);
         if (!found || !current.supabaseUid || found.uid !== current.supabaseUid) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: PROVIDER_WORDS[confirmation].notThis });
+        }
+      } else if (input.phoneCode && current.phone) {
+        const caller = callerOf(ctx, current.phone);
+        await assertNotThrottled(caller, "codeMiss");
+        const proven = await checkTextedCode(current.phone, normaliseCode(input.phoneCode));
+        if (!proven || (current.supabaseUid && proven.uid !== current.supabaseUid)) {
+          await recordAuthAttempt(caller, "codeMiss");
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.phoneCodeWrong" });
         }
       } else if (input.currentPassword) {
         await assertCurrentPassword(current, input.currentPassword);

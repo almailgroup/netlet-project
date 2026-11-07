@@ -182,7 +182,7 @@ struct InvoicePaper: View {
                 Both(key: "invoice.buyer", language: language).font(.inter(12, .semibold)).foregroundStyle(Brand.muted)
                 if let name = doc.buyer.name { Text(name).font(.inter(15, .bold)).foregroundStyle(Brand.ink) }
                 if let phone = doc.buyer.phone { Text(phone).font(.inter(13)).environment(\.layoutDirection, .leftToRight) }
-                Text(doc.buyer.email).font(.inter(13)).environment(\.layoutDirection, .leftToRight)
+                if let email = doc.buyer.email { Text(email).font(.inter(13)).environment(\.layoutDirection, .leftToRight) }
                 if let address = doc.buyer.address { Text(address).font(.inter(13)).foregroundStyle(Brand.body) }
             }
         }

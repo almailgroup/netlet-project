@@ -183,6 +183,23 @@ if (supabaseAuthMissing.length === 0) {
   if (sides) add("ok", "Sign in with Google", `offered on ${sides}`);
   else add("warn", "Sign in with Google", "GOOGLE_SIGNIN_WEB_CLIENT_ID and GOOGLE_SIGNIN_IOS_CLIENT_ID not set — no Google button", "docs/SUPABASE-AUTH.md, Sign in with Google");
 
+  /* Continue with phone number: Supabase's phone provider (which this cannot
+     see), its Send SMS hook signed with SMS_HOOK_SECRET, and a way to text.
+     The gateway is Concept Combined, not wired yet (core/sms.ts). */
+  const hookSecret = (process.env.SMS_HOOK_SECRET ?? "").trim();
+  const logOnly = process.env.SMS_LOG_ONLY === "true";
+  if (logOnly && process.env.VERCEL_ENV === "production") {
+    add("blocked", "Phone sign-in", "SMS_LOG_ONLY is set on the production deployment — ignored there, since every code would be in the log", "Remove SMS_LOG_ONLY from Vercel's Production variables");
+  } else if (hookSecret && !/whsec_[A-Za-z0-9+/=]+/.test(hookSecret)) {
+    add("blocked", "Phone sign-in", "SMS_HOOK_SECRET is not the v1,whsec_… value Supabase shows for its Send SMS hook", "docs/SUPABASE-AUTH.md, Sign in with a phone number");
+  } else if (hookSecret && logOnly) {
+    add("warn", "Phone sign-in", "on, with texts written to the server log (SMS_LOG_ONLY) — development only");
+  } else if (hookSecret) {
+    add("warn", "Phone sign-in", "SMS_HOOK_SECRET is set but no SMS gateway is wired yet, so the phone button stays hidden", "Concept Combined's API goes in Backend/src/core/sms.ts");
+  } else {
+    add("warn", "Phone sign-in", "SMS_HOOK_SECRET not set — no Continue with phone number", "docs/SUPABASE-AUTH.md, Sign in with a phone number");
+  }
+
   /* The pin picker's two maps. Neither is OpenStreetMap, which still works. */
   const google = Boolean((process.env.GOOGLE_MAPS_API_KEY ?? "").trim());
   const appleSigning = ["APPLE_MAPKIT_TEAM_ID", "APPLE_MAPKIT_KEY_ID", "APPLE_MAPKIT_PRIVATE_KEY"].filter(name => (process.env[name] ?? "").trim());

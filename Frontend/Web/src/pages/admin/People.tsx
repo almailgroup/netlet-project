@@ -135,7 +135,7 @@ function People({ selfId }: { selfId: number }) {
           <>
             <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
               {rows.map(person => {
-                const name = person.name || person.email;
+                const name = person.name || person.email || "";
                 const self = person.id === selfId;
                 return (
                   <li key={person.id} className="p-4 sm:px-5">

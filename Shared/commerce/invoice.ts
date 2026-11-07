@@ -116,7 +116,7 @@ export type InvoiceDocument = {
   orderReference: string;
   currency: string;
   issuer: InvoiceIssuer;
-  buyer: { name: string | null; phone: string | null; email: string; address: string | null };
+  buyer: { name: string | null; phone: string | null; email: string | null; address: string | null };
   sellers: InvoiceSeller[];
   /** Goods, delivery, the order's discount, and what all that comes to. */
   goods: string;
@@ -155,7 +155,8 @@ export type SellerDetails = { name: string; nameAr: string | null; licence: stri
 export type InvoiceOrder = {
   reference: string;
   currency: string;
-  email: string;
+  /** Null for an order placed by an account made with a phone alone. */
+  email: string | null;
   contactName: string | null;
   contactPhone: string | null;
   addressLine: string | null;

@@ -760,12 +760,63 @@ drawn by `TabIcon.cgPath` (`GoogleMark`). Walked end to end on the website at
 Supabase — whose id-token check there compared the nonce's hash, as the real
 one does.
 
-**Apple and Google are the only other ways in, on the owner's word.** Spotify
-was asked for and set aside (its development mode holds an app to five
-allowlisted people, and it vouches for no address); Microsoft was built and
-then **discarded completely** after Azure's portal refused the owner's
-account, and its commit was reverted whole. Do not offer either again
-unasked.
+**Apple, Google and a phone number are the only other ways in, on the
+owner's word.** Spotify was asked for and set aside (its development mode
+holds an app to five allowlisted people, and it vouches for no address);
+Microsoft was built and then **discarded completely** after Azure's portal
+refused the owner's account, and its commit was reverted whole. Do not offer
+either again unasked.
+
+**A shopper can open an account with a phone number alone, on the owner's
+word** ("a continue as a guest option … create an account using only their
+phone number; a code will be sent to their number"). "Continue with phone
+number" leads the other ways in (`PhoneSignIn` on the web,
+`PhoneSignInSteps` and `PhoneSignInModel` in the app): a Kuwaiti mobile after
+a fixed `+965` — eight digits starting 4, 5, 6 or 9, the owner's choice of
+Kuwait alone (`kuwaitMobile` in `Shared/auth/phone.ts`, the app's
+`PhoneNumber.kuwaitMobile`, tested on the same cases) — then six boxes for the
+texted code, sent by itself on the sixth digit. `auth.phoneStart` and
+`auth.phoneVerify` are Supabase's own phone sign-in (`/auth/v1/otp` with
+`channel: "sms"`, `/auth/v1/verify` with `type: "sms"`), so the account is a
+Supabase user like any other and the session is NetLet's cookie;
+`linkPhoneAccount` (`services/logins.ts`) finds the account by its Supabase
+uid, then by the number, else makes one with no email. **Then the email is
+offered, and only offered**: a new account is asked for one (receipts, order
+updates, a password later) with "Skip for now", and the phone alone signs in
+and buys. Adding it emails a code (`auth.addEmailStart`, `auth.addEmailVerify`
+— the address is parked on a throwaway Supabase sign-up so Supabase's own
+"Confirm signup" template sends the code, then moved onto the account
+confirmed), and an address another account holds is refused. "Your profile"
+draws the same Email card where the password card is until one is added
+(`AddEmailCard`, both platforms); a phone account has no password, and
+deleting it is confirmed by a code texted to its number
+(`deleteAccount({ phoneCode })`). Codes are counted as emailed ones are
+(`codeSend`, `codeMiss`, by address and by number) and the reCAPTCHA box
+guards sending one where its keys are set.
+
+**NetLet texts the code, not Supabase.** Supabase's "Send SMS" Auth Hook calls
+`POST /api/sms-hook` (`core/smsHook.ts`) with the number and the code, signed
+by Standard Webhooks (an HMAC-SHA256 of the id, the timestamp and the body,
+keyed by `SMS_HOOK_SECRET`, five minutes' tolerance); NetLet refuses anything
+unsigned or outside Kuwait and sends its own text, both languages, the code
+first (`core/sms.ts`). **The gateway is Concept Combined, the owner's, and is
+not wired yet**: `providerConfigured()` is false until its API is, so
+`auth.providers`' `phone` is false and no page draws the button —
+a button that asks for a number and never texts is worse than none.
+`SMS_LOG_ONLY` writes texts to the server log for a laptop or a staging walk,
+and is ignored on Vercel's production deployment. `docs/SUPABASE-AUTH.md` is
+the setup, in order.
+
+**Migration 0077 is what lets an account have no email**: `users.email` and
+`orders.email` lose NOT NULL, `users.phone` is added with a partial unique
+index, and a check holds every account to an email or a phone. **It is pasted
+before the code that reads `users.phone` is deployed** — Drizzle selects every
+column it knows, so the other order fails every sign-in. Everything that read
+an account's email as always there now says what it does without one: a
+password reset an administrator sends is refused with `admin.noEmailToReset`,
+the account home's line under the name reads the number (`shownPhone`), an invoice
+draws no email line, and every portal list the app decodes takes a missing
+email (`String?`), or one phone account would have failed the whole list.
 
 The sign-in page carries what the account does, never seller counts or
 testimonials — invented numbers on a sign-in wall are checked once and never
@@ -7343,8 +7394,9 @@ Store badge and its window, then 881 KB (256 KB), the app link under the
 cart and the confirmation's words, then 887 KB (258 KB), the product
 codes' words in both languages, then 912 KB (265 KB), the help
 centre's, the notification groups' and the browsing history's words in both
-languages, and is 925 KB (268 KB) now, the new sign-in, the portal's own
-addresses and the profile photo, nearly
+languages, then 925 KB (268 KB), the new sign-in, the portal's own
+addresses and the profile photo, and is 939 KB (271 KB) now, signing in with a
+phone and its words in both languages, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

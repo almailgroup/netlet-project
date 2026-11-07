@@ -540,6 +540,13 @@
       "when": 1793796189739,
       "tag": "0076_profile_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794076874322,
+      "tag": "0077_phone_sign_in",
+      "breakpoints": true
     }
   ]
 }

@@ -173,7 +173,7 @@ function Grants() {
                           {t(state === "ended" ? "membership.statusEnded" : state === "active" ? "membership.statusActive" : state === "queued" ? "membership.statusQueued" : "membership.statusOver")}
                         </Pill>
                         {!row.cancelledAt && new Date(row.endsAt) > now ? (
-                          <button type="button" onClick={() => setEnding({ id: row.id, email: row.email })} className={smallButtonClass.quietDanger}>{t("membership.end")}</button>
+                          <button type="button" onClick={() => setEnding({ id: row.id, email: row.email ?? "" })} className={smallButtonClass.quietDanger}>{t("membership.end")}</button>
                         ) : null}
                       </div>
                     </li>

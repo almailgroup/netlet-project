@@ -34,12 +34,14 @@ import { nameProblem, NAME_PART_MAX, splitName } from "@shared/commerce/profileD
 import { ProfileDetailCards } from "@/components/account/ProfileDetailCards";
 import { FloatingField, ProfileCard, primary, secondary } from "@/components/account/profileParts";
 import { DeleteAccount } from "@/components/account/DeleteAccount";
+import { AddEmailFields } from "@/components/auth/PhoneSignIn";
+import { shownPhone } from "@shared/auth/phone";
 import { ProfilePhotoCard } from "@/components/account/ProfilePhoto";
 import { Check, Eye, EyeOff, LoaderCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
-type PublicUser = { id: number; email: string; name: string | null; role: string };
+type PublicUser = { id: number; email: string | null; phone?: string | null; name: string | null; role: string };
 
 export function ProfileManager({ user }: { user: PublicUser }) {
   const { t } = useTranslation();
@@ -54,7 +56,9 @@ export function ProfileManager({ user }: { user: PublicUser }) {
       <ProfilePhotoCard user={user} />
       <NameForm user={user} parts={details.data ? { first: details.data.firstName, last: details.data.lastName } : null} onSaved={refresh} onFail={fail} />
       <ProfileDetailCards details={details.data ?? null} onFail={fail} />
-      <PasswordForm onFail={fail} />
+      {/* An account made with a phone has no email yet: its card offers to add
+          one (by a code sent to it), and the password follows once it has. */}
+      {user.email ? <PasswordForm onFail={fail} /> : <AddEmailCard phone={user.phone ?? null} onAdded={refresh} />}
       <DeleteAccount />
     </div>
   );
@@ -125,6 +129,21 @@ function NameForm({ user, parts, onSaved, onFail }: {
   );
 }
 
+/** "Email", for an account that signs in with its phone and has none yet. */
+function AddEmailCard({ phone, onAdded }: { phone: string | null; onAdded: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <ProfileCard title={t("account.emailCard")} note={t("account.emailCardNote")}>
+      {phone ? (
+        <p className="mb-3 text-[13px] leading-5 ink-muted">
+          {t("account.signsInWithPhone", { phone: "\u2068" + shownPhone(phone) + "\u2069" })}
+        </p>
+      ) : null}
+      <AddEmailFields compact onAdded={onAdded} />
+    </ProfileCard>
+  );
+}
+
 function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void }) {
   const { t, locale } = useTranslation();
   const { user } = useAuth();
@@ -161,15 +180,15 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
   return (
     <ProfileCard
       title={t("account.password")}
-      note={t(!appleOnly ? "account.passwordNote" : ways.data?.apple ? "account.passwordAppleNote" : "account.passwordGoogleNote")}
+      note={t(!appleOnly ? "account.passwordNote" : ways.data?.apple ? "account.passwordAppleNote" : ways.data?.google ? "account.passwordGoogleNote" : "account.passwordPhoneNote")}
     >
       {recovering === "sent" && user ? (
         <div className="space-y-4">
           <p role="status" className="text-[14px] leading-6 text-[#3d5170]">
-            {t("account.recoverSent", { email: "\u2068" + user.email + "\u2069" })}
+            {t("account.recoverSent", { email: "\u2068" + (user.email ?? "") + "\u2069" })}
           </p>
           <ResetByCode
-            email={user.email}
+            email={user.email ?? ""}
             onSignedIn={() => {
               toast.success(t("account.passwordChanged"));
               setRecovering("idle"); setOpen(false); setCurrent(""); setNext("");
@@ -178,7 +197,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
             onVerify={() => setRecovering("idle")}
           />
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => sendCode.mutate({ email: user.email, locale })} disabled={sendCode.isPending} className={secondary}>
+            <button type="button" onClick={() => sendCode.mutate({ email: user.email ?? "", locale })} disabled={sendCode.isPending} className={secondary}>
               {sendCode.isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
               {t("auth.resendCode")}
             </button>
@@ -220,7 +239,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
           {user ? (
             <button
               type="button"
-              onClick={() => sendCode.mutate({ email: user.email, locale })}
+              onClick={() => sendCode.mutate({ email: user.email ?? "", locale })}
               disabled={sendCode.isPending}
               className="pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-1 text-[13px] font-bold text-[#0a285a] underline underline-offset-2 pointer-fine:min-h-8"
             >
@@ -243,7 +262,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
           </div>
         </div>
       ) : appleOnly && user ? (
-        <button type="button" onClick={() => sendCode.mutate({ email: user.email, locale })} disabled={sendCode.isPending} className={secondary}>
+        <button type="button" onClick={() => sendCode.mutate({ email: user.email ?? "", locale })} disabled={sendCode.isPending} className={secondary}>
           {sendCode.isPending ? <LoaderCircle className="size-4 animate-spin" /> : null}
           {t("account.setPassword")}
         </button>

@@ -426,7 +426,8 @@ async function askForTheCodeAgain(account: SupabaseUser, password: string, retur
  */
 export async function verifyCurrent(user: User, password: string): Promise<boolean> {
   if (storeFor(user) === "supabase") {
-    return Boolean(user.supabaseUid) && Boolean(await verifySupabasePassword(user.email, password));
+    /* An account made with a phone alone has no address to check a password against. */
+    return Boolean(user.supabaseUid) && Boolean(user.email) && Boolean(await verifySupabasePassword(user.email!, password));
   }
   /* Bound to a const, because `Boolean(...) &&` does not narrow the field for
      the call in the same expression — and a null hash must never reach

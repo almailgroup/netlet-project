@@ -193,6 +193,33 @@ enum API {
         var currentPassword: String?
         var apple: AppleProof?
         var google: GoogleProof?
+        /// An account made with a phone: the code texted to it.
+        var phoneCode: String?
+    }
+
+    /// "Continue with phone number" (`auth.phoneStart`, `auth.phoneVerify`).
+    struct PhoneStart: Encodable, Sendable {
+        let phone: String
+    }
+    struct PhoneStarted: Decodable, Sendable {
+        let phone: String
+    }
+    struct PhoneVerify: Encodable, Sendable {
+        let phone: String
+        let code: String
+        let remember: Bool
+    }
+    /// Adding an email to an account made with a phone (`auth.addEmailStart`,
+    /// `auth.addEmailVerify`): the address, then the code emailed to it.
+    struct AddEmailStart: Encodable, Sendable {
+        let email: String
+    }
+    struct AddEmailStarted: Decodable, Sendable {
+        let email: String
+    }
+    struct AddEmailVerify: Encodable, Sendable {
+        let email: String
+        let code: String
     }
 
     /// Signing in — or opening an account — with Apple (`auth.appleSignIn`).
@@ -230,6 +257,10 @@ enum API {
     static let appleSignIn = Procedure<AppleSignInInput, User>(mutation: "auth.appleSignIn")
     /// The same input, Google's token in it; the name comes from the token.
     static let googleSignIn = Procedure<AppleSignInInput, User>(mutation: "auth.googleSignIn")
+    static let phoneStart = Procedure<PhoneStart, PhoneStarted>(mutation: "auth.phoneStart")
+    static let phoneVerify = Procedure<PhoneVerify, PhoneVerified>(mutation: "auth.phoneVerify")
+    static let addEmailStart = Procedure<AddEmailStart, AddEmailStarted>(mutation: "auth.addEmailStart")
+    static let addEmailVerify = Procedure<AddEmailVerify, User>(mutation: "auth.addEmailVerify")
     static let accountSignInWays = Procedure<NoInput, AccountSignInWays>(query: "auth.myProviders")
     static let signIn = Procedure<SignIn, User>(mutation: "auth.login")
     static let register = Procedure<Register, RegistrationResult>(mutation: "auth.register")

@@ -417,7 +417,7 @@ function CashOuts() {
                           <button
                             type="button"
                             disabled={settle.isPending}
-                            onClick={() => setSettling({ id: row.id, name: row.name || row.email, amount: money({ amount: row.value, currencyCode: "KWD" }) })}
+                            onClick={() => setSettling({ id: row.id, name: row.name || row.email || "", amount: money({ amount: row.value, currencyCode: "KWD" }) })}
                             className={smallButtonClass.primary}
                           >
                             {t("admin.markPaid")}

@@ -72,7 +72,7 @@ struct PortalFinanceView: View {
             }
         }
         .task { await load() }
-        .confirmationDialog(settling.map { l.t("admin.markPaidTitle", ["amount": $0.value.formatted(l.current), "name": ($0.name?.isEmpty == false ? $0.name : nil) ?? $0.email]) } ?? "",
+        .confirmationDialog(settling.map { l.t("admin.markPaidTitle", ["amount": $0.value.formatted(l.current), "name": ($0.name?.isEmpty == false ? $0.name : nil) ?? $0.email ?? ""]) } ?? "",
                             isPresented: Binding(get: { settling != nil }, set: { if !$0 { settling = nil } }), titleVisibility: .visible) {
             Button(l.t("admin.markPaid")) {
                 if let row = settling { Task { await settle(row) } }
@@ -668,7 +668,7 @@ private struct AffiliateCard: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     (Text(row.displayName).font(.inter(15, .bold)).foregroundColor(Brand.navy) + Text("  \(latin(row.code))").font(.system(size: 12, design: .monospaced)).foregroundColor(Brand.muted))
-                    Text([row.name, latin(row.email), OrderWording.date(row.createdAt, language: l.current)].compactMap { $0 }.joined(separator: " · "))
+                    Text([row.name, row.email.map { latin($0) }, OrderWording.date(row.createdAt, language: l.current)].compactMap { $0 }.joined(separator: " · "))
                         .font(.inter(12)).foregroundStyle(Brand.muted)
                 }
                 Spacer(minLength: 6)
@@ -761,7 +761,7 @@ struct PortalMembershipView: View {
             page = 1
             Task { await loadGrants() }
         }
-        .confirmationDialog(ending.map { l.t("membership.endTitle", ["email": $0.email]) } ?? "",
+        .confirmationDialog(ending.map { l.t("membership.endTitle", ["email": $0.email ?? ""]) } ?? "",
                             isPresented: Binding(get: { ending != nil }, set: { if !$0 { ending = nil } }), titleVisibility: .visible) {
             Button(l.t("membership.end"), role: .destructive) {
                 if let row = ending { Task { await end(row) } }

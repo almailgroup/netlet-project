@@ -9,7 +9,8 @@
         "google": {
           "web": "000000000000-netletweb.apps.googleusercontent.com",
           "ios": "000000000000-netletios.apps.googleusercontent.com"
-        }
+        },
+        "phone": true
       }
     }
   }

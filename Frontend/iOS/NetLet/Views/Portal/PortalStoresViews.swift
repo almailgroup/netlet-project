@@ -798,7 +798,7 @@ private struct StoreTeamSection: View {
                 .disabled(busy || existingEmail.trimmingCharacters(in: .whitespaces).isEmpty)
         }
         .task { await load() }
-        .confirmationDialog(removing.map { l.t("admin.removeMemberTitle", ["name": $0.email]) } ?? "",
+        .confirmationDialog(removing.map { l.t("admin.removeMemberTitle", ["name": $0.email ?? ""]) } ?? "",
                             isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
             Button(l.t("admin.removeMember"), role: .destructive) {
                 if let member = removing { Task { await remove(member) } }

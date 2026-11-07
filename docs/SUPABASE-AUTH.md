@@ -409,6 +409,53 @@ refused, a Google account has no password until one is set by the emailed code,
 and deleting one confirms with Google. There is nothing to unlink: NetLet keeps
 no Google token.
 
+## Sign in with a phone number
+
+**Continue with phone number** is the first of the other ways in, on the
+website and in the app: a Kuwaiti mobile (`+965` and eight digits starting 4,
+5, 6 or 9), a six-digit code by text, and the account exists. Once in, the
+shopper is offered an email for receipts and order updates, and may skip it;
+the phone alone signs in and buys. Supabase holds the account and the code,
+and NetLet does the texting, through the shop's own SMS gateway. Five places,
+in this order.
+
+**1. The database** — migration 0077 lets an account have a phone and no
+email, and an order no email. Paste `docs/supabase-bootstrap.sql` into the
+SQL editor and run it **before** the code that uses it is deployed: the code
+reads the new column, so a deploy ahead of the paste fails every sign-in.
+Pasting early is safe — today's code ignores what it adds.
+
+**2. Supabase, the phone provider** — **Authentication → Sign In / Providers
+→ Phone**: **Enable**, and **SMS OTP Length** 6 (`CODE_LENGTH`, the boxes the
+form draws). The message template there is not used: NetLet writes its own
+text, in both languages, the code first. If the page will not save without an
+SMS provider's details, stop and say what it shows — the hook in the next step
+is what sends.
+
+**3. Supabase, the hook** — **Authentication → Hooks → Send SMS hook → HTTPS**,
+endpoint `https://netlet.net/api/sms-hook`. **Generate secret**, copy it (it
+reads `v1,whsec_…`), and enable the hook. Every code Supabase makes is then
+handed to NetLet, signed with that secret; NetLet refuses anything unsigned,
+anything older than five minutes, and any number outside Kuwait.
+
+**4. Vercel** — `SMS_HOOK_SECRET`, the secret from step 3, Production, then
+redeploy. Never set `SMS_LOG_ONLY` there: it writes texts to the log instead
+of sending them, which is for a laptop, and the server ignores it on
+production for that reason.
+
+**5. The SMS gateway** — Concept Combined. Until its API is wired into
+`Backend/src/core/sms.ts`, the shop cannot text, so the phone button stays
+hidden everywhere however steps 1–4 stand. `pnpm preflight` says which part is
+missing.
+
+What NetLet does with it: the code is counted like an emailed one (every send,
+every miss, by address and by number), the "I'm not a robot" box guards
+sending it where the keys are set, a number already on an account signs into
+that account, and an account made this way has no password — "Your profile"
+offers an email in the password card's place, and deleting it is confirmed by
+a code texted to its number. Adding an email emails a code to it, the
+sign-up's own template, so step 2 of "The sign-up code" applies here too.
+
 ---
 
 ## One thing to check while you are in the dashboard

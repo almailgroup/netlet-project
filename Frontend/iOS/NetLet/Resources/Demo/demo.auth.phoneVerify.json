@@ -1,0 +1,28 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": 7,
+        "email": null,
+        "phone": "+96550123456",
+        "name": null,
+        "role": "user",
+        "createdAt": "2026-11-07T09:12:40.118Z",
+        "lastSignedIn": "2026-11-07T09:12:40.118Z",
+        "created": true,
+        "needsEmail": true,
+        "portal": null
+      },
+      "meta": {
+        "values": {
+          "createdAt": [
+            "Date"
+          ],
+          "lastSignedIn": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

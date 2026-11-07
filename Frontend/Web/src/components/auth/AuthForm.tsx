@@ -69,7 +69,7 @@ import { trpc } from "@/lib/trpc";
 import { appPath } from "@/lib/basePath";
 import { ResetByCode } from "@/components/auth/ResetByCode";
 import {
-  ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, LoaderCircle, MailCheck,
+  ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, LoaderCircle, MailCheck, Smartphone,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -85,6 +85,7 @@ import { PORTAL_SIDE } from "@/lib/portalHost";
 import { openPortalTab } from "@/lib/portalPass";
 import type { PortalSide } from "@shared/portal";
 import { HumanCheck } from "./HumanCheck";
+import { PhoneSignIn } from "./PhoneSignIn";
 import { AppleButton, OrDivider } from "./AppleButton";
 import { GoogleButton } from "./GoogleButton";
 import type { AppleProof } from "@/lib/appleSignIn";
@@ -185,6 +186,8 @@ export function AuthForm({
   const [awaiting, setAwaiting] = useState<AwaitingCode | null>(null);
   const [captcha, setCaptcha] = useState<string | null>(null);
   const [captchaReset, setCaptchaReset] = useState(0);
+  /* "Continue with phone number" has the form's place while it is chosen. */
+  const [byPhone, setByPhone] = useState(false);
   /** What a link in Supabase's email came back with, read once on arrival. */
   const [arrival, setArrival] = useState<EmailReturn | null>(() => (mode === "signin" ? peekEmailReturn() : null));
   useEffect(() => { if (arrival) clearEmailReturn(); }, [arrival]);
@@ -306,6 +309,8 @@ export function AuthForm({
   const providers = trpc.auth.providers.useQuery(undefined, { enabled: !portal, staleTime: 5 * 60_000 });
   const appleClientId = portal || isReset ? null : providers.data?.apple.web ?? null;
   const googleClientId = portal || isReset ? null : providers.data?.google?.web ?? null;
+  /* A phone sign-in, on the shop's own address and while it can text. */
+  const phoneOffered = !portal && !isReset && providers.data?.phone === true;
   /* Apple and Google land the same way: a new account forgets the invitation
      it used, and somebody who belongs on a portal is handed on to it. */
   const providerAnswers = {
@@ -422,6 +427,18 @@ export function AuthForm({
           go("reset");
         }}
         onBack={() => { setArrival(null); go("signin"); }}
+      />
+    );
+  }
+
+  if (byPhone) {
+    return (
+      <PhoneSignIn
+        Heading={Heading}
+        headingId={headingId}
+        remember={isRegister ? true : remember}
+        onSignedIn={(user, said) => void settle(user.name, said ?? (user.portal ? handOn(user.portal) : undefined))}
+        onBack={() => setByPhone(false)}
       />
     );
   }
@@ -639,9 +656,19 @@ export function AuthForm({
           /* What happens next, said once, quietly, where the press is. */
           <p className="text-center text-[13px] leading-5 text-[#536b8c] [text-wrap:balance]">{t("auth.codeWillBeSent")}</p>
         ) : null}
-        {appleClientId || googleClientId ? (
+        {phoneOffered || appleClientId || googleClientId ? (
           <div className="space-y-3 pt-1">
             <div className="pb-1"><OrDivider /></div>
+            {phoneOffered ? (
+              <button
+                type="button"
+                onClick={() => { setRefusal(null); setByPhone(true); }}
+                className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-[#0a285a] bg-white px-5 text-[15px] font-semibold text-[#0a285a] transition hover:bg-[#f0f2f5]"
+              >
+                <Smartphone className="size-[18px] shrink-0" aria-hidden />
+                <span>{t("auth.continueWithPhone")}</span>
+              </button>
+            ) : null}
             {appleClientId ? (
               <AppleButton
                 clientId={appleClientId}
@@ -672,7 +699,7 @@ export function AuthForm({
 }
 
 /** The reset's way back, at the top of every page of it. */
-function BackToSignIn({ onClick }: { onClick: () => void }) {
+export function BackToSignIn({ onClick, label = "auth.resetBack" }: { onClick: () => void; label?: MessageKey }) {
   const { t } = useTranslation();
   return (
     <button
@@ -681,7 +708,7 @@ function BackToSignIn({ onClick }: { onClick: () => void }) {
       className="-ms-1 mb-5 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-[14px] font-semibold text-[#0a285a]"
     >
       <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
-      {t("auth.resetBack")}
+      {t(label)}
     </button>
   );
 }
@@ -770,16 +797,16 @@ function ModeSwitch({ mode, onChoose }: { mode: AuthMode; onChoose: (mode: AuthM
 }
 
 /* Navy on focus, as every field in the shop is, and red while it holds a problem. */
-const inputClass =
+export const inputClass =
   "block h-12 w-full rounded-xl border border-[#c9d4e2] bg-white px-4 text-[16px] text-[#0a285a] outline-none transition placeholder:text-[#8494aa] hover:border-[#9fb0c6] focus:border-[#0a285a] focus:ring-4 focus:ring-[#0a285a]/10 aria-[invalid=true]:border-[#b3261e] aria-[invalid=true]:focus:ring-[#b3261e]/15";
-const labelClass = "block text-[14px] font-semibold text-[#0a285a]";
-const titleClass = "text-[26px] font-extrabold leading-tight tracking-[-0.01em] text-[#0a285a] outline-none sm:text-[28px]";
-const primaryClass =
+export const labelClass = "block text-[14px] font-semibold text-[#0a285a]";
+export const titleClass = "text-[26px] font-extrabold leading-tight tracking-[-0.01em] text-[#0a285a] outline-none sm:text-[28px]";
+export const primaryClass =
   "flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-wait disabled:opacity-80";
-const alertClass = "flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]";
-const linkClass = "rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a] disabled:cursor-default disabled:text-[#536b8c] disabled:no-underline";
+export const alertClass = "flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]";
+export const linkClass = "rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a] disabled:cursor-default disabled:text-[#536b8c] disabled:no-underline";
 
-function Issue({ id, children }: { id: string; children: React.ReactNode }) {
+export function Issue({ id, children }: { id: string; children: React.ReactNode }) {
   return (
     <p id={id} className="mt-2 flex items-start gap-1.5 text-[13px] font-semibold leading-5 text-[#a3261c]">
       <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -1028,7 +1055,7 @@ function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onRes
 }
 
 /** The envelope over a "check your email" page, quiet and the same on both. */
-function MailTile() {
+export function MailTile() {
   return (
     <span className="grid size-12 place-items-center rounded-2xl bg-[#eef2f8] text-[#0a285a]">
       <MailCheck className="size-6" aria-hidden />
@@ -1040,7 +1067,7 @@ function MailTile() {
  * Under a code that has not come: where to look, then the two ways on —
  * another one, or a different address — on one line.
  */
-function NotArrived({ resendLabel, resendDisabled, onResend, onDifferent }: {
+export function NotArrived({ resendLabel, resendDisabled, onResend, onDifferent }: {
   resendLabel: string;
   resendDisabled: boolean;
   onResend: () => void;

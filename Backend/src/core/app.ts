@@ -12,6 +12,7 @@
  * Static files are deliberately not here. Where this runs behind a CDN, the CDN
  * serves them and the function should never be woken to hand back a .js file.
  */
+import { handleSmsHook } from "./smsHook.js";
 import express, { type Express } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routes/index.js";
@@ -75,6 +76,21 @@ export function createApp(): Express {
   // accepts a file: the largest body the API sees is a cart mutation. Leaving
   // it meant any unauthenticated caller could make the process buffer 50MB per
   // request. 256kb is generous for JSON and bounded.
+  /*
+   * Supabase's "Send SMS" hook (`core/smsHook.ts`): before the JSON parser,
+   * because its signature is over the body exactly as it was sent.
+   */
+  app.post("/api/sms-hook", express.raw({ type: "*/*", limit: "16kb" }), async (req, res) => {
+    try {
+      const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : "";
+      const answer = await handleSmsHook(req.headers, raw);
+      res.status(answer.status).json(answer.body);
+    } catch (error) {
+      console.error(`[sms] hook failed: ${describeError(error)}`);
+      res.status(500).json({ error: { http_code: 500, message: "hook failed" } });
+    }
+  });
+
   app.use(express.json({ limit: "256kb" }));
   app.use(express.urlencoded({ limit: "256kb", extended: true }));
 

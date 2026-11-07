@@ -82,7 +82,8 @@ struct WeeklyPayouts: Decodable, Sendable {
 struct CashOut: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
     var name: String? = nil
-    let email: String
+    /// Nil for an account made with a phone alone (migration 0077).
+    let email: String?
     /// "points" or "affiliate", paid at different rates.
     let pot: String
     let points: Int
@@ -184,7 +185,8 @@ struct MintedCard: Decodable, Sendable {
 
 struct AffiliateRow: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
-    let email: String
+    /// Nil for an account made with a phone alone (migration 0077).
+    let email: String?
     var name: String? = nil
     let code: String
     let displayName: String
@@ -210,7 +212,8 @@ struct AffiliatePage: Decodable, Sendable {
 
 struct MembershipGrant: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
-    let email: String
+    /// Nil for an account made with a phone alone (migration 0077).
+    let email: String?
     let startsAt: Date
     let endsAt: Date
     var cancelledAt: Date? = nil

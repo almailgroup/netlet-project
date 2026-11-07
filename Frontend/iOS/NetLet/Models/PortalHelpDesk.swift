@@ -188,7 +188,8 @@ struct CourierMember: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
     let userId: Int
     let courierId: Int
-    let email: String
+    /// Nil for an account made with a phone alone (migration 0077).
+    let email: String?
     var name: String? = nil
 }
 

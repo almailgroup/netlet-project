@@ -2068,6 +2068,16 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0077_phone_sign_in.sql =====
+ALTER TABLE "orders" ALTER COLUMN "email" DROP NOT NULL;
+ALTER TABLE "users" ALTER COLUMN "email" DROP NOT NULL;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "phone" varchar(16);
+CREATE UNIQUE INDEX IF NOT EXISTS "users_phone_unique" ON "users" USING btree ("phone") WHERE "users"."phone" is not null;
+DO $$ BEGIN
+  ALTER TABLE "users" ADD CONSTRAINT "users_has_identifier" CHECK ("users"."email" is not null or "users"."phone" is not null);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2111,6 +2121,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  77 AS migrations_in_this_file,
+  78 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

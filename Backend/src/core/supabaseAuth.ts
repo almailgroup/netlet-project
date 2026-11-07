@@ -391,6 +391,66 @@ export async function verifySupabaseSignupCode(email: string, code: string): Pro
   return body.user ? toUser(body.user, email) : null;
 }
 
+/** Thrown when Supabase has no phone sign-in to send a text with. */
+export class SupabasePhoneOff extends Error {
+  constructor() {
+    super("SUPABASE_PHONE_OFF");
+    this.name = "SupabasePhoneOff";
+  }
+}
+
+/**
+ * Has Supabase text a six-digit code to a phone, making the account waiting
+ * for it if there is none (`create_user`).
+ *
+ * Supabase makes the code, keeps it, expires it and counts it; the text is
+ * sent by NetLet's own SMS hook (`core/smsHook.ts`), which Supabase calls with
+ * the code. Supabase's own ceilings on texts sent are the `SupabaseMailLimited`
+ * a form turns into "wait a moment"; a project with phone sign-in switched off
+ * is `SupabasePhoneOff`.
+ */
+export async function sendSupabasePhoneCode(phone: string): Promise<void> {
+  const response = await fetch(`${base()}/auth/v1/otp`, {
+    method: "POST",
+    headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({ phone, channel: "sms", create_user: true }),
+  });
+  if (response.status === 429) throw new SupabaseMailLimited();
+  if (response.ok) return;
+  const reason = await reasonFrom(response);
+  if (/rate limit|over_sms_send_rate_limit|security purposes/i.test(reason)) throw new SupabaseMailLimited();
+  if (/provider|disabled|not enabled|phone_provider_disabled|sms_send_failed|hook/i.test(reason)) {
+    console.warn(`[auth] Supabase could not text a code: HTTP ${response.status}: ${reason}`);
+    throw new SupabasePhoneOff();
+  }
+  throw new Error(`Supabase could not text a code: HTTP ${response.status}: ${reason}`);
+}
+
+/** The Supabase user a phone code proved, with the phone it holds. */
+export type PhoneUser = { uid: string; phone: string; email: string | null };
+
+/**
+ * Checks a code Supabase texted. A wrong code and an expired one are both
+ * null, as for an emailed code; the session it answers with is read for its
+ * user and dropped.
+ */
+export async function verifySupabasePhoneCode(phone: string, code: string): Promise<PhoneUser | null> {
+  const response = await fetch(`${base()}/auth/v1/verify`, {
+    method: "POST",
+    headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({ type: "sms", phone, token: code }),
+  });
+  if ([400, 401, 403, 404, 410, 422].includes(response.status)) return null;
+  if (!response.ok) {
+    throw new Error(`Supabase phone code check failed with HTTP ${response.status}: ${await reasonFrom(response)}`);
+  }
+  const body = (await response.json()) as { user?: GoTrueUser & { phone?: string } };
+  if (!body.user?.id) return null;
+  return { uid: body.user.id, phone, email: body.user.email?.trim() ? body.user.email.trim().toLowerCase() : null };
+}
+
 /**
  * Whether the project confirms addresses by itself — Authentication → Sign In
  * / Providers → Email → "Confirm email" switched off.
@@ -648,12 +708,16 @@ export async function setPasswordFromLink(accessToken: string, password: string)
  */
 export async function updateSupabaseUser(
   uid: string,
-  patch: { email?: string; password?: string; name?: string | null },
+  patch: { email?: string; password?: string; name?: string | null; emailConfirmed?: boolean },
 ): Promise<void> {
   if (!isSupabaseAuthConfigured()) return;
 
   const body: Record<string, unknown> = {};
   if (patch.email !== undefined) body.email = patch.email;
+  /* An address proven by a code NetLet checked itself (adding one to a phone
+     account): Supabase is told it is confirmed, or its own sign-in would
+     refuse it as unconfirmed. */
+  if (patch.emailConfirmed) body.email_confirm = true;
   if (patch.password !== undefined) body.password = patch.password;
   if (patch.name !== undefined) body.user_metadata = { name: patch.name ?? null };
   /* An empty patch would be a round trip that changes nothing, and GoTrue

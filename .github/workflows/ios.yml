@@ -37,7 +37,7 @@ jobs:
     # languages — and grow with every screen added; the push of the address
     # screens finished 0s inside the old 40 minutes, and a run that times out
     # uploads nothing to TestFlight.
-    timeout-minutes: 75
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: Frontend/iOS
@@ -130,6 +130,10 @@ jobs:
             shot 04-search "$lang" search:rice ""
             shot 05-sign-in "$lang" account ""
             shot 05b-sign-up "$lang" signup ""
+            # Continue with phone number: the number, the texted code, and the optional email.
+            shot 05c-phone "$lang" phone ""
+            shot 05d-phone-code "$lang" phone:code ""
+            shot 05e-phone-email "$lang" phone:email ""
             shot 06-cart "$lang" cart shopper
             shot 07-checkout "$lang" checkout shopper
             shot 08-orders "$lang" orders shopper
@@ -214,6 +218,8 @@ jobs:
             shot 82-history "$lang" section:history shopper
             # Your profile, with its photo card first (the shop keeps photos in the recording).
             shot 83-your-profile "$lang" profile shopper
+            # An account made with a phone: the Email card where the password was.
+            shot 83b-your-profile-phone "$lang" profile phone
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

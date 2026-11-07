@@ -455,7 +455,7 @@ export async function affiliateQuietly(work: () => Promise<void>, what: string):
 
 export type AffiliateAdminRow = {
   id: number;
-  email: string;
+  email: string | null;
   name: string | null;
   code: string;
   displayName: string;

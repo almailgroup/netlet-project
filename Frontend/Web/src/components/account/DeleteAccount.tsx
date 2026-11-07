@@ -25,7 +25,10 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { formatCount } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { CircleAlert, Trash2 } from "lucide-react";
+import { CircleAlert, LoaderCircle, Trash2 } from "lucide-react";
+import { CodeBoxes } from "@/components/auth/AuthForm";
+import { isCodeShaped, normaliseCode } from "@shared/auth/emailCode";
+import { shownPhone } from "@shared/auth/phone";
 import { AppleButton, OrDivider } from "@/components/auth/AppleButton";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { useState } from "react";
@@ -56,6 +59,15 @@ export function DeleteAccount() {
   const googleAccount = ways.data?.google === true;
   const hasPassword = ways.data?.password !== false;
   const appleClientId = appleAccount ? providers.data?.apple.web ?? null : null;
+  /* An account made with a phone confirms with a code texted to it. */
+  const { user } = useAuth();
+  const phoneAccount = !hasPassword && !appleAccount && !googleAccount && Boolean(user?.phone);
+  const [phoneCode, setPhoneCode] = useState("");
+  const [texted, setTexted] = useState(false);
+  const text = trpc.auth.phoneStart.useMutation({
+    onSuccess: () => setTexted(true),
+    onError: error => toast.error(isMessageKey(error.message) ? t(error.message) : t("account.deleteFailed")),
+  });
   const googleClientId = googleAccount ? providers.data?.google?.web ?? null : null;
   /* What the account signs in with, said once above the buttons that confirm. */
   const confirmNote = appleAccount ? "account.deleteAppleNote" : "account.deleteGoogleNote";
@@ -83,6 +95,8 @@ export function DeleteAccount() {
     if (remove.isPending) return;
     setAsking(false);
     setPassword("");
+    setPhoneCode("");
+    setTexted(false);
   };
 
   return (
@@ -122,10 +136,10 @@ export function DeleteAccount() {
         confirmLabel={t("account.deleteStart")}
         tone="danger"
         pending={remove.isPending}
-        confirmDisabled={password === ""}
-        confirmHidden={!hasPassword}
+        confirmDisabled={phoneAccount ? !isCodeShaped(phoneCode) : password === ""}
+        confirmHidden={!hasPassword && !(phoneAccount && texted)}
         icon={<Trash2 className="size-5" />}
-        onConfirm={() => remove.mutate({ currentPassword: password })}
+        onConfirm={() => remove.mutate(phoneAccount ? { phoneCode } : { currentPassword: password })}
         onClose={close}
       >
         <div className="space-y-3">
@@ -164,6 +178,28 @@ export function DeleteAccount() {
                 />
               ) : null}
             </>
+          ) : phoneAccount && user?.phone ? (
+            <div className="space-y-3">
+              <p className="text-[13px] leading-5 ink-muted">
+                {t("account.deletePhoneNote", { phone: "\u2068" + shownPhone(user.phone) + "\u2069" })}
+              </p>
+              {texted ? (
+                <div>
+                  <label htmlFor="delete-phone-code" className="text-[13px] font-semibold text-[#0a285a]">{t("account.deletePhoneCode")}</label>
+                  <CodeBoxes id="delete-phone-code" value={phoneCode} onChange={raw => setPhoneCode(normaliseCode(raw))} invalid={false} />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => text.mutate({ phone: user.phone! })}
+                  disabled={text.isPending}
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-[#c9d4e2] bg-white px-5 text-[14px] font-semibold text-[#0a285a] hover:bg-[#f0f2f5]"
+                >
+                  {text.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+                  {t("account.deleteWithPhone")}
+                </button>
+              )}
+            </div>
           ) : !hasPassword ? (
             <p className="text-[13px] leading-5 ink-muted">{t(appleAccount ? "account.deleteAppleInApp" : "account.deleteGoogleInApp")}</p>
           ) : null}

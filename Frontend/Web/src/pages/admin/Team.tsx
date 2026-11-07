@@ -116,7 +116,7 @@ function Team({ actor }: { actor: Actor }) {
                         </Select>
                         <button
                           type="button"
-                          onClick={() => setRemoving({ userId: member.userId, name: member.name || member.email })}
+                          onClick={() => setRemoving({ userId: member.userId, name: member.name || member.email || "" })}
                           aria-label={`${t("admin.remove")}: ${member.name || member.email}`}
                           className={`${smallButtonClass.quietDanger} w-9 px-0`}
                         >

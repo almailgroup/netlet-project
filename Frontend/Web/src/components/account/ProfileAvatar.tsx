@@ -7,6 +7,7 @@
  * (`GET /api/profile/photo/:id`). Kept apart from the choosing
  * (`ProfilePhoto.tsx`) because the header carries it on every page.
  */
+import { UserRound } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,8 +21,9 @@ import { appPath } from "@/lib/basePath";
  * Non-Latin names work unchanged — the first character of each word is right
  * in Arabic too.
  */
-export function initialsFor(user: { name: string | null; email: string }): string {
-  const source = user.name?.trim() || user.email.split("@")[0] || "";
+export function initialsFor(user: { name: string | null; email: string | null }): string {
+  /* An account made with a phone and no name yet has no letters to show. */
+  const source = user.name?.trim() || user.email?.split("@")[0] || "";
   const words = source.split(/[\s._-]+/).filter(Boolean);
   if (words.length === 0) return "?";
   if (words.length === 1) return [...words[0]].slice(0, 2).join("").toUpperCase();
@@ -36,7 +38,7 @@ export function useProfilePhoto() {
 }
 
 export function ProfileAvatar({ user, size, textClass, src: shown, alt = "" }: {
-  user: { name: string | null; email: string };
+  user: { name: string | null; email: string | null };
   /** Tailwind size of the circle, e.g. `size-16`. */
   size: string;
   /** The initials' type, sized to the circle. */
@@ -64,7 +66,8 @@ export function ProfileAvatar({ user, size, textClass, src: shown, alt = "" }: {
   }
   return (
     <span aria-hidden={alt === "" ? true : undefined} role={alt ? "img" : undefined} aria-label={alt || undefined} className={`grid ${size} shrink-0 place-items-center rounded-full bg-[#f1f2f6] font-bold text-[#0a285a] ${textClass}`}>
-      {initialsFor(user)}
+      {/* An account made with a phone and no name yet: a person, not a "?". */}
+      {initialsFor(user) === "?" ? <UserRound className="size-[55%]" aria-hidden /> : initialsFor(user)}
     </span>
   );
 }

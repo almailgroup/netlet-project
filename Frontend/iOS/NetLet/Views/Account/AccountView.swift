@@ -244,7 +244,8 @@ struct AccountView: View {
                     .font(.inter(18, .bold))
                     .foregroundStyle(Brand.navy)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("\u{2066}\(user.email)\u{2069}")
+                // The email, or for an account made with a phone, the number.
+                Text("\u{2066}\(user.email ?? user.phone.map(AccountView.shownPhone) ?? "")\u{2069}")
                     .font(.inter(14))
                     .foregroundStyle(Brand.muted)
                     .lineLimit(1)
@@ -571,7 +572,7 @@ extension View {
 /// profile", on the owner's word.
 enum AccountName {
     static func initials(_ user: User) -> String {
-        let source = user.name?.trimmingCharacters(in: .whitespaces).isEmpty == false ? user.name! : (user.email.split(separator: "@").first.map(String.init) ?? "")
+        let source = user.name?.trimmingCharacters(in: .whitespaces).isEmpty == false ? user.name! : (user.email?.split(separator: "@").first.map(String.init) ?? "")
         let words = source.split(whereSeparator: { " ._-".contains($0) })
         if words.count >= 2 { return (String(words[0].prefix(1)) + String(words[1].prefix(1))).uppercased() }
         return words.first.map { String($0.prefix(2)).uppercased() } ?? "?"
@@ -732,8 +733,14 @@ private struct ProfileForm: View {
     var body: some View {
         VStack(spacing: 16) {
             profileCards
-            if !appleOnly { passwordCard }
-            recoverCard
+            if let user = app.session.user, user.email == nil {
+                // An account made with a phone has no email yet: this card
+                // offers one (by a code sent to it), and the password follows.
+                AddEmailCard(phone: user.phone) { updated in app.session.updated(updated) }
+            } else {
+                if !appleOnly { passwordCard }
+                recoverCard
+            }
         }
         .task { if ways == nil { ways = try? await app.services.account.accountSignInWays() } }
     }
@@ -761,18 +768,18 @@ private struct ProfileForm: View {
                             .font(.inter(17, .bold))
                             .foregroundStyle(Brand.ink)
                             .accessibilityAddTraits(.isHeader)
-                        Text(l.t(ways?.apple == true ? "account.passwordAppleNote" : "account.passwordGoogleNote"))
+                        Text(l.t(ways?.apple == true ? "account.passwordAppleNote" : ways?.google == true ? "account.passwordGoogleNote" : "account.passwordPhoneNote"))
                             .font(.inter(14))
                             .foregroundStyle(Brand.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if recovering == .sent {
-                    Text(l.t("account.recoverSent", ["email": "\u{2068}\(user.email)\u{2069}"]))
+                    Text(l.t("account.recoverSent", ["email": "\u{2068}\(user.email ?? "")\u{2069}"]))
                         .font(.inter(14))
                         .foregroundStyle(Brand.ink)
                         .fixedSize(horizontal: false, vertical: true)
-                    ResetByCodeFields(email: user.email, signedIn: { signed in
+                    ResetByCodeFields(email: user.email ?? "", signedIn: { signed in
                         app.session.updated(signed)
                         Haptics.succeeded()
                         app.toast(l.t("account.passwordChanged"))
@@ -782,7 +789,7 @@ private struct ProfileForm: View {
                     })
                 }
                 Button {
-                    Task { await sendCode(to: user.email) }
+                    Task { await sendCode(to: user.email ?? "") }
                 } label: {
                     HStack(spacing: 8) {
                         if recovering == .sending { ProgressView().tint(Brand.navy) }

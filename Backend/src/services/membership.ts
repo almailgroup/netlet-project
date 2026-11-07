@@ -94,7 +94,7 @@ export async function endMembership(actor: Actor, id: number, now = new Date()):
   if (!row) throw new MembershipRefused("membership.notFound");
 }
 
-export type MembershipListRow = { id: number; email: string; startsAt: Date; endsAt: Date; cancelledAt: Date | null; source: string; note: string | null; active: boolean };
+export type MembershipListRow = { id: number; email: string | null; startsAt: Date; endsAt: Date; cancelledAt: Date | null; source: string; note: string | null; active: boolean };
 
 /** Every grant, newest first, paged; `current` narrows to the ones not yet over. */
 export async function listMemberships(actor: Actor, request: { current?: boolean; page?: number; pageSize?: number } = {}, now = new Date()): Promise<Page<MembershipListRow>> {

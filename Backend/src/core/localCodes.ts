@@ -28,15 +28,22 @@ const pending = new Map<string, { digest: Buffer; expiresAt: number }>();
 const keyOf = (email: string) => email.trim().toLowerCase();
 const digestOf = (code: string) => createHash("sha256").update(code).digest();
 
+/**
+ * What a code is for. A phone's is keyed by the number, an email added to a
+ * phone account's by the address; each kept apart from the others, so one can
+ * never be spent as another.
+ */
+type Purpose = "sign-up" | "reset" | "phone" | "add-email";
+
 /** Issues a fresh code for the address, replacing any older one, and logs it. */
-export function issueLocalCode(email: string, purpose: "sign-up" | "reset" = "sign-up"): void {
+export function issueLocalCode(email: string, purpose: Purpose = "sign-up"): void {
   const code = String(randomInt(0, 10 ** CODE_LENGTH)).padStart(CODE_LENGTH, "0");
   pending.set(keyFor(email, purpose), { digest: digestOf(code), expiresAt: Date.now() + LOCAL_CODE_TTL_MS });
   console.info(`[auth] no mail service is configured, so the ${purpose} code for ${keyOf(email)} is ${code}`);
 }
 
 /** A reset's code is kept apart from a sign-up's, so one can never be spent as the other. */
-const keyFor = (email: string, purpose: "sign-up" | "reset") => (purpose === "reset" ? `reset:${keyOf(email)}` : keyOf(email));
+const keyFor = (email: string, purpose: Purpose) => (purpose === "sign-up" ? keyOf(email) : `${purpose}:${keyOf(email)}`);
 
 /** Whether a code is waiting for this address — what "send it again" asks first. */
 export function hasLocalCode(email: string): boolean {
@@ -45,7 +52,7 @@ export function hasLocalCode(email: string): boolean {
 }
 
 /** True, and the code spent, when it is the one issued and still in date. */
-export function takeLocalCode(email: string, code: string, purpose: "sign-up" | "reset" = "sign-up"): boolean {
+export function takeLocalCode(email: string, code: string, purpose: Purpose = "sign-up"): boolean {
   const key = keyFor(email, purpose);
   const entry = pending.get(key);
   if (!entry) return false;

@@ -941,7 +941,7 @@ private struct CourierMembersSection: View {
                             }
                             .buttonStyle(.tap)
                             .disabled(busy)
-                            .accessibilityLabel(l.t("dispatch.removeMember", ["id": member.name?.isEmpty == false ? member.name! : member.email]))
+                            .accessibilityLabel(l.t("dispatch.removeMember", ["id": member.name?.isEmpty == false ? member.name! : member.email ?? ""]))
                         }
                     }
                 }
@@ -954,7 +954,7 @@ private struct CourierMembersSection: View {
                 .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || busy)
         }
         .task { await load() }
-        .confirmationDialog(removing.map { l.t("dispatch.removeMemberTitle", ["name": $0.name?.isEmpty == false ? $0.name! : $0.email]) } ?? "",
+        .confirmationDialog(removing.map { l.t("dispatch.removeMemberTitle", ["name": $0.name?.isEmpty == false ? $0.name! : $0.email ?? ""]) } ?? "",
                             isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
             Button(l.t("admin.removeMember"), role: .destructive) {
                 if let member = removing { Task { await remove(member) } }

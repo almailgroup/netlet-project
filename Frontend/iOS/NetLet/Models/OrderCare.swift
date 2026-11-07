@@ -178,7 +178,8 @@ struct InvoiceDocument: Decodable, Hashable, Sendable {
     struct Buyer: Decodable, Hashable, Sendable {
         let name: String?
         let phone: String?
-        let email: String
+        /// Nil for an account made with a phone alone (migration 0077).
+        let email: String?
         let address: String?
     }
 

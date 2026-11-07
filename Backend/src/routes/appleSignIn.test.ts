@@ -120,10 +120,11 @@ describe("Sign in with Apple", () => {
     expect(await guest.auth.providers()).toEqual({
       apple: { app: true, web: "net.netlet.web" },
       google: { web: "web-1.apps.googleusercontent.com", ios: "ios-1.apps.googleusercontent.com" },
+      phone: false,
     });
     appleOn = false;
     googleOn = false;
-    expect(await guest.auth.providers()).toEqual({ apple: { app: false, web: null }, google: { web: null, ios: null } });
+    expect(await guest.auth.providers()).toEqual({ apple: { app: false, web: null }, google: { web: null, ios: null }, phone: false });
   });
 
   it("opens an account for an Apple ID it has not met, with the name Apple gave, and signs in", async () => {
@@ -206,11 +207,11 @@ describe("Sign in with Apple", () => {
     const email = freshEmail();
     const [row] = await db.insert(users).values({ email, supabaseUid: `ways-${serial}` }).returning();
     const me = appRouter.createCaller(contextFor(row as User));
-    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: false });
+    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: false, phone: false });
     providersOf[`ways-${serial}`] = ["apple"];
-    expect(await me.auth.myProviders()).toEqual({ password: false, apple: true, google: false });
+    expect(await me.auth.myProviders()).toEqual({ password: false, apple: true, google: false, phone: false });
     providersOf[`ways-${serial}`] = ["email", "google"];
-    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: true });
+    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: true, phone: false });
     providersOf = {};
   });
 

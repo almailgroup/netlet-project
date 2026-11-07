@@ -18,7 +18,7 @@
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 /** When either page last changed, as a Kuwaiti calendar day. */
-export const LEGAL_UPDATED = "2026-11-06";
+export const LEGAL_UPDATED = "2026-11-07";
 
 export type LegalParagraph = {
   key: MessageKey;
@@ -62,6 +62,7 @@ export const PRIVACY: LegalSection[] = [
       { key: "privacy.who.google" },
       { key: "privacy.who.apple" },
       { key: "privacy.who.googleSignIn" },
+      { key: "privacy.who.phoneSignIn" },
       { key: "privacy.who.placeLookup" },
       { key: "privacy.who.ai" },
       { key: "privacy.who.tryOn", only: "tryOn" },

@@ -341,7 +341,7 @@ struct PortalTeamView: View {
                         Text(member.shownName).font(.inter(15, .semibold)).foregroundStyle(Brand.navy)
                         if member.userId == actor?.userId { Text(l.t("admin.you")).font(.inter(12)).foregroundStyle(Brand.muted) }
                     }
-                    Text(member.email).font(.inter(13)).foregroundStyle(Brand.muted).environment(\.layoutDirection, .leftToRight)
+                    Text(member.email ?? "").font(.inter(13)).foregroundStyle(Brand.muted).environment(\.layoutDirection, .leftToRight)
                 }
                 Spacer(minLength: 6)
                 if !manages { StatusPill(label: l.t(TeamWords.role(member.role)), tone: .shipped) }

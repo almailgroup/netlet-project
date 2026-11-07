@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 74 tables, 785 columns, 135 indexes, 173 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 74 tables, 786 columns, 136 indexes, 173 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -68,7 +68,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('order_item_addons', 'addon_id,id:pnd,kind:n,label:n,order_item_id:n,price:n', 'order_item_addons_line_idx', 'addon_id>product_addons:n,order_item_id>order_items:c'),
   ('order_items', 'affiliate_vendor_percent,bundle_id,bundle_name,carried_by,centre_id,commission_amount:nd,commission_fixed:nd,commission_percent:nd,courier_id,created_at:nd,delivered_at,delivery_choice:nd,destination,discount_amount:nd,discount_code,discount_code_id,fulfilment:nd,id:pnd,line_total:n,order_id:n,preorder_release_at,preordered:nd,product_id,product_title:n,quantity:n,referral_rate,referrer_id,size_class,sku,unit_price:n,updated_at:nd,variant_id,variant_title,vendor_id,vendor_name,vendor_net:nd,weight_grams', 'order_items_fulfilment_idx,order_items_order_id_idx,order_items_vendor_id_idx', 'bundle_id>bundles:n,carried_by>users:n,centre_id>fulfilment_centres:r,courier_id>couriers:n,discount_code_id>discount_codes:n,order_id>orders:c,product_id>products:n,referrer_id>users:n,variant_id>product_variants:n,vendor_id>vendors:n'),
   ('order_tracking_events', 'created_at:nd,id:pnd,message,occurred_at:nd,order_reference:n,status:n,user_id:n', 'order_tracking_user_id_idx,order_tracking_user_occurred_idx', 'user_id>users:c'),
-  ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total:nd,contact_name,contact_phone,currency:nd,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total:nd,delivery_waived:nd,delivery_zone_id,discount_code,discount_value:nd,email:n,gift_card_code,gift_card_value:nd,grand_total:n,id:pnd,items_total:n,member:nd,payment_collected_at,payment_method,placed_at:nd,points_spent:nd,points_value:nd,reference:n,status:nd,subscription_id,updated_at:nd,user_id', 'orders_placed_idx,orders_reference_unique:u,orders_status_idx,orders_user_id_idx', 'affiliate_id>affiliates:n,subscription_id>subscriptions:n,user_id>users:n'),
+  ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total:nd,contact_name,contact_phone,currency:nd,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total:nd,delivery_waived:nd,delivery_zone_id,discount_code,discount_value:nd,email,gift_card_code,gift_card_value:nd,grand_total:n,id:pnd,items_total:n,member:nd,payment_collected_at,payment_method,placed_at:nd,points_spent:nd,points_value:nd,reference:n,status:nd,subscription_id,updated_at:nd,user_id', 'orders_placed_idx,orders_reference_unique:u,orders_status_idx,orders_user_id_idx', 'affiliate_id>affiliates:n,subscription_id>subscriptions:n,user_id>users:n'),
   ('payout_files', 'created_at:nd,created_by,id:pnd', '', 'created_by>users:n'),
   ('payout_run_items', 'amount:n,booking_id,charge_id,id:pnd,order_id,order_reference:n,run_id:n,vendor_id', 'payout_run_items_order_idx,payout_run_items_run_booking_unique:u,payout_run_items_run_charge_unique:u,payout_run_items_run_order_unique:u', 'booking_id>ad_bookings:n,charge_id>fulfilment_charges:n,order_id>orders:n,run_id>payout_runs:c,vendor_id>vendors:n'),
   ('payout_runs', 'bank_reference,file_id,iban_used,id:pnd,paid_at,paid_by,prepared_at,prepared_by,status:nd,total:n,vendor_id,vendor_name:n', 'payout_runs_status_idx,payout_runs_vendor_idx', 'file_id>payout_files:n,paid_by>users:n,prepared_by>users:n,vendor_id>vendors:n'),
@@ -90,7 +90,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('subscriptions', 'address_id,created_at:nd,id:pnd,interval_weeks:n,last_order_id,last_outcome,last_run_on,next_run_on:n,paused_reason,price_ceiling:n,product_id,product_title:n,quantity:n,status:nd,updated_at:nd,user_id:n,variant_id,variant_title,vendor_id', 'subscriptions_due_idx,subscriptions_one_open:uw,subscriptions_user_idx', 'address_id>customer_addresses:n,last_order_id>orders:n,product_id>products:n,user_id>users:c,variant_id>product_variants:n,vendor_id>vendors:n'),
   ('support_conversations', 'created_at:nd,id:pnd,last_message_at:nd,order_id,order_reference,shopper_read_at,staff_read_at,status:nd,topic:n,user_id:n', 'support_conversations_status_idx,support_conversations_user_idx', 'order_id>orders:n,user_id>users:c'),
   ('support_messages', 'answer,author:n,author_id,body,conversation_id:n,created_at:nd,id:pnd', 'support_messages_conversation_idx', 'author_id>users:n,conversation_id>support_conversations:c'),
-  ('users', 'audit_seen_at,created_at:nd,email:n,id:pnd,last_signed_in:nd,name,password_hash,role:nd,supabase_uid,updated_at:nd', 'users_email_unique:u,users_supabase_uid_unique:uw', ''),
+  ('users', 'audit_seen_at,created_at:nd,email,id:pnd,last_signed_in:nd,name,password_hash,phone,role:nd,supabase_uid,updated_at:nd', 'users_email_unique:u,users_phone_unique:uw,users_supabase_uid_unique:uw', ''),
   ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at:nd,governorate,id:pnd,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_fixed,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status:nd,store_name:n,store_name_ar,under_platform_licence:nd,updated_at:nd,user_id:n,vendor_id', 'vendor_applications_open_unique:uw,vendor_applications_status_idx', 'reviewed_by>users:n,user_id>users:c,vendor_id>vendors:n'),
   ('vendor_members', 'created_at:nd,id:pnd,role:nd,user_id:n,vendor_id:n', 'vendor_members_user_id_idx,vendor_members_vendor_user_unique:u', 'user_id>users:c,vendor_id>vendors:c'),
   ('vendor_warnings', 'created_at:nd,expires_at:n,id:pnd,issued_by,product_id,reason:n,vendor_id:n,withdrawn_at,withdrawn_by', 'vendor_warnings_vendor_idx', 'issued_by>users:n,product_id>products:n,vendor_id>vendors:c,withdrawn_by>users:n'),
@@ -261,7 +261,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 74 tables, 785 columns, 135 indexes, 173 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 74 tables, 786 columns, 136 indexes, 173 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

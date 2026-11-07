@@ -156,6 +156,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     if (message === "NO_WARRANTY") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.needsWarranty" });
     }
+    if (message === "NO_EMAIL") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "admin.noEmailToReset" });
     if (message === "NO_SUCH_DEPARTMENT") {
       throw new TRPCError({ code: "BAD_REQUEST", message: "admin.noSuchDepartment" });
     }

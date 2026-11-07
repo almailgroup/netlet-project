@@ -48,6 +48,7 @@
  * own query), at most four each; nothing yet is said in words rather than
  * drawn as empty boxes.
  */
+import { shownPhone } from "@shared/auth/phone";
 import { ProfileAvatar } from "@/components/account/ProfileAvatar";
 import { PANEL } from "@/components/account/profileParts";
 import { MembershipCard } from "@/components/account/MembershipCard";
@@ -87,7 +88,7 @@ import {
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "wouter";
 
-type User = { name: string | null; email: string };
+type User = { name: string | null; email: string | null; phone?: string | null };
 
 /** A row's look: what it opens, its icon and its name. */
 type Row = {
@@ -188,7 +189,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           <p className="text-[18px] font-bold leading-snug text-[#0a285a] [overflow-wrap:anywhere]">
             <bdi>{user.name?.trim() || t("account.noName")}</bdi>
           </p>
-          <p className="mt-0.5 truncate text-[14px] ink-muted"><bdi dir="ltr">{user.email}</bdi></p>
+          {/* The email, or for an account made with a phone, the number. */}
+          <p className="mt-0.5 truncate text-[14px] ink-muted"><bdi dir="ltr">{user.email ?? (user.phone ? shownPhone(user.phone) : "")}</bdi></p>
           {/* The phone the driver calls, saved under Your profile — or a way to add one. */}
           {details.data?.phone ? (
             <p className="mt-0.5 truncate text-[14px] ink-muted"><bdi dir="ltr">{formatPhone(details.data.phone).startsWith("+") ? formatPhone(details.data.phone) : `+965 ${formatPhone(details.data.phone)}`}</bdi></p>

@@ -660,7 +660,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
               <button type="button" onClick={() => sendReset.mutate({ userId: member.userId, locale })} disabled={sendReset.isPending} className={buttonClass.secondary}>
                 <KeyRound className="size-4" aria-hidden />{t("admin.sendReset")}
               </button>
-              <button type="button" onClick={() => setRemoving({ userId: member.userId, email: member.email })} disabled={remove.isPending} className={buttonClass.quietDanger}>
+              <button type="button" onClick={() => setRemoving({ userId: member.userId, email: member.email ?? "" })} disabled={remove.isPending} className={buttonClass.quietDanger}>
                 <Trash2 className="size-4" aria-hidden />{t("admin.removeMember")}
               </button>
             </li>

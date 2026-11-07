@@ -303,6 +303,9 @@ struct PortalEmpty: View {
 /// A Latin value inside a sentence on either page: an email, a reference, an IBAN.
 func latin(_ text: String) -> String { "\u{2066}\(text)\u{2069}" }
 
+/// An account's email in a row, or nothing for one made with a phone alone.
+func latin(_ text: String?) -> String { text.map { "\u{2066}\($0)\u{2069}" } ?? "" }
+
 /// A line that says something about the page's state (`Notice`): good news
 /// in green, something to know in orange, a refusal in red, a fact in navy.
 struct PortalNotice: View {

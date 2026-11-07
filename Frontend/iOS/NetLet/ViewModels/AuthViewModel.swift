@@ -49,6 +49,8 @@ final class AuthViewModel {
     private(set) var appleOffered = false
     /// Google's client id for the app, while the server offers Google.
     private(set) var googleClientId: String?
+    /// "Continue with phone number", while the server can text a code.
+    private(set) var phoneOffered = false
     private var appleAsked = false
     private let apple = AppleSignIn()
     private let google = GoogleSignIn()
@@ -93,6 +95,7 @@ final class AuthViewModel {
             let ways = try? await account.signInWays()
             appleOffered = ways?.apple.app ?? false
             googleClientId = ways?.google?.ios
+            phoneOffered = ways?.phone ?? false
         }
         guard mode == .register, captchaSiteKey == nil else { return }
         captchaSiteKey = (try? await account.signupOptions())?.captchaSiteKey
