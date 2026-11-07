@@ -188,13 +188,15 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { captchaSiteKey: null };
     /* Nor Apple: there is no Supabase to check Apple's token. */
     case "auth.providers":
-      return { apple: { app: false, web: null }, google: { web: null, ios: null } };
+      return { apple: { app: false, web: null }, google: { web: null, ios: null }, microsoft: { web: null, ios: null } };
     case "auth.myProviders":
-      return { password: true, apple: false, google: false };
+      return { password: true, apple: false, google: false, microsoft: false };
     case "auth.appleSignIn":
       throw new TRPCClientError("auth.appleUnavailable");
     case "auth.googleSignIn":
       throw new TRPCClientError("auth.googleUnavailable");
+    case "auth.microsoftSignIn":
+      throw new TRPCClientError("auth.microsoftUnavailable");
     /* No keys in the demo, so the pin picker draws OpenStreetMap. */
     case "maps.providers":
       return { google: null, apple: false, drivingTimes: false };

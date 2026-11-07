@@ -761,7 +761,7 @@ private struct ProfileForm: View {
                             .font(.inter(17, .bold))
                             .foregroundStyle(Brand.ink)
                             .accessibilityAddTraits(.isHeader)
-                        Text(l.t(ways?.apple == true ? "account.passwordAppleNote" : "account.passwordGoogleNote"))
+                        Text(l.t(ways?.apple == true ? "account.passwordAppleNote" : ways?.google == true ? "account.passwordGoogleNote" : "account.passwordMicrosoftNote"))
                             .font(.inter(14))
                             .foregroundStyle(Brand.muted)
                             .fixedSize(horizontal: false, vertical: true)

@@ -16,8 +16,9 @@
  *
  * Credentials go to NetLet's own `auth.login` / `auth.register`, which set an
  * httpOnly session cookie, so nothing token-shaped is ever held in JavaScript.
- * Sign in with Apple and with Google are the other ways in (`AppleButton`,
- * `GoogleButton`), under an "or" line beneath the form's own button, each only
+ * Sign in with Apple, Google and Microsoft are the other ways in
+ * (`AppleButton`, `GoogleButton`, `MicrosoftButton`), under an "or" line
+ * beneath the form's own button, each only
  * while the server says Supabase has it on and the website has its client id;
  * there is no other, because a provider's button that does nothing is worse
  * than none.
@@ -86,9 +87,9 @@ import { openPortalTab } from "@/lib/portalPass";
 import type { PortalSide } from "@shared/portal";
 import { HumanCheck } from "./HumanCheck";
 import { AppleButton, OrDivider } from "./AppleButton";
-import { GoogleButton } from "./GoogleButton";
+import { GoogleButton, MicrosoftButton } from "./ProviderButton";
 import type { AppleProof } from "@/lib/appleSignIn";
-import type { GoogleProof } from "@/lib/googleSignIn";
+import type { PopupProof } from "@/lib/popupSignIn";
 
 export type AuthMode = "signin" | "register" | "reset";
 
@@ -306,7 +307,8 @@ export function AuthForm({
   const providers = trpc.auth.providers.useQuery(undefined, { enabled: !portal, staleTime: 5 * 60_000 });
   const appleClientId = portal || isReset ? null : providers.data?.apple.web ?? null;
   const googleClientId = portal || isReset ? null : providers.data?.google?.web ?? null;
-  /* Apple and Google land the same way: a new account forgets the invitation
+  const microsoftClientId = portal || isReset ? null : providers.data?.microsoft?.web ?? null;
+  /* Apple, Google and Microsoft land the same way: a new account forgets the invitation
      it used, and somebody who belongs on a portal is handed on to it. */
   const providerAnswers = {
     onSuccess: (user: { name: string | null; created: boolean; portal: { side: PortalSide; url: string } | null }) => {
@@ -315,20 +317,25 @@ export function AuthForm({
     },
     onError: (error: { message: string }) => setRefusal({
       message: error.message,
-      next: (error.message === "auth.appleEmailTaken" || error.message === "auth.googleEmailTaken") && isRegister ? "signin" : undefined,
+      next: (error.message === "auth.appleEmailTaken" || error.message === "auth.googleEmailTaken" || error.message === "auth.microsoftEmailTaken") && isRegister ? "signin" : undefined,
     }),
   };
   const apple = trpc.auth.appleSignIn.useMutation(providerAnswers);
   const google = trpc.auth.googleSignIn.useMutation(providerAnswers);
+  const microsoft = trpc.auth.microsoftSignIn.useMutation(providerAnswers);
   const withApple = (proof: AppleProof) => {
     setRefusal(null);
     apple.mutate({ ...proof, remember: isRegister ? true : remember, referral: storedReferral(), portal: !PORTAL_SIDE });
   };
-  const withGoogle = (proof: GoogleProof) => {
+  const withGoogle = (proof: PopupProof) => {
     setRefusal(null);
     google.mutate({ ...proof, remember: isRegister ? true : remember, referral: storedReferral(), portal: !PORTAL_SIDE });
   };
-  const pending = login.isPending || register.isPending || reset.isPending || apple.isPending || google.isPending;
+  const withMicrosoft = (proof: PopupProof) => {
+    setRefusal(null);
+    microsoft.mutate({ ...proof, remember: isRegister ? true : remember, referral: storedReferral(), portal: !PORTAL_SIDE });
+  };
+  const pending = login.isPending || register.isPending || reset.isPending || apple.isPending || google.isPending || microsoft.isPending;
 
   /* The heading, so what happened is the first thing read; the button pressed has gone. */
   useEffect(() => {
@@ -639,7 +646,7 @@ export function AuthForm({
           /* What happens next, said once, quietly, where the press is. */
           <p className="text-center text-[13px] leading-5 text-[#536b8c] [text-wrap:balance]">{t("auth.codeWillBeSent")}</p>
         ) : null}
-        {appleClientId || googleClientId ? (
+        {appleClientId || googleClientId || microsoftClientId ? (
           <div className="space-y-3 pt-1">
             <div className="pb-1"><OrDivider /></div>
             {appleClientId ? (
@@ -656,6 +663,14 @@ export function AuthForm({
                 busy={google.isPending}
                 onProof={withGoogle}
                 onFailed={() => setRefusal({ message: "auth.googleWindowFailed" })}
+              />
+            ) : null}
+            {microsoftClientId ? (
+              <MicrosoftButton
+                clientId={microsoftClientId}
+                busy={microsoft.isPending}
+                onProof={withMicrosoft}
+                onFailed={() => setRefusal({ message: "auth.microsoftWindowFailed" })}
               />
             ) : null}
           </div>

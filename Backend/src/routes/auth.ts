@@ -72,6 +72,7 @@ import {
 } from "../core/supabaseAuth.js";
 import { keepOwnerAdmin, linkProviderAccount } from "../services/logins.js";
 import { googleIosClientId, googleWebClientId, namesOf } from "../core/googleSignIn.js";
+import { microsoftClientId } from "../core/microsoftSignIn.js";
 
 /*
  * What signing in takes. **No length floor on the password**, only a cap:
@@ -332,17 +333,21 @@ const appleProof = z.object({
   code: z.string().max(2000).optional(),
 });
 
-type IdProvider = "apple" | "google";
+type IdProvider = "apple" | "google" | "microsoft";
+
+/** What Supabase calls each: Microsoft is its "azure". */
+const SUPABASE_PROVIDER = { apple: "apple", google: "google", microsoft: "azure" } as const;
 
 /** Each provider's own words for what can go wrong — message keys. */
 const PROVIDER_WORDS = {
   apple: { unavailable: "auth.appleUnavailable", refused: "auth.appleRefused", unreachable: "auth.appleUnreachable", taken: "auth.appleEmailTaken", notThis: "auth.appleNotThisAccount" },
   google: { unavailable: "auth.googleUnavailable", refused: "auth.googleRefused", unreachable: "auth.googleUnreachable", taken: "auth.googleEmailTaken", notThis: "auth.googleNotThisAccount" },
+  microsoft: { unavailable: "auth.microsoftUnavailable", refused: "auth.microsoftRefused", unreachable: "auth.microsoftUnreachable", taken: "auth.microsoftEmailTaken", notThis: "auth.microsoftNotThisAccount" },
 } as const;
 
 /** Whether Supabase has a provider switched on, read from its public settings. */
 async function providerOn(provider: IdProvider): Promise<boolean> {
-  return (await supabaseExternalProviders())?.[provider] === true;
+  return (await supabaseExternalProviders())?.[SUPABASE_PROVIDER[provider]] === true;
 }
 
 /**
@@ -352,7 +357,7 @@ async function providerOn(provider: IdProvider): Promise<boolean> {
  */
 async function providerUser(provider: IdProvider, proof: { idToken: string; nonce: string }): Promise<IdTokenUser | null> {
   try {
-    return await signInSupabaseWithIdToken(provider, proof.idToken, proof.nonce);
+    return await signInSupabaseWithIdToken(SUPABASE_PROVIDER[provider], proof.idToken, proof.nonce);
   } catch (error) {
     console.error(`[auth] ${provider} sign-in could not reach Supabase: ${error instanceof Error ? error.message : String(error)}`);
     throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: PROVIDER_WORDS[provider].unreachable });
@@ -368,7 +373,7 @@ const providerSignInInput = appleProof.extend({
 });
 
 /**
- * Signs in — or opens an account — with Apple or Google. One door for both,
+ * Signs in — or opens an account — with Apple, Google or Microsoft. One door,
  * since neither provider's sheet tells them apart: an account there NetLet
  * has met signs into its account, and a new one is an account made now, its
  * address already vouched for, so no code is emailed.
@@ -395,9 +400,9 @@ async function providerSignIn(
     throw new TRPCError({ code: "UNAUTHORIZED", message: words.refused });
   }
 
-  /* Apple hands the name to the page, the first time only; Google's token
-     carries it every time. */
-  const fromToken = provider === "google" ? namesOf(input.idToken) : { first: null, last: null };
+  /* Apple hands the name to the page, the first time only; Google's and
+     Microsoft's tokens carry it every time. */
+  const fromToken = provider === "apple" ? { first: null, last: null } : namesOf(input.idToken);
   const first = input.firstName ?? fromToken.first ?? "";
   const last = input.lastName ?? fromToken.last ?? "";
   const name = first || last ? composeName(first, last) : found.name;
@@ -442,15 +447,18 @@ export const authRouter = router({
    * Apple on, and on the website too once a Services ID is set — `web` is that
    * id, which the page hands Apple's own script. Google wherever its client id
    * for that side is set and Supabase has Google on — `web` and `ios` are the
-   * ids the page and the app hand Google.
+   * ids the page and the app hand Google. Microsoft the same, while its one
+   * client id is set and Supabase has Azure on — one id for both sides.
    */
   providers: publicProcedure.query(async () => {
     const external = await supabaseExternalProviders();
     const apple = external?.apple === true;
     const google = external?.google === true;
+    const microsoft = external?.azure === true ? microsoftClientId() : null;
     return {
       apple: { app: apple, web: apple ? appleWebClientId() : null },
       google: { web: google ? googleWebClientId() : null, ios: google ? googleIosClientId() : null },
+      microsoft: { web: microsoft, ios: microsoft },
     };
   }),
 
@@ -464,6 +472,11 @@ export const authRouter = router({
     .input(providerSignInInput)
     .mutation(({ ctx, input }) => providerSignIn(ctx, "google", input)),
 
+  /** Signs in, or opens an account, with Microsoft (`providerSignIn`). */
+  microsoftSignIn: publicProcedure
+    .input(providerSignInInput)
+    .mutation(({ ctx, input }) => providerSignIn(ctx, "microsoft", input)),
+
   /**
    * How the signed-in account signs in, for the pages that ask for a password
    * again: deleting the account confirms with Apple for an Apple account, and
@@ -474,9 +487,9 @@ export const authRouter = router({
     const user = ctx.user;
     if (user.supabaseUid) {
       const named = await supabaseUserProviders(user.supabaseUid);
-      if (named) return { password: named.includes("email"), apple: named.includes("apple"), google: named.includes("google") };
+      if (named) return { password: named.includes("email"), apple: named.includes("apple"), google: named.includes("google"), microsoft: named.includes("azure") };
     }
-    return { password: true, apple: false, google: false };
+    return { password: true, apple: false, google: false, microsoft: false };
   }),
 
   /**
@@ -864,15 +877,17 @@ export const authRouter = router({
          Apple instead — and the code Apple hands back is what unlinks the
          Apple ID once the account is gone. */
       apple: appleProof.optional(),
-      /* A Google account the same way, by Google's confirmation. */
+      /* A Google or Microsoft account the same way, by that provider's
+         confirmation. */
       google: appleProof.optional(),
+      microsoft: appleProof.optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const current = await loadUser(ctx.user.id);
       if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "auth.noAccount" });
-      const confirmation = input.apple ? ("apple" as const) : input.google ? ("google" as const) : null;
+      const confirmation = input.apple ? ("apple" as const) : input.google ? ("google" as const) : input.microsoft ? ("microsoft" as const) : null;
       if (confirmation) {
-        const found = await providerUser(confirmation, (input.apple ?? input.google)!);
+        const found = await providerUser(confirmation, (input.apple ?? input.google ?? input.microsoft)!);
         if (!found || !current.supabaseUid || found.uid !== current.supabaseUid) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: PROVIDER_WORDS[confirmation].notThis });
         }

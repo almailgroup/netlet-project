@@ -49,9 +49,11 @@ final class AuthViewModel {
     private(set) var appleOffered = false
     /// Google's client id for the app, while the server offers Google.
     private(set) var googleClientId: String?
+    /// Microsoft's, while the server offers Microsoft.
+    private(set) var microsoftClientId: String?
     private var appleAsked = false
     private let apple = AppleSignIn()
-    private let google = GoogleSignIn()
+    private let web = WebSignIn()
 
     private let account: AccountServicing
     private var countdown: Task<Void, Never>?
@@ -84,7 +86,8 @@ final class AuthViewModel {
     /// A wrong password offers the reset; a taken address offers signing in with it.
     var offersReset: Bool { refusal == "auth.invalidCredentials" }
     var offersSignIn: Bool {
-        refusal == "auth.emailTaken" || ((refusal == "auth.appleEmailTaken" || refusal == "auth.googleEmailTaken") && mode == .register)
+        refusal == "auth.emailTaken"
+            || (["auth.appleEmailTaken", "auth.googleEmailTaken", "auth.microsoftEmailTaken"].contains(refusal) && mode == .register)
     }
 
     func prepare() async {
@@ -93,6 +96,7 @@ final class AuthViewModel {
             let ways = try? await account.signInWays()
             appleOffered = ways?.apple.app ?? false
             googleClientId = ways?.google?.ios
+            microsoftClientId = ways?.microsoft?.ios
         }
         guard mode == .register, captchaSiteKey == nil else { return }
         captchaSiteKey = (try? await account.signupOptions())?.captchaSiteKey
@@ -125,20 +129,30 @@ final class AuthViewModel {
     /// "Continue with Google": the system's sign-in sheet onto Google's page,
     /// then the server. Closing the sheet says nothing.
     func signInWithGoogle(language: String) async -> User? {
-        guard let clientId = googleClientId else { return nil }
+        await signInWithWeb(.google, language: language)
+    }
+
+    /// "Continue with Microsoft", the same way.
+    func signInWithMicrosoft(language: String) async -> User? {
+        await signInWithWeb(.microsoft, language: language)
+    }
+
+    private func signInWithWeb(_ provider: WebSignIn.Provider, language: String) async -> User? {
+        guard let clientId = provider == .google ? googleClientId : microsoftClientId else { return nil }
         refusal = nil
-        let proof: GoogleProof?
+        let proof: IdTokenProof?
         do {
-            proof = try await google.ask(clientId: clientId, language: language)
+            proof = try await web.ask(provider, clientId: clientId, language: language)
         } catch {
-            refusal = "auth.googleWindowFailed"
+            refusal = provider == .google ? "auth.googleWindowFailed" : "auth.microsoftWindowFailed"
             return nil
         }
         guard let proof else { return nil }
         working = true
         defer { working = false }
         do {
-            return try await account.googleSignIn(proof)
+            if provider == .google { return try await account.googleSignIn(proof) }
+            return try await account.microsoftSignIn(proof)
         } catch {
             refusal = key(for: APIError.from(error))
             return nil

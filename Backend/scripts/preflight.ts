@@ -183,6 +183,11 @@ if (supabaseAuthMissing.length === 0) {
   if (sides) add("ok", "Sign in with Google", `offered on ${sides}`);
   else add("warn", "Sign in with Google", "GOOGLE_SIGNIN_WEB_CLIENT_ID and GOOGLE_SIGNIN_IOS_CLIENT_ID not set — no Google button", "docs/SUPABASE-AUTH.md, Sign in with Google");
 
+  /* Sign in with Microsoft, one client id for both sides. Whether Microsoft
+     (Supabase's "Azure") is on at all is Supabase's switch. */
+  if ((process.env.MICROSOFT_SIGNIN_CLIENT_ID ?? "").trim()) add("ok", "Sign in with Microsoft", "offered on the website and the app");
+  else add("warn", "Sign in with Microsoft", "MICROSOFT_SIGNIN_CLIENT_ID not set — no Microsoft button", "docs/SUPABASE-AUTH.md, Sign in with Microsoft");
+
   /* The pin picker's two maps. Neither is OpenStreetMap, which still works. */
   const google = Boolean((process.env.GOOGLE_MAPS_API_KEY ?? "").trim());
   const appleSigning = ["APPLE_MAPKIT_TEAM_ID", "APPLE_MAPKIT_KEY_ID", "APPLE_MAPKIT_PRIVATE_KEY"].filter(name => (process.env[name] ?? "").trim());

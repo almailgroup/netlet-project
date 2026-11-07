@@ -12,7 +12,7 @@
  * Delete asks twice: the confirmation, and the password in it — a session
  * left open on a shared computer must not be enough to delete somebody, the
  * rule the email and password forms keep. An account that signs in with
- * Apple confirms with Apple instead, Apple's button standing in for the
+ * Apple confirms with Apple instead (Google and Microsoft likewise), Apple's button standing in for the
  * dialog's own, which also lets the server unlink NetLet from the Apple ID
  * once the account is gone; one with a password too may use either. Cancel takes focus as it opens, so
  * a stray Enter gives the safe answer. Once the account is gone this device
@@ -27,7 +27,7 @@ import { trpc } from "@/lib/trpc";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { CircleAlert, Trash2 } from "lucide-react";
 import { AppleButton, OrDivider } from "@/components/auth/AppleButton";
-import { GoogleButton } from "@/components/auth/GoogleButton";
+import { GoogleButton, MicrosoftButton } from "@/components/auth/ProviderButton";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -54,11 +54,16 @@ export function DeleteAccount() {
   const providers = trpc.auth.providers.useQuery(undefined, { staleTime: 5 * 60_000 });
   const appleAccount = ways.data?.apple === true;
   const googleAccount = ways.data?.google === true;
+  const microsoftAccount = ways.data?.microsoft === true;
   const hasPassword = ways.data?.password !== false;
   const appleClientId = appleAccount ? providers.data?.apple.web ?? null : null;
   const googleClientId = googleAccount ? providers.data?.google?.web ?? null : null;
+  const microsoftClientId = microsoftAccount ? providers.data?.microsoft?.web ?? null : null;
   /* What the account signs in with, said once above the buttons that confirm. */
-  const confirmNote = appleAccount ? "account.deleteAppleNote" : "account.deleteGoogleNote";
+  const confirmNote = appleAccount ? "account.deleteAppleNote" : googleAccount ? "account.deleteGoogleNote" : "account.deleteMicrosoftNote";
+  /* No button can confirm here: Apple's and Google's are in the app; Microsoft's
+     id is one for both, so when the website has none the app has none either. */
+  const noButtonNote = appleAccount ? "account.deleteAppleInApp" : googleAccount ? "account.deleteGoogleInApp" : "account.deleteMicrosoftUnavailable";
 
   const remove = trpc.auth.deleteAccount.useMutation({
     onSuccess: async () => {
@@ -142,7 +147,7 @@ export function DeleteAccount() {
               <p className="text-[12px] leading-4 ink-muted">{t("account.deletePasswordNote")}</p>
             </div>
           ) : null}
-          {appleClientId || googleClientId ? (
+          {appleClientId || googleClientId || microsoftClientId ? (
             <>
               {hasPassword ? <OrDivider /> : <p className="text-[13px] leading-5 ink-muted">{t(confirmNote)}</p>}
               {appleClientId ? (
@@ -163,9 +168,18 @@ export function DeleteAccount() {
                   onFailed={() => toast.error(t("auth.googleWindowFailed"))}
                 />
               ) : null}
+              {microsoftClientId ? (
+                <MicrosoftButton
+                  clientId={microsoftClientId}
+                  label="account.deleteWithMicrosoft"
+                  busy={remove.isPending}
+                  onProof={proof => remove.mutate({ microsoft: proof })}
+                  onFailed={() => toast.error(t("auth.microsoftWindowFailed"))}
+                />
+              ) : null}
             </>
           ) : !hasPassword ? (
-            <p className="text-[13px] leading-5 ink-muted">{t(appleAccount ? "account.deleteAppleInApp" : "account.deleteGoogleInApp")}</p>
+            <p className="text-[13px] leading-5 ink-muted">{t(noButtonNote)}</p>
           ) : null}
         </div>
       </ConfirmDialog>

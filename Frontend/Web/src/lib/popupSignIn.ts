@@ -1,27 +1,31 @@
 /**
- * Sign in with Google on the website, through a popup onto Google's own page.
+ * Sign in with Google or Microsoft on the website, through a popup onto the
+ * provider's own page.
  *
- * Google is asked for an identity token straight back (`response_type=id_token`)
- * at `/google-return.html`, which hands it to this page on a BroadcastChannel
- * and closes (`public/google-return.js`). The token goes to NetLet's
- * `auth.googleSignIn`, which has Supabase check it; nothing is kept here.
- * Nothing of Google's runs in this page — no script, no frame — so the button
- * is the shop's own, drawn to Google's branding rules.
+ * The provider is asked for an identity token straight back
+ * (`response_type=id_token`) at `/google-return.html` or
+ * `/microsoft-return.html`, which hands it to this page on a BroadcastChannel
+ * and closes (`public/signin-return.js`). The token goes to NetLet's
+ * `auth.googleSignIn` or `auth.microsoftSignIn`, which has Supabase check it;
+ * nothing is kept here. Nothing of the provider's runs in this page — no
+ * script, no frame — so the buttons are the shop's own, drawn to each
+ * provider's branding rules.
  *
  * **A nonce makes the token this sign-in's alone**, as Apple's does: made
- * here, handed to Google hashed and to the server raw. A `state` ties the
- * answer to this press.
+ * here, handed to the provider hashed and to the server raw. A `state` ties
+ * the answer to this press.
  *
  * **The popup opens inside the press**, since a browser lets a page open a
  * window only then, so the nonce and its hash are made before the button can
- * be pressed (`prepareGoogle`).
+ * be pressed (`preparePopup`).
  */
 
-export type GoogleProof = { idToken: string; nonce: string };
+export type PopupProvider = "google" | "microsoft";
 
-export type GooglePrepared = { nonce: string; hashed: string; state: string };
+export type PopupProof = { idToken: string; nonce: string };
 
-const CHANNEL = "netlet-google";
+export type PopupPrepared = { nonce: string; hashed: string; state: string };
+
 /** How long a popup may stay open before the press is given up. */
 const GIVE_UP_MS = 10 * 60_000;
 
@@ -35,13 +39,18 @@ async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, "0")).join("");
 }
 
-export async function prepareGoogle(): Promise<GooglePrepared> {
+export async function preparePopup(): Promise<PopupPrepared> {
   const nonce = randomText();
   return { nonce, hashed: await sha256Hex(nonce), state: randomText(12) };
 }
 
-/** Google's consent page for this press, in the page's language. */
-export function googleAddress(clientId: string, prepared: GooglePrepared, returnTo: string, locale: "en" | "ar"): string {
+/** The page on this site the provider sends the token back to. */
+export function returnPage(provider: PopupProvider): string {
+  return `/${provider}-return.html`;
+}
+
+/** The provider's consent page for this press, in the page's language. */
+export function popupAddress(provider: PopupProvider, clientId: string, prepared: PopupPrepared, returnTo: string, locale: "en" | "ar"): string {
   const query = new URLSearchParams({
     client_id: clientId,
     redirect_uri: returnTo,
@@ -50,25 +59,33 @@ export function googleAddress(clientId: string, prepared: GooglePrepared, return
     nonce: prepared.hashed,
     state: prepared.state,
     prompt: "select_account",
-    hl: locale,
   });
-  return `https://accounts.google.com/o/oauth2/v2/auth?${query.toString()}`;
+  if (provider === "google") {
+    query.set("hl", locale);
+    return `https://accounts.google.com/o/oauth2/v2/auth?${query.toString()}`;
+  }
+  /* Microsoft's `common` endpoint: personal accounts (Outlook, Hotmail) and
+     work or school ones alike. */
+  query.set("response_mode", "fragment");
+  query.set("ui_locales", locale);
+  return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${query.toString()}`;
 }
 
 /**
- * Opens Google's page and answers what it handed back, or null when the
+ * Opens the provider's page and answers what it handed back, or null when the
  * person closed it. Call inside the press: the window is opened before
  * anything is awaited. Throws when the browser would not open it.
  */
-export function askGoogle(address: string, prepared: GooglePrepared): Promise<GoogleProof | null> {
+export function askInPopup(provider: PopupProvider, address: string, prepared: PopupPrepared): Promise<PopupProof | null> {
+  const channelName = `netlet-${provider}`;
   const width = 480;
   const height = 640;
   const left = Math.max(0, Math.round(window.screenX + (window.outerWidth - width) / 2));
   const top = Math.max(0, Math.round(window.screenY + (window.outerHeight - height) / 2));
-  const popup = window.open(address, "netlet-google", `popup,width=${width},height=${height},left=${left},top=${top}`);
+  const popup = window.open(address, channelName, `popup,width=${width},height=${height},left=${left},top=${top}`);
   if (!popup) return Promise.reject(new Error("blocked"));
 
-  return new Promise<GoogleProof | null>((resolve, reject) => {
+  return new Promise<PopupProof | null>((resolve, reject) => {
     let channel: BroadcastChannel | null = null;
     let settled = false;
     let closedSince = 0;
@@ -85,7 +102,7 @@ export function askGoogle(address: string, prepared: GooglePrepared): Promise<Go
 
     const take = (data: unknown) => {
       const answer = data as { type?: string; idToken?: string | null; state?: string | null; error?: string | null } | null;
-      if (!answer || answer.type !== "netlet-google" || answer.state !== prepared.state) return;
+      if (!answer || answer.type !== channelName || answer.state !== prepared.state) return;
       if (answer.idToken) finish(() => resolve({ idToken: answer.idToken!, nonce: prepared.nonce }));
       else if (answer.error === "access_denied" || answer.error === "user_cancelled") finish(() => resolve(null));
       else finish(() => reject(new Error(answer.error ?? "no token")));
@@ -96,7 +113,7 @@ export function askGoogle(address: string, prepared: GooglePrepared): Promise<Go
     };
     window.addEventListener("message", onWindowMessage);
     try {
-      channel = new BroadcastChannel(CHANNEL);
+      channel = new BroadcastChannel(channelName);
       channel.onmessage = event => take(event.data);
     } catch {
       channel = null;

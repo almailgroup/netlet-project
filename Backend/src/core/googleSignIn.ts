@@ -27,15 +27,23 @@ export function googleIosClientId(): string | null {
 /**
  * The given and family names an identity token carries, read without
  * checking the signature — Supabase has checked it before this is asked, and
- * the answer only names a new account.
+ * the answer only names a new account. Google's carries both; Microsoft's
+ * usually carries only `name`, which is split at its first space, the way an
+ * account with no parts yet is offered its display name.
  */
 export function namesOf(idToken: string): { first: string | null; last: string | null } {
   const payload = idToken.split(".")[1];
   if (!payload) return { first: null, last: null };
   try {
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { given_name?: unknown; family_name?: unknown };
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { given_name?: unknown; family_name?: unknown; name?: unknown };
     const clean = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim().slice(0, 60) : null);
-    return { first: clean(claims.given_name), last: clean(claims.family_name) };
+    const first = clean(claims.given_name);
+    const last = clean(claims.family_name);
+    if (first || last) return { first, last };
+    const whole = clean(claims.name);
+    if (!whole) return { first: null, last: null };
+    const space = whole.search(/\s/);
+    return space < 0 ? { first: whole, last: null } : { first: clean(whole.slice(0, space)), last: clean(whole.slice(space + 1)) };
   } catch {
     return { first: null, last: null };
   }

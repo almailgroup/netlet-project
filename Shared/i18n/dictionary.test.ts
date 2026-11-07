@@ -91,6 +91,10 @@ describe("dictionary completeness", () => {
       "auth.continueWithGoogle", "auth.googleRefused", "auth.googleUnavailable", "auth.googleNotThisAccount",
       "auth.googleWindowFailed", "account.deleteWithGoogle", "account.deleteGoogleNote", "account.deleteGoogleInApp",
       "account.passwordGoogleNote", "privacy.who.googleSignIn",
+      // Sign in with Microsoft the same way — "المتابعة باستخدام Microsoft".
+      "auth.continueWithMicrosoft", "auth.microsoftRefused", "auth.microsoftUnavailable", "auth.microsoftNotThisAccount",
+      "auth.microsoftWindowFailed", "account.deleteWithMicrosoft", "account.deleteMicrosoftNote", "account.deleteMicrosoftUnavailable",
+      "account.passwordMicrosoftNote", "privacy.who.microsoftSignIn",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

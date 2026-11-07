@@ -743,11 +743,11 @@ website's button (`GoogleButton`) is the shop's own, drawn to Google's branding
 rules (white, a grey rim, the four-colour G), and a press opens Google's
 consent page in a popup asking for an identity token straight back
 (`response_type=id_token`), to `/google-return.html` — a static page with its
-own script file (`public/google-return.js`) that takes the token out of the
+own script file (`public/signin-return.js`) that takes the token out of the
 fragment, hands it over on a `BroadcastChannel` (which reaches the sign-in page
 whatever an opener policy did to `window.opener`) and closes. The popup is
 watched for closing so a change of mind is silent; a blocked popup is said.
-**The app uses no Google SDK**: `GoogleSignIn` opens Google in
+**The app uses no Google SDK**: `WebSignIn` opens Google in
 `ASWebAuthenticationSession`, asks for a code with PKCE for the iOS client,
 is called back on the client id's reversed scheme (which the session catches,
 so nothing is registered in the app) and trades the code at Google's token
@@ -759,6 +759,30 @@ drawn by `TabIcon.cgPath` (`GoogleMark`). Walked end to end on the website at
 320, 390 and 1440 in both languages against stand-ins for Google's page and
 Supabase — whose id-token check there compared the nonce's hash, as the real
 one does.
+
+**Sign in with Microsoft is the third, on the owner's word** (Spotify was
+asked for first and declined, its development mode holding an app to five
+people and its addresses unverified; Microsoft was the easy one that suits
+shoppers). Supabase calls it **Azure**, so `routes/auth.ts` maps the shop's
+`microsoft` to Supabase's `azure` (`SUPABASE_PROVIDER`) for the token grant,
+the providers switch and `myProviders`. It is Google's shape, sharing Google's
+code rather than copying it: `lib/popupSignIn.ts` is both popups (Microsoft's
+`common` endpoint, `response_mode=fragment`), `public/signin-return.js` serves
+`/google-return.html` and `/microsoft-return.html` alike, the page's own name
+saying which channel to answer on, and `ProviderButton.tsx` draws both buttons
+— Microsoft's to its light style, white with a #8C8C8C rim, #5E5E5E words and
+the four squares. In the app `WebSignIn` takes a provider: Microsoft's sheet
+is called back on `msauth.<bundle id>://auth`, the address its iOS platform
+gives, and the code is traded with PKCE and the scopes again, no secret.
+**One client id serves both sides** (`MICROSOFT_SIGNIN_CLIENT_ID`), being one
+app registration with a Web and an iOS platform, so `auth.providers`'
+`microsoft` answers it as both `web` and `ios`. The name is the token's `name`
+split at its first space (`namesOf`, which now reads any provider's), since
+Microsoft's carries no given and family names by default. Supabase holds a
+Microsoft address as verified unless the token says otherwise (`xms_edov`);
+Microsoft has stopped sending an unverified `email` to new multi-tenant apps,
+which is what keeps the auto-link safe. `docs/SUPABASE-AUTH.md` is the
+three-place setup.
 
 The sign-in page carries what the account does, never seller counts or
 testimonials — invented numbers on a sign-in wall are checked once and never

@@ -46,6 +46,8 @@ const APPLE_SIGN_IN_FRAMES = APPLE_WEB_SIGN_IN ? ["https://appleid.apple.com"] :
    hands the token back to `/google-return.html` on this origin — nothing of
    Google's runs in this page, so the policy names nothing of Google's. */
 const GOOGLE_WEB_SIGN_IN = Boolean(ENV.googleSigninWebClientId);
+/* Sign in with Microsoft is the same shape, to `/microsoft-return.html`. */
+const MICROSOFT_WEB_SIGN_IN = Boolean(ENV.microsoftSigninClientId);
 
 /*
  * The pin picker's two maps (3.2.7), each only while its keys are set — the
@@ -206,10 +208,10 @@ export function applySecurity(app: Express): void {
       hsts: isProduction ? { maxAge: 15552000, includeSubDomains: true } : false,
       crossOriginEmbedderPolicy: false,
       /* Apple's sign-in window answers this one through its opener, and
-         Google's popup is watched for being closed, both of which the default
-         same-origin policy would cut. Kept tight while there is neither
-         button. */
-      crossOriginOpenerPolicy: { policy: APPLE_WEB_SIGN_IN || GOOGLE_WEB_SIGN_IN ? "same-origin-allow-popups" : "same-origin" },
+         Google's and Microsoft's popups are watched for being closed, all of
+         which the default same-origin policy would cut. Kept tight while
+         there is no such button. */
+      crossOriginOpenerPolicy: { policy: APPLE_WEB_SIGN_IN || GOOGLE_WEB_SIGN_IN || MICROSOFT_WEB_SIGN_IN ? "same-origin-allow-popups" : "same-origin" },
     }),
   );
 

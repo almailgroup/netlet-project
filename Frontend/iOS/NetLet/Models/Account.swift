@@ -52,14 +52,17 @@ struct SignInWays: Decodable, Sendable {
         let app: Bool
         let web: String?
     }
-    /// Google's client ids for the website and the app, each null while that
-    /// side offers no Google button. Absent from a server before Google.
-    struct Google: Decodable, Sendable {
+    /// A provider's client ids for the website and the app, each null while
+    /// that side offers no button for it.
+    struct ClientIds: Decodable, Sendable {
         let web: String?
         let ios: String?
     }
     let apple: Apple
-    var google: Google? = nil
+    /// Absent from a server before Google.
+    var google: ClientIds? = nil
+    /// Microsoft's one id, on both sides. Absent from a server before Microsoft.
+    var microsoft: ClientIds? = nil
 }
 
 /// How the signed-in account signs in (`auth.myProviders`): deleting it
@@ -70,6 +73,8 @@ struct AccountSignInWays: Decodable, Sendable, Equatable {
     let apple: Bool
     /// Absent from a server before Google, which reads as no.
     var google: Bool? = nil
+    /// Absent from a server before Microsoft, which reads as no.
+    var microsoft: Bool? = nil
 }
 
 /// The account's stored choices — the language, the delivery area and which
