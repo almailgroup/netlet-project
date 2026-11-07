@@ -42,8 +42,7 @@ protocol AccountServicing: Sendable {
     /// sheet handed back, and how the signed-in account signs in.
     func signInWays() async throws -> SignInWays
     func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User
-    func googleSignIn(_ proof: IdTokenProof) async throws -> User
-    func microsoftSignIn(_ proof: IdTokenProof) async throws -> User
+    func googleSignIn(_ proof: GoogleProof) async throws -> User
     func accountSignInWays() async throws -> AccountSignInWays
 }
 
@@ -60,11 +59,8 @@ extension AccountServicing {
     func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User {
         throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.appleUnavailable", status: 412)
     }
-    func googleSignIn(_ proof: IdTokenProof) async throws -> User {
+    func googleSignIn(_ proof: GoogleProof) async throws -> User {
         throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.googleUnavailable", status: 412)
-    }
-    func microsoftSignIn(_ proof: IdTokenProof) async throws -> User {
-        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.microsoftUnavailable", status: 412)
     }
     func accountSignInWays() async throws -> AccountSignInWays { AccountSignInWays(password: true, apple: false) }
 }
@@ -125,12 +121,8 @@ struct AccountService: AccountServicing {
         ))
     }
 
-    func googleSignIn(_ proof: IdTokenProof) async throws -> User {
+    func googleSignIn(_ proof: GoogleProof) async throws -> User {
         try await client.call(API.googleSignIn, .init(idToken: proof.idToken, nonce: proof.nonce, remember: true))
-    }
-
-    func microsoftSignIn(_ proof: IdTokenProof) async throws -> User {
-        try await client.call(API.microsoftSignIn, .init(idToken: proof.idToken, nonce: proof.nonce, remember: true))
     }
 
     func accountSignInWays() async throws -> AccountSignInWays { try await client.call(API.accountSignInWays) }

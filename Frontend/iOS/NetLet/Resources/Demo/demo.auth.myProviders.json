@@ -4,8 +4,7 @@
       "json": {
         "password": true,
         "apple": false,
-        "google": false,
-        "microsoft": false
+        "google": false
       }
     }
   }

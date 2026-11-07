@@ -100,7 +100,7 @@
     "maxQuestion": 300
   },
   "legal": {
-    "updated": "2026-11-07",
+    "updated": "2026-11-06",
     "figures": {
       "days": 14,
       "commission": 10,
@@ -297,9 +297,6 @@
               },
               {
                 "key": "privacy.who.googleSignIn"
-              },
-              {
-                "key": "privacy.who.microsoftSignIn"
               },
               {
                 "key": "privacy.who.placeLookup"

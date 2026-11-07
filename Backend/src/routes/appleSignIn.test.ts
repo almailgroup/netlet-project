@@ -25,9 +25,6 @@ type Answer = { uid: string; email: string; emailConfirmed?: boolean; signedUp?:
 let answer: Answer = null;
 let appleOn = true;
 let googleOn = true;
-let microsoftOn = true;
-/** The provider name the server last handed Supabase. */
-let askedAs = "";
 const passwordsSet: string[] = [];
 const deletedUids: string[] = [];
 let providersOf: Record<string, string[]> = {};
@@ -72,9 +69,9 @@ beforeAll(async () => {
     return {
       ...actual,
       isSupabaseAuthConfigured: () => true,
-      supabaseExternalProviders: async () => ({ apple: appleOn, google: googleOn, azure: microsoftOn, email: true }),
-      signInSupabaseWithIdToken: async (provider: string) =>
-        (askedAs = provider) && answer && {
+      supabaseExternalProviders: async () => ({ apple: appleOn, google: googleOn, email: true }),
+      signInSupabaseWithIdToken: async () =>
+        answer && {
           uid: answer.uid,
           email: answer.email,
           name: null,
@@ -96,7 +93,6 @@ beforeAll(async () => {
   vi.stubEnv("APPLE_SIGNIN_SERVICES_ID", "net.netlet.web");
   vi.stubEnv("GOOGLE_SIGNIN_WEB_CLIENT_ID", "web-1.apps.googleusercontent.com");
   vi.stubEnv("GOOGLE_SIGNIN_IOS_CLIENT_ID", "ios-1.apps.googleusercontent.com");
-  vi.stubEnv("MICROSOFT_SIGNIN_CLIENT_ID", "11111111-2222-3333-4444-555555555555");
   vi.stubEnv("APPLE_SIGNIN_TEAM_ID", "TEAM123456");
   vi.stubEnv("APPLE_SIGNIN_KEY_ID", "KEY1234567");
   // A real P-256 key, made for this test, so the client secret is really signed.
@@ -111,7 +107,6 @@ afterEach(() => {
   answer = null;
   appleOn = true;
   googleOn = true;
-  microsoftOn = true;
 });
 
 function freshEmail(): string {
@@ -125,16 +120,10 @@ describe("Sign in with Apple", () => {
     expect(await guest.auth.providers()).toEqual({
       apple: { app: true, web: "net.netlet.web" },
       google: { web: "web-1.apps.googleusercontent.com", ios: "ios-1.apps.googleusercontent.com" },
-      microsoft: { web: "11111111-2222-3333-4444-555555555555", ios: "11111111-2222-3333-4444-555555555555" },
     });
     appleOn = false;
     googleOn = false;
-    microsoftOn = false;
-    expect(await guest.auth.providers()).toEqual({
-      apple: { app: false, web: null },
-      google: { web: null, ios: null },
-      microsoft: { web: null, ios: null },
-    });
+    expect(await guest.auth.providers()).toEqual({ apple: { app: false, web: null }, google: { web: null, ios: null } });
   });
 
   it("opens an account for an Apple ID it has not met, with the name Apple gave, and signs in", async () => {
@@ -217,14 +206,11 @@ describe("Sign in with Apple", () => {
     const email = freshEmail();
     const [row] = await db.insert(users).values({ email, supabaseUid: `ways-${serial}` }).returning();
     const me = appRouter.createCaller(contextFor(row as User));
-    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: false, microsoft: false });
+    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: false });
     providersOf[`ways-${serial}`] = ["apple"];
-    expect(await me.auth.myProviders()).toEqual({ password: false, apple: true, google: false, microsoft: false });
+    expect(await me.auth.myProviders()).toEqual({ password: false, apple: true, google: false });
     providersOf[`ways-${serial}`] = ["email", "google"];
-    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: true, microsoft: false });
-    // Supabase calls Microsoft "azure".
-    providersOf[`ways-${serial}`] = ["azure"];
-    expect(await me.auth.myProviders()).toEqual({ password: false, apple: false, google: false, microsoft: true });
+    expect(await me.auth.myProviders()).toEqual({ password: true, apple: false, google: true });
     providersOf = {};
   });
 
@@ -323,48 +309,6 @@ describe("Sign in with Google", () => {
     await expect(me.auth.deleteAccount({ google: proofG })).rejects.toMatchObject({ message: "auth.googleNotThisAccount" });
     answer = { uid: row.supabaseUid!, email };
     expect(await me.auth.deleteAccount({ google: proofG })).toEqual({ deleted: true });
-    expect(await rowOf(email)).toBeUndefined();
-  });
-});
-
-describe("Sign in with Microsoft", () => {
-  it("asks Supabase as \"azure\", and names the account from the token's one name", async () => {
-    const email = freshEmail();
-    answer = { uid: `m-${serial}`, email, providers: ["azure"] };
-    const proofM = { idToken: googleToken({ name: "Noura Al-Sabah" }), nonce: "a-nonce-long-enough-0123" };
-    const guest = appRouter.createCaller(contextFor(null));
-    expect(await guest.auth.microsoftSignIn(proofM)).toMatchObject({ email, name: "Noura Al-Sabah", created: true });
-    expect(askedAs).toBe("azure");
-    const row = await rowOf(email);
-    const [parts] = await db.select().from(customerProfiles).where(eq(customerProfiles.userId, row.id));
-    expect(parts).toMatchObject({ firstName: "Noura", lastName: "Al-Sabah" });
-    expect(await guest.auth.microsoftSignIn(proofM)).toMatchObject({ id: row.id, created: false });
-  });
-
-  it("refuses an address a password NetLet keeps holds, and a Microsoft that is switched off", async () => {
-    const email = freshEmail();
-    const { hashPassword } = await import("../core/password.js");
-    await db.insert(users).values({ email, passwordHash: await hashPassword("a-long-enough-password") });
-    answer = { uid: `m-stranger-${serial}`, email, providers: ["azure"] };
-    const proofM = { idToken: googleToken({}), nonce: "a-nonce-long-enough-0123" };
-    await expect(appRouter.createCaller(contextFor(null)).auth.microsoftSignIn(proofM))
-      .rejects.toMatchObject({ code: "CONFLICT", message: "auth.microsoftEmailTaken" });
-    microsoftOn = false;
-    await expect(appRouter.createCaller(contextFor(null)).auth.microsoftSignIn(proofM))
-      .rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "auth.microsoftUnavailable" });
-  });
-
-  it("deletes a Microsoft account confirmed with the same Microsoft account, and only that one", async () => {
-    const email = freshEmail();
-    answer = { uid: `m-leaving-${serial}`, email, providers: ["azure"] };
-    const proofM = { idToken: googleToken({}), nonce: "a-nonce-long-enough-0123" };
-    await appRouter.createCaller(contextFor(null)).auth.microsoftSignIn(proofM);
-    const row = (await rowOf(email)) as User;
-    const me = appRouter.createCaller(contextFor(row));
-    answer = { uid: "another-microsoft-account", email: "other@example.com" };
-    await expect(me.auth.deleteAccount({ microsoft: proofM })).rejects.toMatchObject({ message: "auth.microsoftNotThisAccount" });
-    answer = { uid: row.supabaseUid!, email };
-    expect(await me.auth.deleteAccount({ microsoft: proofM })).toEqual({ deleted: true });
     expect(await rowOf(email)).toBeUndefined();
   });
 });

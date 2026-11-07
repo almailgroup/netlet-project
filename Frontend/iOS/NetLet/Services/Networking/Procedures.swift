@@ -192,8 +192,7 @@ enum API {
     struct DeleteAccount: Encodable, Sendable {
         var currentPassword: String?
         var apple: AppleProof?
-        var google: IdTokenProof?
-        var microsoft: IdTokenProof?
+        var google: GoogleProof?
     }
 
     /// Signing in — or opening an account — with Apple (`auth.appleSignIn`).
@@ -231,8 +230,6 @@ enum API {
     static let appleSignIn = Procedure<AppleSignInInput, User>(mutation: "auth.appleSignIn")
     /// The same input, Google's token in it; the name comes from the token.
     static let googleSignIn = Procedure<AppleSignInInput, User>(mutation: "auth.googleSignIn")
-    /// And Microsoft's the same way.
-    static let microsoftSignIn = Procedure<AppleSignInInput, User>(mutation: "auth.microsoftSignIn")
     static let accountSignInWays = Procedure<NoInput, AccountSignInWays>(query: "auth.myProviders")
     static let signIn = Procedure<SignIn, User>(mutation: "auth.login")
     static let register = Procedure<Register, RegistrationResult>(mutation: "auth.register")

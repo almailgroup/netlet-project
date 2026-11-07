@@ -126,9 +126,4 @@ export const ENV = {
      also go in Supabase's Google provider as its Client IDs. */
   googleSigninWebClientId: (process.env.GOOGLE_SIGNIN_WEB_CLIENT_ID ?? "").trim(),
   googleSigninIosClientId: (process.env.GOOGLE_SIGNIN_IOS_CLIENT_ID ?? "").trim(),
-  /* Sign in with Microsoft (core/microsoftSignIn.ts): the Application (client)
-     ID of the app registration in Microsoft's Azure portal, one for the
-     website and the app alike. Public — both hand it to Microsoft — and unset
-     is no Microsoft button. It also goes in Supabase's Azure provider. */
-  microsoftSigninClientId: (process.env.MICROSOFT_SIGNIN_CLIENT_ID ?? "").trim(),
 };

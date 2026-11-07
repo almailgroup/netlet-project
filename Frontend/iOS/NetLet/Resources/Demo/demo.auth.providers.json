@@ -9,10 +9,6 @@
         "google": {
           "web": "000000000000-netletweb.apps.googleusercontent.com",
           "ios": "000000000000-netletios.apps.googleusercontent.com"
-        },
-        "microsoft": {
-          "web": "11111111-2222-3333-4444-555555555555",
-          "ios": "11111111-2222-3333-4444-555555555555"
         }
       }
     }

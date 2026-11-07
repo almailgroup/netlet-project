@@ -510,22 +510,17 @@ final class FixtureDecodingTests: XCTestCase {
         let ways = try await client.call(API.signInWays)
         XCTAssertTrue(ways.apple.app)
         XCTAssertEqual(ways.google?.ios, "000000000000-netletios.apps.googleusercontent.com")
-        XCTAssertEqual(ways.microsoft?.ios, "11111111-2222-3333-4444-555555555555")
         let mine = try await client.call(API.accountSignInWays)
-        XCTAssertEqual(mine, AccountSignInWays(password: true, apple: false, google: false, microsoft: false))
+        XCTAssertEqual(mine, AccountSignInWays(password: true, apple: false, google: false))
 
-        // Google calls an iOS client back on its reversed id, Microsoft on
-        // msauth.<bundle id>, and a code is traded with a form body
-        // percent-encoded as a form's is.
-        XCTAssertEqual(WebSignIn.scheme(for: "123-abc.apps.googleusercontent.com"), "com.googleusercontent.apps.123-abc")
-        XCTAssertNil(WebSignIn.scheme(for: "net.netlet.web"))
-        XCTAssertEqual(WebSignIn.microsoftScheme(bundle: "com.netlet.marketplace"), "msauth.com.netlet.marketplace")
-        XCTAssertEqual(WebSignIn.form([("redirect_uri", "a.b:/c d"), ("code", "4/0x+y")]), "redirect_uri=a.b%3A%2Fc%20d&code=4%2F0x%2By")
-        XCTAssertEqual(WebSignIn.base64url([0xfb, 0xff]), "-_8")
-        let withGoogle = String(decoding: try JSONEncoder().encode(API.DeleteAccount(google: IdTokenProof(idToken: "t", nonce: "n"))), as: UTF8.self)
+        // Google calls an iOS client back on its reversed id, and a code is
+        // traded with a form body percent-encoded as a form's is.
+        XCTAssertEqual(GoogleSignIn.scheme(for: "123-abc.apps.googleusercontent.com"), "com.googleusercontent.apps.123-abc")
+        XCTAssertNil(GoogleSignIn.scheme(for: "net.netlet.web"))
+        XCTAssertEqual(GoogleSignIn.form([("redirect_uri", "a.b:/c d"), ("code", "4/0x+y")]), "redirect_uri=a.b%3A%2Fc%20d&code=4%2F0x%2By")
+        XCTAssertEqual(GoogleSignIn.base64url([0xfb, 0xff]), "-_8")
+        let withGoogle = String(decoding: try JSONEncoder().encode(API.DeleteAccount(google: GoogleProof(idToken: "t", nonce: "n"))), as: UTF8.self)
         XCTAssertTrue(withGoogle.contains(#""google":{"#) && !withGoogle.contains("currentPassword"))
-        let withMicrosoft = String(decoding: try JSONEncoder().encode(API.DeleteAccount(microsoft: IdTokenProof(idToken: "t", nonce: "n"))), as: UTF8.self)
-        XCTAssertTrue(withMicrosoft.contains(#""microsoft":{"#) && !withMicrosoft.contains("google"))
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys

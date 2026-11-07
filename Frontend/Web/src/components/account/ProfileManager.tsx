@@ -153,7 +153,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
   // between creating a password and replacing one.
   const verdict = checkPassword(next);
   const rulesId = useId();
-  /* An account made with Apple, Google or Microsoft has no password to type here; it is
+  /* An account made with Apple or Google has no password to type here; it is
      set by the same emailed code a forgotten one is. */
   const ways = trpc.auth.myProviders.useQuery(undefined, { staleTime: 60_000 });
   const appleOnly = ways.data?.password === false;
@@ -161,7 +161,7 @@ function PasswordForm({ onFail }: { onFail: (error: { message: string }) => void
   return (
     <ProfileCard
       title={t("account.password")}
-      note={t(!appleOnly ? "account.passwordNote" : ways.data?.apple ? "account.passwordAppleNote" : ways.data?.google ? "account.passwordGoogleNote" : "account.passwordMicrosoftNote")}
+      note={t(!appleOnly ? "account.passwordNote" : ways.data?.apple ? "account.passwordAppleNote" : "account.passwordGoogleNote")}
     >
       {recovering === "sent" && user ? (
         <div className="space-y-4">

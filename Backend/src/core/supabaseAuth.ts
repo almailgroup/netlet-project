@@ -418,8 +418,8 @@ export async function supabaseConfirmsEmailItself(): Promise<boolean | null> {
 /**
  * Signs in with an identity token another provider issued — Sign in with
  * Apple's, from Apple's own window on the website or the system's sheet in
- * the app, or Google's or Microsoft's ("azure" to Supabase), from its
- * consent page in a popup or the system's sign-in sheet.
+ * the app, or Google's, from its consent page in a popup or the system's
+ * sign-in sheet.
  *
  * Supabase checks the token: Apple's signature, that it was issued to one of
  * the Client IDs the dashboard lists for Apple (the app's bundle id and the
@@ -442,7 +442,7 @@ export type IdTokenUser = SupabaseUser & {
   providers: string[];
 };
 
-export async function signInSupabaseWithIdToken(provider: "apple" | "google" | "azure", idToken: string, nonce: string): Promise<IdTokenUser | null> {
+export async function signInSupabaseWithIdToken(provider: "apple" | "google", idToken: string, nonce: string): Promise<IdTokenUser | null> {
   if (!isSupabaseAuthConfigured()) return null;
 
   const response = await fetch(`${base()}/auth/v1/token?grant_type=id_token`, {

@@ -45,7 +45,7 @@ struct AuthView: View {
             // Signed out, the account page is the form itself, in the
             // shop's frame like every other page.
             // The assistant as its mark alone: at rest the pill sat over
-            // Continue with Apple, Google and Microsoft on the first
+            // Continue with Apple and Continue with Google on the first
             // screen — the product page's rule.
             ShopPage(root: true, header: false, assistantFolded: true) {
                 AuthForm(model: model, band: true)
@@ -230,7 +230,7 @@ private struct AuthForm: View {
                     .frame(maxWidth: .infinity)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if (model.appleOffered || model.googleClientId != nil || model.microsoftClientId != nil) && model.mode != .reset {
+            if (model.appleOffered || model.googleClientId != nil) && model.mode != .reset {
                 VStack(spacing: 12) {
                     OrDivider().padding(.bottom, 2)
                     if model.appleOffered {
@@ -244,13 +244,6 @@ private struct AuthForm: View {
                         GoogleSignInButton(label: "auth.continueWithGoogle", working: model.working) {
                             Task {
                                 if let user = await model.signInWithGoogle(language: l.current.rawValue) { await app.signedIn(user) }
-                            }
-                        }
-                    }
-                    if model.microsoftClientId != nil {
-                        MicrosoftSignInButton(label: "auth.continueWithMicrosoft", working: model.working) {
-                            Task {
-                                if let user = await model.signInWithMicrosoft(language: l.current.rawValue) { await app.signedIn(user) }
                             }
                         }
                     }
