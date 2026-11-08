@@ -53,6 +53,13 @@ protocol AccountServicing: Sendable {
     func addEmailStart(_ email: String) async throws
     func addEmailVerify(email: String, code: String) async throws -> User
     func accountSignInWays() async throws -> AccountSignInWays
+    /// Signing in with Face ID: a challenge for this phone's key, the signed
+    /// challenge, and setting the phone up, listing and turning off.
+    func biometricChallenge(keyId: String) async throws -> API.BiometricChallenge
+    func biometricSignIn(keyId: String, challenge: String, signature: String) async throws -> User
+    func biometricRegister(keyId: String, publicKey: String, deviceName: String?) async throws
+    func biometricKeys() async throws -> API.BiometricKeyList
+    func biometricRemove(keyId: String) async throws -> Bool
 }
 
 extension AccountServicing {
@@ -89,6 +96,18 @@ extension AccountServicing {
         throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.phoneUnavailable", status: 412)
     }
     func accountSignInWays() async throws -> AccountSignInWays { AccountSignInWays(password: true, apple: false) }
+    /// A stand-in holds no keys, as a shop before migration 0078 does.
+    func biometricChallenge(keyId: String) async throws -> API.BiometricChallenge {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.faceIdUnavailable", status: 412)
+    }
+    func biometricSignIn(keyId: String, challenge: String, signature: String) async throws -> User {
+        throw APIError.server(code: "NOT_FOUND", message: "auth.faceIdOff", status: 404)
+    }
+    func biometricRegister(keyId: String, publicKey: String, deviceName: String?) async throws {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.faceIdUnavailable", status: 412)
+    }
+    func biometricKeys() async throws -> API.BiometricKeyList { API.BiometricKeyList(ready: false, keys: []) }
+    func biometricRemove(keyId: String) async throws -> Bool { false }
 }
 
 struct AccountService: AccountServicing {
@@ -153,6 +172,25 @@ struct AccountService: AccountServicing {
 
     func codeStart(email: String) async throws {
         _ = try await client.call(API.codeStart, .init(email: email))
+    }
+
+    func biometricChallenge(keyId: String) async throws -> API.BiometricChallenge {
+        try await client.call(API.biometricChallenge, .init(keyId: keyId))
+    }
+
+    /// Always kept signed in, as every other sign-in in the app is.
+    func biometricSignIn(keyId: String, challenge: String, signature: String) async throws -> User {
+        try await client.call(API.biometricSignIn, .init(keyId: keyId, challenge: challenge, signature: signature, remember: true))
+    }
+
+    func biometricRegister(keyId: String, publicKey: String, deviceName: String?) async throws {
+        _ = try await client.call(API.biometricRegister, .init(keyId: keyId, publicKey: publicKey, deviceName: deviceName))
+    }
+
+    func biometricKeys() async throws -> API.BiometricKeyList { try await client.call(API.biometricKeys) }
+
+    func biometricRemove(keyId: String) async throws -> Bool {
+        try await client.call(API.biometricRemove, .init(keyId: keyId)).removed
     }
 
     /// Always kept signed in, as every other sign-in in the app is.

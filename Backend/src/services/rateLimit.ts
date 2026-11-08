@@ -49,7 +49,7 @@ import { getDb } from "./db.js";
  * there is no failure to count, and the abuse is using NetLet to mail somebody
  * else. `codeMiss` counts a wrong code, like a wrong password.
  */
-export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "giftLookup" | "offerRequest" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch" | "placeLookup";
+export type AttemptKind = "login" | "reset" | "codeSend" | "codeMiss" | "faceMiss" | "giftLookup" | "offerRequest" | "imageImport" | "searchRefine" | "recommendModel" | "voucherMiss" | "photoSearch" | "placeLookup";
 
 /**
  * Who is asking, as the two keys the policy checks.
@@ -74,7 +74,7 @@ const addressBucket = (address: string) => `address:${address.trim()}`;
  */
 async function prune(db: NonNullable<Awaited<ReturnType<typeof getDb>>>): Promise<void> {
   await db.delete(authAttempts).where(
-    and(inArray(authAttempts.kind, ["login", "reset", "codeSend", "codeMiss"]), lt(authAttempts.createdAt, new Date(Date.now() - ATTEMPT_WINDOW_MS))),
+    and(inArray(authAttempts.kind, ["login", "reset", "codeSend", "codeMiss", "faceMiss"]), lt(authAttempts.createdAt, new Date(Date.now() - ATTEMPT_WINDOW_MS))),
   );
 }
 
@@ -476,19 +476,31 @@ export async function takeHourlyAllowance(userId: number, kind: "photoClean" | "
  * a spent one is kept ten, then pruned, by its own kind alone.
  */
 export async function spendPortalPass(id: string): Promise<boolean> {
+  return spendOnce("portalPass", `pass:${id}`);
+}
+
+/**
+ * Spends a Face ID sign-in challenge (`verifyFaceChallenge`) once, by the
+ * portal pass's rule: a signature watched on its way in cannot be sent again.
+ */
+export async function spendFaceChallenge(id: string): Promise<boolean> {
+  return spendOnce("faceChallenge", `face:${id}`);
+}
+
+async function spendOnce(kind: "portalPass" | "faceChallenge", key: string): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
-  const bucket = `pass:${id}`.slice(0, 340);
+  const bucket = key.slice(0, 340);
   const spent = await db.transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${bucket}))`);
     const [seen] = await tx
       .select({ n: sql<number>`count(*)::int` })
       .from(authAttempts)
-      .where(and(eq(authAttempts.bucket, bucket), eq(authAttempts.kind, "portalPass")));
+      .where(and(eq(authAttempts.bucket, bucket), eq(authAttempts.kind, kind)));
     if ((seen?.n ?? 0) > 0) return false;
-    await tx.insert(authAttempts).values([{ bucket, kind: "portalPass" }]);
+    await tx.insert(authAttempts).values([{ bucket, kind }]);
     return true;
   });
-  await db.delete(authAttempts).where(and(eq(authAttempts.kind, "portalPass"), lt(authAttempts.createdAt, new Date(Date.now() - 10 * 60 * 1000))));
+  await db.delete(authAttempts).where(and(eq(authAttempts.kind, kind), lt(authAttempts.createdAt, new Date(Date.now() - 10 * 60 * 1000))));
   return spent;
 }

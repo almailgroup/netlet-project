@@ -221,6 +221,46 @@ enum API {
         let code: String
         let remember: Bool
     }
+    /// Signing in with Face ID (`auth.biometricChallenge`, `auth.biometricSignIn`,
+    /// `auth.biometricRegister`, `auth.biometricKeys`, `auth.biometricRemove`):
+    /// a challenge for this phone's key, the challenge signed, and the phones
+    /// the account has it on. `active` says whether NetLet still holds the key.
+    struct BiometricKeyInput: Encodable, Sendable {
+        let keyId: String
+    }
+    struct BiometricChallenge: Decodable, Sendable {
+        let challenge: String
+        let active: Bool
+    }
+    struct BiometricSignIn: Encodable, Sendable {
+        let keyId: String
+        let challenge: String
+        let signature: String
+        let remember: Bool
+    }
+    struct BiometricRegister: Encodable, Sendable {
+        let keyId: String
+        let publicKey: String
+        let deviceName: String?
+    }
+    struct BiometricRegistered: Decodable, Sendable {
+        let ok: Bool
+    }
+    /// `ready` is false until migration 0078 is pasted, and the phone offers nothing.
+    struct BiometricKeyList: Decodable, Sendable {
+        let ready: Bool
+        let keys: [BiometricKey]
+    }
+    struct BiometricKey: Decodable, Sendable, Identifiable, Equatable {
+        let keyId: String
+        let deviceName: String?
+        let createdAt: Date
+        let lastUsedAt: Date?
+        var id: String { keyId }
+    }
+    struct BiometricRemoved: Decodable, Sendable {
+        let removed: Bool
+    }
     /// Adding an email to an account made with a phone (`auth.addEmailStart`,
     /// `auth.addEmailVerify`): the address, then the code emailed to it.
     struct AddEmailStart: Encodable, Sendable {
@@ -273,6 +313,11 @@ enum API {
     static let phoneVerify = Procedure<PhoneVerify, PhoneVerified>(mutation: "auth.phoneVerify")
     static let codeStart = Procedure<Email, CodeStarted>(mutation: "auth.codeStart")
     static let codeSignIn = Procedure<CodeSignIn, User>(mutation: "auth.codeSignIn")
+    static let biometricChallenge = Procedure<BiometricKeyInput, BiometricChallenge>(mutation: "auth.biometricChallenge")
+    static let biometricSignIn = Procedure<BiometricSignIn, User>(mutation: "auth.biometricSignIn")
+    static let biometricRegister = Procedure<BiometricRegister, BiometricRegistered>(mutation: "auth.biometricRegister")
+    static let biometricKeys = Procedure<NoInput, BiometricKeyList>(query: "auth.biometricKeys")
+    static let biometricRemove = Procedure<BiometricKeyInput, BiometricRemoved>(mutation: "auth.biometricRemove")
     static let addEmailStart = Procedure<AddEmailStart, AddEmailStarted>(mutation: "auth.addEmailStart")
     static let addEmailVerify = Procedure<AddEmailVerify, User>(mutation: "auth.addEmailVerify")
     static let accountSignInWays = Procedure<NoInput, AccountSignInWays>(query: "auth.myProviders")

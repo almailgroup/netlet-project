@@ -14,6 +14,7 @@ import { parse as parseCookies } from "cookie";
 import type { Request } from "express";
 import { randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
+import { BIOMETRIC_CHALLENGE_MS } from "../../../Shared/auth/biometricKey.js";
 import type { User } from "../../database/schema.js";
 import { getUserById } from "../services/db.js";
 import { ENV } from "./env.js";
@@ -96,6 +97,37 @@ export async function verifyPortalPass(token: string): Promise<PortalPass | null
     const side = payload.side;
     if (!Number.isInteger(userId) || userId <= 0 || (side !== "admin" && side !== "vendor") || typeof payload.jti !== "string") return null;
     return { userId, side, remember: payload.remember !== false, id: payload.jti };
+  } catch {
+    return null;
+  }
+}
+
+/*
+ * A Face ID sign-in challenge (`Shared/auth/biometricKey.ts`): a token of its
+ * own audience naming the phone's key, good for `BIOMETRIC_CHALLENGE_MS`, with
+ * an id the server spends the first time a signature over it is checked — so
+ * a signature watched once cannot be sent again. Stateless until it is spent,
+ * so asking for one writes nothing.
+ */
+const FACE_AUDIENCE = "netlet-face-id";
+
+export async function signFaceChallenge(keyId: string): Promise<string> {
+  return new SignJWT({ key: keyId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setIssuer(ISSUER)
+    .setAudience(FACE_AUDIENCE)
+    .setJti(randomUUID())
+    .setExpirationTime(new Date(Date.now() + BIOMETRIC_CHALLENGE_MS))
+    .sign(secretKey());
+}
+
+/** The challenge's key and id, or null for anything expired, tampered with or not a challenge. Never throws. */
+export async function verifyFaceChallenge(token: string): Promise<{ keyId: string; id: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, secretKey(), { issuer: ISSUER, audience: FACE_AUDIENCE });
+    if (typeof payload.key !== "string" || typeof payload.jti !== "string") return null;
+    return { keyId: payload.key, id: payload.jti };
   } catch {
     return null;
   }

@@ -18,7 +18,7 @@ struct AuthView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ModelHost(make: { AuthViewModel(account: app.services.account) }) { model in
+        ModelHost(make: { AuthViewModel(account: app.services.account, faceID: app.faceID) }) { model in
             form(model)
                 // The tutorial's last page opens the form on creating an
                 // account or on signing in, whichever was pressed.
@@ -139,6 +139,7 @@ private struct AuthForm: View {
         .onAppear {
             takePhonePreset()
             takeCodePreset()
+            takeFaceIdPreset()
         }
     }
 
@@ -151,6 +152,17 @@ private struct AuthForm: View {
         model.method = .code
         model.email = "noura@shop.test"
         if step == "step" { Task { await submit() } }
+    }
+
+    /// The screenshots' `-NetLetOpen faceId` (Debug only): the address the
+    /// demo's phone has a key for, and the third tile chosen.
+    private func takeFaceIdPreset() {
+        guard band, app.faceIdSignInPreset else { return }
+        app.faceIdSignInPreset = false
+        model.mode = .signIn
+        model.remembersMethod = false
+        model.email = "noura@shop.test"
+        model.method = .faceID
     }
 
     /// The screenshots' `-NetLetOpen phone[:code|:email]` (Debug only).
@@ -207,9 +219,12 @@ private struct AuthForm: View {
             )
             .focused($focus, equals: .email)
             if model.mode == .signIn {
-                SignInMethodChoice(method: $model.method)
+                SignInMethodChoice(
+                    method: Binding(get: { model.shownMethod }, set: { model.method = $0 }),
+                    faceID: model.faceIdKind
+                )
             }
-            if model.mode != .reset && !model.usesCode {
+            if model.mode != .reset && !model.usesCode && !model.usesFaceID {
                 VStack(alignment: .leading, spacing: 10) {
                     LabeledField(
                         label: l.t("auth.password"),
@@ -247,7 +262,7 @@ private struct AuthForm: View {
                 }
             }
             if let refusal = model.refusal {
-                RefusalBox(key: refusal) {
+                RefusalBox(key: refusal, params: ["kind": l.t((model.faceIdKind ?? app.faceID.kind ?? .faceID).nameKey)]) {
                     if model.offersReset {
                         Button(l.t("auth.resetInstead")) { model.mode = .reset }
                     }
@@ -266,6 +281,8 @@ private struct AuthForm: View {
                     HStack(spacing: 8) { ProgressView().tint(.white); Text(l.t(workingLabel)) }
                 } else if model.usesCode {
                     Label(l.t(submitLabel), systemImage: "envelope")
+                } else if model.usesFaceID, let kind = model.faceIdKind {
+                    Label(l.t("ios.biometric.signIn", ["kind": l.t(kind.nameKey)]), systemImage: kind.symbol)
                 } else {
                     Text(l.t(submitLabel))
                 }
@@ -585,6 +602,11 @@ private struct AuthForm: View {
     }
 
     private func submit() async {
+        if model.usesFaceID {
+            focus = nil
+            if let user = await model.signInWithFaceID(reason: l.t("ios.biometric.prompt")) { await app.signedIn(user) }
+            return
+        }
         if let user = await model.submit() {
             await app.signedIn(user)
             return
@@ -600,7 +622,11 @@ private struct AuthForm: View {
 /// its corner; under the code's, one line says what happens.
 struct SignInMethodChoice: View {
     @Binding var method: AuthViewModel.SignInMethod
+    /// Face ID or Touch ID, drawn as a third tile only where this phone has a
+    /// key for the address typed.
+    var faceID: BiometryKind? = nil
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -611,11 +637,22 @@ struct SignInMethodChoice: View {
             HStack(spacing: 10) {
                 tile(.password, symbol: "key", label: "auth.methodPassword", tint: Calm.sky, ink: Brand.navy)
                 tile(.code, symbol: "envelope", label: "auth.methodCode", tint: Calm.peach, ink: Calm.peachInk)
+                if let faceID {
+                    tile(.faceID, symbol: faceID.symbol, label: faceID.nameKey, tint: Calm.track, ink: Brand.navy)
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
             }
+            .animation(still ? nil : .smooth(duration: 0.3), value: faceID)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(l.t("auth.methodLabel"))
             if method == .code {
                 Text(l.t("auth.methodCodeNote"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 2)
+            } else if method == .faceID {
+                Text(l.t("ios.biometric.methodNote"))
                     .font(.inter(13))
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -626,24 +663,48 @@ struct SignInMethodChoice: View {
 
     private func tile(_ value: AuthViewModel.SignInMethod, symbol: String, label: String, tint: Color, ink: Color) -> some View {
         let on = method == value
+        // Three tiles in a row: the icon over its word, so neither is cut.
+        let stacked = faceID != nil
         return Button {
             method = value
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(ink)
-                    .frame(width: 36, height: 36)
-                    .background(Circle().fill(tint))
-                Text(l.t(label))
-                    .font(.inter(14, .semibold))
-                    .foregroundStyle(Brand.navy)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            Group {
+                if stacked {
+                    VStack(spacing: 6) {
+                        Image(systemName: symbol)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(ink)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(tint))
+                            .accessibilityHidden(true)
+                        Text(l.t(label))
+                            .font(.inter(13, .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.85)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity)
+                } else {
+                    HStack(spacing: 10) {
+                        Image(systemName: symbol)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(ink)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(tint))
+                            .accessibilityHidden(true)
+                        Text(l.t(label))
+                            .font(.inter(14, .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, stacked ? 6 : 12)
             .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, minHeight: 60)
+            .frame(maxWidth: .infinity, minHeight: stacked ? 84 : 60)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Calm.chosen : Color.white))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -660,6 +721,7 @@ struct SignInMethodChoice: View {
                         // Out over the tile's end corner, whichever side that is.
                         .offset(x: l.layoutDirection == .rightToLeft ? -6 : 6, y: -6)
                         .environment(\.layoutDirection, .leftToRight)
+                        .accessibilityHidden(true)
                         .transition(.scale.combined(with: .opacity))
                 }
             }
@@ -675,6 +737,8 @@ struct SignInMethodChoice: View {
 /// offers under the words.
 struct RefusalBox<Next: View>: View {
     let key: String
+    /// Words a sentence names — Face ID or Touch ID.
+    var params: [String: String] = [:]
     @ViewBuilder var next: () -> Next
     @Environment(LanguageSettings.self) private var l
 
@@ -685,7 +749,7 @@ struct RefusalBox<Next: View>: View {
                 .padding(.top, 1)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                Text(l.t(key)).fixedSize(horizontal: false, vertical: true)
+                Text(l.t(key, params)).fixedSize(horizontal: false, vertical: true)
                 next()
                     .font(.inter(14, .bold))
                     .underline()

@@ -85,6 +85,9 @@ struct RootView: View {
                 .environment(\.layoutDirection, l.layoutDirection)
                 .buttonStyle(HapticDefaultStyle())
         }
+        .sheet(item: $app.faceIdOffer) { offer in
+            FaceIDOfferSheet(offer: offer)
+        }
         .sheet(isPresented: $app.deliveryOpen) {
             DeliverySheet()
                 .environment(\.layoutDirection, l.layoutDirection)

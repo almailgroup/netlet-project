@@ -24,7 +24,7 @@ import { COOKIE_NAME } from "../../../Shared/const.js";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { checkPassword, MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
-import { SESSION_MAX_AGE_MS, SHORT_SESSION_MS, signPortalPass, signSession, verifyPortalPass } from "../core/auth.js";
+import { SESSION_MAX_AGE_MS, SHORT_SESSION_MS, signFaceChallenge, signPortalPass, signSession, verifyFaceChallenge, verifyPortalPass } from "../core/auth.js";
 import { getSessionCookieOptions } from "../core/cookies.js";
 import { recordAudit } from "../services/audit.js";
 import { ENV } from "../core/env.js";
@@ -56,7 +56,17 @@ import { tellAccountChanged } from "../services/notifications.js";
 import { deleteAccount, deletionCheck } from "../services/accountDeletion.js";
 import { saveNameParts } from "../services/profileDetails.js";
 import { composeName, NAME_PART_MAX } from "../../../Shared/commerce/profileDetails.js";
-import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, spendPortalPass, type AttemptKind, type Caller } from "../services/rateLimit.js";
+import { checkAuthAllowed, clearAccountFailures, recordAuthAttempt, spendFaceChallenge, spendPortalPass, type AttemptKind, type Caller } from "../services/rateLimit.js";
+import {
+  BiometricKeyError,
+  biometricKeyOwner,
+  biometricKeysFor,
+  registerBiometricKey,
+  removeBiometricKey,
+  signatureValid,
+  touchBiometricKey,
+} from "../services/biometricKeys.js";
+import { BIOMETRIC_KEY_ID, DEVICE_NAME_MAX, biometricMessage } from "../../../Shared/auth/biometricKey.js";
 import { resolveActor } from "../services/inventory.js";
 import { isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
 import { recordReferral } from "../services/referral.js";
@@ -1121,6 +1131,89 @@ export const authRouter = router({
       await startSession(ctx, user, input.remember);
       return { ...toPublicUser(user), portal: input.portal ? await portalHandover(ctx, user, null, input.remember !== false) : null };
     }),
+
+  /**
+   * Face ID, first half (`Shared/auth/biometricKey.ts`): a challenge for the
+   * phone's key to sign. `active` says whether NetLet still holds that key —
+   * told only to somebody who has the key's random id, so it is no way to ask
+   * about an address — and lets the phone put its own key away rather than
+   * ask for a face it cannot use.
+   */
+  biometricChallenge: publicProcedure
+    .input(z.object({ keyId: z.string().regex(BIOMETRIC_KEY_ID) }))
+    .mutation(async ({ input }) => ({
+      challenge: await signFaceChallenge(input.keyId),
+      active: (await biometricKeyOwner(input.keyId)) !== null,
+    })),
+
+  /**
+   * Face ID, second half: the challenge signed by the phone's key, which the
+   * phone does only after Face ID. Spent once, checked against the public half
+   * NetLet keeps, and signed in like any other door. Every way it fails is one
+   * refusal and counts against the address, except a key NetLet no longer
+   * holds (turned off, or the account deleted), which says so, so the phone
+   * forgets it and offers the password or a code.
+   */
+  biometricSignIn: publicProcedure
+    .input(z.object({
+      keyId: z.string().regex(BIOMETRIC_KEY_ID),
+      challenge: z.string().min(20).max(2000),
+      signature: z.string().min(16).max(400),
+      remember: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const caller = callerOf(ctx);
+      await assertNotThrottled(caller, "faceMiss");
+      const failed = async () => {
+        await recordAuthAttempt(caller, "faceMiss");
+        return new TRPCError({ code: "UNAUTHORIZED", message: "auth.faceIdFailed" });
+      };
+      const challenge = await verifyFaceChallenge(input.challenge);
+      if (!challenge || challenge.keyId !== input.keyId) throw await failed();
+      const owner = await biometricKeyOwner(input.keyId);
+      if (!owner) throw new TRPCError({ code: "NOT_FOUND", message: "auth.faceIdOff" });
+      if (!signatureValid(owner.publicKey, biometricMessage(input.challenge), input.signature)) throw await failed();
+      if (!(await spendFaceChallenge(challenge.id))) throw await failed();
+      const { user } = owner;
+
+      await touchBiometricKey(input.keyId);
+      if (user.email) await clearAccountFailures(user.email);
+      await touchLastSignedIn(user.id);
+      await startSession(ctx, user, input.remember);
+      return { ...toPublicUser(user), portal: null };
+    }),
+
+  /**
+   * Sets Face ID up on this phone for the account signed in: the public half of
+   * the key the phone just made. Refused before migration 0078 is pasted
+   * (`auth.faceIdUnavailable`), past `MAX_BIOMETRIC_KEYS` phones, and for a key
+   * that is not a P-256 point.
+   */
+  biometricRegister: protectedProcedure
+    .input(z.object({
+      keyId: z.string().regex(BIOMETRIC_KEY_ID),
+      publicKey: z.string().min(80).max(200),
+      deviceName: z.string().max(DEVICE_NAME_MAX * 2).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await registerBiometricKey(ctx.user.id, input);
+      } catch (error) {
+        if (error instanceof BiometricKeyError) {
+          throw new TRPCError({ code: error.message === "auth.faceIdUnavailable" ? "PRECONDITION_FAILED" : "BAD_REQUEST", message: error.message });
+        }
+        throw error;
+      }
+      return { ok: true } as const;
+    }),
+
+  /** The phones this account has Face ID set up on; `ready` is false until 0078 is pasted. */
+  biometricKeys: protectedProcedure.query(({ ctx }) => biometricKeysFor(ctx.user.id)),
+
+  /** Turns Face ID off for one of this account's phones. */
+  biometricRemove: protectedProcedure
+    .input(z.object({ keyId: z.string().regex(BIOMETRIC_KEY_ID) }))
+    .mutation(async ({ ctx, input }) => ({ removed: await removeBiometricKey(ctx.user.id, input.keyId) })),
 
   login: publicProcedure.input(signInInput).mutation(async ({ ctx, input }) => {
     assertConfigured();

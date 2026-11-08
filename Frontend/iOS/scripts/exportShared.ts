@@ -114,6 +114,7 @@ const PERMISSIONS = {
   NSMicrophoneUsageDescription: "ios.permission.microphone",
   NSSpeechRecognitionUsageDescription: "ios.permission.speech",
   NSCameraUsageDescription: "ios.permission.camera",
+  NSFaceIDUsageDescription: "ios.permission.faceId",
 } as const;
 
 export function buildPermissionStrings(): Record<string, string> {

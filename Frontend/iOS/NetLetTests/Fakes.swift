@@ -189,6 +189,34 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
         if let resetError { throw resetError }
     }
 
+    /// Face ID: the challenges asked for, what each answers, and the keys registered.
+    var challengeAnswer: Result<API.BiometricChallenge, APIError> = .success(API.BiometricChallenge(challenge: "a-challenge-from-the-server", active: true))
+    var challenges: [String] = []
+    var biometricSignInResult: Result<User, APIError> = .success(FakeAccountService.user)
+    var biometricSignIns: [(keyId: String, challenge: String, signature: String)] = []
+    var registeredKeys: [(keyId: String, publicKey: String)] = []
+    var biometricRegisterError: APIError?
+    var removedKeys: [String] = []
+    var keyList = API.BiometricKeyList(ready: true, keys: [])
+
+    func biometricChallenge(keyId: String) async throws -> API.BiometricChallenge {
+        challenges.append(keyId)
+        return try challengeAnswer.get()
+    }
+    func biometricSignIn(keyId: String, challenge: String, signature: String) async throws -> User {
+        biometricSignIns.append((keyId, challenge, signature))
+        return try biometricSignInResult.get()
+    }
+    func biometricRegister(keyId: String, publicKey: String, deviceName: String?) async throws {
+        if let biometricRegisterError { throw biometricRegisterError }
+        registeredKeys.append((keyId, publicKey))
+    }
+    func biometricKeys() async throws -> API.BiometricKeyList { keyList }
+    func biometricRemove(keyId: String) async throws -> Bool {
+        removedKeys.append(keyId)
+        return true
+    }
+
     var resetWithCodeResult: Result<RegistrationResult, APIError> = .failure(.server(code: "UNAUTHORIZED", message: "auth.codeWrong", status: 401))
     var codeResets: [(email: String, code: String, password: String)] = []
 
@@ -320,4 +348,36 @@ func isolatedDefaults(_ name: String = UUID().uuidString) -> UserDefaults {
     let defaults = UserDefaults(suiteName: "netlet.tests.\(name)")!
     defaults.removePersistentDomain(forName: "netlet.tests.\(name)")
     return defaults
+}
+
+/// A phone with Face ID whose Secure Enclave is a set of ids: a key signs
+/// unless it has been told the faces changed, or the prompt is closed.
+@MainActor
+final class FakeKeychain: BiometricKeychain {
+    var current: BiometricState = .ready(.faceID)
+    var keys: Set<String> = []
+    var changed: Set<String> = []
+    var cancels = false
+    var prompts: [String] = []
+    var signed: [(keyId: String, message: String)] = []
+
+    func state() -> BiometricState { current }
+    func hasKey(_ keyId: String) -> Bool { keys.contains(keyId) }
+    func confirm(reason: String) async throws {
+        prompts.append(reason)
+        if cancels { throw BiometricFailure.cancelled }
+    }
+    func makeKey(_ keyId: String) throws -> String {
+        keys.insert(keyId)
+        changed.remove(keyId)
+        return Data([0x04] + Array(repeating: UInt8(9), count: 64)).base64EncodedString()
+    }
+    func sign(_ keyId: String, message: Data, reason: String) async throws -> String {
+        prompts.append(reason)
+        if cancels { throw BiometricFailure.cancelled }
+        guard keys.contains(keyId), !changed.contains(keyId) else { throw BiometricFailure.changed }
+        signed.append((keyId, String(decoding: message, as: UTF8.self)))
+        return "c2lnbmVk"
+    }
+    func deleteKey(_ keyId: String) { keys.remove(keyId) }
 }

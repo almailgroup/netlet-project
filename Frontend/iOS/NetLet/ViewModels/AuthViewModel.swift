@@ -9,7 +9,11 @@ import Observation
 ///
 /// Signing in is by the password or by a one-time code emailed to the
 /// account, the shopper's choice and remembered on the phone — the web's
-/// `MethodChoice` (`auth.codeStart`, `auth.codeSignIn`).
+/// `MethodChoice` (`auth.codeStart`, `auth.codeSignIn`). **Face ID is the
+/// third, and only where this phone holds a key for the address typed**
+/// (`FaceIDModel`): the tile appears as the address is typed, and the server
+/// is asked whether it still holds the key (`auth.biometricChallenge`'s
+/// `active`), so a key turned off elsewhere is forgotten rather than offered.
 @Observable
 @MainActor
 final class AuthViewModel {
@@ -19,7 +23,7 @@ final class AuthViewModel {
 
     /// How "Sign in" proves who is asking.
     enum SignInMethod: String, Equatable {
-        case password, code
+        case password, code, faceID
     }
 
     /// Where the form is. The code step and the "check your email" page
@@ -54,7 +58,9 @@ final class AuthViewModel {
 
     private(set) var step: Step = .form
     var name = ""
-    var email = ""
+    var email = "" {
+        didSet { if email != oldValue { emailChanged() } }
+    }
     var password = ""
     var code = ""
     /// Google's "I'm not a robot" token, good once.
@@ -84,6 +90,13 @@ final class AuthViewModel {
 
     private let account: AccountServicing
     private let defaults: UserDefaults
+    private let faceID: FaceIDModel?
+    /// This phone's key for the address typed, while it can still sign.
+    private(set) var faceIdKey: String?
+    /// The server's check that it still holds that key, and the challenge it
+    /// handed out with the answer, kept for the press if it comes soon.
+    private var activeCheck: Task<Void, Never>?
+    private var pendingChallenge: (keyId: String, challenge: String, at: Date)?
     private var countdown: Task<Void, Never>?
     static let resendWaitSeconds = 30
     /// A sign-in code waits a minute between mails, Supabase's own interval
@@ -91,21 +104,34 @@ final class AuthViewModel {
     static let signInCodeWaitSeconds = 60
     static let methodKey = "netlet.signInMethod"
 
-    init(account: AccountServicing, defaults: UserDefaults = .standard) {
+    init(account: AccountServicing, defaults: UserDefaults = .standard, faceID: FaceIDModel? = nil) {
         self.account = account
         self.defaults = defaults
+        self.faceID = faceID
         method = defaults.string(forKey: Self.methodKey).flatMap(SignInMethod.init(rawValue:)) ?? .password
     }
 
+    /// Face ID or Touch ID, while this phone can sign in to the address typed with it.
+    var faceIdKind: BiometryKind? {
+        guard faceIdKey != nil, case .ready(let kind)? = faceID?.state else { return nil }
+        return kind
+    }
+
+    /// The way chosen, as the form draws it: Face ID chosen last time is the
+    /// password until an address this phone has a key for is typed.
+    var shownMethod: SignInMethod { method == .faceID && faceIdKind == nil ? .password : method }
+
     /// Signing in by an emailed code rather than the password.
-    var usesCode: Bool { mode == .signIn && method == .code }
+    var usesCode: Bool { mode == .signIn && shownMethod == .code }
+    /// Signing in with this phone's Face ID.
+    var usesFaceID: Bool { mode == .signIn && shownMethod == .faceID }
 
     var emailProblem: String? { Validation.emailProblem(email) }
 
     var passwordProblem: String? {
         switch mode {
         case .reset: return nil
-        case .signIn: return usesCode || !password.isEmpty ? nil : "auth.passwordRequired"
+        case .signIn: return usesCode || usesFaceID || !password.isEmpty ? nil : "auth.passwordRequired"
         case .register: return Validation.newPasswordProblem(password)
         }
     }
@@ -139,6 +165,80 @@ final class AuthViewModel {
         }
         guard mode == .register, captchaSiteKey == nil else { return }
         captchaSiteKey = (try? await account.signupOptions())?.captchaSiteKey
+    }
+
+    /// Face ID: a challenge from the server, the face (the key signs only
+    /// after it), and the signature back. Closing the prompt says nothing; a
+    /// key NetLet no longer holds is forgotten here, and one the phone's faces
+    /// have changed under is put away for "Set up again".
+    func signInWithFaceID(reason: String) async -> User? {
+        guard let faceID, let keyId = faceIdKey else { return nil }
+        let address = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        refusal = nil
+        working = true
+        defer { working = false }
+        do {
+            let started: API.BiometricChallenge
+            if let pending = pendingChallenge, pending.keyId == keyId, Date().timeIntervalSince(pending.at) < Self.challengeReuseSeconds {
+                started = API.BiometricChallenge(challenge: pending.challenge, active: true)
+            } else {
+                started = try await account.biometricChallenge(keyId: keyId)
+            }
+            pendingChallenge = nil
+            guard started.active else {
+                faceID.forget(email: address)
+                emailChanged()
+                refusal = "auth.faceIdOff"
+                return nil
+            }
+            let signature = try await faceID.sign(email: address, challenge: started.challenge, reason: reason)
+            return try await account.biometricSignIn(keyId: keyId, challenge: started.challenge, signature: signature)
+        } catch let failure as BiometricFailure {
+            switch failure {
+            case .cancelled:
+                return nil
+            case .changed:
+                faceID.retire(email: address)
+                emailChanged()
+                refusal = "ios.biometric.changed"
+            case .unavailable:
+                refusal = "ios.biometric.unavailable"
+            }
+            return nil
+        } catch {
+            let failure = APIError.from(error)
+            if failure.serverMessage == "auth.faceIdOff" {
+                faceID.forget(email: address)
+                emailChanged()
+            }
+            if failure != .cancelled { refusal = key(for: failure) }
+            return nil
+        }
+    }
+
+    /// A challenge lasts two minutes (`BIOMETRIC_CHALLENGE_MS`); one fetched
+    /// with the check is used for a press within this long.
+    static let challengeReuseSeconds: TimeInterval = 90
+
+    /// The address changed: whether this phone has a key for it, and, a moment
+    /// after the typing stops, whether NetLet still holds it.
+    private func emailChanged() {
+        let address = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let found = address.isEmpty ? nil : faceID?.keyId(for: address)
+        faceIdKey = found
+        activeCheck?.cancel()
+        guard let found else { return }
+        activeCheck = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled, let self else { return }
+            guard let answer = try? await self.account.biometricChallenge(keyId: found), !Task.isCancelled else { return }
+            if answer.active {
+                self.pendingChallenge = (found, answer.challenge, Date())
+            } else if self.faceIdKey == found {
+                self.faceID?.forget(email: address)
+                self.faceIdKey = nil
+            }
+        }
     }
 
     /// "Continue with Apple": the system's sheet, then the server — one door

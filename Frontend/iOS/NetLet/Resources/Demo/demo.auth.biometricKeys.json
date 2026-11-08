@@ -1,0 +1,39 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "keys": [
+          {
+            "keyId": "fK3c9QeZb1vXn0aT7uLm2Ws8yDh4",
+            "deviceName": "Noura's iPhone 15",
+            "createdAt": "2026-10-02T17:40:12.000Z",
+            "lastUsedAt": "2026-11-01T08:15:00.000Z"
+          },
+          {
+            "keyId": "demo-face-id-key-0000000000",
+            "deviceName": "iPhone",
+            "createdAt": "2026-09-14T11:02:47.000Z",
+            "lastUsedAt": "2026-11-07T19:30:05.000Z"
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "keys.0.createdAt": [
+            "Date"
+          ],
+          "keys.0.lastUsedAt": [
+            "Date"
+          ],
+          "keys.1.createdAt": [
+            "Date"
+          ],
+          "keys.1.lastUsedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

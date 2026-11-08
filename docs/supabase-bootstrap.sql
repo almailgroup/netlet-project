@@ -2078,6 +2078,23 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0078_biometric_keys.sql =====
+CREATE TABLE IF NOT EXISTS "biometric_keys" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"key_id" varchar(64) NOT NULL,
+	"public_key" text NOT NULL,
+	"device_name" varchar(80),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_used_at" timestamp with time zone
+);
+DO $$ BEGIN
+  ALTER TABLE "biometric_keys" ADD CONSTRAINT "biometric_keys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "biometric_keys_key_id_unique" ON "biometric_keys" USING btree ("key_id");
+CREATE INDEX IF NOT EXISTS "biometric_keys_user_idx" ON "biometric_keys" USING btree ("user_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2121,6 +2138,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  78 AS migrations_in_this_file,
+  79 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

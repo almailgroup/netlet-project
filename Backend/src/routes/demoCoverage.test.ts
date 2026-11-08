@@ -40,6 +40,13 @@ const NOT_IN_DEMO = new Set([
   // Signing in by an emailed code needs a server to send the code.
   "auth.codeStart",
   "auth.codeSignIn",
+  // Face ID signs with a key in the phone's Secure Enclave; there is nothing
+  // for a recording to sign with, and the app's tests stand in for the phone.
+  "auth.biometricChallenge",
+  "auth.biometricSignIn",
+  "auth.biometricRegister",
+  "auth.biometricKeys",
+  "auth.biometricRemove",
   "auth.me",
   "search.refine",
   // The demo is one address with no portals of its own to hand a sign-in on to.

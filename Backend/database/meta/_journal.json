@@ -547,6 +547,13 @@
       "when": 1794076874322,
       "tag": "0077_phone_sign_in",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794143904129,
+      "tag": "0078_biometric_keys",
+      "breakpoints": true
     }
   ]
 }

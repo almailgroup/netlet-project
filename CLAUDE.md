@@ -450,6 +450,44 @@ with a password NetLet keeps itself is refused with "use your password"
 to the server log for an account with a local password (`localCodes.ts`,
 purpose `sign-in`). `codeSignIn.test.ts` holds each of these.
 
+**On the iPhone Face ID is the third, on the owner's word** ("3 options …
+the Face ID option should only appear if the user has it enabled on their
+account … as soon as the user enters their email address … and the option to
+re-do the Face ID in settings"). **NetLet never sees a face**: the phone makes
+a P-256 key in its Secure Enclave that signs only after Face ID
+(`.privateKeyUsage | .biometryCurrentSet`, `SecureEnclaveKeychain` in
+`Services/FaceID.swift`) and hands NetLet its public half under a random id
+(migration 0078, `biometric_keys`, one row per phone, at most
+`MAX_BIOMETRIC_KEYS`, gone with the account by the cascade;
+`Shared/auth/biometricKey.ts` the rule, `services/biometricKeys.ts` the
+database half). To sign in, `auth.biometricChallenge` hands out a two-minute
+signed challenge for that id, the phone signs `netlet-face-id:<challenge>`
+(`biometricMessage`) — which is the Face ID prompt — and
+`auth.biometricSignIn` checks it against the public half, spends the
+challenge once (`spendFaceChallenge`, the portal pass's lock) and signs in
+like any other door; every failure is one `auth.faceIdFailed` counted as a
+`faceMiss` by address, but for a key NetLet no longer holds, which says so
+(`auth.faceIdOff`) so the phone forgets it. **The tile shows only where this phone holds a key for
+the address typed** (`FaceIDModel`, email → key id in `UserDefaults`; the id
+is no secret), checked as the address is typed and then asked of the server
+(`active`), so nobody learns from it whether an address has an account, and a
+key turned off on another phone is forgotten rather than offered. Signing in
+some other way offers it once per address ("Sign in faster with Face ID?",
+`FaceIDOfferSheet`; "Not now" is remembered); "Your profile" has the card
+(`FaceIDCard`): on or off for this phone, the other phones with Remove, and
+**"Set up again"**, which makes a new key under the same id so the server
+replaces the old public half. **An app cannot register a face**: a face, or
+somebody else's as an Alternate Appearance, is added in the iPhone's
+Settings, and a key bound to `.biometryCurrentSet` stops signing the moment
+that set changes — the form then says the faces changed and the card's "Set up
+again" binds the new set. **Until 0078 is pasted it is closed, not broken**
+(`ready: false`, `auth.faceIdUnavailable`), so the order of the paste and the
+deploy does not matter. The key's account is read by a join in
+`biometricKeyOwner`, never `db.ts`'s `getUserById`, whose module-local
+`getDb` no test can redirect. The website has none: a browser's passkeys would
+be WebAuthn, a different design. `biometricSignIn.test.ts` holds the server's
+rules with a real P-256 key; `FaceIDTests` and `FaceIDUITests` the app's.
+
 **The colours ease the eyes, also on the owner's word** ("include some colors
 that ease the eyes … attracting and useful"): the boxes are a soft blue-grey
 (`#f5f8fc`, a `#d6dfeb` rim, 52px, rounded 14) that turn white with a navy
@@ -7442,8 +7480,10 @@ codes' words in both languages, then 912 KB (265 KB), the help
 centre's, the notification groups' and the browsing history's words in both
 languages, then 925 KB (268 KB), the new sign-in, the portal's own
 addresses and the profile photo, then 939 KB (271 KB), signing in with a
-phone and its words in both languages, and is 941 KB (272 KB) now, the
-one-time code's choice and step, nearly
+phone and its words in both languages, then 941 KB (272 KB), the
+one-time code's choice and step, and is 947 KB (273 KB) now, the iPhone's
+Face ID words in both languages (every `ios.*` key ships in the one
+dictionary), nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -8316,7 +8356,11 @@ started (184 → 184), and a fourth drag five seconds later moved it 263 points.
 Nothing on the home page scrolls by itself — the logo's press is the only
 `scrollTo` — so for some seconds after launch, sometimes, the page does not
 take a drag. Not reproduced off a Mac; the next step is a device or a
-simulator under Instruments in the first ten seconds after launch.
+simulator under Instruments in the first ten seconds after launch. A fourth
+sighting (run 205, the English home page, on the push that fixed the phone
+sign-up's build) was the same to the point: 184 → 184 under three drags, -6
+after the fourth — and it cost that push its TestFlight build, since only a
+green run uploads.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the

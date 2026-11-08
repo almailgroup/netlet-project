@@ -245,6 +245,8 @@ struct DeleteAccountCard: View {
         do {
             _ = try await app.services.api.call(API.deleteAccount, input)
             Haptics.succeeded()
+            // The account's Face ID key went with it on the server; the phone's goes too.
+            if let email = app.session.user?.email { app.faceID.forget(email: email) }
             await app.signOut()
             app.toast(l.t("account.deleted"))
             app.goHome()

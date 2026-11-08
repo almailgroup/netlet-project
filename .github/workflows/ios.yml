@@ -137,6 +137,8 @@ jobs:
             # Signing in with a one-time code: the choice, then the emailed code.
             shot 05f-code-choice "$lang" codeSignIn ""
             shot 05g-code-step "$lang" codeSignIn:step ""
+            # Face ID, the third way in, for an address this phone has a key for.
+            shot 05h-face-id "$lang" faceId ""
             shot 06-cart "$lang" cart shopper
             shot 07-checkout "$lang" checkout shopper
             shot 08-orders "$lang" orders shopper
@@ -223,6 +225,9 @@ jobs:
             shot 83-your-profile "$lang" profile shopper
             # An account made with a phone: the Email card where the password was.
             shot 83b-your-profile-phone "$lang" profile phone
+            # Face ID: the offer after signing in, and its card on Your profile.
+            shot 84-face-id-offer "$lang" faceIdOffer shopper
+            shot 85-face-id-card "$lang" faceIdCard shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

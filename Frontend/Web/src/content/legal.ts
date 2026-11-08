@@ -18,7 +18,7 @@
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 /** When either page last changed, as a Kuwaiti calendar day. */
-export const LEGAL_UPDATED = "2026-11-07";
+export const LEGAL_UPDATED = "2026-11-08";
 
 export type LegalParagraph = {
   key: MessageKey;
@@ -48,7 +48,7 @@ export const PRIVACY: LegalSection[] = [
   {
     id: "keep",
     title: "privacy.keep.title",
-    body: [{ key: "privacy.keep.account" }, { key: "privacy.keep.profile" }, { key: "privacy.keep.orders" }, { key: "privacy.keep.writing" }, { key: "privacy.keep.selling" }],
+    body: [{ key: "privacy.keep.account" }, { key: "privacy.keep.profile" }, { key: "privacy.keep.faceId" }, { key: "privacy.keep.orders" }, { key: "privacy.keep.writing" }, { key: "privacy.keep.selling" }],
   },
   { id: "device", title: "privacy.device.title", body: [{ key: "privacy.device.body" }] },
   { id: "why", title: "privacy.why.title", body: [{ key: "privacy.why.orders" }, { key: "privacy.why.abuse" }, { key: "privacy.why.picked" }] },

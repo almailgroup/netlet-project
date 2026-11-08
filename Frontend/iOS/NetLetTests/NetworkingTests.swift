@@ -520,6 +520,22 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(sent.contains(#""code":"123456""#))
     }
 
+    /// Face ID: the phones the account has it on, their dates read as dates,
+    /// and a challenge that says whether NetLet still holds the key; a phone
+    /// with no name sends none rather than a null the server refuses.
+    func testFaceIDAnswersDecode() async throws {
+        let list = try await client.call(API.biometricKeys)
+        XCTAssertTrue(list.ready)
+        XCTAssertEqual(list.keys.count, 2)
+        XCTAssertEqual(list.keys[1].keyId, DemoKeychain.keyId)
+        XCTAssertNotNil(list.keys[0].lastUsedAt)
+        let challenge = try await client.call(API.biometricChallenge, .init(keyId: DemoKeychain.keyId))
+        XCTAssertTrue(challenge.active)
+        let sent = String(decoding: try JSONEncoder().encode(API.BiometricRegister(keyId: "k", publicKey: "p", deviceName: nil)), as: UTF8.self)
+        XCTAssertFalse(sent.contains("deviceName"))
+        XCTAssertNotNil(DemoKeychain.keyId.range(of: "^[A-Za-z0-9_-]{22,64}$", options: .regularExpression))
+    }
+
     func testSignInWithPhone() async throws {
         let ways = try await client.call(API.signInWays)
         XCTAssertEqual(ways.phone, true)

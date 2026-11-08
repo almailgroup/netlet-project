@@ -654,17 +654,33 @@ struct ProfileView: View {
 
     var body: some View {
         ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
+            ScrollViewReader { proxy in
             ShopPage(header: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     RoundBackTitle(title: l.t("account.sectionProfile"))
                     if let user = app.session.user { ProfilePhotoCard(user: user) }
                     ProfileForm(model: model)
+                    // Face ID beside the password: another way to sign in,
+                    // and "Set up again" for a face added since.
+                    if let email = app.session.user?.email {
+                        FaceIDCard(email: email)
+                            .padding(.bottom, -16)
+                            .id("faceId")
+                    }
                     DeleteAccountCard()
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 12)
                 .padding(.bottom, 48)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            // The screenshots' `-NetLetOpen faceIdCard` (Debug only).
+            .task(id: app.profileScrollTo) {
+                guard let target = app.profileScrollTo else { return }
+                try? await Task.sleep(for: .milliseconds(700))
+                app.profileScrollTo = nil
+                proxy.scrollTo(target, anchor: .top)
+            }
             }
             .task {
                 async let photo: Void = app.profilePhoto.load()

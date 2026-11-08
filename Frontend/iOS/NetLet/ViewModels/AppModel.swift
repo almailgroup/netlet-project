@@ -160,6 +160,9 @@ final class AppModel {
     let viewed: RecentlyViewed
     /// The home page's catalogue and shelves, shared with the header and the categories page.
     let shelf: HomeShelf
+    /// Face ID's keys on this phone, which account each signs in to, and the
+    /// offer after signing in (`FaceIDModel`).
+    let faceID: FaceIDModel
     let isDemo: Bool
 
     /// Set while the sign-in sheet is up, for the screens that need an account
@@ -238,6 +241,13 @@ final class AppModel {
     /// The screenshots' `codeSignIn` and `codeSignIn:step`: the sign-in form
     /// on the one-time code, chosen, or sent and waiting for the code.
     var codeSignInPreset: String?
+    /// The screenshots' `faceId`: the sign-in form with an address this phone
+    /// has a Face ID key for, the third tile chosen.
+    var faceIdSignInPreset = false
+    /// "Sign in faster with Face ID?", after signing in some other way.
+    var faceIdOffer: FaceIDOffer?
+    /// The screenshots' scroll on "Your profile" to one of its cards.
+    var profileScrollTo: String?
 
     /// How the tutorial was left.
     enum TutorialExit { case skip, signIn, register, shop }
@@ -320,6 +330,9 @@ final class AppModel {
         saved = SavedModel(account: services.account, defaults: cartDefaults)
         viewed = RecentlyViewed(defaults: cartDefaults)
         shelf = HomeShelf(catalog: services.catalog, warm: HomeShelf.warmPhotos(resolve: services.configuration.resolve))
+        // The recorded demo has no Secure Enclave to sign with: a phone that
+        // pretends, so the screenshots show the tile and the card.
+        faceID = isDemo ? FaceIDModel(keychain: DemoKeychain(), defaults: Self.demoFaceIDDefaults()) : FaceIDModel(keychain: SecureEnclaveKeychain(), defaults: cartDefaults)
         signals = AccountSignals(api: services.api)
         delivery = DeliveryModel(api: services.api, account: services.account, defaults: cartDefaults)
         savings = SavingsModel(api: services.api)
@@ -332,6 +345,15 @@ final class AppModel {
             guard let self, !self.chatOpen else { return }
             self.chatUnread = true
         }
+    }
+
+    /// The demo's Face ID map, emptied at every launch, so one screenshot's
+    /// key does not put a third tile on every sign-in picture after it.
+    private static func demoFaceIDDefaults() -> UserDefaults {
+        let name = "net.netlet.demo.face-id"
+        let defaults = UserDefaults(suiteName: name) ?? .standard
+        defaults.removePersistentDomain(forName: name)
+        return defaults
     }
 
     /// A conversation about one product, the product page's own assistant.
@@ -483,6 +505,21 @@ final class AppModel {
             // The signed-out Profile tab signing in with an emailed code.
             selectedTab = .account
             codeSignInPreset = value ?? "choice"
+        case "faceId":
+            // The signed-out Profile tab with an address this phone has a Face ID key for.
+            selectedTab = .account
+            faceID.adoptDemoKey(for: "noura@shop.test")
+            faceIdSignInPreset = true
+        case "faceIdOffer":
+            // "Sign in faster with Face ID?" over the Profile tab, signed in.
+            selectedTab = .account
+            faceIdOffer = FaceIDOffer(email: "noura@shop.test", kind: .faceID)
+        case "faceIdCard":
+            // "Your profile" scrolled to its Face ID card, on for this phone.
+            selectedTab = .account
+            faceID.adoptDemoKey(for: session.user?.email ?? "noura@shop.test")
+            profileScrollTo = "faceId"
+            accountPath = NavigationPath([Route.profile])
         case "orders":
             selectedTab = .account
             accountPath = NavigationPath([Route.orders])
@@ -681,6 +718,47 @@ final class AppModel {
             // Once the sign-in sheet has gone.
             try? await Task.sleep(for: .milliseconds(450))
             wishAsking = pending
+            return
+        }
+        await offerFaceID(to: user)
+    }
+
+    /// "Sign in faster with Face ID?" — asked once per address, after signing
+    /// in some other way, where the phone has Face ID set up, this address has
+    /// no key on it yet, and NetLet can keep one (`ready`, after migration
+    /// 0078). Never in the recorded demo, where nobody signs in for real.
+    private func offerFaceID(to user: User) async {
+        guard !isDemo, let email = user.email, case .ready(let kind) = faceID.state,
+              !faceID.isOn(for: email), !faceID.declined(email) else { return }
+        guard let keys = try? await services.account.biometricKeys(), keys.ready else { return }
+        // Once the sign-in sheet has gone.
+        try? await Task.sleep(for: .milliseconds(450))
+        guard session.user?.email == email else { return }
+        faceIdOffer = FaceIDOffer(email: email, kind: kind)
+    }
+
+    /// Turns Face ID on for `email` on this phone — the offer's button and the
+    /// card's — and makes it the way the next sign-in opens on. Answers whether it took.
+    func turnOnFaceID(email: String) async -> Bool {
+        guard let kind = faceID.kind else { return false }
+        let name = language.t(kind.nameKey)
+        do {
+            try await faceID.turnOn(email: email, account: services.account, reason: language.t("ios.biometric.setupPrompt", ["kind": name]))
+            UserDefaults.standard.set(AuthViewModel.SignInMethod.faceID.rawValue, forKey: AuthViewModel.methodKey)
+            Haptics.succeeded()
+            toast(language.t("ios.biometric.turnedOn", ["kind": name]))
+            return true
+        } catch BiometricFailure.cancelled {
+            return false
+        } catch BiometricFailure.unavailable, BiometricFailure.changed {
+            Haptics.refused()
+            toast(language.t("ios.biometric.unavailable", ["kind": name]))
+            return false
+        } catch {
+            Haptics.refused()
+            let failure = APIError.from(error)
+            if failure != .cancelled { toast(language.t(failure.messageKey(knownKey: Phrasebook.shared.has))) }
+            return false
         }
     }
 
@@ -772,3 +850,10 @@ enum SearchStart {
     case voice, photo
 }
 
+
+/// The offer after signing in: which address, and Face ID or Touch ID.
+struct FaceIDOffer: Identifiable, Equatable {
+    let email: String
+    let kind: BiometryKind
+    var id: String { email }
+}

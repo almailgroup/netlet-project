@@ -653,3 +653,136 @@ final class OrderDetailViewModelTests: XCTestCase {
         if case .failed = model.detail { XCTFail("not found is not a failure") }
     }
 }
+
+/// Face ID, the third way to sign in: shown only for an address this phone
+/// holds a key for, signing the server's challenge, and forgetting a key
+/// NetLet no longer holds.
+@MainActor
+final class FaceIDTests: XCTestCase {
+    private func setUp(email: String = "noura@shop.test") async throws -> (FakeAccountService, FakeKeychain, FaceIDModel) {
+        let account = FakeAccountService()
+        let keychain = FakeKeychain()
+        let faceID = FaceIDModel(keychain: keychain, defaults: isolatedDefaults())
+        try await faceID.turnOn(email: email, account: account, reason: "Set up")
+        return (account, keychain, faceID)
+    }
+
+    func testTurningOnMakesAKeyAndRegistersItsPublicHalf() async throws {
+        let (account, keychain, faceID) = try await setUp()
+        XCTAssertEqual(keychain.prompts, ["Set up"], "the face is asked for once before the key is made")
+        let id = try XCTUnwrap(faceID.keyId(for: " NOURA@shop.test "), "the address is compared folded")
+        XCTAssertEqual(account.registeredKeys.map(\.keyId), [id])
+        XCTAssertEqual(Data(base64Encoded: account.registeredKeys[0].publicKey)?.count, 65)
+        XCTAssertNotNil(id.range(of: "^[A-Za-z0-9_-]{22,64}$", options: .regularExpression), "the server's BIOMETRIC_KEY_ID")
+        XCTAssertNil(faceID.keyId(for: "someone@shop.test"))
+    }
+
+    func testTheTileShowsOnlyForAnAddressThisPhoneHasAKeyFor() async throws {
+        let (account, _, faceID) = try await setUp()
+        let model = AuthViewModel(account: account, defaults: isolatedDefaults(), faceID: faceID)
+        model.method = .faceID
+        model.email = "someone@shop.test"
+        XCTAssertNil(model.faceIdKind)
+        XCTAssertEqual(model.shownMethod, .password, "Face ID chosen last time is the password for another address")
+        XCTAssertFalse(model.usesFaceID)
+        model.email = "noura@shop.test"
+        XCTAssertEqual(model.faceIdKind, .faceID)
+        XCTAssertTrue(model.usesFaceID)
+        XCTAssertNil(model.passwordProblem, "Face ID needs no password")
+    }
+
+    func testSigningInSignsTheServersChallenge() async throws {
+        let (account, keychain, faceID) = try await setUp()
+        let model = AuthViewModel(account: account, defaults: isolatedDefaults(), faceID: faceID)
+        model.email = "noura@shop.test"
+        model.method = .faceID
+        let user = await model.signInWithFaceID(reason: "Sign in to NetLet")
+        XCTAssertEqual(user?.id, 2)
+        let id = try XCTUnwrap(faceID.keyId(for: "noura@shop.test"))
+        XCTAssertEqual(account.biometricSignIns.map(\.keyId), [id])
+        XCTAssertEqual(account.biometricSignIns.first?.challenge, "a-challenge-from-the-server")
+        XCTAssertEqual(keychain.signed.last?.message, "netlet-face-id:a-challenge-from-the-server", "Shared/auth/biometricKey.ts's biometricMessage")
+    }
+
+    func testClosingThePromptSaysNothing() async throws {
+        let (account, keychain, faceID) = try await setUp()
+        let model = AuthViewModel(account: account, defaults: isolatedDefaults(), faceID: faceID)
+        model.email = "noura@shop.test"
+        model.method = .faceID
+        keychain.cancels = true
+        let user = await model.signInWithFaceID(reason: "Sign in")
+        XCTAssertNil(user)
+        XCTAssertNil(model.refusal)
+        XCTAssertTrue(account.biometricSignIns.isEmpty)
+        XCTAssertNotNil(faceID.keyId(for: "noura@shop.test"), "the key stays")
+    }
+
+    func testAKeyNetLetNoLongerHoldsIsForgotten() async throws {
+        let (account, _, faceID) = try await setUp()
+        let model = AuthViewModel(account: account, defaults: isolatedDefaults(), faceID: faceID)
+        model.email = "noura@shop.test"
+        model.method = .faceID
+        account.challengeAnswer = .success(API.BiometricChallenge(challenge: "c", active: false))
+        _ = await model.signInWithFaceID(reason: "Sign in")
+        XCTAssertEqual(model.refusal, "auth.faceIdOff")
+        XCTAssertNil(faceID.keyId(for: "noura@shop.test"))
+        XCTAssertNil(faceID.storedId(for: "noura@shop.test"))
+        XCTAssertEqual(model.shownMethod, .password, "the tile goes and the password is offered")
+
+        let (other, _, otherFaceID) = try await setUp()
+        let again = AuthViewModel(account: other, defaults: isolatedDefaults(), faceID: otherFaceID)
+        again.email = "noura@shop.test"
+        again.method = .faceID
+        other.biometricSignInResult = .failure(.server(code: "NOT_FOUND", message: "auth.faceIdOff", status: 404))
+        _ = await again.signInWithFaceID(reason: "Sign in")
+        XCTAssertEqual(again.refusal, "auth.faceIdOff")
+        XCTAssertNil(otherFaceID.storedId(for: "noura@shop.test"))
+    }
+
+    func testFacesThatChangedPutTheKeyAwayAndSetUpAgainReusesItsId() async throws {
+        let (account, keychain, faceID) = try await setUp()
+        let id = try XCTUnwrap(faceID.keyId(for: "noura@shop.test"))
+        let model = AuthViewModel(account: account, defaults: isolatedDefaults(), faceID: faceID)
+        model.email = "noura@shop.test"
+        model.method = .faceID
+        keychain.changed.insert(id)
+        _ = await model.signInWithFaceID(reason: "Sign in")
+        XCTAssertEqual(model.refusal, "ios.biometric.changed")
+        XCTAssertNil(faceID.keyId(for: "noura@shop.test"), "a key that can never sign again is not offered")
+        XCTAssertEqual(faceID.storedId(for: "noura@shop.test"), id)
+
+        try await faceID.turnOn(email: "noura@shop.test", account: account, reason: "Set up")
+        XCTAssertEqual(faceID.keyId(for: "noura@shop.test"), id, "set up again under the same id, so the server replaces the old key")
+        XCTAssertEqual(account.registeredKeys.map(\.keyId), [id, id])
+    }
+
+    func testTurningOffForgetsTheKeyHereAndOnTheServer() async throws {
+        let (account, keychain, faceID) = try await setUp()
+        let id = try XCTUnwrap(faceID.keyId(for: "noura@shop.test"))
+        try await faceID.turnOff(email: "noura@shop.test", account: account)
+        XCTAssertEqual(account.removedKeys, [id])
+        XCTAssertFalse(keychain.hasKey(id))
+        XCTAssertFalse(faceID.isOn(for: "noura@shop.test"))
+    }
+
+    func testARefusedRegistrationLeavesNoKey() async throws {
+        let account = FakeAccountService()
+        account.biometricRegisterError = .server(code: "PRECONDITION_FAILED", message: "auth.faceIdUnavailable", status: 412)
+        let keychain = FakeKeychain()
+        let faceID = FaceIDModel(keychain: keychain, defaults: isolatedDefaults())
+        do {
+            try await faceID.turnOn(email: "noura@shop.test", account: account, reason: "Set up")
+            XCTFail("the server refused it")
+        } catch {}
+        XCTAssertTrue(keychain.keys.isEmpty)
+        XCTAssertFalse(faceID.isOn(for: "noura@shop.test"))
+    }
+
+    func testNotNowIsRememberedForTheAddress() {
+        let faceID = FaceIDModel(keychain: FakeKeychain(), defaults: isolatedDefaults())
+        XCTAssertFalse(faceID.declined("noura@shop.test"))
+        faceID.decline("Noura@shop.test")
+        XCTAssertTrue(faceID.declined("noura@shop.test"))
+        XCTAssertFalse(faceID.declined("someone@shop.test"))
+    }
+}

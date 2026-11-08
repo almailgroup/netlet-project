@@ -1387,6 +1387,33 @@ export const profilePhotos = pgTable("profile_photos", {
 });
 
 /**
+ * Face ID sign-in keys (`Shared/auth/biometricKey.ts`): one row per iPhone a
+ * shopper has set Face ID up on. The phone makes a P-256 key pair in its
+ * Secure Enclave, usable only after Face ID; this is the public half, and the
+ * private half never leaves the phone. `key_id` is random and names the key
+ * on the phone, so knowing an email tells nobody whether it has one. Gone
+ * with the account.
+ */
+export const biometricKeys = pgTable(
+  "biometric_keys",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    keyId: varchar("key_id", { length: 64 }).notNull(),
+    publicKey: text("public_key").notNull(),
+    deviceName: varchar("device_name", { length: 80 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  },
+  table => [
+    uniqueIndex("biometric_keys_key_id_unique").on(table.keyId),
+    index("biometric_keys_user_idx").on(table.userId),
+  ],
+);
+
+/**
  * Where a driver is now (3.4.3) — one row per driver, overwritten, never a
  * trail. Written only while the driver has chosen to share from the dispatch
  * board, and deleted when they stop. The rules are `Shared/commerce/tracking.ts`.

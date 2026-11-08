@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 74 tables, 786 columns, 136 indexes, 173 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 75 tables, 793 columns, 138 indexes, 174 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -29,6 +29,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('application_documents', 'application_id:n,byte_size:n,bytes:n,content_type:n,created_at:nd,file_name:n,id:pnd,kind:n,review_note,reviewed_at,reviewed_by,sha256:n,status:nd,uploaded_by', 'application_documents_application_idx', 'application_id>vendor_applications:c,reviewed_by>users:n,uploaded_by>users:n'),
   ('audit_log', 'action:n,actor_email,actor_id,actor_role,after,authorised_by_email,authorised_by_id,before,created_at:nd,id:pnd,subject_id,subject_label,subject_type:n,vendor_id', 'audit_log_action_idx,audit_log_actor_idx,audit_log_created_idx,audit_log_subject_idx', 'actor_id>users:n,authorised_by_id>users:n,vendor_id>vendors:n'),
   ('auth_attempts', 'bucket:n,created_at:nd,id:pnd,kind:n', 'auth_attempts_bucket_idx,auth_attempts_created_idx', ''),
+  ('biometric_keys', 'created_at:nd,device_name,id:pnd,key_id:n,last_used_at,public_key:n,user_id:n', 'biometric_keys_key_id_unique:u,biometric_keys_user_idx', 'user_id>users:c'),
   ('bundle_items', 'bundle_id:n,id:pnd,position:nd,quantity:nd,variant_id:n', 'bundle_items_unique:u', 'bundle_id>bundles:c,variant_id>product_variants:c'),
   ('bundles', 'active:nd,bundle_price:n,created_at:nd,id:pnd,name:n,name_ar,updated_at:nd,vendor_id', 'bundles_vendor_idx', 'vendor_id>vendors:c'),
   ('cart_item_addons', 'addon_id:n,cart_item_id:n,id:pnd', 'cart_item_addons_unique:u', 'addon_id>product_addons:c,cart_item_id>cart_items:c'),
@@ -247,7 +248,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 74 tables' AS object,
+    count(*) || ' of 75 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -261,7 +262,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 74 tables, 786 columns, 136 indexes, 173 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 75 tables, 793 columns, 138 indexes, 174 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report
