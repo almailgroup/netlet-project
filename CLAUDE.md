@@ -404,8 +404,9 @@ understandable — simple, sleek, no unnecessary stuff"). "Welcome to NetLet"
 (`auth.welcome`) holds still over the Sign in | Create account switch
 (`ModeSwitch`, its white pill sliding to the other half as it is pressed, a
 cut under reduced motion), so nothing above the switch moves when it is
-pressed; then the email and password, "Keep me signed in" and "Forgot your
-password?" on one row, and Sign in. Creating an account adds the name
+pressed; then the email, how to sign in (below), the password, "Keep me
+signed in" and "Forgot your password?" on one row, and Sign in. Creating an
+account adds the name
 (optional, no hint), a two-tick password line, Google's box, Continue, and
 under it one quiet line saying a 6-digit code comes next and one saying that
 continuing agrees to the Terms of use and the Privacy policy, each a link
@@ -418,6 +419,47 @@ in"; the hint under the name; the "Step 1 of 2" bar; the password's three
 optional chips; the line of order facts at the dialog's foot; and the
 sign-in page's footer. Each was true, and together they made a form read
 like a contract.
+
+**Signing in is by the password or by a one-time code, the shopper's choice,
+on the owner's word** ("two options … by password or by signing in with a one
+time code … tools for the user to choose from"). Under the email, "Sign in
+with" offers two tiles — Password (a key on pale sky) and One-time code (an
+envelope on pale peach), the chosen one rimmed in navy with a tick on its
+corner — real radio buttons on the web (`MethodChoice`, so the arrow keys move
+between them) and `SignInMethodChoice` in the app, the choice kept on the
+device (`netlet.signInMethod`) so the next sign-in opens on it. Choosing the
+code takes the password box and "Forgot your password?" away, says under the
+tile that a 6-digit code is coming, and the button reads "Email me a code";
+then "Check your email" with the sign-up's six boxes (`SignInCode`, the app's
+`codeStep` of kind `signIn`), sent by themselves on the sixth digit, "Use my
+password instead" one press away, and a new code after a minute. **The code
+is emailed, not texted**: SMS waits on the gateway (see "A shopper can open an
+account with a phone number alone"). `auth.codeStart` asks Supabase to send it
+(`sendSupabaseSignInCode`, `/auth/v1/otp` with `create_user: false`, so asking
+never makes an account; the "Magic Link" template has to print `{{ .Token }}`,
+`docs/SUPABASE-AUTH.md`) and **answers the same whether or not the address has
+an account** — only the throttle is said, a code sent counting as `codeSend`
+and a wrong one as `codeMiss`. `auth.codeSignIn` checks it
+(`verifySupabaseSignupCode`, type `email`) and lands on the account through
+`linkProviderAccount`, Apple's and Google's rule, the inbox having been
+proven: an account Supabase holds and NetLet has no row for is made, a sign-up
+nobody confirmed has its password replaced with one nobody knows (whoever
+typed it need not be whoever reads the inbox), and an account that signs in
+with a password NetLet keeps itself is refused with "use your password"
+(`auth.codeUsePassword`), never adopted. With no Supabase the code is written
+to the server log for an account with a local password (`localCodes.ts`,
+purpose `sign-in`). `codeSignIn.test.ts` holds each of these.
+
+**The colours ease the eyes, also on the owner's word** ("include some colors
+that ease the eyes … attracting and useful"): the boxes are a soft blue-grey
+(`#f5f8fc`, a `#d6dfeb` rim, 52px, rounded 14) that turn white with a navy
+ring on focus, the email and password carry an icon at their start, the switch
+runs on a pale sky track, the code's empty boxes wear the same soft fill, and
+the button has a soft shadow — all drawn from the navy and the orange, nothing
+new. On a wide screen the sign-in page sits on a wash from pale sky through the
+pearl to pale peach, and the street picture is framed in pale sky inside the
+card; a phone keeps the white sheet. The app's colours are `Calm`
+(`Theme.swift`) and `LabeledField`'s `soft` and `icon`.
 
 **The dialog is one column, the form alone**: the logo, Close, and the form.
 **The pages are the form and a picture of NetLet** (`AuthScreen`): from `lg`
@@ -433,7 +475,11 @@ signed-out `/account` on a phone is the sheet to the screen's foot, its
 ground white rather than pearl under it (`usePageChrome`'s `sheet`). Measured
 at 320, 390 and 1440 in both languages: axe clean on `/signin`, `/signup`, a
 signed-out `/account`, the dialog, the refusals, the reset and the code step;
-a sign-up through the emailed code lands on the account.
+a sign-up through the emailed code lands on the account; and for the one-time
+code, at the same widths, the password box gone with the code chosen, the
+arrow keys moving the choice, focus in the code boxes, a wrong code refused,
+the right one signed in and the choice remembered, the dialog and a signed-out
+`/account` included, with no sideways scroll.
 
 **Create account proves the address before anything exists.** It is two steps,
 said under Continue before it is pressed ("We'll email you a 6-digit code to
@@ -7395,8 +7441,9 @@ cart and the confirmation's words, then 887 KB (258 KB), the product
 codes' words in both languages, then 912 KB (265 KB), the help
 centre's, the notification groups' and the browsing history's words in both
 languages, then 925 KB (268 KB), the new sign-in, the portal's own
-addresses and the profile photo, and is 939 KB (271 KB) now, signing in with a
-phone and its words in both languages, nearly
+addresses and the profile photo, then 939 KB (271 KB), signing in with a
+phone and its words in both languages, and is 941 KB (272 KB) now, the
+one-time code's choice and step, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -8638,7 +8685,11 @@ non-optional key, a default value or not**: `var scope: String = "order"`
 does not make `scope` optional in the JSON, so a field added to an answer
 the app already decodes is an optional, or the type writes its own
 `init(from:)` with `decodeIfPresent` (`DiscountCode`), or every recording
-from before it fails `FixtureDecodingTests`. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
+from before it fails `FixtureDecodingTests`. And **a field made optional is a
+type change at every use, not only where it is drawn**: the phone sign-up made
+`StoreMember.email` a `String?`, and one toast's `[String: String]` (`answer.email
+?? member.email`) stopped compiling — that push's build failed in two minutes
+and never reached TestFlight. Grep every use of a field made optional. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
 green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also

@@ -69,7 +69,7 @@ import { trpc } from "@/lib/trpc";
 import { appPath } from "@/lib/basePath";
 import { ResetByCode } from "@/components/auth/ResetByCode";
 import {
-  ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, LoaderCircle, MailCheck, Smartphone,
+  ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, Mail, MailCheck, Smartphone,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -86,6 +86,8 @@ import { openPortalTab } from "@/lib/portalPass";
 import type { PortalSide } from "@shared/portal";
 import { HumanCheck } from "./HumanCheck";
 import { PhoneSignIn } from "./PhoneSignIn";
+import { SignInCode } from "./SignInCode";
+import { readStored, writeStored } from "@/lib/browserStore";
 import { AppleButton, OrDivider } from "./AppleButton";
 import { GoogleButton } from "./GoogleButton";
 import type { AppleProof } from "@/lib/appleSignIn";
@@ -125,7 +127,16 @@ const REQUIRED: { rule: PasswordRule; label: MessageKey }[] = [
 ];
 
 /** A refusal and, where there is one, what to do about it. */
-type Refusal = { message: string; next?: "reset" | "signin" };
+type Refusal = { message: string; next?: "reset" | "signin" | "password" };
+
+/**
+ * How somebody signs in: with their password, or with a one-time code emailed
+ * to them. Remembered on this device (`browserStore`), a convenience and
+ * nothing more — whichever was chosen last is what the form opens on.
+ */
+export type SignInMethod = "password" | "code";
+const METHOD_KEY = "netlet.signInMethod";
+const storedMethod = (): SignInMethod => (readStored(METHOD_KEY) === "code" ? "code" : "password");
 
 /** Everything the code step needs to make the account, held by the form. */
 type AwaitingCode = {
@@ -188,6 +199,16 @@ export function AuthForm({
   const [captchaReset, setCaptchaReset] = useState(0);
   /* "Continue with phone number" has the form's place while it is chosen. */
   const [byPhone, setByPhone] = useState(false);
+  /* Password or a one-time code, the shopper's choice on signing in. */
+  const [method, setMethod] = useState<SignInMethod>(storedMethod);
+  /** The address a sign-in code went to, which turns the form into its code step. */
+  const [codeFor, setCodeFor] = useState<string | null>(null);
+  const choose = (next: SignInMethod) => {
+    setMethod(next);
+    writeStored(METHOD_KEY, next);
+    setRefusal(null);
+    setSubmitted(false);
+  };
   /** What a link in Supabase's email came back with, read once on arrival. */
   const [arrival, setArrival] = useState<EmailReturn | null>(() => (mode === "signin" ? peekEmailReturn() : null));
   useEffect(() => { if (arrival) clearEmailReturn(); }, [arrival]);
@@ -203,6 +224,8 @@ export function AuthForm({
 
   const isRegister = mode === "register";
   const isReset = mode === "reset";
+  /* Signing in with a code asks for the address alone. */
+  const byCode = mode === "signin" && method === "code";
 
   /* A fresh start for each mode; the email carries over, because it is the same person. */
   useEffect(() => {
@@ -213,9 +236,10 @@ export function AuthForm({
     setRefusal(null);
     setSentTo(null);
     setAwaiting(null);
+    setCodeFor(null);
     if (!movedByUs.current && !autoFocus) return;
     movedByUs.current = false;
-    const first = mode === "register" ? nameRef.current : email && mode === "signin" ? passwordRef.current : emailRef.current;
+    const first = mode === "register" ? nameRef.current : email && mode === "signin" && passwordRef.current ? passwordRef.current : emailRef.current;
     window.setTimeout(() => first?.focus(), 30);
     // The email is read for where to land, not watched.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -303,6 +327,15 @@ export function AuthForm({
       else { setSentTo(input.email); setWait(RESEND_WAIT_SECONDS); }
     },
   });
+  /* A one-time code: the same answer for an address with no account, so any
+     failure but the throttle reads as sent (the reset's rule). */
+  const codeStart = trpc.auth.codeStart.useMutation({
+    onSuccess: answer => setCodeFor(answer.email),
+    onError: (error, input) => {
+      if (error.message === "auth.tooManyAttempts") setRefusal({ message: error.message });
+      else setCodeFor(input.email.trim().toLowerCase());
+    },
+  });
   /* Sign in with Apple, on the shop's own address only — a portal's accounts
      are ones a store or NetLet made — and only while the server says Apple is
      on in Supabase and the website has its Services ID. */
@@ -333,7 +366,7 @@ export function AuthForm({
     setRefusal(null);
     google.mutate({ ...proof, remember: isRegister ? true : remember, referral: storedReferral(), portal: !PORTAL_SIDE });
   };
-  const pending = login.isPending || register.isPending || reset.isPending || apple.isPending || google.isPending;
+  const pending = login.isPending || register.isPending || reset.isPending || codeStart.isPending || apple.isPending || google.isPending;
 
   /* The heading, so what happened is the first thing read; the button pressed has gone. */
   useEffect(() => {
@@ -353,7 +386,7 @@ export function AuthForm({
 
   const trimmed = email.trim();
   const emailIssue: MessageKey | null = !trimmed ? "auth.emailRequired" : !EMAIL_SHAPE.test(trimmed) ? "auth.emailInvalid" : null;
-  const passwordIssue: MessageKey | null = isReset
+  const passwordIssue: MessageKey | null = isReset || byCode
     ? null
     : !password
       ? "auth.passwordRequired"
@@ -377,6 +410,7 @@ export function AuthForm({
     /* The locale is sent and unused for now: Supabase composes the reset mail
        from a dashboard template. It is here for when those are translated. */
     if (isReset) reset.mutate({ email: trimmed, locale });
+    else if (byCode) codeStart.mutate({ email: trimmed });
     else if (isRegister) register.mutate({ email: trimmed, password, name: name.trim() || undefined, referral: storedReferral(), captcha: captcha ?? undefined });
     /* On the shop, a sign-in by somebody who belongs on a portal is handed on
        to it; on a portal's own address there is nowhere further to go. */
@@ -404,6 +438,27 @@ export function AuthForm({
         }}
         onDifferent={() => {
           setAwaiting(null);
+          window.setTimeout(() => emailRef.current?.focus(), 30);
+        }}
+      />
+    );
+  }
+
+  if (codeFor) {
+    return (
+      <SignInCode
+        email={codeFor}
+        remember={remember}
+        Heading={Heading}
+        headingId={headingId}
+        onSignedIn={user => { setCodeFor(null); void settle(user.name, user.portal ? handOn(user.portal) : undefined); }}
+        onUsePassword={() => {
+          setCodeFor(null);
+          choose("password");
+          window.setTimeout(() => passwordRef.current?.focus(), 30);
+        }}
+        onDifferent={() => {
+          setCodeFor(null);
           window.setTimeout(() => emailRef.current?.focus(), 30);
         }}
       />
@@ -465,7 +520,7 @@ export function AuthForm({
   }
 
   const describe = (...ids: (string | false | null | undefined)[]) => ids.filter(Boolean).join(" ") || undefined;
-  const busyLabel: MessageKey = isReset ? "auth.sending" : isRegister ? "auth.sendingCode" : "auth.signingIn";
+  const busyLabel: MessageKey = isReset ? "auth.sending" : isRegister ? "auth.sendingCode" : byCode ? "auth.sendingSignInCode" : "auth.signingIn";
 
   return (
     <div>
@@ -527,6 +582,8 @@ export function AuthForm({
 
         <div>
           <label htmlFor={id("email")} className={labelClass}>{t("auth.email")}</label>
+          <div className="relative mt-1.5">
+          <FieldIcon><Mail className="size-[18px]" aria-hidden /></FieldIcon>
           <input
             id={id("email")}
             ref={emailRef}
@@ -543,8 +600,12 @@ export function AuthForm({
             maxLength={320}
             aria-invalid={showEmailIssue ? true : undefined}
             aria-describedby={describe(showEmailIssue && id("email-issue"), suggestion && id("email-suggest"))}
-            className={`${inputClass} mt-1.5`}
+            /* Room for the envelope at the page's start: the box types left
+               to right on either page, so on the Arabic page its start is the
+               right, where its end would be. */
+            className={`${inputClass} ps-11 rtl:ps-4 rtl:pe-11`}
           />
+          </div>
           {showEmailIssue ? <Issue id={id("email-issue")}>{t(emailIssue)}</Issue> : null}
           {suggestion && !showEmailIssue ? (
             <EmailSuggestion
@@ -555,10 +616,13 @@ export function AuthForm({
           ) : null}
         </div>
 
-        {!isReset ? (
+        {mode === "signin" ? <MethodChoice method={method} onChoose={choose} /> : null}
+
+        {!isReset && !byCode ? (
           <div>
             <label htmlFor={id("password")} className={labelClass}>{t("auth.password")}</label>
             <div className="relative mt-1.5">
+              <FieldIcon><LockKeyhole className="size-[18px]" aria-hidden /></FieldIcon>
               <input
                 id={id("password")}
                 ref={passwordRef}
@@ -575,10 +639,10 @@ export function AuthForm({
                   capsLock && id("caps"),
                   isRegister && id("rules"),
                 )}
-                /* Room for the eye. The box types left to right on either page,
-                   so its own end is the right; on the Arabic page the eye sits
-                   at the page's end, the left, and the room goes there. */
-                className={`${inputClass} pe-12 rtl:pe-4 rtl:ps-12`}
+                /* Room for the lock at the page's start and the eye at its end.
+                   The box types left to right on either page, so on the
+                   Arabic page the two sides swap. */
+                className={`${inputClass} ps-11 pe-12 rtl:ps-12 rtl:pe-11`}
               />
               <RevealButton shown={reveal} onToggle={() => setReveal(shown => !shown)} />
             </div>
@@ -606,13 +670,15 @@ export function AuthForm({
               />
               <span className="text-[14px] font-medium text-[#0a285a]">{t("auth.remember")}</span>
             </label>
-            <button
-              type="button"
-              onClick={() => go("reset")}
-              className="min-h-11 rounded text-[14px] font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]"
-            >
-              {t("auth.forgot")}
-            </button>
+            {byCode ? null : (
+              <button
+                type="button"
+                onClick={() => go("reset")}
+                className="min-h-11 rounded text-[14px] font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a]"
+              >
+                {t("auth.forgot")}
+              </button>
+            )}
           </div>
         ) : null}
 
@@ -624,10 +690,10 @@ export function AuthForm({
               {refusal.next ? (
                 <button
                   type="button"
-                  onClick={() => go(refusal.next!)}
+                  onClick={() => (refusal.next === "password" ? choose("password") : go(refusal.next as AuthMode))}
                   className="mt-1 rounded font-bold underline underline-offset-4"
                 >
-                  {t(refusal.next === "reset" ? "auth.resetInstead" : "auth.signInInstead")}
+                  {t(refusal.next === "reset" ? "auth.resetInstead" : refusal.next === "password" ? "auth.usePasswordInstead" : "auth.signInInstead")}
                 </button>
               ) : null}
             </div>
@@ -649,7 +715,8 @@ export function AuthForm({
         <div className={isReset ? "pt-1" : "pt-2"}>
           <button type="submit" disabled={pending} className={primaryClass}>
             {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-            {t(pending ? busyLabel : isReset ? "auth.resetSend" : isRegister ? "auth.continue" : "header.signIn")}
+            {byCode && !pending ? <Mail className="size-[18px]" aria-hidden /> : null}
+            {t(pending ? busyLabel : isReset ? "auth.resetSend" : isRegister ? "auth.continue" : byCode ? "auth.sendSignInCode" : "header.signIn")}
           </button>
         </div>
         {isRegister ? (
@@ -769,7 +836,7 @@ function ModeSwitch({ mode, onChoose }: { mode: AuthMode; onChoose: (mode: AuthM
   ] as const;
   const second = mode === "register";
   return (
-    <div role="group" aria-label={t("auth.modeSwitch")} className="relative mt-5 grid grid-cols-2 rounded-2xl bg-[#eef0f4] p-1">
+    <div role="group" aria-label={t("auth.modeSwitch")} className="relative mt-5 grid grid-cols-2 rounded-2xl bg-[#e9eff7] p-1">
       <span
         aria-hidden
         className={`absolute inset-y-1 start-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-[0_1px_3px_rgba(10,40,90,.12),0_4px_12px_rgba(10,40,90,.06)] transition-transform duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ${
@@ -797,14 +864,83 @@ function ModeSwitch({ mode, onChoose }: { mode: AuthMode; onChoose: (mode: AuthM
 }
 
 /* Navy on focus, as every field in the shop is, and red while it holds a problem. */
+/* A soft fill that turns white under the cursor's focus — a calm field that
+   still reads as a field — with a navy ring on focus, as every field in the
+   shop has, and red while it holds a problem. */
 export const inputClass =
-  "block h-12 w-full rounded-xl border border-[#c9d4e2] bg-white px-4 text-[16px] text-[#0a285a] outline-none transition placeholder:text-[#8494aa] hover:border-[#9fb0c6] focus:border-[#0a285a] focus:ring-4 focus:ring-[#0a285a]/10 aria-[invalid=true]:border-[#b3261e] aria-[invalid=true]:focus:ring-[#b3261e]/15";
+  "block h-[52px] w-full rounded-[14px] border border-[#d6dfeb] bg-[#f5f8fc] px-4 text-[16px] text-[#0a285a] outline-none transition placeholder:text-[#7d8ea6] hover:border-[#b4c3d6] focus:border-[#0a285a] focus:bg-white focus:ring-4 focus:ring-[#0a285a]/10 aria-[invalid=true]:border-[#b3261e] aria-[invalid=true]:bg-white aria-[invalid=true]:focus:ring-[#b3261e]/15";
 export const labelClass = "block text-[14px] font-semibold text-[#0a285a]";
 export const titleClass = "text-[26px] font-extrabold leading-tight tracking-[-0.01em] text-[#0a285a] outline-none sm:text-[28px]";
 export const primaryClass =
-  "flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0a285a] px-5 text-[15px] font-bold text-white transition hover:bg-[#0d3372] disabled:cursor-wait disabled:opacity-80";
+  "flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] bg-[#0a285a] px-5 text-[15px] font-bold text-white shadow-[0_8px_20px_rgba(10,40,90,.16)] transition hover:bg-[#0d3372] disabled:cursor-wait disabled:opacity-80";
 export const alertClass = "flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]";
 export const linkClass = "rounded font-semibold text-[#0a285a] underline decoration-[#0a285a]/30 underline-offset-4 hover:decoration-[#0a285a] disabled:cursor-default disabled:text-[#536b8c] disabled:no-underline";
+
+/** An icon at a field's start, under the text, never a press of its own. */
+function FieldIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-[#6b7f9c]" aria-hidden>
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Password or one-time code, chosen under the email box (on the owner's word:
+ * "two options for signing in … I want there to be tools for the user to
+ * choose from"). Two radio buttons drawn as tiles — real radios, so the arrow
+ * keys move between them and a screen reader hears one choice of two — each
+ * with its own soft colour: the password's the pale sky of the navy, the
+ * code's the pale peach of the orange. The code's line says what happens
+ * next, so nobody wonders where their password box went.
+ */
+function MethodChoice({ method, onChoose }: { method: SignInMethod; onChoose: (method: SignInMethod) => void }) {
+  const { t } = useTranslation();
+  const name = useId();
+  const choices = [
+    { value: "password", Icon: KeyRound, label: "auth.methodPassword", tint: "bg-[#e3ecf8] text-[#0a285a]" },
+    { value: "code", Icon: Mail, label: "auth.methodCode", tint: "bg-[#fde9de] text-[#a44a2b]" },
+  ] as const;
+  return (
+    <fieldset>
+      <legend className={labelClass}>{t("auth.methodLabel")}</legend>
+      <div className="mt-1.5 grid grid-cols-2 gap-2.5">
+        {choices.map(({ value, Icon, label, tint }) => {
+          const on = method === value;
+          return (
+            <label
+              key={value}
+              className={`relative flex min-h-[60px] cursor-pointer items-center gap-2.5 rounded-[14px] border px-3 py-2.5 transition has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-[#0a285a]/20 ${
+                on ? "border-[#0a285a] bg-[#f3f7fc] shadow-[inset_0_0_0_1px_#0a285a]" : "border-[#d6dfeb] bg-white hover:border-[#b4c3d6] hover:bg-[#f0f2f5]"
+              }`}
+            >
+              <input
+                type="radio"
+                name={name}
+                value={value}
+                checked={on}
+                onChange={() => { pressHaptic(); onChoose(value); }}
+                className="sr-only"
+              />
+              <span className={`grid size-9 shrink-0 place-items-center rounded-full ${tint}`}>
+                <Icon className="size-[18px]" aria-hidden />
+              </span>
+              <span className="min-w-0 text-[14px] font-semibold leading-5 text-[#0a285a]">{t(label)}</span>
+              {on ? (
+                <span className="absolute -end-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-[#0a285a] text-white ring-2 ring-white" aria-hidden>
+                  <Check className="size-3" strokeWidth={3} />
+                </span>
+              ) : null}
+            </label>
+          );
+        })}
+      </div>
+      {method === "code" ? (
+        <p className="mt-2 text-[13px] leading-5 text-[#536b8c]">{t("auth.methodCodeNote")}</p>
+      ) : null}
+    </fieldset>
+  );
+}
 
 export function Issue({ id, children }: { id: string; children: React.ReactNode }) {
   return (
@@ -1254,12 +1390,12 @@ export function CodeBoxes({ id, inputRef, value, onChange, invalid, describedBy 
           return (
             <span
               key={index}
-              className={`grid h-14 place-items-center rounded-xl border bg-white text-[24px] font-bold tabular-nums text-[#0a285a] transition ${
+              className={`grid h-14 place-items-center rounded-[14px] border text-[24px] font-bold tabular-nums text-[#0a285a] transition ${
                 here
-                  ? "border-[#0a285a] ring-4 ring-[#0a285a]/10"
+                  ? "border-[#0a285a] bg-white ring-4 ring-[#0a285a]/10"
                   : invalid
-                    ? "border-[#b3261e]"
-                    : value[index] ? "border-[#9fb0c6]" : "border-[#c9d4e2]"
+                    ? "border-[#b3261e] bg-white"
+                    : value[index] ? "border-[#9fb0c6] bg-white" : "border-[#d6dfeb] bg-[#f5f8fc]"
               }`}
             >
               {value[index] ?? (here ? <span className="h-6 w-px animate-pulse bg-[#0a285a]" /> : "")}

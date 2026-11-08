@@ -209,6 +209,18 @@ enum API {
         let code: String
         let remember: Bool
     }
+    /// Signing in with a one-time code emailed to the account
+    /// (`auth.codeStart`, `auth.codeSignIn`). The answer to the first is the
+    /// same whether or not the address has an account.
+    struct CodeStarted: Decodable, Sendable {
+        let sent: Bool
+        let email: String
+    }
+    struct CodeSignIn: Encodable, Sendable {
+        let email: String
+        let code: String
+        let remember: Bool
+    }
     /// Adding an email to an account made with a phone (`auth.addEmailStart`,
     /// `auth.addEmailVerify`): the address, then the code emailed to it.
     struct AddEmailStart: Encodable, Sendable {
@@ -259,6 +271,8 @@ enum API {
     static let googleSignIn = Procedure<AppleSignInInput, User>(mutation: "auth.googleSignIn")
     static let phoneStart = Procedure<PhoneStart, PhoneStarted>(mutation: "auth.phoneStart")
     static let phoneVerify = Procedure<PhoneVerify, PhoneVerified>(mutation: "auth.phoneVerify")
+    static let codeStart = Procedure<Email, CodeStarted>(mutation: "auth.codeStart")
+    static let codeSignIn = Procedure<CodeSignIn, User>(mutation: "auth.codeSignIn")
     static let addEmailStart = Procedure<AddEmailStart, AddEmailStarted>(mutation: "auth.addEmailStart")
     static let addEmailVerify = Procedure<AddEmailVerify, User>(mutation: "auth.addEmailVerify")
     static let accountSignInWays = Procedure<NoInput, AccountSignInWays>(query: "auth.myProviders")

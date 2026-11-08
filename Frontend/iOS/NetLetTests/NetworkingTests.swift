@@ -507,6 +507,19 @@ final class FixtureDecodingTests: XCTestCase {
     /// "Continue with phone number": the texted code's answers decode — an
     /// account with no email, which asks for one — and the number rule is
     /// `Shared/auth/phone.ts`'s, on its test's own cases.
+    /// Signing in with an emailed code: the same answer for any address, and
+    /// the account once the code comes back.
+    func testSignInWithAnEmailedCode() async throws {
+        let started = try await client.call(API.codeStart, .init(email: "noura@shop.test"))
+        XCTAssertTrue(started.sent)
+        XCTAssertEqual(started.email, "noura@shop.test")
+        let user = try await client.call(API.codeSignIn, .init(email: "noura@shop.test", code: "123456", remember: true))
+        XCTAssertEqual(user.id, 2)
+        XCTAssertEqual(user.email, "noura@shop.test")
+        let sent = String(decoding: try JSONEncoder().encode(API.CodeSignIn(email: "noura@shop.test", code: "123456", remember: true)), as: UTF8.self)
+        XCTAssertTrue(sent.contains(#""code":"123456""#))
+    }
+
     func testSignInWithPhone() async throws {
         let ways = try await client.call(API.signInWays)
         XCTAssertEqual(ways.phone, true)

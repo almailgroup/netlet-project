@@ -43,6 +43,9 @@ protocol AccountServicing: Sendable {
     func signInWays() async throws -> SignInWays
     func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User
     func googleSignIn(_ proof: GoogleProof) async throws -> User
+    /// Signing in with a one-time code: one emailed to the account, then the code.
+    func codeStart(email: String) async throws
+    func codeSignIn(email: String, code: String) async throws -> User
     /// Signing in with a phone: a code texted, then the code.
     func phoneStart(_ phone: String) async throws
     func phoneVerify(phone: String, code: String) async throws -> PhoneVerified
@@ -67,6 +70,11 @@ extension AccountServicing {
     }
     func googleSignIn(_ proof: GoogleProof) async throws -> User {
         throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.googleUnavailable", status: 412)
+    }
+    /// A stand-in mails nothing, and so knows no code.
+    func codeStart(email: String) async throws {}
+    func codeSignIn(email: String, code: String) async throws -> User {
+        throw APIError.server(code: "UNAUTHORIZED", message: "auth.codeWrong", status: 401)
     }
     func phoneStart(_ phone: String) async throws {
         throw APIError.server(code: "PRECONDITION_FAILED", message: "auth.phoneUnavailable", status: 412)
@@ -141,6 +149,15 @@ struct AccountService: AccountServicing {
 
     func googleSignIn(_ proof: GoogleProof) async throws -> User {
         try await client.call(API.googleSignIn, .init(idToken: proof.idToken, nonce: proof.nonce, remember: true))
+    }
+
+    func codeStart(email: String) async throws {
+        _ = try await client.call(API.codeStart, .init(email: email))
+    }
+
+    /// Always kept signed in, as every other sign-in in the app is.
+    func codeSignIn(email: String, code: String) async throws -> User {
+        try await client.call(API.codeSignIn, .init(email: email, code: code, remember: true))
     }
 
     func phoneStart(_ phone: String) async throws {

@@ -235,6 +235,9 @@ final class AppModel {
     /// The screenshots' `phone`, `phone:code` and `phone:email`: the sign-in
     /// form opens on "Continue with phone number" at that step.
     var phoneSignInPreset: String?
+    /// The screenshots' `codeSignIn` and `codeSignIn:step`: the sign-in form
+    /// on the one-time code, chosen, or sent and waiting for the code.
+    var codeSignInPreset: String?
 
     /// How the tutorial was left.
     enum TutorialExit { case skip, signIn, register, shop }
@@ -476,6 +479,10 @@ final class AppModel {
             // The signed-out Profile tab on "Continue with phone number".
             selectedTab = .account
             phoneSignInPreset = value ?? "number"
+        case "codeSignIn":
+            // The signed-out Profile tab signing in with an emailed code.
+            selectedTab = .account
+            codeSignInPreset = value ?? "choice"
         case "orders":
             selectedTab = .account
             accountPath = NavigationPath([Route.orders])

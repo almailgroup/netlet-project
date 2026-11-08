@@ -321,6 +321,78 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertEqual(account.verified.first?.code, "123456")
     }
 
+    /// Signing in with a one-time code: no password asked for, the code
+    /// step whatever the address, a wrong code said, the right one signing
+    /// in, and the way chosen remembered for the next sign-in.
+    func testSigningInWithACodeAsksForNoPassword() async {
+        let account = FakeAccountService()
+        let defaults = isolatedDefaults()
+        let model = AuthViewModel(account: account, defaults: defaults)
+        XCTAssertEqual(model.method, .password)
+        model.method = .code
+        XCTAssertTrue(model.usesCode)
+        model.email = " Noura@Shop.test "
+        XCTAssertNil(model.passwordProblem, "a code needs no password")
+        let user = await model.submit()
+        XCTAssertNil(user)
+        XCTAssertEqual(account.codeRequests, ["Noura@Shop.test"])
+        XCTAssertEqual(model.step, .signInCode(email: "noura@shop.test"))
+        XCTAssertEqual(model.resendWait, AuthViewModel.signInCodeWaitSeconds)
+
+        model.code = "١٢٣٤٥٦"
+        let wrong = await model.confirm()
+        XCTAssertNil(wrong)
+        XCTAssertEqual(model.refusal, "auth.codeWrong")
+        XCTAssertEqual(account.codeSignIns.last?.code, "123456", "Arabic-Indic digits are read as digits")
+
+        account.codeSignInResult = .success(FakeAccountService.user)
+        let signed = await model.confirm()
+        XCTAssertEqual(signed?.id, 2)
+        XCTAssertEqual(account.codeSignIns.last?.email, "noura@shop.test")
+
+        let next = AuthViewModel(account: account, defaults: defaults)
+        XCTAssertEqual(next.method, .code, "the next sign-in starts on the way chosen last")
+        XCTAssertEqual(AuthViewModel(account: account, defaults: isolatedDefaults()).method, .password)
+    }
+
+    /// Only the throttle stops the code step; any other answer reads the same,
+    /// so the step cannot be used to ask who is registered.
+    func testACodeIsAskedForTheSameWayWhoeverTheAddressBelongsTo() async {
+        let account = FakeAccountService()
+        let model = AuthViewModel(account: account, defaults: isolatedDefaults())
+        model.method = .code
+        model.email = "nobody@shop.test"
+        account.codeStartError = .server(code: "INTERNAL_SERVER_ERROR", message: "boom", status: 500)
+        _ = await model.submit()
+        XCTAssertEqual(model.step, .signInCode(email: "nobody@shop.test"))
+
+        model.backToForm()
+        account.codeStartError = .server(code: "TOO_MANY_REQUESTS", message: "auth.tooManyAttempts", status: 429)
+        _ = await model.submit()
+        XCTAssertEqual(model.step, .form)
+        XCTAssertEqual(model.refusal, "auth.tooManyAttempts")
+    }
+
+    /// An inbox whose account signs in with a password NetLet keeps is sent
+    /// back to the password, with the box open.
+    func testACodeForAPasswordAccountOffersThePassword() async {
+        let account = FakeAccountService()
+        account.codeSignInResult = .failure(.server(code: "CONFLICT", message: "auth.codeUsePassword", status: 409))
+        let model = AuthViewModel(account: account, defaults: isolatedDefaults())
+        model.method = .code
+        model.email = "noura@shop.test"
+        _ = await model.submit()
+        model.code = "123456"
+        _ = await model.confirm()
+        XCTAssertTrue(model.offersPassword)
+        model.usePassword()
+        XCTAssertEqual(model.method, .password)
+        XCTAssertEqual(model.step, .form)
+        XCTAssertFalse(model.usesCode)
+        XCTAssertNil(model.refusal)
+        XCTAssertEqual(model.email, "noura@shop.test", "the address typed is kept")
+    }
+
     func testAResetReadsTheSameWhoeverTheAddressBelongsTo() async {
         let account = FakeAccountService()
         account.resetError = .server(code: "INTERNAL_SERVER_ERROR", message: "boom", status: 500)

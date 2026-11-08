@@ -391,6 +391,33 @@ export async function verifySupabaseSignupCode(email: string, code: string): Pro
   return body.user ? toUser(body.user, email) : null;
 }
 
+/**
+ * Has Supabase email a six-digit sign-in code to an account it already holds
+ * ("Sign in with a one-time code"), and nothing to an address it does not:
+ * `create_user: false`, so this never opens an account. Supabase prints the
+ * code with its "Magic Link" template (`{{ .Token }}`), or the "Confirm
+ * signup" one for an address not yet confirmed; `verifySupabaseSignupCode`
+ * checks either, `type: "email"` being GoTrue's one name for an emailed code.
+ *
+ * Answers whether Supabase took the request. An address it holds no user for
+ * is GoTrue's 422 ("Signups not allowed for otp") and is `false` here, never
+ * thrown, so the caller can answer it exactly as it answers a sent code.
+ */
+export async function sendSupabaseSignInCode(email: string, returnTo?: string): Promise<boolean> {
+  const response = await fetch(endpoint("/auth/v1/otp", returnTo), {
+    method: "POST",
+    headers: anonHeaders(),
+    signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
+    body: JSON.stringify({ email, create_user: false }),
+  });
+  if (response.status === 429) throw new SupabaseMailLimited();
+  if (response.ok) return true;
+  const reason = await reasonFrom(response);
+  if (/rate limit|over_email_send_rate_limit|security purposes/i.test(reason)) throw new SupabaseMailLimited();
+  if (response.status === 400 || response.status === 404 || response.status === 422) return false;
+  throw new Error(`Supabase could not email a sign-in code: HTTP ${response.status}: ${reason}`);
+}
+
 /** Thrown when Supabase has no phone sign-in to send a text with. */
 export class SupabasePhoneOff extends Error {
   constructor() {

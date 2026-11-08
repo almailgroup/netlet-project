@@ -67,6 +67,7 @@ import {
   deleteSupabaseUser,
   isSupabaseAuthConfigured,
   sendSupabasePhoneCode,
+  sendSupabaseSignInCode,
   signInSupabaseWithIdToken,
   signUpSupabaseUser,
   SupabaseEmailTaken,
@@ -479,6 +480,30 @@ async function checkTextedCode(phone: string, code: string): Promise<{ uid: stri
   } catch (error) {
     console.error(`[auth] a phone code could not be checked: ${error instanceof Error ? error.message : String(error)}`);
     throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "auth.phoneUnreachable" });
+  }
+}
+
+/**
+ * Emails a sign-in code to an account that exists, and nothing anywhere else,
+ * without saying which: Supabase sends to the users it holds (`create_user:
+ * false`), and with no Supabase the code is written to the log for a local
+ * account. **A refusal from the mail service is logged, never said**: GoTrue
+ * holds back a second code to an address it mailed a minute ago, and only to
+ * an address it holds, so "wait a moment" would answer who is registered —
+ * the reset's rule. The form waits out that minute before "Send it again".
+ */
+async function emailSignInCode(email: string, returnTo?: string): Promise<void> {
+  try {
+    if (isSupabaseAuthConfigured()) {
+      await sendSupabaseSignInCode(email, returnTo);
+      return;
+    }
+    const user = await findLoginByEmail(email);
+    if (user && user.passwordHash) issueLocalCode(email, "sign-in");
+  } catch (error) {
+    if (!(error instanceof SupabaseMailLimited)) {
+      console.error(`[auth] a sign-in code could not be sent: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }
 
@@ -1012,6 +1037,89 @@ export const authRouter = router({
       await touchLastSignedIn(user.id);
       await startSession(ctx, user, input.remember);
       return { status: "signedIn" as const, user: toPublicUser(user) };
+    }),
+
+  /**
+   * "Sign in with a one-time code" (on the owner's word: "two options for
+   * signing in … by password or by a one-time code"), first half: six digits
+   * emailed to the account. The same reply for an address with no account,
+   * so it cannot be used to ask who is registered, and every request counts,
+   * by address and by email — a form that sends mail is a way to post into
+   * somebody's inbox, the reset's reason.
+   */
+  codeStart: publicProcedure
+    .input(z.object({ email: z.string().trim().email().max(320) }))
+    .mutation(async ({ ctx, input }) => {
+      assertConfigured();
+      const email = input.email.trim().toLowerCase();
+      const caller = callerOf(ctx, email);
+      await assertNotThrottled(caller, "codeSend");
+      await recordAuthAttempt(caller, "codeSend");
+      await emailSignInCode(email, landingFor(ctx.req));
+      return { sent: true as const, email };
+    }),
+
+  /**
+   * The second half: the code, and the account it signs into. The code proves
+   * the inbox, which is a proof as strong as the password — so an account
+   * Supabase holds that NetLet has no row for yet becomes one, Apple's rule
+   * (`linkProviderAccount`): an address a NetLet account holds by another
+   * credential is refused, never adopted, and a sign-up whose code never came
+   * back has its password replaced with one nobody knows, since whoever typed
+   * it need not be whoever reads the inbox. A wrong code counts as a
+   * `codeMiss`, and "wrong" answers a wrong code, an expired one and an
+   * address with no account alike.
+   */
+  codeSignIn: publicProcedure
+    .input(z.object({
+      email: z.string().trim().email().max(320),
+      code: z.string().trim().min(1).max(20),
+      remember: z.boolean().optional(),
+      portal: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      assertConfigured();
+      const email = input.email.trim().toLowerCase();
+      const caller = callerOf(ctx, email);
+      await assertNotThrottled(caller, "codeMiss");
+      const code = normaliseCode(input.code);
+      if (!isCodeShaped(code)) {
+        await recordAuthAttempt(caller, "codeMiss");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "auth.codeShape" });
+      }
+
+      let user: User | undefined;
+      if (isSupabaseAuthConfigured()) {
+        let proven;
+        try {
+          proven = await verifySupabaseSignupCode(email, code);
+        } catch (error) {
+          console.error(`[auth] a sign-in code could not be checked: ${error instanceof Error ? error.message : String(error)}`);
+          throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: "auth.codeUnreachable" });
+        }
+        if (!proven) {
+          await recordAuthAttempt(caller, "codeMiss");
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.codeWrong" });
+        }
+        const link = await linkProviderAccount({ uid: proven.uid, email: proven.email, emailConfirmed: true, name: proven.name });
+        if (link.kind === "taken") throw new TRPCError({ code: "CONFLICT", message: "auth.codeUsePassword" });
+        if (link.kind === "created" && proven.signedUp) {
+          await updateSupabaseUser(proven.uid, { password: randomBytes(32).toString("base64url") });
+        }
+        user = link.user;
+      } else {
+        const found = takeLocalCode(email, code, "sign-in") ? await findLoginByEmail(email) : undefined;
+        if (!found) {
+          await recordAuthAttempt(caller, "codeMiss");
+          throw new TRPCError({ code: "UNAUTHORIZED", message: "auth.codeWrong" });
+        }
+        user = found;
+      }
+
+      await clearAccountFailures(email);
+      await touchLastSignedIn(user.id);
+      await startSession(ctx, user, input.remember);
+      return { ...toPublicUser(user), portal: input.portal ? await portalHandover(ctx, user, null, input.remember !== false) : null };
     }),
 
   login: publicProcedure.input(signInInput).mutation(async ({ ctx, input }) => {

@@ -33,7 +33,7 @@ const digestOf = (code: string) => createHash("sha256").update(code).digest();
  * phone account's by the address; each kept apart from the others, so one can
  * never be spent as another.
  */
-type Purpose = "sign-up" | "reset" | "phone" | "add-email";
+type Purpose = "sign-up" | "reset" | "phone" | "add-email" | "sign-in";
 
 /** Issues a fresh code for the address, replacing any older one, and logs it. */
 export function issueLocalCode(email: string, purpose: Purpose = "sign-up"): void {

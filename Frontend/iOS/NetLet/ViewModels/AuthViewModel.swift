@@ -6,6 +6,10 @@ import Observation
 /// Create account proves the address before anything exists: the details go
 /// first and a six-digit code is emailed; the account is made only when the
 /// code comes back with them. The password typed with the code is the one kept.
+///
+/// Signing in is by the password or by a one-time code emailed to the
+/// account, the shopper's choice and remembered on the phone — the web's
+/// `MethodChoice` (`auth.codeStart`, `auth.codeSignIn`).
 @Observable
 @MainActor
 final class AuthViewModel {
@@ -13,17 +17,40 @@ final class AuthViewModel {
         case signIn, register, reset
     }
 
+    /// How "Sign in" proves who is asking.
+    enum SignInMethod: String, Equatable {
+        case password, code
+    }
+
     /// Where the form is. The code step and the "check your email" page
     /// replace the form rather than sitting under it.
     enum Step: Equatable {
         case form
         case code(email: String, password: String, name: String?, fromRegister: Bool)
+        /// The one-time code emailed for signing in, said the same way
+        /// whether or not the address has an account.
+        case signInCode(email: String)
         case resetSent(email: String)
     }
 
     var mode: Mode = .signIn {
         didSet { if mode != oldValue { modeChanged() } }
     }
+
+    /// The password or a one-time code, kept on the phone so the next
+    /// sign-in starts on the way chosen last.
+    var method: SignInMethod = .password {
+        didSet {
+            guard method != oldValue else { return }
+            if remembersMethod { defaults.set(method.rawValue, forKey: Self.methodKey) }
+            refusal = nil
+            submitted = false
+        }
+    }
+
+    /// Off for the screenshots' preset, so one picture does not choose the
+    /// way every later picture of the form opens on.
+    var remembersMethod = true
 
     private(set) var step: Step = .form
     var name = ""
@@ -56,19 +83,29 @@ final class AuthViewModel {
     private let google = GoogleSignIn()
 
     private let account: AccountServicing
+    private let defaults: UserDefaults
     private var countdown: Task<Void, Never>?
     static let resendWaitSeconds = 30
+    /// A sign-in code waits a minute between mails, Supabase's own interval
+    /// for one address (`RESEND_WAIT_SECONDS`).
+    static let signInCodeWaitSeconds = 60
+    static let methodKey = "netlet.signInMethod"
 
-    init(account: AccountServicing) {
+    init(account: AccountServicing, defaults: UserDefaults = .standard) {
         self.account = account
+        self.defaults = defaults
+        method = defaults.string(forKey: Self.methodKey).flatMap(SignInMethod.init(rawValue:)) ?? .password
     }
+
+    /// Signing in by an emailed code rather than the password.
+    var usesCode: Bool { mode == .signIn && method == .code }
 
     var emailProblem: String? { Validation.emailProblem(email) }
 
     var passwordProblem: String? {
         switch mode {
         case .reset: return nil
-        case .signIn: return password.isEmpty ? "auth.passwordRequired" : nil
+        case .signIn: return usesCode || !password.isEmpty ? nil : "auth.passwordRequired"
         case .register: return Validation.newPasswordProblem(password)
         }
     }
@@ -85,6 +122,9 @@ final class AuthViewModel {
 
     /// A wrong password offers the reset; a taken address offers signing in with it.
     var offersReset: Bool { refusal == "auth.invalidCredentials" }
+    /// A code that proved an inbox whose account signs in with a password
+    /// NetLet keeps: the password is the way in.
+    var offersPassword: Bool { refusal == "auth.codeUsePassword" }
     var offersSignIn: Bool {
         refusal == "auth.emailTaken" || ((refusal == "auth.appleEmailTaken" || refusal == "auth.googleEmailTaken") && mode == .register)
     }
@@ -157,6 +197,24 @@ final class AuthViewModel {
         working = true
         defer { working = false }
         switch mode {
+        case .signIn where usesCode:
+            do {
+                try await account.codeStart(email: address)
+            } catch {
+                // The answer is the same for every address; only the throttle,
+                // or a phone that could not reach NetLet, is said.
+                let failure = APIError.from(error)
+                if failure.serverMessage == nil || failure.serverMessage == "auth.tooManyAttempts" {
+                    refusal = key(for: failure)
+                    return nil
+                }
+            }
+            code = ""
+            submitted = false
+            resentTo = nil
+            step = .signInCode(email: address.lowercased())
+            startCountdown(seconds: Self.signInCodeWaitSeconds)
+            return nil
         case .signIn:
             do {
                 return try await account.signIn(email: address, password: password)
@@ -210,14 +268,21 @@ final class AuthViewModel {
 
     /// The code step's Confirm.
     func confirm() async -> User? {
-        guard case .code(let address, let typedPassword, let typedName, _) = step else { return nil }
         submitted = true
         refusal = nil
         guard codeProblem == nil else { return nil }
+        let digits = Validation.normaliseCode(code)
         working = true
         defer { working = false }
         do {
-            return try await account.verify(email: address, password: typedPassword, code: Validation.normaliseCode(code), name: typedName)
+            switch step {
+            case .code(let address, let typedPassword, let typedName, _):
+                return try await account.verify(email: address, password: typedPassword, code: digits, name: typedName)
+            case .signInCode(let address):
+                return try await account.codeSignIn(email: address, code: digits)
+            case .form, .resetSent:
+                return nil
+            }
         } catch {
             refusal = key(for: APIError.from(error))
             return nil
@@ -235,12 +300,32 @@ final class AuthViewModel {
             } catch {
                 refusal = key(for: APIError.from(error))
             }
+        case .signInCode(let address):
+            do {
+                try await account.codeStart(email: address)
+                resentTo = address
+            } catch {
+                let failure = APIError.from(error)
+                if failure.serverMessage == nil || failure.serverMessage == "auth.tooManyAttempts" {
+                    refusal = key(for: failure)
+                    return
+                }
+                resentTo = address
+            }
+            startCountdown(seconds: Self.signInCodeWaitSeconds)
+            return
         case .resetSent(let address):
             try? await account.requestPasswordReset(email: address)
         case .form:
             return
         }
         startCountdown()
+    }
+
+    /// "Use my password instead": back to the form with the password box.
+    func usePassword() {
+        method = .password
+        backToForm()
     }
 
     /// The reset's code signed into a sign-up still waiting on its own code:
@@ -271,9 +356,9 @@ final class AuthViewModel {
         captchaToken = nil
     }
 
-    private func startCountdown() {
+    private func startCountdown(seconds: Int? = nil) {
         countdown?.cancel()
-        resendWait = Self.resendWaitSeconds
+        resendWait = seconds ?? Self.resendWaitSeconds
         countdown = Task { [weak self] in
             while true {
                 try? await Task.sleep(for: .seconds(1))

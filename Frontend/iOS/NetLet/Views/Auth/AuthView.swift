@@ -105,7 +105,9 @@ private struct AuthForm: View {
                 case .form:
                     form
                 case .code(let email, _, _, let fromRegister):
-                    codeStep(email: email, fromRegister: fromRegister)
+                    codeStep(email: email, kind: fromRegister ? .register : .confirm)
+                case .signInCode(let email):
+                    codeStep(email: email, kind: .signIn)
                 case .resetSent(let email):
                     resetSent(email: email)
                 }
@@ -134,7 +136,21 @@ private struct AuthForm: View {
             .environment(\.layoutDirection, l.layoutDirection)
             .buttonStyle(HapticDefaultStyle())
         }
-        .onAppear { takePhonePreset() }
+        .onAppear {
+            takePhonePreset()
+            takeCodePreset()
+        }
+    }
+
+    /// The screenshots' `-NetLetOpen codeSignIn[:step]` (Debug only).
+    private func takeCodePreset() {
+        guard band, let step = app.codeSignInPreset else { return }
+        app.codeSignInPreset = nil
+        model.mode = .signIn
+        model.remembersMethod = false
+        model.method = .code
+        model.email = "noura@shop.test"
+        if step == "step" { Task { await submit() } }
     }
 
     /// The screenshots' `-NetLetOpen phone[:code|:email]` (Debug only).
@@ -175,7 +191,7 @@ private struct AuthForm: View {
         }
         VStack(alignment: .leading, spacing: 16) {
             if model.mode == .register {
-                LabeledField(label: l.t("auth.name") + " " + l.t("auth.optional"), text: $model.name, content: .name)
+                LabeledField(label: l.t("auth.name") + " " + l.t("auth.optional"), text: $model.name, content: .name, soft: true)
                     .focused($focus, equals: .name)
             }
             LabeledField(
@@ -185,10 +201,15 @@ private struct AuthForm: View {
                 problem: model.submitted ? model.emailProblem : nil,
                 keyboard: .emailAddress,
                 content: .username,
-                leftToRight: true
+                leftToRight: true,
+                soft: true,
+                icon: "envelope"
             )
             .focused($focus, equals: .email)
-            if model.mode != .reset {
+            if model.mode == .signIn {
+                SignInMethodChoice(method: $model.method)
+            }
+            if model.mode != .reset && !model.usesCode {
                 VStack(alignment: .leading, spacing: 10) {
                     LabeledField(
                         label: l.t("auth.password"),
@@ -196,7 +217,9 @@ private struct AuthForm: View {
                         problem: model.submitted ? model.passwordProblem : nil,
                         content: model.mode == .register ? .newPassword : .password,
                         secure: true,
-                        leftToRight: true
+                        leftToRight: true,
+                        soft: true,
+                        icon: "lock"
                     )
                     .focused($focus, equals: .password)
                     if model.mode == .register {
@@ -231,6 +254,9 @@ private struct AuthForm: View {
                     if model.offersSignIn {
                         Button(l.t("auth.signInInstead")) { model.mode = .signIn }
                     }
+                    if model.offersPassword {
+                        Button(l.t("auth.usePasswordInstead")) { usePassword() }
+                    }
                 }
             }
             Button {
@@ -238,6 +264,8 @@ private struct AuthForm: View {
             } label: {
                 if model.working {
                     HStack(spacing: 8) { ProgressView().tint(.white); Text(l.t(workingLabel)) }
+                } else if model.usesCode {
+                    Label(l.t(submitLabel), systemImage: "envelope")
                 } else {
                     Text(l.t(submitLabel))
                 }
@@ -346,7 +374,7 @@ private struct AuthForm: View {
             }
         }
         .padding(4)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 238 / 255, green: 240 / 255, blue: 244 / 255)))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Calm.track))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("auth.modeSwitch"))
     }
@@ -380,11 +408,17 @@ private struct AuthForm: View {
 
     // MARK: The code
 
-    private func codeStep(email: String, fromRegister: Bool) -> some View {
+    /// Which code the step takes: a new account's, an unconfirmed sign-in's
+    /// own sign-up code, or a one-time code for signing in.
+    enum CodeKind {
+        case register, confirm, signIn
+    }
+
+    private func codeStep(email: String, kind: CodeKind) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             MailTile()
             title(l.t("auth.verifyTitle")).padding(.top, 18)
-            Text(l.t(fromRegister ? "auth.verifyBody" : "auth.verifyBodySignIn", ["email": email]))
+            Text(l.t(kind == .register ? "auth.verifyBody" : kind == .confirm ? "auth.verifyBodySignIn" : "auth.signInCodeBody", ["email": email]))
                 .font(.inter(15))
                 .lineSpacing(3)
                 .foregroundStyle(Brand.body)
@@ -412,9 +446,13 @@ private struct AuthForm: View {
                     FieldProblem(key: problem)
                 }
                 if let refusal = model.refusal {
-                    RefusalBox(key: refusal) { EmptyView() }
+                    RefusalBox(key: refusal) {
+                        if model.offersPassword {
+                            Button(l.t("auth.usePasswordInstead")) { usePassword() }
+                        }
+                    }
                 } else if let resent = model.resentTo {
-                    Label(l.t("auth.codeResent", ["email": resent]), systemImage: "checkmark")
+                    Label(l.t(kind == .signIn ? "auth.signInCodeResent" : "auth.codeResent", ["email": resent]), systemImage: "checkmark")
                         .font(.inter(14))
                         .foregroundStyle(Brand.success)
                         .padding(.horizontal, 14)
@@ -429,15 +467,33 @@ private struct AuthForm: View {
                     if model.working {
                         HStack(spacing: 8) { ProgressView().tint(.white); Text(l.t("auth.verifying")) }
                     } else {
-                        Text(l.t(fromRegister ? "auth.verifyCreate" : "auth.verifySignIn"))
+                        Text(l.t(kind == .register ? "auth.verifyCreate" : kind == .confirm ? "auth.verifySignIn" : "header.signIn"))
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(model.working)
                 .padding(.top, 4)
+                if kind == .signIn {
+                    // The password is still the other way in, one press away.
+                    Button(l.t("auth.usePasswordInstead")) { usePassword() }
+                        .font(.inter(14, .semibold))
+                        .foregroundStyle(Brand.navy)
+                        .underline()
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
             }
             .padding(.top, 22)
             notArrived(resend: "auth.resendCode", resendIn: "auth.resendCodeIn")
+        }
+    }
+
+    /// Back to the form on the password, its box focused once it is drawn.
+    private func usePassword() {
+        model.usePassword()
+        lastTried = nil
+        Task {
+            try? await Task.sleep(for: .milliseconds(60))
+            focus = .password
         }
     }
 
@@ -514,7 +570,7 @@ private struct AuthForm: View {
 
     private var submitLabel: String {
         switch model.mode {
-        case .signIn: return "header.signIn"
+        case .signIn: return model.usesCode ? "auth.sendSignInCode" : "header.signIn"
         case .register: return "auth.continue"
         case .reset: return "auth.resetSend"
         }
@@ -522,7 +578,7 @@ private struct AuthForm: View {
 
     private var workingLabel: String {
         switch model.mode {
-        case .signIn: return "auth.signingIn"
+        case .signIn: return model.usesCode ? "auth.sendingSignInCode" : "auth.signingIn"
         case .register: return "auth.sendingCode"
         case .reset: return "auth.sending"
         }
@@ -536,6 +592,82 @@ private struct AuthForm: View {
         if model.submitted {
             if model.emailProblem != nil { focus = .email } else if model.passwordProblem != nil { focus = .password }
         }
+    }
+}
+
+/// "Sign in with": the password or a one-time code, two tiles side by side —
+/// the web's `MethodChoice`. The chosen one is rimmed in navy with a tick on
+/// its corner; under the code's, one line says what happens.
+struct SignInMethodChoice: View {
+    @Binding var method: AuthViewModel.SignInMethod
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(l.t("auth.methodLabel"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Brand.ink)
+                .accessibilityHidden(true)
+            HStack(spacing: 10) {
+                tile(.password, symbol: "key", label: "auth.methodPassword", tint: Calm.sky, ink: Brand.navy)
+                tile(.code, symbol: "envelope", label: "auth.methodCode", tint: Calm.peach, ink: Calm.peachInk)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(l.t("auth.methodLabel"))
+            if method == .code {
+                Text(l.t("auth.methodCodeNote"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 2)
+            }
+        }
+    }
+
+    private func tile(_ value: AuthViewModel.SignInMethod, symbol: String, label: String, tint: Color, ink: Color) -> some View {
+        let on = method == value
+        return Button {
+            method = value
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ink)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(tint))
+                Text(l.t(label))
+                    .font(.inter(14, .semibold))
+                    .foregroundStyle(Brand.navy)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, minHeight: 60)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Calm.chosen : Color.white))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(on ? Brand.navy : Calm.rim, lineWidth: on ? 2 : 1)
+            )
+            .overlay(alignment: .topTrailing) {
+                if on {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .frame(width: 20, height: 20)
+                        .background(Circle().fill(Brand.navy))
+                        .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
+                        // Out over the tile's end corner, whichever side that is.
+                        .offset(x: l.layoutDirection == .rightToLeft ? -6 : 6, y: -6)
+                        .environment(\.layoutDirection, .leftToRight)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.tap)
+        .animation(.smooth(duration: 0.25), value: on)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -681,9 +813,12 @@ struct CodeBoxes<Value: Hashable>: View {
                 ForEach(0..<6, id: \.self) { index in
                     let here = focused && index == active
                     ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white)
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .strokeBorder(here ? Brand.navy : invalid ? Brand.danger : index < digits.count ? Brand.muted.opacity(0.5) : Brand.line, lineWidth: here ? 2 : 1)
+                        // An empty box wears the form's soft fill; one holding
+                        // a digit, or the one being typed in, is white.
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(here || index < digits.count || invalid ? Color.white : Calm.field)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(here ? Brand.navy : invalid ? Brand.danger : index < digits.count ? Brand.muted.opacity(0.5) : Calm.rim, lineWidth: here ? 2 : 1)
                         if index < digits.count {
                             Text(String(digits[index]))
                                 .font(.inter(24, .bold))

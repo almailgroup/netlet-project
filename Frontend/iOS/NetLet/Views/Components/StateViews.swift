@@ -139,6 +139,10 @@ struct LabeledField: View {
     var axis: Axis = .horizontal
     /// Filled by a dropped pin and not yet changed: pale orange, the web's `.from-pin`.
     var fromPin = false
+    /// The sign-in form's box: a soft fill at rest, a little taller and rounder.
+    var soft = false
+    /// An SF Symbol at the box's start, the sign-in form's.
+    var icon: String?
 
     @State private var revealed = false
     @Environment(LanguageSettings.self) private var l
@@ -149,6 +153,12 @@ struct LabeledField: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Brand.ink)
             HStack(spacing: 8) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Calm.icon)
+                        .accessibilityHidden(true)
+                }
                 Group {
                     if secure && !revealed {
                         SecureField(placeholder, text: $text)
@@ -176,11 +186,11 @@ struct LabeledField: View {
                 }
             }
             .padding(.horizontal, 14)
-            .frame(minHeight: 50)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fromPin ? Brand.fromPin : Color.white))
+            .frame(minHeight: soft ? 52 : 50)
+            .background(RoundedRectangle(cornerRadius: soft ? 14 : 12, style: .continuous).fill(fill))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(problem != nil ? Brand.danger : fromPin ? Brand.fromPinRim : Brand.line, lineWidth: problem == nil ? 1 : 1.5)
+                RoundedRectangle(cornerRadius: soft ? 14 : 12, style: .continuous)
+                    .strokeBorder(problem != nil ? Brand.danger : fromPin ? Brand.fromPinRim : soft ? Calm.rim : Brand.line, lineWidth: problem == nil ? 1 : 1.5)
             )
             .animation(.easeOut(duration: 0.25), value: fromPin)
             if let hint, problem == nil {
@@ -188,6 +198,11 @@ struct LabeledField: View {
             }
             FieldProblem(key: problem)
         }
+    }
+
+    private var fill: Color {
+        if fromPin { return Brand.fromPin }
+        return soft && problem == nil ? Calm.field : Color.white
     }
 }
 

@@ -169,6 +169,22 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
 
     func resendCode(email: String) async throws { resent.append(email) }
 
+    /// The one-time codes asked for, and what checking one answers.
+    var codeRequests: [String] = []
+    var codeStartError: APIError?
+    var codeSignInResult: Result<User, APIError> = .failure(.server(code: "UNAUTHORIZED", message: "auth.codeWrong", status: 401))
+    var codeSignIns: [(email: String, code: String)] = []
+
+    func codeStart(email: String) async throws {
+        codeRequests.append(email)
+        if let codeStartError { throw codeStartError }
+    }
+
+    func codeSignIn(email: String, code: String) async throws -> User {
+        codeSignIns.append((email, code))
+        return try codeSignInResult.get()
+    }
+
     func requestPasswordReset(email: String) async throws {
         if let resetError { throw resetError }
     }

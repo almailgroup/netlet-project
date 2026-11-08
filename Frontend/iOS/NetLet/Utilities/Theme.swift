@@ -152,3 +152,21 @@ extension View {
             .accessibilityAddTraits(.isHeader)
     }
 }
+
+/// The sign-in's calm colours, the web's: a pale sky and a pale peach drawn
+/// from the brand's navy and orange, and a soft fill for the boxes, so the
+/// form is easy on the eyes and nothing on it is louder than its button.
+enum Calm {
+    /// The Sign in | Create account track.
+    static let track = Color(red: 233 / 255, green: 239 / 255, blue: 247 / 255)
+    /// A box at rest, and its rim.
+    static let field = Color(red: 245 / 255, green: 248 / 255, blue: 252 / 255)
+    static let rim = Color(red: 214 / 255, green: 223 / 255, blue: 235 / 255)
+    /// The password's tile and the code's.
+    static let sky = Color(red: 227 / 255, green: 236 / 255, blue: 248 / 255)
+    static let peach = Color(red: 253 / 255, green: 233 / 255, blue: 222 / 255)
+    static let peachInk = Color(red: 164 / 255, green: 74 / 255, blue: 43 / 255)
+    /// A chosen tile.
+    static let chosen = Color(red: 243 / 255, green: 247 / 255, blue: 252 / 255)
+    static let icon = Color(red: 107 / 255, green: 127 / 255, blue: 156 / 255)
+}

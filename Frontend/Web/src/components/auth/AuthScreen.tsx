@@ -18,7 +18,9 @@
  * frame. Decorative: the title says what the page is.
  *
  * - **From `lg`** it is a card in two halves, the form and the street beside
- *   it, the picture filling its half however tall the form is.
+ *   it, the picture filling its half however tall the form is — framed in a
+ *   pale sky margin with rounded corners, the calm colours the owner asked
+ *   for ("colors that ease the eyes"), rather than running to the card's edge.
  * - **Below `lg`** the street is a band across the top and the form a white
  *   panel rising over its foot with rounded corners — on a phone reaching the
  *   screen's edges, the shape a phone's own apps open on, and from `sm` the
@@ -45,7 +47,7 @@ export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus, por
   return (
     /* On a phone the screen reaches the edges, past the page's own gutter and
        top space; from `sm` it is the card. */
-    <div className={`mx-auto grid w-full overflow-hidden bg-white max-sm:-mx-4 max-sm:-mt-6 max-sm:w-auto sm:max-w-[520px] sm:rounded-[28px] sm:shadow-[0_24px_64px_rgba(10,40,90,.10)] sm:ring-1 sm:ring-[#e3e1d9] lg:max-w-[1040px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]`}>
+    <div className={`mx-auto grid w-full overflow-hidden bg-white max-sm:-mx-4 max-sm:-mt-6 max-sm:w-auto sm:max-w-[520px] sm:rounded-[28px] sm:shadow-[0_24px_64px_rgba(10,40,90,.10)] sm:ring-1 sm:ring-[#dfe6ef] lg:max-w-[1040px] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]`}>
       {WELCOME ? (
         <div className="relative h-[150px] overflow-hidden bg-[#0a285a] sm:h-[180px] lg:hidden" aria-hidden>
           <picture>
@@ -66,8 +68,10 @@ export function AuthScreen({ mode, onModeChange, onDone, heading, autoFocus, por
       </section>
 
       {WELCOME ? (
-        <div className="relative hidden min-w-0 bg-[#0a285a] lg:block" aria-hidden>
-          <img src={WELCOME} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />
+        <div className="relative hidden min-w-0 bg-[#e7eff8] p-3 lg:block" aria-hidden>
+          <div className="relative size-full overflow-hidden rounded-[18px] bg-[#0a285a]">
+            <img src={WELCOME} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />
+          </div>
         </div>
       ) : null}
     </div>

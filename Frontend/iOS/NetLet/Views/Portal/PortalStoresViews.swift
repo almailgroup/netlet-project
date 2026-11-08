@@ -882,6 +882,6 @@ private struct StoreTeamSection: View {
         guard await app.attempt(fallback: "admin.forbidden", {
             answer = try await app.services.api.call(API.sendMemberReset, .init(userId: member.userId, locale: l.current.rawValue))
         }), let answer else { return }
-        app.toast(answer.sent ? l.t("admin.resetSentTo", ["email": answer.email ?? member.email]) : l.t("admin.resetNotConfigured"))
+        app.toast(answer.sent ? l.t("admin.resetSentTo", ["email": answer.email ?? member.email ?? ""]) : l.t("admin.resetNotConfigured"))
     }
 }

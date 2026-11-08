@@ -281,6 +281,53 @@ address, and ten wrong codes before it stops checking for a while.
 
 ---
 
+## Signing in with a one-time code
+
+"Sign in" offers two ways, the shopper's choice: the password, or a
+**one-time code** emailed to the account's address — nothing to remember.
+NetLet asks Supabase to send it (`/auth/v1/otp` with `create_user: false`, so
+asking never opens an account) and checks it the way the sign-up code is
+checked. The page says the same thing whether or not the address has an
+account, so it cannot be used to find out who is registered.
+
+One setting makes it work. **Authentication → Emails → Magic Link** is the
+email Supabase sends for it, and its default is a link, not a code: the
+template has to print `{{ .Token }}`, as the sign-up's does. An address whose
+own sign-up code never came back gets the **Confirm signup** email instead,
+which the step above already fixed.
+
+Subject:
+
+```
+Your NetLet sign-in code: {{ .Token }} · رمز الدخول إلى نت‑لت
+```
+
+Body (HTML):
+
+```html
+<div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#0a285a">
+  <h2 style="margin:0 0 12px">Your sign-in code</h2>
+  <p>Enter this code on NetLet to sign in:</p>
+  <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:16px 0">{{ .Token }}</p>
+  <p style="color:#536b8c;font-size:13px">If you did not try to sign in to NetLet, ignore this email — nobody can sign in without this code.</p>
+  <hr style="border:none;border-top:1px solid #e3e1d9;margin:24px 0">
+  <div dir="rtl" style="text-align:right">
+    <h2 style="margin:0 0 12px">رمز تسجيل الدخول</h2>
+    <p>أدخل هذا الرمز في نت‑لت لتسجيل الدخول:</p>
+    <p style="font-size:32px;font-weight:700;letter-spacing:8px;margin:16px 0" dir="ltr">{{ .Token }}</p>
+    <p style="color:#536b8c;font-size:13px">إن لم تحاول تسجيل الدخول إلى نت‑لت، فتجاهل هذه الرسالة — لا يستطيع أحد الدخول دون هذا الرمز.</p>
+  </div>
+</div>
+```
+
+The code is the same six digits (**Email OTP Length: 6**, above), counted
+against the same ceilings as the sign-up code, and a shopper can ask for
+another after a minute. An account Supabase does not hold — one that signs in
+with a password NetLet keeps itself, from before Supabase was set up — is told
+to use its password.
+
+---
+
 ## Sign in with Apple
 
 Both the website and the iPhone app offer **Continue with Apple**. Supabase

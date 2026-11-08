@@ -556,7 +556,7 @@ struct InvoiceData: Transferable {
             "orderReference": doc.orderReference,
             "currency": doc.currency,
             "issuer": ["name": doc.issuer.name, "nameAr": optional(doc.issuer.nameAr), "licence": optional(doc.issuer.licence), "address": optional(doc.issuer.address)] as [String: Any],
-            "buyer": ["name": optional(doc.buyer.name), "phone": optional(doc.buyer.phone), "email": doc.buyer.email, "address": optional(doc.buyer.address)] as [String: Any],
+            "buyer": ["name": optional(doc.buyer.name), "phone": optional(doc.buyer.phone), "email": optional(doc.buyer.email), "address": optional(doc.buyer.address)] as [String: Any],
             "sellers": doc.sellers.map { seller -> [String: Any] in
                 [
                     "vendorId": seller.vendorId.map { $0 as Any } ?? NSNull(),

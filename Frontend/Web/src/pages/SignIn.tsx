@@ -99,7 +99,10 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-[#0a285a] max-sm:bg-white">
+    /* A calm wash behind the card — the pale sky of the navy into the pearl
+       and a breath of the orange's peach — on the owner's word ("colors that
+       ease the eyes"); a phone's form reaches the screen's edges on white. */
+    <div className="flex min-h-screen flex-col bg-[#f3f2ed] bg-[linear-gradient(160deg,#e6eff9_0%,#f3f2ed_55%,#fbece3_100%)] text-[#0a285a] max-sm:bg-white max-sm:bg-none">
       <BareHeader skipLabel="auth.skipToForm" />
 
       {/* The card in the middle of what the header leaves on a wide screen;

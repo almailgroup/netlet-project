@@ -37,6 +37,9 @@ const NOT_IN_DEMO = new Set([
   "auth.completeReset",
   // Reached only with the code in that same mail.
   "auth.resetWithCode",
+  // Signing in by an emailed code needs a server to send the code.
+  "auth.codeStart",
+  "auth.codeSignIn",
   "auth.me",
   "search.refine",
   // The demo is one address with no portals of its own to hand a sign-in on to.

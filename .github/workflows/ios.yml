@@ -134,6 +134,9 @@ jobs:
             shot 05c-phone "$lang" phone ""
             shot 05d-phone-code "$lang" phone:code ""
             shot 05e-phone-email "$lang" phone:email ""
+            # Signing in with a one-time code: the choice, then the emailed code.
+            shot 05f-code-choice "$lang" codeSignIn ""
+            shot 05g-code-step "$lang" codeSignIn:step ""
             shot 06-cart "$lang" cart shopper
             shot 07-checkout "$lang" checkout shopper
             shot 08-orders "$lang" orders shopper
