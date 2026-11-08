@@ -151,6 +151,16 @@ final class ReferenceDataTests: XCTestCase {
             XCTAssertEqual(image.size, CGSize(width: TabIcon.side, height: TabIcon.side))
             XCTAssertEqual(image.renderingMode, .alwaysTemplate)
         }
+        // Deals is the one with colours of its own: an original image the
+        // tint leaves red, drawn larger than the rest.
+        let deals = try XCTUnwrap(file.icons["deals"])
+        let colors = try XCTUnwrap(deals.color, "Deals has its own red")
+        XCTAssertNotNil(TabIcon.color(colors.ink))
+        XCTAssertNotNil(TabIcon.color(colors.deep))
+        let red = TabIcon.render(deals.filled, stroke: file.strokeWidth, side: CGFloat(deals.size ?? 0), colors: colors)
+        XCTAssertEqual(red.renderingMode, .alwaysOriginal)
+        XCTAssertGreaterThan(red.size.width, TabIcon.side)
+        XCTAssertNil(TabIcon.color("red"))
         // A circle's four quarters come back round: its box is its diameter.
         let ring = TabIcon.cgPath("M12 4 C14.209 4 16 5.791 16 8 C16 10.209 14.209 12 12 12 C9.791 12 8 10.209 8 8 C8 5.791 9.791 4 12 4 Z").boundingBoxOfPath
         XCTAssertEqual(ring.width, 8, accuracy: 0.01)

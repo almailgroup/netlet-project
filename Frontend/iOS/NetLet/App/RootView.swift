@@ -10,7 +10,8 @@ import SwiftUI
 /// tab lit in the shop's navy — and as the standard tab bar on iOS 17 and 18,
 /// so it is the bar every other app on the phone has. Its icons are the
 /// web's own drawing (`TabIcon`), an outline and a filled form for the tab
-/// that is showing, as template images the system tints. Its badge is the
+/// that is showing, as template images the system tints — but Deals, a red
+/// bag drawn a little larger, which keeps its red. Its badge is the
 /// system's, its order follows the page's direction, and VoiceOver reads it
 /// as a tab bar. A press still ticks at the tab bar's strength, and pressing
 /// the tab you are on takes you to its top, both through the selection's own

@@ -141,22 +141,30 @@ at the bottom", and the first redraw — the same house, person, cart and grid
 at the same size, with words — read to them as no change at all, so two
 directions were drawn for them and they chose the one after their picture of
 a shop's bar, then asked for its Deals tab, in its order. A rounded house with
-its door; three squares and a sparkle for the departments; **a percent sign
-for the deals, and nothing else, on the owner's word** ("change the icon of
-deals to %. Percentage icon only") — two rings and the stroke between them,
-the rings filled when chosen; it was a price tag after a picture the owner
-sent, and a bag with a percent sign before that, and `knockout` (a path drawn
-clear: a mask on the web, the clear blend mode in the app) went unused with
-the tag's hole; a person in a circle; the cart with its
-wheels. One 24 grid, one heavier line (2), round caps and
-joins, each an outline and a filled form, drawn 28px. The paths are
-absolute M, L, H, V, C and Z alone, so the app draws them from
-`tabIcons.json` (`TabIcon.swift`, a dozen-line parser) as template images the
-system tints; a filled shape is stroked at the same weight too, so it is the
-size of its outline and an icon does not shrink when chosen. The icons
-are dark, not the muted ink — the tint keeps dark ink at 4.5:1 over the
-darkest thing that passes — and the current tab's pill is solid for the same
-reason. **The grey pill is one element
+its door; three squares and a sparkle for the departments; **a red shopping
+bag with a percent on it for the deals, drawn a little larger, on the
+owner's word** — after a picture of a bag seen from three quarters ("an
+outline of a shopping bag like this, in this perspective, with a percentage
+icon in it, and its colour being red", then "slightly bigger than the other
+icons"): NetLet's own drawing rather than the picture's, which is somebody's
+mark — a front, a narrower side going back, two handles with the back one
+behind, and a percent of two dots and a stroke; chosen, the front fills red,
+the side a deeper red and the percent is cut clear (`knockout`: a mask on the
+web, the clear blend mode in the app). It was a percent sign alone before
+("change the icon of deals to %"), a price tag before that and a bag before
+that; a person in a circle; the cart with its wheels. One 24 grid, one
+heavier line (2), round caps and joins, each an outline and a filled form,
+drawn 28px — Deals 32 (`size`). The paths are absolute M, L, H, V, C and Z
+alone, so the app draws them from `tabIcons.json` (`TabIcon.swift`, a
+dozen-line parser) as template images the system tints — Deals as an original
+image in its own red (`color`, `#d6201f` and a deeper `#a3181b`), which the
+tint leaves alone, chosen or not; a filled shape is stroked at the same weight
+too, so it is the size of its outline and an icon does not shrink when chosen.
+The other icons are dark, not the muted ink — the tint keeps dark ink at 4.5:1
+over the darkest thing that passes — and the current tab's pill is solid for
+the same reason; the red is 5.1:1 on white and 4.4:1 on the pill, and over
+the glass above a navy band it is the one icon that falls under 3:1, a trade
+made on the owner's word for the colour. **The grey pill is one element
 that slides between the tabs** (`.tab-pill`, 420ms, mirrored on the Arabic
 page), also on the owner's word. It moves on the press rather than when the
 address does, because a page whose code is still coming keeps the old one up

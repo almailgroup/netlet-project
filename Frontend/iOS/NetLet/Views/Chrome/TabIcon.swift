@@ -4,12 +4,16 @@ import UIKit
 /// The tab bar's five icons — the web's own drawing (`content/tabIcons.ts`,
 /// exported to `tabIcons.json`): bold and wordless, on the owner's word,
 /// after the picture they sent of a shop's bar — a rounded house, three
-/// squares and a sparkle, a percent sign for the deals, a person
-/// in a circle, the cart. An outline for each tab and a filled form for the
-/// one that is chosen, drawn here as template images the system tints — navy
-/// chosen, the bar's ink otherwise — so the tab bar stays Apple's own. A
-/// `knockout` path is cut out of what is drawn, with the clear blend mode,
-/// since one tint cannot draw it (none does now; the tag's hole was the one).
+/// squares and a sparkle, a red shopping bag with a percent for the deals, a
+/// person in a circle, the cart. An outline for each tab and a filled form
+/// for the one that is chosen, drawn here as template images the system tints
+/// — navy chosen, the bar's ink otherwise — so the tab bar stays Apple's own.
+///
+/// **Deals keeps its own red and is drawn a little larger, on the owner's
+/// word**: an icon with `color` is drawn in it (`deep` paths in the darker
+/// one) as an original image the system leaves alone, at its own `size`. A
+/// `knockout` path is cut out of what is drawn, with the clear blend mode —
+/// the percent on the chosen bag, so the bar shows through it.
 ///
 /// The paths are absolute M, L, H, V, C and Z alone, the parser below being
 /// all it takes; a test draws every one.
@@ -21,15 +25,28 @@ enum TabIcon: String, CaseIterable {
         let mode: String
         /// Cut out of what is drawn rather than drawn.
         var knockout: Bool?
+        /// Drawn in the icon's darker colour.
+        var deep: Bool?
+    }
+
+    /// An icon's own colours, as `#rrggbb`.
+    struct Colors: Decodable, Sendable {
+        let ink: String
+        let deep: String
     }
 
     struct Drawing: Decodable, Sendable {
         let outline: [Path]
         let filled: [Path]
+        /// Drawn larger than the rest.
+        var size: Double?
+        /// Its own colours, kept whether chosen or not; none takes the tint.
+        var color: Colors?
     }
 
     struct File: Decodable, Sendable {
         let strokeWidth: Double
+        var size: Double?
         let icons: [String: Drawing]
     }
 
@@ -45,17 +62,21 @@ enum TabIcon: String, CaseIterable {
         guard let file else { return drawn }
         for icon in TabIcon.allCases {
             guard let drawing = file.icons[icon.rawValue] else { continue }
-            drawn["\(icon.rawValue)-outline"] = render(drawing.outline, stroke: file.strokeWidth)
-            drawn["\(icon.rawValue)-filled"] = render(drawing.filled, stroke: file.strokeWidth)
+            let side = CGFloat(drawing.size ?? file.size ?? Double(TabIcon.side))
+            drawn["\(icon.rawValue)-outline"] = render(drawing.outline, stroke: file.strokeWidth, side: side, colors: drawing.color)
+            drawn["\(icon.rawValue)-filled"] = render(drawing.filled, stroke: file.strokeWidth, side: side, colors: drawing.color)
         }
         return drawn
     }()
 
-    /// The icon as a template image, filled while its tab is the one showing;
-    /// the SF Symbol it replaced if the drawing is missing.
+    /// The icon, filled while its tab is the one showing — a template the
+    /// system tints, or in its own colours (`renderingMode(.original)`, so a
+    /// tint never paints over the red); the SF Symbol it replaced if the
+    /// drawing is missing.
     func image(filled: Bool) -> Image {
         if let drawn = Self.images["\(rawValue)-\(filled ? "filled" : "outline")"] {
             return Image(uiImage: drawn)
+                .renderingMode(drawn.renderingMode == .alwaysOriginal ? .original : .template)
         }
         return Image(systemName: fallback)
     }
@@ -64,25 +85,29 @@ enum TabIcon: String, CaseIterable {
         switch self {
         case .home: return "house"
         case .categories: return "square.grid.2x2"
-        case .deals: return "percent"
+        case .deals: return "bag"
         case .profile: return "person.crop.circle"
         case .cart: return "cart"
         }
     }
 
-    /// The paths on the 24 grid, drawn at `side` points as a template.
-    static func render(_ paths: [Path], stroke: Double) -> UIImage {
+    /// The paths on the 24 grid, drawn at `side` points — as a template, or
+    /// in the icon's own colours as an original image.
+    static func render(_ paths: [Path], stroke: Double, side: CGFloat = TabIcon.side, colors: Colors? = nil) -> UIImage {
         let size = CGSize(width: side, height: side)
+        let ink = colors.flatMap { color($0.ink) } ?? .black
+        let deep = colors.flatMap { color($0.deep) } ?? ink
         let image = UIGraphicsImageRenderer(size: size).image { context in
             let cg = context.cgContext
             cg.scaleBy(x: side / 24, y: side / 24)
             cg.setLineWidth(stroke)
             cg.setLineCap(.round)
             cg.setLineJoin(.round)
-            cg.setFillColor(UIColor.black.cgColor)
-            cg.setStrokeColor(UIColor.black.cgColor)
             // What is drawn first, then what is cut out of it.
             for path in paths.filter({ $0.knockout != true }) + paths.filter({ $0.knockout == true }) {
+                let paint = path.deep == true ? deep : ink
+                cg.setFillColor(paint.cgColor)
+                cg.setStrokeColor(paint.cgColor)
                 cg.setBlendMode(path.knockout == true ? .clear : .normal)
                 cg.addPath(cgPath(path.d))
                 switch path.mode {
@@ -92,7 +117,19 @@ enum TabIcon: String, CaseIterable {
                 }
             }
         }
-        return image.withRenderingMode(.alwaysTemplate)
+        return image.withRenderingMode(colors == nil ? .alwaysTemplate : .alwaysOriginal)
+    }
+
+    /// `#rrggbb` as a colour, or nil for anything else.
+    static func color(_ hex: String) -> UIColor? {
+        let digits = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard digits.count == 6, let value = UInt32(digits, radix: 16) else { return nil }
+        return UIColor(
+            red: CGFloat((value >> 16) & 0xFF) / 255,
+            green: CGFloat((value >> 8) & 0xFF) / 255,
+            blue: CGFloat(value & 0xFF) / 255,
+            alpha: 1
+        )
     }
 
     /// A path of absolute M, L, H, V, C and Z, the only commands the web's

@@ -58,7 +58,7 @@ import { FOLD_FROM, FOLD_MARKS, FOLD_TO, MAX_QUERY_WORDS } from "../../../Shared
 import { SYNONYM_GROUPS } from "../../../Shared/commerce/searchSynonyms.js";
 import { HELP_GROUPS, MAX_HELP_QUESTION } from "../../../Shared/commerce/helpArticles.js";
 import { LEGAL_UPDATED, PRIVACY, SELLER_TERMS, TERMS } from "../../Web/src/content/legal.js";
-import { TAB_ICON_STROKE, TAB_ICONS } from "../../Web/src/content/tabIcons.js";
+import { TAB_ICON_SIZE, TAB_ICON_STROKE, TAB_ICONS } from "../../Web/src/content/tabIcons.js";
 import { SETTLEMENT_DAYS } from "../../../Shared/commerce/payoutSchedule.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
 import { AGREEMENT_VERSION, MAX_COMMISSION_NOTE } from "../../../Shared/inventory/sellerApplication.js";
@@ -321,7 +321,7 @@ export function buildResources(): Record<string, string> {
     "currency.json": json({ currencies: DISPLAY_CURRENCIES, rates: REFERENCE_RATES, asOf: RATES_AS_OF, minorDigits: Object.fromEntries(DISPLAY_CURRENCIES.map(code => [code, minorDigits(code)])) }),
     "assets.json": json(buildAssets().manifest),
     /* The tab bar's five icons, the web's own paths (`content/tabIcons.ts`). */
-    "tabIcons.json": json({ strokeWidth: TAB_ICON_STROKE, icons: TAB_ICONS }),
+    "tabIcons.json": json({ strokeWidth: TAB_ICON_STROKE, size: TAB_ICON_SIZE, icons: TAB_ICONS }),
     "content.json": json(buildContent()),
     /* The portal's menu and the permission model it is filtered by
        (`can`), so the app's portal offers the pages the web's does. */

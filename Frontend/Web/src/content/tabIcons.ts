@@ -10,11 +10,22 @@
  * (`TAB_ICON_STROKE`, 2, heavier than before), round caps and joins, each
  * with an outline and a filled form: the current tab is filled, the rest
  * are outlines. A rounded house with its door; three squares and a sparkle
- * for the departments; a percent sign for the deals, and nothing else, on
- * the owner's word ("change the icon of deals to %. Percentage icon only") —
- * it was a price tag after a picture they sent, and a bag before that; a
- * person in a circle; the cart with its two wheels. The words stay each
- * tab's name for a screen reader.
+ * for the departments; a person in a circle; the cart with its two wheels.
+ * The words stay each tab's name for a screen reader.
+ *
+ * **Deals is a red shopping bag, a little larger than the rest, on the
+ * owner's word** — after a picture of a bag seen from three quarters, "an
+ * outline of a shopping bag like this, in this perspective, with a
+ * percentage icon in it, and its colour being red", then "slightly bigger
+ * than the other icons". It is NetLet's own drawing, not the picture's (that
+ * bag is somebody's mark): a front face and a narrower side going back to
+ * the right, two handles with the back one passing behind, and a percent
+ * sign on the front — dots and a stroke, rings being blobs at this size.
+ * Chosen, the front is filled in `color.ink`, the side in `color.deep` so the
+ * turn of the bag still shows, and the percent is cut clear (`knockout`). It
+ * keeps its red whether chosen or not: the colour is the point, and the
+ * filled form says which tab is current. Before this it was a percent sign
+ * alone, a price tag before that, and a bag before that.
  *
  * Every path is absolute M, L, H, V, C and Z alone, so the app draws them
  * from `tabIcons.json` with a parser of a dozen lines (`TabIcon.swift`); the
@@ -28,14 +39,29 @@
 
 export const TAB_ICON_STROKE = 2;
 
+/** How large an icon is drawn, in CSS pixels on the web and points in the app. */
+export const TAB_ICON_SIZE = 28;
+
 /**
  * One path of an icon. `knockout` draws it clear rather than in the icon's
- * colour — a hole a one-colour fill could not otherwise show. No icon cuts
- * one now (the Deals tag's hole went with the tag); both clients still read it.
+ * colour — a hole a one-colour fill could not otherwise show (the percent on
+ * the chosen Deals bag). `deep` draws it in the icon's darker colour, for an
+ * icon that has colours of its own.
  */
-export type TabIconPath = { d: string; mode: "stroke" | "fill" | "both"; knockout?: boolean };
+export type TabIconPath = { d: string; mode: "stroke" | "fill" | "both"; knockout?: boolean; deep?: boolean };
 export type TabIconName = "home" | "categories" | "deals" | "profile" | "cart";
-export type TabIconDrawing = { outline: TabIconPath[]; filled: TabIconPath[] };
+export type TabIconDrawing = {
+  outline: TabIconPath[];
+  filled: TabIconPath[];
+  /** Drawn larger than `TAB_ICON_SIZE`. */
+  size?: number;
+  /**
+   * The icon's own colours, kept whether its tab is chosen or not; without
+   * them it takes the bar's ink (navy chosen, near-black otherwise, and the
+   * system's tint in the app).
+   */
+  color?: { ink: string; deep: string };
+};
 
 /* How far a cubic's handle reaches to draw a quarter circle. */
 const K = 0.5523;
@@ -80,10 +106,19 @@ const HOUSE = "M3.6 10.4 L12 3.6 L20.4 10.4 V19.2 C20.4 20.2 19.6 21 18.6 21 H14
 const SQUARES = [roundSquare(3.2, 3.2, 7.4, 2), roundSquare(13.4, 3.2, 7.4, 2), roundSquare(3.2, 13.4, 7.4, 2)];
 const SPARKLE = "M17.2 12.6 C17.6 15 18.8 16.2 21.2 16.6 C18.8 17 17.6 18.2 17.2 20.6 C16.8 18.2 15.6 17 13.2 16.6 C15.6 16.2 16.8 15 17.2 12.6 Z";
 
-/* A percent sign: two rings and the stroke between them, leaning as the
-   glyph does, from the bottom start to the top end. Chosen, the rings fill. */
-const PERCENT_RINGS = [circle(7.2, 7.2, 2.9), circle(16.8, 16.8, 2.9)];
-const PERCENT_STROKE = "M5.2 18.8 L18.8 5.2";
+/* A shopping bag from three quarters: its front, its side going back to the
+   right (narrower at the top, as the bag widens to its foot), the front
+   handle, and the back one starting behind it. A percent sign on the front:
+   two dots and the stroke between them, from the bottom start to the top end. */
+const BAG_FRONT = "M3.6 8.6 L14.4 7.4 L14.8 21.6 L2.4 20.4 Z";
+const BAG_SIDE = "M14.4 7.4 L17.4 8.6 L21.6 19.6 L14.8 21.6 Z";
+const BAG_HANDLE = "M5.4 8.4 C5.2 5 6.4 3 7.8 3 C9.3 3 10.4 4.9 10.2 7.9";
+const BAG_HANDLE_BACK = "M10.2 4.7 C10.7 2.9 11.5 2 12.5 2 C13.8 2 14.6 4 14.4 7.4";
+const BAG_PERCENT_DOTS = [circle(6.5, 12.6, 1.3), circle(10.9, 17.3, 1.3)];
+const BAG_PERCENT_STROKE = "M6 18.5 L11.4 11.3";
+
+/** Deals' red: 5.1:1 on white and 4.4:1 on the chosen tab's grey pill. */
+const DEALS_RED = { ink: "#d6201f", deep: "#a3181b" };
 
 /* A person in a circle. */
 const RING = circle(12, 12, 9.2);
@@ -107,13 +142,23 @@ export const TAB_ICONS: Record<TabIconName, TabIconDrawing> = {
   },
   deals: {
     outline: [
-      ...PERCENT_RINGS.map(d => ({ d, mode: "stroke" as const })),
-      { d: PERCENT_STROKE, mode: "stroke" },
+      { d: BAG_SIDE, mode: "stroke" },
+      { d: BAG_FRONT, mode: "stroke" },
+      { d: BAG_HANDLE_BACK, mode: "stroke" },
+      { d: BAG_HANDLE, mode: "stroke" },
+      ...BAG_PERCENT_DOTS.map(d => ({ d, mode: "fill" as const })),
+      { d: BAG_PERCENT_STROKE, mode: "stroke" },
     ],
     filled: [
-      ...PERCENT_RINGS.map(d => ({ d, mode: "both" as const })),
-      { d: PERCENT_STROKE, mode: "stroke" },
+      { d: BAG_SIDE, mode: "both", deep: true },
+      { d: BAG_FRONT, mode: "both" },
+      { d: BAG_HANDLE_BACK, mode: "stroke" },
+      { d: BAG_HANDLE, mode: "stroke" },
+      ...BAG_PERCENT_DOTS.map(d => ({ d, mode: "fill" as const, knockout: true })),
+      { d: BAG_PERCENT_STROKE, mode: "stroke", knockout: true },
     ],
+    size: 32,
+    color: DEALS_RED,
   },
   profile: {
     outline: [

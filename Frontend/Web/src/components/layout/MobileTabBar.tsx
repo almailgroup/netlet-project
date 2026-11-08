@@ -10,7 +10,8 @@
  * bold icons and no words, on the owner's word**, in the order of the picture
  * they sent of a shop's bar (`content/tabIcons.ts` says how the icons came to
  * be). The current tab sits in a pale grey pill with its icon filled in navy,
- * the rest are near-black outlines; each tab's word is its name to a screen
+ * the rest are near-black outlines — but Deals, a red bag drawn a little
+ * larger, which keeps its red either way; each tab's word is its name to a screen
  * reader. Saved left the bar with an earlier picture; it is the Saved tile on
  * the account page, one press under Profile. Categories opens `/categories`,
  * the departments as a page, and Deals the shop's on-offer products
@@ -48,19 +49,24 @@ import { CountBadge } from "@/components/ui/CountBadge";
 import { useCart } from "@/contexts/CartContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useTranslation } from "@/hooks/useTranslation";
-import { TAB_ICONS, TAB_ICON_STROKE, type TabIconName } from "@/content/tabIcons";
+import { TAB_ICONS, TAB_ICON_SIZE, TAB_ICON_STROKE, type TabIconName } from "@/content/tabIcons";
 import { useEffect, useId, useRef, useState, type ReactNode, type CSSProperties } from "react";
 import { MAX_WAIT_MS } from "@/lib/readyNavigation";
 import { nextTabBar, SHOWN, type TabBarScroll } from "@/lib/tabBarScroll";
 import { Link, useLocation, useSearch } from "wouter";
 
 /**
- * One of the bar's four icons, filled while it is the current tab — the one
- * drawing the app draws too (`content/tabIcons.ts`).
+ * One of the bar's icons, filled while it is the current tab — the one
+ * drawing the app draws too (`content/tabIcons.ts`). Most take the tab's ink;
+ * Deals keeps its own red, and is drawn a little larger, on the owner's word.
  */
 function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
-  const paths = TAB_ICONS[name][filled ? "filled" : "outline"];
+  const drawing = TAB_ICONS[name];
+  const paths = drawing[filled ? "filled" : "outline"];
+  const size = drawing.size ?? TAB_ICON_SIZE;
   const maskId = useId();
+  const inkOf = (path: (typeof paths)[number]) =>
+    drawing.color ? (path.deep ? drawing.color.deep : drawing.color.ink) : "currentColor";
   const drawn = (path: (typeof paths)[number], index: number, ink: string) => (
     <path
       key={index}
@@ -71,10 +77,18 @@ function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
     />
   );
   /* A knockout is cut out of what is drawn by a mask, so the bar shows
-     through it (the Deals tag's hole was one; no icon cuts one now). */
+     through it (the percent on the chosen Deals bag). */
   const cut = paths.filter(path => path.knockout);
   return (
-    <svg viewBox="0 0 24 24" aria-hidden className="size-[28px]" strokeLinejoin="round" strokeLinecap="round">
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      width={size}
+      height={size}
+      className="block"
+      strokeLinejoin="round"
+      strokeLinecap="round"
+    >
       {cut.length ? (
         <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
           <rect width="24" height="24" fill="white" />
@@ -82,7 +96,7 @@ function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
         </mask>
       ) : null}
       <g mask={cut.length ? `url(#${maskId})` : undefined}>
-        {paths.filter(path => !path.knockout).map((path, index) => drawn(path, index, "currentColor"))}
+        {paths.filter(path => !path.knockout).map((path, index) => drawn(path, index, inkOf(path)))}
       </g>
     </svg>
   );

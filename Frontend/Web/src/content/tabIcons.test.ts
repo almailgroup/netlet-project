@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TAB_ICON_COMMANDS, TAB_ICONS } from "./tabIcons";
+import { TAB_ICON_COMMANDS, TAB_ICON_SIZE, TAB_ICONS } from "./tabIcons";
 
 describe("the tab bar's icons", () => {
   it("draws every tab in both forms, with only the commands the app reads", () => {
@@ -31,6 +31,22 @@ describe("the tab bar's icons", () => {
     for (const drawing of Object.values(TAB_ICONS)) {
       expect(drawing.outline.some(path => path.mode === "stroke")).toBe(true);
       expect(drawing.filled.some(path => path.mode === "both" || path.mode === "fill")).toBe(true);
+    }
+  });
+
+  it("draws Deals as a red bag a little larger than the rest, the others in the bar's ink", () => {
+    const deals = TAB_ICONS.deals;
+    expect(deals.color?.ink).toMatch(/^#[0-9a-f]{6}$/);
+    expect(deals.color?.deep).toMatch(/^#[0-9a-f]{6}$/);
+    expect(deals.size).toBeGreaterThan(TAB_ICON_SIZE);
+    expect(deals.size).toBeLessThanOrEqual(TAB_ICON_SIZE + 6);
+    /* Chosen, the percent is cut out of the filled bag. */
+    expect(deals.filled.some(path => path.knockout)).toBe(true);
+    for (const [name, drawing] of Object.entries(TAB_ICONS)) {
+      if (name === "deals") continue;
+      expect(drawing.color, name).toBeUndefined();
+      expect(drawing.size, name).toBeUndefined();
+      expect([...drawing.outline, ...drawing.filled].some(path => path.deep), name).toBe(false);
     }
   });
 });
