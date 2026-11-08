@@ -230,7 +230,9 @@ struct StoreMember: Decodable, Identifiable, Hashable, Sendable {
     let email: String?
     let name: String?
 
-    var shownName: String { (name?.isEmpty == false ? name : nil) ?? email }
+    /// The name, else the email, else the account's number — an account made
+    /// with a phone alone may have neither of the first two.
+    var shownName: String { (name?.isEmpty == false ? name : nil) ?? email ?? "#\(userId)" }
 }
 
 // MARK: Payouts

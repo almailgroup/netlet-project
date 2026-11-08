@@ -146,7 +146,9 @@ struct PortalPerson: Decodable, Identifiable, Hashable, Sendable {
     /// from a server before that rule, which reads as not the owner.
     var owner: Bool? = nil
 
-    var shownName: String { (name?.isEmpty == false ? name : nil) ?? email }
+    /// The name, else the email, else the account's number — an account made
+    /// with a phone alone may have neither of the first two.
+    var shownName: String { (name?.isEmpty == false ? name : nil) ?? email ?? "#\(id)" }
 }
 
 struct PeoplePage: Decodable, Sendable {

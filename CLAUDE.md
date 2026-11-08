@@ -8689,7 +8689,10 @@ from before it fails `FixtureDecodingTests`. And **a field made optional is a
 type change at every use, not only where it is drawn**: the phone sign-up made
 `StoreMember.email` a `String?`, and one toast's `[String: String]` (`answer.email
 ?? member.email`) stopped compiling — that push's build failed in two minutes
-and never reached TestFlight. Grep every use of a field made optional. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
+and never reached TestFlight. The fix's own build then failed on two more
+(`shownName`'s `?? email`): **the Mac reports one file's errors and stops**, so
+a type change is audited by hand — every `.email`, and the bare `email` inside
+the types themselves — rather than one build per error. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
 green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also
