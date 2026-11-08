@@ -85,12 +85,15 @@ const fieldClass = "h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3
 
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
-  const { cart, refreshCart, settling, syncing } = useCart();
+  const { cart, refreshCart, settling, syncing, skip, forgetChoice } = useCart();
   const { t, tError, locale, isArabic } = useTranslation();
   const returnDays = useReturnWindow();
   const money = useMoney();
   const reading = useDisplayCurrency();
-  const items = cart?.items ?? [];
+  /* The lines ticked in the cart (`cartChoice.ts`): what this order is of.
+     The rest wait in the bag. */
+  const items = (cart?.items ?? []).filter(item => item.chosen !== false);
+  const chosenCount = cart ? cart.chosenCount ?? cart.itemCount : 0;
   const subtotal = cart?.subtotal ?? { amount: "0", currencyCode: "KWD" };
   const { isAuthenticated, user, loading: sessionLoading } = useAuth();
   const { setDeliveryZoneId } = useCustomer();
@@ -152,6 +155,8 @@ export default function Checkout() {
          does not reach. */
       void utils.commerce.cart.get.invalidate();
       void utils.orders.list.invalidate();
+      /* What was left in the bag is chosen again, for the next order. */
+      forgetChoice();
       void refreshCart();
     },
     onError: error => {
@@ -170,7 +175,7 @@ export default function Checkout() {
   const blocker: MessageKey | null = !isAuthenticated
     ? null /* said by the sign-in card */
     : settling || !delivery.loaded ? null
-    : !items.length ? "checkout.needItems"
+    : !items.length ? (cart?.items.length ? "order.nothingChosen" : "checkout.needItems")
     : shortLines(items).size ? "checkout.needFewer"
     : items.some(item => item.codeProblem) ? "checkout.codeProblem"
     : cart?.cod.available === false ? "checkout.needCod"
@@ -199,8 +204,8 @@ export default function Checkout() {
       row?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
       return;
     }
-    /* The quantity is changed where the stepper is. */
-    if (blocker === "checkout.needFewer") {
+    /* The quantity is changed where the stepper is, and the choice where the circles are. */
+    if (blocker === "checkout.needFewer" || blocker === "order.nothingChosen") {
       navigate("/cart");
       return;
     }
@@ -220,7 +225,7 @@ export default function Checkout() {
      whose link earns on it is named, and never this shopper's own. */
   const [links] = useState(() => productLinks());
   const linkCodes = [...new Set(links
-    .filter(link => cart?.items.some(line => line.productId === link.productId))
+    .filter(link => items.some(line => line.productId === link.productId))
     .map(link => link.code))]
     .filter(code => !user || sharerIdFromCode(code) !== user.id);
   const via = trpc.affiliates.sharers.useQuery({ codes: linkCodes }, { enabled: linkCodes.length > 0, retry: false, staleTime: 5 * 60_000 });
@@ -240,6 +245,8 @@ export default function Checkout() {
     primeOrderChime();
     place.mutate({
       cartId: cart.id,
+      /* The lines left out stay in the bag; the order is of the rest. */
+      skip,
       paymentMethod: "cod",
       contactName: contactName || null,
       contactPhone: phone || null,
@@ -325,7 +332,7 @@ export default function Checkout() {
             <aside aria-label={t("checkout.orderSummary")} aria-busy={settling || syncing} className={`${CARD} p-4 sm:p-5 lg:sticky lg:top-6`}>
               <h2 className="text-[17px] font-extrabold">{t("checkout.orderSummary")}</h2>
               <dl className="mt-3 space-y-2 text-[14px]">
-                <Row label={<>{t("cart.subtotal")} <span className="ink-muted">({t("cart.itemCount", { count: cart?.itemCount ?? 0 })})</span></>} value={settling ? null : money(subtotal)} />
+                <Row label={<>{t("cart.subtotal")} <span className="ink-muted">({t("cart.itemCount", { count: chosenCount })})</span></>} value={settling ? null : money(subtotal)} />
                 <Row label={t("cart.delivery")} value={settling ? null : cart ? (Number(cart.delivery.total.amount) > 0 ? money(cart.delivery.total) : t("cart.deliveryFree")) : null} faint={syncing} />
                 {/* Each product's own code (0074), named, before anything paid. */}
                 {items.filter(item => item.code).map(item => (
@@ -414,8 +421,8 @@ export default function Checkout() {
       {confirming && cart && address ? (
         <ConfirmOrderDialog
           items={items}
-          itemCount={cart.itemCount}
-          storeCount={bagGroups(cart)?.length ?? 1}
+          itemCount={chosenCount}
+          storeCount={bagGroups({ ...cart, items })?.length ?? 1}
           addressLabel={address.label}
           addressLine={addressLineIn(address, isArabic)}
           contact={[contactName, normalisePhone(phone) ? formatPhone(normalisePhone(phone)!) : phone].filter(Boolean).join(" · ")}
@@ -485,18 +492,22 @@ function OrderItems() {
     );
   }
   if (!cart?.items.length) return null;
-  const groups = bagGroups(cart);
+  /* What this order is of: the lines ticked in the cart. */
+  const chosen = cart.items.filter(item => item.chosen !== false);
+  const leftOut = chosen.length < cart.items.length;
+  const groups = bagGroups({ ...cart, items: chosen });
   return (
     <section aria-labelledby="checkout-items-title" className="space-y-3">
       <div className="flex items-center justify-between gap-3 px-1 pt-1">
-        <h2 id="checkout-items-title" className="text-[15px] font-extrabold">{t("checkout.itemsTitle", { count: cart.itemCount })}</h2>
+        <h2 id="checkout-items-title" className="text-[15px] font-extrabold">{t("checkout.itemsTitle", { count: cart.chosenCount ?? cart.itemCount })}</h2>
         <Link href="/cart" className="inline-flex min-h-11 items-center rounded-full px-2 text-[13px] font-bold ink-accent hover:underline">{t("checkout.editCart")}</Link>
       </div>
+      {leftOut ? <p className="px-1 text-[13px] leading-5 ink-muted">{t("checkout.leftInCart")}</p> : null}
       {groups ? groups.map(group => (
         <StoreParcel key={group.key} group={group} name={storeName({ vendorName: group.store.name, vendorNameAr: group.store.nameAr }, isArabic)} />
-      )) : (
-        <div className={`${CARD} divide-y divide-[#eef1f5] px-4`}>{cart.items.map(item => <ItemRow key={item.lineId} item={item} />)}</div>
-      )}
+      )) : chosen.length ? (
+        <div className={`${CARD} divide-y divide-[#eef1f5] px-4`}>{chosen.map(item => <ItemRow key={item.lineId} item={item} />)}</div>
+      ) : null}
     </section>
   );
 }

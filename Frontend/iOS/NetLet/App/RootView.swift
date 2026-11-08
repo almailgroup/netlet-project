@@ -187,7 +187,37 @@ private struct RouteDestination: View {
     let path: Binding<NavigationPath>?
     @Environment(AppModel.self) private var app
 
+    /// **No system back button on a pushed page, ever, on the owner's word**
+    /// ("this Liquid Glass arrow appears for a split second and then
+    /// disappears … the arrows are already there"). Every shop and account
+    /// page draws its own way back and hides the bar from inside (`ShopPage`),
+    /// but a page made through `ModelHost` draws a plain ground for its first
+    /// frame, before its model exists, and for that frame the bar was there
+    /// with its glass back button over the page's own "‹ Your account". So
+    /// the bar is hidden here, on the pushed page itself, from its first frame.
+    /// The swipe back still works (`UINavigationController`'s delegate in
+    /// `ShopPage.swift`). The portal, checkout and the seller's two screens
+    /// keep the system bar: it is their title and their only way back, and it
+    /// stays rather than flashing.
     var body: some View {
+        if usesSystemBar {
+            destination
+        } else {
+            destination
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationBarBackButtonHidden(true)
+        }
+    }
+
+    private var usesSystemBar: Bool {
+        switch route {
+        case .portal, .checkout, .listings, .newListing: return true
+        default: return false
+        }
+    }
+
+    @ViewBuilder
+    private var destination: some View {
         switch route {
         case .product(let handle): ProductDetailView(handle: handle)
         case .department(let slug): DepartmentView(slug: slug)

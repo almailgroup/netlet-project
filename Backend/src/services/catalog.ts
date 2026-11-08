@@ -15,6 +15,7 @@
  *   schema for why.
  */
 
+import { skippedLineIds } from "../../../Shared/commerce/cartChoice.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import {
@@ -556,7 +557,7 @@ function sumMinor(values: { amount: string; quantity: number }[]): string {
  * shopper looks" true, with the grant simply being part of what it costs for
  * that shopper. An anonymous bag has no owner and so has no grants.
  */
-export async function getCart(cartId: string): Promise<Cart | null> {
+export async function getCart(cartId: string, skip: readonly string[] = []): Promise<Cart | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -614,6 +615,18 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     .where(and(eq(cartItems.cartId, cartId), eq(products.status, "published"), eq(vendors.status, "approved")))
     .orderBy(cartItems.id);
 
+  /*
+   * The lines the shopper left out of this checkout (`Shared/commerce/
+   * cartChoice.ts`): every line is still drawn, but what it costs to send,
+   * what it comes to and whether cash is possible are of the chosen lines
+   * alone — the figures the order will place. A set is chosen whole.
+   */
+  const skipped = skippedLineIds(
+    rows.map(row => ({ lineId: String(row.lineId), bundleId: row.bundleId === null ? null : String(row.bundleId) })),
+    skip,
+  );
+  const chosen = (lineId: number) => !skipped.has(String(lineId));
+
   const productIds = [...new Set(rows.map(row => row.productId))];
   const images = productIds.length
     ? await db
@@ -636,11 +649,15 @@ export async function getCart(cartId: string): Promise<Cart | null> {
    * function `placeOrder` uses. Two implementations of this is precisely how a
    * checkout summary comes to disagree with the bill.
    */
-  const bundled = await bundlePricing(db, rows.map(row => ({
+  const asLines = (list: typeof rows) => list.map(row => ({
     variantId: row.variantId,
     quantity: row.quantity,
     bundleId: row.bundleId,
-  })));
+  }));
+  /* Over the chosen lines, as `placeOrder` prices them; a line left out is
+     priced with the whole bag, as it would be on the day it is chosen. */
+  const bundled = await bundlePricing(db, asLines(rows.filter(row => chosen(row.lineId))));
+  const bundledAll = skipped.size ? await bundlePricing(db, asLines(rows)) : bundled;
 
   /*
    * The optional extras each line carries (3.1.2), priced from the catalog on
@@ -674,7 +691,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
 
   const priced = rows.map(row => {
     const extras = chosenAddons.filter(addon => addon.lineId === row.lineId);
-    const inBundle = bundled.get(row.variantId);
+    const inBundle = (chosen(row.lineId) ? bundled : bundledAll).get(row.variantId);
     /* `shopperPrice` is the one rule checkout uses too, so the bag cannot
        quote a figure the order then charges differently. */
     const price = shopperPrice({
@@ -722,6 +739,10 @@ export async function getCart(cartId: string): Promise<Cart | null> {
 
   const items: CartItem[] = priced.map(row => ({
     lineId: String(row.lineId),
+    /* Chosen for this checkout, and the set it was added as — so the bag's
+       circle moves a set whole, as the rule does here. */
+    chosen: chosen(row.lineId),
+    bundleId: row.bundleId === null ? null : String(row.bundleId),
     variantId: String(row.variantId),
     productId: String(row.productId),
     productHandle: row.productHandle,
@@ -777,14 +798,16 @@ export async function getCart(cartId: string): Promise<Cart | null> {
         : { codeProblem: { code: verdict.code, reason: verdict.reason } })(verdicts.get(row.lineId))),
   }));
 
+  /* What follows is of the chosen lines alone: what the order will place. */
+  const going = priced.filter(row => chosen(row.lineId));
   const subtotal = addMoney(
-    sumMinor(priced.map(row => ({ amount: row.charged, quantity: row.quantity }))),
-    ...priced.map(row => row.extrasTotal),
+    sumMinor(going.map(row => ({ amount: row.charged, quantity: row.quantity }))),
+    ...going.map(row => row.extrasTotal),
   );
-  const codeDiscount = addMoney("0.000", ...priced.map(row => codeTaken(row.lineId)));
+  const codeDiscount = addMoney("0.000", ...going.map(row => codeTaken(row.lineId)));
   /* A line's own code is money not spent with its store, so it does not count
      toward that store's free delivery — the order's rule. */
-  const quoted = deliveryFor(priced.map(row => ({ ...row, codeTaken: codeTaken(row.lineId) })), doors);
+  const quoted = deliveryFor(going.map(row => ({ ...row, codeTaken: codeTaken(row.lineId) })), doors);
   /* Waived the way checkout waives it (4.1), so the bag shows what the order will charge. */
   const minimum = member ? await freeDeliveryOver(db) : null;
   const quote = member ? waiveDelivery(quoted, subtractMoney(subtotal, codeDiscount), minimum) : { ...quoted, waived: "0.000" };
@@ -792,7 +815,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
      the line's Fast choice then says "free" rather than a fee nobody pays. */
   const memberFree = member && (minimum === null || compareMoney(subtractMoney(subtotal, codeDiscount), minimum) >= 0);
   /* One row per seller, so the COD rules line up with the delivery groups. */
-  const rules = new Map(priced.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
+  const rules = new Map(going.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
 
   return {
     id: cart.id,
@@ -801,6 +824,7 @@ export async function getCart(cartId: string): Promise<Cart | null> {
     checkoutUrl: "/checkout",
     items,
     itemCount: items.reduce((count, item) => count + item.quantity, 0),
+    chosenCount: items.reduce((count, item) => count + (item.chosen ? item.quantity : 0), 0),
     subtotal: money(subtotal),
     /*
      * Whether this is a basket somebody forgot (3.1.17). Resolved on the read
@@ -1004,28 +1028,29 @@ async function putLines(
   }
 }
 
-export async function createCart(lines: Line[], userId?: number | null): Promise<Cart | null> {
+export async function createCart(lines: Line[], userId?: number | null, skip: readonly string[] = []): Promise<Cart | null> {
   const db = await getDb();
   if (!db) return null;
   const id = newCartId();
   await db.insert(carts).values({ id, userId: userId ?? null });
   await putLines(db, id, lines);
-  return getCart(id);
+  return getCart(id, skip);
 }
 
-export async function addCartLines(cartId: string, lines: Line[]): Promise<Cart | null> {
+export async function addCartLines(cartId: string, lines: Line[], skip: readonly string[] = []): Promise<Cart | null> {
   const db = await getDb();
   if (!db) return null;
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) return null;
   await putLines(db, cartId, lines);
   await db.update(carts).set({ updatedAt: new Date() }).where(eq(carts.id, cartId));
-  return getCart(cartId);
+  return getCart(cartId, skip);
 }
 
 export async function updateCartLines(
   cartId: string,
   lines: { lineId: string; quantity: number }[],
+  skip: readonly string[] = [],
 ): Promise<Cart | null> {
   const db = await getDb();
   if (!db) return null;
@@ -1039,17 +1064,17 @@ export async function updateCartLines(
       .set({ quantity: line.quantity, updatedAt: new Date() })
       .where(and(eq(cartItems.id, lineId), eq(cartItems.cartId, cartId)));
   }
-  return getCart(cartId);
+  return getCart(cartId, skip);
 }
 
-export async function removeCartLines(cartId: string, lineIds: string[]): Promise<Cart | null> {
+export async function removeCartLines(cartId: string, lineIds: string[], skip: readonly string[] = []): Promise<Cart | null> {
   const db = await getDb();
   if (!db) return null;
   const ids = lineIds.map(Number).filter(Number.isInteger);
   if (ids.length) {
     await db.delete(cartItems).where(and(inArray(cartItems.id, ids), eq(cartItems.cartId, cartId)));
   }
-  return getCart(cartId);
+  return getCart(cartId, skip);
 }
 
 /**
@@ -1059,14 +1084,14 @@ export async function removeCartLines(cartId: string, lineIds: string[]): Promis
  * (`effectiveChoice`), so a store adding a fast fee later does not change a
  * line nobody touched.
  */
-export async function setLineDeliveryChoice(cartId: string, lineId: string, choice: "regular" | "fast"): Promise<Cart | null> {
+export async function setLineDeliveryChoice(cartId: string, lineId: string, choice: "regular" | "fast", skip: readonly string[] = []): Promise<Cart | null> {
   const db = await getDb();
   if (!db) return null;
   const id = Number(lineId);
   if (Number.isInteger(id)) {
     await db.update(cartItems).set({ deliveryChoice: choice }).where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)));
   }
-  return getCart(cartId);
+  return getCart(cartId, skip);
 }
 
 /**
@@ -1083,6 +1108,7 @@ export async function setLineCode(
   cartId: string,
   lineId: string,
   typed: string,
+  skip: readonly string[] = [],
 ): Promise<{ ok: true; cart: Cart } | { ok: false; reason: string }> {
   const db = await getDb();
   if (!db) return { ok: false, reason: "voucher.unknown" };
@@ -1101,7 +1127,7 @@ export async function setLineCode(
   if ("refused" in found) return { ok: false, reason: found.refused };
 
   await db.update(cartItems).set({ discountCodeId: found.found.id }).where(eq(cartItems.id, id));
-  const cart = await getCart(cartId);
+  const cart = await getCart(cartId, skip);
   const drawn = cart?.items.find(item => item.lineId === String(id));
   if (cart && drawn?.code) return { ok: true, cart };
 
@@ -1110,14 +1136,14 @@ export async function setLineCode(
 }
 
 /** Take a line's code off; the line is its price again. */
-export async function clearLineCode(cartId: string, lineId: string): Promise<Cart | null> {
+export async function clearLineCode(cartId: string, lineId: string, skip: readonly string[] = []): Promise<Cart | null> {
   const db = await getDb();
   if (!db) return null;
   const id = Number(lineId);
   if (Number.isInteger(id)) {
     await db.update(cartItems).set({ discountCodeId: null }).where(and(eq(cartItems.id, id), eq(cartItems.cartId, cartId)));
   }
-  return getCart(cartId);
+  return getCart(cartId, skip);
 }
 
 /**

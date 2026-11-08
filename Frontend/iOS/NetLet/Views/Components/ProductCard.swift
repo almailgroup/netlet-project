@@ -633,7 +633,7 @@ struct CardActions: View {
         Group {
             if let variant, variant.availableForSale {
                 if !product.needsChoice, let line = app.cart.cart?.plainLine(for: variant.id) {
-                    buyPill(count: line.quantity) { app.openCheckout() }
+                    buyPill(count: line.quantity) { app.openCheckout(buying: variant.id) }
                         .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
                 }
             } else {
@@ -693,6 +693,9 @@ struct PhotoCartControl: View {
     let product: Product
     @State private var open = false
     @State private var settle: Task<Void, Never>?
+    /// The stepper's number as typed (`TypedQuantity`), while its box is in use.
+    @State private var draft = ""
+    @FocusState private var typing: Bool
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -721,21 +724,10 @@ struct PhotoCartControl: View {
                 }
             }
             .frame(maxWidth: stepping ? 152 : 44, minHeight: 44, maxHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(line == nil ? Color.white : Brand.navy))
-            .overlay {
-                if line == nil {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1)
-                }
-            }
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            // The shadow is the shape's, behind the control, never the whole
-            // control's: a shadow round a composite is drawn off screen again
-            // on every frame it moves, on every card of a scrolling grid.
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(line == nil ? Color.white : Brand.navy)
-                    .shadow(color: Brand.navy.opacity(line == nil ? 0.14 : 0.26), radius: 5, y: 2)
-            )
+            // Liquid Glass, the tab bar's, on the owner's word ("make the
+            // adding to cart design Liquid Glass, just like the bottom menu").
+            .modifier(PhotoGlass())
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: stepping)
             .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: line == nil)
             .onDisappear {
@@ -747,8 +739,8 @@ struct PhotoCartControl: View {
 
     private func plus(label: String, press: @escaping () -> Void) -> some View {
         Button(action: press) {
-            Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Brand.navy)
+            Image(systemName: "plus").font(.system(size: 18, weight: .bold))
+                .foregroundStyle(PhotoGlass.ink)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
@@ -769,7 +761,7 @@ struct PhotoCartControl: View {
                     .monospacedDigit()
                     .offset(x: 1.5, y: -3)
             }
-            .foregroundStyle(Color.white)
+            .foregroundStyle(PhotoGlass.ink)
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
         }
@@ -786,18 +778,46 @@ struct PhotoCartControl: View {
             } label: {
                 Image(systemName: count <= 1 ? "trash" : "minus")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(PhotoGlass.ink)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.action)
             .accessibilityLabel(l.t(count <= 1 ? "cart.remove" : "cart.decrease", ["name": product.title]))
-            Text("\(count)").font(.inter(16, .bold)).monospacedDigit().foregroundStyle(Color.white)
-                .contentTransition(.numericText(value: Double(count)))
-                .frame(maxWidth: .infinity)
-                .accessibilityLabel(l.t("cart.quantityShort", ["count": "\(count)"]))
             // What there is, less the bag's other lines of it (`BagStock`).
             let ceiling = BagStock.cardCeiling(variant, line: line, in: app.cart.cart?.items ?? [])
+            // The count is a box, on the owner's word ("pick a custom amount …
+            // by tapping on the number and editing the value"): a press opens
+            // the number pad with the box empty and the count as its
+            // placeholder, and what is typed is the line once the keyboard is
+            // put away (`TypedQuantity`) — the bag's own box.
+            TextField("\(count)", text: $draft)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.center)
+                .font(.inter(16, .bold))
+                .monospacedDigit()
+                .foregroundStyle(PhotoGlass.ink)
+                .focused($typing)
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(typing ? Color.white : Color.clear))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Brand.navy, lineWidth: typing ? 1.5 : 0))
+                .onAppear { draft = "\(count)" }
+                .onChange(of: count) { _, next in if !typing { draft = "\(next)" } }
+                .onChange(of: draft) { _, text in
+                    let kept = TypedQuantity.draft(text)
+                    if kept != text { draft = kept }
+                }
+                .onChange(of: typing) { _, now in
+                    if now {
+                        draft = ""
+                        settle?.cancel()
+                    } else {
+                        commit(line, ceiling: ceiling)
+                    }
+                }
+                .accessibilityLabel(l.t("cart.quantityOf", ["name": product.title]))
+                .accessibilityValue("\(count)")
             Button {
                 if count >= ceiling {
                     settleLater()
@@ -808,7 +828,7 @@ struct PhotoCartControl: View {
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(PhotoGlass.ink)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                     // Faint at the limit, never dead: pressed, it says why.
@@ -848,14 +868,31 @@ struct PhotoCartControl: View {
         }
     }
 
+    /// The typed number, once the keyboard is put away: nothing typed changes
+    /// nothing, zero takes the line out, over what there is is held to it.
+    private func commit(_ line: CartItem, ceiling: Int) {
+        let text = draft
+        draft = "\(line.quantity)"
+        switch TypedQuantity.read(text, ceiling: ceiling) {
+        case .remove?:
+            change(line, to: 0)
+        case .set(let value, let capped)?:
+            if capped { sayStockLimit(ceiling, app: app, l: l) }
+            if value != line.quantity { change(line, to: value) } else { settleLater() }
+        case nil:
+            settleLater()
+        }
+    }
+
     /// Folds the stepper into the count once the presses stop; each press
-    /// starts the wait again. Not under VoiceOver.
+    /// starts the wait again. Not under VoiceOver, and never while the count
+    /// is being typed.
     private func settleLater() {
         settle?.cancel()
         guard !voiceOver else { return }
         settle = Task { @MainActor in
             try? await Task.sleep(for: .seconds(Self.settleSeconds))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, !typing else { return }
             open = false
         }
     }
@@ -980,4 +1017,34 @@ extension Product {
 @MainActor
 func announce(_ text: String) {
     UIAccessibility.post(notification: .announcement, argument: text)
+}
+
+/// The card photo's add-to-cart control in Liquid Glass, the tab bar's, on the
+/// owner's word: the system's own glass from iOS 26 — with a white tint, so it
+/// stays light and its near-black ink stays readable over a dark photo, as the
+/// tab bar does — and on iOS 17 and 18 a thin material under the same tint,
+/// with a hairline rim and a soft shadow. Interactive, so it gives under the
+/// finger the way the tab bar does.
+struct PhotoGlass: ViewModifier {
+    /// The tab bar's ink: near-black, never the muted grey.
+    static let ink = Color(red: 22 / 255, green: 24 / 255, blue: 29 / 255)
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular.tint(Color.white.opacity(0.55)).interactive(), in: shape)
+        } else {
+            content
+                .background {
+                    ZStack {
+                        shape.fill(.ultraThinMaterial)
+                        shape.fill(Color.white.opacity(0.6))
+                    }
+                }
+                .overlay(shape.strokeBorder(Color.black.opacity(0.12), lineWidth: 1))
+                // The shadow is the shape's, never the control's: a shadow round
+                // a composite is drawn off screen again on every frame it moves.
+                .background(shape.fill(Color.white.opacity(0.01)).shadow(color: Brand.navy.opacity(0.16), radius: 7, y: 3))
+        }
+    }
 }

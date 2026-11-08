@@ -42,7 +42,7 @@ import { Select } from "@/components/ui/Select";
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
   const money = useMoney();
-  const { addItem, cart, openCart, updateQuantity, removeItem, proceedToCheckout } = useCart();
+  const { addItem, cart, openCart, updateQuantity, removeItem, proceedToCheckout, chooseOnly } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [variantId, setVariantId] = useState("");
   const [imageIndex, setImageIndex] = useState(0);
@@ -99,8 +99,11 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const add = async (thenCheckout: boolean) => {
     if (plainLine) {
       onClose();
-      if (thenCheckout) proceedToCheckout();
-      else openCart();
+      if (thenCheckout) {
+        /* Buy now buys this line alone (`cartChoice.ts`). */
+        chooseOnly([plainLine.lineId]);
+        proceedToCheckout();
+      } else openCart();
       return;
     }
     if (!variant?.availableForSale) return toast.error(t("cart.itemUnavailable"));

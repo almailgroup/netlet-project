@@ -135,6 +135,8 @@ struct AccountView: View {
                 row("signout")
                     .padding(.horizontal, 20)
                     .panel()
+                // Who the shop is, under everything, on the owner's word.
+                ShopCopyright()
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)

@@ -102,7 +102,7 @@ final class CheckoutViewModel {
     /// Places the order to the saved address, from its own parts, name and
     /// number. Nil when something is missing or the server refused; the reason
     /// is then on `refusal` or `blocker(for:address:)`.
-    func place(cart: Cart?, address: SavedAddress?, accountName: String? = nil) async -> PlacedOrder? {
+    func place(cart: Cart?, address: SavedAddress?, accountName: String? = nil, skip: [String] = []) async -> PlacedOrder? {
         refusal = nil
         guard let cart, let address, blocker(for: cart, address: address) == nil else { return nil }
         placing = true
@@ -126,7 +126,9 @@ final class CheckoutViewModel {
             pin: address.pin,
             usePoints: taken?.usePoints,
             voucherCode: taken?.voucherCode,
-            giftCardCode: taken?.giftCardCode
+            giftCardCode: taken?.giftCardCode,
+            // The lines left out stay in the bag; the order is of the rest.
+            skip: skip.nilIfEmpty
         )
         do {
             let placed = try await orders.place(order)

@@ -96,9 +96,12 @@ enum BagOps {
     static func withItems(_ cart: Cart, _ items: [CartItem]) -> Cart {
         var next = cart
         let unexplained = max(0, cart.itemCount - counted(cart.items))
-        let subtotal = items.reduce(0) { $0 + $1.lineTotal.fils }
+        // Of the lines chosen for checkout (`CartChoice`), as the server's is.
+        let going = items.filter { $0.chosen != false }
+        let subtotal = going.reduce(0) { $0 + $1.lineTotal.fils }
         next.items = items
         next.itemCount = counted(items) + unexplained
+        next.chosenCount = counted(going) + unexplained
         next.subtotal = Money(fils: subtotal, currencyCode: cart.subtotal.currencyCode)
         // The lines' own codes (0074) stay the server's last, like the delivery.
         next.total = Money(fils: subtotal + cart.delivery.total.fils - (cart.codeDiscount?.fils ?? 0), currencyCode: cart.total.currencyCode)
@@ -130,6 +133,20 @@ enum BagOps {
             let target = realLineId(cart, lineId)
             return withItems(cart, cart.items.filter { $0.lineId != target })
         }
+    }
+
+    /// The bag with these lines left out of checkout (`CartChoice`), a set
+    /// whole: each line's circle as pressed, and the subtotal and count of
+    /// what is chosen; the delivery and the codes stay the server's last
+    /// until it answers with the new choice — the web's `withChoice`.
+    static func withChoice(_ cart: Cart?, _ skip: [String]) -> Cart? {
+        guard let cart else { return nil }
+        let out = CartChoice.skipped(CartChoice.lines(cart.items), skip)
+        return withItems(cart, cart.items.map { item in
+            var next = item
+            next.chosen = !out.contains(item.lineId)
+            return next
+        })
     }
 
     /// The line a press names, once the server has made it: a drawn-ahead

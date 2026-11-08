@@ -16,6 +16,13 @@ import Observation
 /// gone yet are folded into one. A refusal drops that press, is felt as two
 /// taps on a stepper, and reads the bag again, since a dropped connection may
 /// have half-happened; the caller is still told it failed.
+///
+/// **What the shopper left out of this checkout is kept here too** (`CartChoice`,
+/// on the owner's word): the lines not ticked, stored with the bag's id on
+/// this phone and sent with every read and write of the bag, so each answer's
+/// totals, delivery and cash rule are already of the chosen lines. A circle
+/// pressed is drawn at once and the bag read again with it; Buy now chooses
+/// its own line alone, and an order placed forgets the list.
 @Observable
 @MainActor
 final class CartModel {
@@ -29,6 +36,8 @@ final class CartModel {
         case speed(lineId: String, fast: Bool)
         /// A product's own discount code on a line (0074), or nil to take it off.
         case code(lineId: String, code: String?)
+        /// The lines chosen for checkout changed: the bag is read again with them.
+        case choose
         case refresh
 
         /// What the press draws before the server answers. A line with extras
@@ -44,7 +53,7 @@ final class CartModel {
                 return [.set(lineId: lineId, quantity: quantity)]
             case let .remove(lineId):
                 return [.remove(lineId: lineId)]
-            case .destination, .speed, .code, .refresh:
+            case .destination, .speed, .code, .choose, .refresh:
                 return []
             }
         }
@@ -78,6 +87,8 @@ final class CartModel {
 
     /// The bag as the server last answered.
     private var confirmed: Cart?
+    /// The bag's lines left out of this checkout, as sent with every call.
+    private(set) var skip: [String] = []
     /// Why the last line code did not fit, handed back by `setLineCode`.
     private var codeRefusal: String?
     /// Presses drawn and not yet answered, oldest first.
@@ -94,21 +105,30 @@ final class CartModel {
     private let service: CartServicing
     private let defaults: UserDefaults
     static let storageKey = "netlet.cartId"
+    /// What is left out of a bag's checkout, with the bag it is about.
+    static let skipKey = "netlet.cartSkip"
 
     init(service: CartServicing, defaults: UserDefaults = .standard) {
         self.service = service
         self.defaults = defaults
+        skip = Self.storedSkip(defaults, for: defaults.string(forKey: Self.storageKey))
     }
 
     /// The bag drawn: the server's last answer with every press still waiting
-    /// applied over it.
+    /// applied over it, and the circles as pressed.
     var cart: Cart? {
-        waiting.reduce(confirmed) { bag, entry in entry.change.guesses.reduce(bag) { BagOps.apply($0, $1) } }
+        let drawn = waiting.reduce(confirmed) { bag, entry in entry.change.guesses.reduce(bag) { BagOps.apply($0, $1) } }
+        return waiting.isEmpty && skip.isEmpty ? drawn : BagOps.withChoice(drawn, skip)
     }
 
     /// Whether a press is still on its way: the delivery and the total are the
     /// server's last until it answers, and checkout waits for it.
-    var syncing: Bool { waiting.contains { !$0.change.guesses.isEmpty } }
+    var syncing: Bool {
+        waiting.contains { entry in
+            if case .choose = entry.change { return true }
+            return !entry.change.guesses.isEmpty
+        }
+    }
 
     /// True while the stored bag is first read or the first item is on its way
     /// with nothing to draw yet, so the cart screen never says "empty" before
@@ -135,7 +155,7 @@ final class CartModel {
         defer { restoring = false }
         let before = answers
         do {
-            let found = try await service.get(id)
+            let found = try await service.get(id, skip: skip)
             // A press answered meanwhile is newer than this read.
             guard answers == before, waiting.isEmpty else { return }
             if let found { confirmed = found } else { forget() }
@@ -214,6 +234,7 @@ final class CartModel {
     func adopt(cartId: String?) async {
         guard let cartId, cartId != self.cartId else { return }
         defaults.set(cartId, forKey: Self.storageKey)
+        skip = Self.storedSkip(defaults, for: cartId)
         await restore()
     }
 
@@ -221,10 +242,54 @@ final class CartModel {
     /// saw the last shopper's bag. The account keeps it for the next sign-in.
     func forget() {
         confirmed = nil
+        skip = []
         defaults.removeObject(forKey: Self.storageKey)
+        defaults.removeObject(forKey: Self.skipKey)
     }
 
     func clearError() { lastError = nil }
+
+    // MARK: The choice
+
+    /// Choose these lines for checkout, or leave them out; a set moves whole.
+    func choose(_ lineIds: [String], chosen: Bool) {
+        let real = lineIds.compactMap { BagOps.realLineId(confirmed, $0) }
+        setSkip(CartChoice.choose(CartChoice.lines(confirmed?.items ?? []), skip, real, chosen: chosen))
+        Task { _ = await enqueue(.choose) }
+    }
+
+    /// Only these lines chosen — and the plain line of `variantId`, which a Buy
+    /// now press may be about to add to — everything else left out.
+    func chooseOnly(_ lineIds: [String], variantId: String? = nil) {
+        let plain = variantId.flatMap { confirmed?.plainLine(for: $0)?.lineId }.map { [$0] } ?? []
+        let real = lineIds.compactMap { BagOps.realLineId(confirmed, $0) } + plain
+        setSkip(CartChoice.only(CartChoice.lines(confirmed?.items ?? []), real))
+        Task { _ = await enqueue(.choose) }
+    }
+
+    /// Everything left in the bag chosen again, as after an order.
+    func forgetChoice() { setSkip([]) }
+
+    private func setSkip(_ value: [String]) {
+        skip = Array(value.prefix(CartChoice.maxSkipped))
+        Self.store(skip, for: cartId, in: defaults)
+    }
+
+    private static func storedSkip(_ defaults: UserDefaults, for cartId: String?) -> [String] {
+        guard let cartId,
+              let stored = defaults.dictionary(forKey: skipKey),
+              stored["cartId"] as? String == cartId,
+              let skip = stored["skip"] as? [String] else { return [] }
+        return Array(skip.prefix(CartChoice.maxSkipped))
+    }
+
+    private static func store(_ skip: [String], for cartId: String?, in defaults: UserDefaults) {
+        if let cartId, !skip.isEmpty {
+            defaults.set(["cartId": cartId, "skip": skip], forKey: skipKey)
+        } else {
+            defaults.removeObject(forKey: skipKey)
+        }
+    }
 
     // MARK: The queue
 
@@ -233,7 +298,10 @@ final class CartModel {
     /// whether the server took it.
     private func enqueue(_ change: Change) async -> Bool {
         await withCheckedContinuation { (waiter: CheckedContinuation<Bool, Never>) in
-            if let last = waiting.indices.last, !waiting[last].sent,
+            if let last = waiting.indices.last, !waiting[last].sent, case .choose = waiting[last].change, case .choose = change {
+                // Circles pressed before the bag was read again are one read.
+                waiters[waiting[last].id, default: []].append(waiter)
+            } else if let last = waiting.indices.last, !waiting[last].sent,
                let line = waiting[last].change.stepped, line == change.stepped {
                 waiting[last].change = change
                 waiters[waiting[last].id, default: []].append(waiter)
@@ -272,7 +340,7 @@ final class CartModel {
         pumping = false
         // A refusal may have been half done — a dropped connection after the
         // server wrote — so the bag is read again rather than assumed.
-        if refused, let id = cartId, let fresh = try? await service.get(id), waiting.isEmpty {
+        if refused, let id = cartId, let fresh = try? await service.get(id, skip: skip), waiting.isEmpty {
             keep(fresh)
         }
     }
@@ -283,7 +351,7 @@ final class CartModel {
         switch change {
         case let .add(variantId, quantity, _):
             if let id = cartId {
-                if let updated = try await service.add(id, variantId: variantId, quantity: quantity) {
+                if let updated = try await service.add(id, variantId: variantId, quantity: quantity, skip: skip) {
                     keep(updated)
                     return true
                 }
@@ -293,47 +361,58 @@ final class CartModel {
             keep(try await service.create(variantId: variantId, quantity: quantity))
             return true
         case let .lines(lines):
-            if let id = cartId, let updated = try await service.addLines(id, lines: lines) {
+            if let id = cartId, let updated = try await service.addLines(id, lines: lines, skip: skip) {
                 keep(updated)
                 return true
             }
             if cartId != nil { forget() }
-            guard let made = try await service.addLines(nil, lines: lines) else { return false }
+            guard let made = try await service.addLines(nil, lines: lines, skip: []) else { return false }
             keep(made)
             return true
         case let .set(lineId, quantity):
             // A press on a drawn-ahead line goes to the real one; none means the add it followed failed.
             guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return true }
-            if let updated = try await service.setQuantity(id, lineId: line, quantity: quantity) { keep(updated) } else { forget() }
+            if let updated = try await service.setQuantity(id, lineId: line, quantity: quantity, skip: skip) { keep(updated) } else { forget() }
             return true
         case let .remove(lineId):
             guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return true }
-            if let updated = try await service.setQuantity(id, lineId: line, quantity: 0) { keep(updated) } else { forget() }
+            if let updated = try await service.setQuantity(id, lineId: line, quantity: 0, skip: skip) { keep(updated) } else { forget() }
             return true
         case let .destination(lineId, addressId):
             guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return false }
-            if let found = try await service.setDestination(id, lineId: line, addressId: addressId) { keep(found) }
+            if let found = try await service.setDestination(id, lineId: line, addressId: addressId, skip: skip) { keep(found) }
             return true
         case let .speed(lineId, fast):
             guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return false }
-            if let found = try await service.setDeliveryChoice(id, lineId: line, choice: fast ? "fast" : "regular") { keep(found) }
+            if let found = try await service.setDeliveryChoice(id, lineId: line, choice: fast ? "fast" : "regular", skip: skip) { keep(found) }
             return true
         case let .code(lineId, code):
             guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return false }
-            let answer = try await service.setLineCode(id, lineId: line, code: code)
+            let answer = try await service.setLineCode(id, lineId: line, code: code, skip: skip)
             if answer.ok, let cart = answer.cart { keep(cart) }
             if !answer.ok { codeRefusal = answer.reason ?? "voucher.unknown" }
             return true
+        case .choose:
+            guard let id = cartId else { return true }
+            if let found = try await service.get(id, skip: skip) { keep(found) }
+            return true
         case .refresh:
             guard let id = cartId else { return true }
-            if let found = try await service.get(id), !found.isEmpty { keep(found) } else { forget() }
+            if let found = try await service.get(id, skip: skip), !found.isEmpty { keep(found) } else { forget() }
             return true
         }
     }
 
     private func keep(_ cart: Cart) {
+        // Another bag — a first add, an adopted one — has its own list, or none.
+        if cart.id != confirmed?.id && cart.id != defaults.string(forKey: Self.storageKey) {
+            skip = Self.storedSkip(defaults, for: cart.id)
+        }
         confirmed = cart
         answers += 1
         defaults.set(cart.id, forKey: Self.storageKey)
+        // A line that has left the bag leaves the list too.
+        let pruned = CartChoice.prune(CartChoice.lines(cart.items), skip)
+        if pruned != skip { setSkip(pruned) }
     }
 }

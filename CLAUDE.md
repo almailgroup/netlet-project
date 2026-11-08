@@ -1454,6 +1454,23 @@ reopen, bin back to the plus, a tap elsewhere folding it, the sizes plus
 opening the preview, axe clean with the stepper open, no sideways scroll; at
 1440 the card is Add to cart over Buy now with nothing on the photo.
 
+**The plus, the stepper and the folded square wear the tab bar's Liquid
+Glass, on the owner's word** ("make the adding to cart design Liquid Glass,
+just like the bottom menu"): the same layers as `MobileTabBar`
+(`glass-bar-surface` behind the content, the warp under a fine pointer only)
+at a tint of their own, `.glass-chip`'s even 70%, with near-black ink
+(`#16181d`) — the tab bar's, which keeps 4.5:1 over whatever the photo is,
+where navy on a navy photo would not. **And the count is a box** (on the
+owner's word: "pick a custom amount … by tapping on the number and editing
+the value"): a press selects it and opens the number pad, and what is typed is
+the line's quantity on Enter or on leaving it, by `typedQuantity` — the bag
+line's rule, so zero takes it out and over what there is is held to it with
+the toast; the stepper never folds while the box has focus, and a finger
+landing elsewhere puts the box down before folding. The app's is the same
+(`PhotoGlass`: `glassEffect` from iOS 26, a material and a white tint before).
+Measured at 320 and 390 in both languages: 3 typed into the count is a line of
+3 and "Buy 3 now", axe clean, no sideways scroll.
+
 **A card's photographs can be browsed on the card**, on the owner's word —
 seeing a product's second photo used to mean opening the product.
 `CardGallery` is the photo: a row of up to `CARD_PHOTOS` (five) that a finger
@@ -2098,6 +2115,36 @@ Checkout pressed without one opens the book and goes on once one is chosen.
 It replaced the bar (`CartTopBar`) that named the address in a word; the heart
 to Saved items, counted, is at the end of the title's line.
 
+**A shopper chooses which lines to check out, on the owner's word** (a picture
+of a shop's cart: "you should be able to choose what products you want the
+price for and only checkout for those products"). A circle beside every line,
+one beside every store's name (its lines together, the minus when some are
+left out) and All at the summary's foot and in the floating bar; the subtotal,
+each store's delivery, the total and "Checkout (n)" count the chosen lines
+alone, and checkout shows only those, saying the rest stay in the cart.
+`Shared/commerce/cartChoice.ts` is the rule, pure, and the app's `CartChoice`
+the same on the same cases. **No column: the device keeps what is *not*
+chosen** — a skip list kept with the bag's id (`commerce:cart-skip` in
+`browserStore`, `netlet.cartSkip` in the app), so a line added later, here or
+on another device, is chosen without anybody choosing it — and sends it with
+every read and write of the bag and with `orders.place` and
+`orders.quoteVoucher` (`skipInput`, at most `MAX_SKIPPED_LINES`). The server
+prices, delivers and places only what it leaves (`getCart`'s `going`,
+`priceableLines`' `skip`), refuses an order with nothing chosen
+(`order.nothingChosen`), and empties only the placed lines from the bag, so
+what was left out is still there afterwards; an id the bag no longer has is
+ignored. **A set is chosen whole**, since its lines are priced as a set only
+together. **Buy now chooses its own line alone** (`chooseOnly`): "Buy 3 now"
+buys those three and not the rest of the bag. An order placed forgets the
+choice. Every line is chosen to start with, and the demo build, which answers
+from fixtures, has the choice drawn over its answers (`withChoice` in
+`bagOps.ts`). `orders.test.ts` places a bag with one line left out and checks
+the order holds the rest, the left-out line is still in the bag, and a bag
+with everything left out is refused. Measured at 320, 390 and 1440 in both
+languages: one line left out turning its store's circle empty and All's to a
+minus, the subtotal and Checkout counting the rest, checkout showing only the
+chosen lines with the note, axe clean, no sideways scroll.
+
 **Codes, gift cards and points are checkout's alone, on the owner's word**
 ("display three distinct options: a discount code input, a gift card input, a
 NetLet points redemption toggle", then "only in the checkout page, not cart"):
@@ -2195,7 +2242,16 @@ Move to wishlist for somebody signed in while `wishlists` is on — the heart's
 second question (`chooseWishlist`), out of Saved once it is on a list — with a
 cross on the photo taking it out of Saved, and a polite live region saying
 each move. The app's Saved is `SavedProductCard(grid: true)`, the cart row's
-own card, on the same rule. **The drawer is mounted after the pages** (`App`): its
+own card, on the same rule. **Several move at once, on the owner's word** ("a
+multiple selection option for the pages that need it"): a circle on each
+photo's start corner and All above the grid (the cart's `ChoiceCircle`, the
+app's `ChoiceAll` and `ChoicePill`), then "Move to cart (n)" — only what can go
+in the bag as it is, one option and in stock; the rest stay chosen and the
+toast says so — and "Remove (n)", with Undo in its toast. **That Undo found a
+stale check**: `saveForLater` returned early for an id the `savedIds` it was
+made with still held, and the toast's Undo kept the one made before the
+removal, so pressing it put nothing back. Both stores take a second save as
+nothing (`onConflictDoNothing`), so the check went. **The drawer is mounted after the pages** (`App`): its
 lines are links now, and before the pages they made the skip link not the
 first link on the page, which axe reported as content outside a landmark.
 
@@ -5868,7 +5924,10 @@ marked; one whose product has left the shop stays, named and marked, with its
 bin, because a row that vanished would read as one the shopper never added.
 The usual amount is changed where it is drawn and written once the presses
 stop (500ms), and the bin asks first (`ConfirmDialog`, the system's alert in
-the app).
+the app). **Several can be chosen, on the owner's word**: a circle on every
+row and All above the list, the cart's rule that what has not been left out is
+chosen, so "Add all to cart" reads "Add to cart (3)" once some are left out,
+and "Remove (n)" takes the chosen rows off together after asking.
 
 **"From your past orders" fills it in one press each**: `frequentSuggestions`
 reads the shopper's own lines — not cancelled, returned, an exchange's
@@ -7494,9 +7553,10 @@ centre's, the notification groups' and the browsing history's words in both
 languages, then 925 KB (268 KB), the new sign-in, the portal's own
 addresses and the profile photo, then 939 KB (271 KB), signing in with a
 phone and its words in both languages, then 941 KB (272 KB), the
-one-time code's choice and step, and is 947 KB (273 KB) now, the iPhone's
+one-time code's choice and step, then 947 KB (273 KB), the iPhone's
 Face ID words in both languages (every `ios.*` key ships in the one
-dictionary), nearly
+dictionary), and is 954 KB (276 KB) now, choosing what to check out and the
+photo's glass and typed count, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -7890,7 +7950,9 @@ the app had no other door to is a card on the Profile tab now
 (`MoreFromNetLet`, "Help and information"): the help centre (where WhatsApp,
 the phone and the email are), the guides, "How to use the app" (the first
 launch's tutorial again), then the terms and the privacy
-policy, and the copyright and registration line. **The returns policy, Find a
+policy. **The copyright and registration line is the page's very last line, on
+the owner's word** (`ShopCopyright`, under Sign out; under Help and
+information on a guest's form), where it was the foot of that card. **The returns policy, Find a
 wishlist, the stores, Sell with us, the seller agreement and the Notifications
 row left the Profile tab, on the owner's word**: the stores are a box on
 Categories, the finder is in Wishlists and gifts, and the notifications are a
@@ -8504,6 +8566,18 @@ holds who is signed in (`SessionModel`) and the bag (`CartModel`). A load is
 is never drawn as an empty list, the web's `QueryGate` rule. The bag keeps only
 its id on the device, forgets it at sign-out and adopts the account's bag on
 sign-in, as `CartContext` does.
+
+**A pushed page never shows the system's back arrow, not even for a frame, on
+the owner's word** ("this Liquid Glass arrow appears for a split second and
+then disappears … the arrows are already there"). Each page hid the system bar
+itself, but a page behind `ModelHost` draws a placeholder for its first frame,
+before its model exists, and the placeholder hid nothing — so the iOS 26 bar
+drew its Liquid Glass chevron over the page's own way back and took it away a
+frame later. `RouteDestination` (`RootView`) hides the bar and the back button
+round every route as it is pushed, from the first frame, except the four that
+use the system's bar (the portal, checkout and the two listing screens). A new
+page drawing its own way back needs nothing; one that wants the system's bar
+joins `usesSystemBar`.
 
 **A press on the bag is drawn at once, and the server's answer settles it** —
 the web's `bagOps` and `CartContext` queue, rule for rule (`BagOps.swift` the

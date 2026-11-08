@@ -13,7 +13,7 @@
  * same argument that puts the inventory guards next to their queries.
  */
 import { z } from "zod";
-import { addressPartsInput, lastDay, pinInput, rowId } from "../core/schemas.js";
+import { addressPartsInput, lastDay, pinInput, rowId, skipInput } from "../core/schemas.js";
 import {
   cancelOrderForShopper,
   FulfilmentRefused,
@@ -250,6 +250,9 @@ export const ordersRouter = router({
   place: protectedProcedure
     .input(z.object({
       cartId: z.string().min(1).max(64),
+      /* What the shopper left out of this checkout (`cartChoice.ts`); the
+         order is of the rest, which alone leave the bag. */
+      skip: skipInput,
       paymentMethod: z.enum(PAYMENT_METHODS),
       contactName: z.string().trim().max(255).nullish(),
       contactPhone: z.string().trim().max(40).nullish(),
@@ -292,6 +295,7 @@ export const ordersRouter = router({
       try {
         const placed = await placeOrder(input.cartId, {
           email: ctx.user.email,
+          skip: input.skip,
           userId: ctx.user.id,
           paymentMethod: input.paymentMethod,
           contactName: input.contactName ?? ctx.user.name ?? null,
@@ -336,7 +340,7 @@ export const ordersRouter = router({
    * whole point of one — and a guest basket may carry a discount code too.
    */
   quoteVoucher: publicProcedure
-    .input(z.object({ cartId: z.string().min(1).max(64), code: z.string().trim().min(1).max(40) }))
+    .input(z.object({ cartId: z.string().min(1).max(64), code: z.string().trim().min(1).max(40), skip: skipInput }))
     .query(async ({ ctx, input }) => {
       /* A ceiling on guesses (`MAX_VOUCHER_MISSES_PER_ADDRESS`). Past it every
          code is refused alike, the right one included — answering it would make
@@ -346,7 +350,7 @@ export const ordersRouter = router({
       if (!verdict.allowed) {
         throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "voucher.tooMany", cause: { retryAfterSeconds: verdict.retryAfterSeconds } });
       }
-      const quote = await quoteVoucherForCart(input.cartId, input.code, ctx.user?.id ?? null);
+      const quote = await quoteVoucherForCart(input.cartId, input.code, ctx.user?.id ?? null, input.skip);
       if (!quote.ok && quote.reason === "voucher.unknown") await recordVoucherMiss(address);
       return quote;
     }),

@@ -345,6 +345,8 @@ final class AppModel {
             guard let self, !self.chatOpen else { return }
             self.chatUnread = true
         }
+        // A code is quoted on the lines chosen for this checkout (`CartChoice`).
+        savings.skip = { [weak cart] in cart?.skip ?? [] }
     }
 
     /// The demo's Face ID map, emptied at every launch, so one screenshot's
@@ -763,8 +765,11 @@ final class AppModel {
     }
 
     /// Buy now: the item is in the bag like any other, and the bag is skipped
-    /// on the way to checkout — leaving checkout finds it waiting.
-    func openCheckout() {
+    /// on the way to checkout — leaving checkout finds it waiting. Handed the
+    /// variant being bought, that line alone is chosen (`CartChoice`), so
+    /// "Buy 3 now" buys those three and not the rest of the bag.
+    func openCheckout(buying variantId: String? = nil) {
+        if let variantId { cart.chooseOnly([], variantId: variantId) }
         cartPath = NavigationPath([Route.checkout])
         selectedTab = .cart
     }

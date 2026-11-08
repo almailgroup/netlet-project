@@ -51,7 +51,10 @@ struct AuthView: View {
                 AuthForm(model: model, band: true)
                 // The app has no footer: its links, and for a guest the
                 // language and the currency, are under the form, apart from it.
-                MoreFromNetLet(language: true)
+                VStack(alignment: .leading, spacing: 12) {
+                    MoreFromNetLet(language: true)
+                    ShopCopyright()
+                }
                     .padding(.horizontal, 16)
                     .padding(.top, 20)
                     .padding(.bottom, 24)

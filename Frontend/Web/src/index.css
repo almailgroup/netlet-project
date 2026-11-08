@@ -1540,6 +1540,18 @@ html[dir="rtl"] .nav-progress {
     --glass-top: rgb(255 255 255 / 0.7);
     --glass-foot: rgb(255 255 255 / 0.7);
   }
+  /*
+   * The card photo's add-to-cart control (`PhotoCartControl`), on the owner's
+   * word ("make the adding to cart design Liquid Glass, just like the bottom
+   * menu"): the same even 70% as the panel, because its count is words on the
+   * glass and a product photo can be dark behind it — near-black keeps 8:1
+   * over a black photo. A small surface, drawn only on a touch screen, where
+   * the blur runs without the warp.
+   */
+  .glass-chip .glass-bar-face {
+    --glass-top: rgb(255 255 255 / 0.7);
+    --glass-foot: rgb(255 255 255 / 0.7);
+  }
 }
 /* A rounded bar's blur keeps to its own corners rather than trusting the
    bar's clip, which Safari has not always applied to a backdrop filter. It

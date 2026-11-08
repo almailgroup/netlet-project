@@ -66,15 +66,30 @@ private struct CheckoutForm: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        let cart = app.cart.cart
+        // What this order is of: the lines ticked in the cart (`CartChoice`).
+        let cart = app.cart.cart?.forCheckout
         let address = app.delivery.inUse
         let blocker = app.delivery.loaded ? model.blocker(for: cart, address: address) : nil
         // Nothing to check out: said as the cart says it, not as a form with a
         // total of nothing. Not once an order is placed — the bag empties under
         // the confirmation, and the page it sits over stays as it was.
         let empty = !app.cart.settling && (cart?.isEmpty ?? true) && placed == nil && landed == nil && !model.placing
+        // A bag with lines in it and none ticked: said so, with the way back to
+        // the cart, rather than "Your cart is empty" over a full bag.
+        let nothingChosen = empty && !(app.cart.cart?.isEmpty ?? true)
         ScrollView {
-            if empty {
+            if nothingChosen {
+                EmptyStateView(
+                    systemImage: "checklist",
+                    title: l.t("order.nothingChosen"),
+                    note: l.t("checkout.leftInCart"),
+                    actionTitle: l.t("checkout.editCart")
+                ) {
+                    editCart()
+                }
+                .card(padding: 0)
+                .padding(16)
+            } else if empty {
                 EmptyStateView(
                     systemImage: "bag",
                     title: l.t("cart.empty"),
@@ -97,7 +112,7 @@ private struct CheckoutForm: View {
                 // go says so over Place order, and the press opens the book.
                 if model.asksPhone(for: address) { phoneCard }
                 if let cart, !cart.isEmpty {
-                    CheckoutItems(cart: cart) { editCart() }
+                    CheckoutItems(cart: cart, leftOut: (app.cart.cart?.items.count ?? 0) > cart.items.count) { editCart() }
                     // The code right before the ways to pay, open.
                     BagSavingsCard(cart: cart)
                 }
@@ -286,13 +301,15 @@ private struct CheckoutForm: View {
     private func place(address: SavedAddress?) async {
         guard !app.cart.syncing else { return }
         let total = app.cart.cart.map { model.bill(for: $0).payable }
-        guard let order = await model.place(cart: app.cart.cart, address: address, accountName: app.session.user?.name) else {
+        guard let order = await model.place(cart: app.cart.cart?.forCheckout, address: address, accountName: app.session.user?.name, skip: app.cart.skip) else {
             Haptics.refused()
             confirming = false
             return
         }
         landed = PlacedNotice(id: order.reference, total: total)
         confirming = false
+        // What was left in the bag is chosen again, for the next order.
+        app.cart.forgetChoice()
         await app.cart.refresh()
     }
 }
@@ -304,6 +321,8 @@ private struct CheckoutForm: View {
 /// back to it.
 private struct CheckoutItems: View {
     let cart: Cart
+    /// Some of the bag was left out of this order and waits in the cart.
+    var leftOut = false
     let onEdit: () -> Void
     @Environment(LanguageSettings.self) private var l
 
@@ -322,6 +341,13 @@ private struct CheckoutItems: View {
                     .buttonStyle(.tap)
             }
             .padding(.horizontal, 4)
+            if leftOut {
+                Text(l.t("checkout.leftInCart"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 4)
+            }
             if let groups = BagGroup.groups(cart) {
                 ForEach(groups) { group in StoreParcel(group: group) }
             } else {

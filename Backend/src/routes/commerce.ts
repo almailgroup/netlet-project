@@ -14,7 +14,7 @@ import { DELIVERY_CHOICES } from "../../../Shared/commerce/delivery.js";
 import { listBestsellers, listBrands, listTrending } from "../services/homeShelves.js";
 import { currencyRates } from "../services/currencyRates.js";
 import { z } from "zod";
-import { rowId, rowIdText } from "../core/schemas.js";
+import { rowId, rowIdText, skipInput } from "../core/schemas.js";
 import {
   addCartLines,
   createCart,
@@ -163,32 +163,40 @@ export const commerceRouter = router({
 
   cart: router({
     create: publicProcedure
-      .input(z.object({ lines: z.array(cartLineInputSchema).min(1).max(50) }))
+      .input(z.object({ lines: z.array(cartLineInputSchema).min(1).max(50), skip: skipInput }))
       .mutation(async ({ ctx, input }) => {
         // A signed-in shopper's cart is attached to the account as it is
         // created, so it is already theirs on the next device.
-        return createCart(input.lines, ctx.user?.id ?? null);
+        return createCart(input.lines, ctx.user?.id ?? null, input.skip);
       }),
+    /**
+     * The bag, every line drawn and every figure of the lines chosen for this
+     * checkout: `skip` is what the shopper left out (`cartChoice.ts`), kept on
+     * their device and sent with every read and write of the bag, so each
+     * answer is already the checkout they are looking at.
+     */
     get: publicProcedure
-      .input(z.object({ cartId: z.string().min(1) }))
+      .input(z.object({ cartId: z.string().min(1), skip: skipInput }))
       .query(async ({ input }) => {
-        return getCart(input.cartId);
+        return getCart(input.cartId, input.skip);
       }),
     addLines: publicProcedure
       .input(
         z.object({
           cartId: z.string().min(1),
           lines: z.array(cartLineInputSchema).min(1).max(50),
+          skip: skipInput,
         })
       )
       .mutation(async ({ input }) => {
-        return addCartLines(input.cartId, input.lines);
+        return addCartLines(input.cartId, input.lines, input.skip);
       }),
     updateLines: publicProcedure
       .input(
         z.object({
           cartId: z.string().min(1),
           lines: z.array(cartLineUpdateSchema).min(1).max(50),
+          skip: skipInput,
         })
       )
       .mutation(async ({ input }) => {
@@ -199,12 +207,12 @@ export const commerceRouter = router({
 
         let cart = null;
         if (toUpdate.length) {
-          cart = await updateCartLines(input.cartId, toUpdate);
+          cart = await updateCartLines(input.cartId, toUpdate, input.skip);
         }
         if (toRemove.length) {
-          cart = await removeCartLines(input.cartId, toRemove);
+          cart = await removeCartLines(input.cartId, toRemove, input.skip);
         }
-        if (!cart) cart = await getCart(input.cartId);
+        if (!cart) cart = await getCart(input.cartId, input.skip);
         return cart;
       }),
     removeLines: publicProcedure
@@ -212,15 +220,16 @@ export const commerceRouter = router({
         z.object({
           cartId: z.string().min(1),
           lineIds: z.array(rowIdText).min(1).max(50),
+          skip: skipInput,
         })
       )
       .mutation(async ({ input }) => {
-        return removeCartLines(input.cartId, input.lineIds);
+        return removeCartLines(input.cartId, input.lineIds, input.skip);
       }),
     /** Fast or regular for one line (3.2.5), on a bag identified by its id like every bag write. */
     setDeliveryChoice: publicProcedure
-      .input(z.object({ cartId: z.string().min(1), lineId: rowIdText, choice: z.enum(DELIVERY_CHOICES) }))
-      .mutation(({ input }) => setLineDeliveryChoice(input.cartId, input.lineId, input.choice)),
+      .input(z.object({ cartId: z.string().min(1), lineId: rowIdText, choice: z.enum(DELIVERY_CHOICES), skip: skipInput }))
+      .mutation(({ input }) => setLineDeliveryChoice(input.cartId, input.lineId, input.choice, input.skip)),
     /**
      * A store's or a product's discount code on one line (migration 0074).
      * Answers the bag with the code on it, or the reason it does not fit —
@@ -229,21 +238,21 @@ export const commerceRouter = router({
      * the order box's ceiling, so a line is no back door to the dictionary.
      */
     setLineCode: publicProcedure
-      .input(z.object({ cartId: z.string().min(1).max(64), lineId: rowIdText, code: z.string().trim().min(1).max(40) }))
+      .input(z.object({ cartId: z.string().min(1).max(64), lineId: rowIdText, code: z.string().trim().min(1).max(40), skip: skipInput }))
       .mutation(async ({ ctx, input }) => {
         const address = ctx.req.ip ?? null;
         const verdict = await checkVoucherAllowed(address);
         if (!verdict.allowed) {
           throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "voucher.tooMany", cause: { retryAfterSeconds: verdict.retryAfterSeconds } });
         }
-        const answer = await setLineCode(input.cartId, input.lineId, input.code);
+        const answer = await setLineCode(input.cartId, input.lineId, input.code, input.skip);
         if (!answer.ok && answer.reason === "voucher.unknown") await recordVoucherMiss(address);
         return answer;
       }),
     /** Take a line's code off. */
     clearLineCode: publicProcedure
-      .input(z.object({ cartId: z.string().min(1).max(64), lineId: rowIdText }))
-      .mutation(({ input }) => clearLineCode(input.cartId, input.lineId)),
+      .input(z.object({ cartId: z.string().min(1).max(64), lineId: rowIdText, skip: skipInput }))
+      .mutation(({ input }) => clearLineCode(input.cartId, input.lineId, input.skip)),
     /**
      * Send one line to a different door (3.2.6).
      *
@@ -263,6 +272,7 @@ export const commerceRouter = router({
           cartId: z.string().min(1),
           lineId: rowIdText,
           addressId: rowId.nullable(),
+          skip: skipInput,
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -272,7 +282,7 @@ export const commerceRouter = router({
           if (error instanceof AddressError) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
           throw error;
         }
-        return getCart(input.cartId);
+        return getCart(input.cartId, input.skip);
       }),
   }),
 });

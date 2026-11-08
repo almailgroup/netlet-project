@@ -242,6 +242,14 @@ export type Collection = {
 export type CartItem = {
   /** Cart-line identifier — required for update/remove. */
   lineId: string;
+  /**
+   * Chosen for this checkout (`cartChoice.ts`): the totals, the delivery and
+   * the order are of the chosen lines alone. Absent from a bag read before
+   * the choice existed, and from the demo's, which is then all chosen.
+   */
+  chosen?: boolean;
+  /** The set this line was added as (3.3.11), so a choice moves it whole. */
+  bundleId?: string | null;
   variantId: string;
   /**
    * The storefront product this line is of — the id Saved and the wishlists
@@ -377,7 +385,14 @@ export type Cart = {
   /** Where checkout lives. A NetLet path, not an external host. */
   checkoutUrl: string;
   items: CartItem[];
+  /** Every unit in the bag, chosen or not — the header's count. */
   itemCount: number;
+  /**
+   * The units chosen for this checkout (`cartChoice.ts`); `subtotal`,
+   * `delivery`, `cod`, `codeDiscount` and `total` are all of these alone.
+   * Absent from a bag read before the choice existed: everything is chosen.
+   */
+  chosenCount?: number;
   subtotal: Money;
   /**
    * Delivery, per seller and summed.

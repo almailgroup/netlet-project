@@ -162,6 +162,7 @@ struct CartView: View {
                 .card()
             }
             VStack(alignment: .leading, spacing: 14) {
+                AllChoice(cart: cart)
                 SummaryCard(cart: cart, grouped: groups != nil, updating: app.cart.syncing)
                 Text(l.t("cart.checkoutNote"))
                     .font(.inter(12))
@@ -192,29 +193,53 @@ struct CartView: View {
         }
     }
 
+    /// Checkout, counting what is ticked; with nothing ticked it is faint and
+    /// says why under it, never a dead button with no sentence beside it.
     private func checkoutButton(_ cart: Cart) -> some View {
-        Button {
-            goToCheckout()
-        } label: {
-            HStack(spacing: 8) {
-                Text(l.t("cart.checkout"))
-                Image(systemName: "arrow.forward").font(.system(size: 14, weight: .semibold))
+        let count = cart.checkoutCount
+        return VStack(spacing: 8) {
+            Button {
+                if count > 0 { goToCheckout() } else { Haptics.refused() }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(l.t("cart.checkoutCount", ["count": "\(count)"]))
+                    Image(systemName: "arrow.forward").font(.system(size: 14, weight: .semibold))
+                }
+            }
+            .buttonStyle(AccentButtonStyle())
+            .opacity(count > 0 ? 1 : 0.5)
+            if count == 0 {
+                Text(l.t("order.nothingChosen"))
+                    .font(.inter(12, .bold))
+                    .foregroundStyle(Color(red: 140 / 255, green: 47 / 255, blue: 34 / 255))
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
             }
         }
-        .buttonStyle(AccentButtonStyle())
     }
 
     /// The total and Checkout over the tab bar while the page's own button is
     /// still below the screen; they leave as it comes up to meet them.
     private func bar(_ cart: Cart) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
+        // The reference's foot: All, what the ticked lines come to, and
+        // Checkout counting them.
+        let count = cart.checkoutCount
+        return HStack(spacing: 8) {
+            AllChoice(cart: cart, compact: true)
+            VStack(alignment: .trailing, spacing: 2) {
                 Text(l.t("cart.total")).font(.inter(12)).foregroundStyle(Brand.muted)
                 Text(l.price(cart.total)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .opacity(app.cart.syncing ? 0.5 : 1)
             }
-            Button(l.t("cart.checkoutShort")) { goToCheckout() }
-                .buttonStyle(AccentButtonStyle())
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            Button(l.t("cart.checkoutCount", ["count": "\(count)"])) {
+                if count > 0 { goToCheckout() } else { Haptics.refused() }
+            }
+            .buttonStyle(AccentButtonStyle())
+            .fixedSize()
+            .opacity(count > 0 ? 1 : 0.5)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -266,24 +291,35 @@ private struct CartStoreCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
-                Button {
-                    path.append(Route.store(slug: group.store.slug))
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "storefront")
-                            .font(.system(size: 14, weight: .semibold))
-                        Text(l.t("browse.soldBy", ["name": "\u{2068}\(group.store.name(l.current))\u{2069}"]))
-                            .font(.inter(14, .heavy))
-                            .lineLimit(1)
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Brand.muted)
+                HStack(spacing: 0) {
+                    // Every line of this store in or out together.
+                    let ids = group.items.map(\.lineId)
+                    ChoiceCircle(
+                        state: CartChoice.state(CartChoice.lines(app.cart.cart?.items ?? []), app.cart.skip, of: ids),
+                        label: l.t("cart.chooseStore", ["name": group.store.name(l.current)])
+                    ) { chosen in
+                        app.cart.choose(ids, chosen: chosen)
                     }
-                    .foregroundStyle(Brand.navy)
-                    .frame(minHeight: 36)
-                    .contentShape(Rectangle())
+                    .padding(.leading, -12)
+                    Button {
+                        path.append(Route.store(slug: group.store.slug))
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "storefront")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text(l.t("browse.soldBy", ["name": "\u{2068}\(group.store.name(l.current))\u{2069}"]))
+                                .font(.inter(14, .heavy))
+                                .lineLimit(1)
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Brand.muted)
+                        }
+                        .foregroundStyle(Brand.navy)
+                        .frame(minHeight: 36)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.tap)
                 }
-                .buttonStyle(.tap)
                 ForEach(Array(group.delivery.enumerated()), id: \.offset) { _, parcel in
                     ParcelLine(parcel: parcel)
                 }
@@ -355,6 +391,13 @@ struct CartLineRow: View {
     var body: some View {
         let title = item.title(l.current)
         HStack(alignment: .top, spacing: 12) {
+            // In this checkout or left in the bag for later (`CartChoice`).
+            ChoiceCircle(state: item.chosen == false ? .none : .all, label: l.t("cart.chooseLine", ["name": title])) { chosen in
+                app.cart.choose([item.lineId], chosen: chosen)
+            }
+            .padding(.leading, -12)
+            .padding(.trailing, -12)
+            .frame(height: 80)
             NavigationLink(value: Route.product(handle: item.productHandle)) {
                 Color.clear
                     .frame(width: 80, height: 80)
@@ -585,5 +628,30 @@ struct SummaryCard: View {
                 .animation(.easeOut(duration: 0.15), value: faint)
         }
         .font(bold ? .headline.weight(.bold) : .subheadline)
+    }
+}
+
+/// All, the foot of the reference's cart: every line in or out at once,
+/// partly while some are left out — in the summary and in the floating bar.
+private struct AllChoice: View {
+    let cart: Cart
+    var compact = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let ids = cart.items.map(\.lineId)
+        HStack(spacing: 0) {
+            ChoiceCircle(state: CartChoice.state(CartChoice.lines(cart.items), app.cart.skip, of: ids), label: l.t("cart.chooseAllName")) { chosen in
+                app.cart.choose(ids, chosen: chosen)
+            }
+            .padding(.leading, -12)
+            // The word is the eye's; the circle's name says it whole.
+            Text(l.t("cart.chooseAll"))
+                .font(.inter(compact ? 13 : 14, .bold))
+                .foregroundStyle(Brand.navy)
+                .accessibilityHidden(true)
+        }
+        .fixedSize()
     }
 }

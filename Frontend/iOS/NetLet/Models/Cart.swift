@@ -22,8 +22,25 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
     /// What the lines' own codes take off together (0074); nil when none does.
     /// `subtotal` is before them and `total` after them.
     var codeDiscount: Money? = nil
+    /// The units chosen for this checkout (`CartChoice`): the subtotal, the
+    /// delivery, the cash rule and the total are of these alone. Nil from a
+    /// bag read before the choice existed, which is all chosen.
+    var chosenCount: Int? = nil
 
     var isEmpty: Bool { items.isEmpty }
+
+    /// What this checkout is of: the lines ticked in the cart.
+    var chosenItems: [CartItem] { items.filter { $0.chosen != false } }
+    /// How many units Checkout is for.
+    var checkoutCount: Int { chosenCount ?? itemCount }
+    /// The bag as checkout sees it: the chosen lines alone, counted — the
+    /// money is already theirs, from the server.
+    var forCheckout: Cart {
+        var next = self
+        next.items = chosenItems
+        next.itemCount = checkoutCount
+        return next
+    }
 
     /// The plain line for a variant — no extras, no bundle — which is the one a
     /// card or a product page adds to and the one its count describes.
@@ -74,6 +91,11 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     var code: LineCode? = nil
     /// A code on this line that no longer takes anything off, and why (a key).
     var codeProblem: LineCodeProblem? = nil
+    /// Chosen for this checkout (`CartChoice`). Nil from a bag read before the
+    /// choice existed, which is chosen.
+    var chosen: Bool? = nil
+    /// The set this line was added as (3.3.11), so a choice moves it whole.
+    var bundleId: String? = nil
 
     struct LineCode: Decodable, Hashable, Sendable {
         let code: String

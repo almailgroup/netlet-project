@@ -51,17 +51,17 @@ final class FakeCartService: CartServicing, @unchecked Sendable {
         return cart
     }
 
-    func get(_ cartId: String) async throws -> Cart? {
+    func get(_ cartId: String, skip: [String]) async throws -> Cart? {
         vanished || stored?.id != cartId ? nil : stored
     }
 
-    func add(_ cartId: String, variantId: String, quantity: Int) async throws -> Cart? {
+    func add(_ cartId: String, variantId: String, quantity: Int, skip: [String]) async throws -> Cart? {
         guard !vanished, stored?.id == cartId else { return nil }
         added.append((variantId, quantity))
         return stored
     }
 
-    func setQuantity(_ cartId: String, lineId: String, quantity: Int) async throws -> Cart? {
+    func setQuantity(_ cartId: String, lineId: String, quantity: Int, skip: [String]) async throws -> Cart? {
         guard !vanished, stored?.id == cartId else { return nil }
         if quantity == 0 { stored = stored?.with(items: []) }
         return stored
@@ -103,18 +103,18 @@ final class SlowCartService: CartServicing, @unchecked Sendable {
         return cart
     }
 
-    func get(_ cartId: String) async throws -> Cart? {
+    func get(_ cartId: String, skip: [String]) async throws -> Cart? {
         reads += 1
         return stored?.id == cartId ? stored : nil
     }
 
-    func add(_ cartId: String, variantId: String, quantity: Int) async throws -> Cart? {
+    func add(_ cartId: String, variantId: String, quantity: Int, skip: [String]) async throws -> Cart? {
         try await Task.sleep(for: pause)
         if refuse { throw URLError(.badServerResponse) }
         return stored
     }
 
-    func setQuantity(_ cartId: String, lineId: String, quantity: Int) async throws -> Cart? {
+    func setQuantity(_ cartId: String, lineId: String, quantity: Int, skip: [String]) async throws -> Cart? {
         quantities.append(quantity)
         while held { try await Task.sleep(for: .milliseconds(5)) }
         try await Task.sleep(for: pause)

@@ -2,7 +2,8 @@ import { readStored, removeStored, writeStored } from "@/lib/browserStore";
 import { appPath } from "@/lib/basePath";
 import { navigateWhenReady } from "@/lib/readyNavigation";
 import { trpc } from "@/lib/trpc";
-import { applyBagOp, ghostLine, realLineId, type BagOp } from "@/lib/bagOps";
+import { applyBagOp, ghostLine, realLineId, withChoice, type BagOp } from "@/lib/bagOps";
+import { chooseLines, chooseOnly as onlyThese, MAX_SKIPPED_LINES, pruneSkip } from "@shared/commerce/cartChoice";
 import { useAuth } from "@/hooks/useAuth";
 import type { Cart, Product } from "@shared/commerce/types";
 import {
@@ -33,6 +34,14 @@ import {
  * (`lib/bagOps.ts`). A refusal drops that press and reads the bag again, and
  * the promise each change returns still rejects, so the caller's toast is
  * unchanged. Presses on plus that have not been sent yet are folded into one.
+ *
+ * **What the shopper left out of this checkout is kept here too**
+ * (`Shared/commerce/cartChoice.ts`, on the owner's word): a list of line ids
+ * stored with the bag's id on this device and sent with every read and write
+ * of the bag, so each answer's totals, delivery and cash rule are already of
+ * the chosen lines; a circle pressed is drawn at once (`withChoice`) and the
+ * bag read again with it. Buy now chooses its own line alone, and an order
+ * placed forgets the list, so what is left in the bag is chosen again.
  */
 
 const CART_STORAGE_KEY = "commerce:cart-id";
@@ -41,6 +50,26 @@ const CART_STORAGE_KEY = "commerce:cart-id";
    on the getter rather than answering null — and a guest cart that cannot be
    remembered is a cart to rebuild, not a page to crash. */
 const readStoredCartId = () => readStored(CART_STORAGE_KEY);
+
+/* What is left out of this bag's checkout, with the bag it is about, so a
+   list kept for one bag is never read as another's. */
+const SKIP_STORAGE_KEY = "commerce:cart-skip";
+
+function readStoredSkip(cartId: string | null): string[] {
+  if (!cartId) return [];
+  try {
+    const stored = JSON.parse(readStored(SKIP_STORAGE_KEY) ?? "null") as { cartId?: unknown; skip?: unknown } | null;
+    if (!stored || stored.cartId !== cartId || !Array.isArray(stored.skip)) return [];
+    return stored.skip.filter((id): id is string => typeof id === "string").slice(0, MAX_SKIPPED_LINES);
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredSkip(cartId: string | null, skip: string[]) {
+  if (cartId && skip.length) writeStored(SKIP_STORAGE_KEY, JSON.stringify({ cartId, skip }));
+  else removeStored(SKIP_STORAGE_KEY);
+}
 
 function writeStoredCartId(value: string | null) {
   if (value) writeStored(CART_STORAGE_KEY, value);
@@ -78,6 +107,8 @@ type Change =
   | { kind: "speed"; lineId: string; choice: "regular" | "fast" }
   /* A line's own discount code (0074); `answer` carries the refusal back. */
   | { kind: "code"; lineId: string; code: string | null; answer: { reason: string | null } }
+  /* The lines chosen for checkout changed: the bag is read again with them. */
+  | { kind: "choose" }
   | { kind: "refresh" };
 
 type Entry = { change: Change; sent: boolean; done: Promise<void>; resolve: () => void; reject: (error: unknown) => void };
@@ -131,6 +162,17 @@ type CartContextValue = {
    * reason it does not fit, as a message key.
    */
   setLineCode: (lineId: string, code: string | null) => Promise<string | null>;
+  /** The bag's lines left out of this checkout (`cartChoice.ts`), as sent with every call. */
+  skip: string[];
+  /** Choose these lines for checkout, or leave them out; a set moves whole. */
+  choose: (lineIds: string[], chosen: boolean) => void;
+  /**
+   * Only these lines chosen — and the plain line of `variantId`, which a Buy
+   * now press may be about to add to — everything else left out.
+   */
+  chooseOnly: (lineIds: string[], variantId?: string) => void;
+  /** Everything left in the bag chosen again, as after an order. */
+  forgetChoice: () => void;
   clearCart: () => void;
   /**
    * Read the bag again from the server. The context holds its own copy, so
@@ -154,6 +196,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   /* The bag as the server last answered it; what is drawn adds the presses still waiting. */
   const [serverCart, setServerCartState] = useState<Cart | null>(null);
   const [waiting, setWaiting] = useState<Change[]>([]);
+  const [skip, setSkipState] = useState<string[]>(() => readStoredSkip(readStoredCartId()));
   const [isOpen, setIsOpen] = useState(false);
   /* A stored bag still on its way from the server: not empty, not yet known. */
   const [hydrating, setHydrating] = useState(() => readStoredCartId() !== null);
@@ -167,6 +210,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   /* What the queue reads when a change is sent, which may be long after it was pressed. */
   const cartIdRef = useRef(cartId);
   const serverCartRef = useRef<Cart | null>(null);
+  const skipRef = useRef(skip);
   const signedInRef = useRef(isAuthenticated);
   signedInRef.current = isAuthenticated;
   const updateProfileRef = useRef(updateProfile);
@@ -176,10 +220,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
   /* Changes wait for a stored bag to be read, or the first Add would start a second bag. */
   const hydration = useRef<Promise<void>>(Promise.resolve());
 
+  const setSkip = useCallback((value: string[]) => {
+    skipRef.current = value;
+    writeStoredSkip(cartIdRef.current, value);
+    setSkipState(value);
+  }, []);
   const setCartId = useCallback((value: string | null) => {
+    const changed = value !== cartIdRef.current;
     cartIdRef.current = value;
     writeStoredCartId(value);
     setCartIdState(value);
+    /* Another bag: its own list, or none. */
+    if (changed) {
+      const kept = readStoredSkip(value);
+      skipRef.current = kept;
+      setSkipState(kept);
+    }
   }, []);
   const setServerCart = useCallback((value: Cart | null) => {
     serverCartRef.current = value;
@@ -195,10 +251,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const id = cartIdRef.current;
     const current = serverCartRef.current;
     const client = utils.client.commerce.cart;
+    /* What is left out, as the bag the server has knows its lines. */
+    const skip = skipRef.current;
     switch (change.kind) {
       case "add": {
         const lines = [{ variantId: change.variantId, quantity: change.quantity, addonIds: change.addonIds, bundleId: change.bundleId }];
-        const updated = id ? await client.addLines.mutate({ cartId: id, lines }) : null;
+        const updated = id ? await client.addLines.mutate({ cartId: id, lines, skip }) : null;
         if (updated) return updated;
         /* No bag yet, or the stored one has gone: this press starts one. */
         const created = await client.create.mutate({ lines });
@@ -213,32 +271,35 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const lineId = realLineId(current, change.lineId);
         if (!id || !lineId) return current;
         const updated = change.kind === "set"
-          ? await client.updateLines.mutate({ cartId: id, lines: [{ lineId, quantity: change.quantity }] })
-          : await client.removeLines.mutate({ cartId: id, lineIds: [lineId] });
+          ? await client.updateLines.mutate({ cartId: id, lines: [{ lineId, quantity: change.quantity }], skip })
+          : await client.removeLines.mutate({ cartId: id, lineIds: [lineId], skip });
         return updated ?? current;
       }
       case "destination": {
         const lineId = realLineId(current, change.lineId);
         if (!id || !lineId) return current;
-        return (await client.setDestination.mutate({ cartId: id, lineId, addressId: change.addressId })) ?? current;
+        return (await client.setDestination.mutate({ cartId: id, lineId, addressId: change.addressId, skip })) ?? current;
       }
       case "speed": {
         const lineId = realLineId(current, change.lineId);
         if (!id || !lineId) return current;
-        return (await client.setDeliveryChoice.mutate({ cartId: id, lineId, choice: change.choice })) ?? current;
+        return (await client.setDeliveryChoice.mutate({ cartId: id, lineId, choice: change.choice, skip })) ?? current;
       }
       case "code": {
         const lineId = realLineId(current, change.lineId);
         if (!id || !lineId) return current;
-        if (change.code === null) return (await client.clearLineCode.mutate({ cartId: id, lineId })) ?? current;
-        const answer = await client.setLineCode.mutate({ cartId: id, lineId, code: change.code });
+        if (change.code === null) return (await client.clearLineCode.mutate({ cartId: id, lineId, skip })) ?? current;
+        const answer = await client.setLineCode.mutate({ cartId: id, lineId, code: change.code, skip });
         if (answer.ok) return answer.cart;
         change.answer.reason = answer.reason;
         return current;
       }
+      case "choose":
+        if (!id) return current;
+        return (await client.get.query({ cartId: id, skip })) ?? current;
       case "refresh": {
         if (!id) return current;
-        return (await utils.commerce.cart.get.fetch({ cartId: id }, { staleTime: 0 }).catch(() => null)) ?? current;
+        return (await utils.commerce.cart.get.fetch({ cartId: id, skip }, { staleTime: 0 }).catch(() => null)) ?? current;
       }
     }
   }, [setCartId, utils]);
@@ -256,6 +317,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const next = await send(entry.change);
         queue.current.shift();
         setServerCart(next);
+        /* A line that has left the bag leaves the list too. */
+        if (next) {
+          const pruned = pruneSkip(next.items, skipRef.current);
+          if (pruned.length !== skipRef.current.length) setSkip(pruned);
+        }
         setWaiting(queue.current.map(waitingEntry => waitingEntry.change));
         entry.resolve();
       } catch (error) {
@@ -269,14 +335,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     /* A refusal may have been half done — a dropped connection after the
        server wrote — so the bag is read again rather than assumed. */
     if (refused && cartIdRef.current) {
-      const fresh = await utils.commerce.cart.get.fetch({ cartId: cartIdRef.current }, { staleTime: 0 }).catch(() => null);
+      const fresh = await utils.commerce.cart.get.fetch({ cartId: cartIdRef.current, skip: skipRef.current }, { staleTime: 0 }).catch(() => null);
       if (fresh && !queue.current.length) setServerCart(fresh);
     }
-  }, [send, setServerCart, utils.commerce.cart.get]);
+  }, [send, setServerCart, setSkip, utils.commerce.cart.get]);
 
   const enqueue = useCallback((change: Change): Promise<void> => {
     /* Presses on one line's stepper that have not gone yet are one change. */
     const last = queue.current.at(-1);
+    /* Circles pressed before the bag was read again are one read. */
+    if (last && !last.sent && last.change.kind === "choose" && change.kind === "choose") return last.done;
     if (last && !last.sent && last.change.kind === "set" && (change.kind === "set" || change.kind === "remove") && last.change.lineId === change.lineId) {
       last.change = change;
       setWaiting(queue.current.map(entry => entry.change));
@@ -343,7 +411,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setHydrating(true);
     const read = utils.commerce.cart.get
-      .fetch({ cartId })
+      .fetch({ cartId, skip: skipRef.current })
       .then(c => {
         if (cancelled) return;
         if (c) setServerCart(c);
@@ -362,10 +430,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, [cartId, setCartId, setServerCart, utils.commerce.cart.get]);
 
-  const cart = useMemo(
-    () => waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "speed" || change.kind === "code" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart),
-    [serverCart, waiting],
-  );
+  const cart = useMemo(() => {
+    const drawn = waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "speed" || change.kind === "code" || change.kind === "choose" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart);
+    /* The circles as pressed, before the server has read the bag with them —
+       and after, which agrees, and the demo's, which knows no choice. */
+    return waiting.length || skip.length ? withChoice(drawn, skip) : drawn;
+  }, [serverCart, waiting, skip]);
   const itemCount = cart?.itemCount ?? 0;
   const syncing = waiting.some(change => change.kind !== "refresh");
   const loading = hydrating || waiting.length > 0;
@@ -417,6 +487,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return change.kind === "code" ? change.answer.reason : null;
   }, [enqueue]);
 
+  /* The lines a choice is about, as the server has them: a line drawn ahead
+     of its answer follows to the real one, or waits for it. */
+  const realIds = useCallback((lineIds: string[]) => lineIds
+    .map(lineId => realLineId(serverCartRef.current, lineId))
+    .filter((lineId): lineId is string => lineId !== null), []);
+
+  const choose = useCallback((lineIds: string[], chosen: boolean) => {
+    const lines = serverCartRef.current?.items ?? [];
+    setSkip(chooseLines(lines, skipRef.current, realIds(lineIds), chosen));
+    void enqueue({ kind: "choose" }).catch(() => undefined);
+  }, [enqueue, realIds, setSkip]);
+
+  const chooseOnly = useCallback((lineIds: string[], variantId?: string) => {
+    const lines = serverCartRef.current?.items ?? [];
+    /* The plain line Buy now adds to, when there is one already. */
+    const plain = variantId ? lines.filter(line => line.variantId === variantId && !line.addons?.length && !line.bundleId && !line.bundleName).map(line => line.lineId) : [];
+    setSkip(onlyThese(lines, [...realIds(lineIds), ...plain]));
+    void enqueue({ kind: "choose" }).catch(() => undefined);
+  }, [enqueue, realIds, setSkip]);
+
+  const forgetChoice = useCallback(() => setSkip([]), [setSkip]);
+
   /* In the queue, so a read cannot overtake a change still on its way. */
   const refreshCart = useCallback(() => enqueue({ kind: "refresh" }).catch(() => undefined), [enqueue]);
   const adoptCart = useCallback(async (id: string) => {
@@ -447,7 +539,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
    * waits for them before it lets an order be placed.
    */
   const proceedToCheckout = useCallback(() => {
-    if (!cart?.items.length) return;
+    /* Nothing chosen is said where Checkout is; there is nothing to go to. */
+    if (!cart?.items.length || (cart.chosenCount ?? cart.itemCount) === 0) return;
     setIsOpen(false);
     navigateWhenReady(appPath(cart.checkoutUrl));
   }, [cart]);
@@ -471,6 +564,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setDestination,
       setDeliveryChoice,
       setLineCode,
+      skip,
+      choose,
+      chooseOnly,
+      forgetChoice,
       clearCart,
       refreshCart,
       adoptCart,
@@ -492,6 +589,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setDestination,
       setDeliveryChoice,
       setLineCode,
+      skip,
+      choose,
+      chooseOnly,
+      forgetChoice,
       clearCart,
       refreshCart,
       adoptCart,

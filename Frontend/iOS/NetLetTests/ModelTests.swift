@@ -796,6 +796,25 @@ final class BagOpsTests: XCTestCase {
         XCTAssertEqual(gone.itemCount, 0)
         XCTAssertEqual(gone.subtotal.fils, 0)
     }
+
+    /// A circle pressed (`CartChoice`): the line is drawn left out, and the
+    /// subtotal and Checkout's count are of what is chosen; the header's count
+    /// is still the whole bag — the web's `withChoice`.
+    func testALineLeftOutIsDrawnOutAndCountsForNothing() async throws {
+        let products = try await Fixtures.products()
+        let rice = try await Fixtures.cart()
+        let dates = try XCTUnwrap(products.first { $0.handle == "medjool-dates" })
+        let two = try XCTUnwrap(BagOps.apply(rice, .add(variantId: "144", quantity: 2, ghost: BagOps.ghostLine(dates, variantId: "144", quantity: 2))))
+        let out = try XCTUnwrap(BagOps.withChoice(two, ["115"]))
+        XCTAssertEqual(out.items.map(\.chosen), [false, true])
+        XCTAssertEqual(out.itemCount, 4)
+        XCTAssertEqual(out.checkoutCount, 2)
+        XCTAssertEqual(out.subtotal.fils, 12_500)
+        XCTAssertEqual(out.forCheckout.items.map(\.lineId), ["pending:144"])
+        // A press on a line left out does not move the subtotal.
+        let stepped = try XCTUnwrap(BagOps.apply(out, .set(lineId: "115", quantity: 5)))
+        XCTAssertEqual(stepped.subtotal.fils, 12_500)
+    }
 }
 
 /// The pin filling the form — `fillFromPlace` and `whereChanged` in

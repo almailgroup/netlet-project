@@ -76,11 +76,14 @@ enum API {
 
     struct CartId: Encodable, Sendable {
         let cartId: String
+        /// The lines left out of this checkout (`CartChoice`); nil is none.
+        var skip: [String]? = nil
     }
 
     struct CartAdd: Encodable, Sendable {
         let cartId: String
         let lines: [CartLine]
+        var skip: [String]? = nil
     }
 
     struct CartLineUpdate: Encodable, Sendable {
@@ -92,6 +95,7 @@ enum API {
     struct CartUpdate: Encodable, Sendable {
         let cartId: String
         let lines: [CartLineUpdate]
+        var skip: [String]? = nil
     }
 
     static let createCart = Procedure<CartCreate, Cart>(mutation: "commerce.cart.create")
@@ -104,6 +108,7 @@ enum API {
         let cartId: String
         let lineId: String
         let addressId: Int?
+        var skip: [String]? = nil
 
         // The server takes an explicit null to mean "the order's address".
         func encode(to encoder: Encoder) throws {
@@ -111,9 +116,10 @@ enum API {
             try container.encode(cartId, forKey: .cartId)
             try container.encode(lineId, forKey: .lineId)
             try container.encode(addressId, forKey: .addressId)
+            try container.encodeIfPresent(skip, forKey: .skip)
         }
 
-        private enum CodingKeys: String, CodingKey { case cartId, lineId, addressId }
+        private enum CodingKeys: String, CodingKey { case cartId, lineId, addressId, skip }
     }
 
     static let setLineDestination = Procedure<LineDestination, Cart?>(mutation: "commerce.cart.setDestination")
@@ -123,6 +129,7 @@ enum API {
         let lineId: String
         /// "regular" or "fast" (3.2.5).
         let choice: String
+        var skip: [String]? = nil
     }
 
     static let setLineDeliveryChoice = Procedure<LineDeliveryChoice, Cart?>(mutation: "commerce.cart.setDeliveryChoice")
@@ -132,6 +139,7 @@ enum API {
         let cartId: String
         let lineId: String
         let code: String
+        var skip: [String]? = nil
     }
 
     /// The bag with the code on the line, or why it does not fit (a message key).
@@ -144,6 +152,7 @@ enum API {
     struct LineCodeClear: Encodable, Sendable {
         let cartId: String
         let lineId: String
+        var skip: [String]? = nil
     }
 
     static let setLineCode = Procedure<LineCodeInput, LineCodeAnswer>(mutation: "commerce.cart.setLineCode")
@@ -411,6 +420,8 @@ enum API {
         var voucherCode: String?
         /// A gift card from its own box, beside a discount code.
         var giftCardCode: String? = nil
+        /// The lines left out of this checkout (`CartChoice`); they stay in the bag.
+        var skip: [String]? = nil
     }
 
     /// What a code would do to this bag (`orders.quoteVoucher`): a discount
@@ -426,6 +437,8 @@ enum API {
     struct VoucherAsk: Encodable, Sendable {
         let cartId: String
         let code: String
+        /// Of the lines chosen for this checkout, as the order will be.
+        var skip: [String]? = nil
     }
 
     static let quoteVoucher = Procedure<VoucherAsk, VoucherQuote>(query: "orders.quoteVoucher")

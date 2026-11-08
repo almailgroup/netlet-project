@@ -175,7 +175,7 @@ function CardAction({ product, onChoose, onPhoto = false }: {
   onPhoto?: boolean;
 }) {
   const { t } = useTranslation();
-  const { cart, addItem, updateQuantity, removeItem } = useCart();
+  const { cart, addItem, updateQuantity, removeItem, chooseOnly } = useCart();
   const [, navigate] = useLocation();
   const [said, setSaid] = useState("");
   /** How many, before the item is in the bag. */
@@ -295,7 +295,11 @@ function CardAction({ product, onChoose, onPhoto = false }: {
           <BuyPill
             tone="buy"
             label={t(quantity > 1 ? "card.buyCountName" : "card.buyName", { count, name })}
-            onPress={() => navigate("/checkout")}
+            /* This line alone, not the rest of the bag (`cartChoice.ts`). */
+            onPress={() => {
+              chooseOnly([line.lineId]);
+              navigate("/checkout");
+            }}
             step={shared}
           >
             <Zap className="size-4 shrink-0 fill-current" aria-hidden />

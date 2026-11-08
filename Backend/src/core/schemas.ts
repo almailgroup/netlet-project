@@ -15,6 +15,7 @@
  */
 import { z } from "zod";
 import { DAY_ONLY, endOfKuwaitDay } from "../../../Shared/kuwaitDay.js";
+import { MAX_SKIPPED_LINES } from "../../../Shared/commerce/cartChoice.js";
 
 /**
  * The largest value a Postgres `integer` holds, which is what every serial
@@ -106,3 +107,11 @@ export const addressPartsInput = z.object({
   apartment: z.string().max(20).nullish(),
   paciNumber: z.string().max(12).nullish(),
 }).nullish();
+
+/**
+ * The bag's lines left out of this checkout (`Shared/commerce/cartChoice.ts`),
+ * as the shopper's device keeps them and sends them with every read and write
+ * of the bag and with the order. Line ids as text, bounded; an id the bag does
+ * not have is ignored by the rule, so a stale list costs nothing.
+ */
+export const skipInput = z.array(z.string().trim().min(1).max(64)).max(MAX_SKIPPED_LINES).optional().default([]);

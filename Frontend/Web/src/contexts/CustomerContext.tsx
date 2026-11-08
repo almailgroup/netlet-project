@@ -215,8 +215,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     return hearted ? "removed" : "saved";
   }, [heartedIds, isAuthenticated, unwish, updateSaved, wishedIds, wishlistsOn]);
 
+  /* No "already saved" check here: both stores take a second save as nothing,
+     and a check against the ids read at render time turned an Undo pressed
+     after removing several into nothing at all — the closure still saw them
+     saved. */
   const saveForLater = useCallback((productId: string) => {
-    if (savedIds.includes(productId)) return;
     if (isAuthenticated) {
       updateSaved.mutate({ productId, saved: true });
       return;
@@ -226,7 +229,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       writeValue(SAVED_STORAGE_KEY, next);
       return next;
     });
-  }, [isAuthenticated, savedIds, updateSaved]);
+  }, [isAuthenticated, updateSaved]);
 
   const unsave = useCallback((productId: string) => {
     if (isAuthenticated) {

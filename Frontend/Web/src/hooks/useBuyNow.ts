@@ -19,7 +19,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import type { Product } from "@shared/commerce/types";
 
 export function useBuyNow() {
-  const { addItem } = useCart();
+  const { addItem, chooseOnly } = useCart();
   const { t } = useTranslation();
   const [, navigate] = useLocation();
   return useCallback(
@@ -31,6 +31,9 @@ export function useBuyNow() {
         toast.error(t("cart.itemUnavailable"));
         return;
       }
+      /* Buy now buys this, not the rest of the bag (`cartChoice.ts`): the
+         other lines are left out of this checkout and wait in the bag. */
+      chooseOnly([], variant.id);
       /* Checkout opens at once on the bag drawn ahead, and waits for the
          server to have the item before an order can be placed. */
       const added = addItem(variant.id, quantity, { reveal: false, product });
@@ -41,6 +44,6 @@ export function useBuyNow() {
         toast.error(t("cart.buyFailed"));
       }
     },
-    [addItem, navigate, t],
+    [addItem, chooseOnly, navigate, t],
   );
 }

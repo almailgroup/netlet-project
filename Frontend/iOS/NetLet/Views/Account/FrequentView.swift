@@ -13,6 +13,12 @@ import SwiftUI
 /// item says so, and one whose product has left the shop stays, marked, with
 /// a way to take it off. "From your past orders" offers what the shopper has
 /// bought before and not put on, most often bought first.
+///
+/// Several can be chosen, on the owner's word ("a multiple selection option
+/// for the pages that need it"), the web's circles: what has not been left
+/// out is chosen, so "Add all to cart" reads "Add to cart (3)" once two of
+/// five are left out, and Remove takes the chosen ones off together, asking
+/// first.
 struct FrequentView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -21,6 +27,10 @@ struct FrequentView: View {
     @State private var failed: APIError?
     @State private var status = ""
     @State private var addingAll = false
+    /// The rows left out; everything else is chosen, so an item put on the
+    /// list later is chosen without anybody choosing it.
+    @State private var left: Set<Int> = []
+    @State private var confirmingRemove = false
 
     var body: some View {
         ShopPage(header: false, refresh: { await load() }) {
@@ -51,29 +61,56 @@ struct FrequentView: View {
                     EmptyStateView(systemImage: "list.bullet.rectangle", title: l.t("frequent.emptyTitle"), note: l.t("frequent.emptyNote"))
                         .card(padding: 0)
                 } else {
-                    HStack {
+                    let chosenItems = list.items.filter { !left.contains($0.id) }
+                    let canAdd = chosenItems.contains { addable($0) > 0 }
+                    FlowLayout(spacing: 8) {
+                        ChoiceAll(state: chosenItems.isEmpty ? .none : chosenItems.count == list.items.count ? .all : .some) { all in
+                            left = all ? [] : Set(list.items.map(\.id))
+                        }
                         Button {
-                            Task { await addAll(list.items) }
+                            Task { await addAll(chosenItems) }
                         } label: {
-                            Label(l.t("frequent.addAll"), systemImage: "bag")
+                            Label(chosenItems.count == list.items.count ? l.t("frequent.addAll") : l.t("frequent.addChosen", ["count": "\(chosenItems.count)"]), systemImage: "bag")
                                 .padding(.horizontal, 18)
                                 .frame(minHeight: 44)
                         }
                         .buttonStyle(AddToCartStyle())
-                        .disabled(addingAll || !list.items.contains { addable($0) > 0 })
-                        .opacity(addingAll || !list.items.contains { addable($0) > 0 } ? 0.5 : 1)
-                        Spacer(minLength: 8)
+                        .disabled(addingAll || !canAdd)
+                        .opacity(addingAll || !canAdd ? 0.5 : 1)
+                        .fixedSize()
+                        if !chosenItems.isEmpty {
+                            ChoicePill(title: l.t("frequent.removeChosen", ["count": "\(chosenItems.count)"])) {
+                                confirmingRemove = true
+                            }
+                        }
                         if !status.isEmpty {
                             Button(l.t("product.viewCart")) { app.selectedTab = .cart }
                                 .font(.inter(14, .semibold))
                                 .foregroundStyle(Brand.navy)
                                 .buttonStyle(.tap)
+                                .frame(minHeight: 44)
+                                .fixedSize()
                         }
+                    }
+                    .alert(l.t("frequent.removeChosenTitle"), isPresented: $confirmingRemove) {
+                        Button(l.t("frequent.removeChosen", ["count": "\(chosenItems.count)"]), role: .destructive) {
+                            Task { await removeChosen(chosenItems.map(\.id)) }
+                        }
+                        Button(l.t("common.cancel"), role: .cancel) {}
+                    } message: {
+                        Text(l.t("frequent.removeChosenBody"))
                     }
                     VStack(spacing: 0) {
                         ForEach(Array(list.items.enumerated()), id: \.element.id) { index, item in
                             if index > 0 { DashedRule() }
-                            FrequentRow(item: item, inBag: inBag(item.variantId), changed: { Task { await load() } }, added: { status = l.t("frequent.allAdded") })
+                            FrequentRow(
+                                item: item,
+                                inBag: inBag(item.variantId),
+                                chosen: !left.contains(item.id),
+                                choose: { chosen in if chosen { left.remove(item.id) } else { left.insert(item.id) } },
+                                changed: { Task { await load() } },
+                                added: { status = l.t("frequent.allAdded") }
+                            )
                         }
                     }
                     .padding(.horizontal, 16)
@@ -128,6 +165,19 @@ struct FrequentView: View {
         UIAccessibility.post(notification: .announcement, argument: status)
     }
 
+    /// The chosen rows off the list, one call each, then the list read again.
+    private func removeChosen(_ ids: [Int]) async {
+        do {
+            for id in ids { _ = try await app.services.api.call(API.frequentRemove, .init(id: id)) }
+            app.toast(l.t("frequent.removedChosen"))
+        } catch {
+            Haptics.refused()
+            app.toast(l.t(APIError.from(error).messageKey(knownKey: Phrasebook.shared.has)))
+        }
+        left = []
+        await load()
+    }
+
     private func load() async {
         do {
             let locale = API.LocaleOnly(locale: l.current.rawValue)
@@ -145,6 +195,9 @@ struct FrequentView: View {
 private struct FrequentRow: View {
     let item: FrequentEntry
     let inBag: Int
+    /// Whether the row is in what Add to cart and Remove act on.
+    let chosen: Bool
+    let choose: (Bool) -> Void
     let changed: () -> Void
     let added: () -> Void
     @Environment(AppModel.self) private var app
@@ -154,9 +207,11 @@ private struct FrequentRow: View {
     @State private var confirming = false
     @State private var saving: Task<Void, Never>?
 
-    init(item: FrequentEntry, inBag: Int, changed: @escaping () -> Void, added: @escaping () -> Void) {
+    init(item: FrequentEntry, inBag: Int, chosen: Bool, choose: @escaping (Bool) -> Void, changed: @escaping () -> Void, added: @escaping () -> Void) {
         self.item = item
         self.inBag = inBag
+        self.chosen = chosen
+        self.choose = choose
         self.changed = changed
         self.added = added
         _quantity = State(initialValue: item.quantity)
@@ -174,6 +229,9 @@ private struct FrequentRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
+                ChoiceCircle(state: chosen ? .all : .none, label: l.t("select.item", ["name": title]), toggle: choose)
+                    .padding(.horizontal, -12)
+                    .frame(height: 72)
                 Button {
                     if let product = item.product { app.push(.product(handle: product.handle)) }
                 } label: {

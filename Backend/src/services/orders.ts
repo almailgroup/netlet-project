@@ -35,6 +35,7 @@ import {
 } from "../../database/schema.js";
 import { returnStateFor } from "../../../Shared/commerce/returns.js";
 import { blocksNewReturn } from "../../../Shared/commerce/returnRequests.js";
+import { skippedLineIds } from "../../../Shared/commerce/cartChoice.js";
 import { eligibilityFor } from "../../../Shared/commerce/reviews.js";
 import {
   draftOrder,
@@ -91,6 +92,11 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 export type PlaceOrderDetails = {
   /** Null for an account made with a phone alone, until it adds an email. */
   email: string | null;
+  /**
+   * The bag's lines left out of this checkout (`cartChoice.ts`): the order is
+   * of the rest, and only the lines it is of leave the bag.
+   */
+  skip?: readonly string[];
   userId?: number | null;
   contactName?: string | null;
   contactPhone?: string | null;
@@ -165,7 +171,7 @@ export type PlaceOrderDetails = {
 
 /** Thrown with a message key, so the client says it in the shopper's language. */
 export class OrderRefused extends Error {
-  constructor(public readonly reason: OrderRefusal | "order.outOfStock" | "order.noCart") {
+  constructor(public readonly reason: OrderRefusal | "order.outOfStock" | "order.noCart" | "order.nothingChosen") {
     super(reason);
     this.name = "OrderRefused";
   }
@@ -187,8 +193,13 @@ async function priceableLines(
   /* A standing order's saving on its one variant (3.1.19), decided by the run
      against the store's permit a moment ago. */
   subscription?: { variantId: number; percent: number },
+  /* What the shopper left out of this checkout (`cartChoice.ts`): those lines
+     are not priced, delivered or placed, and stay in the bag. A set whole. */
+  skip: readonly string[] = [],
 ): Promise<{
   lines: PriceableLine[];
+  /** The bag's lines this order is of, so placing it takes those alone out of the bag. */
+  cartLineIds: number[];
   offerIds: number[];
   delivery: DeliveryQuote;
   cod: ReturnType<typeof codAvailability>;
@@ -198,7 +209,7 @@ async function priceableLines(
   /** Lines whose own code no longer applies (0074), and why. */
   codeProblems: { lineId: number; code: string; reason: LineCodeRefusal }[];
 }> {
-  const rows = await db
+  const read = await db
     .select({
       lineId: cartItems.id,
       /* The line's own discount code (0074), judged below like a price. */
@@ -251,6 +262,11 @@ async function priceableLines(
         eq(vendors.status, "approved"),
       ),
     );
+  const left = skippedLineIds(
+    read.map(row => ({ lineId: String(row.lineId), bundleId: row.bundleId === null ? null : String(row.bundleId) })),
+    skip,
+  );
+  const rows = read.filter(row => !left.has(String(row.lineId)));
 
   /*
    * A price the seller agreed with this shopper wins over the shelf, and
@@ -449,6 +465,7 @@ async function priceableLines(
 
   return {
     lines,
+    cartLineIds: rows.map(row => row.lineId),
     offerIds,
     member,
     codeProblems,
@@ -587,10 +604,13 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) throw new OrderRefused("order.noCart");
 
-  const { lines, offerIds, delivery, cod, member, deliveryWaived, codeProblems } = await priceableLines(
+  const { lines, cartLineIds, offerIds, delivery, cod, member, deliveryWaived, codeProblems } = await priceableLines(
     db, cartId, details.userId,
     details.subscription ? { variantId: details.subscription.variantId, percent: details.subscription.percent } : undefined,
+    details.skip ?? [],
   );
+  /* Everything left out: said as that, never as an empty bag. */
+  if (!lines.length && details.skip?.length) throw new OrderRefused("order.nothingChosen");
   /* Given as parts, the line is theirs, and a part a driver needs is refused
      like a missing line — before anything is taken. */
   const parts = cleanParts(details.addressParts);
@@ -951,8 +971,13 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
       if (giftTaken && giftQuote) await recordGiftCardUse(w, giftQuote.code, order.id, giftCardValue);
 
       // The basket has become the order; leaving it would let the same items be
-      // bought twice from a stale tab.
-      await w.delete(cartItems).where(eq(cartItems.cartId, cartId));
+      // bought twice from a stale tab. With some lines left out, only the ones
+      // ordered go (`cartChoice.ts`); the rest wait in the bag.
+      if (details.skip?.length) {
+        if (cartLineIds.length) await w.delete(cartItems).where(and(eq(cartItems.cartId, cartId), inArray(cartItems.id, cartLineIds)));
+      } else {
+        await w.delete(cartItems).where(eq(cartItems.cartId, cartId));
+      }
       return order;
     });
 
@@ -1006,11 +1031,12 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
  * and a second implementation of that in a router is how a checkout summary
  * comes to disagree with the bill.
  */
-export async function quoteVoucherForCart(cartId: string, code: string, userId: number | null) {
+export async function quoteVoucherForCart(cartId: string, code: string, userId: number | null, skip: readonly string[] = []) {
   const db = await getDb();
   if (!db) return { ok: false, reason: "voucher.unknown" } as const;
 
-  const { lines, delivery } = await priceableLines(db, cartId, userId);
+  /* Of the lines chosen for this checkout, as the order will be. */
+  const { lines, delivery } = await priceableLines(db, cartId, userId, undefined, skip);
   const draft = draftOrder(lines, delivery.total);
   return quoteVoucher(db, code, {
     goods: draft.totals.itemsTotal,

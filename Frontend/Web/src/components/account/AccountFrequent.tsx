@@ -22,6 +22,12 @@
  * orders" (`frequent.suggestions`) offers what the shopper has bought before
  * and not put on, most often bought first, each added at the amount they took
  * the last time. Products also go on from their own page (`FrequentButton`).
+ *
+ * **Several can be chosen, on the owner's word** ("a multiple selection
+ * option for the pages that need it"): a circle on every row, All above the
+ * list, and the bag's rule that what has not been left out is chosen — so
+ * "Add all to cart" reads "Add to cart (3)" once two of five are left out,
+ * and Remove takes the chosen ones off together, asking first.
  */
 import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { Link } from "wouter";
@@ -32,6 +38,7 @@ import { PANEL } from "@/components/account/profileParts";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { Thumb } from "@/components/product/Thumb";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
 import { BUTTON_PRIMARY, EmptyState } from "@/components/layout/Page";
 import { useCart } from "@/contexts/CartContext";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -60,6 +67,30 @@ export function AccountFrequent() {
   const { addItem, cart } = useCart();
   const [status, setStatus] = useState("");
   const [addingAll, setAddingAll] = useState(false);
+  /* The rows left out of Add to cart and Remove; everything else is chosen,
+     so an item put on the list later is chosen without anybody choosing it. */
+  const [left, setLeft] = useState<Set<number>>(() => new Set());
+  const [removingChosen, setRemovingChosen] = useState(false);
+  const utils = trpc.useUtils();
+  const removeOne = trpc.frequent.remove.useMutation();
+  const choose = (id: number, chosen: boolean) => setLeft(previous => {
+    const after = new Set(previous);
+    if (chosen) after.delete(id); else after.add(id);
+    return after;
+  });
+  const removeChosen = async (ids: number[]) => {
+    try {
+      for (const id of ids) await removeOne.mutateAsync({ id });
+      toast.success(t("frequent.removedChosen"));
+    } catch (error) {
+      toast.error(error instanceof Error && isMessageKey(error.message) ? t(error.message) : t("account.preferenceFailed"));
+    } finally {
+      setRemovingChosen(false);
+      void utils.frequent.list.invalidate();
+      void utils.frequent.suggestions.invalidate();
+      void utils.frequent.forProduct.invalidate();
+    }
+  };
 
   const inBag = (variantId: string) =>
     (cart?.items ?? []).filter(line => line.variantId === variantId).reduce((total, line) => total + line.quantity, 0);
@@ -99,30 +130,69 @@ export function AccountFrequent() {
             return <p className={`${PANEL} p-5 text-[14px] text-[#1f2a44]`}>{t("frequent.unavailable")}</p>;
           }
           const items = data.items as Item[];
-          const anyAddable = items.some(item => addable(item) > 0);
+          const chosenItems = items.filter(item => !left.has(item.id));
+          const anyAddable = chosenItems.some(item => addable(item) > 0);
+          const allState = chosenItems.length === 0 ? "none" : chosenItems.length === items.length ? "all" : "some";
           return (
             <div className="space-y-3">
               {items.length ? (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={() => void addAll(items)}
-                      disabled={!anyAddable || addingAll}
-                      className={`${BUTTON_PRIMARY} disabled:opacity-50`}
-                    >
-                      <ShoppingBag className="size-4" aria-hidden />
-                      {t("frequent.addAll")}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center">
+                        <ChoiceCircle
+                          state={allState}
+                          label={t("select.all")}
+                          onToggle={chosen => setLeft(chosen ? new Set() : new Set(items.map(item => item.id)))}
+                          className="-ms-2.5 pointer-fine:-ms-1.5"
+                        />
+                        <span aria-hidden className="text-[14px] font-bold text-[#0a285a]">{t("cart.chooseAll")}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void addAll(chosenItems)}
+                        disabled={!anyAddable || addingAll}
+                        className={`${BUTTON_PRIMARY} disabled:opacity-50`}
+                      >
+                        <ShoppingBag className="size-4" aria-hidden />
+                        {allState === "all" ? t("frequent.addAll") : t("frequent.addChosen", { count: chosenItems.length })}
+                      </button>
+                      {chosenItems.length ? (
+                        <button
+                          type="button"
+                          onClick={() => setRemovingChosen(true)}
+                          className="inline-flex min-h-11 items-center rounded-full border border-[#0a285a]/25 bg-white px-4 text-[14px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]"
+                        >
+                          {t("frequent.removeChosen", { count: chosenItems.length })}
+                        </button>
+                      ) : null}
+                    </div>
                     {status ? (
                       <Link href="/cart" className="text-[14px] font-semibold text-[#0a285a] underline underline-offset-2">{t("product.viewCart")}</Link>
                     ) : null}
                   </div>
                   <ul className={`${PANEL} divide-y divide-dashed divide-[#e3e6ec] px-4 sm:px-5`}>
                     {items.map(item => (
-                      <FrequentRow key={item.id} item={item} inBag={inBag(item.variantId)} onAdded={setStatus} />
+                      <FrequentRow
+                        key={item.id}
+                        item={item}
+                        inBag={inBag(item.variantId)}
+                        onAdded={setStatus}
+                        chosen={!left.has(item.id)}
+                        onChoose={chosen => choose(item.id, chosen)}
+                      />
                     ))}
                   </ul>
+                  <ConfirmDialog
+                    open={removingChosen}
+                    title={t("frequent.removeChosenTitle")}
+                    body={t("frequent.removeChosenBody")}
+                    confirmLabel={t("frequent.removeChosen", { count: chosenItems.length })}
+                    tone="danger"
+                    pending={removeOne.isPending}
+                    onConfirm={() => void removeChosen(chosenItems.map(item => item.id))}
+                    onClose={() => setRemovingChosen(false)}
+                  />
                 </>
               ) : (
                 <EmptyState heading="h3" icon={<ListRestart className="size-6" />} title={t("frequent.emptyTitle")} note={t("frequent.emptyNote")} />
@@ -138,7 +208,14 @@ export function AccountFrequent() {
 }
 
 /** One item: its photo and name, the usual amount, Add to cart and the bin. */
-function FrequentRow({ item, inBag, onAdded }: { item: Item; inBag: number; onAdded: (status: string) => void }) {
+function FrequentRow({ item, inBag, onAdded, chosen, onChoose }: {
+  item: Item;
+  inBag: number;
+  onAdded: (status: string) => void;
+  /** Whether the row is in what Add to cart and Remove act on. */
+  chosen: boolean;
+  onChoose: (chosen: boolean) => void;
+}) {
   const { t } = useTranslation();
   const money = useMoney();
   const utils = trpc.useUtils();
@@ -202,6 +279,12 @@ function FrequentRow({ item, inBag, onAdded }: { item: Item; inBag: number; onAd
   return (
     <li className="py-4">
       <div className="flex gap-3">
+        <ChoiceCircle
+          state={chosen ? "all" : "none"}
+          label={t("select.item", { name: title })}
+          onToggle={onChoose}
+          className="-ms-2.5 -me-1.5 self-center pointer-fine:-ms-1.5 pointer-fine:me-0"
+        />
         {product ? (
           <Link href={`/products/${product.handle}`} tabIndex={-1} aria-hidden className="shrink-0">
             <Thumb

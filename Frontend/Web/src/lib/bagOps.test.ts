@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Cart, CartItem, Product } from "@shared/commerce/types";
-import { applyBagOp, ghostLine, ghostLineId, NO_BAG, realLineId, type BagOp } from "./bagOps";
+import { applyBagOp, ghostLine, ghostLineId, NO_BAG, realLineId, withChoice, type BagOp } from "./bagOps";
 
 const kwd = (amount: string) => ({ amount, currencyCode: "KWD" });
 
@@ -95,5 +95,30 @@ describe("a press drawn before the server answers", () => {
     expect(realLineId(bag([]), ghostLineId("9"))).toBeNull();
     /* A plus pressed on the drawn-ahead line, applied over the server's answer, changes the real line. */
     expect(run(answered, { kind: "set", lineId: ghostLineId("9"), quantity: 3 })!.items[0].quantity).toBe(3);
+  });
+});
+
+describe("the lines chosen for checkout", () => {
+  const two = () => bag([line(), line({ lineId: "12", variantId: "6", quantity: 1, lineTotal: kwd("4.000") })]);
+
+  it("draws a circle as pressed and counts only what is chosen", () => {
+    const next = withChoice(two(), ["12"])!;
+    expect(next.items.map(item => item.chosen)).toEqual([true, false]);
+    expect(next.itemCount).toBe(3);
+    expect(next.chosenCount).toBe(2);
+    expect(next.subtotal.amount).toBe("25.000");
+    expect(next.total.amount).toBe("26.500");
+  });
+
+  it("leaves a set out whole", () => {
+    const set = bag([line({ bundleId: "4" }), line({ lineId: "12", variantId: "6", bundleId: "4" }), line({ lineId: "13", variantId: "7" })]);
+    expect(withChoice(set, ["11"])!.items.map(item => item.chosen)).toEqual([false, false, true]);
+  });
+
+  it("keeps a press on a line left out from moving the subtotal", () => {
+    const out = withChoice(two(), ["12"])!;
+    const next = run(out, { kind: "set", lineId: "12", quantity: 5 })!;
+    expect(next.subtotal.amount).toBe("25.000");
+    expect(next.chosenCount).toBe(2);
   });
 });

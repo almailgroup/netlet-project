@@ -668,6 +668,13 @@ struct SavedProductCard: View {
     let product: Product
     /// The Saved page's grid, rather than the cart's sideways row.
     var grid = false
+    /// The Saved page's circle on the photo, for moving several at once.
+    var choice: Choice? = nil
+
+    struct Choice {
+        let chosen: Bool
+        let toggle: (Bool) -> Void
+    }
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -700,6 +707,11 @@ struct SavedProductCard: View {
                 }
                 .buttonStyle(.tap)
                 .accessibilityLabel(l.t("product.removeSaved", ["name": product.title]))
+            }
+            .overlay(alignment: .topLeading) {
+                if let choice {
+                    ChoiceCircle(state: choice.chosen ? .all : .none, label: l.t("select.item", ["name": product.title]), toggle: choice.toggle)
+                }
             }
             Button {
                 app.push(.product(handle: product.handle))

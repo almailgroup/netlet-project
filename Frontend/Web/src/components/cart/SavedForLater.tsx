@@ -34,6 +34,7 @@ import { ChevronRight, Gift, ShoppingBag, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
 
 const SHOWN = 12;
 
@@ -125,8 +126,10 @@ function SavedCardOutline() {
   );
 }
 
-export function SavedCard({ product, onMove, onRemove, onWish, grid = false }: {
+export function SavedCard({ product, onMove, onRemove, onWish, grid = false, choice }: {
   product: Product;
+  /** The Saved page's circle on the photo, for moving several at once. */
+  choice?: { chosen: boolean; toggle: (next: boolean) => void };
   onMove: () => void;
   onRemove: () => void;
   /** Move to wishlist, where the shopper has lists to move it to. */
@@ -145,6 +148,14 @@ export function SavedCard({ product, onMove, onRemove, onWish, grid = false }: {
         <Link href={href} tabIndex={-1} aria-hidden className="block aspect-square overflow-hidden rounded-xl bg-[#f4f6f9]">
           <Thumb src={product.images[0]?.url} alt={product.images[0]?.altText ?? product.title} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} />
         </Link>
+        {choice ? (
+          <ChoiceCircle
+            state={choice.chosen ? "all" : "none"}
+            label={t("select.item", { name: product.title })}
+            onToggle={choice.toggle}
+            className="absolute start-0 top-0 pointer-fine:start-0.5 pointer-fine:top-0.5"
+          />
+        ) : null}
         <button
           type="button"
           onClick={() => { pressHaptic(); onRemove(); }}

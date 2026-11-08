@@ -1074,7 +1074,7 @@ export default function ProductDetail() {
     if (product?.id) rememberViewed(product.id);
   }, [product?.id]);
   const { data: catalog = [] } = useCatalog(24);
-  const { addItem, cart, openCart, updateQuantity, removeItem } = useCart();
+  const { addItem, cart, openCart, updateQuantity, removeItem, chooseOnly } = useCart();
   const { heartedIds, toggleSaved, deliveryZone } = useCustomer();
   /* A member of the affiliate programme shares this page with their code on it (3.1.14, 3.7). */
   const memberCode = useMemberCode();
@@ -1221,12 +1221,17 @@ export default function ProductDetail() {
    * the press lands on checkout with the item already in it.
    */
   const buyNow = async () => {
-    /* In the bag already: checkout with the line as it is, adding nothing. */
+    /* In the bag already: checkout with the line as it is, adding nothing —
+       and that line alone, not the rest of the bag (`cartChoice.ts`). */
     if (plainLine) {
+      chooseOnly([plainLine.lineId]);
       navigate("/checkout");
       return;
     }
     if (!product || !selectedVariant?.availableForSale) return;
+    /* A line with extras is a new line, chosen by being new; a plain one may
+       be added onto the variant's line already in the bag. */
+    chooseOnly([], chosenAddons.length ? undefined : selectedVariant.id);
     const added = addItem(selectedVariant.id, quantity, { reveal: false, addonIds: chosenAddons, product });
     navigate("/checkout");
     try {

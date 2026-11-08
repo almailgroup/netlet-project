@@ -727,18 +727,18 @@ private struct ProductPage: View {
         // In the bag already as a plain line: Buy now goes straight to
         // checkout and Add to cart has become View cart.
         if bagLine != nil {
-            if openCheckout { app.openCheckout() } else { app.select(.cart) }
+            if openCheckout { app.openCheckout(buying: model.variant?.id) } else { app.select(.cart) }
             return
         }
         // Buy now on an item already in the bag goes straight to checkout rather than adding it again.
         if openCheckout, let variant = model.variant, app.cart.quantity(of: variant.id) > 0 {
-            app.openCheckout()
+            app.openCheckout(buying: variant.id)
             return
         }
         // Buy now opens checkout at once on the bag drawn ahead, which waits
         // for the bag to settle before an order can be placed — the web's rule.
         if openCheckout {
-            app.openCheckout()
+            app.openCheckout(buying: model.variant?.id)
             if !(await model.add(to: app.cart, product: product)) {
                 Haptics.refused()
                 app.toast(l.t("cart.buyFailed"))

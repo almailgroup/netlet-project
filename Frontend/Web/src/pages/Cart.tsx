@@ -31,7 +31,7 @@
  * screen down a long bag, and the two together are as wide as the account's
  * column plus the summary.
  */
-import { BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
+import { AllChoice, BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
 import { DeliveryAddressCard, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { SavedForLater } from "@/components/cart/SavedForLater";
 import { BUTTON_PRIMARY, CARD, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
@@ -62,6 +62,8 @@ export default function Cart() {
   const { user, isAuthenticated } = useAuth();
   usePageMeta(privatePageMeta("Your cart"));
   const items = cart?.items.length ?? 0;
+  /* The units ticked for this checkout (`cartChoice.ts`). */
+  const chosenCount = cart ? cart.chosenCount ?? cart.itemCount : 0;
   const [checkoutRef, checkoutBelow] = useBeyondScreen("bottom", TAB_BAR_REACH);
   /* The floating bar is a phone's alone (`lg:hidden`), and so is standing in for it. */
   const wide = useMediaQuery("(min-width: 1024px)");
@@ -137,13 +139,16 @@ export default function Cart() {
       </div>
       {items && cart ? (
         <PhoneActionBar shown={checkoutBelow} label={t("cart.bar")}>
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1 px-1.5 min-[360px]:px-2">
+          {/* The reference's foot: All, what the chosen lines come to, and
+              Checkout counting them. */}
+          <div className="flex items-center gap-1 min-[360px]:gap-2">
+            <AllChoice compact className="ps-2.5 pointer-fine:ps-1.5" />
+            <div className="min-w-0 flex-1 px-1 text-end min-[360px]:px-2">
               <p className="text-[12px] font-semibold leading-4 ink-muted">{t("cart.total")}</p>
               <p className="truncate text-[16px] font-extrabold leading-6 text-[#0a285a]">{money(cart.total)}</p>
             </div>
-            <button type="button" onClick={goToCheckout} className="glass glass-accent flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 text-[14px] font-bold min-[360px]:px-5">
-              {t("cart.checkoutShort")} <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
+            <button type="button" onClick={chosenCount ? goToCheckout : undefined} aria-disabled={!chosenCount || undefined} className={`glass glass-accent flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-3 text-[14px] font-bold min-[360px]:px-4 ${chosenCount ? "" : "opacity-50"}`}>
+              {t("cart.checkoutCount", { count: chosenCount })} <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
             </button>
           </div>
         </PhoneActionBar>

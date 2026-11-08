@@ -20,6 +20,7 @@
 import type { Cart, CartItem, Product } from "@shared/commerce/types";
 import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 import { EACH } from "@shared/commerce/units";
+import { skippedLineIds } from "@shared/commerce/cartChoice";
 import { addMoney, multiplyMoney, subtractMoney } from "@shared/money";
 
 export type BagOp =
@@ -95,20 +96,24 @@ function withQuantity(item: CartItem, quantity: number): CartItem {
 }
 
 const counted = (items: CartItem[]) => items.reduce((count, item) => count + item.quantity, 0);
+/* A line from before the choice, or the demo's, is chosen. */
+const going = (items: CartItem[]) => items.filter(item => item.chosen !== false);
 
 /**
  * The bag with new lines, its count and subtotal following. A count the lines
  * do not explain — an Add whose line cannot be drawn yet — is carried over,
- * so the header's number does not drop back while it waits.
+ * so the header's number does not drop back while it waits. The subtotal is
+ * of the lines chosen for checkout (`cartChoice.ts`), as the server's is.
  */
 function withItems(cart: Cart, items: CartItem[]): Cart {
   const currencyCode = cart.subtotal.currencyCode;
   const unexplained = Math.max(0, cart.itemCount - counted(cart.items));
-  const subtotal = addMoney("0", ...items.map(item => item.lineTotal.amount));
+  const subtotal = addMoney("0", ...going(items).map(item => item.lineTotal.amount));
   return {
     ...cart,
     items,
     itemCount: counted(items) + unexplained,
+    chosenCount: counted(going(items)) + unexplained,
     subtotal: { amount: subtotal, currencyCode },
     /* The lines' own codes (0074) stay the server's last, like the delivery. */
     total: { amount: subtractMoney(addMoney(subtotal, cart.delivery.total.amount), cart.codeDiscount?.amount ?? "0.000"), currencyCode },
@@ -141,4 +146,19 @@ export function realLineId(cart: Cart | null, lineId: string): string | null {
   const variantId = ghostVariant(lineId);
   if (variantId === null) return lineId;
   return cart?.items.find(item => item.variantId === variantId)?.lineId ?? null;
+}
+
+/**
+ * The bag with these lines left out of checkout (`cartChoice.ts`), a set
+ * whole: each line's circle as pressed, and the subtotal and count of what is
+ * chosen. The delivery and the codes stay the server's last until it answers
+ * with the new choice, like every other guess here.
+ */
+export function withChoice(cart: Cart | null, skip: readonly string[]): Cart | null {
+  if (!cart) return cart;
+  const left = skippedLineIds(cart.items, skip);
+  return withItems(cart, cart.items.map(item => {
+    const chosen = !left.has(item.lineId);
+    return item.chosen === chosen ? item : { ...item, chosen };
+  }));
 }

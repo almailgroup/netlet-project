@@ -1797,3 +1797,56 @@ describe("cancelOrderForShopper", () => {
     }
   });
 });
+
+describe("choosing what to check out", () => {
+  /* The owner's: tick what to buy now, and the rest waits in the bag
+     (`Shared/commerce/cartChoice.ts`). */
+  async function twoStores() {
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 2 }, { variantId: ids.kettleVariant, quantity: 1 }], ids.shopper);
+    const lines = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+    const kettleLine = String(lines.find(line => line.variantId === ids.kettleVariant)!.id);
+    return { cartId, kettleLine };
+  }
+
+  it("draws every line and totals the chosen ones", async () => {
+    const catalog = await import("./catalog.js");
+    const { cartId, kettleLine } = await twoStores();
+    const cart = (await catalog.getCart(cartId, [kettleLine]))!;
+    expect(cart.items.map(item => item.chosen)).toEqual([true, false]);
+    expect(cart.itemCount).toBe(3);
+    expect(cart.chosenCount).toBe(2);
+    expect(cart.subtotal.amount).toBe("48.750");
+    expect(cart.delivery.perVendor.map(row => row.vendorName)).toEqual(["Acme"]);
+    const whole = (await catalog.getCart(cartId))!;
+    expect(whole.subtotal.amount).toBe("60.000");
+    expect(whole.chosenCount).toBe(3);
+  });
+
+  it("places the chosen lines and leaves the rest in the bag, its stock untouched", async () => {
+    const { cartId, kettleLine } = await twoStores();
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper, skip: [kettleLine] });
+    const lines = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    expect(lines.map(line => line.productTitle)).toEqual(["Harbour Desk Lamp"]);
+    expect(placed.totals.itemsTotal).toBe("48.750");
+    const left = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+    expect(left.map(line => String(line.id))).toEqual([kettleLine]);
+    expect(await stockOf(ids.lampVariant)).toBe(8);
+    expect(await stockOf(ids.kettleVariant)).toBe(4);
+  });
+
+  it("refuses an order with everything left out, in those words", async () => {
+    const { cartId } = await twoStores();
+    const lines = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+    await expect(ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper, skip: lines.map(line => String(line.id)) }))
+      .rejects.toMatchObject({ reason: "order.nothingChosen" });
+    expect(await stockOf(ids.lampVariant)).toBe(10);
+    expect(await db.select().from(cartItems).where(eq(cartItems.cartId, cartId))).toHaveLength(2);
+  });
+
+  it("ignores a line id the bag does not have", async () => {
+    const { cartId } = await twoStores();
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper, skip: ["999999"] });
+    expect(placed.totals.itemsTotal).toBe("60.000");
+    expect(await db.select().from(cartItems).where(eq(cartItems.cartId, cartId))).toEqual([]);
+  });
+});

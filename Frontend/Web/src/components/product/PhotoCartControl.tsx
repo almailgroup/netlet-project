@@ -21,6 +21,20 @@
  * before "add" means anything; a sold-out one draws nothing here, its badge on
  * the photo already says so.
  *
+ * **All three are Liquid Glass, the tab bar's, on the owner's word** ("make
+ * the adding to cart design Liquid Glass, just like the bottom menu"): the
+ * tab bar's layers (`glass-bar-surface`), its rim and its near-black ink, at
+ * an even 70% white (`.glass-chip`) — thicker than the bar's, because the
+ * count is words on the glass and a photo can be dark behind it. A phone
+ * blurs without the warp, as the tab bar does.
+ *
+ * **The count is typed, on the owner's word** ("pick a custom amount … by
+ * tapping on the number and editing the value"): the stepper's number is the
+ * bag's own box (`typedQuantity`) — a press selects it and opens the number
+ * keypad, Enter or leaving it sets the line, zero takes the line out, and
+ * over what there is is held to it and said. The stepper stays open while it
+ * is being typed in.
+ *
  * **Every press is felt** where the phone lets a page buzz (`pressHaptic`,
  * Android's Chrome; an iPhone's Safari allows none), and a refusal is felt
  * differently and said in a toast. A polite live region says what each press
@@ -33,7 +47,8 @@
  * focus moves to the count that replaces it. A finger's press moves no focus,
  * so a phone's own focus rules cannot keep the stepper open.
  */
-import { cardCeiling } from "@shared/commerce/typedQuantity";
+import { cardCeiling, quantityDraft, typedQuantity } from "@shared/commerce/typedQuantity";
+import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 import { useCart } from "@/contexts/CartContext";
 import { useStockLimit } from "@/hooks/useStockLimit";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -85,7 +100,11 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
   useEffect(() => {
     if (!stepping) return;
     const away = (event: PointerEvent) => {
-      if (box.current && !box.current.contains(event.target as Node)) setOpen(false);
+      if (!box.current || box.current.contains(event.target as Node)) return;
+      /* A number still being typed is set before the stepper folds. */
+      const field = box.current.querySelector("input");
+      if (field && document.activeElement === field) field.blur();
+      setOpen(false);
     };
     document.addEventListener("pointerdown", away, true);
     return () => document.removeEventListener("pointerdown", away, true);
@@ -107,10 +126,15 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
   };
 
   const plusFace = (
-    <Plus className="size-5" strokeWidth={2.25} aria-hidden />
+    <>
+      <Glass />
+      <Plus className="size-5" strokeWidth={2.4} aria-hidden />
+    </>
   );
   const corner = "absolute bottom-2 end-2 z-[1]";
-  const plusClass = `${corner} grid size-11 place-items-center rounded-xl border border-[#d5dfeb] bg-white text-[#0a285a] shadow-[0_2px_8px_rgba(10,40,90,0.14)] hover:bg-[#f0f2f5] focus-visible:outline-offset-2`;
+  /* The tab bar's glass: its rim, its shadow and its near-black ink. */
+  const glass = "glass-chip isolate border border-black/[.12] text-[#16181d] shadow-[0_6px_18px_rgba(10,40,90,.16),0_1px_3px_rgba(10,40,90,.08)]";
+  const plusClass = `${corner} ${glass} grid size-11 place-items-center rounded-xl focus-visible:outline-offset-2`;
 
   /* A size or a colour to choose first: the preview, or the product's page. */
   if (product.variants.length > 1) {
@@ -177,19 +201,22 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
         onClick={event => { pressHaptic(); follow(event, "step"); setOpen(true); }}
         aria-expanded={false}
         aria-label={t("card.changeQuantity", { count: String(quantity), name })}
-        className={`${corner} grid size-11 place-items-center rounded-xl bg-[#0a285a] text-white shadow-[0_2px_8px_rgba(10,40,90,0.24)] hover:bg-[#0d3372] focus-visible:outline-offset-2`}
+        className={`${corner} ${glass} grid size-11 place-items-center rounded-xl focus-visible:outline-offset-2`}
       >
+        <Glass />
         <CartCount count={quantity} />
       </button>
     );
   } else {
-    const step = "grid h-full w-11 shrink-0 place-items-center rounded-xl hover:bg-white/[.12] disabled:opacity-40 focus-visible:outline-offset-[-3px] focus-visible:outline-white";
+    const step = "grid h-full w-11 shrink-0 place-items-center rounded-xl hover:bg-[#0a285a]/[.06] disabled:opacity-40 focus-visible:outline-offset-[-3px]";
+    const ceiling = cardCeiling(variant, line, cart?.items ?? []);
     face = (
       <div
         role="group"
         aria-label={t("card.inCart", { count: String(quantity) })}
-        className={`photo-stepper ${corner} flex h-11 w-[min(calc(100%-1rem),9.5rem)] items-center overflow-hidden rounded-xl bg-[#0a285a] text-white shadow-[0_2px_10px_rgba(10,40,90,0.28)]`}
+        className={`photo-stepper ${corner} ${glass} flex h-11 w-[min(calc(100%-1rem),9.5rem)] items-center overflow-hidden rounded-xl`}
       >
+        <Glass />
         <button
           type="button"
           onClick={event => change(event, quantity - 1)}
@@ -198,7 +225,19 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
         >
           {quantity <= 1 ? <Trash2 className="size-[18px]" aria-hidden /> : <Minus className="size-5" aria-hidden />}
         </button>
-        <span aria-hidden className="min-w-0 flex-1 text-center text-[16px] font-bold tabular-nums">{quantity}</span>
+        <PhotoQuantity
+          quantity={quantity}
+          ceiling={ceiling}
+          name={name}
+          onSet={next => {
+            setSaid(next < 1 ? t("cart.removedName", { name }) : t("cart.quantityShort", { count: String(next) }));
+            if (next < 1) {
+              focusNext.current = "plus";
+              setOpen(false);
+              removeItem(line.lineId).catch(failed);
+            } else updateQuantity(line.lineId, next).catch(failed);
+          }}
+        />
         <button
           type="button"
           data-focus="step"
@@ -218,6 +257,78 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
       {face}
       <span aria-live="polite" className="sr-only">{said}</span>
     </div>
+  );
+}
+
+/** The tab bar's glass behind a face: blur, tint and rim, inside its corners. */
+function Glass() {
+  return (
+    <span aria-hidden className="glass-bar-surface glass-bar-round">
+      <span className="glass-bar-bend" />
+      <span className="glass-bar-face" />
+    </span>
+  );
+}
+
+/**
+ * The stepper's number, a box — the bag's own (`LineQuantity`): a press
+ * selects it and opens the number keypad, and what is typed is the line's
+ * quantity on Enter or on leaving the box; zero takes the line out, over what
+ * there is is held to it and said, anything not a whole number changes
+ * nothing, and Escape puts it back. Always an input, because a phone opens its
+ * keyboard only for a field focused by the press itself.
+ */
+function PhotoQuantity({ quantity, ceiling, name, onSet }: { quantity: number; ceiling: number; name: string; onSet: (next: number) => void }) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState<string | null>(null);
+  const cancelled = useRef(false);
+  const justFocused = useRef(false);
+  const commit = () => {
+    const text = draft;
+    setDraft(null);
+    if (cancelled.current || text === null) {
+      cancelled.current = false;
+      return;
+    }
+    const typed = typedQuantity(text, ceiling);
+    if (!typed) return;
+    if (typed.kind === "remove") return onSet(0);
+    if (typed.capped) toast(ceiling < MAX_LINE_QUANTITY ? t("cart.onlyAvailable", { count: ceiling }) : t("cart.atMost", { count: String(MAX_LINE_QUANTITY) }));
+    if (typed.quantity !== quantity) {
+      pressHaptic();
+      onSet(typed.quantity);
+    }
+  };
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      enterKeyHint="done"
+      autoComplete="off"
+      aria-label={t("cart.quantityOf", { name })}
+      value={draft ?? String(quantity)}
+      onFocus={event => {
+        setDraft(String(quantity));
+        event.currentTarget.setSelectionRange(0, event.currentTarget.value.length);
+        justFocused.current = true;
+      }}
+      onMouseUp={event => {
+        if (!justFocused.current) return;
+        justFocused.current = false;
+        event.preventDefault();
+      }}
+      onChange={event => setDraft(quantityDraft(event.target.value))}
+      onKeyDown={event => {
+        if (event.key === "Enter") event.currentTarget.blur();
+        if (event.key === "Escape") {
+          cancelled.current = true;
+          event.currentTarget.blur();
+        }
+      }}
+      onBlur={commit}
+      className="line-quantity h-8 min-w-0 flex-1 rounded-lg bg-transparent text-center text-[16px] font-bold tabular-nums text-[#16181d] outline-none focus:bg-white focus:ring-2 focus:ring-[#0a285a]"
+    />
   );
 }
 

@@ -6,7 +6,8 @@ import SwiftUI
 /// already has a better door to (the departments are a tab, the offers and
 /// the newest are shelves), and what it had alone is here: the help centre
 /// (where WhatsApp, the phone and the email are), the guides, the terms and
-/// the privacy policy — then who the shop is. **The returns policy, finding
+/// the privacy policy; who the shop is is the page's last line
+/// (`ShopCopyright`). **The returns policy, finding
 /// somebody's wishlist, the stores, selling on NetLet and the seller agreement
 /// left it, on the owner's word**: the stores are a box on Categories, the
 /// finder is in Wishlists and gifts, and the notifications are the bell at the
@@ -72,12 +73,6 @@ struct MoreFromNetLet: View {
             VStack(spacing: 0) { rows(legalRows) }
                 .padding(.horizontal, 20)
                 .panel()
-            Text(copyright)
-                .font(.inter(12))
-                .foregroundStyle(Brand.muted)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 4)
-                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -113,8 +108,28 @@ struct MoreFromNetLet: View {
             .buttonStyle(.tap)
         }
     }
+}
 
-    /// Who the shop is: the invoices' own issuer, the footer's last line.
+/// Who the shop is — the copyright and the commercial registration, the
+/// invoices' own issuer — as the Profile tab's very last line, under Sign out,
+/// on the owner's word ("move this text at the very bottom of the profile
+/// page"). It was the last line of the help card, above the seller's, the
+/// affiliate's and the sign-out cards.
+struct ShopCopyright: View {
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        Text(copyright)
+            .font(.inter(12))
+            .foregroundStyle(Brand.muted)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
+            .padding(.top, 4)
+    }
+
+    /// The footer's last line, in the page's language.
     private var copyright: String {
         let company = app.shelf.contact.company
         let named = company.map { l.current == .ar ? ($0.nameAr ?? $0.name) : $0.name } ?? l.t("footer.netlet")

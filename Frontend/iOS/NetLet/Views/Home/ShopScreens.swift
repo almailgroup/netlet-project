@@ -108,6 +108,10 @@ struct CategoriesView: View {
 /// this phone when not — the web's `/saved`.
 struct SavedView: View {
     @State private var catalogue: LoadState<[Product]> = .idle
+    /// The products chosen for Move to cart or Remove — the web's circles,
+    /// on the owner's word ("a multiple selection option for the pages that
+    /// need it").
+    @State private var chosen: Set<String> = []
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -143,9 +147,28 @@ struct SavedView: View {
                     // Each to the cart or a wishlist, on the owner's word —
                     // the cart's own saved card, two to a row.
                     case .loaded:
+                        let picked = found.filter { chosen.contains($0.id) }
+                        if !found.isEmpty {
+                            FlowLayout(spacing: 8) {
+                                ChoiceAll(state: picked.isEmpty ? .none : picked.count == found.count ? .all : .some) { all in
+                                    chosen = all ? Set(found.map(\.id)) : []
+                                }
+                                if !picked.isEmpty {
+                                    ChoicePill(title: l.t("saved.moveChosen", ["count": "\(picked.count)"]), filled: true, systemImage: "bag") {
+                                        moveChosen(picked)
+                                    }
+                                    ChoicePill(title: l.t("saved.removeChosen", ["count": "\(picked.count)"])) {
+                                        removeChosen(picked)
+                                    }
+                                }
+                            }
+                            .padding(.bottom, 12)
+                        }
                         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                             ForEach(found) { product in
-                                SavedProductCard(product: product, grid: true)
+                                SavedProductCard(product: product, grid: true, choice: SavedProductCard.Choice(chosen: chosen.contains(product.id)) { next in
+                                    if next { chosen.insert(product.id) } else { chosen.remove(product.id) }
+                                })
                             }
                         }
                     }
@@ -159,6 +182,46 @@ struct SavedView: View {
             .padding(.bottom, 48)
         }
         .task(id: "\(l.current.rawValue)|\(app.saved.ids.count)") { await load() }
+    }
+
+    /// Each chosen product that can go in the bag as it is (one option, in
+    /// stock) out of Saved and into the bag, as its card's own Move to cart
+    /// does; the rest stay chosen, and the toast says so.
+    private func moveChosen(_ picked: [Product]) {
+        let app = self.app
+        let movable = picked.filter { $0.variants.count <= 1 && $0.variants.contains(where: \.availableForSale) }
+        let stayed = picked.filter { product in !movable.contains(where: { $0.id == product.id }) }
+        chosen = Set(stayed.map(\.id))
+        let failed = l.t("cart.addFailed")
+        let said = movable.isEmpty
+            ? l.t("saved.someStayed")
+            : l.t("saved.movedChosen") + (stayed.isEmpty ? "" : " " + l.t("saved.someStayed"))
+        app.toast(said)
+        Task {
+            for product in movable {
+                guard let variant = product.variants.first(where: \.availableForSale) else { continue }
+                await app.saved.unsave(product.id)
+                let added = await app.cart.add(variantId: variant.id, quantity: 1, product: product)
+                if !added {
+                    Haptics.refused()
+                    await app.saved.save(product.id)
+                    app.toast(failed)
+                }
+            }
+        }
+    }
+
+    /// The chosen products out of Saved, with Undo in the toast.
+    private func removeChosen(_ picked: [Product]) {
+        let app = self.app
+        let gone = picked.map(\.id)
+        chosen = []
+        Task {
+            for id in gone { await app.saved.unsave(id) }
+        }
+        app.toast(l.t("saved.removedChosen"), undo: {
+            Task { for id in gone { await app.saved.save(id) } }
+        })
     }
 
     /// The saved products by id (`commerce.products.byIds`) — looked up in the

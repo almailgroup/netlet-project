@@ -561,12 +561,12 @@ private struct QuickViewContent: View {
         }
         if openCheckout, app.cart.quantity(of: chosen.id) > 0 {
             app.previewing = nil
-            app.openCheckout()
+            app.openCheckout(buying: chosen.id)
             return
         }
         if openCheckout {
             app.previewing = nil
-            app.openCheckout()
+            app.openCheckout(buying: chosen.id)
             if !(await model.add(to: app.cart, product: product)) {
                 Haptics.refused()
                 app.toast(l.t("cart.buyFailed"))

@@ -32,6 +32,8 @@ import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { isDeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { lineCeiling, quantityDraft, shortLines, typedQuantity } from "@shared/commerce/typedQuantity";
 import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
+import { choiceOf } from "@shared/commerce/cartChoice";
+import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
 
 /** While a stored bag loads or the first item is being added: never "empty" before it knows. */
 export function BagSettling() {
@@ -74,6 +76,11 @@ export function BagEmpty({ onBrowse, heading = "h3" }: { onBrowse: () => void; h
  *
  * Never greyed out while the server answers: the bag changes on the press and
  * sends the presses in order.
+ *
+ * **Each line and each store has a circle, and only what is ticked is checked
+ * out**, on the owner's word (`ChoiceCircle`, `Shared/commerce/cartChoice.ts`):
+ * a line left out stays in the bag, and the totals, each store's delivery and
+ * Checkout count the chosen lines alone.
  */
 export function BagLines({ layout = "drawer" }: { layout?: "drawer" | "page" }) {
   const { cart } = useCart();
@@ -122,20 +129,30 @@ export function BagLines({ layout = "drawer" }: { layout?: "drawer" | "page" }) 
  * parcel, and each says which it is.
  */
 function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; padded: boolean }) {
-  const { syncing, closeCart } = useCart();
+  const { cart, skip, choose, syncing, closeCart } = useCart();
   const { t } = useTranslation();
   const money = useMoney();
+  const ids = group.items.map(item => item.lineId);
   return (
     <div className={padded ? "border-b border-[#eef1f5] px-4 pb-3 pt-3" : "border-b border-[#d5dfeb] pb-3"}>
-      <Link
-        href={`/stores/${encodeURIComponent(group.store.slug)}`}
-        onClick={closeCart}
-        className="pressable -mx-1.5 inline-flex min-h-9 max-w-full items-center gap-2 rounded-lg px-1.5 text-[#0a285a]"
-      >
-        <Store className="size-4 shrink-0" aria-hidden />
-        <span className="truncate text-[14px] font-extrabold">{t("browse.soldBy", { name })}</span>
-        <ChevronRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
-      </Link>
+      <div className="flex items-center gap-1">
+        {/* Every line of this store in or out together. */}
+        <ChoiceCircle
+          state={choiceOf(cart?.items ?? [], skip, ids)}
+          label={t("cart.chooseStore", { name })}
+          onToggle={chosen => choose(ids, chosen)}
+          className="-ms-2.5 pointer-fine:-ms-1.5"
+        />
+        <Link
+          href={`/stores/${encodeURIComponent(group.store.slug)}`}
+          onClick={closeCart}
+          className="pressable -mx-1.5 inline-flex min-h-9 min-w-0 max-w-full items-center gap-2 rounded-lg px-1.5 text-[#0a285a]"
+        >
+          <Store className="size-4 shrink-0" aria-hidden />
+          <span className="truncate text-[14px] font-extrabold">{t("browse.soldBy", { name })}</span>
+          <ChevronRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
+        </Link>
+      </div>
       {group.delivery.map(row => {
         const fast = row.choice === "fast";
         const cost = row.free
@@ -170,7 +187,7 @@ function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; 
  * did not fit on one line and the price was cut at the card's edge.
  */
 function BagLine({ item }: { item: CartItem }) {
-  const { cart, updateQuantity, removeItem, closeCart } = useCart();
+  const { cart, choose, updateQuantity, removeItem, closeCart } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
   const title = lineTitle(item, isArabic);
@@ -183,8 +200,16 @@ function BagLine({ item }: { item: CartItem }) {
   const failed = () => toast.error(t("cart.updateFailed"));
   const sayLimit = useStockLimit();
   const href = `/products/${encodeURIComponent(item.productHandle)}`;
+  const chosen = item.chosen !== false;
   return (
-    <div className="flex gap-3 py-4">
+    <div className="flex gap-2 py-4 min-[360px]:gap-3">
+      {/* In this checkout or left in the bag for later. */}
+      <ChoiceCircle
+        state={chosen ? "all" : "none"}
+        label={t("cart.chooseLine", { name: title })}
+        onToggle={next => choose([item.lineId], next)}
+        className="-ms-2.5 self-center pointer-fine:-ms-1.5"
+      />
       {/* The photo is the same place as the name, so it is hidden from the
           keyboard and a screen reader rather than read as a second link. */}
       <Link href={href} onClick={closeCart} tabIndex={-1} aria-hidden className="size-[72px] shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9] min-[360px]:size-[84px]">
@@ -384,11 +409,16 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
   const shown = useShownCurrency();
   if (!cart) return null;
   const updating = syncing ? "opacity-50" : "";
+  /* What this checkout is of: the lines ticked (`cartChoice.ts`). */
+  const chosenCount = cart.chosenCount ?? cart.itemCount;
+  const nothing = chosenCount === 0;
   /* Drawn by store, each store's delivery is beside its lines already. */
   const perStore = bagGroups(cart) ? [] : cart.delivery.perVendor;
   return (
     <div aria-busy={syncing}>
       {heading ? <h2 className="mb-3 text-[17px] font-extrabold text-[#0a285a]">{t("checkout.orderSummary")}</h2> : null}
+      {/* Everything in or out at once; partly while some lines are left out. */}
+      <AllChoice className="mb-2" />
       {/* Delivery per seller (3.2.4), each named. A basket from three shops
           is three parcels, and one blended figure hides which seller is
           expensive. Sellers who charge nothing are left out entirely —
@@ -412,7 +442,7 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
           {row.destinationLabel ? t("address.toFreeAt", { amount: money(row.toFree!), name: storeName(row, isArabic), label: row.destinationLabel }) : t("cart.deliveryToFree", { amount: money(row.toFree!), name: storeName(row, isArabic) })}
         </p>
       ))}
-      <div className="flex items-center justify-between gap-3 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")} <span className="font-normal">({t("cart.itemCount", { count: cart.itemCount })})</span></span><span className="shrink-0 font-bold text-[#0a285a]">{money(cart.subtotal)}</span></div>
+      <div className="flex items-center justify-between gap-3 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")} <span className="font-normal">({t("cart.itemCount", { count: chosenCount })})</span></span><span className="shrink-0 font-bold text-[#0a285a]">{money(cart.subtotal)}</span></div>
       {cart.codeDiscount ? <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("checkout.lineCodesTitle")}</span><span className={`font-bold text-[#2f5d33] transition-opacity ${updating}`}>−{money(cart.codeDiscount)}</span></div> : null}
       <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.delivery")}</span><span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.delivery.total)}</span></div>
       {/* A member's free delivery (4.1), said with what it saved. */}
@@ -421,9 +451,29 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
       {/* Read in another currency, the figure charged is said too. */}
       {shown ? <p className="mt-2 text-[12px] font-semibold leading-5 text-[#0a285a]">{t("currency.paidInDinars", { amount: dinars(cart.total) })}</p> : null}
       <p className="mt-2 text-[12px] leading-5 ink-muted">{t("cart.checkoutNote")}</p>
-      <button ref={checkoutRef} onClick={onCheckout ?? proceedToCheckout} inert={standIn} className={`glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold transition-opacity duration-200 ${standIn ? "opacity-0" : ""}`}>
-        {t("cart.checkout")} <ArrowRight className="size-4 rtl:-scale-x-100" />
+      {/* Faint with nothing ticked, never dead: the sentence under it says why. */}
+      <button ref={checkoutRef} onClick={nothing ? undefined : (onCheckout ?? proceedToCheckout)} aria-disabled={nothing || undefined} aria-describedby={nothing ? "bag-nothing-chosen" : undefined} inert={standIn} className={`glass glass-accent pressable mt-4 flex w-full items-center justify-center gap-2 rounded-full px-5 py-4 text-xs font-extrabold transition-opacity duration-200 ${standIn ? "opacity-0" : nothing ? "opacity-50" : ""}`}>
+        {t("cart.checkoutCount", { count: chosenCount })} <ArrowRight className="size-4 rtl:-scale-x-100" />
       </button>
+      {nothing ? <p id="bag-nothing-chosen" role="status" className="mt-2 text-center text-[12px] font-bold text-[#8c2f22]">{t("order.nothingChosen")}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * All, the foot of the reference's cart: every line in or out at once, partly
+ * while some are left out. In the summary and in the phone's floating bar.
+ */
+export function AllChoice({ className = "", compact = false }: { className?: string; compact?: boolean }) {
+  const { cart, skip, choose } = useCart();
+  const { t } = useTranslation();
+  if (!cart?.items.length) return null;
+  const ids = cart.items.map(item => item.lineId);
+  return (
+    <div className={`flex items-center ${className}`}>
+      <ChoiceCircle state={choiceOf(cart.items, skip, ids)} label={t("cart.chooseAllName")} onToggle={chosen => choose(ids, chosen)} className="-ms-2.5 pointer-fine:-ms-1.5" />
+      {/* The word is the eye's; the circle's name says it whole. */}
+      <span aria-hidden className={`font-bold text-[#0a285a] ${compact ? "text-[13px]" : "text-[14px]"}`}>{t("cart.chooseAll")}</span>
     </div>
   );
 }

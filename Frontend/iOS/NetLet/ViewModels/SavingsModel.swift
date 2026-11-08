@@ -30,6 +30,9 @@ final class SavingsModel {
     private(set) var asking: Set<Box> = []
 
     private let api: APICalling?
+    /// The lines left out of this checkout (`CartChoice`), so a code is quoted
+    /// on what the order will be of. Set by `AppModel` to read the bag's.
+    @ObservationIgnored var skip: @MainActor () -> [String] = { [] }
 
     init(api: APICalling?) {
         self.api = api
@@ -68,7 +71,7 @@ final class SavingsModel {
         defer { asking.remove(box) }
         notes[box] = nil
         do {
-            let answer = try await api.call(API.quoteVoucher, .init(cartId: cartId, code: typed))
+            let answer = try await api.call(API.quoteVoucher, .init(cartId: cartId, code: typed, skip: skip().nilIfEmpty))
             guard answer.ok else {
                 notes[box] = (answer.reason ?? "voucher.unknown", false)
                 Haptics.refused()
@@ -115,8 +118,8 @@ final class SavingsModel {
     /// guess, and costs nothing against the ceiling.
     func requote(cartId: String) async {
         guard cartId == self.cartId, let api else { return }
-        if !code.isEmpty { codeQuote = try? await api.call(API.quoteVoucher, .init(cartId: cartId, code: code)) }
-        if !giftCard.isEmpty { giftQuote = try? await api.call(API.quoteVoucher, .init(cartId: cartId, code: giftCard)) }
+        if !code.isEmpty { codeQuote = try? await api.call(API.quoteVoucher, .init(cartId: cartId, code: code, skip: skip().nilIfEmpty)) }
+        if !giftCard.isEmpty { giftQuote = try? await api.call(API.quoteVoucher, .init(cartId: cartId, code: giftCard, skip: skip().nilIfEmpty)) }
     }
 
     /// What this bag comes to with the code, the card and the points.

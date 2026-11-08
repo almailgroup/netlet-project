@@ -52,13 +52,14 @@ const QUOTE_OPTIONS = { refetchOnWindowFocus: false, retry: false, staleTime: 60
  * which only the card needs (to offer them).
  */
 export function useSavingsBill({ withBalance = false }: { withBalance?: boolean } = {}) {
-  const { cart } = useCart();
+  const { cart, skip } = useCart();
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
   const chosen = useSavings(cart?.id);
   const cartId = cart?.id ?? "";
-  const codeQuote = trpc.orders.quoteVoucher.useQuery({ cartId, code: chosen.code }, { ...QUOTE_OPTIONS, enabled: Boolean(cartId && chosen.code) });
-  const giftQuote = trpc.orders.quoteVoucher.useQuery({ cartId, code: chosen.giftCard }, { ...QUOTE_OPTIONS, enabled: Boolean(cartId && chosen.giftCard) });
+  /* Of the lines ticked for this checkout (`cartChoice.ts`), as the order will be. */
+  const codeQuote = trpc.orders.quoteVoucher.useQuery({ cartId, code: chosen.code, skip }, { ...QUOTE_OPTIONS, enabled: Boolean(cartId && chosen.code) });
+  const giftQuote = trpc.orders.quoteVoucher.useQuery({ cartId, code: chosen.giftCard, skip }, { ...QUOTE_OPTIONS, enabled: Boolean(cartId && chosen.giftCard) });
   const rewards = trpc.rewards.mine.useQuery(undefined, { enabled: isAuthenticated && (withBalance || chosen.usePoints) });
 
   /* A percentage and a minimum spend are of the goods, so a code is asked
@@ -129,7 +130,7 @@ export function BagSavings() {
 function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<typeof useSavingsBill> }) {
   const { t, tError } = useTranslation();
   const money = useMoney();
-  const { cart } = useCart();
+  const { cart, skip } = useCart();
   const utils = trpc.useUtils();
   const fieldId = useId();
   const held = kind === "discount" ? bill.chosen.code : bill.chosen.giftCard;
@@ -147,7 +148,7 @@ function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<t
     setNote(null);
     setFailure(null);
     try {
-      const answer = await utils.orders.quoteVoucher.fetch({ cartId: cart.id, code: typed });
+      const answer = await utils.orders.quoteVoucher.fetch({ cartId: cart.id, code: typed, skip });
       if (!answer.ok) {
         setNote({ key: answer.reason });
         return;
