@@ -2,8 +2,8 @@
  * The sound an order makes when it is placed — on the owner's word ("for the
  * order confirmation, add a sound and animation"). The same file as the app's
  * (`order-placed.wav`): a soft thump as the circle springs in, a rising bell
- * arpeggio as the tick draws, and an E major chord that rings out, the key the
- * app's launch chime ends on. About two seconds, 23 KB.
+ * arpeggio as the tick draws, and an E major chord that rings out, the key of
+ * the app's launch bell. About two seconds, 23 KB.
  *
  * **It is unlocked on the press and played on the answer.** Safari plays a
  * sound only from inside a press, and the order is placed a round trip after

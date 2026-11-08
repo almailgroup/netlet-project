@@ -4576,8 +4576,8 @@ words rising after (`.order-done-*`, transforms, opacities and a stroke's dash
 alone; drawn finished under reduced motion); the order number, what the driver
 collects, View your order and Continue shopping, focus on the first. **The
 sound is `order-placed`, the same on both**: a soft thump as the disc lands, a
-rising bell arpeggio in E major as the tick draws — the key the launch chime
-ends on — and a chord that rings out, about two seconds (23 KB as MP3 on the
+rising bell arpeggio in E major as the tick draws — the key of the launch
+chime's bell — and a chord that rings out, about two seconds (23 KB as MP3 on the
 web, a WAV in the app). **A phone plays a page's sound only from inside a
 press**, and the order exists a round trip after Confirm, so `primeOrderChime`
 wakes an `AudioContext` and fetches the file in Confirm's own handler and
@@ -8596,15 +8596,18 @@ and the screenshots (`-NetLetOpen`) open straight onto their screen.
 ("add a sound effect for the opening"): `launch-chime.wav`, made for this zoom
 — a soft rising pop as the roof springs up, a warm bell and a low thump as it
 lands at 300ms (`LaunchSplash.landing`, the haptic tap's instant), a short
-breath in at 0.62s, a whoosh through the zoom that rises and widens slow then
-fast, as the roof does, and a bright E major chord, arpeggiated up, as the
-shop appears at 1.42s, **then rings on and fades slowly over the home page,
-on the owner's word** ("it cuts off at the end; let it continue and fade
-slowly while the app opens"): five seconds in all, the chord's tail falling
-by about ten decibels a second from 1.6s and silent at five. It was cut off
-because the player was the splash's own state, so it went the moment the
-splash did, at about 1.4s, whatever the file held; it belongs to
-`LaunchChime.shared` now, which outlives the splash and lets go of the player
+breath in at 0.62s, and a whoosh through the zoom that rises and widens slow
+then fast, as the roof does, letting go softly as the shop appears at 1.42s,
+**and nothing after it, on the owner's word** ("I like the ding … and the
+swoop … remove the second ding with the sound that plays after it, like a
+continuous stretching sound"): an E major chord at 1.42s and a pad ringing on
+under the home page to five seconds came off, and the whoosh's release was
+lengthened (90ms rather than 50) because the chord had been covering its end.
+The first 1.4 seconds are the earlier file's to within one rounding step, at
+the same loudness — the level is set from that file rather than normalised
+afresh, which would have raised what was left. It is 2.4 seconds now.
+`LaunchChime.shared` holds the player rather than the splash, which leaves
+at about 1.4s and would cut the swoop's end off with it, and lets go of it
 once the sound has played. The chime it replaced was written for the wordmark
 and was over before the zoom began. It plays in the `.ambient` category, so
 **the Ring/Silent switch silences it** — Apple's rule for a sound nobody

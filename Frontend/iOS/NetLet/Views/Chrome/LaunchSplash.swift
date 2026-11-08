@@ -11,7 +11,7 @@ import SwiftUI
 /// One clock, three beats, nothing that glows:
 /// - **0.00** — the launch screen's own navy, so nothing changes where the
 ///   system hands over, and the roof springs up into its place, a little past
-///   its size and back. The sound starts with its rising whoosh.
+///   its size and back. The sound starts with a soft rising pop.
 /// - **0.30** — it lands: the chime's first bell and a light tap together.
 /// - **0.62** — a breath in (the roof draws back a touch, as something does
 ///   before it moves), then the zoom: the orange fades out of the roof as it
@@ -30,14 +30,13 @@ import SwiftUI
 /// word** ("add a sound effect for the opening"), beat for beat with the
 /// clock above: a soft rising pop as the roof springs up, a warm bell and a
 /// low thump as it lands at 0.30s (the haptic tap's instant), a short breath
-/// in at 0.62s, a whoosh through the zoom that rises and widens as the roof
-/// rushes at the viewer, and a bright chord as the shop appears at 1.42s.
-/// **It rings on under the home page and fades slowly, on the owner's word**
-/// ("it cuts off at the end; let it continue and fade slowly while the app
-/// opens"): the chord's long tail over a soft low pad, five seconds in all,
-/// down to nothing over the last 1.6. It was cut at about 1.4s because the
-/// player was the splash's own state, and the splash leaves as the shop
-/// appears; `LaunchChime` holds it now, past the splash, until it has finished.
+/// in at 0.62s, and a whoosh through the zoom that rises and widens as the
+/// roof rushes at the viewer, letting go softly as the shop appears at 1.42s.
+/// **Nothing follows the whoosh, on the owner's word**: a chord as the shop
+/// appeared and a pad ringing on under the home page were taken off ("remove
+/// the second ding … like a continuous stretching sound"). `LaunchChime`
+/// holds the player rather than the splash, which leaves as the shop appears
+/// and would take the whoosh's end with it.
 /// It plays in the `.ambient` category, so
 /// the silent switch silences it — Apple's rule for a sound nobody needs — and
 /// somebody's music keeps playing under it.
@@ -221,7 +220,7 @@ private struct RoofCurtain: Shape {
 
 /// The opening's sound, held apart from the splash so it outlives it: the
 /// splash leaves as the shop appears, and a player that was its state went
-/// with it, cutting the chord off. This keeps the player until the sound has
+/// with it, cutting the whoosh's end off. This keeps the player until the sound has
 /// run to its end, then lets it go.
 final class LaunchChime {
     static let shared = LaunchChime()
