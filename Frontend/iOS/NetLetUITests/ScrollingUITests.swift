@@ -126,12 +126,22 @@ final class ScrollingUITests: XCTestCase {
         guard !moved else { return }
         keepScreenshot(app)
         let seen = surroundings(app, at: points)
+        let traced = trace(app)
         // Once more after a pause: a page that moves now was not ready for the
         // first three; one that still does not is not taking drags at all.
         sleep(5)
         drag(app, x: 0.5, from: 0.6)
         let later = frame(of: top).map { "top at \($0.minY)" } ?? "top gone off the screen"
-        XCTFail("Three drags left the page where it was (top at \(start), now \(now ?? -1)). A fourth, five seconds later: \(later). \(seen)", file: file, line: line)
+        XCTFail("Three drags left the page where it was (top at \(start), now \(now ?? -1)). A fourth, five seconds later: \(later). \(seen). Trace after three drags: \(traced). After the fourth: \(trace(app)).", file: file, line: line)
+    }
+
+    /// What the page's scroll did, by the app's own account (`ScrollTrace`):
+    /// whether a drag ever reached it ("phase interacting"), whether it left
+    /// its top and was put back, when the shelves arrived, and when the main
+    /// thread was held.
+    private func trace(_ app: XCUIApplication) -> String {
+        let marker = app.descendants(matching: .any).matching(identifier: "scroll-trace").firstMatch
+        return ((try? marker.snapshot())?.value as? String) ?? "no trace"
     }
 
     /// What was in the way, for a failure to say why a page did not move. The

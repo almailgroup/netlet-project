@@ -133,12 +133,19 @@ struct ShopPage<Content: View>: View {
                 }
                 .coordinateSpace(.named(ShopPageTop.space))
                 .modifier(ScrollPlaceReader(changed: follow))
+                .modifier(ScrollPhaseTrace())
                 .modifier(OptionalRefresh(action: refresh))
                 .modifier(NoBottomEdge())
                 .scrollDismissesKeyboard(.interactively)
             }
         }
         .background(Brand.ground.ignoresSafeArea())
+        .overlay(alignment: .topLeading) {
+            // What the scroll did, for a UI test that finds it standing still.
+            if UITestHooks.on {
+                ScrollTraceMarker().frame(width: 1, height: 1).allowsHitTesting(false)
+            }
+        }
         .overlay(alignment: .bottomTrailing) {
             // The button's own animation, never the page's: on the whole page
             // it animated whatever else changed in that frame — the scroll's
@@ -183,6 +190,8 @@ struct ShopPage<Content: View>: View {
             TabBarSlide.slide(away: false, animated: !still)
             app.tabBarRide = 0
             if header { app.searchText = searchTerm ?? "" }
+            ScrollTrace.note("page appeared")
+            ScrollTrace.watchMainThread()
         }
         // A screen that is not a shop page — the portal's — never inherits a
         // bar slid away here.
@@ -206,6 +215,7 @@ struct ShopPage<Content: View>: View {
     }
 
     private func follow(_ place: ScrollPlace) {
+        ScrollTrace.scrolled(to: place.y, height: place.height, viewport: place.viewport)
         let atTop = place.y > ShopPageTop.logoHandover
         if atTop != searchAtTop { searchAtTop = atTop }
         let next = scroll.state.next(y: place.y, viewport: place.viewport, height: place.height)

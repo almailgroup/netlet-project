@@ -9,20 +9,29 @@
  * a Deals tab added in the picture's order. One 24 grid, one line weight
  * (`TAB_ICON_STROKE`, 2, heavier than before), round caps and joins, each
  * with an outline and a filled form: the current tab is filled, the rest
- * are outlines. A rounded house with its door; three squares and a sparkle
- * for the departments; a person in a circle; the cart with its two wheels.
+ * are outlines. A rounded house with its door; three squares and a circle
+ * for the departments — a sparkle stood where the circle is for a while, and
+ * the owner asked for the circle back ("remove the star and make it a
+ * circle, just like how it was"); a person in a circle; the cart with its
+ * two wheels.
  * The words stay each tab's name for a screen reader.
  *
  * **Deals is a red shopping bag, a little larger than the rest, on the
  * owner's word** — after a picture of a bag seen from three quarters, "an
  * outline of a shopping bag like this, in this perspective, with a
  * percentage icon in it, and its colour being red", then "slightly bigger
- * than the other icons". It is NetLet's own drawing, not the picture's (that
- * bag is somebody's mark): a front face and a narrower side going back to
- * the right, two handles with the back one passing behind, and a percent
- * sign on the front — dots and a stroke, rings being blobs at this size.
- * Chosen, the front is filled in `color.ink`, the side in `color.deep` so the
- * turn of the bag still shows, and the percent is cut clear (`knockout`). It
+ * than the other icons", and once it was in their hand, "it can be designed
+ * better … make its size bigger than the others": of two directions drawn
+ * for them they chose this one, drawn 38 where the rest are 28 (`size`) with
+ * a lighter line (`stroke`) so its weight on screen matches theirs. It is
+ * NetLet's own drawing, not the picture's (that bag is somebody's mark): a
+ * front a little taller than wide with a softened foot, a narrower side
+ * going back to the right, two handles with the back one rising from behind,
+ * and a bold percent on the front — dots and a stroke, rings being blobs at
+ * this size.
+ * Chosen, the front is filled in `color.ink`, the side and the back handle in
+ * `color.deep` so the turn of the bag still shows, and the percent is cut
+ * clear (`knockout`). It
  * keeps its red whether chosen or not: the colour is the point, and the
  * filled form says which tab is current. Before this it was a percent sign
  * alone, a price tag before that, and a bag before that.
@@ -55,6 +64,9 @@ export type TabIconDrawing = {
   filled: TabIconPath[];
   /** Drawn larger than `TAB_ICON_SIZE`. */
   size?: number;
+  /** Its own line weight on the 24 grid, for an icon drawn larger, so the
+   *  line is as heavy on screen as the others' `TAB_ICON_STROKE`. */
+  stroke?: number;
   /**
    * The icon's own colours, kept whether its tab is chosen or not; without
    * them it takes the bar's ink (navy chosen, near-black otherwise, and the
@@ -102,20 +114,23 @@ function roundSquare(x: number, y: number, s: number, r: number): string {
 /* A rounded house, its door a notch in the outline so the filled form keeps it. */
 const HOUSE = "M3.6 10.4 L12 3.6 L20.4 10.4 V19.2 C20.4 20.2 19.6 21 18.6 21 H14.6 V16 C14.6 15.2 14 14.6 13.2 14.6 H10.8 C10 14.6 9.4 15.2 9.4 16 V21 H5.4 C4.4 21 3.6 20.2 3.6 19.2 Z";
 
-/* Three squares and a four-pointed sparkle where the fourth would be. */
+/* Three squares and a circle where the fourth would be, the size of a square. */
 const SQUARES = [roundSquare(3.2, 3.2, 7.4, 2), roundSquare(13.4, 3.2, 7.4, 2), roundSquare(3.2, 13.4, 7.4, 2)];
-const SPARKLE = "M17.2 12.6 C17.6 15 18.8 16.2 21.2 16.6 C18.8 17 17.6 18.2 17.2 20.6 C16.8 18.2 15.6 17 13.2 16.6 C15.6 16.2 16.8 15 17.2 12.6 Z";
+const DOT = circle(17.1, 17.1, 3.7);
 
-/* A shopping bag from three quarters: its front, its side going back to the
-   right (narrower at the top, as the bag widens to its foot), the front
-   handle, and the back one starting behind it. A percent sign on the front:
-   two dots and the stroke between them, from the bottom start to the top end. */
-const BAG_FRONT = "M3.6 8.6 L14.4 7.4 L14.8 21.6 L2.4 20.4 Z";
-const BAG_SIDE = "M14.4 7.4 L17.4 8.6 L21.6 19.6 L14.8 21.6 Z";
-const BAG_HANDLE = "M5.4 8.4 C5.2 5 6.4 3 7.8 3 C9.3 3 10.4 4.9 10.2 7.9";
-const BAG_HANDLE_BACK = "M10.2 4.7 C10.7 2.9 11.5 2 12.5 2 C13.8 2 14.6 4 14.4 7.4";
-const BAG_PERCENT_DOTS = [circle(6.5, 12.6, 1.3), circle(10.9, 17.3, 1.3)];
-const BAG_PERCENT_STROKE = "M6 18.5 L11.4 11.3";
+/* A shopping bag from three quarters: its front, a little taller than wide,
+   its foot softened; its side going back to the right, narrower at the top
+   as the bag widens to its foot; the front handle, and the back one rising
+   from behind it. The handles are drawn first, so the bag covers their feet
+   rather than a round cap showing over its top edge. A percent sign on the
+   front: two dots and the stroke between them, from the bottom start to the
+   top end. */
+const BAG_FRONT = "M3.1 8.3 L15.1 7.2 L15.5 20.1 C15.52 20.95 14.85 21.62 14 21.55 L3.45 20.75 C2.7 20.7 2.15 20.05 2.2 19.3 Z";
+const BAG_SIDE = "M15.1 7.2 L18.3 8.5 L21.75 18.7 C22 19.45 21.6 20.2 20.85 20.4 L15.5 21.5";
+const BAG_HANDLE = "M5.9 8.05 C5.75 4.6 7.25 2.55 9.15 2.55 C11.05 2.55 12.45 4.55 12.3 7.45";
+const BAG_HANDLE_BACK = "M11.85 3.55 C12.45 2.55 13.25 2.05 14.15 2.05 C15.95 2.05 17.15 4.15 16.75 7.95";
+const BAG_PERCENT_DOTS = [circle(6.75, 12.45, 1.55), circle(11.55, 17.35, 1.55)];
+const BAG_PERCENT_STROKE = "M6.1 18.35 L12.2 11.45";
 
 /** Deals' red: 5.1:1 on white and 4.4:1 on the chosen tab's grey pill. */
 const DEALS_RED = { ink: "#d6201f", deep: "#a3181b" };
@@ -137,27 +152,28 @@ export const TAB_ICONS: Record<TabIconName, TabIconDrawing> = {
     filled: [{ d: HOUSE, mode: "both" }],
   },
   categories: {
-    outline: [...SQUARES.map(d => ({ d, mode: "stroke" as const })), { d: SPARKLE, mode: "both" }],
-    filled: [...SQUARES.map(d => ({ d, mode: "both" as const })), { d: SPARKLE, mode: "both" }],
+    outline: [...SQUARES, DOT].map(d => ({ d, mode: "stroke" as const })),
+    filled: [...SQUARES, DOT].map(d => ({ d, mode: "both" as const })),
   },
   deals: {
     outline: [
-      { d: BAG_SIDE, mode: "stroke" },
-      { d: BAG_FRONT, mode: "stroke" },
       { d: BAG_HANDLE_BACK, mode: "stroke" },
       { d: BAG_HANDLE, mode: "stroke" },
+      { d: BAG_SIDE, mode: "stroke" },
+      { d: BAG_FRONT, mode: "stroke" },
       ...BAG_PERCENT_DOTS.map(d => ({ d, mode: "fill" as const })),
       { d: BAG_PERCENT_STROKE, mode: "stroke" },
     ],
     filled: [
+      { d: BAG_HANDLE_BACK, mode: "stroke", deep: true },
+      { d: BAG_HANDLE, mode: "stroke" },
       { d: BAG_SIDE, mode: "both", deep: true },
       { d: BAG_FRONT, mode: "both" },
-      { d: BAG_HANDLE_BACK, mode: "stroke" },
-      { d: BAG_HANDLE, mode: "stroke" },
       ...BAG_PERCENT_DOTS.map(d => ({ d, mode: "fill" as const, knockout: true })),
       { d: BAG_PERCENT_STROKE, mode: "stroke", knockout: true },
     ],
-    size: 32,
+    size: 38,
+    stroke: 1.6,
     color: DEALS_RED,
   },
   profile: {

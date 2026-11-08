@@ -4,14 +4,15 @@ import UIKit
 /// The tab bar's five icons — the web's own drawing (`content/tabIcons.ts`,
 /// exported to `tabIcons.json`): bold and wordless, on the owner's word,
 /// after the picture they sent of a shop's bar — a rounded house, three
-/// squares and a sparkle, a red shopping bag with a percent for the deals, a
+/// squares and a circle, a red shopping bag with a percent for the deals, a
 /// person in a circle, the cart. An outline for each tab and a filled form
 /// for the one that is chosen, drawn here as template images the system tints
 /// — navy chosen, the bar's ink otherwise — so the tab bar stays Apple's own.
 ///
 /// **Deals keeps its own red and is drawn a little larger, on the owner's
 /// word**: an icon with `color` is drawn in it (`deep` paths in the darker
-/// one) as an original image the system leaves alone, at its own `size`. A
+/// one) as an original image the system leaves alone, at its own `size` and
+/// with its own line weight (`stroke`). A
 /// `knockout` path is cut out of what is drawn, with the clear blend mode —
 /// the percent on the chosen bag, so the bar shows through it.
 ///
@@ -40,6 +41,8 @@ enum TabIcon: String, CaseIterable {
         let filled: [Path]
         /// Drawn larger than the rest.
         var size: Double?
+        /// Its own line weight, so a larger icon's line is as heavy as the rest's.
+        var stroke: Double?
         /// Its own colours, kept whether chosen or not; none takes the tint.
         var color: Colors?
     }
@@ -63,8 +66,9 @@ enum TabIcon: String, CaseIterable {
         for icon in TabIcon.allCases {
             guard let drawing = file.icons[icon.rawValue] else { continue }
             let side = CGFloat(drawing.size ?? file.size ?? Double(TabIcon.side))
-            drawn["\(icon.rawValue)-outline"] = render(drawing.outline, stroke: file.strokeWidth, side: side, colors: drawing.color)
-            drawn["\(icon.rawValue)-filled"] = render(drawing.filled, stroke: file.strokeWidth, side: side, colors: drawing.color)
+            let stroke = drawing.stroke ?? file.strokeWidth
+            drawn["\(icon.rawValue)-outline"] = render(drawing.outline, stroke: stroke, side: side, colors: drawing.color)
+            drawn["\(icon.rawValue)-filled"] = render(drawing.filled, stroke: stroke, side: side, colors: drawing.color)
         }
         return drawn
     }()

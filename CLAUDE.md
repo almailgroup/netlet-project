@@ -141,20 +141,25 @@ at the bottom", and the first redraw — the same house, person, cart and grid
 at the same size, with words — read to them as no change at all, so two
 directions were drawn for them and they chose the one after their picture of
 a shop's bar, then asked for its Deals tab, in its order. A rounded house with
-its door; three squares and a sparkle for the departments; **a red shopping
-bag with a percent on it for the deals, drawn a little larger, on the
+its door; three squares and a circle for the departments (a sparkle stood
+where the circle is for a while, and the owner asked for the circle back);
+**a red shopping bag with a percent on it for the deals, drawn larger, on the
 owner's word** — after a picture of a bag seen from three quarters ("an
 outline of a shopping bag like this, in this perspective, with a percentage
 icon in it, and its colour being red", then "slightly bigger than the other
-icons"): NetLet's own drawing rather than the picture's, which is somebody's
-mark — a front, a narrower side going back, two handles with the back one
-behind, and a percent of two dots and a stroke; chosen, the front fills red,
-the side a deeper red and the percent is cut clear (`knockout`: a mask on the
-web, the clear blend mode in the app). It was a percent sign alone before
-("change the icon of deals to %"), a price tag before that and a bag before
-that; a person in a circle; the cart with its wheels. One 24 grid, one
-heavier line (2), round caps and joins, each an outline and a filled form,
-drawn 28px — Deals 32 (`size`). The paths are absolute M, L, H, V, C and Z
+icons", and with the first one in hand "it can be designed better … make its
+size bigger", the second of two directions drawn for them): NetLet's own
+drawing rather than the picture's, which is somebody's mark — a front a
+little taller than wide with a softened foot, a narrower side going back, two
+handles with the back one rising from behind (drawn first, so the bag covers
+their feet), and a bold percent of two dots and a stroke; chosen, the front
+fills red, the side and the back handle a deeper red and the percent is cut
+clear (`knockout`: a mask on the web, the clear blend mode in the app). It
+was a percent sign alone before ("change the icon of deals to %"), a price
+tag before that and a bag before that; a person in a circle; the cart with
+its wheels. One 24 grid, one heavier line (2), round caps and joins, each an
+outline and a filled form, drawn 28px — Deals 38 (`size`) with a lighter
+line on its grid (`stroke`, 1.6) so it is as heavy on screen as the rest. The paths are absolute M, L, H, V, C and Z
 alone, so the app draws them from `tabIcons.json` (`TabIcon.swift`, a
 dozen-line parser) as template images the system tints — Deals as an original
 image in its own red (`color`, `#d6201f` and a deeper `#a3181b`), which the
@@ -8368,7 +8373,17 @@ simulator under Instruments in the first ten seconds after launch. A fourth
 sighting (run 205, the English home page, on the push that fixed the phone
 sign-up's build) was the same to the point: 184 → 184 under three drags, -6
 after the fourth — and it cost that push its TestFlight build, since only a
-green run uploads.
+green run uploads. The fifth and sixth (runs 207 and 208, both home tests)
+were the same again, the fourth drag moving it 0 and 272. **So the app now
+keeps its own account** (`ScrollTrace` in `UITestHooks.swift`, under
+`-NetLetUITest` alone): the scroll's phases — a drag the scroll view took
+reads "interacting" — when the page left its top and when it came back to it,
+when the home page's shelves arrived, and when the main thread was held for
+more than a quarter of a second in the first half minute. A 1×1 element
+("scroll-trace") hands it to the test, which writes it into the failure
+after the three drags and after the fourth. A trace with no "interacting"
+says the drags never reached the scroll; one that left the top and came back
+says something put it back; a held main thread says the app was busy.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the

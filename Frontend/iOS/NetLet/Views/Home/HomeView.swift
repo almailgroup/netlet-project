@@ -30,6 +30,20 @@ struct HomeView: View {
             // nothing to save by making them late. The search row still pins.
             VStack(alignment: .leading, spacing: 0) { homeShelves(shelf) }
         }
+        // When the shelves arrived, for a UI test's scroll trace alone.
+        .onChange(of: Self.stage(of: shelf.catalogue), initial: true) { _, stage in
+            ScrollTrace.note("shelves \(stage)")
+        }
+    }
+
+    /// The catalogue's state in a word, for the scroll trace.
+    private static func stage<Value>(of state: LoadState<Value>) -> String {
+        switch state {
+        case .idle: return "idle"
+        case .loading: return "loading"
+        case .loaded: return "loaded"
+        case .failed: return "failed"
+        }
     }
 
     @ViewBuilder

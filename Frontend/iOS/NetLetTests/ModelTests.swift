@@ -157,7 +157,7 @@ final class ReferenceDataTests: XCTestCase {
         let colors = try XCTUnwrap(deals.color, "Deals has its own red")
         XCTAssertNotNil(TabIcon.color(colors.ink))
         XCTAssertNotNil(TabIcon.color(colors.deep))
-        let red = TabIcon.render(deals.filled, stroke: file.strokeWidth, side: CGFloat(deals.size ?? 0), colors: colors)
+        let red = TabIcon.render(deals.filled, stroke: deals.stroke ?? file.strokeWidth, side: CGFloat(deals.size ?? 0), colors: colors)
         XCTAssertEqual(red.renderingMode, .alwaysOriginal)
         XCTAssertGreaterThan(red.size.width, TabIcon.side)
         XCTAssertNil(TabIcon.color("red"))

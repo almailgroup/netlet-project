@@ -64,6 +64,7 @@ function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
   const drawing = TAB_ICONS[name];
   const paths = drawing[filled ? "filled" : "outline"];
   const size = drawing.size ?? TAB_ICON_SIZE;
+  const stroke = drawing.stroke ?? TAB_ICON_STROKE;
   const maskId = useId();
   const inkOf = (path: (typeof paths)[number]) =>
     drawing.color ? (path.deep ? drawing.color.deep : drawing.color.ink) : "currentColor";
@@ -73,7 +74,7 @@ function TabIcon({ name, filled }: { name: TabIconName; filled: boolean }) {
       d={path.d}
       fill={path.mode === "stroke" ? "none" : ink}
       stroke={path.mode === "fill" ? "none" : ink}
-      strokeWidth={TAB_ICON_STROKE}
+      strokeWidth={stroke}
     />
   );
   /* A knockout is cut out of what is drawn by a mask, so the bar shows
