@@ -26,6 +26,7 @@ import {
 import { NOTICE_CATEGORIES } from "@shared/commerce/noticeCategories";
 import { SettingPanel } from "@/components/ui/SettingPanel";
 import { StoragePanel } from "@/components/account/StoragePanel";
+import { HapticsPanel } from "@/components/account/HapticsPanel";
 import { Bell, MapPin, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
@@ -103,6 +104,8 @@ export function AccountPreferences() {
           })}
         </ul>
       </SettingPanel>
+
+      <HapticsPanel />
 
       <StoragePanel />
     </div>

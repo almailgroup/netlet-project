@@ -20,6 +20,15 @@
  * cart's circles (`ChoiceCircle`). Only what can go in the bag goes (one
  * option, in stock); the rest stays chosen and is said. Removing several has
  * Undo, the way the bag's Save for later has.
+ *
+ * **It is Saved items and wishlists, on the owner's word** ("make it Saved
+ * items and wishlists, so both will be in one"): two tabs over one page
+ * (`TextTabs`, My orders' row), Saved items first — the header's heart opens
+ * it there — and Wishlists in the address (`?tab=wishlists`, replaced rather
+ * than pushed), which is the account's own wishlist manager. The account's
+ * Wishlists row went with it, and `/account/wishlists` opens this tab. A guest
+ * has no lists, so their tab offers the sign-in and the finder for somebody
+ * else's list, which needs no account.
  */
 import { toastHeart } from "@/lib/heartToast";
 import { useProductsByIds } from "@/hooks/useCatalog";
@@ -33,19 +42,27 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { privatePageMeta } from "@shared/seo";
 import type { Product } from "@shared/commerce/types";
-import { ArrowRight, Heart, ShoppingBag } from "lucide-react";
+import { ArrowRight, Gift, Heart, ShoppingBag } from "lucide-react";
 import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
-import { useState } from "react";
-import { Link } from "wouter";
+import { TextTabs } from "@/components/ui/TextTabs";
+import { WishlistManager } from "@/components/account/WishlistManager";
+import { GiftFinder } from "@/pages/GiftList";
+import { CARD } from "@/components/layout/Page";
+import { useAuth } from "@/hooks/useAuth";
+import { lazy, Suspense, useState } from "react";
+import { createPortal } from "react-dom";
+import { Link, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 
-export default function Saved() {
-  usePageMeta(privatePageMeta("Saved items"));
-  const { savedIds, heartedIds, toggleSaved, saveForLater } = useCustomer();
+const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
+
+type SavedTab = "saved" | "wishlists";
+
+function SavedItems() {
+  const { savedIds, saveForLater } = useCustomer();
   /* The products chosen for Move to cart or Remove. */
   const [chosen, setChosen] = useState<Set<string>>(() => new Set());
   const { t } = useTranslation();
-  const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   const moves = useSavedMoves();
   /* By id, so a heart on something older than the newest sixty products is
      still a card — it used to be counted as no longer available. */
@@ -88,16 +105,14 @@ export default function Saved() {
 
   return (
     <>
-      <PageBody>
-        <PageHeading
-          title={t("saved.title")}
-          /* A line held while the list loads, so the grid does not drop when it lands. */
-          note={isLoading ? "\u00a0" : savedProducts.length === 0
+        {/* A line held while the list loads, so the grid does not drop when it lands. */}
+        <p className="mb-5 text-[14px] leading-6 ink-muted">
+          {isLoading ? "\u00a0" : savedProducts.length === 0
             ? t("saved.emptyPrompt")
             : savedProducts.length === 1
               ? t("saved.countOne")
               : t("saved.count", { count: savedProducts.length })}
-        />
+        </p>
         {missingCount > 0 && !isLoading ? (
           <p className="-mt-2 mb-6 rounded-xl border border-[#f2b69e] bg-white px-4 py-3 text-[13px] font-semibold text-[#a44a2b]">
             {missingCount === 1 ? t("saved.unavailableOne") : t("saved.unavailableCount", { count: missingCount })}
@@ -158,15 +173,76 @@ export default function Saved() {
             </Link>
           </EmptyState>
         )}
+    </>
+  );
+}
+
+export default function Saved() {
+  usePageMeta(privatePageMeta("Saved items and wishlists"));
+  const { t } = useTranslation();
+  const { heartedIds, toggleSaved } = useCustomer();
+  const [quickProduct, setQuickProduct] = useState<Product | null>(null);
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const tab: SavedTab = new URLSearchParams(search).get("tab") === "wishlists" ? "wishlists" : "saved";
+  /* Replaced, not pushed: Back leaves the page rather than stepping through its tabs. */
+  const choose = (next: SavedTab) => navigate(next === "wishlists" ? "/saved?tab=wishlists" : "/saved", { replace: true });
+
+  return (
+    <>
+      <PageBody>
+        <PageHeading title={t("saved.andWishlists")} />
+        <TextTabs
+          items={[
+            { id: "saved" as const, label: t("footer.savedItems") },
+            { id: "wishlists" as const, label: t("saved.tabWishlists") },
+          ]}
+          value={tab}
+          onChange={choose}
+          label={t("saved.tabsLabel")}
+        />
+        <div className="mt-5">
+          {tab === "saved" ? <SavedItems /> : <Wishlists />}
+        </div>
       </PageBody>
       {/* Under the hearts it learns from, and only once it has learned
           something: the rail draws nothing until it is personal. */}
-      <RecommendedRail
-        saved={heartedIds}
-        onSave={(id, title) => toastHeart(toggleSaved(id), title, t)}
-        onQuickView={setQuickProduct}
-      />
+      {tab === "saved" ? (
+        <RecommendedRail
+          saved={heartedIds}
+          onSave={(id, title) => toastHeart(toggleSaved(id), title, t)}
+          onQuickView={setQuickProduct}
+        />
+      ) : null}
       <QuickView product={quickProduct} onClose={() => setQuickProduct(null)} />
     </>
+  );
+}
+
+/**
+ * The account's wishlists, or for a guest — who has none — the sign-in and
+ * the finder for somebody else's list, which needs no account.
+ */
+function Wishlists() {
+  const { t } = useTranslation();
+  const { isAuthenticated, loading } = useAuth();
+  const [authOpen, setAuthOpen] = useState(false);
+  if (loading) return <div className="h-40 animate-pulse rounded-2xl border border-[#d5dfeb] bg-white/60" />;
+  /* The cards inside are h3s; the tab's own heading is their h2, for a screen reader. */
+  if (isAuthenticated) return <><h2 className="sr-only">{t("saved.tabWishlists")}</h2><WishlistManager /></>;
+  return (
+    <div className="space-y-5">
+      <EmptyState icon={<Gift className="size-6" />} title={t("wish.guestTitle")} note={t("wish.guestNote")}>
+        <button type="button" onClick={() => setAuthOpen(true)} className={BUTTON_PRIMARY}>
+          {t("header.signIn")} <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
+        </button>
+      </EmptyState>
+      <section aria-labelledby="find-a-list" className={`${CARD} p-4 sm:p-5`}>
+        <h2 id="find-a-list" className="text-base font-extrabold text-[#0a285a]">{t("gift.heading")}</h2>
+        <p className="mt-1 text-[13px] leading-5 ink-muted">{t("gift.intro")}</p>
+        <div className="mt-3"><GiftFinder /></div>
+      </section>
+      {authOpen ? createPortal(<Suspense fallback={null}><AuthDialog open onClose={() => setAuthOpen(false)} /></Suspense>, document.body) : null}
+    </div>
   );
 }

@@ -70,13 +70,17 @@ export function rememberViewed(id: string, now = Date.now()): Viewed[] {
   return next;
 }
 
-/** The list without one product — the browsing history's own remove. */
-export function withoutViewed(list: readonly Viewed[], id: string): Viewed[] {
-  return list.filter(entry => entry.id !== id);
+/**
+ * The list without one product or several — the browsing history's own
+ * remove, and its "Delete (n)" for what was chosen, on the owner's word.
+ */
+export function withoutViewed(list: readonly Viewed[], ids: string | readonly string[]): Viewed[] {
+  const gone = new Set(typeof ids === "string" ? [ids] : ids);
+  return list.filter(entry => !gone.has(entry.id));
 }
 
-export function forgetViewed(id: string, now = Date.now()): Viewed[] {
-  const next = withoutViewed(readViewed(now), id);
+export function forgetViewed(ids: string | readonly string[], now = Date.now()): Viewed[] {
+  const next = withoutViewed(readViewed(now), ids);
   if (next.length) writeStored(KEY, JSON.stringify(next));
   else removeStored(KEY);
   return next;

@@ -116,9 +116,29 @@ struct PinMark: View {
         var y: CGFloat = 1
     }
 
-    private struct Ring {
+    struct Ring {
         var scale: CGFloat = 0.2
         var opacity: Double = 0
+    }
+
+    /// The ring's 700ms, the web's `pin-ring`: it appears small and three
+    /// quarters strong and eases out to 1.4 times its size and nothing. It
+    /// **jumps** to where it starts (`MoveKeyframe`) and eases from rest, because
+    /// a keyframe animator starts every run after the first from where the last
+    /// one ended (1.4 and 0), and a cubic keyframe after a 10ms linear one took
+    /// that step's speed as its own: the scale swung to about −12, a mirrored
+    /// ring across the whole map, and the opacity stayed past 1 for most of the
+    /// run, so the ring never faded. `PinRingTests` holds both starts.
+    @KeyframesBuilder<Ring>
+    nonisolated static func ringKeyframes(_ start: Ring) -> some Keyframes<Ring> {
+        KeyframeTrack(\.scale) {
+            MoveKeyframe(0.2)
+            LinearKeyframe(1.4, duration: 0.7, timingCurve: .easeOut)
+        }
+        KeyframeTrack(\.opacity) {
+            MoveKeyframe(0.75)
+            LinearKeyframe(0, duration: 0.7, timingCurve: .easeOut)
+        }
     }
 
     var body: some View {
@@ -136,15 +156,8 @@ struct PinMark: View {
                 .frame(width: 44, height: 44)
                 .keyframeAnimator(initialValue: Ring(), trigger: trigger) { content, value in
                     content.scaleEffect(value.scale).opacity(value.opacity)
-                } keyframes: { _ in
-                    KeyframeTrack(\.scale) {
-                        LinearKeyframe(0.2, duration: 0.01)
-                        CubicKeyframe(1.4, duration: 0.7)
-                    }
-                    KeyframeTrack(\.opacity) {
-                        LinearKeyframe(0.75, duration: 0.01)
-                        CubicKeyframe(0, duration: 0.7)
-                    }
+                } keyframes: { start in
+                    Self.ringKeyframes(start)
                 }
             pinGlyph
                 .keyframeAnimator(initialValue: Squash(), trigger: trigger) { content, value in

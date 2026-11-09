@@ -200,6 +200,11 @@ struct BrowsingHistoryView: View {
     @State private var products: [Product] = []
     @State private var loaded = false
     @State private var asking = false
+    /// The products chosen for Delete (n) — the web's circles, on the owner's word.
+    @State private var chosen: Set<String> = []
+
+    private var picked: [Product] { products.filter { chosen.contains($0.id) } }
+    private var allState: CartChoice.State { picked.isEmpty ? .none : picked.count == products.count ? .all : .some }
 
     var body: some View {
         ShopPage(header: false) {
@@ -218,6 +223,17 @@ struct BrowsingHistoryView: View {
                         .panel()
                 } else {
                     VStack(alignment: .leading, spacing: 12) {
+                        // All, and Delete (n) for what is chosen.
+                        FlowLayout(spacing: 8) {
+                            ChoiceAll(state: allState) { all in
+                                chosen = all ? Set(products.map(\.id)) : []
+                            }
+                            if !picked.isEmpty {
+                                ChoicePill(title: l.t("history.deleteChosen", ["count": "\(picked.count)"]), systemImage: "trash") {
+                                    asking = true
+                                }
+                            }
+                        }
                         VStack(spacing: 0) {
                             ForEach(Array(products.enumerated()), id: \.element.id) { index, product in
                                 if index > 0 { DashedRule() }
@@ -226,27 +242,39 @@ struct BrowsingHistoryView: View {
                         }
                         .padding(.horizontal, 16)
                         .panel()
-                        Button(l.t("history.clearAll")) { asking = true }
-                            .buttonStyle(SecondaryButtonStyle())
                     }
                 }
             }
         }
         .task(id: l.current) { await load() }
-        .alert(l.t("history.clearAsk"), isPresented: $asking) {
-            Button(l.t("history.clearAll"), role: .destructive) {
-                app.viewed.clear()
-                products = []
-                app.toast(l.t("history.cleared"))
+        // Every one chosen is clearing the history, and says so.
+        .alert(l.t(allState == .all ? "history.clearAsk" : "history.deleteAsk"), isPresented: $asking) {
+            Button(allState == .all ? l.t("history.clearAll") : l.t("history.deleteChosen", ["count": "\(picked.count)"]), role: .destructive) {
+                if allState == .all {
+                    app.viewed.clear()
+                    products = []
+                    app.toast(l.t("history.cleared"))
+                } else {
+                    let gone = picked.map(\.id)
+                    app.viewed.forget(gone)
+                    products.removeAll { gone.contains($0.id) }
+                    app.toast(l.t("history.removed"))
+                }
+                chosen = []
             }
             Button(l.t("common.cancel"), role: .cancel) {}
         } message: {
-            Text(l.t("history.clearBody"))
+            Text(l.t(allState == .all ? "history.clearBody" : "history.deleteBody"))
         }
     }
 
     private func row(_ product: Product) -> some View {
         HStack(spacing: 12) {
+            ChoiceCircle(state: chosen.contains(product.id) ? .all : .none, label: l.t("select.item", ["name": product.title])) { next in
+                if next { chosen.insert(product.id) } else { chosen.remove(product.id) }
+            }
+            .padding(.leading, -12)
+            .padding(.trailing, -12)
             Button {
                 app.push(.product(handle: product.handle))
             } label: {
@@ -274,6 +302,7 @@ struct BrowsingHistoryView: View {
             Button {
                 app.viewed.forget(product.id)
                 products.removeAll { $0.id == product.id }
+                chosen.remove(product.id)
                 Haptics.action()
                 UIAccessibility.post(notification: .announcement, argument: l.t("history.removed"))
             } label: {
@@ -356,6 +385,26 @@ struct SellerEntryCard: View {
         .task(id: app.session.seller?.vendorId) {
             guard app.session.seller?.isStoreMember == true else { return }
             storeName = ((try? await app.services.api.call(API.myStore)) ?? nil)?.name
+        }
+    }
+}
+
+/// Haptic feedback on or off for the whole app, on the owner's word — the
+/// switch `Haptics.impact` asks before every tap, kept on this phone. Turned
+/// back on, it taps once, so the shopper feels what they turned on.
+struct HapticsCard: View {
+    @Environment(LanguageSettings.self) private var l
+    @AppStorage(Haptics.enabledKey) private var on = true
+
+    var body: some View {
+        Toggle(isOn: $on) {
+            Text(l.t("haptics.switch"))
+                .font(.inter(14, .semibold))
+                .foregroundStyle(Brand.navy)
+        }
+        .tint(Brand.navy)
+        .onChange(of: on) { _, now in
+            if now { Haptics.tap() }
         }
     }
 }

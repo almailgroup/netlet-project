@@ -255,7 +255,7 @@ private struct RouteDestination: View {
         case .preferences: PreferencesView()
         case .history: BrowsingHistoryView()
         case .notifications: NotificationsView()
-        case .wishlists: WishlistsView()
+        case .wishlists: SavedView(initialTab: .wishlists)
         case .wishlist(let id): WishlistDetailView(listId: id)
         case .offers: PriceRequestsView()
         case .reviews: OrdersView(initialTab: "reviews")

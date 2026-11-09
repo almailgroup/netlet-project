@@ -62,7 +62,7 @@ struct AccountView: View {
     /// deleting the account are "Your profile"'s. **Returns and Reviews went
     /// to My orders, on the owner's word**, as tabs of its own.
     private static let cards: [[String]] = [
-        ["addresses", "payments", "wishlists", "offers", "subscriptions"],
+        ["addresses", "payments", "offers", "subscriptions"],
         // Browsing history, less prominent than the home's own shelf, on the owner's word.
         ["preferences", "history"],
     ]
@@ -98,7 +98,7 @@ struct AccountView: View {
                         empty: l.t("orders.emptyTitle"),
                         waiting: app.signals.onTheWay > 0 ? l.t("header.onTheWay", ["count": "\(app.signals.onTheWay)"]) : nil
                     ) { app.push(.orders) }
-                    previewTile(title: l.t("footer.savedItems"), photos: savedPhotos, empty: l.t("saved.emptyTitle"), waiting: nil) {
+                    previewTile(title: l.t("saved.andWishlists"), photos: savedPhotos, empty: l.t("saved.emptyTitle"), waiting: nil) {
                         app.push(.saved)
                     }
                     previewTile(title: l.t("frequent.section"), photos: frequentPhotos, empty: l.t("frequent.emptyTitle"), waiting: nil) {
@@ -601,7 +601,7 @@ struct AccountEntry: Identifiable, Hashable {
         AccountEntry(id: "returns", label: "account.sectionReturns", hint: "account.hint.returns", symbol: "arrow.uturn.backward", group: "account.groupShopping"),
         AccountEntry(id: "frequent", label: "frequent.section", hint: "account.hint.frequent", symbol: "arrow.clockwise.circle", group: "account.groupShopping"),
         AccountEntry(id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions", symbol: "repeat", group: "account.groupShopping"),
-        AccountEntry(id: "saved", label: "footer.savedItems", hint: "account.hint.saved", symbol: "heart", group: "account.groupShopping"),
+        AccountEntry(id: "saved", label: "saved.andWishlists", hint: "account.hint.saved", symbol: "heart", group: "account.groupShopping"),
         AccountEntry(id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists", symbol: "gift", group: "account.groupShopping"),
         AccountEntry(id: "offers", label: "offers.mine", hint: "account.hint.offers", symbol: "tag", group: "account.groupShopping"),
         AccountEntry(id: "reviews", label: "account.sectionReviews", hint: "account.hint.reviews", symbol: "star", group: "account.groupShopping"),

@@ -99,7 +99,7 @@ private struct ProductPage: View {
             }
             .animation(still ? nil : .easeOut(duration: 0.2), value: buttonsGone)
         }
-        .sensoryFeedback(.impact(weight: .medium, intensity: Haptics.strength), trigger: app.cart.itemCount)
+        .sensoryFeedback(.impact(weight: .medium, intensity: Haptics.strength), trigger: app.cart.itemCount) { _, _ in Haptics.enabled }
         .fullScreenCover(item: $photos) { start in
             PhotoSheet(product: product, index: $model.imageIndex, startFull: start == .zoom) { photos = nil }
                 .environment(\.layoutDirection, l.layoutDirection)

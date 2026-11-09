@@ -2496,8 +2496,8 @@ own name for it. Preferences keeps the delivery area and the notices.
 
 **Only the rows somebody needs, on the owner's word** ("I only want the
 options that are 100 percent needed in the profile page; combine or remove
-options if necessary"). The first card is Addresses, Payment methods and
-Wishlists; Price requests and Subscribe & Save are rows only for
+options if necessary"). The first card is Addresses and Payment methods;
+Price requests and Subscribe & Save are rows only for
 somebody who has one (`offers.list`, `subscriptions.mine`), since for anybody
 else they open an empty page, and their pages stay open to a link. The
 language and the currency were rows of their own, then inside Preferences, and
@@ -2560,13 +2560,31 @@ portal has its own way back — and offers `/sell` to anybody else; the account
 menu does the same ("Sell on NetLet"). The server decides which
 (`inventory.me`); the Selling row went, being the card twice.
 
+**Saved items and wishlists are one tile and one page, on the owner's word**
+("make it Saved items and wishlists, so both will be in one"): the second
+tile reads "Saved items and wishlists" and opens `/saved`, which is two
+tabs (`TextTabs`, My orders' own row, shared now — `components/ui/` on the
+web, `Views/Components/` in the app): Saved items, where the header's heart
+also lands, and Wishlists (`?tab=wishlists`, replaced rather than pushed),
+which is the account's wishlist manager. A guest's Wishlists tab offers the
+sign-in and the finder for somebody else's list. The Wishlists row under
+Payment methods went, and so did the account menu's: the menu's entry is
+"Saved items and wishlists". `/account/wishlists` — a notice, a bookmark —
+opens the tab (`MOVED` takes a whole path now), and the app reads both
+addresses (`Route.from`; `SavedView(initialTab:)`, `WishlistsTab`).
+
 **Browsing history is a row of the account, less prominent than the home's
 shelf, on the owner's word** ("keep management in the account … view, remove
 individual, clear all"; `/account/history`, `AccountHistory`, the app's
 `BrowsingHistoryView`): the products this device opened, newest first, read
-back by id, each with a remove (`forgetViewed`, the app's `forget`) and Clear
-all behind a confirmation, since it empties Previously viewed too. The home
-page keeps Previously viewed, its heading reading "Manage history".
+back by id, each with a remove (`forgetViewed`, the app's `forget`). **Several
+come off at once, on the owner's word** ("select multiple products to delete
+… or select all to delete"): a circle on each row and All above the list —
+the cart's and Saved's circles — then Delete (n), which asks first, since it
+empties Previously viewed of them too; every one chosen is clearing the
+history, and the question says so. That replaced the Clear all button.
+`forgetViewed` takes a list (`withoutViewed`, the app's `without(_:ids:)`).
+The home page keeps Previously viewed, its heading reading "Manage history".
 
 **Preferences holds the app's own settings too** (on the owner's word:
 "app storage usage display and clear cache where the operating system permits
@@ -4856,7 +4874,18 @@ press is 10, since a page's buzz has a length and no strength;
 `Haptics.pinDrop`, 0.75). Each map says when it starts and stops moving
 (`onMoveStart`, `onSettle` in `engines.ts`; `onMapCameraChange` in the app),
 and the centre during a move is never state, only the flip. Reduced motion keeps
-it still. The address is asked only once the map has rested 350ms.
+it still. The address is asked only once the map has rested 350ms. **The
+app's ring jumps to where it starts and eases out from rest**
+(`PinMark.ringKeyframes`: a `MoveKeyframe` then a `LinearKeyframe` on an
+ease-out, the web's `pin-ring`), on the owner's report of a broken circle. A
+keyframe animator starts every run after the first from where the last
+ended, and a cubic keyframe after a 10ms linear one took that step's speed
+as its own: modelled, the scale swung to about −12 on every drop after the
+first — a mirrored ring the width of the map — and the opacity sat past 1
+for most of every run, so it never faded. `PinRingTests` evaluates the
+timeline from both starts. The web's ring was measured frame by frame and
+was right. **A keyframe that starts a run is a `MoveKeyframe`**, never a
+short linear one.
 
 **Saving asks first: "Is this your address?"** (`AddressConfirm`,
 `AddressConfirmSheet`), on the owner's word — the pin on a still map
@@ -5863,8 +5892,8 @@ link in a box when the clipboard refuses; "See what visitors see" opens the
 gift page. The phone lookup is asked only on Find — never again on window
 focus, which spent one of the hourly sixty each time a giver came back from
 their messages — and the footer has the way in ("Find a wishlist"), which only
-a link somebody sent used to be. **The finder is also in the account's
-Wishlists and gifts, on the owner's word** (`GiftFinder` in `GiftList.tsx`,
+a link somebody sent used to be. **The finder is also on the Wishlists tab of
+Saved items and wishlists, on the owner's word** (`GiftFinder` in `GiftList.tsx`,
 drawn by `WishlistManager`; the app's `GiftFinder` in `GiftListsView.swift`,
 drawn by `WishlistsView`), so somebody looking for a relative's list looks
 where their own are.
@@ -7624,8 +7653,10 @@ phone and its words in both languages, then 941 KB (272 KB), the
 one-time code's choice and step, then 947 KB (273 KB), the iPhone's
 Face ID words in both languages (every `ios.*` key ships in the one
 dictionary), then 954 KB (276 KB), choosing what to check out and the
-photo's glass and typed count, and is 958 KB (276 KB) now, My orders'
-filters and the compact profile's words, nearly
+photo's glass and typed count, then 958 KB (276 KB), My orders'
+filters and the compact profile's words, and is 959 KB (277 KB) now,
+Saved items and wishlists, the history's selection and the haptics
+switch, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
@@ -8567,6 +8598,18 @@ start the task — so a panel written `Group { if !items.isEmpty { … } }.task
 { load items }` waits for items it never asks for. Bought-together, the help
 page's guides, the bundles, the price request and the shop's other channels
 were all that shape; each is a `VStack` now, which exists while empty.
+
+**Haptic feedback can be turned off for the whole app, on the owner's word**
+("an option in the preferences that will allow the user to fully disable
+haptic feedback"): a switch in Preferences (`HapticsCard`, `haptics.*`),
+kept on the phone (`Haptics.enabledKey`), which `Haptics.impact` — the one
+place a tap is played — asks first; the product page's bag tap, the one
+`sensoryFeedback`, asks the same `Haptics.enabled`. The website's is the same
+switch (`HapticsPanel`, `netlet:haptics`, read inside `buzz`), drawn only
+where a buzz can be felt — `navigator.vibrate` and a touch screen, an Android
+phone — since a computer's Chrome has the call and nothing to buzz.
+Measured: the account bell's press buzzed once on, not at all off, once on
+again. The system's own "System Haptics" still silences everything.
 
 **Every haptic in the app is at half strength but the tab bar's, which is
 three quarters, on the owner's word** (`Haptics.strength` 0.5,

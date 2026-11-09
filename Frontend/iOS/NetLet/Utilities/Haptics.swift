@@ -17,8 +17,19 @@ import UIKit
 ///
 /// One generator, so every press is the same tap. The system's own "System
 /// Haptics" switch silences all of it, as it does every app's.
+///
+/// **And the app's own switch does, on the owner's word** ("an option in the
+/// preferences that will allow the user to fully disable haptic feedback for
+/// the application"): `HapticsCard` in Preferences writes `enabledKey`, kept
+/// on this phone, and `impact` — the one place a tap is played — asks it
+/// first, so no press anywhere goes round it. The product page's bag tap is
+/// the system's `sensoryFeedback`, so it asks the same `enabled`.
 @MainActor
 enum Haptics {
+    /// The Preferences switch's key; on unless the shopper turned it off.
+    nonisolated static let enabledKey = "netlet.haptics"
+    nonisolated static var enabled: Bool { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
+
     /// Every haptic in the app but the tab bar's.
     static let strength: CGFloat = 0.5
     /// The tab bar's (the system's own, in `RootView`).
@@ -51,6 +62,7 @@ enum Haptics {
     }
 
     private static func impact(_ intensity: CGFloat) {
+        guard enabled else { return }
         generator.impactOccurred(intensity: intensity)
         // Ready for the next press, so it lands on the finger and not a beat after.
         generator.prepare()

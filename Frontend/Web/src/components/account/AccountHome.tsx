@@ -70,7 +70,6 @@ import {
   Bell,
   ChevronRight,
   CreditCard,
-  Gift,
   History,
   LifeBuoy,
   LogOut,
@@ -108,7 +107,6 @@ const CARDS: Row[][] = [
   [
     { id: "addresses", label: "address.book", icon: MapPin },
     { id: "payments", label: "account.sectionPayments", icon: CreditCard },
-    { id: "wishlists", label: "account.sectionWishlists", icon: Gift },
     { id: "offers", label: "offers.mine", icon: Tag },
     { id: "subscriptions", label: "subscriptions.section", icon: Repeat },
   ],
@@ -218,7 +216,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
         />
         <PreviewTile
           href="/saved"
-          title={t("footer.savedItems")}
+          title={t("saved.andWishlists")}
           photos={savedPhotos}
           loading={saved.waiting}
           empty={t("saved.emptyTitle")}

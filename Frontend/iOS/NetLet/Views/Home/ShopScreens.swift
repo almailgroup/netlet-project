@@ -107,6 +107,10 @@ struct CategoriesView: View {
 /// What the shopper saved — the hearts, on the account when signed in and on
 /// this phone when not — the web's `/saved`.
 struct SavedView: View {
+    /// The two tabs, on the owner's word ("make it Saved items and wishlists,
+    /// so both will be in one") — the web's `/saved` and its `?tab=wishlists`.
+    enum Showing: Hashable { case saved, wishlists }
+    @State private var tab: Showing
     @State private var catalogue: LoadState<[Product]> = .idle
     /// The products chosen for Move to cart or Remove — the web's circles,
     /// on the owner's word ("a multiple selection option for the pages that
@@ -115,20 +119,29 @@ struct SavedView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
+    init(initialTab: Showing = .saved) {
+        _tab = State(initialValue: initialTab)
+    }
+
     var body: some View {
         let ids = app.saved.ids
         let found = (catalogue.value ?? []).filter { ids.contains($0.id) }
             .sorted { (ids.firstIndex(of: $0.id) ?? 0) < (ids.firstIndex(of: $1.id) ?? 0) }
         let missing = catalogue.value == nil ? 0 : max(0, ids.count - found.count)
-        ShopPage(refresh: { await load() }) {
+        ShopPage(refresh: { if tab == .saved { await load() } }) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: [l.t("saved.title")])
-                Text(l.t("saved.title")).pageTitle()
+                Breadcrumbs(trail: [l.t("saved.andWishlists")])
+                Text(l.t("saved.andWishlists")).pageTitle()
+                TextTabs(tabs: [TextTab(id: Showing.saved, label: l.t("footer.savedItems")), TextTab(id: Showing.wishlists, label: l.t("saved.tabWishlists"))], selection: tab) { tab = $0 }
+                    .padding(.top, 12)
+                if tab == .wishlists {
+                    WishlistsTab().padding(.top, 20)
+                } else {
                 Text(ids.isEmpty ? l.t("saved.emptyPrompt") : found.count == 1 ? l.t("saved.countOne") : l.t("saved.count", ["count": "\(found.count)"]))
                     .font(.inter(15))
                     .foregroundStyle(Brand.body)
-                    .padding(.top, 8)
-                    .padding(.bottom, 24)
+                    .padding(.top, 16)
+                    .padding(.bottom, 20)
                 if missing > 0 {
                     Text(missing == 1 ? l.t("saved.unavailableOne") : l.t("saved.unavailableCount", ["count": "\(missing)"]))
                         .font(.inter(13))
@@ -176,6 +189,7 @@ struct SavedView: View {
                 // Under the hearts it learns from, and only once it has learnt
                 // something: nothing is drawn until it is personal.
                 RecommendedRail()
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 24)

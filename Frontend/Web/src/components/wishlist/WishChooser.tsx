@@ -107,7 +107,7 @@ export function WishChooser({ productId, start = "choose", signedIn, onSave, onC
           onWished?.();
           onClose();
           toast.success(t(visibility === "public" ? "wish.addedPublic" : "wish.addedPrivate", { list: isolate(answer.title) }), {
-            action: { label: t("wish.viewLists"), onClick: () => navigateWhenReady(appPath("/account/wishlists")) },
+            action: { label: t("wish.viewLists"), onClick: () => navigateWhenReady(appPath("/saved?tab=wishlists")) },
           });
         },
         onError: error => {

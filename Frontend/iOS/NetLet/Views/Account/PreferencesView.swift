@@ -3,7 +3,8 @@ import SwiftUI
 /// The account's preferences — the web's `AccountPreferences`: the delivery
 /// area, which notices the shopper hears in the five groups the web draws
 /// (`NoticeCategoriesList`), and the app's own settings: what it keeps on the
-/// phone with Clear cache (`StorageCard`) and Rate our app (`RateAppCard`). The language and the currency
+/// phone with Clear cache (`StorageCard`), haptic feedback on or off
+/// (`HapticsCard`) and Rate our app (`RateAppCard`). The language and the currency
 /// left for the Profile tab's Quick settings, on the owner's word ("clearly
 /// visible and directly accessible from the My Profile page").
 struct PreferencesView: View {
@@ -17,6 +18,7 @@ struct PreferencesView: View {
                     VStack(spacing: 14) {
                         panel(symbol: "mappin", title: "account.deliveryArea", note: "account.pricingUnconfigured") { area(model) }
                         panel(symbol: "bell", title: "notify.title", note: "notify.intro") { NoticeCategoriesList(model: model) }
+                        panel(symbol: "iphone.radiowaves.left.and.right", title: "haptics.title", note: "haptics.note") { HapticsCard() }
                         panel(symbol: "internaldrive", title: "storage.title", note: "storage.note") { StorageCard() }
                         panel(symbol: "star", title: "ios.rate.title", note: "ios.rate.note") { RateAppCard() }
                     }

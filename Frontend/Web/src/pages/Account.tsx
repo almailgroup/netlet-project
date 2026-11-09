@@ -45,7 +45,6 @@ import { AccountOrders } from "@/components/account/AccountOrders";
 import { AccountPayments } from "@/components/account/AccountPayments";
 import { AccountFrequent } from "@/components/account/AccountFrequent";
 import { AccountNotifications } from "@/components/account/AccountNotifications";
-import { WishlistManager } from "@/components/account/WishlistManager";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { AuthScreen } from "@/components/auth/AuthScreen";
@@ -80,8 +79,7 @@ const ENTRIES: Entry[] = [
   { id: "orders", label: "account.sectionOrders", hint: "account.hint.orders" },
   { id: "frequent", label: "frequent.section", hint: "account.hint.frequent" },
   { id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions" },
-  { id: "saved", label: "footer.savedItems", hint: "account.hint.saved", href: "/saved" },
-  { id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists" },
+  { id: "saved", label: "saved.andWishlists", hint: "account.hint.saved", href: "/saved" },
   { id: "offers", label: "offers.mine", hint: "account.hint.offers" },
   { id: "notifications", label: "notices.title", hint: "notices.tile" },
   { id: "help", label: "support.section", hint: "account.hint.help" },
@@ -101,7 +99,9 @@ const ENTRIES: Entry[] = [
  * each on the owner's word — and a notice, an email or a bookmark sent before
  * still links to the old one.
  */
-const MOVED: Record<string, string> = { security: "details", returns: "orders?view=returns", reviews: "orders?view=reviews" };
+/* A value that starts with "/" left the account altogether: the wishlists are a tab of Saved items now. */
+const MOVED: Record<string, string> = { security: "details", returns: "orders?view=returns", reviews: "orders?view=reviews", wishlists: "/saved?tab=wishlists" };
+const movedTo = (to: string) => (to.startsWith("/") ? to : `/account/${to}`);
 
 /** The account's one column: the home's width, in the middle of the page. */
 const COLUMN = "mx-auto max-w-2xl";
@@ -113,7 +113,6 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
     case "frequent": return <AccountFrequent />;
     case "payments": return <AccountPayments />;
     case "subscriptions": return <AccountSubscriptions />;
-    case "wishlists": return <WishlistManager />;
     case "offers": return <AccountOffers />;
     case "notifications": return <AccountNotifications />;
     case "help": return <AccountSupport />;
@@ -195,21 +194,22 @@ export default function Account() {
   useEffect(() => {
     if (onSection) return;
     const hash = decodeURIComponent(window.location.hash.slice(1));
-    if (hash && ENTRIES.some(entry => entry.id === hash && !entry.href)) navigate(`/account/${hash}`, { replace: true });
+    if (hash && MOVED[hash]) navigate(movedTo(MOVED[hash]), { replace: true });
+    else if (hash && ENTRIES.some(entry => entry.id === hash && !entry.href)) navigate(`/account/${hash}`, { replace: true });
   }, [onSection, navigate]);
 
   /* An old address of a section that moved opens where it went. */
   const moved = onSection && params?.section ? MOVED[params.section] : undefined;
   useEffect(() => {
-    if (moved) navigate(`/account/${moved}`, { replace: true });
+    if (moved) navigate(movedTo(moved), { replace: true });
   }, [moved, navigate]);
 
   const section = onSection ? entries.find(entry => entry.id === (moved?.split("?")[0] ?? params?.section) && !entry.href) ?? null : null;
   /* A section this account does not have — typed in, or from somebody else's link — is the home. */
   const settled = !loading && !me.isLoading;
   useEffect(() => {
-    if (onSection && settled && isAuthenticated && !section) navigate("/account", { replace: true });
-  }, [onSection, settled, isAuthenticated, section, navigate]);
+    if (onSection && settled && isAuthenticated && !section && !moved) navigate("/account", { replace: true });
+  }, [onSection, settled, isAuthenticated, section, moved, navigate]);
 
 
   return (

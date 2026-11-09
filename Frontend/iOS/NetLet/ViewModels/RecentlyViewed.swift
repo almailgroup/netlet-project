@@ -50,7 +50,12 @@ final class RecentlyViewed {
 
     /// Takes one product off — the browsing history's own remove (`forgetViewed`).
     func forget(_ id: String) {
-        entries = Self.without(entries, id: id)
+        forget([id])
+    }
+
+    /// Takes every product chosen off — the history's Delete (n), on the owner's word.
+    func forget(_ ids: [String]) {
+        entries = Self.without(entries, ids: ids)
         if entries.isEmpty {
             defaults.removeObject(forKey: Self.key)
         } else {
@@ -65,7 +70,13 @@ final class RecentlyViewed {
 
     /// The list without one product (`withoutViewed`).
     nonisolated static func without(_ list: [Entry], id: String) -> [Entry] {
-        list.filter { $0.id != id }
+        without(list, ids: [id])
+    }
+
+    /// The list without every product named, the rest in order (`withoutViewed`).
+    nonisolated static func without(_ list: [Entry], ids: [String]) -> [Entry] {
+        let gone = Set(ids)
+        return list.filter { !gone.contains($0.id) }
     }
 
     /// The list with `id` put first, once (`withViewed`).

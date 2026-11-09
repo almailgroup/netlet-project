@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { freshViewed, MAX_VIEWED, VIEWED_DAYS, withViewed, type Viewed } from "./recentlyViewed";
+import { freshViewed, MAX_VIEWED, VIEWED_DAYS, withoutViewed, withViewed, type Viewed } from "./recentlyViewed";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -39,5 +39,15 @@ describe("previously viewed", () => {
       null,
     ], now);
     expect(list.map(entry => entry.id)).toEqual(["b", "a"]);
+  });
+
+  /* One comes off with its own cross; several, or all, with Delete (n). */
+  it("takes out one product, or every one chosen, and keeps the rest in order", () => {
+    const list: Viewed[] = [{ id: "a", at: 3 }, { id: "b", at: 2 }, { id: "c", at: 1 }];
+    expect(withoutViewed(list, "b").map(entry => entry.id)).toEqual(["a", "c"]);
+    expect(withoutViewed(list, ["a", "c"]).map(entry => entry.id)).toEqual(["b"]);
+    expect(withoutViewed(list, ["a", "b", "c"])).toEqual([]);
+    expect(withoutViewed(list, ["gone"])).toEqual(list);
+    expect(withoutViewed(list, [])).toEqual(list);
   });
 });

@@ -761,6 +761,10 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(Route.from(link: "/guides/how-to-return-an-item"), .guide(slug: "how-to-return-an-item"))
         XCTAssertEqual(Route.from(link: "/gifts/abc12345"), .gift(token: "abc12345"))
         XCTAssertEqual(Route.from(link: "/account/orders?order=NL-1"), .order(reference: "NL-1"))
+        // Saved items and wishlists are one page: the wishlists are its second tab.
+        XCTAssertEqual(Route.from(link: "/saved"), .saved)
+        XCTAssertEqual(Route.from(link: "/saved?tab=wishlists"), .wishlists)
+        XCTAssertEqual(Route.from(link: "/account/wishlists"), .wishlists)
         // The bag reminder's link: a notice the app drew as a card that did nothing.
         XCTAssertEqual(Route.from(link: "/cart"), .tab(.cart))
         XCTAssertEqual(Route.from(link: "/categories"), .tab(.categories))
@@ -1483,6 +1487,17 @@ final class RecentlyViewedTests: XCTestCase {
         XCTAssertEqual(viewed.ids.count, RecentlyViewed.most)
         XCTAssertEqual(viewed.ids.first, "p\(RecentlyViewed.most + 4)")
 
+        // One off with its cross; several, or all, with Delete (n) — kept across a launch.
+        viewed.forget("p\(RecentlyViewed.most + 4)")
+        XCTAssertEqual(viewed.ids.first, "p\(RecentlyViewed.most + 3)")
+        viewed.forget(["p\(RecentlyViewed.most + 3)", "p\(RecentlyViewed.most + 1)", "never-viewed"])
+        XCTAssertEqual(Array(viewed.ids.prefix(2)), ["p\(RecentlyViewed.most + 2)", "p\(RecentlyViewed.most)"])
+        XCTAssertEqual(RecentlyViewed(defaults: defaults, now: { clock }).ids, viewed.ids)
+        viewed.forget(viewed.ids)
+        XCTAssertEqual(viewed.ids, [])
+        XCTAssertEqual(RecentlyViewed(defaults: defaults, now: { clock }).ids, [])
+
+        viewed.remember("again")
         viewed.clear()
         XCTAssertEqual(viewed.ids, [])
         XCTAssertEqual(RecentlyViewed(defaults: defaults, now: { clock }).ids, [])

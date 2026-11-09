@@ -151,7 +151,6 @@ private struct OrdersTop: View {
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var still
-    @Namespace private var underline
     @State private var typed = ""
     @State private var sent = ""
     @State private var opened = false
@@ -231,52 +230,11 @@ private struct OrdersTop: View {
     }
 
     private var tabRow: some View {
-        VStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 24) {
-                        ForEach(tabs, id: \.self) { tab in tabButton(tab) }
-                    }
-                    .padding(.horizontal, 16)
-                }
-                .onAppear { proxy.scrollTo(model.tab, anchor: .center) }
-                .onChange(of: model.tab) { _, tab in
-                    withAnimation(still ? nil : .snappy(duration: 0.3)) { proxy.scrollTo(tab, anchor: .center) }
-                }
-            }
-            Rectangle().fill(Brand.cardLine).frame(height: 1)
-        }
-        .padding(.horizontal, -16)
-    }
-
-    private func tabButton(_ tab: String) -> some View {
-        let on = model.tab == tab
-        return Button {
+        TextTabs(tabs: tabs.map { TextTab(id: $0, label: l.t(Self.label($0))) }, selection: model.tab) { tab in
             // The tab at once, so the line slides under it; the list is asked for after.
-            withAnimation(still ? nil : .snappy(duration: 0.28)) { model.pick(tab: tab) }
+            model.pick(tab: tab)
             Task { await model.choose(tab: tab) }
-        } label: {
-            VStack(spacing: 8) {
-                Text(l.t(Self.label(tab)))
-                    .font(.inter(16, on ? .semibold : .medium))
-                    .foregroundStyle(on ? Brand.navy : Brand.muted)
-                    .lineLimit(1)
-                    .fixedSize()
-                ZStack {
-                    Capsule().fill(Color.clear).frame(width: 28, height: 4)
-                    if on {
-                        Capsule().fill(Brand.navy).frame(width: 28, height: 4)
-                            .matchedGeometryEffect(id: "underline", in: underline)
-                    }
-                }
-            }
-            .padding(.top, 4)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.tap)
-        .id(tab)
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private func toggleSearch() {

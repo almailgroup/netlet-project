@@ -4,55 +4,72 @@ import SwiftUI
 /// find their lists by, the lists in two groups — public, then private, each
 /// saying who can see it, since the heart asks which (`WishSheet`) — each with
 /// its share link, and a new one made by name.
-struct WishlistsView: View {
+///
+/// **It is the second tab of Saved items and wishlists, on the owner's word**
+/// ("make it Saved items and wishlists, so both will be in one"): the
+/// Profile tab's Wishlists row went, and `Route.wishlists` opens `SavedView`
+/// on this tab. A guest has no lists, so their tab offers the sign-in and the
+/// finder for somebody else's list, which needs no account.
+struct WishlistsTab: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ModelHost(make: { WishlistsModel(api: app.services.api) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }) {
-                AccountSection(title: l.t("account.sectionWishlists"), hint: l.t("account.hint.wishlists")) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Text(l.t(app.features.isOn("wishlists") ? "wish.intro" : "wish.switchedOff"))
-                            .font(.inter(14))
-                            .foregroundStyle(Brand.body)
-                            .fixedSize(horizontal: false, vertical: true)
-                        PhoneCard(model: model)
-                        // Somebody else's list, found by their number or the
-                        // name on it — here, on the owner's word, where the
-                        // account's own lists are.
-                        if app.features.isOn("wishlists") {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(l.t("gift.heading"))
-                                    .font(.inter(16, .heavy))
-                                    .foregroundStyle(Brand.navy)
-                                    .accessibilityAddTraits(.isHeader)
-                                Text(l.t("gift.intro"))
-                                    .font(.inter(13))
-                                    .foregroundStyle(Brand.muted)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                GiftFinder(inset: true).padding(.top, 6)
-                            }
-                            .card()
-                        }
-                        LoadStateView(state: model.lists.state, retry: { await model.load() }) { lists in
-                            VStack(alignment: .leading, spacing: 12) {
-                                // Public first and private second, each under a
-                                // heading saying who can see it — the heart asks
-                                // which, so this answers in the same words.
-                                ForEach(["public", "private"], id: \.self) { visibility in
-                                    VisibilityGroup(visibility: visibility, lists: lists.filter { list in list.visibility == visibility }, model: model)
-                                }
-                                if app.features.isOn("wishlists") { NewListForm(model: model) }
-                            }
-                        }
+        if app.session.isSignedIn {
+            ModelHost(make: { WishlistsModel(api: app.services.api) }) { model in
+                owned(model)
+                    .task { await model.load() }
+                    // An item added or taken off here fills or empties hearts elsewhere.
+                    .onDisappear { Task { await app.saved.refreshWished() } }
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 14) {
+                EmptyStateView(systemImage: "gift", title: l.t("wish.guestTitle"), note: l.t("wish.guestNote"), actionTitle: l.t("header.signIn")) {
+                    app.open(.wishlists)
+                }
+                .card(padding: 0)
+                finder
+            }
+        }
+    }
+
+    private func owned(_ model: WishlistsModel) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(l.t(app.features.isOn("wishlists") ? "wish.intro" : "wish.switchedOff"))
+                .font(.inter(14))
+                .foregroundStyle(Brand.body)
+                .fixedSize(horizontal: false, vertical: true)
+            PhoneCard(model: model)
+            // Somebody else's list, found by their number or the name on it —
+            // here, on the owner's word, where the account's own lists are.
+            if app.features.isOn("wishlists") { finder }
+            LoadStateView(state: model.lists.state, retry: { await model.load() }) { lists in
+                VStack(alignment: .leading, spacing: 12) {
+                    // Public first and private second, each under a heading
+                    // saying who can see it — the heart asks which, so this
+                    // answers in the same words.
+                    ForEach(["public", "private"], id: \.self) { visibility in
+                        VisibilityGroup(visibility: visibility, lists: lists.filter { list in list.visibility == visibility }, model: model)
                     }
+                    if app.features.isOn("wishlists") { NewListForm(model: model) }
                 }
             }
-            .task { await model.load() }
-            // An item added or taken off here fills or empties hearts elsewhere.
-            .onDisappear { Task { await app.saved.refreshWished() } }
         }
+    }
+
+    private var finder: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(l.t("gift.heading"))
+                .font(.inter(16, .heavy))
+                .foregroundStyle(Brand.navy)
+                .accessibilityAddTraits(.isHeader)
+            Text(l.t("gift.intro"))
+                .font(.inter(13))
+                .foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            GiftFinder(inset: true).padding(.top, 6)
+        }
+        .card()
     }
 }
 

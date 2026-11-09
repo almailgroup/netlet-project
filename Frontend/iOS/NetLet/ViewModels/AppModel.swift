@@ -98,7 +98,7 @@ enum Route: Hashable {
         case ("brands"?, 1): return .brands
         case ("stores"?, 2): return .store(slug: segments[1])
         case ("search"?, _): return .search(query: query["q"] ?? "")
-        case ("saved"?, _): return .saved
+        case ("saved"?, _): return query["tab"] == "wishlists" ? .wishlists : .saved
         case ("checkout"?, _): return .checkout
         case ("help"?, _): return .helpCentre
         case ("returns"?, _): return .returnsPolicy

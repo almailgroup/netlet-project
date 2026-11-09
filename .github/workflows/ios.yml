@@ -230,6 +230,8 @@ jobs:
             shot 85-face-id-card "$lang" faceIdCard shopper
             # My orders' Reviews tab (Returns is 63), which moved from the Profile tab.
             shot 86-orders-reviews "$lang" section:reviews shopper
+            # Saved items and wishlists in one page, opened on its Wishlists tab.
+            shot 87-saved-wishlists "$lang" section:wishlists shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

@@ -45,6 +45,7 @@ import { cameFrom, goBack } from "@/lib/inAppBack";
 import { Link, useLocation, useSearch } from "wouter";
 import { useEffect, useId, useRef, useState } from "react";
 import { Select } from "@/components/ui/Select";
+import { TextTabs } from "@/components/ui/TextTabs";
 import { AccountReturns } from "@/components/account/AccountReturns";
 import { AccountReviews } from "@/components/account/AccountReviews";
 import {
@@ -188,7 +189,6 @@ function OrdersTop({ tab, onTab, q, onSearch, period, onPeriod }: {
   const backLabel = !from || from.split("?")[0] === "/account" ? t("account.backToAccount") : t("nav.back");
   const panelId = useId();
   const box = useRef<HTMLInputElement>(null);
-  const row = useRef<HTMLDivElement>(null);
   const [opened, setOpened] = useState(Boolean(q) || period !== "all");
   const searching = viewing && (opened || Boolean(q) || period !== "all");
 
@@ -206,12 +206,6 @@ function OrdersTop({ tab, onTab, q, onSearch, period, onPeriod }: {
     const timer = window.setTimeout(() => send(typed.trim()), 350);
     return () => window.clearTimeout(timer);
   });
-
-  /* The chosen tab in view — Reviews, opened from its old address, is off the
-     end of a phone's row. */
-  useEffect(() => {
-    row.current?.querySelector<HTMLElement>("[aria-pressed=true]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [tab]);
 
   const toggle = () => {
     if (searching) {
@@ -256,33 +250,12 @@ function OrdersTop({ tab, onTab, q, onSearch, period, onPeriod }: {
         )}
       </div>
 
-      <div className="-mx-4 mt-2 border-b border-[#e3e6ec] sm:mx-0">
-        <div
-          ref={row}
-          role="group"
-          aria-label={t("orders.viewsLabel")}
-          className="flex gap-6 overflow-x-auto px-4 [scrollbar-width:none] sm:px-0"
-        >
-          {ORDER_TABS.map(entry => {
-            const on = tab === entry;
-            return (
-              <button
-                key={entry}
-                type="button"
-                aria-pressed={on}
-                onClick={() => onTab(entry)}
-                className={`relative min-h-11 shrink-0 whitespace-nowrap pb-3 pt-1 text-[16px] transition-colors ${on ? "font-semibold text-[#0a285a]" : "font-medium ink-muted hover:text-[#0a285a]"}`}
-              >
-                {t(TAB_LABEL[entry])}
-                <span
-                  aria-hidden
-                  className={`absolute bottom-0 left-1/2 h-1 w-7 -translate-x-1/2 rounded-full bg-[#0a285a] transition-opacity duration-200 ${on ? "opacity-100" : "opacity-0"}`}
-                />
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <TextTabs
+        items={ORDER_TABS.map(entry => ({ id: entry, label: t(TAB_LABEL[entry]) }))}
+        value={tab}
+        onChange={onTab}
+        label={t("orders.viewsLabel")}
+      />
 
       <div id={panelId} role="search" hidden={!searching} className="mt-3">
         <div className="flex flex-wrap gap-2">

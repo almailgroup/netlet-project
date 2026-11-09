@@ -7,9 +7,44 @@
  * asked for, and never allowed to throw: a phone that will not buzz is a phone
  * that says nothing, not a press that fails.
  */
+import { readStored, removeStored, writeStored } from "@/lib/browserStore";
+
+/*
+ * **A shopper can turn every buzz off, on the owner's word** ("fully disable
+ * haptic feedback for the application"): one switch in Preferences, kept on
+ * this device (`netlet:haptics`, "off" while off), read by `buzz` itself so
+ * no press anywhere can go round it. The app keeps its own (`Haptics.enabled`).
+ */
+const HAPTICS_KEY = "netlet:haptics";
+
+/** Whether the browser has the call at all. */
+function hasVibrate(): boolean {
+  return typeof navigator !== "undefined" && "vibrate" in navigator;
+}
+
+/**
+ * Whether a buzz can be felt here — the switch is drawn only where it can.
+ * A computer's Chrome has the call and nothing to buzz, so a touch screen is
+ * asked for too: an Android phone.
+ */
+export function canBuzz(): boolean {
+  return hasVibrate() && typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+}
+
+/** Whether the shopper has left the buzz on. */
+export function hapticsOn(): boolean {
+  return readStored(HAPTICS_KEY) !== "off";
+}
+
+export function setHapticsOn(on: boolean): void {
+  if (on) removeStored(HAPTICS_KEY);
+  else writeStored(HAPTICS_KEY, "off");
+}
+
 function buzz(pattern: number | number[]): void {
+  if (!hapticsOn()) return;
   try {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(pattern);
+    if (hasVibrate()) navigator.vibrate(pattern);
   } catch {
     /* A refused buzz is no buzz. */
   }
