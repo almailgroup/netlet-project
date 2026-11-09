@@ -440,6 +440,43 @@ describe("reading orders back", () => {
     expect(mine.rows[0].userId).toBe(ids.shopper);
   });
 
+  /* The filters at the top of My orders (on the owner's word) are applied
+     here over every order, with a count per view, never over one page. */
+  it("filters by view, search and period over every order, with counts", async () => {
+    const first = await twoVendorOrder();
+    const second = await ordersModule.placeOrder(await basket([{ variantId: ids.kettleVariant, quantity: 1 }], ids.shopper), { ...DETAILS, userId: ids.shopper });
+    const third = await ordersModule.placeOrder(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), { ...DETAILS, userId: ids.shopper });
+    await db.update(orderItems).set({ fulfilment: "shipped" }).where(eq(orderItems.orderId, second.order.id));
+    await db.update(orderItems).set({ fulfilment: "cancelled" }).where(eq(orderItems.orderId, third.order.id));
+    await db.update(orders).set({ placedAt: new Date(Date.now() - 200 * 86_400_000) }).where(eq(orders.id, first.order.id));
+
+    const everything = await ordersModule.listOrdersForUser(ids.shopper);
+    expect(everything.total).toBe(3);
+    expect(everything.counts).toEqual({ all: 3, processing: 1, onTheWay: 1, delivered: 0, cancelled: 1 });
+
+    const onTheWay = await ordersModule.listOrdersForUser(ids.shopper, { view: "onTheWay" });
+    expect(onTheWay.rows.map(row => row.reference)).toEqual([second.order.reference]);
+    expect(onTheWay.rows[0].summary?.progress).toEqual({ kind: "onTheWay" });
+
+    /* By what is in it, and by its number in part, without its dashes. */
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { q: "kettle" })).rows.map(row => row.reference).sort())
+      .toEqual([first.order.reference, second.order.reference].sort());
+    const tail = third.order.reference.split("-").at(-1)!;
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { q: tail.toLowerCase() })).rows.map(row => row.reference)).toEqual([third.order.reference]);
+
+    /* The last three months leave the one placed two hundred days ago out, and the counts follow. */
+    const recent = await ordersModule.listOrdersForUser(ids.shopper, { period: "90" });
+    expect(recent.total).toBe(2);
+    expect(recent.counts.processing).toBe(0);
+
+    /* Paged after filtering: one a page, the second page is the second order. */
+    const paged = await ordersModule.listOrdersForUser(ids.shopper, { pageSize: 1, page: 2 });
+    expect(paged.total).toBe(3);
+    expect(paged.rows).toHaveLength(1);
+    expect(paged.rows[0].reference).toBe(everything.rows[1].reference);
+    expect(paged.atCeiling).toBe(false);
+  });
+
   /* The list a shopper scans leads with what is in an order and where it is,
      not whether a cash order has been paid yet. */
   it("says what each order holds and how far it has got", async () => {

@@ -2,87 +2,334 @@ import SwiftUI
 
 /// The shopper's orders, each led by what is in it and where it is — the
 /// account's Orders section, drawn as the web's section page.
+///
+/// **It carries every tool somebody needs about what they bought, on the
+/// owner's word** ("add these filter options at the top of the my order page
+/// … I want the orders page to have all the tools that the user needs"): a
+/// row of chips — All, Processing, On the way, Delivered, Cancelled, each with
+/// how many it holds, then Returns and Reviews — a search by the order's
+/// number or anything in it, and how far back to look. The server filters
+/// over every order (`orders.list`, `Shared/commerce/orderFilters.ts`), so a
+/// chip's number is what pressing it shows. **Returns and Reviews moved here
+/// from the Profile tab**, also on the owner's word: they are lists of their
+/// own (`ReturnsList`, `ReviewsList`) under their chips.
 struct OrdersView: View {
+    /// The chip to open on: "returns" or "reviews" from their old addresses.
+    var initialTab = "all"
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ModelHost(make: { OrdersViewModel(service: app.services.orders) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }) {
+        ModelHost(make: {
+            OrdersViewModel(
+                service: app.services.orders,
+                tab: initialTab,
+                returns: { [api = app.services.api] in try await api.call(API.shopperReturns) },
+                reviews: { [api = app.services.api] in try await api.call(API.reviewableLines) }
+            )
+        }) { model in
+            ShopPage(header: false, refresh: { await model.loadAll() }) {
                 AccountSection(title: l.t("account.sectionOrders"), hint: l.t("account.hint.orders")) {
-                    LoadStateView(state: model.orders, retry: { await model.load() }) { orders in
-                        if orders.isEmpty {
-                            EmptyStateView(
-                                systemImage: "shippingbox",
-                                title: l.t("orders.emptyTitle"),
-                                note: l.t("orders.emptyBody"),
-                                actionTitle: l.t("cart.keepBrowsing")
-                            ) { app.goHome() }
-                            .card(padding: 0)
-                        } else {
-                            LazyVStack(spacing: 10) {
-                                ForEach(orders) { order in
-                                    VStack(alignment: .leading, spacing: 0) {
-                                        Button {
-                                            app.push(.order(reference: order.reference))
-                                        } label: {
-                                            OrderRow(order: order)
-                                                .padding(16)
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                        }
-                                        .buttonStyle(PressFillStyle(cornerRadius: 16))
-                                        // Request a refund from the list, on the owner's word:
-                                        // on an order with something that can still go back,
-                                        // opening it with its refund sheet up — the web's row.
-                                        // Rate what arrived, from the list too (the owner's "rate
-                                        // and review … from the My Orders section"): opening it with
-                                        // the first item to rate in its sheet.
-                                        let refundable = app.features.isOn("returns") && (order.summary.refundable ?? 0) > 0
-                                        let rateable = (order.summary.reviewable ?? 0) > 0
-                                        if refundable || rateable {
-                                            HStack(spacing: 8) {
-                                                Spacer(minLength: 0)
-                                                if rateable {
-                                                    Button {
-                                                        app.orderSheet = "rate"
-                                                        app.push(.order(reference: order.reference))
-                                                    } label: {
-                                                        Label(l.t("orders.rateItems"), systemImage: "star")
-                                                    }
-                                                    .buttonStyle(OrderActionStyle())
-                                                    .accessibilityLabel(l.t("orders.rateItems") + ": " + (order.summary.first?.title ?? order.reference))
-                                                }
-                                                if refundable {
-                                                    Button {
-                                                        app.orderSheet = "refund"
-                                                        app.push(.order(reference: order.reference))
-                                                    } label: {
-                                                        Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward")
-                                                    }
-                                                    .buttonStyle(OrderActionStyle())
-                                                    .accessibilityLabel(l.t("orders.requestRefund") + ": " + (order.summary.first?.title ?? order.reference))
-                                                }
-                                            }
-                                            .padding(.horizontal, 16)
-                                            .padding(.bottom, 14)
-                                        }
-                                    }
-                                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-                                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-                                }
-                                if model.canLoadMore {
-                                    ProgressView()
-                                        .tint(Brand.navy)
-                                        .frame(maxWidth: .infinity, minHeight: 60)
-                                        .task { await model.loadMore() }
-                                }
-                            }
+                    VStack(alignment: .leading, spacing: 14) {
+                        OrderTools(model: model)
+                        switch model.tab {
+                        case "returns": ReturnsList(returns: model.returns)
+                        case "reviews": ReviewsList(lines: model.reviews)
+                        default: orderList(model)
                         }
                     }
                 }
             }
-            .task { await model.load() }
+            .task { await model.loadAll() }
+        }
+    }
+
+    @ViewBuilder
+    private func orderList(_ model: OrdersViewModel) -> some View {
+        LoadStateView(state: model.orders, retry: { await model.load() }) { orders in
+            if orders.isEmpty {
+                if model.narrowed {
+                    EmptyStateView(
+                        systemImage: "magnifyingglass",
+                        title: l.t("orders.noMatchTitle"),
+                        note: l.t("orders.noMatchBody"),
+                        actionTitle: l.t("orders.clearFilters")
+                    ) { Task { await model.clearFilters() } }
+                    .card(padding: 0)
+                } else {
+                    EmptyStateView(
+                        systemImage: "shippingbox",
+                        title: l.t("orders.emptyTitle"),
+                        note: l.t("orders.emptyBody"),
+                        actionTitle: l.t("cart.keepBrowsing")
+                    ) { app.goHome() }
+                    .card(padding: 0)
+                }
+            } else {
+                LazyVStack(spacing: 10) {
+                    ForEach(orders) { order in
+                        VStack(alignment: .leading, spacing: 0) {
+                            Button {
+                                app.push(.order(reference: order.reference))
+                            } label: {
+                                OrderRow(order: order)
+                                    .padding(16)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .buttonStyle(PressFillStyle(cornerRadius: 16))
+                            // Request a refund from the list, on the owner's word:
+                            // on an order with something that can still go back,
+                            // opening it with its refund sheet up — the web's row.
+                            // Rate what arrived, from the list too (the owner's "rate
+                            // and review … from the My Orders section"): opening it with
+                            // the first item to rate in its sheet.
+                            let refundable = app.features.isOn("returns") && (order.summary.refundable ?? 0) > 0
+                            let rateable = (order.summary.reviewable ?? 0) > 0
+                            if refundable || rateable {
+                                HStack(spacing: 8) {
+                                    Spacer(minLength: 0)
+                                    if rateable {
+                                        Button {
+                                            app.orderSheet = "rate"
+                                            app.push(.order(reference: order.reference))
+                                        } label: {
+                                            Label(l.t("orders.rateItems"), systemImage: "star")
+                                        }
+                                        .buttonStyle(OrderActionStyle())
+                                        .accessibilityLabel(l.t("orders.rateItems") + ": " + (order.summary.first?.title ?? order.reference))
+                                    }
+                                    if refundable {
+                                        Button {
+                                            app.orderSheet = "refund"
+                                            app.push(.order(reference: order.reference))
+                                        } label: {
+                                            Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward")
+                                        }
+                                        .buttonStyle(OrderActionStyle())
+                                        .accessibilityLabel(l.t("orders.requestRefund") + ": " + (order.summary.first?.title ?? order.reference))
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 14)
+                            }
+                        }
+                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+                    }
+                    if model.canLoadMore {
+                        ProgressView()
+                            .tint(Brand.navy)
+                            .frame(maxWidth: .infinity, minHeight: 60)
+                            .task { await model.loadMore() }
+                    }
+                    if model.atCeiling {
+                        Text(l.t("orders.atCeiling"))
+                            .font(.inter(13))
+                            .foregroundStyle(Brand.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The tools at the top of My orders: the chips, then — on the orders' own
+/// views — the search and the period. A chip is a button that says whether it
+/// is chosen (`isSelected`), the web's `aria-pressed`: it narrows a list.
+private struct OrderTools: View {
+    let model: OrdersViewModel
+    @Environment(LanguageSettings.self) private var l
+    @State private var typed = ""
+    @State private var sent = ""
+    @FocusState private var searching: Bool
+
+    private var tabs: [String] { ReferenceData.shared.rules.orders?.filterTabs ?? ["all", "processing", "onTheWay", "delivered", "cancelled", "returns", "reviews"] }
+    private var periods: [String] { ReferenceData.shared.rules.orders?.filterPeriods ?? ["all", "30", "90", "180", "365"] }
+    private var searchMax: Int { ReferenceData.shared.rules.orders?.searchMax ?? 80 }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(tabs, id: \.self) { tab in chip(tab) }
+                }
+                .padding(.horizontal, 16)
+            }
+            .padding(.horizontal, -16)
+            if model.onOrders {
+                HStack(spacing: 8) {
+                    searchField
+                    periodMenu
+                }
+            }
+        }
+        // The search sent once typing pauses; the box follows the model only
+        // when something else changed it (Clear filters).
+        .task(id: typed) {
+            let value = String(typed.trimmingCharacters(in: .whitespacesAndNewlines).prefix(searchMax))
+            guard value != sent else { return }
+            try? await Task.sleep(for: .milliseconds(350))
+            guard !Task.isCancelled else { return }
+            sent = value
+            await model.search(value)
+        }
+        .onChange(of: model.filters.q) { _, q in
+            if q != sent { sent = q; typed = q }
+        }
+        .onAppear { typed = model.filters.q; sent = model.filters.q }
+    }
+
+    private func chip(_ tab: String) -> some View {
+        let on = model.tab == tab
+        let count = countOf(tab)
+        let showCount = count.map { $0 > 0 || !["returns", "reviews"].contains(tab) } ?? false
+        return Button {
+            Task { await model.choose(tab: tab) }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: Self.symbol(tab))
+                    .font(.system(size: 13, weight: .semibold))
+                    .accessibilityHidden(true)
+                Text(l.t(Self.label(tab)))
+                    .font(.inter(14, .bold))
+                    .lineLimit(1)
+                if showCount, let count {
+                    Text(verbatim: "\(count)")
+                        .font(.inter(12, .semibold))
+                        .monospacedDigit()
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(on ? Color.white.opacity(0.2) : Brand.tint))
+                }
+            }
+            .foregroundStyle(on ? Color.white : Brand.navy)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .background(Capsule().fill(on ? Brand.navy : Color.white))
+            .overlay(Capsule().strokeBorder(on ? Brand.navy : Brand.line, lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(SpringPressStyle(cornerRadius: 22))
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private func countOf(_ tab: String) -> Int? {
+        switch tab {
+        case "returns": return model.returnsCount
+        case "reviews": return model.reviewsCount
+        default: return model.counts?[tab]
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Brand.muted)
+                .accessibilityHidden(true)
+            TextField(l.t("orders.searchPlaceholder"), text: $typed)
+                .font(.inter(15))
+                .foregroundStyle(Brand.navy)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .focused($searching)
+                .onSubmit {
+                    let value = String(typed.trimmingCharacters(in: .whitespacesAndNewlines).prefix(searchMax))
+                    sent = value
+                    Task { await model.search(value) }
+                }
+                .accessibilityLabel(l.t("orders.searchLabel"))
+            if !typed.isEmpty {
+                Button {
+                    typed = ""
+                    sent = ""
+                    Task { await model.search("") }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 17))
+                        .foregroundStyle(Brand.muted)
+                        .frame(width: 36, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.tap)
+                .accessibilityLabel(l.t("orders.searchClear"))
+            }
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, typed.isEmpty ? 12 : 2)
+        .frame(minHeight: 44)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(searching ? Brand.navy : Brand.line, lineWidth: searching ? 1.5 : 1))
+    }
+
+    private var periodMenu: some View {
+        Menu {
+            ForEach(periods, id: \.self) { period in
+                Button {
+                    Haptics.tap()
+                    Task { await model.choose(period: period) }
+                } label: {
+                    if model.filters.period == period {
+                        Label(l.t(Self.periodLabel(period)), systemImage: "checkmark")
+                    } else {
+                        Text(l.t(Self.periodLabel(period)))
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Text(l.t(Self.periodLabel(model.filters.period)))
+                    .font(.inter(14, .semibold))
+                    .foregroundStyle(Brand.navy)
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Brand.muted)
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+            .fixedSize()
+        }
+        .accessibilityLabel(l.t("orders.periodLabel"))
+        .accessibilityValue(l.t(Self.periodLabel(model.filters.period)))
+    }
+
+    static func label(_ tab: String) -> String {
+        switch tab {
+        case "processing": return "orders.viewProcessing"
+        case "onTheWay": return "orders.viewOnTheWay"
+        case "delivered": return "orders.viewDelivered"
+        case "cancelled": return "orders.viewCancelled"
+        case "returns": return "orders.viewReturns"
+        case "reviews": return "orders.viewReviews"
+        default: return "orders.viewAll"
+        }
+    }
+
+    static func symbol(_ tab: String) -> String {
+        switch tab {
+        case "processing": return "clock"
+        case "onTheWay": return "truck.box"
+        case "delivered": return "checkmark.circle"
+        case "cancelled": return "xmark.circle"
+        case "returns": return "arrow.uturn.backward"
+        case "reviews": return "star"
+        default: return "shippingbox"
+        }
+    }
+
+    static func periodLabel(_ period: String) -> String {
+        switch period {
+        case "30": return "orders.period30"
+        case "90": return "orders.period90"
+        case "180": return "orders.period180"
+        case "365": return "orders.period365"
+        default: return "orders.periodAll"
         }
     }
 }

@@ -26,7 +26,7 @@ private struct ResetByCodeForm: View {
     @Environment(LanguageSettings.self) private var l
     @FocusState private var focus: Field?
 
-    enum Field: Hashable { case code, password }
+    enum Field: Hashable { case code, password, again }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -62,6 +62,15 @@ private struct ResetByCodeForm: View {
                 .onChange(of: model.password) { _, _ in model.passwordChanged() }
                 PasswordMeter(password: model.password)
             }
+            LabeledField(
+                label: l.t("auth.passwordAgainLabel"),
+                text: $model.again,
+                problem: model.tried ? model.againProblem : nil,
+                content: .newPassword,
+                secure: true,
+                leftToRight: true
+            )
+            .focused($focus, equals: .again)
             if let refusal = model.refusal, !model.refusalIsCode {
                 FieldProblem(key: refusal)
             }
@@ -87,7 +96,7 @@ private struct ResetByCodeForm: View {
             verify?(email, password)
         case nil:
             Haptics.refused()
-            if model.codeProblem != nil || model.refusalIsCode { focus = .code } else { focus = .password }
+            if model.codeProblem != nil || model.refusalIsCode { focus = .code } else if model.passwordProblem == nil, model.againProblem != nil { focus = .again } else { focus = .password }
         }
     }
 }

@@ -59,9 +59,10 @@ struct AccountView: View {
     /// `CARDS`. Returns and Payment methods joined the first card; Price
     /// requests and Subscribe & Save are rows only for somebody who has one
     /// (`holdings`). Frequently bought is a tile now, and the password and
-    /// deleting the account are "Your profile"'s.
+    /// deleting the account are "Your profile"'s. **Returns and Reviews went
+    /// to My orders, on the owner's word**, as tabs of its own.
     private static let cards: [[String]] = [
-        ["returns", "addresses", "payments", "wishlists", "reviews", "offers", "subscriptions"],
+        ["addresses", "payments", "wishlists", "offers", "subscriptions"],
         // Browsing history, less prominent than the home's own shelf, on the owner's word.
         ["preferences", "history"],
     ]
@@ -642,14 +643,14 @@ struct AccountEntry: Identifiable, Hashable {
     }
 }
 
-/// "Your profile", drawn to the owner's reference (Noon's "Your profile"): a
-/// round back button beside the title, then white cards whose boxes carry
-/// their labels inside the rim (`FloatingField`). The name, the details and
-/// the password are cards with Saves of their own — different decisions, and
-/// one Save across them would change a password somebody only opened the page
-/// to fix a spelling in. **Account security is this page now, on the owner's
-/// word**: the password, the code for a forgotten one and deleting the account
-/// close it, and the Sign-in email and "Signed in as" cards went from it.
+/// "Your profile", compact on the owner's word ("make it very compact and
+/// simple, it should list your details by default and you can edit them"): a
+/// round back button beside the title, then one card listing the photo, the
+/// name, the sign-in email, the phone, the gender, the birthday and the
+/// password, each with its value and an Edit (`ProfileForm`); Face ID and
+/// deleting the account (folded to one row) follow. **Account security is
+/// this page now, on the owner's word**: the password, the code for a
+/// forgotten one and deleting the account are here.
 struct ProfileView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -660,7 +661,6 @@ struct ProfileView: View {
             ShopPage(header: false) {
                 VStack(alignment: .leading, spacing: 16) {
                     RoundBackTitle(title: l.t("account.sectionProfile"))
-                    if let user = app.session.user { ProfilePhotoCard(user: user) }
                     ProfileForm(model: model)
                     // Face ID beside the password: another way to sign in,
                     // and "Set up again" for a face added since.
@@ -724,94 +724,321 @@ struct RoundBackTitle: View {
     }
 }
 
-/// "Your profile", drawn to the owner's reference (Noon's "Your profile") and
-/// card for card the web's `ProfileManager`: the name in two boxes side by
-/// side, the phone, the gender and the birthday, then the password and the
-/// way back in to it. Each card is its own decision — a gender saves as it is
-/// pressed, the rest have a Save. The nationality was a card too, and the
-/// owner took it off as not needed; the sign-in email was one, and went with
-/// Account security's move here.
+/// "Your profile"'s one list, the web's `ProfileManager` row for row: the
+/// photo, then each detail with its value — or "Not added" — and an Edit at
+/// the row's end. Pressing Edit opens that row's own form in its place, and
+/// only one row is open at a time; Save or Cancel closes it again. Each row is
+/// its own decision — a gender saves as it is pressed, the rest have a Save —
+/// because one Save across them would change a password somebody only opened
+/// the page to fix a spelling in. **The new password is typed twice, on the
+/// owner's word** ("put a type password again for changing your password as a
+/// confirmation"), and the current one asked for first.
 private struct ProfileForm: View {
     @Bindable var model: ProfileViewModel
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var choosingBirthday = false
     /// "Forgot your current password?": a six-digit code to the account's own
-    /// email, and the new password with it, on this card (on the owner's word).
+    /// email, and the new password with it, in the password row (on the owner's word).
     @State private var recovering: Recovery = .idle
-    /// How the account signs in: one made with Apple or Google has no
+    /// How the account signs in: one made with Apple, Google or a phone has no
     /// password to change, and sets one by the same emailed code a forgotten
     /// one is.
     @State private var ways: AccountSignInWays?
+    /// The one row open; nil is the list.
+    @State private var editing: Row?
+    /// VoiceOver's place: the open row's name, or the Edit it came from.
+    @AccessibilityFocusState private var spoken: Row?
 
     private enum Recovery { case idle, sending, sent }
+    private enum Row: Hashable { case name, email, phone, gender, birthday, password }
 
-    private var appleOnly: Bool { ways?.password == false }
+    private var noPassword: Bool { ways?.password == false }
 
     var body: some View {
-        VStack(spacing: 16) {
-            profileCards
-            if let user = app.session.user, user.email == nil {
-                // An account made with a phone has no email yet: this card
-                // offers one (by a code sent to it), and the password follows.
-                AddEmailCard(phone: user.phone) { updated in app.session.updated(updated) }
-            } else {
-                if !appleOnly { passwordCard }
-                recoverCard
+        VStack(spacing: 0) {
+            if let user = app.session.user, app.profilePhoto.ready {
+                ProfilePhotoRow(user: user)
+                DashedRule()
+            }
+            row(.name, label: "profile.nameTitle", value: fullName) { nameEditor }
+            DashedRule()
+            emailRow
+            DashedRule()
+            row(.phone, label: "profile.phoneTitle", value: model.details.phone.map { "+965 " + PhoneNumber.display($0) }, leftToRight: true) { phoneEditor }
+            DashedRule()
+            row(.gender, label: "profile.genderTitle", value: model.details.gender.map { l.t($0 == "male" ? "profile.male" : "profile.female") }) { genderEditor }
+            DashedRule()
+            row(.birthday, label: "profile.birthdayTitle", value: model.details.birthday.map { OrderWording.day($0, language: l.current) }) { birthdayEditor }
+            if app.session.user?.email != nil {
+                DashedRule()
+                passwordRow
             }
         }
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .panel()
         .task { if ways == nil { ways = try? await app.services.account.accountSignInWays() } }
     }
 
-    private var passwordCard: some View {
-        card(.password, title: "account.password", note: "account.passwordNote", done: "account.passwordChanged") {
-            FloatingField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
-            FloatingField(label: l.t("account.newPassword"), text: $model.newPassword, content: .newPassword, secure: true, leftToRight: true)
-            PasswordMeter(password: model.newPassword)
-        } action: {
-            saveButton(.password, enabled: true) { _ = await model.savePassword() }
+    private var fullName: String? {
+        let joined = [model.savedFirst, model.savedLast].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }.joined(separator: " ")
+        return joined.isEmpty ? nil : joined
+    }
+
+    private func open(_ which: Row) {
+        if let previous = editing { close(previous) }
+        withAnimation(.snappy(duration: 0.22)) { editing = which }
+        spoken = which
+    }
+
+    private func close(_ which: Row) {
+        if let form = form(of: which) { model.cancel(form) }
+        if which == .birthday { choosingBirthday = false }
+        if which == .password { recovering = .idle }
+        withAnimation(.snappy(duration: 0.22)) { if editing == which { editing = nil } }
+        spoken = which
+    }
+
+    private func form(of row: Row) -> ProfileViewModel.Form? {
+        switch row {
+        case .name: return .name
+        case .phone: return .phone
+        case .gender: return .gender
+        case .birthday: return .birthday
+        case .password: return .password
+        case .email: return nil
         }
     }
 
-    /// The way back in for somebody who no longer knows the current password:
-    /// the reset mail's code, typed here with the new one. Saving signs this
-    /// device in again, as the reset always does.
+    /// A saved row closes and says so, since the row it was typed in is gone.
+    private func done(_ which: Row, _ key: String) {
+        Haptics.succeeded()
+        app.toast(l.t(key))
+        withAnimation(.snappy(duration: 0.22)) { editing = nil }
+        spoken = which
+    }
+
     @ViewBuilder
-    private var recoverCard: some View {
-        if let user = app.session.user {
+    private func row<Editor: View>(
+        _ which: Row,
+        label: String,
+        value: String?,
+        action: String = "profile.edit",
+        symbol: String = "pencil",
+        leftToRight: Bool = false,
+        readOnly: Bool = false,
+        /// What VoiceOver says for the value, where the drawing is not words (the password's dots).
+        spokenValue: String? = nil,
+        @ViewBuilder editor: () -> Editor
+    ) -> some View {
+        if editing == which {
             VStack(alignment: .leading, spacing: 12) {
-                if appleOnly {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(l.t("account.password"))
-                            .font(.inter(17, .bold))
-                            .foregroundStyle(Brand.ink)
-                            .accessibilityAddTraits(.isHeader)
-                        Text(l.t(ways?.apple == true ? "account.passwordAppleNote" : ways?.google == true ? "account.passwordGoogleNote" : "account.passwordPhoneNote"))
-                            .font(.inter(14))
-                            .foregroundStyle(Brand.muted)
-                            .fixedSize(horizontal: false, vertical: true)
+                Text(l.t(label))
+                    .font(.inter(15, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($spoken, equals: which)
+                editor()
+            }
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l.t(label))
+                        .font(.inter(13, .medium))
+                        .foregroundStyle(Brand.muted)
+                    Group {
+                        if let value {
+                            Text(verbatim: leftToRight ? "\u{2066}\(value)\u{2069}" : value)
+                                .font(.inter(15, .semibold))
+                                .foregroundStyle(Brand.navy)
+                                .accessibilityLabel(Text(verbatim: spokenValue ?? value))
+                        } else {
+                            Text(l.t("profile.notAdded"))
+                                .font(.inter(15, .medium))
+                                .foregroundStyle(Brand.muted)
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+                if !readOnly {
+                    Button { open(which) } label: {
+                        Label(l.t(action), systemImage: symbol)
+                            .font(.inter(14, .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.tap)
+                    .accessibilityLabel(l.t("profile.editField", ["field": l.t(label)]))
+                    .accessibilityFocused($spoken, equals: which)
+                }
+            }
+            .padding(.vertical, 10)
+            .frame(minHeight: 64)
+        }
+    }
+
+    /// Save and Cancel at the foot of an open row.
+    private func buttons(_ which: Row, saving form: ProfileViewModel.Form?, save: (() async -> Void)?) -> some View {
+        HStack(spacing: 10) {
+            if let save, let form {
+                Button {
+                    Task { await save() }
+                } label: {
+                    if model.saving == form { ProgressView().tint(.white) } else { Text(l.t("account.saveChanges")) }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(model.saving != nil)
+            }
+            Button(l.t("common.cancel")) { close(which) }
+                .buttonStyle(SecondaryButtonStyle())
+                .disabled(model.saving != nil)
+        }
+    }
+
+    private var nameEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 12) {
+                FloatingField(label: l.t("profile.firstName"), text: $model.firstName, required: true, content: .givenName)
+                FloatingField(label: l.t("profile.lastName"), text: $model.lastName, required: true, content: .familyName)
+            }
+            if let problem = model.problems[.name] {
+                FieldProblem(key: problem)
+            } else {
+                note("profile.nameNote")
+            }
+            buttons(.name, saving: .name) {
+                guard model.nameChanged else { close(.name); return }
+                if let user = await model.saveName() {
+                    app.session.updated(user)
+                    done(.name, "account.nameSaved")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var emailRow: some View {
+        if let user = app.session.user, let email = user.email {
+            row(.email, label: "account.emailCard", value: email, leftToRight: true, readOnly: true) { EmptyView() }
+        } else if let user = app.session.user {
+            // An account made with a phone has no email yet: the row offers
+            // one (by a code sent to it), and the password follows.
+            row(.email, label: "account.emailCard", value: nil, action: "profile.add", symbol: "plus") {
+                VStack(alignment: .leading, spacing: 12) {
+                    AddEmailCard(phone: user.phone, bare: true) { updated in
+                        app.session.updated(updated)
+                        done(.email, "auth.addEmailDone")
+                    }
+                    buttons(.email, saving: nil, save: nil)
+                }
+            }
+        }
+    }
+
+    private var phoneEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            FloatingField(label: l.t("profile.phoneLabel"), text: $model.phone, placeholder: l.t("wish.phonePlaceholder"),
+                          keyboard: .phonePad, content: .telephoneNumber, leftToRight: true, prefix: "+965")
+            if let problem = model.problems[.phone] { FieldProblem(key: problem) } else { note("profile.phoneNote") }
+            buttons(.phone, saving: .phone) {
+                guard model.phoneChanged else { close(.phone); return }
+                await model.savePhone()
+                if model.problems[.phone] == nil { done(.phone, "profile.saved") }
+            }
+        }
+    }
+
+    private var genderEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                ForEach(ProfileDetails.genders, id: \.self) { gender in
+                    genderTile(gender)
+                }
+            }
+            if let problem = model.problems[.gender] { FieldProblem(key: problem) } else { note("profile.genderNote") }
+            buttons(.gender, saving: nil, save: nil)
+        }
+    }
+
+    private var birthdayEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            birthdayBox
+            if let problem = model.problems[.birthday] { FieldProblem(key: problem) } else { note("profile.birthdayNote") }
+            buttons(.birthday, saving: .birthday) {
+                guard model.birthdayChanged else { close(.birthday); return }
+                await model.saveBirthday()
+                if model.problems[.birthday] == nil { choosingBirthday = false; done(.birthday, "profile.saved") }
+            }
+            if model.details.birthday != nil {
+                Button(l.t("profile.birthdayRemove")) {
+                    choosingBirthday = false
+                    Task {
+                        await model.removeBirthday()
+                        if model.problems[.birthday] == nil { done(.birthday, "profile.saved") }
                     }
                 }
-                if recovering == .sent {
-                    Text(l.t("account.recoverSent", ["email": "\u{2068}\(user.email ?? "")\u{2069}"]))
-                        .font(.inter(14))
-                        .foregroundStyle(Brand.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    ResetByCodeFields(email: user.email ?? "", signedIn: { signed in
-                        app.session.updated(signed)
-                        Haptics.succeeded()
-                        app.toast(l.t("account.passwordChanged"))
-                        recovering = .idle
-                        model.currentPassword = ""
-                        model.newPassword = ""
-                    })
-                }
+                .buttonStyle(.tap)
+                .font(.inter(14, .bold))
+                .foregroundStyle(Brand.danger)
+                .frame(minHeight: 44)
+                .disabled(model.saving != nil)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var passwordRow: some View {
+        if noPassword {
+            row(.password, label: "account.password", value: nil, action: "account.setPassword", symbol: "key") { passwordEditor }
+        } else {
+            row(.password, label: "account.password", value: "••••••••", action: "profile.change", symbol: "key", spokenValue: l.t("profile.passwordIsSet")) { passwordEditor }
+        }
+    }
+
+    private var passwordEditor: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let user = app.session.user, recovering == .sent {
+                Text(l.t("account.recoverSent", ["email": "\u{2068}\(user.email ?? "")\u{2069}"]))
+                    .font(.inter(14))
+                    .foregroundStyle(Brand.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                ResetByCodeFields(email: user.email ?? "", signedIn: { signed in
+                    app.session.updated(signed)
+                    ways = try? await app.services.account.accountSignInWays()
+                    done(.password, "account.passwordChanged")
+                    recovering = .idle
+                })
+                buttons(.password, saving: nil, save: nil)
+            } else if noPassword {
+                note(ways?.apple == true ? "account.passwordAppleNote" : ways?.google == true ? "account.passwordGoogleNote" : "account.passwordPhoneNote")
                 Button {
-                    Task { await sendCode(to: user.email ?? "") }
+                    Task { await sendCode(to: app.session.user?.email ?? "") }
+                } label: {
+                    if recovering == .sending { ProgressView().tint(.white) } else { Text(l.t("auth.sendSignInCode")) }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(recovering == .sending)
+                buttons(.password, saving: nil, save: nil)
+            } else {
+                FloatingField(label: l.t("account.currentPassword"), text: $model.currentPassword, content: .password, secure: true, leftToRight: true)
+                FloatingField(label: l.t("account.newPassword"), text: $model.newPassword, content: .newPassword, secure: true, leftToRight: true)
+                PasswordMeter(password: model.newPassword)
+                FloatingField(label: l.t("auth.passwordAgainLabel"), text: $model.newPasswordAgain, content: .newPassword, secure: true, leftToRight: true)
+                FieldProblem(key: model.problems[.password])
+                note("account.passwordNote")
+                Button {
+                    Task { await sendCode(to: app.session.user?.email ?? "") }
                 } label: {
                     HStack(spacing: 8) {
                         if recovering == .sending { ProgressView().tint(Brand.navy) }
-                        Text(l.t(appleOnly ? "account.setPassword" : "account.forgotCurrent"))
+                        Text(l.t("account.forgotCurrent"))
                     }
                     .font(.inter(14, .bold))
                     .foregroundStyle(Brand.navy)
@@ -820,11 +1047,18 @@ private struct ProfileForm: View {
                 }
                 .buttonStyle(.tap)
                 .disabled(recovering == .sending)
+                buttons(.password, saving: .password) {
+                    if await model.savePassword() { done(.password, "account.passwordChanged") }
+                }
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .panel()
         }
+    }
+
+    private func note(_ key: String) -> some View {
+        Text(l.t(key))
+            .font(.inter(13))
+            .foregroundStyle(Brand.muted)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func sendCode(to email: String) async {
@@ -840,59 +1074,14 @@ private struct ProfileForm: View {
         }
     }
 
-    private var profileCards: some View {
-        VStack(spacing: 16) {
-            card(.name, title: nil, note: model.problems[.name] == nil ? "profile.nameNote" : nil, done: "account.nameSaved") {
-                HStack(alignment: .top, spacing: 12) {
-                    FloatingField(label: l.t("profile.firstName"), text: $model.firstName, required: true, content: .givenName)
-                    FloatingField(label: l.t("profile.lastName"), text: $model.lastName, required: true, content: .familyName)
-                }
-            } action: {
-                saveButton(.name, enabled: model.nameChanged) {
-                    if let user = await model.saveName() { app.session.updated(user) }
-                }
-            }
-            card(.phone, title: "profile.phoneTitle", note: "profile.phoneNote", done: "profile.saved") {
-                FloatingField(label: l.t("profile.phoneLabel"), text: $model.phone, placeholder: l.t("wish.phonePlaceholder"),
-                              keyboard: .phonePad, content: .telephoneNumber, leftToRight: true, prefix: "+965")
-            } action: {
-                saveButton(.phone, enabled: model.phoneChanged) { await model.savePhone() }
-            }
-            card(.gender, title: "profile.genderTitle", note: "profile.genderNote", done: "profile.saved") {
-                HStack(spacing: 12) {
-                    ForEach(ProfileDetails.genders, id: \.self) { gender in
-                        genderTile(gender)
-                    }
-                }
-            } action: { EmptyView() }
-            card(.birthday, title: "profile.birthdayTitle", note: "profile.birthdayNote", done: "profile.saved") {
-                birthdayBox
-            } action: {
-                HStack(spacing: 12) {
-                    saveButton(.birthday, enabled: model.birthdayChanged) {
-                        await model.saveBirthday()
-                        if model.problems[.birthday] == nil { choosingBirthday = false }
-                    }
-                    if model.details.birthday != nil {
-                        Button(l.t("profile.birthdayRemove")) {
-                            choosingBirthday = false
-                            Task { await model.removeBirthday() }
-                        }
-                        .buttonStyle(.tap)
-                        .font(.inter(14, .bold))
-                        .foregroundStyle(Brand.danger)
-                        .frame(minHeight: 44)
-                        .disabled(model.saving != nil)
-                    }
-                }
-            }
-        }
-    }
-
     private func genderTile(_ gender: String) -> some View {
         let chosen = model.details.gender == gender
         return Button {
-            Task { await model.choose(gender: gender) }
+            Task {
+                await model.choose(gender: gender)
+                // A gender is one press: the press is the save, and it closes the row.
+                if model.problems[.gender] == nil { done(.gender, "profile.saved") }
+            }
         } label: {
             HStack(spacing: 12) {
                 Text(l.t(gender == "male" ? "profile.male" : "profile.female"))
@@ -974,48 +1163,6 @@ private struct ProfileForm: View {
         }
     }
 
-    private func saveButton(_ form: ProfileViewModel.Form, enabled: Bool, _ save: @escaping () async -> Void) -> some View {
-        Button {
-            Task { await save() }
-        } label: {
-            if model.saving == form { ProgressView().tint(.white) } else { Text(l.t("account.saveChanges")) }
-        }
-        .buttonStyle(PrimaryButtonStyle())
-        .disabled(model.saving != nil || !enabled)
-    }
-
-    private func card<Fields: View, Action: View>(
-        _ form: ProfileViewModel.Form,
-        title: String?,
-        note: String?,
-        done: String,
-        @ViewBuilder fields: () -> Fields,
-        @ViewBuilder action: () -> Action
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let title {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(l.t(title)).font(.inter(17, .bold)).foregroundStyle(Brand.ink).accessibilityAddTraits(.isHeader)
-                    if let note {
-                        Text(l.t(note)).font(.inter(14)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(.bottom, 2)
-            }
-            fields()
-            if title == nil, let note {
-                Text(l.t(note)).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-            }
-            FieldProblem(key: model.problems[form])
-            if model.saved == form {
-                Label(l.t(done), systemImage: "checkmark.circle").font(.inter(13, .semibold)).foregroundStyle(Brand.success)
-            }
-            action()
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .panel()
-    }
 }
 
 /// A birthday as the server keeps it, `yyyy-mm-dd`, and as a date picker

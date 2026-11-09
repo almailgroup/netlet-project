@@ -6,6 +6,20 @@ struct OrderPage: Decodable, Sendable {
     let total: Int
     let page: Int
     let pageSize: Int
+    /// How many orders each view holds under the same search and period
+    /// (`filterOrders`): the chips' numbers. Absent from an older server.
+    var counts: [String: Int]? = nil
+    /// Whether the filters read as far back as they may (`ORDER_SCAN_CEILING`).
+    var atCeiling: Bool? = nil
+}
+
+/// What My orders' tools ask the server for (`orders.list`'s view, q and
+/// period, `Shared/commerce/orderFilters.ts`): the server filters over every
+/// order, so a chip's number is what pressing it shows.
+struct OrderFilters: Hashable, Sendable {
+    var view = "all"
+    var q = ""
+    var period = "all"
 }
 
 /// An order in the list, led by where it is rather than how it is paid —

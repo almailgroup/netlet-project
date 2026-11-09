@@ -21,6 +21,14 @@ enum Validation {
         return checkPassword(password).acceptable ? nil : "auth.passwordNeedsRules"
     }
 
+    /// The new password typed a second time — `passwordAgainProblem`, asked
+    /// wherever a password is changed (on the owner's word: "put a type
+    /// password again for changing your password as a confirmation").
+    static func passwordAgainProblem(_ password: String, again: String) -> String? {
+        if again.isEmpty { return "auth.passwordAgainRequired" }
+        return again == password ? nil : "auth.passwordsDiffer"
+    }
+
     // MARK: The password meter — `Shared/auth/passwordStrength.ts`
 
     /// How good a password is and which rules it has not met — the web's

@@ -633,7 +633,15 @@
         ],
         "total": 10,
         "page": 1,
-        "pageSize": 50
+        "pageSize": 50,
+        "counts": {
+          "all": 10,
+          "processing": 8,
+          "onTheWay": 0,
+          "delivered": 2,
+          "cancelled": 0
+        },
+        "atCeiling": false
       },
       "meta": {
         "values": {

@@ -19,6 +19,8 @@ final class ProfileViewModel {
     var birthday = ""
     var currentPassword = ""
     var newPassword = ""
+    /// The new password typed again, which must be the same.
+    var newPasswordAgain = ""
 
     /// What the server holds, which the boxes are compared with.
     private(set) var details = ProfileDetails.none
@@ -133,6 +135,10 @@ final class ProfileViewModel {
             problems[.password] = problem
             return false
         }
+        if let problem = Validation.passwordAgainProblem(newPassword, again: newPasswordAgain) {
+            problems[.password] = problem
+            return false
+        }
         let done: Bool? = await run(.password) {
             try await self.account.changePassword(current: self.currentPassword, new: self.newPassword)
             return true
@@ -140,8 +146,21 @@ final class ProfileViewModel {
         if done == true {
             currentPassword = ""
             newPassword = ""
+            newPasswordAgain = ""
         }
         return done == true
+    }
+
+    /// A row closed without saving: its boxes go back to what is saved, and its refusal with it.
+    func cancel(_ form: Form) {
+        problems[form] = nil
+        switch form {
+        case .name: firstName = savedFirst; lastName = savedLast
+        case .phone: phone = storedPhone
+        case .birthday: birthday = details.birthday ?? ""
+        case .password: currentPassword = ""; newPassword = ""; newPasswordAgain = ""
+        case .gender: break
+        }
     }
 
     private func run<Value>(_ form: Form, _ work: @escaping @MainActor () async throws -> Value) async -> Value? {
@@ -167,38 +186,117 @@ final class OrdersViewModel {
     private(set) var orders: LoadState<[OrderSummary]> = .idle
     private(set) var total = 0
     private(set) var loadingMore = false
+    /// How many orders each view holds under the search and period (the chips).
+    private(set) var counts: [String: Int]?
+    private(set) var atCeiling = false
+    /// The chip pressed: a view of the orders, or "returns" or "reviews".
+    private(set) var tab: String
+    /// The search and the period, sent with every page.
+    private(set) var filters = OrderFilters()
+    /// The Returns and Reviews tabs' lists, read once the page appears for
+    /// their chips' numbers too.
+    let returns: Loader<[ShopperReturn]>
+    let reviews: Loader<[ReviewableLine]>
     private var page = 1
+    /// Which answer is the latest: a filter changed mid-flight leaves the
+    /// answer to the old one unread rather than drawn over the new.
+    private var asked = 0
 
     private let service: OrderServicing
 
-    init(service: OrderServicing) {
+    init(
+        service: OrderServicing,
+        tab: String = "all",
+        returns: @escaping @MainActor () async throws -> [ShopperReturn],
+        reviews: @escaping @MainActor () async throws -> [ReviewableLine]
+    ) {
         self.service = service
+        self.tab = tab
+        self.returns = Loader(returns)
+        self.reviews = Loader(reviews)
     }
 
     var canLoadMore: Bool { (orders.value?.count ?? 0) < total }
+    /// Whether the chip pressed is a view of the orders, which the search and the period narrow.
+    var onOrders: Bool { !["returns", "reviews"].contains(tab) }
+    /// Whether anything narrows the list, so an empty answer is "nothing matches" rather than "no orders".
+    var narrowed: Bool { filters.view != "all" || !filters.q.isEmpty || filters.period != "all" }
+    /// The Returns chip's number: every return asked for.
+    var returnsCount: Int? { returns.value?.count }
+    /// The Reviews chip's number: what can still be rated.
+    var reviewsCount: Int? { reviews.value.map { $0.filter { $0.eligibility.allowed && $0.review == nil }.count } }
+
+    func choose(tab next: String) async {
+        tab = next
+        if onOrders, filters.view != next {
+            filters.view = next
+            await load()
+        }
+    }
+
+    func search(_ q: String) async {
+        let typed = q.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard typed != filters.q else { return }
+        filters.q = typed
+        await load()
+    }
+
+    func choose(period next: String) async {
+        guard next != filters.period else { return }
+        filters.period = next
+        await load()
+    }
+
+    func clearFilters() async {
+        tab = "all"
+        filters = OrderFilters()
+        await load()
+    }
 
     func load() async {
+        if tab != "all", onOrders { filters.view = tab }
+        asked += 1
+        let mine = asked
         if orders.value == nil { orders = .loading }
         do {
-            let first = try await service.orders(page: 1)
+            let first = try await service.orders(page: 1, filters: filters)
+            guard mine == asked else { return }
             page = 1
             total = first.total
+            counts = first.counts
+            atCeiling = first.atCeiling ?? false
             orders = .loaded(first.rows)
         } catch {
+            guard mine == asked else { return }
             let failure = APIError.from(error)
             if failure != .cancelled, orders.value == nil { orders = .failed(failure) }
         }
+    }
+
+    /// The orders, and the Returns and Reviews lists for their chips.
+    func loadAll() async {
+        async let lists: Void = loadLists()
+        await load()
+        await lists
+    }
+
+    func loadLists() async {
+        async let returned: Void = returns.load()
+        await reviews.load()
+        await returned
     }
 
     func loadMore() async {
         guard canLoadMore, !loadingMore, let shown = orders.value else { return }
         loadingMore = true
         defer { loadingMore = false }
-        guard let next = try? await service.orders(page: page + 1) else {
+        let mine = asked
+        guard let next = try? await service.orders(page: page + 1, filters: filters) else {
             // A page that cannot be read ends the list rather than spinning for ever.
-            total = shown.count
+            if mine == asked { total = shown.count }
             return
         }
+        guard mine == asked else { return }
         page += 1
         let known = Set(shown.map(\.id))
         let fresh = next.rows.filter { !known.contains($0.id) }

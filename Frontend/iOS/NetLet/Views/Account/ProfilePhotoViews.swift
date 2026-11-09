@@ -31,13 +31,13 @@ struct ProfileAvatar: View {
     }
 }
 
-/// Choosing the profile photo, on "Your profile" — the web's
-/// `ProfilePhotoCard`: the photos library's own picker, the square drawn in
+/// Choosing the profile photo, the first row of "Your profile" — the web's
+/// `ProfilePhotoRow`: the photos library's own picker, the square drawn in
 /// the circle before anything is sent, and Save is what sends it, the page's
 /// rule that each card is its own decision. Remove asks first. Not drawn
 /// until the shop keeps photos (`ready`), so nothing offers what cannot be
 /// kept.
-struct ProfilePhotoCard: View {
+struct ProfilePhotoRow: View {
     let user: User
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -53,34 +53,30 @@ struct ProfilePhotoCard: View {
 
     var body: some View {
         if app.profilePhoto.ready {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 3) {
+            // The first row of "Your profile"'s one list (`ProfileForm`), the
+            // web's `ProfilePhotoRow`: the circle, what it is and the presses.
+            HStack(alignment: .center, spacing: 14) {
+                ProfileAvatar(user: user, size: 64, preview: chosen?.image)
+                VStack(alignment: .leading, spacing: 4) {
                     Text(l.t("profilePhoto.title"))
-                        .font(.inter(17, .bold))
-                        .foregroundStyle(Brand.ink)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(l.t("profilePhoto.note"))
-                        .font(.inter(14))
+                        .font(.inter(13, .medium))
                         .foregroundStyle(Brand.muted)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(l.t(chosen != nil ? "profilePhoto.preview" : "profilePhoto.note"))
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.body)
                         .fixedSize(horizontal: false, vertical: true)
-                }
-                HStack(spacing: 16) {
-                    ProfileAvatar(user: user, size: 96, preview: chosen?.image)
-                    VStack(alignment: .leading, spacing: 8) {
+                    FlowLayout(spacing: 8) {
                         if chosen != nil {
-                            Text(l.t("profilePhoto.preview"))
-                                .font(.inter(14))
-                                .foregroundStyle(Brand.body)
-                                .fixedSize(horizontal: false, vertical: true)
                             Button {
                                 Task { await save() }
                             } label: {
-                                if app.profilePhoto.saving { ProgressView().tint(.white) } else { Text(l.t("profilePhoto.save")) }
+                                if app.profilePhoto.saving { ProgressView().tint(Brand.navy) } else { Text(l.t("profilePhoto.save")) }
                             }
-                            .buttonStyle(PrimaryButtonStyle())
+                            .buttonStyle(OrderActionStyle())
                             .disabled(app.profilePhoto.saving)
                             Button(l.t("common.cancel")) { chosen = nil }
-                                .buttonStyle(SecondaryButtonStyle())
+                                .buttonStyle(OrderActionStyle())
                                 .disabled(app.profilePhoto.saving)
                         } else {
                             PhotosPicker(selection: $picked, matching: .images) {
@@ -90,7 +86,7 @@ struct ProfilePhotoCard: View {
                                     if preparing { ProgressView().tint(Brand.navy) } else { Image(systemName: "camera") }
                                 }
                             }
-                            .buttonStyle(SecondaryButtonStyle())
+                            .buttonStyle(OrderActionStyle())
                             .disabled(preparing)
                             if app.profilePhoto.hasPhoto {
                                 Button {
@@ -98,15 +94,15 @@ struct ProfilePhotoCard: View {
                                 } label: {
                                     Label(l.t("profilePhoto.remove"), systemImage: "trash")
                                 }
-                                .buttonStyle(SecondaryButtonStyle())
+                                .buttonStyle(OrderActionStyle())
                             }
                         }
                     }
+                    .padding(.top, 4)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .panel()
+            .padding(.vertical, 14)
             .onChange(of: picked) { _, item in
                 guard let item else { return }
                 picked = nil

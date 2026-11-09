@@ -300,6 +300,11 @@ struct Rules: Decodable, Sendable {
         let maxClaimDescription: Int
         /// What one referral point is worth spent, in fils (`FILS_PER_POINT`).
         let filsPerPoint: Int
+        /// My orders' chips — the views of the orders, then Returns and Reviews —
+        /// and how far back it looks (`orderFilters.ts`); absent from an older export.
+        var filterTabs: [String]? = nil
+        var filterPeriods: [String]? = nil
+        var searchMax: Int? = nil
 
         static let fallback = Orders(
             returnKinds: ["refund", "exchange"],

@@ -22,6 +22,7 @@
  *     pnpm ios:resources            # write the files
  *     pnpm ios:resources --check    # fail when they are stale
  */
+import { ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_TABS } from "../../../Shared/commerce/orderFilters.js";
 import { DISPLAY_CURRENCIES, REFERENCE_RATES, RATES_AS_OF, minorDigits } from "../../../Shared/commerce/currency.js";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -268,6 +269,11 @@ export function buildResources(): Record<string, string> {
         claimWindowDays: CLAIM_WINDOW_DAYS,
         maxClaimDescription: MAX_CLAIM_DESCRIPTION,
         filsPerPoint: Number(FILS_PER_POINT),
+        /* My orders' chips and its period menu (`orderFilters.ts`): the server
+           filters, the app only sends one of these. */
+        filterTabs: ORDER_TABS,
+        filterPeriods: ORDER_PERIODS,
+        searchMax: ORDER_SEARCH_MAX,
       },
       ai: {
         chatPath: GATEWAY_ROUTES.chat,

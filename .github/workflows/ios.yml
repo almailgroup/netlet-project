@@ -228,6 +228,8 @@ jobs:
             # Face ID: the offer after signing in, and its card on Your profile.
             shot 84-face-id-offer "$lang" faceIdOffer shopper
             shot 85-face-id-card "$lang" faceIdCard shopper
+            # My orders' Reviews tab (Returns is 63), which moved from the Profile tab.
+            shot 86-orders-reviews "$lang" section:reviews shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

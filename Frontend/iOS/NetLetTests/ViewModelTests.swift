@@ -256,6 +256,12 @@ final class AuthViewModelTests: XCTestCase {
 
         model.code = "١٢٣٤٥٦"
         model.password = "a long new password"
+        model.again = "a long new passwrod"
+        let differ = await model.finish()
+        XCTAssertNil(differ)
+        XCTAssertEqual(model.againProblem, "auth.passwordsDiffer")
+        XCTAssertTrue(account.codeResets.isEmpty, "two passwords that differ are not sent")
+        model.again = "a long new password"
         let wrong = await model.finish()
         XCTAssertNil(wrong)
         XCTAssertEqual(account.codeResets.last?.code, "123456", "Arabic-Indic digits are read as digits")

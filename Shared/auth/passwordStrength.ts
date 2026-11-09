@@ -114,3 +114,17 @@ export function checkPassword(password: string): PasswordVerdict {
     acceptable: !unmet.includes("length") && !unmet.includes("notCommon"),
   };
 }
+
+/**
+ * The new password typed a second time, on the owner's word ("put a type
+ * password again for changing your password as a confirmation"): asked
+ * wherever a password is changed — "Your profile", the reset by code and the
+ * reset link — so a slip of a finger on a box of dots is caught before it
+ * becomes the only way in. Not on creating an account, whose password is
+ * shown on request beside the box. The server takes one password; this is the
+ * form's question, asked the same way on the web and in the app.
+ */
+export function passwordAgainProblem(password: string, again: string): "auth.passwordAgainRequired" | "auth.passwordsDiffer" | null {
+  if (!again) return "auth.passwordAgainRequired";
+  return again === password ? null : "auth.passwordsDiffer";
+}

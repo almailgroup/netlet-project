@@ -1,48 +1,44 @@
 import SwiftUI
 
 /// Every return the shopper has asked for, across their orders — the web's
-/// `AccountReturns`, on the owner's word ("add returns option in the profile
-/// page"). A return is started from its order; this is where somebody comes
-/// back to ask where their refund is: the item as the order froze it, today's
-/// photo to know it by, what was asked and where it has got to, and the way
-/// to the order, where it can still be withdrawn.
-struct ReturnsView: View {
+/// `AccountReturns`. A return is started from its order; this is where
+/// somebody comes back to ask where their refund is: the item as the order
+/// froze it, today's photo to know it by, what was asked and where it has got
+/// to, and the way to the order, where it can still be withdrawn.
+///
+/// **It is a tab of My orders, on the owner's word** ("move the returns and my
+/// review to the my orders page"): `OrdersView` draws it under its Returns
+/// chip, and the account's old Returns address opens the orders on that tab.
+struct ReturnsList: View {
+    let returns: Loader<[ShopperReturn]>
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ModelHost(make: { Loader { try await app.services.api.call(API.shopperReturns) } }) { returns in
-            ShopPage(header: false, refresh: { await returns.load() }) {
-                AccountSection(title: l.t("account.sectionReturns"), hint: l.t("account.hint.returns")) {
-                    LoadStateView(state: returns.state, retry: { await returns.load() }) { rows in
-                        if rows.isEmpty {
-                            VStack(spacing: 12) {
-                                EmptyStateView(
-                                    systemImage: "arrow.uturn.backward",
-                                    title: l.t("returns.mineEmpty"),
-                                    note: l.t("returns.mineEmptyNote"),
-                                    actionTitle: l.t("account.myOrders")
-                                ) { app.push(.orders) }
-                                .card(padding: 0)
-                                policyLink
-                            }
-                        } else {
-                            VStack(spacing: 12) {
-                                VStack(spacing: 0) {
-                                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                                        if index > 0 { DashedRule() }
-                                        returnRow(row)
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                                .panel()
-                                policyLink
-                            }
+        LoadStateView(state: returns.state, retry: { await returns.load() }) { rows in
+            if rows.isEmpty {
+                VStack(spacing: 12) {
+                    EmptyStateView(
+                        systemImage: "arrow.uturn.backward",
+                        title: l.t("returns.mineEmpty"),
+                        note: l.t("returns.mineEmptyNote")
+                    )
+                    .card(padding: 0)
+                    policyLink
+                }
+            } else {
+                VStack(spacing: 12) {
+                    VStack(spacing: 0) {
+                        ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                            if index > 0 { DashedRule() }
+                            returnRow(row)
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .panel()
+                    policyLink
                 }
             }
-            .task { await returns.load() }
         }
     }
 

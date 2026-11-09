@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkPassword, MIN_PASSWORD_LENGTH } from "./passwordStrength.js";
+import { checkPassword, MIN_PASSWORD_LENGTH, passwordAgainProblem } from "./passwordStrength.js";
 
 describe("checkPassword", () => {
   it("treats an empty box as unanswered, not weak", () => {
@@ -82,5 +82,14 @@ describe("checkPassword", () => {
       expect(score).toBeGreaterThanOrEqual(0);
       expect(score).toBeLessThanOrEqual(4);
     }
+  });
+});
+
+describe("the password typed again", () => {
+  it("asks for it, then for the same one", () => {
+    expect(passwordAgainProblem("correct horse", "")).toBe("auth.passwordAgainRequired");
+    expect(passwordAgainProblem("correct horse", "correct horse ")).toBe("auth.passwordsDiffer");
+    expect(passwordAgainProblem("correct horse", "Correct horse")).toBe("auth.passwordsDiffer");
+    expect(passwordAgainProblem("correct horse", "correct horse")).toBeNull();
   });
 });

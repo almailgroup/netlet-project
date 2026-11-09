@@ -195,6 +195,14 @@ final class ValidationTests: XCTestCase {
         XCTAssertNil(Validation.newPasswordProblem("long enough phrase"))
     }
 
+    /// The new password typed again — `passwordAgainProblem`, on its test's cases.
+    func testTheNewPasswordIsTypedTwice() {
+        XCTAssertEqual(Validation.passwordAgainProblem("correct horse", again: ""), "auth.passwordAgainRequired")
+        XCTAssertEqual(Validation.passwordAgainProblem("correct horse", again: "correct horse "), "auth.passwordsDiffer")
+        XCTAssertEqual(Validation.passwordAgainProblem("correct horse", again: "Correct horse"), "auth.passwordsDiffer")
+        XCTAssertNil(Validation.passwordAgainProblem("correct horse", again: "correct horse"))
+    }
+
     /// The meter is `Shared/auth/passwordStrength.ts` in Swift, held to its
     /// own test's cases, with the common shapes read from the exported rules.
     func testThePasswordMeterAgreesWithTheWeb() {

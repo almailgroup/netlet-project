@@ -308,7 +308,7 @@ final class FakeOrderService: OrderServicing, @unchecked Sendable {
     var placed: [API.PlaceOrder] = []
     var refusal: APIError?
 
-    func orders(page: Int) async throws -> OrderPage { OrderPage(rows: [], total: 0, page: page, pageSize: 20) }
+    func orders(page: Int, filters: OrderFilters) async throws -> OrderPage { OrderPage(rows: [], total: 0, page: page, pageSize: 20) }
 
     /// No order by any reference, which is what the server answers for one
     /// that is not this account's.

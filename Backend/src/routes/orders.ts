@@ -49,6 +49,7 @@ import { trackOrder, TrackingError } from "../services/tracking.js";
 import { checkVoucherAllowed, recordVoucherMiss } from "../services/rateLimit.js";
 import { applyOrderChange, buyAgain, changeOrderAddress, OrderChangeRefused, quoteOrderChange } from "../services/orderChanges.js";
 import { orderDetailForShopper } from "../services/orderDetail.js";
+import { ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_VIEWS } from "../../../Shared/commerce/orderFilters.js";
 
 /** The lines a shopper asks to change: each named once, a quantity of nought taking it out. */
 const lineChanges = z
@@ -77,8 +78,20 @@ export const ordersRouter = router({
    * list on the site that only grows, and an unbounded query over a decade of
    * orders is the admin lists' ceiling problem with a longer fuse.
    */
+  /**
+   * The shopper's orders under the filters at the top of My orders — a view,
+   * a search by number or by what is in it, and how far back — with how many
+   * each view holds (`Shared/commerce/orderFilters.ts`). Applied over every
+   * order on the server, never over one page.
+   */
   list: protectedProcedure
-    .input(z.object({ page: z.number().int().min(1).optional(), pageSize: z.number().int().min(1).max(100).optional() }).optional())
+    .input(z.object({
+      page: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      view: z.enum(ORDER_VIEWS).optional(),
+      q: z.string().trim().max(ORDER_SEARCH_MAX).optional(),
+      period: z.enum(ORDER_PERIODS).optional(),
+    }).optional())
     .query(async ({ ctx, input }) => {
       const page = await listOrdersForUser(ctx.user.id, input ?? {});
       return { ...page, rows: page.rows.map(row => ({ ...orderForShopper(row), owed: row.owed, summary: row.summary })) };

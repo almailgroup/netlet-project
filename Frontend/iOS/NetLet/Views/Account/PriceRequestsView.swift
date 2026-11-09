@@ -101,36 +101,33 @@ struct PriceRequestsView: View {
 /// write one, change it, or take it down after asking, in `ReviewSheet`, the
 /// sheet an order's "Rate this item" opens too. A review already written says
 /// where it stands: on the product page, waiting for its check, or taken down.
-struct ReviewsView: View {
-    @Environment(AppModel.self) private var app
+///
+/// **It is a tab of My orders, on the owner's word** ("move the returns and my
+/// review to the my orders page"): `OrdersView` draws it under its Reviews
+/// chip, and the account's old Reviews address opens the orders on that tab.
+struct ReviewsList: View {
+    let lines: Loader<[ReviewableLine]>
     @Environment(LanguageSettings.self) private var l
     @State private var writing: ReviewTarget?
 
     var body: some View {
-        ModelHost(make: { Loader { try await app.services.api.call(API.reviewableLines) } }) { lines in
-            ShopPage(header: false, refresh: { await lines.load() }) {
-                AccountSection(title: l.t("account.sectionReviews"), hint: l.t("account.hint.reviews")) {
-                    LoadStateView(state: lines.state, retry: { await lines.load() }) { rows in
-                        if rows.isEmpty {
-                            EmptyStateView(systemImage: "shippingbox", title: l.t("review.nothingToReview"), note: l.t("review.nothingToReviewNote"))
-                                .card(padding: 0)
-                        } else {
-                            VStack(spacing: 10) {
-                                ForEach(rows) { line in
-                                    ReviewableRow(line: line) {
-                                        writing = ReviewTarget(orderItemId: line.orderItemId, productTitle: line.productTitle, review: line.review)
-                                    }
-                                }
-                            }
+        LoadStateView(state: lines.state, retry: { await lines.load() }) { rows in
+            if rows.isEmpty {
+                EmptyStateView(systemImage: "shippingbox", title: l.t("review.nothingToReview"), note: l.t("review.nothingToReviewNote"))
+                    .card(padding: 0)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(rows) { line in
+                        ReviewableRow(line: line) {
+                            writing = ReviewTarget(orderItemId: line.orderItemId, productTitle: line.productTitle, review: line.review)
                         }
                     }
                 }
             }
-            .task { await lines.load() }
-            .sheet(item: $writing) { target in
-                ReviewSheet(target: target) { Task { await lines.load() } }
-                    .languageDirection()
-            }
+        }
+        .sheet(item: $writing) { target in
+            ReviewSheet(target: target) { Task { await lines.load() } }
+                .languageDirection()
         }
     }
 }

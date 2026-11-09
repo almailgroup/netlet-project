@@ -79,9 +79,7 @@ import {
   PackageSearch,
   Pencil,
   Repeat,
-  RotateCcw,
   SlidersHorizontal,
-  Star,
   Store,
   Tag,
 } from "lucide-react";
@@ -108,11 +106,9 @@ type Row = {
  */
 const CARDS: Row[][] = [
   [
-    { id: "returns", label: "account.sectionReturns", icon: RotateCcw },
     { id: "addresses", label: "address.book", icon: MapPin },
     { id: "payments", label: "account.sectionPayments", icon: CreditCard },
     { id: "wishlists", label: "account.sectionWishlists", icon: Gift },
-    { id: "reviews", label: "account.sectionReviews", icon: Star },
     { id: "offers", label: "offers.mine", icon: Tag },
     { id: "subscriptions", label: "subscriptions.section", icon: Repeat },
   ],

@@ -48,6 +48,7 @@ import {
 import type { Pool } from "../../../Shared/commerce/preorder.js";
 import { nextStates } from "../../../Shared/commerce/fulfilment.js";
 import { orderProgress, type OrderProgress } from "../../../Shared/commerce/orderProgress.js";
+import { filterOrders, ORDER_SCAN_CEILING, type OrderCounts, type OrderPeriod, type OrderView } from "../../../Shared/commerce/orderFilters.js";
 import { shopperCancelState, type CancelRefusal } from "../../../Shared/commerce/orderCancel.js";
 import { stepsForOrder, type OrderTrack } from "../../../Shared/commerce/orderTracking.js";
 import { isDeliverySpeed, speedForLine } from "../../../Shared/commerce/deliverySpeed.js";
@@ -1193,37 +1194,83 @@ export async function ordersOnTheWay(userId: number): Promise<{ count: number; l
  * Scoped by `userId` and nothing else: an order id is a serial, and "show me
  * order 4" must not be a way to read somebody else's purchase.
  */
+/**
+ * A shopper's orders, a page at a time, under the filters at the top of My
+ * orders (`Shared/commerce/orderFilters.ts`): a view, a search and a period.
+ *
+ * **The filters are applied over every order the shopper has, here**, never
+ * over the page the client holds — a filter on twenty rows says "none" about
+ * the twenty-first. So the orders are read once, lightly (the order's number,
+ * status and date, and each line's state and title), filed by the progress
+ * rule the row's pill uses, filtered, counted per view, and only the page left
+ * is read whole. At most `ORDER_SCAN_CEILING`, newest first, and the answer
+ * says when it reached it.
+ */
 export async function listOrdersForUser(
   userId: number,
-  request: { page?: number; pageSize?: number } = {},
-): Promise<Page<OrderRow>> {
+  request: { page?: number; pageSize?: number; view?: OrderView; q?: string; period?: OrderPeriod } = {},
+): Promise<Page<OrderRow> & { counts: OrderCounts; atCeiling: boolean }> {
+  const noCounts: OrderCounts = { all: 0, processing: 0, onTheWay: 0, delivered: 0, cancelled: 0 };
   const db = await getDb();
-  if (!db) return emptyPage<OrderRow>(request.pageSize);
+  if (!db) return { ...emptyPage<OrderRow>(request.pageSize), counts: noCounts, atCeiling: false };
 
-  const [counted] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(orders)
-    .where(eq(orders.userId, userId));
-  const total = counted?.n ?? 0;
-
-  const pageSize = clampPageSize(request.pageSize);
-  const page = clampPage(request.page ?? 1, total, pageSize);
-
-  const rows = await db
-    .select()
+  const scanned = await db
+    .select({ id: orders.id, reference: orders.reference, status: orders.status, placedAt: orders.placedAt })
     .from(orders)
     .where(eq(orders.userId, userId))
     // `placedAt` is not unique — a bulk import or two orders in the same
     // millisecond tie — and offset paging over an unstable sort repeats rows.
     .orderBy(desc(orders.placedAt), desc(orders.id))
-    .limit(pageSize)
-    .offset(offsetFor(page, pageSize));
+    .limit(ORDER_SCAN_CEILING + 1);
+  const atCeiling = scanned.length > ORDER_SCAN_CEILING;
+  const heads = scanned.slice(0, ORDER_SCAN_CEILING);
+  const lines = heads.length
+    ? await db
+      .select({
+        orderId: orderItems.orderId,
+        fulfilment: orderItems.fulfilment,
+        deliveredAt: orderItems.deliveredAt,
+        preordered: orderItems.preordered,
+        productTitle: orderItems.productTitle,
+        variantTitle: orderItems.variantTitle,
+      })
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, heads.map(head => head.id)))
+    : [];
+  const byOrder = new Map<number, typeof lines>();
+  for (const line of lines) byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), line]);
+  const filed = heads.map(head => {
+    const own = byOrder.get(head.id) ?? [];
+    return {
+      id: head.id,
+      reference: head.reference,
+      placedAt: head.placedAt,
+      progress: orderProgress(head, own),
+      titles: own.flatMap(line => [line.productTitle, line.variantTitle ?? ""]).filter(Boolean),
+    };
+  });
+  const { shown, counts } = filterOrders(filed, { view: request.view, q: request.q, period: request.period });
+
+  const total = shown.length;
+  const pageSize = clampPageSize(request.pageSize);
+  const page = clampPage(request.page ?? 1, total, pageSize);
+  const ids = shown.slice(offsetFor(page, pageSize), offsetFor(page, pageSize) + pageSize).map(entry => entry.id);
+  const found = ids.length ? await db.select().from(orders).where(inArray(orders.id, ids)) : [];
+  const byId = new Map(found.map(row => [row.id, row]));
+  const rows = ids.map(id => byId.get(id)).filter((row): row is (typeof found)[number] => Boolean(row));
 
   /* What each one owes now — the figure the driver will ask for — rather than
      only what it was placed for. See `Shared/commerce/collection.ts`. */
   const owed = await stillOwedFor(db, rows);
   const summaries = await summariesFor(db, rows);
-  return { rows: rows.map(row => ({ ...row, owed: owed.get(row.id) ?? null, summary: summaries.get(row.id) })), total, page, pageSize };
+  return {
+    rows: rows.map(row => ({ ...row, owed: owed.get(row.id) ?? null, summary: summaries.get(row.id) })),
+    total,
+    page,
+    pageSize,
+    counts,
+    atCeiling,
+  };
 }
 
 /**

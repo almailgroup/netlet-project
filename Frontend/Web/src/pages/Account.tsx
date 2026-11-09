@@ -43,11 +43,9 @@ import { AccountRewards } from "@/components/account/AccountRewards";
 import { SellerMode } from "@/components/account/SellerMode";
 import { AccountOrders } from "@/components/account/AccountOrders";
 import { AccountPayments } from "@/components/account/AccountPayments";
-import { AccountReturns } from "@/components/account/AccountReturns";
 import { AccountFrequent } from "@/components/account/AccountFrequent";
 import { AccountNotifications } from "@/components/account/AccountNotifications";
 import { WishlistManager } from "@/components/account/WishlistManager";
-import { AccountReviews } from "@/components/account/AccountReviews";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { AuthScreen } from "@/components/auth/AuthScreen";
@@ -80,13 +78,11 @@ type Entry = {
  */
 const ENTRIES: Entry[] = [
   { id: "orders", label: "account.sectionOrders", hint: "account.hint.orders" },
-  { id: "returns", label: "account.sectionReturns", hint: "account.hint.returns" },
   { id: "frequent", label: "frequent.section", hint: "account.hint.frequent" },
   { id: "subscriptions", label: "subscriptions.section", hint: "account.hint.subscriptions" },
   { id: "saved", label: "footer.savedItems", hint: "account.hint.saved", href: "/saved" },
   { id: "wishlists", label: "account.sectionWishlists", hint: "account.hint.wishlists" },
   { id: "offers", label: "offers.mine", hint: "account.hint.offers" },
-  { id: "reviews", label: "account.sectionReviews", hint: "account.hint.reviews" },
   { id: "notifications", label: "notices.title", hint: "notices.tile" },
   { id: "help", label: "support.section", hint: "account.hint.help" },
   { id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards" },
@@ -101,10 +97,11 @@ const ENTRIES: Entry[] = [
 
 /**
  * Sections that became part of another, by their old address: Account
- * security is "Your profile" now, on the owner's word, and a notice sent
- * before — "your password was changed" — still links to it.
+ * security is "Your profile" now, and Returns and Reviews are tabs of Orders —
+ * each on the owner's word — and a notice, an email or a bookmark sent before
+ * still links to the old one.
  */
-const MOVED: Record<string, string> = { security: "details" };
+const MOVED: Record<string, string> = { security: "details", returns: "orders?view=returns", reviews: "orders?view=reviews" };
 
 /** The account's one column: the home's width, in the middle of the page. */
 const COLUMN = "mx-auto max-w-2xl";
@@ -113,13 +110,11 @@ const COLUMN = "mx-auto max-w-2xl";
 function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<typeof useAuth>["user"]> }) {
   switch (id) {
     case "orders": return <AccountOrders />;
-    case "returns": return <AccountReturns />;
     case "frequent": return <AccountFrequent />;
     case "payments": return <AccountPayments />;
     case "subscriptions": return <AccountSubscriptions />;
     case "wishlists": return <WishlistManager />;
     case "offers": return <AccountOffers />;
-    case "reviews": return <AccountReviews />;
     case "notifications": return <AccountNotifications />;
     case "help": return <AccountSupport />;
     case "rewards": return <AccountRewards />;
@@ -209,7 +204,7 @@ export default function Account() {
     if (moved) navigate(`/account/${moved}`, { replace: true });
   }, [moved, navigate]);
 
-  const section = onSection ? entries.find(entry => entry.id === (moved ?? params?.section) && !entry.href) ?? null : null;
+  const section = onSection ? entries.find(entry => entry.id === (moved?.split("?")[0] ?? params?.section) && !entry.href) ?? null : null;
   /* A section this account does not have — typed in, or from somebody else's link — is the home. */
   const settled = !loading && !me.isLoading;
   useEffect(() => {

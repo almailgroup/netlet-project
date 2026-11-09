@@ -75,7 +75,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { pressHaptic } from "@/lib/haptics";
 import { useTranslation } from "@/hooks/useTranslation";
-import { checkPassword, type PasswordRule } from "@shared/auth/passwordStrength";
+import { checkPassword, passwordAgainProblem, type PasswordRule } from "@shared/auth/passwordStrength";
 import { suggestEmail } from "@shared/auth/emailTypo";
 import { CODE_LENGTH, isCodeShaped, normaliseCode, RESEND_WAIT_SECONDS as CODE_RESEND_SECONDS } from "@shared/auth/emailCode";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -1052,10 +1052,12 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
   const ownId = useId();
   const id = (part: string) => `${ownId}-${part}`;
   const [password, setPassword] = useState("");
+  const [again, setAgain] = useState("");
   const [reveal, setReveal] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const againInput = useRef<HTMLInputElement>(null);
   const verdict = useMemo(() => checkPassword(password), [password]);
 
   const complete = trpc.auth.completeReset.useMutation({
@@ -1072,6 +1074,8 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
 
   const issue: MessageKey | null = !password ? "auth.passwordRequired" : !verdict.acceptable ? "auth.passwordNeedsRules" : null;
   const showIssue = submitted && issue;
+  const againIssue: MessageKey | null = issue ? null : passwordAgainProblem(password, again);
+  const showAgain = submitted && againIssue;
   const expired = refusal === "auth.resetLinkExpired";
   const marker = "⁣";
   const [before, after = ""] = t("auth.newPasswordFor", { email: marker }).split(marker);
@@ -1081,6 +1085,7 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
     setRefusal(null);
     setSubmitted(true);
     if (issue) { input.current?.focus(); return; }
+    if (againIssue) { againInput.current?.focus(); return; }
     complete.mutate({ token: arrival.token, password });
   };
 
@@ -1118,6 +1123,25 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
           </div>
           {showIssue ? <Issue id={id("issue")}>{t(issue)}</Issue> : null}
           <PasswordChecklist id={id("rules")} verdict={verdict} typed={password.length > 0} />
+        </div>
+
+        <div>
+          <label htmlFor={id("again")} className={labelClass}>{t("auth.passwordAgainLabel")}</label>
+          <input
+            id={id("again")}
+            ref={againInput}
+            name="new-password-again"
+            type={reveal ? "text" : "password"}
+            dir="ltr"
+            value={again}
+            onChange={event => setAgain(event.target.value)}
+            autoComplete="new-password"
+            maxLength={200}
+            aria-invalid={showAgain ? true : undefined}
+            aria-describedby={showAgain ? id("again-issue") : undefined}
+            className={`${inputClass} mt-1.5`}
+          />
+          {showAgain ? <Issue id={id("again-issue")}>{t(againIssue)}</Issue> : null}
         </div>
 
         {refusal ? (

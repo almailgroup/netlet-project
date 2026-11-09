@@ -23,6 +23,8 @@ final class ResetByCodeModel {
     let email: String
     var code = ""
     var password = ""
+    /// The new password typed again, which must be the same.
+    var again = ""
     /// Set once Save is pressed: errors arrive with Save and leave with the fix.
     private(set) var tried = false
     private(set) var working = false
@@ -43,6 +45,9 @@ final class ResetByCodeModel {
 
     var passwordProblem: String? { Validation.newPasswordProblem(password) }
 
+    /// Asked only once the password itself passes, so one box says one thing.
+    var againProblem: String? { passwordProblem == nil ? Validation.passwordAgainProblem(password, again: again) : nil }
+
     /// Whether the refusal is about the code, so the code box takes focus.
     var refusalIsCode: Bool { refusal == "auth.codeWrong" || refusal == "auth.codeShape" }
 
@@ -52,7 +57,7 @@ final class ResetByCodeModel {
     func finish() async -> Outcome? {
         tried = true
         refusal = nil
-        guard codeProblem == nil, passwordProblem == nil else { return nil }
+        guard codeProblem == nil, passwordProblem == nil, againProblem == nil else { return nil }
         working = true
         defer { working = false }
         do {

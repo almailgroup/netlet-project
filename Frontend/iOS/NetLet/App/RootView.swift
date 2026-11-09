@@ -244,7 +244,8 @@ private struct RouteDestination: View {
             .toolbar(.hidden, for: .tabBar)
         case .orders: OrdersView()
         case .order(let reference): OrderDetailView(reference: reference)
-        case .returns: ReturnsView()
+        // Returns and Reviews are tabs of My orders, on the owner's word.
+        case .returns: OrdersView(initialTab: "returns")
         case .frequent: FrequentView()
         case .payments: PaymentMethodsView()
         case .profile: ProfileView()
@@ -257,7 +258,7 @@ private struct RouteDestination: View {
         case .wishlists: WishlistsView()
         case .wishlist(let id): WishlistDetailView(listId: id)
         case .offers: PriceRequestsView()
-        case .reviews: ReviewsView()
+        case .reviews: OrdersView(initialTab: "reviews")
         case .help: SupportView()
         case .supportThread(let id): SupportThreadView(conversationId: id)
         case .rewards: RewardsView()

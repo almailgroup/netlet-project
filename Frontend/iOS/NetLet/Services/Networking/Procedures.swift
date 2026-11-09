@@ -391,6 +391,11 @@ enum API {
     struct OrderList: Encodable, Sendable {
         var page: Int?
         var pageSize: Int?
+        /// One of `ORDER_VIEWS`; nil is every order.
+        var view: String?
+        var q: String?
+        /// One of `ORDER_PERIODS`; nil is any time.
+        var period: String?
     }
 
     struct Reference: Encodable, Sendable {

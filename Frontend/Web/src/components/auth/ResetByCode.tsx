@@ -16,7 +16,7 @@ import { CodeBoxes, PasswordChecklist } from "@/components/auth/AuthForm";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { isCodeShaped, normaliseCode } from "@shared/auth/emailCode";
-import { checkPassword } from "@shared/auth/passwordStrength";
+import { checkPassword, passwordAgainProblem } from "@shared/auth/passwordStrength";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 const labelClass = "block text-[14px] font-semibold text-[#0a285a]";
@@ -35,11 +35,13 @@ export function ResetByCode({ email, remember = true, onSignedIn, onVerify, auto
   const id = (part: string) => `${ownId}-${part}`;
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
+  const [again, setAgain] = useState("");
   const [reveal, setReveal] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const codeInput = useRef<HTMLInputElement>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
+  const againInput = useRef<HTMLInputElement>(null);
   const verdict = useMemo(() => checkPassword(password), [password]);
 
   const finish = trpc.auth.resetWithCode.useMutation({
@@ -63,6 +65,8 @@ export function ResetByCode({ email, remember = true, onSignedIn, onVerify, auto
   const passwordIssue: MessageKey | null = !password ? "auth.passwordRequired" : !verdict.acceptable ? "auth.passwordNeedsRules" : null;
   const showCode = submitted && codeIssue;
   const showPassword = submitted && passwordIssue;
+  const againIssue: MessageKey | null = passwordIssue ? null : passwordAgainProblem(password, again);
+  const showAgain = submitted && againIssue;
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -70,6 +74,7 @@ export function ResetByCode({ email, remember = true, onSignedIn, onVerify, auto
     setSubmitted(true);
     if (codeIssue) { codeInput.current?.focus(); return; }
     if (passwordIssue) { passwordInput.current?.focus(); return; }
+    if (againIssue) { againInput.current?.focus(); return; }
     finish.mutate({ email, code, password, remember });
   };
 
@@ -126,6 +131,25 @@ export function ResetByCode({ email, remember = true, onSignedIn, onVerify, auto
         </div>
         {showPassword ? <p id={id("password-issue")} className="mt-2 text-[13px] font-semibold text-[#b3261e]">{t(passwordIssue!)}</p> : null}
         <PasswordChecklist id={id("rules")} verdict={verdict} typed={password.length > 0} />
+      </div>
+
+      <div>
+        <label htmlFor={id("again")} className={labelClass}>{t("auth.passwordAgainLabel")}</label>
+        <input
+          id={id("again")}
+          ref={againInput}
+          name="new-password-again"
+          type={reveal ? "text" : "password"}
+          dir="ltr"
+          value={again}
+          onChange={event => setAgain(event.target.value)}
+          autoComplete="new-password"
+          maxLength={200}
+          aria-invalid={showAgain ? true : undefined}
+          aria-describedby={showAgain ? id("again-issue") : undefined}
+          className={`${inputClass} mt-1.5`}
+        />
+        {showAgain ? <p id={id("again-issue")} className="mt-2 text-[13px] font-semibold text-[#b3261e]">{t(againIssue!)}</p> : null}
       </div>
 
       {refusal ? (

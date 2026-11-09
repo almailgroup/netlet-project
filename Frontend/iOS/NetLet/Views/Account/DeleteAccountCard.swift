@@ -53,18 +53,16 @@ struct DeleteAccountCard: View {
         ways?.password == false && ways?.apple != true && ways?.google != true && app.session.user?.phone != nil
     }
 
-    var body: some View {
+    @State private var open = false
+
+    /// What the folded row opens on: the note, the points that go, and either
+    /// what stands in the way or the press that deletes.
+    private var details: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(l.t("account.deleteTitle"))
-                    .font(.inter(17, .bold))
-                    .foregroundStyle(Brand.ink)
-                    .accessibilityAddTraits(.isHeader)
-                Text(l.t("account.deleteNote"))
-                    .font(.inter(14))
-                    .foregroundStyle(Brand.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(l.t("account.deleteNote"))
+                .font(.inter(14))
+                .foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
             if let points = check?.points, points > 0 {
                 Text(l.t("account.deletePoints", ["points": PointsFormat.count(points, l.current)]))
                     .font(.inter(14, .semibold))
@@ -128,7 +126,41 @@ struct DeleteAccountCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(16)
+        .padding(.bottom, 10)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            // Folded to one row until pressed, the web's, on the owner's word
+            // ("make it very compact"): what goes, what stays and what stands
+            // in the way are a press away.
+            Button {
+                withAnimation(.snappy(duration: 0.25)) { open.toggle() }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 16, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text(l.t("account.deleteTitle"))
+                        .font(.inter(15, .semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Brand.muted)
+                        .rotationEffect(.degrees(open ? 180 : 0))
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(Brand.danger)
+                .frame(minHeight: 48)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.tap)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityValue(l.t(open ? "ios.a11y.expanded" : "ios.a11y.collapsed"))
+            if open { details }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
         .panel()
         .task { await load() }

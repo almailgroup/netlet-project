@@ -658,7 +658,16 @@ What the form does, each for a reason:
 details and the password, each its own small form with its own Save. One Save
 across them would change a password somebody opened the panel to fix a
 spelling in. **The password re-asks for the current one** — a session left
-open on a shared machine should not be enough to take an account over. **The
+open on a shared machine should not be enough to take an account over — **and
+the new one is typed twice, on the owner's word** ("put a type password again
+for changing your password as a confirmation"): "Type the new password again"
+under the new password on "Your profile", in the reset by code (`ResetByCode`,
+the app's `ResetByCodeFields`) and on the reset link's "Choose a new password",
+the wrong one said under its box with Submit and focused
+(`passwordAgainProblem` in `Shared/auth/passwordStrength.ts`, the app's
+`Validation.passwordAgainProblem`, on the same cases). The server takes one
+password; the second is the form's question. Creating an account does not ask
+it twice, its password being shown on request beside the box. **The
 sign-in email is not changed from any page, on the owner's word**: its card
 went from "Your profile" with the identity card (see "The account"), and
 `auth.changeEmail` stays on the server, re-asking for the password, for the
@@ -2487,14 +2496,18 @@ own name for it. Preferences keeps the delivery area and the notices.
 
 **Only the rows somebody needs, on the owner's word** ("I only want the
 options that are 100 percent needed in the profile page; combine or remove
-options if necessary"). The first card is Returns, Addresses, Payment methods,
-Wishlists and Reviews; Price requests and Subscribe & Save are rows only for
+options if necessary"). The first card is Addresses, Payment methods and
+Wishlists; Price requests and Subscribe & Save are rows only for
 somebody who has one (`offers.list`, `subscriptions.mine`), since for anybody
 else they open an empty page, and their pages stay open to a link. The
 language and the currency were rows of their own, then inside Preferences, and
 are on the page itself now (Quick settings, above). Then the help centre, selling for
-a seller, and the account itself. **Returns is its own page**
-(`/account/returns`, `AccountReturns`; the app's `ReturnsView`): a return is
+a seller, and the account itself. **Returns and Reviews are tabs of My
+orders, on the owner's word** ("move the returns and my review to the my
+orders page"; see "My orders has every tool" under Orders) — they were rows of
+this card, and `/account/returns` and `/account/reviews` now open the orders
+on that tab (`MOVED` in `Account.tsx`; the app's `AppModel.open`). **Returns**
+(`AccountReturns`; the app's `ReturnsList`): a return is
 started from its order, and this is where somebody asks where their refund
 is — every request across their orders, newest first (`orders.myReturns`,
 `returnsForShopper`, scoped by account in the query, at most
@@ -2612,11 +2625,24 @@ password in the confirmation, the email form's rule. `accountDeletion.test.ts`
 deletes one and checks each refusal; the privacy policy says it, and
 `LEGAL_UPDATED` moved.
 
-**"Your profile" is drawn to the owner's second reference** (Noon's "Your
-profile"): white cards whose boxes carry their label inside the rim, small and
-muted, with what is typed under it and a navy rim on focus — `FloatingField` on
-the web (`ProfileManager`) and in the app. The label never moves, so the
-sign-in form's rule against one that lifts as you type still holds.
+**"Your profile" is one list, compact, on the owner's word** ("make it very
+compact and simple, it should list your details by default and you can edit
+them"): one card of rows — the photo, the name, the sign-in email, the phone,
+the gender, the birthday and the password (dots, "A password is set" to a
+screen reader) — each its label small and muted, its value or "Not added"
+under it and an Edit at the row's end (`DetailRow` in `profileParts.tsx`; the
+app's `ProfileForm`). Edit opens that row's own form in its place and only one
+row is open at a time; Save or Cancel closes it, and the keyboard goes back to
+the row's Edit (VoiceOver's focus too). The email is shown and not changed;
+an account made with a phone has no email, and its row's press is Add.
+Deleting the account is one folded row under the list (`DeleteAccount`,
+`DeleteAccountCard`), opening on what goes, what stays and what stands in the
+way. It was a card per detail, each with a title, a note and a Save always
+showing — a screen and a half before the password. **The boxes are the owner's
+second reference** (Noon's "Your profile"): their label inside the rim, small
+and muted, with what is typed under it and a navy rim on focus, red when
+wrong — `FloatingField` on the web and in the app. The label never moves, so
+the sign-in form's rule against one that lifts as you type still holds.
 
 **And it holds what the reference holds, on the owner's word** (migration
 0070): a first and a last name side by side, a phone, a gender and a birthday,
@@ -2928,12 +2954,47 @@ omission: an order has to exist before a payment can reference it. `orders` and
 page reads its row count and nothing else. It should be folded into orders when
 tracking becomes real.
 
-**A return is started from its order, and listed on a page of its own.** A
-return is something you do *to* an order, so the order is where it is asked
-for; the account's Returns row, on the owner's word, is where somebody comes
-back to ask where their refund is, every order's returns together (see "Only
-the rows somebody needs" under The account), and it says how to start one
-while it is empty. Orders is the first tile, ahead of the settings: somebody
+**A return is started from its order, and listed under My orders' Returns
+tab.** A return is something you do *to* an order, so the order is where it is
+asked for; the Returns tab, on the owner's word, is where somebody comes back
+to ask where their refund is, every order's returns together (see "Only the
+rows somebody needs" under The account), and it says how to start one while
+it is empty.
+
+**My orders has every tool somebody needs about what they bought, on the
+owner's word** ("add these filter options at the top of the my order page …
+I want the orders page to have all the tools that the user needs"; the
+reference picture they meant to send did not arrive). A row of chips — All,
+Processing, On the way, Delivered and Cancelled, each saying how many it
+holds, then Returns (how many asked) and Reviews (how many still to rate) —
+sideways on a phone and wrapping from `sm`, `aria-pressed` buttons in a named
+group (the `Segmented` rule: they narrow a list); then, on the orders' own
+views, a search by the order's number (whole or in part, with or without its
+dashes) or by anything in it, and how far back to look (any time, 30, 90 and
+180 days, a year). **A view is read off `orderProgress`, never a second
+rule** (`viewOfProgress` in `Shared/commerce/orderFilters.ts`): received and
+being prepared are Processing, on the way and part-delivered On the way, an
+order that came back whole Delivered (its return is under Returns). **The
+server filters over every order the shopper has** (`orders.list` with `view`,
+`q` and `period`; `filterOrders`, pure, over up to `ORDER_SCAN_CEILING` of
+their newest, and says when it reached it), because a filter over the twenty
+on the page says "none" about the twenty-first — the admin lists' rule; the
+chips' numbers are the same computation as the list, under the same search
+and period, so a chip's number is what pressing it shows. The search folds and
+stems as the shop's search does (`searchWords`: "ساعه" finds "ساعة ذكية",
+"watches" finds "Smart watch", "cha" the word it starts). The filters live in
+the address (`?view=`, `?q=`, `?period=`, replaced rather than pushed), the
+search sent once typing pauses and the box never overwritten by its own
+search coming back; nothing matching says so with Clear filters. The app's
+`OrdersView` is the same, the chips, periods and search length exported to
+`rules.json` (`orders.filterTabs`, `filterPeriods`, `searchMax`), the
+recording carrying `counts`. `orders.test.ts` filters a real database by view,
+search and period with the counts; `orderFilters.test.ts` holds the rule, and
+the app's model only sends what it is given. Measured at 320, 390 and 1440 in
+both languages: the chips' numbers, a number found by five of its letters, a
+miss offering Clear filters, Returns and Reviews in place, axe clean, no
+sideways scroll (a review row's long reason widened the page at 320 until it
+was allowed to wrap). Orders is the first tile, ahead of the settings: somebody
 opening their account on a shop is usually asking where a parcel is, not
 changing a display name.
 
@@ -7555,8 +7616,9 @@ addresses and the profile photo, then 939 KB (271 KB), signing in with a
 phone and its words in both languages, then 941 KB (272 KB), the
 one-time code's choice and step, then 947 KB (273 KB), the iPhone's
 Face ID words in both languages (every `ios.*` key ships in the one
-dictionary), and is 954 KB (276 KB) now, choosing what to check out and the
-photo's glass and typed count, nearly
+dictionary), then 954 KB (276 KB), choosing what to check out and the
+photo's glass and typed count, and is 957 KB (276 KB) now, My orders'
+filters and the compact profile's words, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

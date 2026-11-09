@@ -70,7 +70,7 @@ const PAGE: Record<HelpPage, { href: string; label: MessageKey }> = {
   profile: { href: "/account/details", label: "help.page.profile" },
   notifications: { href: "/account/preferences", label: "help.page.notifications" },
   addresses: { href: "/account/addresses", label: "help.page.addresses" },
-  returns: { href: "/account/returns", label: "help.page.returns" },
+  returns: { href: "/account/orders?view=returns", label: "help.page.returns" },
 };
 
 export type HelpItem = { id: number; title: string; variant?: string | null; photo: string | null; variantId: number | null; quantity: number };

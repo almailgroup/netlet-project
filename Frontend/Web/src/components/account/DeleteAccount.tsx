@@ -19,19 +19,19 @@
  * forgets it as signing out does (`useAuth().logout`) and goes home.
  */
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { FloatingField, ProfileCard } from "@/components/account/profileParts";
+import { FloatingField, PANEL } from "@/components/account/profileParts";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCount } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { CircleAlert, LoaderCircle, Trash2 } from "lucide-react";
+import { ChevronDown, CircleAlert, LoaderCircle, Trash2 } from "lucide-react";
 import { CodeBoxes } from "@/components/auth/AuthForm";
 import { isCodeShaped, normaliseCode } from "@shared/auth/emailCode";
 import { shownPhone } from "@shared/auth/phone";
 import { AppleButton, OrDivider } from "@/components/auth/AppleButton";
 import { GoogleButton } from "@/components/auth/GoogleButton";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 
@@ -52,6 +52,8 @@ export function DeleteAccount() {
   const [, navigate] = useLocation();
   const check = trpc.auth.deletionCheck.useQuery(undefined, { refetchOnWindowFocus: true });
   const [asking, setAsking] = useState(false);
+  const [open, setOpen] = useState(false);
+  const ownId = useId();
   const [password, setPassword] = useState("");
   const ways = trpc.auth.myProviders.useQuery(undefined, { staleTime: 60_000 });
   const providers = trpc.auth.providers.useQuery(undefined, { staleTime: 5 * 60_000 });
@@ -99,112 +101,131 @@ export function DeleteAccount() {
     setTexted(false);
   };
 
+  /* Folded to one row until pressed, on the owner's word ("make it very
+     compact"): what goes, what stays and what stands in the way are a press
+     away, never a screen of text under somebody's name and phone. */
   return (
-    <ProfileCard title={t("account.deleteTitle")} note={t("account.deleteNote")}>
-      {points > 0 ? (
-        <p className="mb-3 text-[14px] font-semibold text-[#0a285a]">
-          {t("account.deletePoints", { points: formatCount(points, locale) })}
-        </p>
-      ) : null}
-      {blockers.length > 0 ? (
-        <div role="status" className="rounded-2xl bg-[#fdf1ec] p-4">
-          <p className="flex items-center gap-2 text-[14px] font-bold text-[#a44a2b]">
-            <CircleAlert className="size-4 shrink-0" aria-hidden />
-            {t("account.deleteBlockedTitle")}
-          </p>
-          <ul className="mt-2 space-y-1.5 text-[14px] leading-5 text-[#404553]">
-            {blockers.map(blocker => (
-              <li key={blocker}>{t(BLOCKER_SENTENCE[blocker] ?? "account.deleteFailed")}</li>
-            ))}
-          </ul>
-        </div>
-      ) : (
+    <section aria-labelledby={`${ownId}-title`} className={PANEL}>
+      <h3 id={`${ownId}-title`} className="m-0">
         <button
           type="button"
-          onClick={() => setAsking(true)}
-          disabled={check.isLoading}
-          className="inline-flex h-12 items-center gap-2 rounded-full border border-[#e9b8b0] bg-white px-6 text-[15px] font-semibold text-[#b42318] hover:bg-[#fdeceb] disabled:opacity-50"
+          aria-expanded={open}
+          aria-controls={`${ownId}-body`}
+          onClick={() => setOpen(shown => !shown)}
+          className="flex min-h-14 w-full items-center gap-3 rounded-3xl px-5 py-3 text-start text-[15px] font-semibold text-[#b42318] hover:bg-[#fdeceb] sm:px-6"
         >
-          <Trash2 className="size-4" aria-hidden />
-          {t("account.deleteStart")}
+          <Trash2 className="size-[18px] shrink-0" aria-hidden />
+          <span className="flex-1">{t("account.deleteTitle")}</span>
+          <ChevronDown className={`size-5 shrink-0 text-[#8a97ab] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
         </button>
-      )}
-      <ConfirmDialog
-        open={asking}
-        title={t("account.deleteConfirmTitle")}
-        body={t("account.deleteNote")}
-        confirmLabel={t("account.deleteStart")}
-        tone="danger"
-        pending={remove.isPending}
-        confirmDisabled={phoneAccount ? !isCodeShaped(phoneCode) : password === ""}
-        confirmHidden={!hasPassword && !(phoneAccount && texted)}
-        icon={<Trash2 className="size-5" />}
-        onConfirm={() => remove.mutate(phoneAccount ? { phoneCode } : { currentPassword: password })}
-        onClose={close}
-      >
-        <div className="space-y-3">
-          {hasPassword ? (
-            <div className="space-y-2">
-              <FloatingField
-                label={t("account.currentPassword")}
-                leftToRight
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={event => setPassword(event.target.value)}
-              />
-              <p className="text-[12px] leading-4 ink-muted">{t("account.deletePasswordNote")}</p>
-            </div>
-          ) : null}
-          {appleClientId || googleClientId ? (
-            <>
-              {hasPassword ? <OrDivider /> : <p className="text-[13px] leading-5 ink-muted">{t(confirmNote)}</p>}
-              {appleClientId ? (
-                <AppleButton
-                  clientId={appleClientId}
-                  label="account.deleteWithApple"
-                  busy={remove.isPending}
-                  onProof={proof => remove.mutate({ apple: { idToken: proof.idToken, nonce: proof.nonce, code: proof.code } })}
-                  onFailed={() => toast.error(t("auth.appleWindowFailed"))}
+      </h3>
+      <div id={`${ownId}-body`} hidden={!open} className="px-5 pb-5 sm:px-6">
+        <p className="mb-3 text-[14px] leading-5 ink-muted">{t("account.deleteNote")}</p>
+        {points > 0 ? (
+          <p className="mb-3 text-[14px] font-semibold text-[#0a285a]">
+            {t("account.deletePoints", { points: formatCount(points, locale) })}
+          </p>
+        ) : null}
+        {blockers.length > 0 ? (
+          <div role="status" className="rounded-2xl bg-[#fdf1ec] p-4">
+            <p className="flex items-center gap-2 text-[14px] font-bold text-[#a44a2b]">
+              <CircleAlert className="size-4 shrink-0" aria-hidden />
+              {t("account.deleteBlockedTitle")}
+            </p>
+            <ul className="mt-2 space-y-1.5 text-[14px] leading-5 text-[#404553]">
+              {blockers.map(blocker => (
+                <li key={blocker}>{t(BLOCKER_SENTENCE[blocker] ?? "account.deleteFailed")}</li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAsking(true)}
+            disabled={check.isLoading}
+            className="inline-flex h-12 items-center gap-2 rounded-full border border-[#e9b8b0] bg-white px-6 text-[15px] font-semibold text-[#b42318] hover:bg-[#fdeceb] disabled:opacity-50"
+          >
+            <Trash2 className="size-4" aria-hidden />
+            {t("account.deleteStart")}
+          </button>
+        )}
+        <ConfirmDialog
+          open={asking}
+          title={t("account.deleteConfirmTitle")}
+          body={t("account.deleteNote")}
+          confirmLabel={t("account.deleteStart")}
+          tone="danger"
+          pending={remove.isPending}
+          confirmDisabled={phoneAccount ? !isCodeShaped(phoneCode) : password === ""}
+          confirmHidden={!hasPassword && !(phoneAccount && texted)}
+          icon={<Trash2 className="size-5" />}
+          onConfirm={() => remove.mutate(phoneAccount ? { phoneCode } : { currentPassword: password })}
+          onClose={close}
+        >
+          <div className="space-y-3">
+            {hasPassword ? (
+              <div className="space-y-2">
+                <FloatingField
+                  label={t("account.currentPassword")}
+                  leftToRight
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={event => setPassword(event.target.value)}
                 />
-              ) : null}
-              {googleClientId ? (
-                <GoogleButton
-                  clientId={googleClientId}
-                  label="account.deleteWithGoogle"
-                  busy={remove.isPending}
-                  onProof={proof => remove.mutate({ google: proof })}
-                  onFailed={() => toast.error(t("auth.googleWindowFailed"))}
-                />
-              ) : null}
-            </>
-          ) : phoneAccount && user?.phone ? (
-            <div className="space-y-3">
-              <p className="text-[13px] leading-5 ink-muted">
-                {t("account.deletePhoneNote", { phone: "\u2068" + shownPhone(user.phone) + "\u2069" })}
-              </p>
-              {texted ? (
-                <div>
-                  <label htmlFor="delete-phone-code" className="text-[13px] font-semibold text-[#0a285a]">{t("account.deletePhoneCode")}</label>
-                  <CodeBoxes id="delete-phone-code" value={phoneCode} onChange={raw => setPhoneCode(normaliseCode(raw))} invalid={false} />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => text.mutate({ phone: user.phone! })}
-                  disabled={text.isPending}
-                  className="inline-flex h-11 items-center gap-2 rounded-full border border-[#c9d4e2] bg-white px-5 text-[14px] font-semibold text-[#0a285a] hover:bg-[#f0f2f5]"
-                >
-                  {text.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-                  {t("account.deleteWithPhone")}
-                </button>
-              )}
-            </div>
-          ) : !hasPassword ? (
-            <p className="text-[13px] leading-5 ink-muted">{t(appleAccount ? "account.deleteAppleInApp" : "account.deleteGoogleInApp")}</p>
-          ) : null}
-        </div>
-      </ConfirmDialog>
-    </ProfileCard>
+                <p className="text-[12px] leading-4 ink-muted">{t("account.deletePasswordNote")}</p>
+              </div>
+            ) : null}
+            {appleClientId || googleClientId ? (
+              <>
+                {hasPassword ? <OrDivider /> : <p className="text-[13px] leading-5 ink-muted">{t(confirmNote)}</p>}
+                {appleClientId ? (
+                  <AppleButton
+                    clientId={appleClientId}
+                    label="account.deleteWithApple"
+                    busy={remove.isPending}
+                    onProof={proof => remove.mutate({ apple: { idToken: proof.idToken, nonce: proof.nonce, code: proof.code } })}
+                    onFailed={() => toast.error(t("auth.appleWindowFailed"))}
+                  />
+                ) : null}
+                {googleClientId ? (
+                  <GoogleButton
+                    clientId={googleClientId}
+                    label="account.deleteWithGoogle"
+                    busy={remove.isPending}
+                    onProof={proof => remove.mutate({ google: proof })}
+                    onFailed={() => toast.error(t("auth.googleWindowFailed"))}
+                  />
+                ) : null}
+              </>
+            ) : phoneAccount && user?.phone ? (
+              <div className="space-y-3">
+                <p className="text-[13px] leading-5 ink-muted">
+                  {t("account.deletePhoneNote", { phone: "\u2068" + shownPhone(user.phone) + "\u2069" })}
+                </p>
+                {texted ? (
+                  <div>
+                    <label htmlFor="delete-phone-code" className="text-[13px] font-semibold text-[#0a285a]">{t("account.deletePhoneCode")}</label>
+                    <CodeBoxes id="delete-phone-code" value={phoneCode} onChange={raw => setPhoneCode(normaliseCode(raw))} invalid={false} />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => text.mutate({ phone: user.phone! })}
+                    disabled={text.isPending}
+                    className="inline-flex h-11 items-center gap-2 rounded-full border border-[#c9d4e2] bg-white px-5 text-[14px] font-semibold text-[#0a285a] hover:bg-[#f0f2f5]"
+                  >
+                    {text.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+                    {t("account.deleteWithPhone")}
+                  </button>
+                )}
+              </div>
+            ) : !hasPassword ? (
+              <p className="text-[13px] leading-5 ink-muted">{t(appleAccount ? "account.deleteAppleInApp" : "account.deleteGoogleInApp")}</p>
+            ) : null}
+          </div>
+        </ConfirmDialog>
+      </div>
+    </section>
   );
 }

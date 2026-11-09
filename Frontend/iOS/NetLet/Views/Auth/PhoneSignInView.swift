@@ -300,6 +300,8 @@ struct PhoneSignInButton: View {
 /// emailed to it, through the same model the sign-up's optional step uses.
 struct AddEmailCard: View {
     let phone: String?
+    /// Drawn inside "Your profile"'s Email row, which carries its own title and frame.
+    var bare = false
     let onAdded: (User) -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -308,10 +310,12 @@ struct AddEmailCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(l.t("account.emailCard"))
-                    .font(.inter(17, .bold))
-                    .foregroundStyle(Brand.ink)
-                    .accessibilityAddTraits(.isHeader)
+                if !bare {
+                    Text(l.t("account.emailCard"))
+                        .font(.inter(17, .bold))
+                        .foregroundStyle(Brand.ink)
+                        .accessibilityAddTraits(.isHeader)
+                }
                 Text(l.t("account.emailCardNote"))
                     .font(.inter(14))
                     .foregroundStyle(Brand.muted)
@@ -327,10 +331,19 @@ struct AddEmailCard: View {
                 AddEmailFields(model: model, onAdded: onAdded)
             }
         }
-        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .panel()
+        .modifier(CardFrame(on: !bare))
         .onAppear { if model == nil { model = PhoneSignInModel(account: app.services.account, startAt: .email) } }
+    }
+}
+
+/// A card's padding and white panel, or neither when the card sits inside a row.
+private struct CardFrame: ViewModifier {
+    let on: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if on { content.padding(20).panel() } else { content }
     }
 }
 

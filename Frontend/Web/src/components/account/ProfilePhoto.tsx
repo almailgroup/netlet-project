@@ -2,9 +2,10 @@
  * The account's profile photo (`Shared/commerce/profilePhoto.ts`), on the
  * owner's word: "users can set profile picture for their profiles".
  *
- * `ProfilePhotoCard` is the choosing, on "Your profile": a photo is cropped to
- * a square on the device and shown in the circle before anything is sent, and
- * Save is what sends it — the page's rule that each card is its own decision.
+ * `ProfilePhotoRow` is the choosing, the first row of "Your profile": a photo
+ * is cropped to a square on the device and shown in the circle before anything
+ * is sent, and Save is what sends it — the page's rule that each detail is its
+ * own decision.
  * Remove asks first. Before migration 0076 is pasted the card is not drawn and
  * the circle is the initials, so nothing offers what cannot be kept.
  */
@@ -18,10 +19,9 @@ import { isMessageKey } from "@shared/i18n/dictionary";
 import { prepareProfilePhoto, type PreparedProfilePhoto } from "@/lib/prepareProfilePhoto";
 import { ProfileAvatar, useProfilePhoto } from "@/components/account/ProfileAvatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { ProfileCard, primary, secondary } from "@/components/account/profileParts";
 import { pressHaptic } from "@/lib/haptics";
 
-export function ProfilePhotoCard({ user }: { user: { name: string | null; email: string | null } }) {
+export function ProfilePhotoRow({ user }: { user: { name: string | null; email: string | null } }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const photo = useProfilePhoto();
@@ -79,30 +79,32 @@ export function ProfilePhotoCard({ user }: { user: { name: string | null; email:
     }
   };
 
+  const small = "inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#d5dfeb] bg-white px-4 text-[14px] font-semibold text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-50 pointer-fine:min-h-9";
   return (
-    <ProfileCard title={t("profilePhoto.title")} note={t("profilePhoto.note")}>
-      <div className="flex flex-wrap items-center gap-4">
-        <ProfileAvatar user={user} size="size-24" textClass="text-[30px]" src={chosen?.url} alt={t("profilePhoto.alt")} />
-        {/* A basis of its own, so on a narrow phone the buttons go under the
-            circle rather than breaking their words in two beside it. */}
-        <div className="flex min-w-0 flex-1 basis-44 flex-wrap gap-2 [&>button]:whitespace-nowrap">
+    <div className="relative flex items-center gap-4 px-5 py-4 sm:px-6">
+      <ProfileAvatar user={user} size="size-16" textClass="text-[22px]" src={chosen?.url} alt={t("profilePhoto.alt")} />
+      <div className="min-w-0 flex-1">
+        <h3 className="text-[13px] font-medium ink-muted">{t("profilePhoto.title")}</h3>
+        <p className="mt-0.5 text-[13px] leading-5 text-[#1f2a44]" role={chosen ? "status" : undefined}>
+          {t(chosen ? "profilePhoto.preview" : "profilePhoto.note")}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
           {chosen ? (
             <>
-              <p className="w-full text-[14px] leading-5 text-[#1f2a44]" role="status">{t("profilePhoto.preview")}</p>
-              <button type="button" className={primary} disabled={saving} onClick={() => { pressHaptic(); void save(); }}>
+              <button type="button" className={`${small} border-[#0a285a] bg-[#0a285a] text-white hover:bg-[#0d3372]`} disabled={saving} onClick={() => { pressHaptic(); void save(); }}>
                 {saving ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
                 {t("profilePhoto.save")}
               </button>
-              <button type="button" className={secondary} disabled={saving} onClick={() => setChosen(null)}>{t("common.cancel")}</button>
+              <button type="button" className={small} disabled={saving} onClick={() => setChosen(null)}>{t("common.cancel")}</button>
             </>
           ) : (
             <>
-              <button type="button" className={secondary} disabled={preparing} onClick={() => input.current?.click()}>
+              <button type="button" className={small} disabled={preparing} onClick={() => input.current?.click()}>
                 {preparing ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Camera className="size-4" aria-hidden />}
                 {preparing ? t("profilePhoto.preparing") : t(has ? "profilePhoto.change" : "profilePhoto.add")}
               </button>
               {has ? (
-                <button type="button" className={secondary} onClick={() => setConfirming(true)}>
+                <button type="button" className={small} onClick={() => setConfirming(true)}>
                   <Trash2 className="size-4" aria-hidden />
                   {t("profilePhoto.remove")}
                 </button>
@@ -134,6 +136,6 @@ export function ProfilePhotoCard({ user }: { user: { name: string | null; email:
         onConfirm={() => remove.mutate()}
         onClose={() => setConfirming(false)}
       />
-    </ProfileCard>
+    </div>
   );
 }

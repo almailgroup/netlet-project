@@ -85,7 +85,7 @@ export function AccountReviews() {
                         </button>
                       ) : (
                         /* The reason, not silence. See the file comment. */
-                        <span className="shrink-0 rounded-full bg-[#e7edf5] px-3 py-2 text-[12px] font-extrabold text-[#536b8c]">
+                        <span className="max-w-full rounded-2xl bg-[#e7edf5] px-3 py-2 text-[12px] font-extrabold leading-4 text-[#536b8c]">
                           {t(`review.${line.eligibility.allowed ? "write" : line.eligibility.reason}` as MessageKey)}
                         </span>
                       )}

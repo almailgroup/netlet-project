@@ -32,7 +32,7 @@ enum Route: Hashable {
     case orderPlaced(reference: String)
     case orders
     case order(reference: String)
-    /// Every return the shopper asked for — the web's `/account/returns`.
+    /// My orders on its Returns tab — the web's `/account/orders?view=returns`.
     case returns
     /// What the shopper buys again and again — the web's `/account/frequent`.
     case frequent
@@ -50,6 +50,7 @@ enum Route: Hashable {
     case wishlists
     case wishlist(id: Int)
     case offers
+    /// My orders on its Reviews tab — the web's `/account/orders?view=reviews`.
     case reviews
     case help
     case supportThread(id: Int)
@@ -117,7 +118,14 @@ enum Route: Hashable {
         case ("account"?, 1): return .tab(.account)
         case ("account"?, _):
             switch segments[1] {
-            case "orders": return query["order"].map { .order(reference: $0) } ?? .orders
+            case "orders":
+                if let reference = query["order"] { return .order(reference: reference) }
+                // Returns and Reviews are tabs of My orders now (`?view=`).
+                switch query["view"] {
+                case "returns": return .returns
+                case "reviews": return .reviews
+                default: return .orders
+                }
             case "returns": return .returns
             case "frequent": return .frequent
             case "payments": return .payments
