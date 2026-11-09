@@ -6880,6 +6880,21 @@ asked of the demo co-pilot gets the server's "could not answer".
 photographs the store's and NetLet's dashboards, the stock page and the
 co-pilot (`90`–`93`, `-NetLetOpen copilot`).
 
+**The front page's reads are tasks, never `async let`s** (`PortalHomeView.load`).
+It held twenty `async let`s, and the redesign added a generic helper
+returning a `Result` and two more reads in the middle of them; finishing them
+then aborted the app in Swift's concurrency runtime (`swift_task_dealloc` under
+`asyncLet_finish_after_task_completion`), so the portal's front page closed
+the app for a store and for NetLet, and the co-pilot with it — in build 192,
+while every unit test passed, because they decode the recordings and nothing
+drew them. The pictures were the phone's home screen, which is how it was
+seen. Each read is now a `Task` started at once and awaited after
+(`start`), every result type `Sendable`. `PortalUITests` opens the dashboard
+for a store and for NetLet in both languages and the co-pilot, scrolls to the
+foot and fails if the app has stopped. **A long chain of `async let`s with a
+local function among them is the shape to avoid**: a handful of plain reads
+(the stock page's two) is fine.
+
 **A polish pass after the owner tried it**: the side column's long labels
 wrap rather than end in "…"; every desk's cards are the kit's one surface
 (some twenty pages drew an older border); the finance page's figures carry
@@ -9333,7 +9348,11 @@ run's time** — about half a minute a screen in each language — so the job's
 limit grows with them: the push of the address screens finished 0s inside
 the old 40 minutes, and a run that times out uploads nothing, so it was 60 —
 and 75 once the after-sales sheets were added, the run before them having
-finished in 54.
+finished in 54. **A picture of the phone's home screen is a crash**, and its
+report is on the Mac, not in the test log: after every run the job prints
+NetLet's crash reports from `~/Library/Logs/DiagnosticReports` — the reason
+and the faulting thread with file and line — which is what named the portal
+front page's `async let`s.
 
 **TestFlight uploads by itself after every green iOS run on a push to
 `main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was

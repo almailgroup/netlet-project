@@ -143,7 +143,13 @@ struct PortalHomeView: View {
         return tiles
     }
 
-    /// Each count asked only of somebody it is for, together.
+    /// Each count asked only of somebody it is for, all at once. **Each read is
+    /// a task of its own, never an `async let`**: this function held twenty of
+    /// them with a generic helper and a `Result` among them, and finishing them
+    /// aborted the app in Swift's concurrency runtime (`swift_task_dealloc`
+    /// under `asyncLet_finish_after_task_completion`) — the front page closed
+    /// the app for a store and for NetLet, found by `PortalUITests` and the
+    /// crash report CI now prints.
     private func load() async {
         let api = app.services.api
         do {
@@ -152,70 +158,75 @@ struct PortalHomeView: View {
             failed = nil
             guard who.inPortal, who.adminLocked != true else { return }
             let own = who.ownVendor
-            func asked<T>(_ allowed: Bool, _ ask: @escaping @Sendable () async throws -> T) async -> T? {
-                guard allowed else { return nil }
-                return try? await ask()
+            /// A read started now and awaited below; nil when it is not this person's, or failed.
+            func start<T: Sendable>(_ allowed: Bool, _ ask: @escaping @Sendable () async throws -> T) -> Task<T?, Never> {
+                Task {
+                    guard allowed else { return nil }
+                    return try? await ask()
+                }
             }
-            func count(_ capability: String, _ ask: @escaping @Sendable () async throws -> Int) async -> Int? {
-                await asked(who.can(capability, vendorId: own), ask)
+            func count(_ capability: String, _ ask: @escaping @Sendable () async throws -> Int) -> Task<Int?, Never> {
+                start(who.can(capability, vendorId: own), ask)
             }
-            async let parcels = count("delivery.view") { try await api.call(API.parcelsWaiting) }
-            async let claims = count("delivery.view") { try await api.call(API.claimsOpen) }
+            let parcels = count("delivery.view") { try await api.call(API.parcelsWaiting) }
+            let claims = count("delivery.view") { try await api.call(API.claimsOpen) }
             if who.kind == "courier" {
-                waiting = ["parcels": await parcels ?? 0, "claims": await claims ?? 0].compactMapValues { $0 }
+                let parcelCount = await parcels.value
+                let claimCount = await claims.value
+                waiting = ["parcels": parcelCount ?? 0, "claims": claimCount ?? 0]
                 return
             }
-            async let overview = try? api.call(API.portalCounts, .init())
-            async let score = try? api.call(API.storeHealth, .init())
             let money = who.can("payouts.view", vendorId: own)
+            let period = range
             /* The dashboard's own failure is kept, so it is said with Try again
                rather than drawn as a page with no figures. */
-            func result<T: Sendable>(_ allowed: Bool, _ ask: @escaping @Sendable () async throws -> T) async -> Result<T, Error>? {
-                guard allowed else { return nil }
-                do { return .success(try await ask()) } catch { return .failure(error) }
+            var dashboard: Task<PortalDashboard, Error>?
+            if money {
+                dashboard = Task { try await api.call(API.dashboard, .init(range: period)) }
             }
-            let period = range
-            async let dashboard = result(money) { try await api.call(API.dashboard, .init(range: period)) }
-            async let shelfHealth: ShelfHealth? = asked(!money) { try await api.call(API.shelfHealth) }
-            async let offers = count("offer.answer") { try await api.call(API.offersWaiting, .init(vendorId: own)) }
-            async let changes = count("platform.viewAll") { try await api.call(API.sellerChanges, .init(limit: 1)).unseen }
-            async let applications = count("platform.manageUsers") { try await api.call(API.applicationsWaiting) }
-            async let returns = count("returns.handle") { try await api.call(API.returnsWaiting) }
-            async let warranty = count("returns.handle") { try await api.call(API.warrantyWaiting) }
-            async let affiliates = count("affiliate.manage") { try await api.call(API.affiliatesWaiting) }
-            async let proposals = count("vendor.setCommission") { try await api.call(API.proposalsWaiting) }
-            async let banners = count("product.review") { try await api.call(API.bannersWaiting) }
-            async let support = count("support.answer") { try await api.call(API.supportWaiting) }
-            async let centres = asked(who.can("fulfilment.operate")) { try await api.call(API.centreWaiting) }
-            async let fraud = asked(who.can("platform.viewAll")) { try await api.call(API.fraudUnseen) }
+            let overview = start(true) { try await api.call(API.portalCounts, .init()) }
+            let score = start(true) { try await api.call(API.storeHealth, .init()) }
+            let shelfHealth = start(!money) { try await api.call(API.shelfHealth) }
+            let offers = count("offer.answer") { try await api.call(API.offersWaiting, .init(vendorId: own)) }
+            let changes = count("platform.viewAll") { try await api.call(API.sellerChanges, .init(limit: 1)).unseen }
+            let applications = count("platform.manageUsers") { try await api.call(API.applicationsWaiting) }
+            let returns = count("returns.handle") { try await api.call(API.returnsWaiting) }
+            let warranty = count("returns.handle") { try await api.call(API.warrantyWaiting) }
+            let affiliates = count("affiliate.manage") { try await api.call(API.affiliatesWaiting) }
+            let proposals = count("vendor.setCommission") { try await api.call(API.proposalsWaiting) }
+            let banners = count("product.review") { try await api.call(API.bannersWaiting) }
+            let support = count("support.answer") { try await api.call(API.supportWaiting) }
+            let centres = start(who.can("fulfilment.operate")) { try await api.call(API.centreWaiting) }
+            let fraud = start(who.can("platform.viewAll")) { try await api.call(API.fraudUnseen) }
             /* Product reviews the automatic check left for a person — an administrator's desk. */
-            async let heldReviews = count("platform.manageUsers") { try await api.call(API.waitingReviewCount) }
+            let heldReviews = count("platform.manageUsers") { try await api.call(API.waitingReviewCount) }
             /* Devices asking for an administrator's rights, waiting on the owner alone. */
-            async let devices = count("platform.devices") { try await api.call(API.devicesWaiting) }
-            counts = await overview
-            health = await score ?? nil
-            switch await dashboard {
-            case .success(let read)?:
-                board = read
-                boardFailed = nil
-            case .failure(let error)?:
-                let failure = APIError.from(error)
-                if failure != .cancelled, board == nil { boardFailed = failure }
-            case nil:
-                break
+            let devices = count("platform.devices") { try await api.call(API.devicesWaiting) }
+            counts = await overview.value
+            health = await score.value ?? nil
+            if let dashboard {
+                do {
+                    board = try await dashboard.value
+                    boardFailed = nil
+                } catch {
+                    let failure = APIError.from(error)
+                    if failure != .cancelled, board == nil { boardFailed = failure }
+                }
             }
-            shelf = await shelfHealth
-            let floor = await centres
-            let alerts = await fraud
-            waiting = [
-                "parcels": await parcels, "claims": await claims, "offers": await offers, "sellerChanges": await changes,
-                "applications": await applications, "returns": await returns, "warranty": await warranty, "affiliates": await affiliates, "proposals": await proposals,
-                "banners": await banners, "support": await support,
+            shelf = await shelfHealth.value
+            let floor = await centres.value
+            let alerts = await fraud.value
+            let found: [String: Int?] = [
+                "parcels": await parcels.value, "claims": await claims.value, "offers": await offers.value,
+                "sellerChanges": await changes.value, "applications": await applications.value, "returns": await returns.value,
+                "warranty": await warranty.value, "affiliates": await affiliates.value, "proposals": await proposals.value,
+                "banners": await banners.value, "support": await support.value,
                 "toReceive": floor?.toReceive, "toPick": floor?.toPick,
                 "fraudOrders": alerts?.orders, "fraudWatch": alerts?.watch,
-                "reviewsWaiting": await heldReviews,
-                "devices": await devices,
-            ].compactMapValues { $0 }
+                "reviewsWaiting": await heldReviews.value,
+                "devices": await devices.value,
+            ]
+            waiting = found.compactMapValues { $0 }
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled { failed = failure }
