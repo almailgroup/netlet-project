@@ -234,7 +234,9 @@ struct PortalStockView: View {
                 Button {
                     Task { await receive(row, amount) }
                 } label: {
-                    Label(l.t("stock.receive"), systemImage: "shippingbox.and.arrow.backward")
+                    // The word alone: beside the number box in half a card, an
+                    // icon with it cut the English to "Rece…".
+                    Text(l.t("stock.receive")).lineLimit(1).minimumScaleFactor(0.85)
                 }
                 .buttonStyle(PortalSmallButtonStyle(kind: .primary))
                 .disabled(amount <= 0 || amount > 1_000_000 || busy == row.variantId)

@@ -309,6 +309,45 @@ jobs:
           path: Frontend/iOS/build/previews
           retention-days: 14
 
+      # A crash leaves its report on the Mac, not in the test log or a
+      # picture: the portal's dashboard was a home-screen picture for a
+      # whole run before anybody knew why. Print NetLet's reports, the
+      # reason and the faulting thread, so a run names the line that
+      # stopped the app.
+      - name: Print the app's crash reports
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 - <<'PY'
+          import glob, json, os
+          folder = os.path.expanduser("~/Library/Logs/DiagnosticReports")
+          paths = sorted(glob.glob(os.path.join(folder, "NetLet*.ips")), key=os.path.getmtime)
+          print(f"{len(paths)} NetLet crash report(s)")
+          for path in paths[-4:]:
+              text = open(path, encoding="utf-8", errors="replace").read()
+              _, _, body = text.partition("\n")
+              print("====", os.path.basename(path))
+              try:
+                  report = json.loads(body)
+              except ValueError:
+                  print(text[:6000])
+                  continue
+              print("exception:", json.dumps(report.get("exception")))
+              print("termination:", json.dumps(report.get("termination"))[:800])
+              if report.get("asi"):
+                  print("asi:", json.dumps(report["asi"])[:2000])
+              images = report.get("usedImages", [])
+              threads = report.get("threads", [])
+              faulting = report.get("faultingThread", 0)
+              if faulting < len(threads):
+                  for frame in threads[faulting].get("frames", [])[:45]:
+                      index = frame.get("imageIndex", -1)
+                      image = images[index].get("name", "?") if 0 <= index < len(images) else "?"
+                      symbol = frame.get("symbol", hex(frame.get("imageOffset", 0)))
+                      where = f"  {frame['sourceFile']}:{frame.get('sourceLine')}" if frame.get("sourceFile") else ""
+                      print(f"  {image}  {symbol}{where}")
+          PY
+
       - name: Keep the log and results
         if: failure()
         uses: actions/upload-artifact@v4
