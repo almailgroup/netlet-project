@@ -257,7 +257,7 @@ struct PortalStockView: View {
 
     /// What was typed, digits only, an Arabic keyboard's read as digits.
     private func digits(_ text: String) -> String {
-        String(PhoneNumber.foldDigits(text).filter(\.isASCIIDigit).prefix(7))
+        String(PhoneNumber.foldDigits(text).filter { ("0"..."9").contains($0) }.prefix(7))
     }
 
     private func setReorder(_ row: LowStockRow, _ level: Int?) async {

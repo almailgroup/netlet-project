@@ -317,8 +317,9 @@ struct DashboardTrend: View {
                     .onTapGesture { location in
                         guard let plot = proxy.plotFrame else { return }
                         let x = location.x - geometry[plot].origin.x
-                        guard let index = proxy.value(atX: x, as: Int.self) else { return }
-                        let day = min(max(index, 0), last)
+                        // The scale is continuous, so the day is read as a number and rounded.
+                        guard let position = proxy.value(atX: x, as: Double.self), position.isFinite else { return }
+                        let day = min(max(Int(position.rounded()), 0), last)
                         selected = selected == day ? nil : day
                     }
             }

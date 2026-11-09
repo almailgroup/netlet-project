@@ -9313,7 +9313,11 @@ type change at every use, not only where it is drawn**: the phone sign-up made
 and never reached TestFlight. The fix's own build then failed on two more
 (`shownName`'s `?? email`): **the Mac reports one file's errors and stops**, so
 a type change is audited by hand — every `.email`, and the bare `email` inside
-the types themselves — rather than one build per error. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
+the types themselves — rather than one build per error. And **a helper in a
+`private extension` is its file's alone**: the portal's stock page reached for
+`Character.isASCIIDigit`, which `Money.swift` declares privately, and the
+redesign's first build failed on it — grep a helper's declaration before
+using it from another file. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
 green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also
