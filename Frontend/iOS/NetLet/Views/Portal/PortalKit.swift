@@ -1,7 +1,73 @@
 import SwiftUI
 
+/// The portal's look, the web's (`components/admin/ui.tsx`, `charts.tsx`): a
+/// cool ground, white surfaces with one hairline and a lift so faint it reads
+/// as the card sitting on the page, the deep navy of the web's side column for
+/// the one bold band, and a validated categorical order for charts — given to
+/// series in that order and never by rank.
+enum PortalLook {
+    static let ground = Color(red: 244 / 255, green: 246 / 255, blue: 251 / 255)
+    static let hairline = Color(red: 227 / 255, green: 232 / 255, blue: 240 / 255)
+    static let deep = Color(red: 10 / 255, green: 31 / 255, blue: 69 / 255)
+    static let grid = Color(red: 232 / 255, green: 236 / 255, blue: 242 / 255)
+    static let shimmer = Color(red: 234 / 255, green: 238 / 255, blue: 245 / 255)
+    /// Indigo, amber, cyan, raspberry, green, violet — every adjacent pair apart for colour-blind eyes.
+    static let series: [Color] = [
+        Color(red: 79 / 255, green: 70 / 255, blue: 229 / 255),
+        Color(red: 217 / 255, green: 119 / 255, blue: 6 / 255),
+        Color(red: 8 / 255, green: 145 / 255, blue: 178 / 255),
+        Color(red: 190 / 255, green: 24 / 255, blue: 93 / 255),
+        Color(red: 22 / 255, green: 163 / 255, blue: 74 / 255),
+        Color(red: 147 / 255, green: 51 / 255, blue: 234 / 255),
+    ]
+    static let previous = Color(red: 148 / 255, green: 163 / 255, blue: 184 / 255)
+    static let indigoInk = Color(red: 55 / 255, green: 48 / 255, blue: 163 / 255)
+    static let indigoWash = Color(red: 238 / 255, green: 240 / 255, blue: 253 / 255)
+    static let up = Color(red: 0, green: 99 / 255, blue: 0)
+    static let down = Color(red: 180 / 255, green: 35 / 255, blue: 24 / 255)
+
+    /// A state's mark (status colours, reserved for state), its ink and its plate — always with an icon and a word.
+    struct Tone {
+        let mark: Color
+        let ink: Color
+        let plate: Color
+        let symbol: String
+    }
+
+    static func tone(_ state: ShelfState) -> Tone {
+        switch state {
+        case .healthy: return Tone(mark: Color(red: 12 / 255, green: 163 / 255, blue: 12 / 255), ink: Color(red: 10 / 255, green: 122 / 255, blue: 10 / 255), plate: Color(red: 233 / 255, green: 247 / 255, blue: 233 / 255), symbol: "checkmark.circle.fill")
+        case .low: return Tone(mark: Color(red: 250 / 255, green: 178 / 255, blue: 25 / 255), ink: Color(red: 138 / 255, green: 90 / 255, blue: 0), plate: Color(red: 255 / 255, green: 244 / 255, blue: 220 / 255), symbol: "exclamationmark.triangle.fill")
+        case .out: return Tone(mark: Color(red: 208 / 255, green: 59 / 255, blue: 59 / 255), ink: Color(red: 180 / 255, green: 35 / 255, blue: 24 / 255), plate: Color(red: 253 / 255, green: 236 / 255, blue: 234 / 255), symbol: "xmark.circle.fill")
+        case .preorder: return Tone(mark: Color(red: 100 / 255, green: 116 / 255, blue: 139 / 255), ink: Color(red: 71 / 255, green: 85 / 255, blue: 105 / 255), plate: Color(red: 238 / 255, green: 241 / 255, blue: 245 / 255), symbol: "clock.fill")
+        }
+    }
+
+    /// A co-pilot insight's tone (`good`, `warning`, `critical`, `info`).
+    static func insight(_ tone: String) -> Tone {
+        switch tone {
+        case "good": return self.tone(.healthy)
+        case "warning": return Tone(mark: Color(red: 250 / 255, green: 178 / 255, blue: 25 / 255), ink: Color(red: 138 / 255, green: 90 / 255, blue: 0), plate: Color(red: 255 / 255, green: 244 / 255, blue: 220 / 255), symbol: "exclamationmark.circle.fill")
+        case "critical": return Tone(mark: Color(red: 208 / 255, green: 59 / 255, blue: 59 / 255), ink: Color(red: 180 / 255, green: 35 / 255, blue: 24 / 255), plate: Color(red: 253 / 255, green: 236 / 255, blue: 234 / 255), symbol: "exclamationmark.triangle.fill")
+        default: return Tone(mark: series[0], ink: Color(red: 67 / 255, green: 56 / 255, blue: 202 / 255), plate: indigoWash, symbol: "info.circle.fill")
+        }
+    }
+}
+
+extension View {
+    /// The portal's surface: white, one hairline, a faint lift on the shape itself.
+    func portalSurface(cornerRadius: CGFloat = 16, highlighted: Bool = false) -> some View {
+        background(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Brand.navy.opacity(0.05), radius: 1, y: 1)
+        )
+        .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).strokeBorder(highlighted ? Brand.navy.opacity(0.3) : PortalLook.hairline, lineWidth: 1))
+    }
+}
+
 /// A portal page's frame — the web's `AdminShell` page with its `PageHeader`:
-/// the title and one line on what the page holds, on the pearl ground, under
+/// the title and one line on what the page holds, on the portal's cool ground, under
 /// the system's own navigation bar, since the portal is outside the shop's frame.
 ///
 /// **The bar names the page only once the page's own title has scrolled
@@ -13,7 +79,10 @@ struct PortalScreen<Content: View>: View {
     var refresh: (() async -> Void)?
     @ViewBuilder var content: () -> Content
     @Environment(LanguageSettings.self) private var l
+    @Environment(AppModel.self) private var app
     @State private var titleGone = false
+    @State private var copilotOpen = false
+    @State private var jumpOpen = false
 
     var body: some View {
         ScrollView {
@@ -40,7 +109,7 @@ struct PortalScreen<Content: View>: View {
         }
         .coordinateSpace(.named(PortalScreenSpace.name))
         .modifier(PortalRefresh(action: refresh))
-        .background(Brand.pearl.ignoresSafeArea())
+        .background(PortalLook.ground.ignoresSafeArea())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -52,6 +121,28 @@ struct PortalScreen<Content: View>: View {
                     .opacity(titleGone ? 1 : 0)
                     .accessibilityHidden(!titleGone)
                     .animation(.easeOut(duration: 0.15), value: titleGone)
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if let seller = app.session.seller, seller.inPortal, seller.adminLocked != true {
+                    Button { jumpOpen = true } label: { Image(systemName: "magnifyingglass") }
+                        .accessibilityLabel(l.t("shell.jumpTo"))
+                    if seller.kind != "courier", seller.can("product.view", vendorId: seller.ownVendor) {
+                        Button { copilotOpen = true } label: { Image(systemName: "sparkles") }
+                            .accessibilityLabel(l.t("shell.copilot"))
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $jumpOpen) {
+            if let seller = app.session.seller { PortalJumpSheet(actor: seller).languageDirection() }
+        }
+        .sheet(isPresented: $copilotOpen) {
+            CopilotSheet().languageDirection()
+        }
+        .onAppear {
+            if app.copilotOnOpen {
+                app.copilotOnOpen = false
+                copilotOpen = true
             }
         }
         .environment(\.layoutDirection, l.layoutDirection)
@@ -108,11 +199,16 @@ struct PortalTile: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 92, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(urgent ? Brand.orange.opacity(0.45) : Brand.cardLine, lineWidth: 1))
+        .portalSurface(cornerRadius: 16)
+        .overlay(alignment: .leading) {
+            // An urgent count carries the orange edge of the web's "Waiting on you" rows.
+            if urgent {
+                Capsule().fill(Brand.orange).frame(width: 3).padding(.vertical, 16)
+            }
+        }
         if let href, PortalPage.draws(href) {
             Button { app.open(.portal(href)) } label: { face }
-                .buttonStyle(PressFillStyle(cornerRadius: 14))
+                .buttonStyle(PressFillStyle(cornerRadius: 16))
         } else {
             face
         }
@@ -131,8 +227,7 @@ struct PortalStat: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .portalSurface(cornerRadius: 14)
     }
 }
 
@@ -279,8 +374,7 @@ struct PortalCard<Content: View>: View {
         VStack(alignment: .leading, spacing: 8, content: content)
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(highlighted ? Brand.navy.opacity(0.3) : Brand.cardLine, lineWidth: 1))
+            .portalSurface(cornerRadius: 16, highlighted: highlighted)
     }
 }
 

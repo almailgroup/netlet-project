@@ -97,7 +97,7 @@ function Queue() {
               const noteId = `review-note-${row.id}`;
               const busy = deciding === row.id;
               return (
-                <li key={row.id} className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                <li key={row.id} className="overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
                   <div className="flex gap-4 p-4 sm:p-5">
                     <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-[#f4f6f9]">
                       <Thumb src={cover} alt="" className="size-full object-cover" icon={<ImageOff className="size-5 text-[#536b8c]" />} />
@@ -218,7 +218,7 @@ function ReviewFlags({ flags, productId, modelAvailable }: { flags: Flag[]; prod
               <span className="font-semibold">{t(FINDING_LABEL[flag.finding] ?? "admin.flagModelConcern")}</span>
               {/* The evidence travels with the finding, so "there is a phone
                   number in the title" shows which number. */}
-              {flag.detail ? <span dir="auto"> · {flag.detail}</span> : null}
+              {flag.detail ? <> · <bdi>{flag.detail}</bdi></> : null}
             </li>
           ))}
         </ul>

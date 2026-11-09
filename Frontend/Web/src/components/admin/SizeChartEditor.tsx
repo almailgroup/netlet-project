@@ -94,7 +94,7 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
   }));
 
   return (
-    <section className="min-w-0 rounded-2xl border border-[#e1e7ef] bg-white p-5 sm:p-6" aria-labelledby="size-guide-heading">
+    <section className="min-w-0 rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-5 sm:p-6" aria-labelledby="size-guide-heading">
       <h2 id="size-guide-heading" className="flex items-center gap-2 text-[16px] leading-6 font-bold text-[#0a285a]"><Ruler className="size-4" aria-hidden />{t("sizeGuide.editorHeading")}</h2>
       <p className="mt-1 max-w-2xl text-[13px] leading-5 ink-muted">{t("sizeGuide.editorHint")}</p>
 

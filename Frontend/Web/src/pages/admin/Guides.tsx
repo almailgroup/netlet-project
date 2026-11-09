@@ -82,7 +82,7 @@ function List() {
               <ul className="grid gap-3 md:hidden">
                 {data.rows.map(guide => (
                   <li key={guide.id}>
-                    <Link href={`/admin/guides/${guide.id}`} className="flex items-start gap-3 rounded-2xl border border-[#e1e7ef] bg-white p-4 hover:bg-[#f0f2f5]">
+                    <Link href={`/admin/guides/${guide.id}`} className="flex items-start gap-3 rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 hover:bg-[#f0f2f5]">
                       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-[#eef2f8] text-[#0a285a]"><BookOpen className="size-4" aria-hidden /></span>
                       <span className="min-w-0 flex-1">
                         <span className="block font-semibold text-[#0a285a]"><bdi>{(isArabic ? guide.titleAr : guide.title) || guide.title || guide.titleAr || t("guides.untitled")}</bdi></span>

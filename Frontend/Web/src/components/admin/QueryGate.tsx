@@ -45,7 +45,7 @@ export function QueryGate({ queries, children, audience = "staff" }: {
       <div role="status" className="space-y-3">
         <span className="sr-only">{t("admin.loading")}</span>
         {[0, 1, 2].map(index => (
-          <div key={index} aria-hidden className="h-16 animate-pulse rounded-2xl border border-[#e1e7ef] bg-white" />
+          <div key={index} aria-hidden className="h-16 animate-pulse rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]" />
         ))}
       </div>
     );

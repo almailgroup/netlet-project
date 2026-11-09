@@ -1,0 +1,12 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "healthy": 9,
+        "low": 3,
+        "out": 1,
+        "preorder": 1
+      }
+    }
+  }
+}

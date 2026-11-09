@@ -158,7 +158,7 @@ function WaitingCard({ device }: { device: Device }) {
   const busy = decide.isPending ? decide.variables?.decision : null;
   return (
     <li>
-      <div className="rounded-2xl border border-[#e1e7ef] bg-white px-5 py-5 sm:px-6">
+      <div className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] px-5 py-5 sm:px-6">
         <DeviceHead device={device} />
         <Facts rows={[["devices.askedAt", when(device.createdAt)], ["devices.address", device.requestedIp]]} />
         <div className="mt-4 flex flex-wrap gap-2">
@@ -192,7 +192,7 @@ function AuthorisedCard({ device }: { device: Device }) {
   const label = `${device.account ?? device.userId} · ${device.name ?? ""}`;
   return (
     <li>
-      <div className="rounded-2xl border border-[#e1e7ef] bg-white px-5 py-5 sm:px-6">
+      <div className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] px-5 py-5 sm:px-6">
         <DeviceHead device={device} />
         <Facts
           rows={[
@@ -248,7 +248,7 @@ function EndedCard({ device }: { device: Device }) {
   const decide = useDecide();
   return (
     <li>
-      <div className="rounded-2xl border border-[#e1e7ef] bg-white px-5 py-5 sm:px-6">
+      <div className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] px-5 py-5 sm:px-6">
         <DeviceHead device={device} />
         <Facts rows={[[device.status === "denied" ? "devices.deniedAt" : "devices.revokedAt", device.decidedAt ? when(device.decidedAt) : null], ["devices.address", device.lastIp ?? device.requestedIp]]} />
         <div className="mt-4">

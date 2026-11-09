@@ -133,7 +133,7 @@ function People({ selfId }: { selfId: number }) {
           <EmptyState title={t("admin.noPeople")} />
         ) : (
           <>
-            <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+            <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
               {rows.map(person => {
                 const name = person.name || person.email || "";
                 const self = person.id === selfId;

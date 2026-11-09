@@ -73,7 +73,7 @@ function MenuList({ groups, folded, onNavigate }: { groups: FrameGroup[]; folded
                   >
                     {active ? <span aria-hidden className="absolute inset-y-2 start-0 w-[3px] rounded-full bg-[#f2683a]" /> : null}
                     <span aria-hidden className="shrink-0 [&_svg]:size-[18px]">{link.icon}</span>
-                    <span className={folded ? "sr-only" : "min-w-0 truncate"}>{label}</span>
+                    <span className={folded ? "sr-only" : "min-w-0 leading-5"}>{label}</span>
                   </Link>
                 </li>
               );

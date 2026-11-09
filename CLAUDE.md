@@ -6844,8 +6844,48 @@ which asks its permission again; a proposal naming anything else is dropped
 `copilot.test.ts` and `dashboard.test.ts` hold the scoping against a real
 Postgres; the shared tests hold the rules.
 
-**The iOS app's portal is not redrawn yet**: it reads the same server and
-still opens on its own overview. The new procedures are there for it.
+**The iOS app's portal is the same desk, on the owner's word** ("do the same
+redesign for the iOS app's portal"). A phone has no side column, so the
+portal's front page is the dashboard with the grouped menu under it, each
+link on an icon plate (`PortalIcons`, the system's nearest symbol to the
+web's `MENU_ICONS`, one per address; `PortalDashboardTests` fails on a menu
+page without one that draws). Every portal page has the page jump
+(`PortalJumpSheet`, the menu typed, folded as the shop's search folds) and
+the co-pilot (`CopilotSheet`) at the end of its bar, and wears the cool ground
+and the kit's surface (`PortalLook`, `portalSurface`). **The dashboard**
+(`PortalDashboardViews.swift`) is the web's card for card in Swift Charts:
+the four figures two by two with their sparklines, the sales line with the
+period before and the dashed estimate — a tap shows a day, never a drag,
+which would be the page's scroll (see "home page sometimes ignores drags") —
+and its table, what waits, the shelf, the departments' bar, the activity and
+the best sellers, over 7, 30 or 90 days kept on the phone
+(`netlet.portalRange`). **The stock page** refreshes every thirty seconds
+while open, counts the four states, and per low shelf says its state, pace
+and level and takes a reorder point and a delivery where it stands
+(`ShelfState`, `DashboardRules` — `stockState`, `daysOfCover`, `reorderFor`,
+`wholePercents` and `copilotProblem` in Swift, tested on the TypeScript's
+cases). **The co-pilot** is the brief, the question box and proposals done
+only on Confirm, through the procedure the stock page calls. The app's old
+sales panel went with it, and its fourteen dictionary keys.
+
+**Its demo answers are written by the shop's own rules**
+(`Frontend/iOS/scripts/portalRecordings.ts`, `pnpm ios:portal-recordings`):
+the development seed has no months of sales or a shelf running low, so the
+dashboard, the shelf, the low list and the brief are what `buildDashboard`,
+`briefFrom`, `daysOfCover` and `reorderFor` make of the demo store's own
+products on the recordings' last day, the captured overview's two stock
+counts kept in step. Never by hand, and never a model's words: a question
+asked of the demo co-pilot gets the server's "could not answer".
+`portalRecordings.test.ts` fails while a committed file is stale. The CI
+photographs the store's and NetLet's dashboards, the stock page and the
+co-pilot (`90`–`93`, `-NetLetOpen copilot`).
+
+**A polish pass after the owner tried it**: the side column's long labels
+wrap rather than end in "…"; every desk's cards are the kit's one surface
+(some twenty pages drew an older border); the finance page's figures carry
+the dashboard's colours on their plates; the stock page's two boxes are
+narrow enough to sit side by side on a phone's card, halving each row; the
+product search has a line of its own, so its hint is read whole.
 
 Measured on a production build against a local Postgres seeded with two
 months of orders, at 320, 390 and 1440 in both languages: the dashboard, the
@@ -7863,9 +7903,9 @@ dictionary), then 954 KB (276 KB), choosing what to check out and the
 photo's glass and typed count, then 958 KB (276 KB), My orders'
 filters and the compact profile's words, then 959 KB (277 KB), Saved
 items and wishlists, the history's selection and the haptics switch, then
-970 KB (278 KB), the authorised devices' words in both languages, and is
-985 KB (283 KB) now, the portal dashboard's and co-pilot's words in both
-languages,
+970 KB (278 KB), the authorised devices' words in both languages, then
+985 KB (283 KB), the portal dashboard's and co-pilot's words in both
+languages, and is 984 KB (283 KB) now, the app's old sales panel's words gone,
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

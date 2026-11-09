@@ -5,16 +5,55 @@ import SwiftUI
 /// What is running low and what moved — the web's `/admin/stock`. Low is
 /// judged against each variant's own reorder point, so three left of
 /// something that reorders at twenty sorts above three of something at two.
+///
+/// **It keeps itself current**: the shelf's four counts, the list and the log
+/// are asked again every thirty seconds while the page is open, and it says
+/// when it last heard. Each low shelf says its state (`ShelfState`, the
+/// dashboard's rule), how long it lasts at the last four weeks' pace, and —
+/// for a rank that moves stock — takes a reorder point and a delivery where it
+/// stands, through the procedures the web's stock page calls.
 struct PortalStockView: View {
     @State private var page = 1
     @State private var low: PortalPageOf<LowStockRow>?
+    @State private var shelf: ShelfHealth?
     @State private var moves: [StockMove]?
     @State private var failed: APIError?
+    @State private var heard: Date?
+    @State private var refreshing = false
+    @State private var reorderTexts: [Int: String] = [:]
+    @State private var arrivedTexts: [Int: String] = [:]
+    @State private var busy: Int?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
+    /// How often the page asks again while it is open.
+    private static let live: Duration = .seconds(30)
+
+    private var mayMove: Bool {
+        guard let seller = app.session.seller else { return false }
+        return seller.can("stock.adjust", vendorId: seller.ownVendor)
+    }
+
     var body: some View {
         PortalScreen(title: l.t("admin.stockTitle"), intro: l.t("admin.stockIntro"), refresh: { await load() }) {
+            HStack(spacing: 10) {
+                if let heard {
+                    Text(l.t("stock.updated", ["time": time(heard)])).font(.inter(12)).foregroundStyle(Brand.muted)
+                }
+                Spacer()
+                Button {
+                    Task { await load() }
+                } label: {
+                    Label(l.t("stock.refresh"), systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(PortalSmallButtonStyle())
+                .disabled(refreshing)
+            }
+            if let shelf {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    ForEach(ShelfState.allCases, id: \.self) { state in stateTile(state, count: shelf.count(state)) }
+                }
+            }
             PortalSectionHeading(title: l.t("admin.lowStockTitle"), note: l.t("admin.lowStockNote"))
             if let low {
                 if low.rows.isEmpty {
@@ -42,34 +81,215 @@ struct PortalStockView: View {
                             moveRow(move)
                         }
                     }
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+                    .portalSurface(cornerRadius: 16)
                 }
             }
         }
-        .task { await load() }
+        .task {
+            await load()
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.live)
+                if Task.isCancelled { break }
+                await load()
+            }
+        }
+    }
+
+    /// One of the shelf's four states, counted, with its icon and word.
+    private func stateTile(_ state: ShelfState, count: Int) -> some View {
+        let tone = PortalLook.tone(state)
+        return HStack(spacing: 10) {
+            Image(systemName: tone.symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(tone.ink)
+                .frame(width: 38, height: 38)
+                .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(tone.plate))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(count)").font(.inter(20, .heavy)).foregroundStyle(Brand.navy).monospacedDigit()
+                Text(l.t(state.label)).font(.inter(12, .semibold)).foregroundStyle(Brand.muted).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .portalSurface(cornerRadius: 16)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func statePill(_ state: ShelfState) -> some View {
+        let tone = PortalLook.tone(state)
+        return HStack(spacing: 4) {
+            Image(systemName: tone.symbol).font(.system(size: 10, weight: .bold)).accessibilityHidden(true)
+            Text(l.t(state.label))
+        }
+        .font(.inter(12, .semibold))
+        .foregroundStyle(tone.ink)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(tone.plate))
+        .fixedSize()
     }
 
     private func lowRow(_ row: LowStockRow) -> some View {
         PortalCard {
             HStack(alignment: .top, spacing: 8) {
-                Text(row.productTitle).font(.inter(14, .semibold)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 6)
-                if row.stock <= 0 {
-                    StatusPill(label: l.t("admin.outOfStock"), tone: .stopped)
-                } else {
-                    StatusPill(label: l.t("admin.remaining", ["count": "\(row.stock)"]), tone: .preparing)
+                Button {
+                    app.open(.portal("/admin/products/\(row.productId)"))
+                } label: {
+                    Text(row.productTitle).font(.inter(15, .bold)).foregroundStyle(Brand.navy).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
                 }
+                .buttonStyle(.tap)
+                Spacer(minLength: 6)
+                statePill(row.state)
             }
             Text([row.variantTitle == "Default" ? nil : row.variantTitle,
-                  row.lowStockAt.map { l.t("admin.reorderAt", ["count": "\($0)"]) } ?? l.t("admin.noThreshold"),
+                  l.t("admin.remaining", ["count": "\(max(0, row.stock))"]),
                   row.vendorName].compactMap { $0 }.joined(separator: " · "))
                 .font(.inter(13)).foregroundStyle(Brand.muted)
+            if let reorderAt = row.lowStockAt {
+                levelBar(stock: row.stock, reorderAt: reorderAt)
+            }
+            if let days = row.daysOfCover {
+                Text(l.t("stock.daysLeft", ["count": "\(max(1, days))"]))
+                    .font(.inter(13, days < 7 ? .semibold : .regular))
+                    .foregroundStyle(days < 7 ? PortalLook.tone(.low).ink : Brand.navy)
+            } else {
+                Text(l.t("stock.noPace")).font(.inter(13)).foregroundStyle(Brand.muted)
+            }
             // Shoppers asked to hear when it is back: a reason to reorder sooner.
             if row.waiting > 0 {
-                Text(l.t("admin.waitingForRestock", ["count": "\(row.waiting)"])).font(.inter(13, .semibold)).foregroundStyle(Brand.accentInk)
+                Text(l.t("admin.waitingForRestock", ["count": "\(row.waiting)"])).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+            }
+            if mayMove {
+                Divider().padding(.vertical, 2)
+                // Side by side where they fit, one over the other on a narrow phone.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 14) {
+                        reorderEditor(row)
+                        receiveEditor(row)
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        reorderEditor(row)
+                        receiveEditor(row)
+                    }
+                }
+            } else {
+                Text(row.lowStockAt.map { l.t("admin.reorderAt", ["count": "\($0)"]) } ?? l.t("admin.noThreshold"))
+                    .font(.inter(13)).foregroundStyle(Brand.muted)
             }
         }
+    }
+
+    /// How much of the reorder point is left: full at twice the point, empty at none.
+    private func levelBar(stock: Int, reorderAt: Int) -> some View {
+        let share = min(1, max(0, Double(stock) / Double(max(1, reorderAt * 2))))
+        let state: ShelfState = stock <= 0 ? .out : stock <= reorderAt ? .low : .healthy
+        return GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(PortalLook.grid)
+                Capsule().fill(PortalLook.tone(state).mark).frame(width: max(4, proxy.size.width * share))
+            }
+        }
+        .frame(height: 6)
+        .accessibilityHidden(true)
+    }
+
+    private func reorderEditor(_ row: LowStockRow) -> some View {
+        let text = reorderTexts[row.variantId] ?? row.lowStockAt.map(String.init) ?? ""
+        let parsed: Int? = text.isEmpty ? nil : Int(text)
+        let valid = text.isEmpty || (parsed.map { $0 >= 0 && $0 <= DashboardRules.maxReorderPoint } ?? false)
+        let changed = (text.isEmpty ? nil : parsed) != row.lowStockAt
+        let suggested = row.suggestedReorderAt
+        let name = row.variantTitle == "Default" ? row.productTitle : "\(row.productTitle) — \(row.variantTitle)"
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(l.t("stock.reorderPoint")).font(.inter(12, .semibold)).foregroundStyle(Brand.navy)
+            HStack(spacing: 6) {
+                numberBox(Binding(get: { text }, set: { reorderTexts[row.variantId] = digits($0) }), label: l.t("stock.reorderFor", ["name": name]))
+                Button(l.t("stock.setReorder")) { Task { await setReorder(row, parsed) } }
+                    .buttonStyle(PortalSmallButtonStyle())
+                    .disabled(!valid || !changed || busy == row.variantId)
+            }
+            if let suggested, suggested != row.lowStockAt {
+                Button {
+                    reorderTexts[row.variantId] = String(suggested)
+                } label: {
+                    Text(l.t("stock.suggested", ["count": "\(suggested)"])).font(.inter(11, .semibold)).foregroundStyle(PortalLook.indigoInk)
+                }
+                .buttonStyle(.tap)
+            } else {
+                Text(l.t("stock.reorderHint")).font(.inter(11)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func receiveEditor(_ row: LowStockRow) -> some View {
+        let text = arrivedTexts[row.variantId] ?? ""
+        let amount = Int(text) ?? 0
+        let name = row.variantTitle == "Default" ? row.productTitle : "\(row.productTitle) — \(row.variantTitle)"
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(l.t("stock.arrived")).font(.inter(12, .semibold)).foregroundStyle(Brand.navy)
+            HStack(spacing: 6) {
+                numberBox(Binding(get: { text }, set: { arrivedTexts[row.variantId] = digits($0) }), label: l.t("stock.receiveFor", ["name": name]), placeholder: "0")
+                Button {
+                    Task { await receive(row, amount) }
+                } label: {
+                    Label(l.t("stock.receive"), systemImage: "shippingbox.and.arrow.backward")
+                }
+                .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                .disabled(amount <= 0 || amount > 1_000_000 || busy == row.variantId)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func numberBox(_ text: Binding<String>, label: String, placeholder: String = "") -> some View {
+        TextField(placeholder, text: text)
+            .keyboardType(.numberPad)
+            .font(.inter(15, .semibold))
+            .multilineTextAlignment(.center)
+            .monospacedDigit()
+            .frame(width: 58, height: 40)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(PortalLook.ground))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(PortalLook.hairline, lineWidth: 1))
+            .accessibilityLabel(label)
+    }
+
+    /// What was typed, digits only, an Arabic keyboard's read as digits.
+    private func digits(_ text: String) -> String {
+        String(PhoneNumber.foldDigits(text).filter(\.isASCIIDigit).prefix(7))
+    }
+
+    private func setReorder(_ row: LowStockRow, _ level: Int?) async {
+        busy = row.variantId
+        defer { busy = nil }
+        if await app.attempt(done: level == nil ? "stock.reorderCleared" : "stock.reorderSaved", fallback: "admin.badReorderPoint", {
+            _ = try await app.services.api.call(API.setReorderPoint, .init(variantId: row.variantId, lowStockAt: OrNull(level)))
+        }) {
+            reorderTexts[row.variantId] = nil
+            await load()
+        }
+    }
+
+    private func receive(_ row: LowStockRow, _ amount: Int) async {
+        busy = row.variantId
+        defer { busy = nil }
+        var now = 0
+        if await app.attempt(fallback: "error.serverProblem", {
+            now = try await app.services.api.call(API.adjustVariantStock, .init(variantId: row.variantId, delta: amount, reason: "received"))
+        }) {
+            app.toast(l.t("stock.receivedNow", ["count": "\(now)"]))
+            arrivedTexts[row.variantId] = nil
+            await load()
+        }
+    }
+
+    private func time(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: l.current == .ar ? "ar_KW@numbers=latn" : "en_GB")
+        formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
     }
 
     private func moveRow(_ move: StockMove) -> some View {
@@ -93,14 +313,19 @@ struct PortalStockView: View {
 
     private func load() async {
         let api = app.services.api
+        refreshing = true
+        defer { refreshing = false }
         async let history = try? api.call(API.stockHistory, .init(limit: 30))
+        async let health = try? api.call(API.shelfHealth)
         do {
             low = try await api.call(API.lowStock, .init(page: page))
             failed = nil
+            heard = Date()
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, low == nil { failed = failure }
         }
+        shelf = await health ?? shelf
         moves = await history ?? moves ?? []
     }
 }

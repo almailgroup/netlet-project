@@ -31,7 +31,7 @@ import { privatePageMeta } from "@shared/seo";
 import { Select } from "@/components/ui/Select";
 
 const field = `${fieldClass} mt-1.5`;
-const card = "rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[#0a285a] sm:p-5";
+const card = "rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 text-[#0a285a] sm:p-5";
 
 const STATUS_LABEL: Record<InboundStatus, MessageKey> = {
   announced: "fulfilment.statusAnnounced",

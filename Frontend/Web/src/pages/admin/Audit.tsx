@@ -112,7 +112,7 @@ function Trail() {
       ) : rows.length === 0 ? (
         <EmptyState title={t("admin.noAudit")} />
       ) : (
-        <ol className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+        <ol className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
           {rows.map(entry => {
             const change = summarise(entry.before, entry.after);
             const label = `action.${entry.action}`;

@@ -541,7 +541,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
         </div>
 
         <aside className="lg:sticky lg:top-24">
-          <div className="rounded-2xl border border-[#e1e7ef] bg-white p-5">
+          <div className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-5">
             <h2 className="text-[15px] font-bold text-[#0a285a]">{t("admin.newChecklist")}</h2>
             <ul className="mt-3 space-y-2.5">
               {checklist.map(item => (

@@ -91,7 +91,7 @@ function Team({ actor }: { actor: Actor }) {
           {() => rows.length === 0 ? (
             <EmptyState title={t("admin.noMembers")} />
           ) : (
-            <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+            <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
               {rows.map(member => {
                 const self = member.userId === actor.userId;
                 return (

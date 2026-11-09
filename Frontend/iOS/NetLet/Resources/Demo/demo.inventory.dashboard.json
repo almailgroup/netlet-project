@@ -1,0 +1,452 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "range": 30,
+        "days": [
+          {
+            "day": "2026-09-22",
+            "sales": "92.750",
+            "orders": 3,
+            "customers": 3,
+            "averageOrder": "30.917"
+          },
+          {
+            "day": "2026-09-23",
+            "sales": "158.250",
+            "orders": 4,
+            "customers": 4,
+            "averageOrder": "39.563"
+          },
+          {
+            "day": "2026-09-24",
+            "sales": "250.000",
+            "orders": 7,
+            "customers": 7,
+            "averageOrder": "35.714"
+          },
+          {
+            "day": "2026-09-25",
+            "sales": "141.250",
+            "orders": 6,
+            "customers": 6,
+            "averageOrder": "23.542"
+          },
+          {
+            "day": "2026-09-26",
+            "sales": "36.500",
+            "orders": 3,
+            "customers": 3,
+            "averageOrder": "12.167"
+          },
+          {
+            "day": "2026-09-27",
+            "sales": "95.000",
+            "orders": 5,
+            "customers": 5,
+            "averageOrder": "19.000"
+          },
+          {
+            "day": "2026-09-28",
+            "sales": "53.750",
+            "orders": 5,
+            "customers": 5,
+            "averageOrder": "10.750"
+          },
+          {
+            "day": "2026-09-29",
+            "sales": "36.500",
+            "orders": 3,
+            "customers": 3,
+            "averageOrder": "12.167"
+          },
+          {
+            "day": "2026-09-30",
+            "sales": "207.500",
+            "orders": 5,
+            "customers": 5,
+            "averageOrder": "41.500"
+          },
+          {
+            "day": "2026-10-01",
+            "sales": "241.750",
+            "orders": 8,
+            "customers": 8,
+            "averageOrder": "30.219"
+          },
+          {
+            "day": "2026-10-02",
+            "sales": "161.000",
+            "orders": 6,
+            "customers": 6,
+            "averageOrder": "26.833"
+          },
+          {
+            "day": "2026-10-03",
+            "sales": "176.500",
+            "orders": 3,
+            "customers": 3,
+            "averageOrder": "58.833"
+          },
+          {
+            "day": "2026-10-04",
+            "sales": "197.500",
+            "orders": 4,
+            "customers": 4,
+            "averageOrder": "49.375"
+          },
+          {
+            "day": "2026-10-05",
+            "sales": "222.750",
+            "orders": 5,
+            "customers": 5,
+            "averageOrder": "44.550"
+          },
+          {
+            "day": "2026-10-06",
+            "sales": "50.250",
+            "orders": 4,
+            "customers": 4,
+            "averageOrder": "12.563"
+          },
+          {
+            "day": "2026-10-07",
+            "sales": "108.000",
+            "orders": 4,
+            "customers": 4,
+            "averageOrder": "27.000"
+          },
+          {
+            "day": "2026-10-08",
+            "sales": "249.000",
+            "orders": 8,
+            "customers": 8,
+            "averageOrder": "31.125"
+          },
+          {
+            "day": "2026-10-09",
+            "sales": "406.250",
+            "orders": 6,
+            "customers": 6,
+            "averageOrder": "67.708"
+          },
+          {
+            "day": "2026-10-10",
+            "sales": "283.750",
+            "orders": 4,
+            "customers": 4,
+            "averageOrder": "70.938"
+          },
+          {
+            "day": "2026-10-11",
+            "sales": "35.000",
+            "orders": 4,
+            "customers": 4,
+            "averageOrder": "8.750"
+          },
+          {
+            "day": "2026-10-12",
+            "sales": "80.250",
+            "orders": 5,
+            "customers": 5,
+            "averageOrder": "16.050"
+          },
+          {
+            "day": "2026-10-13",
+            "sales": "164.500",
+            "orders": 5,
+            "customers": 5,
+            "averageOrder": "32.900"
+          },
+          {
+            "day": "2026-10-14",
+            "sales": "277.500",
+            "orders": 4,
+            "customers": 4,
+            "averageOrder": "69.375"
+          },
+          {
+            "day": "2026-10-15",
+            "sales": "230.000",
+            "orders": 8,
+            "customers": 7,
+            "averageOrder": "28.750"
+          },
+          {
+            "day": "2026-10-16",
+            "sales": "197.500",
+            "orders": 6,
+            "customers": 6,
+            "averageOrder": "32.917"
+          },
+          {
+            "day": "2026-10-17",
+            "sales": "118.000",
+            "orders": 5,
+            "customers": 5,
+            "averageOrder": "23.600"
+          },
+          {
+            "day": "2026-10-18",
+            "sales": "146.500",
+            "orders": 5,
+            "customers": 4,
+            "averageOrder": "29.300"
+          },
+          {
+            "day": "2026-10-19",
+            "sales": "75.000",
+            "orders": 5,
+            "customers": 5,
+            "averageOrder": "15.000"
+          },
+          {
+            "day": "2026-10-20",
+            "sales": "43.750",
+            "orders": 4,
+            "customers": 4,
+            "averageOrder": "10.938"
+          },
+          {
+            "day": "2026-10-21",
+            "sales": "115.250",
+            "orders": 5,
+            "customers": 4,
+            "averageOrder": "23.050"
+          }
+        ],
+        "previousDays": [
+          {
+            "day": "2026-08-23",
+            "sales": "195.250"
+          },
+          {
+            "day": "2026-08-24",
+            "sales": "53.750"
+          },
+          {
+            "day": "2026-08-25",
+            "sales": "42.750"
+          },
+          {
+            "day": "2026-08-26",
+            "sales": "148.000"
+          },
+          {
+            "day": "2026-08-27",
+            "sales": "83.000"
+          },
+          {
+            "day": "2026-08-28",
+            "sales": "212.500"
+          },
+          {
+            "day": "2026-08-29",
+            "sales": "21.250"
+          },
+          {
+            "day": "2026-08-30",
+            "sales": "57.750"
+          },
+          {
+            "day": "2026-08-31",
+            "sales": "31.250"
+          },
+          {
+            "day": "2026-09-01",
+            "sales": "77.000"
+          },
+          {
+            "day": "2026-09-02",
+            "sales": "187.750"
+          },
+          {
+            "day": "2026-09-03",
+            "sales": "212.500"
+          },
+          {
+            "day": "2026-09-04",
+            "sales": "121.250"
+          },
+          {
+            "day": "2026-09-05",
+            "sales": "182.500"
+          },
+          {
+            "day": "2026-09-06",
+            "sales": "60.250"
+          },
+          {
+            "day": "2026-09-07",
+            "sales": "290.500"
+          },
+          {
+            "day": "2026-09-08",
+            "sales": "195.000"
+          },
+          {
+            "day": "2026-09-09",
+            "sales": "57.500"
+          },
+          {
+            "day": "2026-09-10",
+            "sales": "152.500"
+          },
+          {
+            "day": "2026-09-11",
+            "sales": "112.750"
+          },
+          {
+            "day": "2026-09-12",
+            "sales": "59.000"
+          },
+          {
+            "day": "2026-09-13",
+            "sales": "138.750"
+          },
+          {
+            "day": "2026-09-14",
+            "sales": "232.500"
+          },
+          {
+            "day": "2026-09-15",
+            "sales": "82.750"
+          },
+          {
+            "day": "2026-09-16",
+            "sales": "63.750"
+          },
+          {
+            "day": "2026-09-17",
+            "sales": "291.250"
+          },
+          {
+            "day": "2026-09-18",
+            "sales": "146.250"
+          },
+          {
+            "day": "2026-09-19",
+            "sales": "87.500"
+          },
+          {
+            "day": "2026-09-20",
+            "sales": "271.500"
+          },
+          {
+            "day": "2026-09-21",
+            "sales": "163.750"
+          }
+        ],
+        "forecast": [
+          {
+            "day": "2026-10-22",
+            "sales": "242.688"
+          },
+          {
+            "day": "2026-10-23",
+            "sales": "226.500"
+          },
+          {
+            "day": "2026-10-24",
+            "sales": "153.688"
+          },
+          {
+            "day": "2026-10-25",
+            "sales": "118.500"
+          },
+          {
+            "day": "2026-10-26",
+            "sales": "107.938"
+          },
+          {
+            "day": "2026-10-27",
+            "sales": "73.750"
+          },
+          {
+            "day": "2026-10-28",
+            "sales": "187.813"
+          }
+        ],
+        "totals": {
+          "sales": {
+            "current": "4651.500",
+            "previous": "4032.000",
+            "change": 15.4
+          },
+          "orders": {
+            "current": 149,
+            "previous": 128,
+            "change": 16.4
+          },
+          "averageOrder": {
+            "current": "31.218",
+            "previous": "31.500",
+            "change": -0.9
+          },
+          "customers": {
+            "current": 68,
+            "previous": 73,
+            "change": -6.8
+          }
+        },
+        "departments": [
+          {
+            "slug": "electronics",
+            "sales": "3676.500",
+            "percent": 79
+          },
+          {
+            "slug": "style",
+            "sales": "975.000",
+            "percent": 21
+          }
+        ],
+        "top": [
+          {
+            "productId": 3,
+            "title": "Smart watch",
+            "units": 34,
+            "sales": "2380.000",
+            "percent": 51.1
+          },
+          {
+            "productId": 10,
+            "title": "Linen shirt",
+            "units": 78,
+            "sales": "975.000",
+            "percent": 20.9
+          },
+          {
+            "productId": 2,
+            "title": "USB-C charger 65W",
+            "units": 50,
+            "sales": "437.500",
+            "percent": 9.4
+          },
+          {
+            "productId": 216,
+            "title": "Wireless earbuds",
+            "units": 37,
+            "sales": "370.000",
+            "percent": 7.9
+          },
+          {
+            "productId": 218,
+            "title": "Bluetooth speaker",
+            "units": 26,
+            "sales": "364.000",
+            "percent": 7.8
+          }
+        ],
+        "newAccounts": null,
+        "stock": {
+          "healthy": 7,
+          "low": 2,
+          "out": 1,
+          "preorder": 0
+        },
+        "truncated": false
+      }
+    }
+  }
+}

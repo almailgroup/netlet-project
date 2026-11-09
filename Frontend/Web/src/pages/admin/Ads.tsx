@@ -105,7 +105,7 @@ function Ads({ actor }: { actor: Actor }) {
       <PageHeader title={t("admin.ads")} description={t(actor.kind === "admin" ? "ads.noteAdmin" : "ads.noteStore")} />
       <ul className="mb-6 grid max-w-4xl gap-3 sm:grid-cols-3">
         {AD_SLOTS.map(slot => (
-          <li key={slot} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+          <li key={slot} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4">
             <p className="text-[14px] font-bold text-[#0a285a]">{t(SLOT_LABEL[slot], { department: t("ads.yourDepartment") })}</p>
             <p className="mt-1 text-[13px] text-[#536b8c]">{t("ads.rateLine", { rate: money({ amount: AD_RATES[slot], currencyCode: "KWD" }), places: AD_CAPACITY[slot] })}</p>
             {slot === "home_banner" ? <p className="mt-1 text-[13px] text-[#536b8c]">{t("ads.bannerRateNote")}</p> : null}
@@ -289,7 +289,7 @@ function BookingRow({ booking, showStore }: { booking: Booking; showStore: boole
   });
 
   return (
-    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[13px] text-[#0a285a] sm:p-5">
+    <li className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 text-[13px] text-[#0a285a] sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <p className="min-w-0 text-[15px] font-bold">
           {booking.productHandle
@@ -461,7 +461,7 @@ function BannerReview({ booking }: { booking: Booking }) {
   const banner = booking.banner!;
   const starts = approvalStart(booking.startsOn, today);
   return (
-    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[13px] text-[#0a285a] sm:p-5">
+    <li className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 text-[13px] text-[#0a285a] sm:p-5">
       <p className="text-[15px] font-bold">
         {booking.productHandle
           ? <a href={shopHref(`/products/${booking.productHandle}`)} className="hover:underline"><bdi>{booking.productTitle}</bdi></a>
@@ -572,7 +572,7 @@ function PlacementCalendar({ productId, slot, startsOn, days, onPick }: {
     new Date(Date.UTC(2026, 0, 4 + index, 12)).toLocaleDateString(isArabic ? "ar-KW" : "en-GB", { weekday: isArabic ? "narrow" : "short", timeZone: "UTC" }));
 
   return (
-    <section aria-labelledby="ads-calendar" className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+    <section aria-labelledby="ads-calendar" className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id="ads-calendar" className="text-[14px] font-bold text-[#0a285a]">{t("ads.calendarTitle")}</h3>
         <p className="text-[13px] ink-muted">{t("ads.rateLine", { rate: money({ amount: data.dailyRate, currencyCode: "KWD" }), places: data.capacity })}</p>

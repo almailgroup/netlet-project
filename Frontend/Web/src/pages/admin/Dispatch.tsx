@@ -124,7 +124,7 @@ function Dispatch({ actor }: { actor: Actor }) {
                     const id = `${parcel.orderId}-${parcel.key}`;
                     const moves = courierMoves(parcel as Parcel);
                     return (
-                      <li key={id} className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                      <li key={id} className="overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
                         <div className="p-4 sm:p-5">
                           <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                             <p className="min-w-0 text-[15px] font-bold text-[#0a285a]">
@@ -302,7 +302,7 @@ function DeliveryScores() {
             <>
               <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.scores.map(score => (
-                  <li key={score.courierId ?? "seller"} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+                  <li key={score.courierId ?? "seller"} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4">
                     <p className="text-[14px] font-bold text-[#0a285a]" dir="auto">{score.courierName ?? t("delivery.sellerCarried")}</p>
                     <p className="mt-1 flex items-center gap-2 text-[13px] text-[#536b8c]">
                       <StarRow value={score.average} />

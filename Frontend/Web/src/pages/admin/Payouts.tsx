@@ -157,7 +157,7 @@ function BatchCard({ batch, canPrepare }: { batch: Batch; canPrepare: boolean })
   });
 
   return (
-    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
+    <li className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="text-[15px] font-bold text-[#0a285a]"><bdi>{batch.vendorName}</bdi></p>
         <p className={`text-[16px] font-extrabold ${batch.payable ? "text-[#0a285a]" : "text-[#8c2f22]"}`}><bdi dir="ltr">{amount(batch.total)}</bdi></p>
@@ -255,7 +255,7 @@ function PreparedCard({ run, onChange }: { run: Prepared; onChange: () => void }
   });
 
   return (
-    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
+    <li className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p className="text-[15px] font-bold text-[#0a285a]"><bdi>{run.vendorName}</bdi></p>
         <p className="text-[16px] font-extrabold text-[#0a285a]"><bdi dir="ltr">{amount}</bdi></p>
@@ -386,7 +386,7 @@ function FileCard({ file, xmlReady }: { file: BankFile; xmlReady: boolean }) {
   const live = file.waiting + file.sent > 0;
 
   return (
-    <li className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
+    <li className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <p id={`payout-file-name-${file.id}`} className="text-[15px] font-bold text-[#0a285a]"><bdi dir="ltr">{file.reference}</bdi> · <span className="font-semibold text-[#536b8c]">{formatDate(file.createdAt)}</span></p>
         <p className="text-[16px] font-extrabold text-[#0a285a]"><bdi dir="ltr">{money({ amount: file.total, currencyCode: "KWD" })}</bdi></p>
@@ -422,7 +422,7 @@ function HistoryRow({ run }: { run: Outputs["payoutHistory"]["rows"][number] }) 
   const formatDate = useDateFormat();
   const when = run.paidAt ?? run.preparedAt;
   return (
-    <details className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
+    <details className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 sm:p-5">
       <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <span className="font-bold">
           <bdi>{run.vendorName}</bdi>{when ? <> · {formatDate(when)}</> : null}

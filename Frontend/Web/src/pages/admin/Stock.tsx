@@ -128,9 +128,11 @@ function Stock({ actor }: { actor: Actor }) {
                     {status(row)}
                   </div>
                   <p className="mt-1 text-[13px] leading-5 ink-muted">
-                    {!isDefaultVariantTitle(row.variantTitle) ? <span dir="auto">{row.variantTitle} · </span> : null}
+                    {/* Each name isolated, so a Latin store name on the Arabic
+                        page cannot pull the separator and the count across it. */}
+                    {!isDefaultVariantTitle(row.variantTitle) ? <><bdi>{row.variantTitle}</bdi> · </> : null}
                     {t("admin.remaining", { count: Math.max(0, row.stock) })}
-                    {row.vendorName ? <span dir="auto"> · {row.vendorName}</span> : null}
+                    {row.vendorName ? <> · <bdi>{row.vendorName}</bdi></> : null}
                   </p>
                   <p className="mt-1 text-[13px]">{pace(row)}</p>
                   {/* Demand the seller could not see before (3.1.1): how many
@@ -206,7 +208,7 @@ function Stock({ actor }: { actor: Actor }) {
           <>
             <ol className="space-y-2 md:hidden">
               {moves.map(row => (
-                <li key={row.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-3.5">
+                <li key={row.id} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-3.5">
                   <div className="flex items-start justify-between gap-3">
                     <Link href={`/admin/products/${row.productId}`} dir="auto" className="min-w-0 font-semibold text-[#0a285a] hover:underline">{row.productTitle}</Link>
                     {change(row.delta)}
@@ -265,7 +267,7 @@ function StatusTiles({ health }: { health: StockHealth }) {
             <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-xl ${look.plate} ${look.ink} [&_svg]:size-5`}>{look.icon}</span>
             <span className="min-w-0">
               <span className="block text-[22px] leading-7 font-extrabold tabular-nums text-[#0a285a]"><bdi dir="ltr">{health[state]}</bdi></span>
-              <span className="block truncate text-[13px] font-semibold ink-muted">{t(look.label)}</span>
+              <span className="block text-[13px] leading-4 font-semibold ink-muted">{t(look.label)}</span>
             </span>
           </li>
         );
@@ -273,6 +275,9 @@ function StatusTiles({ health }: { health: StockHealth }) {
     </ul>
   );
 }
+
+/** The stock page's two boxes are narrower than a form's, so both sit side by side on a phone's card. */
+const narrowField = compactFieldClass.replace("w-20", "w-16");
 
 /** How much of the reorder point is left: full at twice the point, empty at none. */
 function LevelBar({ stock, reorderAt }: { stock: number; reorderAt: number }) {
@@ -318,7 +323,7 @@ function ReorderEditor({ row }: { row: LowRow }) {
           toast.error(error instanceof Error ? tError(error.message) : t("admin.badReorderPoint"));
         }
       }}
-      className="w-36"
+      className="w-[8.5rem]"
     >
       <label className="block text-[12px] font-semibold text-[#0a285a]" htmlFor={id}>{t("stock.reorderPoint")}</label>
       <div className="mt-1 flex gap-2">
@@ -330,7 +335,7 @@ function ReorderEditor({ row }: { row: LowRow }) {
           aria-describedby={`${id}-hint`}
           value={value}
           onChange={event => setValue(event.target.value.replace(/[^\d٠-٩]/g, "").replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit))))}
-          className={compactFieldClass}
+          className={narrowField}
         />
         <button type="submit" disabled={!valid || !changed || save.isPending} className={smallButtonClass.secondary}>
           {save.isPending ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}{t("stock.setReorder")}
@@ -338,7 +343,7 @@ function ReorderEditor({ row }: { row: LowRow }) {
       </div>
       <p id={`${id}-hint`} className="mt-1 text-[11px] leading-4 ink-muted">
         {suggested !== null && suggested !== row.lowStockAt ? (
-          <button type="button" onClick={() => setValue(String(suggested))} className="font-semibold text-[#3730a3] underline-offset-2 hover:underline">
+          <button type="button" onClick={() => setValue(String(suggested))} className="text-start font-semibold text-[#3730a3] underline-offset-2 hover:underline">
             {t("stock.suggested", { count: suggested })}
           </button>
         ) : t("stock.reorderHint")}
@@ -383,7 +388,7 @@ function ReceiveEditor({ row }: { row: LowRow }) {
         placeholder="0"
         value={value}
         onChange={event => setValue(event.target.value.replace(/[^\d٠-٩]/g, "").replace(/[٠-٩]/g, digit => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit))))}
-        className={compactFieldClass}
+        className={narrowField}
       />
       <button type="submit" disabled={!valid || receive.isPending} className={smallButtonClass.primary}>
         {receive.isPending ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <PackagePlus className="size-3.5" aria-hidden />}{t("stock.receive")}

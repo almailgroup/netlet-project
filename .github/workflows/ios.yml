@@ -235,6 +235,12 @@ jobs:
             # Authorised devices: the owner's desk, and an install still waiting.
             shot 88-admin-devices "$lang" portal:/admin/devices admin
             shot 89-device-waiting "$lang" portal:/admin newdevice
+            # The portal's dashboard for a store and for NetLet, the live stock
+            # page, and the co-pilot's brief.
+            shot 90-portal-dashboard "$lang" portal:/admin shopper
+            shot 91-admin-dashboard "$lang" portal:/admin admin
+            shot 92-portal-stock "$lang" portal:/admin/stock shopper
+            shot 93-portal-copilot "$lang" copilot shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

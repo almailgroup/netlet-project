@@ -134,7 +134,7 @@ function VendorList() {
           <>
             <ul className={`space-y-2 md:hidden ${vendors.isFetching ? "opacity-70" : ""}`}>
               {rows.map(vendor => (
-                <li key={vendor.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-3">
+                <li key={vendor.id} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-3">
                   <div className="flex items-center gap-3">
                     <StoreAvatar name={vendor.name} logoUrl={vendor.logoUrl} />
                     <div className="min-w-0 flex-1">
@@ -155,7 +155,7 @@ function VendorList() {
               ))}
             </ul>
 
-            <div className={`hidden overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white md:block ${vendors.isFetching ? "opacity-70" : ""}`}>
+            <div className={`hidden overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] md:block ${vendors.isFetching ? "opacity-70" : ""}`}>
               <table className="w-full text-start text-[14px]">
                 <thead className="border-b border-[#e1e7ef] bg-[#fafbfd] text-[13px] text-[#536b8c]">
                   <tr>

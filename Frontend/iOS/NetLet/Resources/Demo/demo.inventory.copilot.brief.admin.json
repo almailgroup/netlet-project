@@ -1,0 +1,90 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "insights": [
+          {
+            "tone": "critical",
+            "key": "copilot.insight.out",
+            "params": {
+              "count": 1
+            },
+            "action": {
+              "kind": "open",
+              "page": "/admin/stock"
+            }
+          },
+          {
+            "tone": "warning",
+            "key": "copilot.insight.runningOut",
+            "params": {
+              "product": "Smart watch",
+              "days": 5
+            },
+            "action": {
+              "kind": "reorder",
+              "variantId": 3,
+              "level": 6,
+              "product": "Smart watch"
+            }
+          },
+          {
+            "tone": "warning",
+            "key": "copilot.insight.runningOut",
+            "params": {
+              "product": "Leather sandals",
+              "days": 5
+            }
+          },
+          {
+            "tone": "info",
+            "key": "copilot.waitSupport",
+            "params": {},
+            "count": 2,
+            "action": {
+              "kind": "open",
+              "page": "/admin/support"
+            }
+          },
+          {
+            "tone": "info",
+            "key": "copilot.waitReturns",
+            "params": {},
+            "count": 1,
+            "action": {
+              "kind": "open",
+              "page": "/admin/returns"
+            }
+          },
+          {
+            "tone": "good",
+            "key": "copilot.insight.salesUp",
+            "params": {
+              "change": 15,
+              "days": 30
+            }
+          },
+          {
+            "tone": "info",
+            "key": "copilot.insight.forecast",
+            "params": {
+              "amount": "2801.938"
+            }
+          },
+          {
+            "tone": "info",
+            "key": "copilot.insight.topDepartment",
+            "params": {
+              "percent": 60
+            },
+            "words": {
+              "department": "category.electronics"
+            }
+          }
+        ],
+        "ask": true,
+        "inquiries": 2
+      }
+    }
+  }
+}

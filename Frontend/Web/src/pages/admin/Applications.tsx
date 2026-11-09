@@ -126,7 +126,7 @@ function Applications() {
                     const reasonId = `reject-${row.id}`;
                     const rateId = `rate-${row.id}`;
                     return (
-                      <li key={row.id} className="overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                      <li key={row.id} className="overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
                         <div className="p-4 sm:p-5">
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0">

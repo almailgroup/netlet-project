@@ -92,7 +92,7 @@ function Proposals({ waiting }: { waiting: boolean }) {
           <>
             <ul className="space-y-3">
               {rows.map(row => (
-                <li key={row.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
+                <li key={row.id} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-[15px] font-bold text-[#0a285a]">

@@ -149,7 +149,7 @@ function Reviews({ onlyFlagged }: { onlyFlagged: boolean }) {
           <>
             <ul className="space-y-3">
               {rows.map(row => (
-                <li key={row.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+                <li key={row.id} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-[14px] font-bold text-[#0a285a]"><span dir="auto">{row.productTitle}</span> · {t("fraud.stars", { rating: row.rating })}</p>
@@ -243,7 +243,7 @@ function Waiting() {
             <p className="mb-3 max-w-prose text-[13px] leading-5 ink-muted">{t("review.waitingIntro")}</p>
             <ul className="space-y-3">
               {items.map(item => (
-                <li key={item.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+                <li key={item.id} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-[14px] font-bold text-[#0a285a]">
@@ -323,7 +323,7 @@ function Referrals({ onlyFlagged }: { onlyFlagged: boolean }) {
         return (
           <ul className="space-y-3">
             {rows.map(row => (
-              <li key={row.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
+              <li key={row.id} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-[14px] font-bold text-[#0a285a]">

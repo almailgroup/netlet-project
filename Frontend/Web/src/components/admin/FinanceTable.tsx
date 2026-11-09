@@ -27,7 +27,7 @@ export function Scroller({ labelledBy, children }: { labelledBy: string; childre
       role="region"
       aria-labelledby={labelledBy}
       tabIndex={0}
-      className="mt-3 overflow-x-auto rounded-2xl border border-[#e1e7ef] bg-white"
+      className="mt-3 overflow-x-auto rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]"
     >
       {children}
     </div>

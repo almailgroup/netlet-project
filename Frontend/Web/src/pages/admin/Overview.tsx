@@ -430,7 +430,7 @@ function Tile({ tile }: { tile: Tile }) {
 /** Nothing waiting, said plainly and without a box that looks like a warning. */
 function AllClear({ children }: { children: React.ReactNode }) {
   return (
-    <p className="flex items-center gap-2.5 rounded-2xl border border-[#e1e7ef] bg-white px-5 py-5 text-[14px] text-[#2f5d33]">
+    <p className="flex items-center gap-2.5 rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] px-5 py-5 text-[14px] text-[#2f5d33]">
       <CheckCircle2 className="size-5 shrink-0" aria-hidden />{children}
     </p>
   );

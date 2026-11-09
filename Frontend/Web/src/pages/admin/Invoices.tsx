@@ -79,7 +79,7 @@ function Invoices() {
                 <ul className="space-y-2 md:hidden">
                   {rows.map(row => (
                     <li key={row.number}>
-                      <Link href={`/invoices/${row.number}`} className="block rounded-2xl border border-[#e1e7ef] bg-white p-3.5 hover:border-[#0a285a]/30 hover:bg-[#f0f2f5]">
+                      <Link href={`/invoices/${row.number}`} className="block rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-3.5 hover:border-[#0a285a]/30 hover:bg-[#f0f2f5]">
                         <span className="flex items-start justify-between gap-3">
                           <span className="min-w-0 font-bold text-[#0a285a]"><bdi dir="ltr">{row.number}</bdi></span>
                           {total(row)}

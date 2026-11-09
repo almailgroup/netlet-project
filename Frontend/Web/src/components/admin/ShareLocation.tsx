@@ -68,7 +68,7 @@ export function ShareLocation() {
   const visible = on || server.data?.sharing;
 
   return (
-    <section aria-labelledby="share-location" className="mb-5 max-w-2xl rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[13px] text-[#0a285a] sm:p-5">
+    <section aria-labelledby="share-location" className="mb-5 max-w-2xl rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 text-[13px] text-[#0a285a] sm:p-5">
       <h2 id="share-location" className="flex items-center gap-2 text-[16px] font-bold">
         <LocateFixed className="size-4" aria-hidden />{t("tracking.shareTitle")}
       </h2>

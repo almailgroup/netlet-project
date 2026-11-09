@@ -20,7 +20,8 @@
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { cell, head, Scroller } from "@/components/admin/FinanceTable";
-import { isolate, Notice, PageHeader, smallButtonClass } from "@/components/admin/ui";
+import { isolate, Notice, PageHeader, smallButtonClass, surfaceClass } from "@/components/admin/ui";
+import { SERIES } from "@/components/admin/charts";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PayoutsDue } from "@/components/admin/PayoutsDue";
 import { QueryGate } from "@/components/admin/QueryGate";
@@ -88,11 +89,12 @@ function Finance() {
   );
 }
 
-function Tile({ label, value, sub, icon }: { label: string; value: string; sub?: string; icon: React.ReactNode }) {
+/** One headline figure, its icon on a plate of its colour — the dashboard's figures' look. */
+function Tile({ label, value, sub, icon, color }: { label: string; value: string; sub?: string; icon: React.ReactNode; color: string }) {
   return (
-    <div className="rounded-2xl border border-[#e1e7ef] bg-white p-4">
-      <div className="flex items-center gap-2 text-[13px] font-semibold text-[#536b8c]">
-        <span className="grid size-7 place-items-center rounded-lg bg-[#e7edf5] text-[#0a285a]">{icon}</span>
+    <div className={`p-4 ${surfaceClass}`}>
+      <div className="flex items-center gap-2.5 text-[13px] font-semibold text-[#536b8c]">
+        <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-lg [&_svg]:size-4" style={{ background: `${color}14`, color }}>{icon}</span>
         {label}
       </div>
       <p className="mt-2 text-[22px] leading-8 font-extrabold text-[#0a285a] tabular-nums">{value}</p>
@@ -113,7 +115,8 @@ function Headline({ totals }: { totals: Totals }) {
         label={t("admin.financeNet")}
         value={amount(totals.net)}
         sub={t("admin.financeGrossLess", { gross: amount(totals.gross), refunded: amount(totals.refunded) })}
-        icon={<Coins className="size-3.5" />}
+        icon={<Coins />}
+        color={SERIES[0]}
       />
       <Tile
         label={t("admin.financeCommission")}
@@ -121,19 +124,22 @@ function Headline({ totals }: { totals: Totals }) {
         /* Null rather than "0.0%" when nothing sold — a rate somebody can read
            as a fact about the shop should not be invented from an empty set. */
         sub={rate === null ? undefined : t("admin.financeTakeRate", { rate: String(rate) })}
-        icon={<Wallet className="size-3.5" />}
+        icon={<Wallet />}
+        color={SERIES[1]}
       />
       <Tile
         label={t("admin.financeVendorNet")}
         value={amount(totals.vendorNet)}
         sub={t("admin.financeOwedNote")}
-        icon={<Store className="size-3.5" />}
+        icon={<Store />}
+        color={SERIES[2]}
       />
       <Tile
         label={t("admin.financeRefunded")}
         value={amount(totals.refunded)}
         sub={t("admin.financeLineCount", { paid: String(totals.paidLines), refunded: String(totals.refundedLines) })}
-        icon={<RotateCcw className="size-3.5" />}
+        icon={<RotateCcw />}
+        color={SERIES[3]}
       />
     </div>
   );

@@ -2,8 +2,51 @@
   "result": {
     "data": {
       "json": {
-        "rows": [],
-        "total": 0,
+        "rows": [
+          {
+            "variantId": 2,
+            "variantTitle": "Default",
+            "sku": "USBC-65",
+            "stock": 0,
+            "lowStockAt": 3,
+            "preorderStock": 0,
+            "productId": 2,
+            "productTitle": "USB-C charger 65W",
+            "productStatus": "published",
+            "vendorName": "Acme Electronics",
+            "waiting": 3,
+            "soldLately": 12
+          },
+          {
+            "variantId": 3,
+            "variantTitle": "Default",
+            "sku": "WATCH-1",
+            "stock": 2,
+            "lowStockAt": 5,
+            "preorderStock": 0,
+            "productId": 3,
+            "productTitle": "Smart watch",
+            "productStatus": "published",
+            "vendorName": "Acme Electronics",
+            "waiting": 0,
+            "soldLately": 11
+          },
+          {
+            "variantId": 11,
+            "variantTitle": "M",
+            "sku": "LIN-M",
+            "stock": 4,
+            "lowStockAt": 6,
+            "preorderStock": 0,
+            "productId": 10,
+            "productTitle": "Linen shirt",
+            "productStatus": "published",
+            "vendorName": "Acme Electronics",
+            "waiting": 1,
+            "soldLately": 9
+          }
+        ],
+        "total": 3,
         "page": 1,
         "pageSize": 50
       }

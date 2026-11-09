@@ -130,8 +130,16 @@ struct LowStockRow: Decodable, Identifiable, Hashable, Sendable {
     let productTitle: String
     let vendorName: String?
     let waiting: Int
+    /// How many the vendor will still promise ahead of stock.
+    let preorderStock: Int?
+    /// Units sold over the last four weeks, which gives the shelf its pace.
+    let soldLately: Int?
 
     var id: Int { variantId }
+
+    var state: ShelfState { ShelfState(stock: stock, reorderAt: lowStockAt, preorderStock: preorderStock ?? 0) }
+    var daysOfCover: Int? { DashboardRules.daysOfCover(stock: stock, soldLast28: soldLately ?? 0) }
+    var suggestedReorderAt: Int? { DashboardRules.reorderFor(soldLast28: soldLately ?? 0) }
 }
 
 /// One recorded change to a shelf, and why (`inventory.stockHistory`).

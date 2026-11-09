@@ -76,6 +76,7 @@
     "db:studio": "drizzle-kit studio",
     "dev": "NODE_ENV=development tsx watch Backend/src/core/index.ts",
     "ios:resources": "tsx Frontend/iOS/scripts/exportShared.ts",
+    "ios:portal-recordings": "tsx Frontend/iOS/scripts/portalRecordings.ts",
     "format": "prettier --write .",
     "preflight": "tsx Backend/scripts/preflight.ts",
     "setup:env": "tsx Backend/scripts/setup-env.ts",

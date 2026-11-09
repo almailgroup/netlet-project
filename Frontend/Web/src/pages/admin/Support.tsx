@@ -61,7 +61,7 @@ function Inbox() {
                 if (result.rows.length === 0) return <EmptyState title={t("support.inboxEmpty")} />;
                 return (
                   <>
-                    <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+                    <ul className="divide-y divide-[#eef1f5] overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
                       {result.rows.map(row => {
                         const current = selected === row.id;
                         return (
@@ -143,7 +143,7 @@ function StaffThread({ id }: { id: number }) {
       {() => {
         const data = thread.data!;
         return (
-          <section aria-label={t("support.thread")} className="rounded-2xl border border-[#e1e7ef] bg-white p-4 text-[#0a285a] sm:p-5">
+          <section aria-label={t("support.thread")} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 text-[#0a285a] sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[#eef1f5] pb-3">
               <div className="min-w-0">
                 <h2 className="text-[16px] font-bold">

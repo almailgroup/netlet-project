@@ -1,0 +1,83 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "variantId": 2,
+            "variantTitle": "Default",
+            "sku": "USBC-65",
+            "stock": 0,
+            "lowStockAt": 3,
+            "preorderStock": 0,
+            "productId": 2,
+            "productTitle": "USB-C charger 65W",
+            "productStatus": "published",
+            "vendorName": "Acme Electronics",
+            "waiting": 3,
+            "soldLately": 12
+          },
+          {
+            "variantId": 3,
+            "variantTitle": "Default",
+            "sku": "WATCH-1",
+            "stock": 2,
+            "lowStockAt": 5,
+            "preorderStock": 0,
+            "productId": 3,
+            "productTitle": "Smart watch",
+            "productStatus": "published",
+            "vendorName": "Acme Electronics",
+            "waiting": 0,
+            "soldLately": 11
+          },
+          {
+            "variantId": 142,
+            "variantTitle": "Default",
+            "sku": null,
+            "stock": 1,
+            "lowStockAt": 4,
+            "preorderStock": 0,
+            "productId": 225,
+            "productTitle": "Leather sandals",
+            "productStatus": "published",
+            "vendorName": "Souq Style",
+            "waiting": 2,
+            "soldLately": 5
+          },
+          {
+            "variantId": 11,
+            "variantTitle": "M",
+            "sku": "LIN-M",
+            "stock": 4,
+            "lowStockAt": 6,
+            "preorderStock": 0,
+            "productId": 10,
+            "productTitle": "Linen shirt",
+            "productStatus": "published",
+            "vendorName": "Acme Electronics",
+            "waiting": 1,
+            "soldLately": 9
+          },
+          {
+            "variantId": 145,
+            "variantTitle": "Default",
+            "sku": null,
+            "stock": 0,
+            "lowStockAt": null,
+            "preorderStock": 40,
+            "productId": 228,
+            "productTitle": "Basmati rice 5 kg",
+            "productStatus": "published",
+            "vendorName": "Gulf Grocers",
+            "waiting": 0,
+            "soldLately": 30
+          }
+        ],
+        "total": 5,
+        "page": 1,
+        "pageSize": 50
+      }
+    }
+  }
+}

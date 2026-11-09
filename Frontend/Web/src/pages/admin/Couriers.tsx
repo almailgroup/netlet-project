@@ -73,7 +73,7 @@ function Couriers({ actor }: { actor: Actor }) {
           ) : (
             <ul className="space-y-4">
               {(list.data ?? []).map(company => (
-                <li key={company.id} className="rounded-2xl border border-[#e1e7ef] bg-white p-4 sm:p-5">
+                <li key={company.id} className="rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#e7edf5] text-[#0a285a]"><Building2 className="size-5" aria-hidden /></span>

@@ -182,6 +182,8 @@ final class AppModel {
     /// now opening checkout, a launch argument opening a product.
     var homePath = NavigationPath()
     var accountPath = NavigationPath()
+    /// Set by `-NetLetOpen copilot`: the next portal page to appear opens the co-pilot.
+    var copilotOnOpen = false
     var cartPath = NavigationPath()
     var categoriesPath = NavigationPath()
     var dealsPath = NavigationPath()
@@ -561,6 +563,11 @@ final class AppModel {
             selectedTab = .account
             let page = value ?? "/admin"
             accountPath = NavigationPath(page == "/admin" ? [Route.portal("/admin")] : [Route.portal("/admin"), Route.portal(page)])
+        case "copilot":
+            // The portal's front page with the co-pilot's sheet up.
+            selectedTab = .account
+            copilotOnOpen = true
+            accountPath = NavigationPath([Route.portal("/admin")])
         case "newListing":
             guard session.seller?.isStoreMember == true else { return }
             selectedTab = .account

@@ -218,9 +218,10 @@ function ProductTable({ actor }: { actor: Actor }) {
       />
 
       {/* Wraps from lg: six filters and the status row no longer fit one
-          line, and squeezed into one the search box was a sliver. */}
+          line. The search has a line of its own, so its hint is read whole
+          rather than cut at "Name, Arabic". */}
       <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
-        <div className="relative min-w-0 flex-1 lg:min-w-[18rem]">
+        <div className="relative min-w-0 flex-1 lg:basis-full">
           <Search className="pointer-events-none absolute start-3.5 top-1/2 size-4 -translate-y-1/2 ink-muted" aria-hidden />
           <input
             type="search"
@@ -341,7 +342,7 @@ function ProductTable({ actor }: { actor: Actor }) {
               {rows.map(row => {
                 const { stock, cheapest, cover, mayDelete } = summarise(row);
                 return (
-                  <li key={row.id} className="flex items-center gap-3 rounded-2xl border border-[#e1e7ef] bg-white p-3">
+                  <li key={row.id} className="flex items-center gap-3 rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] p-3">
                     {mayBulk ? <PickBox checked={selected.has(row.id)} onChange={() => toggle(row.id)} label={t("admin.selectProduct", { title: row.title })} /> : null}
                     <div className="size-14 shrink-0 overflow-hidden rounded-xl bg-[#f4f6f9]">
                       <Thumb src={cover} alt="" className="size-full object-cover" icon={<ImageOff className="size-4 text-[#536b8c]" />} />
@@ -370,7 +371,7 @@ function ProductTable({ actor }: { actor: Actor }) {
             </ul>
 
             {/* Wider: the table. */}
-            <div className={`hidden overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white md:block ${products.isFetching ? "opacity-70" : ""}`}>
+            <div className={`hidden overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] md:block ${products.isFetching ? "opacity-70" : ""}`}>
               <table className="w-full text-start text-[14px]">
                 <thead className="border-b border-[#e1e7ef] bg-[#fafbfd] text-[13px] text-[#536b8c]">
                   <tr>

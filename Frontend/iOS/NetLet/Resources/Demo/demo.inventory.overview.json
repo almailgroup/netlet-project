@@ -6,8 +6,8 @@
         "pendingReview": 0,
         "published": 7,
         "archived": 0,
-        "outOfStock": 0,
-        "lowStock": 0,
+        "outOfStock": 1,
+        "lowStock": 2,
         "vendorsPending": 0,
         "vendorsApproved": 0,
         "zeroCommission": []

@@ -1,0 +1,62 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "insights": [
+          {
+            "tone": "critical",
+            "key": "copilot.insight.out",
+            "params": {
+              "count": 1
+            },
+            "action": {
+              "kind": "open",
+              "page": "/admin/stock"
+            }
+          },
+          {
+            "tone": "warning",
+            "key": "copilot.insight.runningOut",
+            "params": {
+              "product": "Smart watch",
+              "days": 5
+            },
+            "action": {
+              "kind": "reorder",
+              "variantId": 3,
+              "level": 6,
+              "product": "Smart watch"
+            }
+          },
+          {
+            "tone": "good",
+            "key": "copilot.insight.salesUp",
+            "params": {
+              "change": 15,
+              "days": 30
+            }
+          },
+          {
+            "tone": "info",
+            "key": "copilot.insight.forecast",
+            "params": {
+              "amount": "1110.877"
+            }
+          },
+          {
+            "tone": "info",
+            "key": "copilot.insight.topDepartment",
+            "params": {
+              "percent": 79
+            },
+            "words": {
+              "department": "category.electronics"
+            }
+          }
+        ],
+        "ask": true,
+        "inquiries": 0
+      }
+    }
+  }
+}
