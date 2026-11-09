@@ -226,6 +226,9 @@ final class OrdersViewModel {
     /// The Reviews chip's number: what can still be rated.
     var reviewsCount: Int? { reviews.value.map { $0.filter { $0.eligibility.allowed && $0.review == nil }.count } }
 
+    /// The tab pressed, drawn at once — `choose(tab:)` then asks for its list.
+    func pick(tab next: String) { tab = next }
+
     func choose(tab next: String) async {
         tab = next
         if onOrders, filters.view != next {
@@ -244,6 +247,14 @@ final class OrdersViewModel {
     func choose(period next: String) async {
         guard next != filters.period else { return }
         filters.period = next
+        await load()
+    }
+
+    /// The search row closed: its words and its period go with it.
+    func clearSearch() async {
+        guard !filters.q.isEmpty || filters.period != "all" else { return }
+        filters.q = ""
+        filters.period = "all"
         await load()
     }
 

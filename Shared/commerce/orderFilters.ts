@@ -28,8 +28,12 @@ import { foldText, searchWords } from "./search.js";
 export const ORDER_VIEWS = ["all", "processing", "onTheWay", "delivered", "cancelled"] as const;
 export type OrderView = (typeof ORDER_VIEWS)[number];
 
-/** Every tab on the page: the views of the orders, then the returns and the reviews. */
-export const ORDER_TABS = [...ORDER_VIEWS, "returns", "reviews"] as const;
+/**
+ * Every tab on the page, in the owner's reference's order — All orders,
+ * Processing, Shipped, Delivered, Returns — then Cancelled and Reviews, which
+ * the reference's row runs on to.
+ */
+export const ORDER_TABS = ["all", "processing", "onTheWay", "delivered", "returns", "cancelled", "reviews"] as const;
 export type OrderTab = (typeof ORDER_TABS)[number];
 
 /** How far back to look, in days; "all" is every order. */

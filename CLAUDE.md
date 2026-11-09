@@ -2963,38 +2963,45 @@ it is empty.
 
 **My orders has every tool somebody needs about what they bought, on the
 owner's word** ("add these filter options at the top of the my order page …
-I want the orders page to have all the tools that the user needs"; the
-reference picture they meant to send did not arrive). A row of chips — All,
-Processing, On the way, Delivered and Cancelled, each saying how many it
-holds, then Returns (how many asked) and Reviews (how many still to rate) —
-sideways on a phone and wrapping from `sm`, `aria-pressed` buttons in a named
-group (the `Segmented` rule: they narrow a list); then, on the orders' own
-views, a search by the order's number (whole or in part, with or without its
-dashes) or by anything in it, and how far back to look (any time, 30, 90 and
-180 days, a year). **A view is read off `orderProgress`, never a second
+I want the orders page to have all the tools that the user needs"), **and it
+is drawn to the picture they sent** (a shop's "Your orders"): a bar with the
+way back at its start, "Your orders" in its middle and a search icon at its
+end (`OrdersTop`; the app's own of the same name), then the tabs as plain
+words in one row that scrolls sideways — All orders, Processing, Shipped,
+Delivered, Returns (the picture's five, in its order, `ORDER_TABS`), then
+Cancelled and Reviews — the chosen one dark with a short rounded line under it
+(sliding to the next in the app), the rest muted, a hairline under the row.
+No counts, icons or chips: the first version had them and the picture has
+none. The tabs are `aria-pressed` buttons in a named group (the `Segmented`
+rule: they narrow a list). **The search icon opens the search and the period**
+under the tabs, on the orders' own views — a search by the order's number
+(whole or in part, with or without its dashes) or by anything in it, and how
+far back to look (any time, 30, 90 and 180 days, a year); closing it clears
+both, so nothing narrows the list out of sight, and an address carrying either
+opens with it shown. **A view is read off `orderProgress`, never a second
 rule** (`viewOfProgress` in `Shared/commerce/orderFilters.ts`): received and
-being prepared are Processing, on the way and part-delivered On the way, an
-order that came back whole Delivered (its return is under Returns). **The
-server filters over every order the shopper has** (`orders.list` with `view`,
-`q` and `period`; `filterOrders`, pure, over up to `ORDER_SCAN_CEILING` of
-their newest, and says when it reached it), because a filter over the twenty
-on the page says "none" about the twenty-first — the admin lists' rule; the
-chips' numbers are the same computation as the list, under the same search
-and period, so a chip's number is what pressing it shows. The search folds and
-stems as the shop's search does (`searchWords`: "ساعه" finds "ساعة ذكية",
-"watches" finds "Smart watch", "cha" the word it starts). The filters live in
-the address (`?view=`, `?q=`, `?period=`, replaced rather than pushed), the
-search sent once typing pauses and the box never overwritten by its own
-search coming back; nothing matching says so with Clear filters. The app's
-`OrdersView` is the same, the chips, periods and search length exported to
-`rules.json` (`orders.filterTabs`, `filterPeriods`, `searchMax`), the
-recording carrying `counts`. `orders.test.ts` filters a real database by view,
-search and period with the counts; `orderFilters.test.ts` holds the rule, and
-the app's model only sends what it is given. Measured at 320, 390 and 1440 in
-both languages: the chips' numbers, a number found by five of its letters, a
-miss offering Clear filters, Returns and Reviews in place, axe clean, no
-sideways scroll (a review row's long reason widened the page at 320 until it
-was allowed to wrap). Orders is the first tile, ahead of the settings: somebody
+being prepared are Processing, on the way and part-delivered Shipped, an order
+that came back whole Delivered (its return is under Returns). **The server
+filters over every order the shopper has** (`orders.list` with `view`, `q` and
+`period`; `filterOrders`, pure, over up to `ORDER_SCAN_CEILING` of their
+newest, and says when it reached it), because a filter over the twenty on the
+page says "none" about the twenty-first — the admin lists' rule; it still
+answers each view's count, which tells "nothing matches" from "no orders yet".
+The search folds and stems as the shop's search does (`searchWords`: "ساعه"
+finds "ساعة ذكية", "watches" finds "Smart watch", "cha" the word it starts).
+The filters live in the address (`?view=`, `?q=`, `?period=`, replaced rather
+than pushed), the search sent once typing pauses and the box never
+overwritten by its own search coming back; nothing matching says so with
+Clear filters. The page draws its own bar, so `Account.tsx` draws no section
+heading over it. The app's tabs, periods and search length are exported to
+`rules.json` (`orders.filterTabs`, `filterPeriods`, `searchMax`).
+`orders.test.ts` filters a real database by view, search and period with the
+counts; `orderFilters.test.ts` holds the rule and the tabs' order. Measured at
+320, 390 and 1440 in both languages: the tabs in order, the search opened by
+its icon with focus in the box, a number found by five of its letters, a miss
+offering Clear filters, closing the search restoring every order, Returns and
+Reviews in place, axe clean, no sideways scroll (a review row's long reason
+widened the page at 320 until it was allowed to wrap). Orders is the first tile, ahead of the settings: somebody
 opening their account on a shop is usually asking where a parcel is, not
 changing a display name.
 
@@ -7617,7 +7624,7 @@ phone and its words in both languages, then 941 KB (272 KB), the
 one-time code's choice and step, then 947 KB (273 KB), the iPhone's
 Face ID words in both languages (every `ios.*` key ships in the one
 dictionary), then 954 KB (276 KB), choosing what to check out and the
-photo's glass and typed count, and is 957 KB (276 KB) now, My orders'
+photo's glass and typed count, and is 958 KB (276 KB) now, My orders'
 filters and the compact profile's words, nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

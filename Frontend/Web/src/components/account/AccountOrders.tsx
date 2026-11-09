@@ -40,9 +40,10 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { useReturnWindow } from "@/hooks/useReturnWindow";
 import type { OrderProgress } from "@shared/commerce/orderProgress";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ChevronDown, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Search, Star, Truck, X, type LucideIcon } from "lucide-react";
+import { ChevronDown, ChevronLeft, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Search, Star, Truck, X, type LucideIcon } from "lucide-react";
+import { cameFrom, goBack } from "@/lib/inAppBack";
 import { Link, useLocation, useSearch } from "wouter";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Select } from "@/components/ui/Select";
 import { AccountReturns } from "@/components/account/AccountReturns";
 import { AccountReviews } from "@/components/account/AccountReviews";
@@ -141,15 +142,15 @@ function OrderPhoto({ photo, more }: { photo: string | null; more: number }) {
   );
 }
 
-/** Each tab's words and its picture. */
-const TAB_LOOK: Record<OrderTab, { label: MessageKey; icon: LucideIcon }> = {
-  all: { label: "orders.viewAll", icon: Package },
-  processing: { label: "orders.viewProcessing", icon: Clock },
-  onTheWay: { label: "orders.viewOnTheWay", icon: Truck },
-  delivered: { label: "orders.viewDelivered", icon: CircleCheck },
-  cancelled: { label: "orders.viewCancelled", icon: CircleX },
-  returns: { label: "orders.viewReturns", icon: RotateCcw },
-  reviews: { label: "orders.viewReviews", icon: Star },
+/** Each tab's words. */
+const TAB_LABEL: Record<OrderTab, MessageKey> = {
+  all: "orders.viewAll",
+  processing: "orders.viewProcessing",
+  onTheWay: "orders.viewOnTheWay",
+  delivered: "orders.viewDelivered",
+  returns: "orders.viewReturns",
+  cancelled: "orders.viewCancelled",
+  reviews: "orders.viewReviews",
 };
 
 const PERIOD_LABEL: Record<OrderPeriod, MessageKey> = {
@@ -161,23 +162,36 @@ const PERIOD_LABEL: Record<OrderPeriod, MessageKey> = {
 };
 
 /**
- * The tools at the top of the page: the views as a row of chips that scrolls
- * sideways on a phone, each with its count; then, on the orders' own views,
- * the search and the period. The chips are `aria-pressed` buttons in a named
- * group — they narrow a list, the portal's `Segmented` rule, not a tablist.
+ * The top of the page, drawn to the owner's reference (a shop's "Your
+ * orders"): a bar with the way back at its start, "Your orders" in its middle
+ * and a search at its end; then the tabs as plain words in one row that
+ * scrolls sideways — All orders, Processing, Shipped, Delivered, Returns,
+ * Cancelled, Reviews — the chosen one dark with a short rounded line under
+ * it, the rest muted, a hairline under the row. The tabs are `aria-pressed`
+ * buttons in a named group (they narrow a list, the portal's `Segmented`
+ * rule, not a tablist). The search icon opens the search and the period under
+ * the tabs, on the orders' own views; closing it clears both, so nothing
+ * narrows the list out of sight.
  */
-function OrderTools({ tab, onTab, counts, returnsCount, reviewsCount, q, onSearch, period, onPeriod }: {
+function OrdersTop({ tab, onTab, q, onSearch, period, onPeriod }: {
   tab: OrderTab;
   onTab: (tab: OrderTab) => void;
-  counts: OrderCounts | null;
-  returnsCount: number | null;
-  reviewsCount: number | null;
   q: string;
   onSearch: (q: string) => void;
   period: OrderPeriod;
   onPeriod: (period: OrderPeriod) => void;
 }) {
   const { t } = useTranslation();
+  const viewing = isOrderView(tab);
+  /* The way back says where it goes, the account sections' rule. */
+  const from = cameFrom();
+  const backLabel = !from || from.split("?")[0] === "/account" ? t("account.backToAccount") : t("nav.back");
+  const panelId = useId();
+  const box = useRef<HTMLInputElement>(null);
+  const row = useRef<HTMLDivElement>(null);
+  const [opened, setOpened] = useState(Boolean(q) || period !== "all");
+  const searching = viewing && (opened || Boolean(q) || period !== "all");
+
   /* What is typed, sent to the address once typing pauses. The box follows
      the address only when something else changed it (Clear filters), never
      its own search coming back — which would eat a letter typed meanwhile. */
@@ -192,44 +206,91 @@ function OrderTools({ tab, onTab, counts, returnsCount, reviewsCount, q, onSearc
     const timer = window.setTimeout(() => send(typed.trim()), 350);
     return () => window.clearTimeout(timer);
   });
-  const countOf = (entry: OrderTab): number | null =>
-    entry === "returns" ? returnsCount : entry === "reviews" ? reviewsCount : counts?.[entry] ?? null;
+
+  /* The chosen tab in view — Reviews, opened from its old address, is off the
+     end of a phone's row. */
+  useEffect(() => {
+    row.current?.querySelector<HTMLElement>("[aria-pressed=true]")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [tab]);
+
+  const toggle = () => {
+    if (searching) {
+      setOpened(false);
+      setTyped("");
+      sent.current = "";
+      onPeriod("all");
+      onSearch("");
+    } else {
+      setOpened(true);
+      window.setTimeout(() => box.current?.focus(), 0);
+    }
+  };
 
   return (
-    <div className="mb-4 space-y-3">
-      <div role="group" aria-label={t("orders.viewsLabel")} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
-        {ORDER_TABS.map(entry => {
-          const look = TAB_LOOK[entry];
-          const Icon = look.icon;
-          const on = tab === entry;
-          const count = countOf(entry);
-          return (
-            <button
-              key={entry}
-              type="button"
-              aria-pressed={on}
-              onClick={() => onTab(entry)}
-              className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[14px] font-bold transition-colors pointer-fine:min-h-10 ${
-                on ? "border-[#0a285a] bg-[#0a285a] text-white" : "border-[#d5dfeb] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"
-              }`}
-            >
-              <Icon className={`size-4 ${entry === "returns" ? "rtl:-scale-x-100" : ""}`} aria-hidden />
-              {t(look.label)}
-              {count !== null && (count > 0 || isOrderView(entry)) ? (
-                <span className={`rounded-full px-1.5 py-0.5 text-[12px] leading-none tabular-nums ${on ? "bg-white/20 text-white" : "bg-[#eef1f6] text-[#3d5170]"}`}>
-                  {count}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
+    <div className="mb-4">
+      <div className="flex items-center gap-2">
+        <Link
+          href="/account"
+          onClick={goBack}
+          aria-label={backLabel}
+          title={backLabel}
+          className="-ms-2.5 grid size-11 shrink-0 place-items-center rounded-full text-[#0a285a]"
+        >
+          <ChevronLeft className="size-7 rtl:-scale-x-100" strokeWidth={1.8} aria-hidden />
+        </Link>
+        <h2 className="min-w-0 flex-1 truncate text-center text-[20px] font-bold text-[#0a285a]">{t("orders.pageTitle")}</h2>
+        {viewing ? (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={searching}
+            aria-controls={panelId}
+            aria-label={t("orders.searchPlaceholder")}
+            title={t("orders.searchPlaceholder")}
+            className="-me-2.5 grid size-11 shrink-0 place-items-center rounded-full text-[#0a285a]"
+          >
+            <Search className="size-6" strokeWidth={1.9} aria-hidden />
+          </button>
+        ) : (
+          <span className="-me-2.5 size-11 shrink-0" aria-hidden />
+        )}
       </div>
-      {isOrderView(tab) ? (
-        <div role="search" className="flex flex-wrap gap-2">
+
+      <div className="-mx-4 mt-2 border-b border-[#e3e6ec] sm:mx-0">
+        <div
+          ref={row}
+          role="group"
+          aria-label={t("orders.viewsLabel")}
+          className="flex gap-6 overflow-x-auto px-4 [scrollbar-width:none] sm:px-0"
+        >
+          {ORDER_TABS.map(entry => {
+            const on = tab === entry;
+            return (
+              <button
+                key={entry}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onTab(entry)}
+                className={`relative min-h-11 shrink-0 whitespace-nowrap pb-3 pt-1 text-[16px] transition-colors ${on ? "font-semibold text-[#0a285a]" : "font-medium ink-muted hover:text-[#0a285a]"}`}
+              >
+                {t(TAB_LABEL[entry])}
+                <span
+                  aria-hidden
+                  className={`absolute bottom-0 left-1/2 h-1 w-7 -translate-x-1/2 rounded-full bg-[#0a285a] transition-opacity duration-200 ${on ? "opacity-100" : "opacity-0"}`}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div id={panelId} role="search" hidden={!searching} className="mt-3">
+        <div className="flex flex-wrap gap-2">
           <label className="relative flex min-w-[12rem] flex-1 items-center">
             <span className="sr-only">{t("orders.searchLabel")}</span>
             <Search className="pointer-events-none absolute start-3 size-[18px] text-[#5d6b82]" aria-hidden />
             <input
+              ref={box}
               type="search"
               value={typed}
               maxLength={ORDER_SEARCH_MAX}
@@ -243,7 +304,7 @@ function OrderTools({ tab, onTab, counts, returnsCount, reviewsCount, q, onSearc
             {typed ? (
               <button
                 type="button"
-                onClick={() => { setTyped(""); send(""); }}
+                onClick={() => { setTyped(""); send(""); box.current?.focus(); }}
                 aria-label={t("orders.searchClear")}
                 className="absolute end-1 grid size-9 place-items-center rounded-full text-[#5d6b82] hover:bg-[#f0f2f5]"
               >
@@ -260,7 +321,7 @@ function OrderTools({ tab, onTab, counts, returnsCount, reviewsCount, q, onSearc
             {ORDER_PERIODS.map(entry => <option key={entry} value={entry}>{t(PERIOD_LABEL[entry])}</option>)}
           </Select>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
@@ -328,21 +389,12 @@ export function AccountOrders() {
        chips and the list never blink to an outline under the press. */
     { placeholderData: previous => previous },
   );
-  /* The two lists that moved here count on their chips: every return asked
-     for, and the items waiting for their stars. Their own sections read the
-     same queries, so the chip and the list agree. */
-  const returnsList = trpc.orders.myReturns.useQuery(undefined, { staleTime: 30_000 });
-  const reviewLines = trpc.reviews.mine.useQuery();
-  const toRate = reviewLines.data?.filter(line => line.eligibility.allowed && !line.review).length ?? null;
   const filtered = Boolean(q) || period !== "all" || tab !== "all";
 
   const tools = (
-    <OrderTools
+    <OrdersTop
       tab={tab}
       onTab={next => setFilters({ view: next })}
-      counts={list.data?.counts ?? null}
-      returnsCount={returnsList.data?.length ?? null}
-      reviewsCount={toRate}
       q={q}
       onSearch={onSearch}
       period={period}

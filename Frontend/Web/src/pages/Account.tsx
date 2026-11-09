@@ -261,6 +261,9 @@ export default function Account() {
             {/* The page is the account and this is one part of it, which is
                 also what keeps the cards' own h3s one level below a heading. */}
             <h1 className="sr-only">{t("account.backToAccount")}</h1>
+            {/* My orders draws its own bar, the owner's reference: the way
+                back, "Your orders" in the middle and a search (`OrdersTop`). */}
+            {section.id === "orders" ? <SectionBody id={section.id} user={user} /> : <>
             <div className="flex items-center gap-3">
               {/* Back to the page the section was opened from — the bell,
                   the heart, the account home — on the owner's word, rather
@@ -282,6 +285,7 @@ export default function Account() {
             <div className="mt-6">
               <SectionBody id={section.id} user={user} />
             </div>
+            </>}
           </div>
         ) : (
           <AccountHome user={user} has={onHome} badge={badge} onSignOut={() => setSignOutOpen(true)} />

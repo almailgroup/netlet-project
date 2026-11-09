@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterOrders, isOrderTab, matchesOrderSearch, periodStart, viewOfProgress, type FilterableOrder } from "./orderFilters";
+import { filterOrders, isOrderTab, ORDER_TABS, ORDER_VIEWS, matchesOrderSearch, periodStart, viewOfProgress, type FilterableOrder } from "./orderFilters";
 
 /* The Swift app's `OrderFiltersTests` runs these same cases. */
 const now = new Date("2026-11-09T12:00:00Z");
@@ -72,7 +72,9 @@ describe("order filters", () => {
     expect(counts).toEqual({ all: 1, processing: 0, onTheWay: 0, delivered: 1, cancelled: 0 });
   });
 
-  it("knows its tabs", () => {
+  it("knows its tabs, in the reference's order, every view among them", () => {
+    expect(ORDER_TABS.slice(0, 5)).toEqual(["all", "processing", "onTheWay", "delivered", "returns"]);
+    for (const view of ORDER_VIEWS) expect(isOrderTab(view)).toBe(true);
     expect(isOrderTab("returns")).toBe(true);
     expect(isOrderTab("reviews")).toBe(true);
     expect(isOrderTab("toPay")).toBe(false);

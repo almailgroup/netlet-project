@@ -29,16 +29,18 @@ struct OrdersView: View {
             )
         }) { model in
             ShopPage(header: false, refresh: { await model.loadAll() }) {
-                AccountSection(title: l.t("account.sectionOrders"), hint: l.t("account.hint.orders")) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        OrderTools(model: model)
-                        switch model.tab {
-                        case "returns": ReturnsList(returns: model.returns)
-                        case "reviews": ReviewsList(lines: model.reviews)
-                        default: orderList(model)
-                        }
+                VStack(alignment: .leading, spacing: 14) {
+                    OrdersTop(model: model)
+                    switch model.tab {
+                    case "returns": ReturnsList(returns: model.returns)
+                    case "reviews": ReviewsList(lines: model.reviews)
+                    default: orderList(model)
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 48)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .task { await model.loadAll() }
         }
@@ -135,34 +137,42 @@ struct OrdersView: View {
     }
 }
 
-/// The tools at the top of My orders: the chips, then — on the orders' own
-/// views — the search and the period. A chip is a button that says whether it
-/// is chosen (`isSelected`), the web's `aria-pressed`: it narrows a list.
-private struct OrderTools: View {
+/// The top of My orders, drawn to the owner's reference (a shop's "Your
+/// orders"), the web's `OrdersTop`: a bar with the way back, "Your orders" in
+/// its middle and a search at its end; then the tabs as plain words in a row
+/// that scrolls sideways — the chosen one dark with a short rounded line under
+/// it that slides to the next, the rest muted, a hairline under the row. A tab
+/// says it is chosen (`isSelected`), the web's `aria-pressed`. The search icon
+/// opens the search and the period under the tabs on the orders' own views;
+/// closing it clears both, so nothing narrows the list out of sight.
+private struct OrdersTop: View {
     let model: OrdersViewModel
+    @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var still
+    @Namespace private var underline
     @State private var typed = ""
     @State private var sent = ""
+    @State private var opened = false
     @FocusState private var searching: Bool
 
-    private var tabs: [String] { ReferenceData.shared.rules.orders?.filterTabs ?? ["all", "processing", "onTheWay", "delivered", "cancelled", "returns", "reviews"] }
+    private var tabs: [String] { ReferenceData.shared.rules.orders?.filterTabs ?? ["all", "processing", "onTheWay", "delivered", "returns", "cancelled", "reviews"] }
     private var periods: [String] { ReferenceData.shared.rules.orders?.filterPeriods ?? ["all", "30", "90", "180", "365"] }
     private var searchMax: Int { ReferenceData.shared.rules.orders?.searchMax ?? 80 }
+    /// Whether the search row shows: opened, or holding something that narrows the list.
+    private var searchShown: Bool { model.onOrders && (opened || !model.filters.q.isEmpty || model.filters.period != "all") }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(tabs, id: \.self) { tab in chip(tab) }
-                }
-                .padding(.horizontal, 16)
-            }
-            .padding(.horizontal, -16)
-            if model.onOrders {
+        VStack(alignment: .leading, spacing: 12) {
+            bar
+            tabRow
+            if searchShown {
                 HStack(spacing: 8) {
                     searchField
                     periodMenu
                 }
+                .transition(.opacity)
             }
         }
         // The search sent once typing pauses; the box follows the model only
@@ -181,45 +191,109 @@ private struct OrderTools: View {
         .onAppear { typed = model.filters.q; sent = model.filters.q }
     }
 
-    private func chip(_ tab: String) -> some View {
-        let on = model.tab == tab
-        let count = countOf(tab)
-        let showCount = count.map { $0 > 0 || !["returns", "reviews"].contains(tab) } ?? false
-        return Button {
-            Task { await model.choose(tab: tab) }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: Self.symbol(tab))
-                    .font(.system(size: 13, weight: .semibold))
-                    .accessibilityHidden(true)
-                Text(l.t(Self.label(tab)))
-                    .font(.inter(14, .bold))
-                    .lineLimit(1)
-                if showCount, let count {
-                    Text(verbatim: "\(count)")
-                        .font(.inter(12, .semibold))
-                        .monospacedDigit()
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Capsule().fill(on ? Color.white.opacity(0.2) : Brand.tint))
+    private var bar: some View {
+        // The account's home is behind this one when it is the Profile tab's first push.
+        let toAccount = app.selectedTab == .account && app.accountPath.count <= 1
+        return ZStack {
+            Text(l.t("orders.pageTitle"))
+                .font(.inter(19, .bold))
+                .foregroundStyle(Brand.navy)
+                .lineLimit(1)
+                .padding(.horizontal, 52)
+                .accessibilityAddTraits(.isHeader)
+            HStack {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.backward")
+                        .font(.system(size: 21, weight: .medium))
+                        .foregroundStyle(Brand.navy)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.tap)
+                .accessibilityLabel(l.t(toAccount ? "account.backToAccount" : "nav.back"))
+                Spacer(minLength: 0)
+                if model.onOrders {
+                    Button { toggleSearch() } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(Brand.navy)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.tap)
+                    .accessibilityLabel(l.t("orders.searchPlaceholder"))
+                    .accessibilityValue(l.t(searchShown ? "ios.a11y.expanded" : "ios.a11y.collapsed"))
                 }
             }
-            .foregroundStyle(on ? Color.white : Brand.navy)
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .background(Capsule().fill(on ? Brand.navy : Color.white))
-            .overlay(Capsule().strokeBorder(on ? Brand.navy : Brand.line, lineWidth: 1))
-            .contentShape(Capsule())
+            .padding(.horizontal, -12)
         }
-        .buttonStyle(SpringPressStyle(cornerRadius: 22))
+        .frame(minHeight: 44)
+    }
+
+    private var tabRow: some View {
+        VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 24) {
+                        ForEach(tabs, id: \.self) { tab in tabButton(tab) }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .onAppear { proxy.scrollTo(model.tab, anchor: .center) }
+                .onChange(of: model.tab) { _, tab in
+                    withAnimation(still ? nil : .snappy(duration: 0.3)) { proxy.scrollTo(tab, anchor: .center) }
+                }
+            }
+            Rectangle().fill(Brand.cardLine).frame(height: 1)
+        }
+        .padding(.horizontal, -16)
+    }
+
+    private func tabButton(_ tab: String) -> some View {
+        let on = model.tab == tab
+        return Button {
+            // The tab at once, so the line slides under it; the list is asked for after.
+            withAnimation(still ? nil : .snappy(duration: 0.28)) { model.pick(tab: tab) }
+            Task { await model.choose(tab: tab) }
+        } label: {
+            VStack(spacing: 8) {
+                Text(l.t(Self.label(tab)))
+                    .font(.inter(16, on ? .semibold : .medium))
+                    .foregroundStyle(on ? Brand.navy : Brand.muted)
+                    .lineLimit(1)
+                    .fixedSize()
+                ZStack {
+                    Capsule().fill(Color.clear).frame(width: 28, height: 4)
+                    if on {
+                        Capsule().fill(Brand.navy).frame(width: 28, height: 4)
+                            .matchedGeometryEffect(id: "underline", in: underline)
+                    }
+                }
+            }
+            .padding(.top, 4)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.tap)
+        .id(tab)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    private func countOf(_ tab: String) -> Int? {
-        switch tab {
-        case "returns": return model.returnsCount
-        case "reviews": return model.reviewsCount
-        default: return model.counts?[tab]
+    private func toggleSearch() {
+        Haptics.tap()
+        if searchShown {
+            withAnimation(still ? nil : .snappy(duration: 0.22)) { opened = false }
+            typed = ""
+            sent = ""
+            searching = false
+            Task { await model.clearSearch() }
+        } else {
+            withAnimation(still ? nil : .snappy(duration: 0.22)) { opened = true }
+            // The box exists a frame after the row opens.
+            Task {
+                try? await Task.sleep(for: .milliseconds(60))
+                searching = true
+            }
         }
     }
 
@@ -308,18 +382,6 @@ private struct OrderTools: View {
         case "returns": return "orders.viewReturns"
         case "reviews": return "orders.viewReviews"
         default: return "orders.viewAll"
-        }
-    }
-
-    static func symbol(_ tab: String) -> String {
-        switch tab {
-        case "processing": return "clock"
-        case "onTheWay": return "truck.box"
-        case "delivered": return "checkmark.circle"
-        case "cancelled": return "xmark.circle"
-        case "returns": return "arrow.uturn.backward"
-        case "reviews": return "star"
-        default: return "shippingbox"
         }
     }
 
