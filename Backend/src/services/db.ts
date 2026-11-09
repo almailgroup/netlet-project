@@ -9,6 +9,7 @@ import {
   users,
   type User,
 } from "../../database/schema.js";
+import { gateQueries } from "./dbGate.js";
 
 /*
  * `createUser`, `linkExternalUser` and `deleteUserRow` are in
@@ -66,25 +67,39 @@ export function databaseRegionOf(url: string | undefined): string | null {
 }
 
 /**
- * Lazily create the drizzle instance, so tests and local tooling run without a
- * database and every query path degrades to a no-op instead of throwing.
+ * How the server's one database client is made.
  *
  * `prepare: false` is required if DATABASE_URL points at a transaction-mode
  * pooler (Supabase's port 6543), which cannot carry prepared statements across
  * pooled connections. It costs little on a direct connection, so it is set
  * unconditionally rather than left as a trap for whoever swaps the URL.
  */
+export const DB_CLIENT_OPTIONS = {
+  prepare: false,
+  max: DB_MAX_CONNECTIONS,
+  idle_timeout: DB_IDLE_SECONDS,
+  connect_timeout: 10,
+};
+
+/**
+ * The server's database: the client made with `DB_CLIENT_OPTIONS`, behind a
+ * gate that lets no more queries reach it at once than it has connections
+ * (`gateQueries` says why — without it, Supabase's pooler left requests hanging).
+ * `connection` is the URL, or the parts of one in a test.
+ */
+export function openDatabase(connection: string | postgres.Options<Record<string, postgres.PostgresType>>) {
+  const client = typeof connection === "string" ? postgres(connection, DB_CLIENT_OPTIONS) : postgres({ ...DB_CLIENT_OPTIONS, ...connection });
+  return drizzle(gateQueries(client, DB_MAX_CONNECTIONS));
+}
+
+/**
+ * Lazily create the drizzle instance, so tests and local tooling run without a
+ * database and every query path degrades to a no-op instead of throwing.
+ */
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(
-        postgres(process.env.DATABASE_URL, {
-          prepare: false,
-          max: DB_MAX_CONNECTIONS,
-          idle_timeout: DB_IDLE_SECONDS,
-          connect_timeout: 10,
-        }),
-      );
+      _db = openDatabase(process.env.DATABASE_URL);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;

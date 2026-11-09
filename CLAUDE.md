@@ -7958,6 +7958,41 @@ later. **`/readyz` on the live site is `/api/readyz`**: `vercel.json` sends
 bare paths to the page, so `netlet.net/readyz` is the shop's 404 — which the
 Live check workflow's Health step asked for until it was moved to `/api/`.
 
+### Never more queries at once than there are connections
+
+**Half the admin pages never loaded: a request running six or more queries
+hung until Vercel killed it.** The browser said "The request took too long"
+after its 25 seconds, and the server said nothing, because a hung procedure
+never reaches the `[slow]` line. Measured from outside with the public reads:
+every procedure answered alone in under 1.4s; a request carrying five queries
+always answered and one carrying six hung about half the time, and only while
+the last request's connections were still open — seven seconds apart, after
+the idle timeout had closed them, every one answered.
+
+**postgres.js stacks a query onto a busy connection** once all of them are
+taken — it pipelines — whenever the busy one's query has no parameters (drizzle
+sends those by the simple protocol, `features.states`' `select key, enabled
+from feature_switches` among them), and Supabase's transaction pooler never
+answers a query sent that way. The batching that put each admin page's reads
+in one request (below) is what made a request run more queries than its five
+connections, so it is what set it off. **`gateQueries`
+(`services/dbGate.ts`) admits at most `DB_MAX_CONNECTIONS` queries or
+transactions at once** and queues the rest itself, so postgres.js always has a
+free or unopened connection and never pipelines; `openDatabase` is the one way
+the server opens the database. postgres.js's own `max_pipeline: 0` would say
+the same and **breaks every transaction**: it reserves a transaction's
+connection on a branch that setting skips, then refuses it as
+`UNSAFE_TRANSACTION` — tried against a real Postgres before anything shipped.
+Only `unsafe` and `begin` are gated, being all drizzle calls on the client; a
+transaction's own queries run on the connection it already holds.
+`dbPipeline.test.ts` is a fake Postgres that answers slowly and counts any
+query arriving on a connection still running one: none through
+`openDatabase`, in a page of reads, on connections already open, beside
+fifteen transactions and after ten that fail — and some straight through
+postgres.js, so the check is shown to see the fault. **A procedure still
+running after `STUCK_PROCEDURE_MS` (15s) says so** (`[stuck] query <name> still
+running…`), so the next hang names itself in Vercel's logs.
+
 ### Every query is a round trip, so the number in a row is the speed
 
 **The admin portal was slow because each page asked the database one thing
@@ -8021,7 +8056,8 @@ Locally the same thing is measured with a TCP proxy that holds every packet
   no longer honours clears it (`main.tsx`); signing in, out and in again on the
   shop was walked with the header following each at once.
 - **A page's reads go in one request** (`maxItems` 50, the address held
-  under 7,000 characters): the overview's thirty were two requests at once,
+  under 7,000 characters) — safe only behind `gateQueries` (see "Never more
+  queries at once than there are connections"): the overview's thirty were two requests at once,
   and **a burst of simultaneous requests is what starts a second server** —
   measured: of six at once, four shared a warm server and two waited
   1.2–1.9s for new ones to start.

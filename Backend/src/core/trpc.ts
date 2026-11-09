@@ -148,12 +148,23 @@ const refuseThrottled = t.middleware(({ ctx, next }) => {
  * person typed.
  */
 export const SLOW_PROCEDURE_MS = 2000;
+/**
+ * A procedure still running after this long says so while it waits. A hung one
+ * never finishes, so the `[slow]` line never comes: when half the admin pages
+ * hung, Vercel's logs held nothing about which read was waiting.
+ */
+export const STUCK_PROCEDURE_MS = 15_000;
 const noteSlow = t.middleware(async ({ path, type, next }) => {
   const started = performance.now();
-  const result = await next();
-  const took = performance.now() - started;
-  if (took > SLOW_PROCEDURE_MS) console.warn(`[slow] ${type} ${path} took ${Math.round(took)}ms${result.ok ? "" : " and failed"}`);
-  return result;
+  const stuck = setTimeout(() => console.warn(`[stuck] ${type} ${path} still running after ${STUCK_PROCEDURE_MS}ms`), STUCK_PROCEDURE_MS);
+  try {
+    const result = await next();
+    const took = performance.now() - started;
+    if (took > SLOW_PROCEDURE_MS) console.warn(`[slow] ${type} ${path} took ${Math.round(took)}ms${result.ok ? "" : " and failed"}`);
+    return result;
+  } finally {
+    clearTimeout(stuck);
+  }
 });
 const base = t.procedure.use(noteSlow).use(refuseThrottled).use(refuseNul).use(refuseSwitchedOff);
 
