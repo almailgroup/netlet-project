@@ -7970,6 +7970,11 @@ Supabase pooler address, `databaseRegionOf`, the region name and never the
 address) and `roundTripMs`, the middle of three `select 1`s on an open
 connection — so the pairing is read, not guessed, and the fix for a mismatch
 is the function's region in Vercel's settings (or `regions` in `vercel.json`).
+**It read `iad1` and `eu-west-2`**: the function in Washington and the
+database in London, 78ms a query across the Atlantic, so `vercel.json` pins
+the function to `lhr1` (`regions`), which also puts it nearer Kuwait. If the
+database ever moves, the function moves with it (`docs/VERCEL.md` lists the
+pairs).
 Locally the same thing is measured with a TCP proxy that holds every packet
 15ms each way, and the portal's pages timed with every procedure's query count
 (`.scratch/admin-speed.mjs`, a trace that is not committed). What it found:

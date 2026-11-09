@@ -242,6 +242,18 @@ names it.
 
 ## Things worth knowing
 
+**The function runs in London (`lhr1`), beside the database.** `vercel.json`'s
+`regions` puts it there because the Supabase project is in `eu-west-2`
+(London): every page asks the database several things, and each one crossed
+the Atlantic while the function ran in Vercel's default Washington region
+(`iad1`), about 80ms a query. `https://netlet.net/api/readyz` says where each
+is (`functionRegion`, `databaseRegion`) and what one query costs
+(`roundTripMs`, a few milliseconds when they are together). **If the database
+ever moves, move the function with it**: Supabase's `aws-0-<region>` pooler
+address names the region, and Vercel's nearest is `fra1` for `eu-central-1`,
+`cdg1` for `eu-west-3`, `dub1` for `eu-west-1`, `iad1` for `us-east-1`,
+`bom1` for `ap-south-1`.
+
 **Rate limiting is per-instance.** `express-rate-limit` counts in memory, and
 serverless means several instances. The limits still work but are looser than
 the numbers suggest. If it starts mattering, move the counter to Redis

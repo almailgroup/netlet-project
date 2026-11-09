@@ -3,6 +3,7 @@
   "buildCommand": "pnpm vercel-build",
   "outputDirectory": "dist/public",
   "framework": null,
+  "regions": ["lhr1"],
   "functions": {
     "api/index.ts": {
       "maxDuration": 60
