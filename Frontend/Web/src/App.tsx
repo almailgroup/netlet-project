@@ -17,9 +17,8 @@ import { shelvedProduct } from "@/hooks/useCatalog";
 import { useQueryClient } from "@tanstack/react-query";
 import { lazyPage, type Preloadable } from "@/lib/lazyPage";
 import { isWaiting, setPageResolver, subscribeWaiting, useReadyLocation } from "@/lib/readyNavigation";
-import { PORTAL_DOMAIN, PORTAL_SIDE, portalHref, portalHrefs, portalSideForPath, usePortalLocation } from "@/lib/portalHost";
-import { internalPath, portalSideFor } from "@shared/portal";
-import { useAuth } from "@/hooks/useAuth";
+import { PORTAL_DRAWN, PORTAL_SIDE, portalHrefs, usePortalLocation } from "@/lib/portalHost";
+import { internalPath } from "@shared/portal";
 import { trpc } from "@/lib/trpc";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -130,43 +129,6 @@ function RouteFallback() {
       <PageFallback />
     </div>
   );
-}
-
-/**
- * The portal's old addresses on the shop's, once the portal has its own
- * (`PORTAL_DOMAIN`): `netlet.net/admin/orders` opens `vendor.netlet.net/orders`
- * for a store and `admin.netlet.net/orders` for NetLet's staff, so a bookmark,
- * an older email or the account page's own link still lands. Somebody not
- * signed in on the shop goes by the page (`portalSideForPath`); each portal
- * sends on anybody who belongs on the other (`AdminLayout`).
- */
-function PortalMove() {
-  const { t } = useTranslation();
-  const [location] = useLocation();
-  const search = useSearch();
-  const { isAuthenticated, loading } = useAuth();
-  const me = trpc.inventory.me.useQuery(undefined, { enabled: isAuthenticated });
-  const settled = !loading && (!isAuthenticated || !me.isLoading);
-  /* Somebody signed in here arrives signed in there too, by a one-time pass
-     (`portalPass`); anybody else meets that portal's own sign-in. */
-  const pass = trpc.auth.portalPass.useMutation();
-  const ask = pass.mutateAsync;
-  const asked = useRef(false);
-  useEffect(() => {
-    if (!settled || asked.current) return;
-    asked.current = true;
-    const side = portalSideFor(me.data) ?? portalSideForPath(location);
-    const address = `${location}${search ? `?${search}` : ""}`;
-    const plain = portalHref(side, `${address}${window.location.hash}`);
-    if (!isAuthenticated || !portalSideFor(me.data)) {
-      window.location.replace(plain);
-      return;
-    }
-    ask({ next: address })
-      .then(answer => window.location.replace(answer?.url ?? plain))
-      .catch(() => window.location.replace(plain));
-  }, [settled, isAuthenticated, me.data, location, search, ask]);
-  return <p role="status" className="container py-10 text-[14px] ink-muted">{t("admin.loading")}</p>;
 }
 
 /** /dashboard/x -> /admin/x, replacing history so Back does not bounce. */
@@ -498,17 +460,19 @@ function Router() {
       <Suspense fallback={<RouteFallback />}>
         <Switch>
           {ROUTES.filter(route => route.frame === "bare").map(route => <Route key={route.path} path={route.path} component={route.page} />)}
-          {/* The portal, in one frame that stays put while its pages change. */}
-          {/* The portal lives on its own addresses once it has them. */}
-          {PORTAL_DOMAIN && !PORTAL_SIDE ? <Route path={ADMIN_AREA} component={PortalMove} /> : null}
-          <Route path={ADMIN_AREA}>
-            <AdminLayout>
-              <Switch>
-                {portal.map(route => <Route key={route.path} path={route.path} component={route.page} />)}
-                <Route component={AdminNotFound} />
-              </Switch>
-            </AdminLayout>
-          </Route>
+          {/* The portal, in one frame that stays put while its pages change —
+              on its own two addresses only, on the owner's word. The shop has
+              no /admin: there it is the shop's "Page not found". */}
+          {PORTAL_DRAWN ? (
+            <Route path={ADMIN_AREA}>
+              <AdminLayout>
+                <Switch>
+                  {portal.map(route => <Route key={route.path} path={route.path} component={route.page} />)}
+                  <Route component={AdminNotFound} />
+                </Switch>
+              </AdminLayout>
+            </Route>
+          ) : null}
           {/* Everything else is the shop, in one frame that stays put while
               the page inside it changes — a 404 included. */}
           <Route>

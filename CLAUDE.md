@@ -6083,24 +6083,48 @@ location hook of its own (`usePortalLocation`) and the router's `hrefs`
 invoice and the legal pages keep their own paths there (`KEPT`); a shop page
 — a product opened from the placements desk, the "Back to the store" link — is
 the shop's full address (`shopHref`), never a portal page of the same name.
-**It is switched on by `PORTAL_DOMAIN`** (`netlet.net`), read by the server
-from its environment and by the page when it is built (`envPrefix`), so it
-needs a deploy; unset — on a preview, on a laptop, and on the live site until
-both names answer — the shop's `/admin` stays where it is (`docs/VERCEL.md` is
-the setup, in order). **An `admin.` or `vendor.` address is the portal by its
-own name, with the setting or without it** (`portalOfHost`): the owner opened
-`admin.netlet.net` the day both names first answered and was shown the shop,
-because the page read the setting when it was built and the deploy had not
-carried it. So the portal's own address never depends on a build; what still
-does is the shop sending its `/admin` on. Set:
+**The shop has no `/admin` of its own, on the owner's word** ("remove this
+url for getting access to admin panel, it should only be admin.netlet.net and
+for vendor, vendor.netlet.net"): on the shop's address `/admin`, every page
+under it and the old `/dashboard` are the shop's "Page not found", signed in
+or not — the portal's routes are drawn only on its two addresses
+(`PORTAL_DRAWN`), and the demo build alone, which has no addresses but its
+own and answers from fixtures, keeps them at `/admin`. It forwarded the shop's
+`/admin` to the portals for a while (`PortalMove`, gone), and only while a
+build carried the setting, so the live shop still drew the portal at
+`netlet.net/admin`. **`PORTAL_DOMAIN` names the domain, and unset it is the
+shop's own address less `www.`** (`domainOfShopHost`: `netlet.net` live,
+`localhost` on a laptop, where `admin.localhost` answers), for the page, the
+server's hand-on and the emails alike, so the shop always has somewhere to
+send a portal's people. **An `admin.` or `vendor.` address is the portal by
+its own name, with the setting or without it** (`portalOfHost`): the owner
+opened `admin.netlet.net` the day both names first answered and was shown the
+shop, because the page read the setting when it was built and the deploy had
+not carried it.
+
+- **Each portal signs in only its own people, on the owner's word** ("the
+  signing in should be specific to admin panel only for admin.netlet.net and
+  specific to vendor only for vendor.netlet.net"): `startSession`, the one
+  door every sign-in passes — password, code, Apple, Google, phone, a reset,
+  a pass — asks on a portal's address whether the account belongs there
+  (`portalSideFor`) and refuses before any cookie is set: "This sign-in is
+  for NetLet's administrators only" (`auth.portalAdminsOnly`), "… for stores
+  and delivery companies only" (`auth.portalVendorsOnly`). `portalPass.test.ts`
+  holds both portals with the setting and without it, and the shop signing in
+  everybody; turning the check off fails three of its tests. A refusal is a
+  failed request to the coarse sign-in limiter (20 a quarter hour an address),
+  which a walk making two dozen of them meets — restart the server between
+  widths.
+- **The shop's ways in are the portal's own address** (`usePortalDoor`): the
+  account page's seller card, the account menu's portal entry, the selling
+  banner, `/sell` once approved and a store's or the staff's notice in the
+  inbox, each on the side the reader belongs on, and a plain press from
+  somebody signed in carries the session across by a one-time pass, as below.
 
 - **Who goes where is who they are** (`portalSideFor`): an administrator, and
   an employee holding a grant, on the admin one; a store's team and a delivery
-  company's people on the vendor one; a shopper on neither. The shop's own
-  `/admin/…` forwards (`PortalMove`) by the account once signed in, or by the
-  page while signed out (`portalSideForPath`: a page a store's owner or a
-  courier could open is the vendor one's), keeping the rest of the address. A
-  signed-in person on the other portal is sent to theirs (`MoveToPortal`).
+  company's people on the vendor one; a shopper on neither. A session on the
+  other portal from before the sign-in rule is sent to theirs (`MoveToPortal`).
 - **Each address keeps its own sign-in, and asks for it at once.** The
   session cookie is the host's own, so signing in on the shop does not sign
   anybody into a portal, which is the point of a separate address. Opened
@@ -6112,8 +6136,7 @@ does is the shop sending its `/admin` on. Set:
   Create account, since nobody registers a store's login there, and the
   logo and the way back go to the shop's address rather than to the portal,
   which would send them straight back. It used to be a page saying "sign in
-  first" over a button. A shopper who signs in there is told the account has
-  no access and offered "Sign in with another account". The portal's bar
+  first" over a button. The portal's bar
   carries Sign out, behind the same confirmation as the shop's, since the
   account page it would otherwise be on is on the shop's address.
 - **The shop hands a sign-in on, by a one-time pass** (`portalPass.ts` on

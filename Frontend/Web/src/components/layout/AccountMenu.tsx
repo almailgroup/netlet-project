@@ -28,6 +28,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
+import { usePortalDoor } from "@/hooks/usePortalDoor";
+import { portalSideFor } from "@shared/portal";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NoticeDot } from "@/components/ui/CountBadge";
@@ -67,6 +69,7 @@ export function AccountMenu() {
   const portal: MessageKey | null = me.data?.kind === "admin" ? "header.menuAdmin" : me.data?.kind === "vendor" ? "header.menuSeller" : null;
   /* Above the early returns, with every other hook (`hookOrder.test.ts`). */
   const signals = useAccountSignals();
+  const door = usePortalDoor();
   const unread = signals.unreadSupport + signals.unreadNotices;
 
   const focusItem = (index: number) => {
@@ -197,7 +200,19 @@ export function AccountMenu() {
               else the way to become a seller, on the owner's word. */}
           <div role="separator" className="my-1 h-px bg-[#e6e9ef]" />
           {portal
-            ? entry("/admin", <LayoutDashboard className="size-4" />, portal)
+            ? (
+              /* The portal is on its own address, not the shop's (`usePortalDoor`). */
+              <a
+                href={door.href(portalSideFor(me.data) ?? "vendor")}
+                role="menuitem"
+                tabIndex={-1}
+                onClick={event => { close(false); door.open(event, portalSideFor(me.data) ?? "vendor"); }}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-bold text-[#0a285a] hover:bg-[#0a285a]/[.06] focus-visible:bg-[#0a285a]/[.06]"
+              >
+                <span className="grid size-5 shrink-0 place-items-center text-[#536b8c]" aria-hidden><LayoutDashboard className="size-4" /></span>
+                <span className="min-w-0 flex-1">{t(portal)}</span>
+              </a>
+            )
             : me.isSuccess || me.isError ? entry("/sell", <Store className="size-4" />, "seller.becomeTitle") : null}
           <div role="separator" className="my-1 h-px bg-[#e6e9ef]" />
           <button

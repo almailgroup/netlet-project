@@ -68,7 +68,7 @@ import {
 } from "../services/biometricKeys.js";
 import { BIOMETRIC_KEY_ID, DEVICE_NAME_MAX, biometricMessage } from "../../../Shared/auth/biometricKey.js";
 import { resolveActor } from "../services/inventory.js";
-import { isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
+import { domainOfShopHost, isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
 import { recordReferral } from "../services/referral.js";
 import type { User } from "../../database/schema.js";
 import { randomBytes } from "node:crypto";
@@ -226,12 +226,25 @@ const codeNotSent = new TRPCError({ code: "TOO_MANY_REQUESTS", message: "auth.co
  * is "was that us", and the address is most of the answer.
  */
 async function startSession(
-  ctx: { req: Parameters<typeof getSessionCookieOptions>[0]; res: { cookie: (name: string, value: string, options: object) => void } },
+  ctx: { req: Parameters<typeof getSessionCookieOptions>[0] & RequestLike; res: { cookie: (name: string, value: string, options: object) => void } },
   given: { id: number; email: string | null; role: string },
   remember = true,
 ): Promise<void> {
   /* The shop's owner is an administrator whatever happened since (`core/owner.ts`). */
   const user = await keepOwnerAdmin(given);
+  /*
+   * **Each portal's sign-in is its own, on the owner's word** ("the signing in
+   * should be specific to admin panel only for admin.netlet.net and specific
+   * to vendor only for vendor.netlet.net"): on a portal's address a session
+   * starts only for somebody who belongs there (`portalSideFor`) — NetLet's
+   * administrators and a granted employee on the admin one, a store's team
+   * and a delivery company's people on the vendor one — whichever door they
+   * came through, before any cookie is set. Anybody else is refused there.
+   */
+  const here = portalOfHost(hostOf(ctx.req), portalDomain(process.env.PORTAL_DOMAIN));
+  if (here && portalSideFor(await resolveActor(user)) !== here.side) {
+    throw here.side === "admin" ? portalAdminsOnly : portalVendorsOnly;
+  }
   /* Not remembered: a cookie with no expiry, which the browser drops when it
      closes, round a token that lapses in a day for a browser that keeps it. */
   if (remember === false) {
@@ -303,12 +316,20 @@ function hostOf(req: RequestLike): string {
 /**
  * The domain the portals hang from, for this request: the setting, or — on a
  * portal's own address, which is a portal by its name (`portalOfHost`) — the
- * domain that address hangs from. Never guessed from the shop's own address,
- * since a shop whose `admin.` name does not answer would send people nowhere.
+ * domain that address hangs from, or else the shop's own address less `www.`
+ * (`domainOfShopHost`). The shop has no `/admin` of its own any more, on the
+ * owner's word, so the portals' two names are the only way in and a sign-in
+ * on the shop always has somewhere to hand on to.
  */
 function portalDomainFor(req: RequestLike): string | null {
-  return portalDomain(process.env.PORTAL_DOMAIN) ?? portalOfHost(hostOf(req), null)?.domain ?? null;
+  const host = hostOf(req);
+  return portalDomain(process.env.PORTAL_DOMAIN) ?? portalOfHost(host, null)?.domain ?? domainOfShopHost(host);
 }
+
+/* On a portal's own address only that portal's people sign in — one answer
+   for every door, so whoever asks learns only which portal this is. */
+const portalAdminsOnly = new TRPCError({ code: "FORBIDDEN", message: "auth.portalAdminsOnly" });
+const portalVendorsOnly = new TRPCError({ code: "FORBIDDEN", message: "auth.portalVendorsOnly" });
 
 /** A portal's origin as this request would reach it: the scheme and port it came in on. */
 function portalOriginFor(req: RequestLike, side: PortalSide, domain: string): string {

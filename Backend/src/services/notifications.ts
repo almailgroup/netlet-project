@@ -60,7 +60,7 @@ import { translate, type LocaleCode } from "../../../Shared/i18n/dictionary.js";
 import { fromFils, toFils } from "../../../Shared/money.js";
 import { clampPage, offsetFor } from "../../../Shared/pagination.js";
 import { emailConfigured, noticeEmail, sendEmail, siteOrigin } from "../core/email.js";
-import { isPortalPath, portalDomain, portalUrl } from "../../../Shared/portal.js";
+import { domainOfShopHost, isPortalPath, portalDomain, portalUrl } from "../../../Shared/portal.js";
 import { describeError } from "../core/describeError.js";
 import { getDb } from "./db.js";
 
@@ -199,15 +199,25 @@ function emailMoney(locale: LocaleCode, amount: string): string {
   return new Intl.NumberFormat(locale === "ar" ? "ar-KW-u-nu-latn" : "en-KW", { style: "currency", currency: "KWD" }).format(value);
 }
 
+/** The host of an origin like `https://netlet.net`, or nothing for one that is not. */
+function hostOfOrigin(origin: string): string {
+  try {
+    return new URL(origin).hostname;
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Where an email's button goes: the shop's address, or for a portal page the
- * portal's own (`PORTAL_DOMAIN`, `Shared/portal.ts`) — NetLet's staff to the
+ * portal's own (`PORTAL_DOMAIN`, else the shop's own domain, `Shared/portal.ts`) — NetLet's staff to the
  * admin one, a store's team and an applicant to the vendor one — so the press
  * lands where its reader signs in rather than on a page that sends them on.
  */
 export function emailLink(origin: string, link: string | null, audience: string | undefined): string | null {
   if (!link) return null;
-  const portal = portalDomain(process.env.PORTAL_DOMAIN);
+  /* The shop has no /admin of its own: with no setting, the portals hang from the shop's address. */
+  const portal = portalDomain(process.env.PORTAL_DOMAIN) ?? (origin ? domainOfShopHost(hostOfOrigin(origin)) : null);
   if (portal && isPortalPath(link)) return portalUrl(audience === "staff" ? "admin" : "vendor", portal, link);
   return origin ? `${origin}${link}` : null;
 }

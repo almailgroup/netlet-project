@@ -104,9 +104,12 @@ describe("the shop hands a sign-in on to the portal", () => {
     expect((await signInAt("netlet.net", owner)).portal?.url).toMatch(/^https:\/\/vendor\.netlet\.net\//);
   });
 
-  it("hands nothing while the portals have no addresses, and nothing on the portal itself", async () => {
+  /* The shop has no /admin of its own, so with no setting the portals hang
+     from the shop's own address and a sign-in there is always handed on. */
+  it("hands a pass on the shop's own domain when no setting names one, and nothing on its own portal", async () => {
     const admin = await account("admin");
-    expect((await signInAt("netlet.net", admin)).portal).toBeNull();
+    expect((await signInAt("netlet.net", admin)).portal?.url).toMatch(/^https:\/\/admin\.netlet\.net\/signin\?/);
+    expect((await signInAt("www.netlet.net", admin)).portal?.url).toMatch(/^https:\/\/admin\.netlet\.net\/signin\?/);
     expect((await signInAt("admin.netlet.net", admin)).portal).toBeNull();
   });
 
@@ -197,5 +200,51 @@ describe("the portal spends a pass", () => {
     (ctx.res as unknown as { cookie: (name: string, value: string, options: Record<string, unknown>) => void }).cookie = (name, _value, options) => { set.push({ name, options }); };
     await appRouter.createCaller(ctx).auth.portalHandoff({ pass });
     expect(set[0]?.options?.maxAge).toBeUndefined();
+  });
+});
+
+/*
+ * Each portal's sign-in is its own, on the owner's word: on admin.<domain> a
+ * session starts only for NetLet's administrators, on vendor.<domain> only for
+ * a store's or a delivery company's people, whatever door they come through
+ * (`startSession`) — and a refusal sets no cookie.
+ */
+describe("each portal's sign-in is its own", () => {
+  const signIn = (host: string, user: User, cookies: Cookie[] = []) =>
+    appRouter.createCaller(contextAt(host, null, cookies)).auth.login({ email: user.email!, password: PASSWORD });
+
+  it("admin.<domain> signs in NetLet's administrators and nobody else", async () => {
+    vi.stubEnv("PORTAL_DOMAIN", "netlet.net");
+    const admin = await account("admin");
+    const cookies: Cookie[] = [];
+    expect((await signIn("admin.netlet.net", admin, cookies)).id).toBe(admin.id);
+    expect(cookies.map(cookie => cookie.name)).toEqual([COOKIE_NAME]);
+    for (const user of [await storeOwner(), await account()]) {
+      const refused: Cookie[] = [];
+      await expect(signIn("admin.netlet.net", user, refused)).rejects.toThrow("auth.portalAdminsOnly");
+      expect(refused).toEqual([]);
+    }
+  });
+
+  it("vendor.<domain> signs in a store's people and nobody else", async () => {
+    vi.stubEnv("PORTAL_DOMAIN", "netlet.net");
+    const owner = await storeOwner();
+    const cookies: Cookie[] = [];
+    expect((await signIn("vendor.netlet.net", owner, cookies)).id).toBe(owner.id);
+    expect(cookies.map(cookie => cookie.name)).toEqual([COOKIE_NAME]);
+    for (const user of [await account("admin"), await account()]) {
+      const refused: Cookie[] = [];
+      await expect(signIn("vendor.netlet.net", user, refused)).rejects.toThrow("auth.portalVendorsOnly");
+      expect(refused).toEqual([]);
+    }
+  });
+
+  it("holds with no setting made, and the shop signs in everybody", async () => {
+    const admin = await account("admin");
+    const owner = await storeOwner();
+    const shopper = await account();
+    await expect(signIn("vendor.netlet.net", admin)).rejects.toThrow("auth.portalVendorsOnly");
+    await expect(signIn("admin.netlet.net", owner)).rejects.toThrow("auth.portalAdminsOnly");
+    for (const user of [admin, owner, shopper]) expect((await signIn("netlet.net", user)).id).toBe(user.id);
   });
 });

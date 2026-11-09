@@ -22,7 +22,7 @@ import AuthDialog from "@/components/auth/AuthDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
-import { appPath } from "@/lib/basePath";
+import { usePortalDoor } from "@/hooks/usePortalDoor";
 import { trpc } from "@/lib/trpc";
 import {
   AGREEMENT_VERSION,
@@ -90,6 +90,8 @@ export default function Sell() {
   });
   const { t, tError } = useTranslation();
   const { isAuthenticated, loading } = useAuth();
+  /* Approved, the portal is the vendor one's own address (`usePortalDoor`). */
+  const door = usePortalDoor();
   const [authOpen, setAuthOpen] = useState(false);
   const [form, setForm] = useState<Form>(EMPTY);
 
@@ -208,7 +210,7 @@ export default function Sell() {
               <p className="mb-6 flex items-start gap-2 rounded-xl border border-[#bcd8c0] bg-[#e3efe4] px-4 py-3 text-[13px] leading-6 text-[#2f5d33]">
                 <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
                 {t("sell.approved")}{" "}
-                <a href={appPath("/admin")} className="font-extrabold underline">{t("sell.openPortal")}</a>
+                <a href={door.href("vendor")} onClick={event => door.open(event, "vendor")} className="font-extrabold underline">{t("sell.openPortal")}</a>
               </p>
             ) : null}
 

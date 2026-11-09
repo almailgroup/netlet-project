@@ -20,6 +20,8 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { formatMoney } from "@/lib/format";
 import { isolate } from "@/lib/isolate";
 import { trpc } from "@/lib/trpc";
+import { usePortalDoor } from "@/hooks/usePortalDoor";
+import { isPortalPath, portalSideFor } from "@shared/portal";
 import { noticeValues, type NoticeKind } from "@shared/commerce/notices";
 import { isMessageKey } from "@shared/i18n/dictionary";
 
@@ -52,6 +54,10 @@ export function AccountNotifications() {
   const [page, setPage] = useState(1);
   const list = trpc.notifications.list.useQuery({ page }, { placeholderData: previous => previous });
   const channels = trpc.notifications.channels.useQuery(undefined, { staleTime: 300_000 });
+  /* Which portal a staff or store notice opens: the reader's own side. */
+  const me = trpc.inventory.me.useQuery(undefined, { staleTime: 10 * 60 * 1000, retry: false });
+  const side = portalSideFor(me.data) ?? "vendor";
+  const door = usePortalDoor();
   const email = trpc.notifications.email.useQuery(undefined, { enabled: channels.data?.email === true });
   const markRead = trpc.notifications.markRead.useMutation({
     onSuccess: () => {
@@ -133,7 +139,10 @@ export function AccountNotifications() {
                   );
                   return (
                     <li key={entry.id}>
-                      {entry.link ? (
+                      {entry.link && isPortalPath(entry.link) ? (
+                        /* A store's or the staff's notice opens the portal's own address. */
+                        <a href={door.href(side, entry.link)} onClick={event => door.open(event, side, entry.link!)} className="block px-5 py-4 hover:bg-[#f0f2f5]">{body}</a>
+                      ) : entry.link ? (
                         <Link href={entry.link} className="block px-5 py-4 hover:bg-[#f0f2f5]">{body}</Link>
                       ) : (
                         <div className="px-5 py-4">{body}</div>

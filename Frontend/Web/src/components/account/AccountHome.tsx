@@ -65,6 +65,8 @@ import { useProductsByIds } from "@/hooks/useCatalog";
 import { useTranslation } from "@/hooks/useTranslation";
 import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
+import { usePortalDoor } from "@/hooks/usePortalDoor";
+import { portalSideFor } from "@shared/portal";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   Bell,
@@ -326,9 +328,13 @@ function SellerEntry() {
   const me = trpc.inventory.me.useQuery(undefined, { staleTime: 10 * 60 * 1000, retry: false });
   const seller = Boolean(me.data && me.data.kind !== "customer");
   const store = trpc.inventory.myStore.useQuery(undefined, { enabled: me.data?.kind === "vendor", staleTime: 10 * 60 * 1000, retry: false });
+  /* The portal is on its own address, not the shop's (`usePortalDoor`). */
+  const door = usePortalDoor();
+  const side = portalSideFor(me.data) ?? "vendor";
   if (me.isPending) return null;
-  return (
-    <Link href={seller ? "/admin" : "/sell"} className={`${PANEL} flex items-center gap-4 p-4 hover:bg-[#f0f2f5] sm:p-5`}>
+  const className = `${PANEL} flex items-center gap-4 p-4 hover:bg-[#f0f2f5] sm:p-5`;
+  const inside = (
+    <>
       <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-[#eef2f8] text-[#0a285a]">
         <Store className="size-6" />
       </span>
@@ -341,8 +347,11 @@ function SellerEntry() {
         </span>
       </span>
       <span className="shrink-0 rounded-full bg-[#0a285a] px-3.5 py-2 text-[13px] font-bold text-white">{t(seller ? "seller.open" : "seller.become")}</span>
-    </Link>
+    </>
   );
+  return seller
+    ? <a href={door.href(side)} onClick={event => door.open(event, side)} className={className}>{inside}</a>
+    : <Link href="/sell" className={className}>{inside}</Link>;
 }
 
 /** One section: its icon, its name, what is waiting there or what it is set to, and the way in. */

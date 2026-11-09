@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { externalPath, internalPath, isPortalPath, portalDomain, portalOfHost, portalSideFor, portalSideOfHost, portalUrl } from "./portal";
+import { domainOfShopHost, externalPath, internalPath, isPortalPath, portalDomain, portalOfHost, portalSideFor, portalSideOfHost, portalUrl } from "./portal";
 
 describe("the portal's own addresses", () => {
   it("reads the setting as a domain or as off", () => {
@@ -35,6 +35,18 @@ describe("the portal's own addresses", () => {
     // With the setting made, only that domain's two names are portals.
     expect(portalOfHost("admin.netlet.net", "netlet.net")).toEqual({ side: "admin", domain: "netlet.net" });
     expect(portalOfHost("admin.example.com", "netlet.net")).toBeNull();
+  });
+
+  /* The shop has no /admin of its own, so with no setting the portals hang
+     from the shop's own address — the live shop's and a laptop's. */
+  it("finds the portals' domain from the shop's own address when no setting names it", () => {
+    expect(domainOfShopHost("netlet.net")).toBe("netlet.net");
+    expect(domainOfShopHost("www.NetLet.net")).toBe("netlet.net");
+    expect(domainOfShopHost("netlet.net.")).toBe("netlet.net");
+    expect(domainOfShopHost("localhost")).toBe("localhost");
+    expect(domainOfShopHost("127.0.0.1")).toBeNull();
+    expect(domainOfShopHost("::1")).toBeNull();
+    expect(domainOfShopHost("")).toBeNull();
   });
 
   it("leaves the portal's /admin off the address bar and puts it back", () => {

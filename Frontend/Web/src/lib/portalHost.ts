@@ -3,15 +3,16 @@
  * rule): which address this tab is on, the router's location hook there, and
  * the links between the shop and the two portals.
  *
- * `PORTAL_DOMAIN` is read at build (`envPrefix` in `vite.config.ts`), so
- * setting it in Vercel and deploying is what sends the shop's `/admin` on to
- * the portals; unset, the shop keeps the portal at `/admin` as it did before.
- * A tab on `admin.` or `vendor.` is the portal either way.
+ * `PORTAL_DOMAIN` is read at build (`envPrefix` in `vite.config.ts`); unset,
+ * the portals hang from the shop's own address less `www.`
+ * (`domainOfShopHost`), because the shop has no `/admin` of its own any more,
+ * on the owner's word. A tab on `admin.` or `vendor.` is the portal either
+ * way. Only the demo build, which has no addresses but its own, keeps the
+ * portal at `/admin`, against its fixtures.
  */
 import { useBrowserLocation } from "wouter/use-browser-location";
-import { can, type Actor, type Capability } from "@shared/inventory/permissions";
-import { externalPath, internalPath, isPortalPath, portalDomain, portalOfHost, portalUrl, shopOrigin, type PortalSide } from "@shared/portal";
-import { ADMIN_MENU } from "@/content/adminMenu";
+import { domainOfShopHost, externalPath, internalPath, isPortalPath, portalDomain, portalOfHost, portalUrl, shopOrigin, type PortalSide } from "@shared/portal";
+import { DEMO_MODE } from "@/lib/demoMode";
 import { appPath } from "@/lib/basePath";
 import { navigateWhenReady } from "@/lib/readyNavigation";
 
@@ -22,8 +23,12 @@ const BUILT_DOMAIN = portalDomain(import.meta.env.PORTAL_DOMAIN as string | unde
    the portal whether or not the build carried the setting (`portalOfHost`). */
 const HERE = typeof window === "undefined" ? null : portalOfHost(window.location.hostname, BUILT_DOMAIN);
 
-/** The domain the two portals hang from, or null while the move is off. */
-export const PORTAL_DOMAIN = BUILT_DOMAIN ?? HERE?.domain ?? null;
+/** The domain the two portals hang from — null only in the demo build, which keeps the portal at `/admin`. */
+export const PORTAL_DOMAIN = BUILT_DOMAIN ?? HERE?.domain
+  ?? (DEMO_MODE || typeof window === "undefined" ? null : domainOfShopHost(window.location.hostname));
+
+/** Whether this tab draws the portal at all: on its own two addresses, or in the demo build. */
+export const PORTAL_DRAWN = Boolean(HERE) || DEMO_MODE;
 
 /** Which portal this tab is on, or null on the shop (and while the move is off). */
 export const PORTAL_SIDE: PortalSide | null = HERE?.side ?? null;
@@ -82,26 +87,6 @@ function navigateOnPortal(to: string, options?: { replace?: boolean; state?: unk
 export function usePortalLocation(options: { ssrPath?: string } = {}): [string, typeof navigateOnPortal] {
   const [location] = useBrowserLocation(options);
   return [internalPath(location), navigateOnPortal];
-}
-
-/**
- * Which portal an in-app `/admin` page most likely belongs to, for somebody
- * who is not signed in on the shop yet: the menu link the page sits under, and
- * whether a store's owner or a delivery company could open it. A page nobody
- * but NetLet's staff can open is the admin portal's; the rest — and anything
- * unknown — the vendor one, which is where most people opening the portal are.
- */
-export function portalSideForPath(address: string): PortalSide {
-  const path = address.split(/[?#]/)[0];
-  const links = ADMIN_MENU.flatMap(group => group.links)
-    .filter(link => path === link.href || (link.href !== "/admin" && path.startsWith(`${link.href}/`)))
-    .sort((a, b) => b.href.length - a.href.length);
-  const link = links[0];
-  if (!link) return "vendor";
-  const store: Actor = { kind: "vendor", userId: 0, vendorId: 0, role: "owner" };
-  const courier: Actor = { kind: "courier", userId: 0, courierId: 0 };
-  const needs: Capability[] = Array.isArray(link.need) ? link.need : [link.need];
-  return needs.some(need => can(store, need, 0) || can(courier, need)) ? "vendor" : "admin";
 }
 
 export { isPortalPath };

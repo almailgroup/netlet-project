@@ -183,19 +183,23 @@ yet is a dead link in every email. In this order:
 4. **Google Cloud → the Maps browser key**, if it is restricted to websites:
    `https://admin.netlet.net/*` and `https://vendor.netlet.net/*`. (MapKit's
    token and reCAPTCHA are not used on the portal's pages.)
-5. **Settings → Environment Variables**: `PORTAL_DOMAIN` = `netlet.net`, on
-   Production, then **Redeploy** (Deployments → the latest → ⋯ → Redeploy).
-   The page reads it when the site is built, so a variable added without a
-   deploy does not reach the page.
+5. Optional: **Settings → Environment Variables**: `PORTAL_DOMAIN` =
+   `netlet.net`, on Production, then **Redeploy**. Unset, the portals hang from
+   the shop's own address less `www.`, which is the same thing for
+   `netlet.net`; set it only if the shop is ever served from an address the
+   portals do not hang from.
 
 `admin.netlet.net` and `vendor.netlet.net` open the portal — signed out, its own
-sign-in — as soon as they answer, with or without the variable: the address
-itself says it is a portal. What the variable switches on is the shop's side:
-`netlet.net/admin/...` forwarding to the right portal (by the account once
-signed in, by the page otherwise), and an administrator or a store's team
-signing in on `netlet.net` getting their portal in a new tab, already signed in.
-Unset, the shop keeps the portal at `netlet.net/admin` as before — on a preview
-deployment and a laptop too. Both portals tell search engines to stay away. The AI
+sign-in — as soon as they answer: the address itself says it is a portal.
+**The shop has no portal of its own**: `netlet.net/admin` is "Page not found",
+and the shop's ways in (the account page, the account menu, `/sell`, a notice)
+go to the portal's address, signed in. Each portal signs in only its own
+people — administrators on `admin.`, a store's team and a delivery company's
+people on `vendor.` — and an administrator or a store's team signing in on
+`netlet.net` gets their portal in a new tab, already signed in. On a preview
+deployment, whose `admin.` name does not exist, the portal is not reachable;
+on a laptop it is `admin.localhost` and `vendor.localhost`. Both portals tell
+search engines to stay away. The AI
 gateway already lists both origins (`ALLOWED_ORIGINS` in
 `Backend/gateway/wrangler.toml`), deployed by Workers Builds on the push.
 

@@ -1,8 +1,8 @@
 /**
  * Links that leave the shop for the portal's own addresses (`Shared/portal.ts`):
- * an email's button, and where a link in Supabase's mail comes back to.
- * Off unless `PORTAL_DOMAIN` is set, so a deployment without the subdomains
- * goes on linking to `/admin` on the shop's address.
+ * an email's button, and where a link in Supabase's mail comes back to. The
+ * shop has no `/admin` of its own, on the owner's word, so with no
+ * `PORTAL_DOMAIN` the portals hang from the shop's own address.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { emailLink } from "./notifications.js";
@@ -11,9 +11,10 @@ import { linkLanding } from "../core/passwordStore.js";
 afterEach(() => vi.unstubAllEnvs());
 
 describe("an email's button", () => {
-  it("goes to the shop while the portal has no address of its own", () => {
+  it("goes to the portal on the shop's own domain when no setting names one", () => {
     vi.stubEnv("PORTAL_DOMAIN", "");
-    expect(emailLink("https://netlet.net", "/admin/orders", "seller")).toBe("https://netlet.net/admin/orders");
+    expect(emailLink("https://netlet.net", "/admin/orders", "seller")).toBe("https://vendor.netlet.net/orders");
+    expect(emailLink("https://www.netlet.net", "/admin/review", "staff")).toBe("https://admin.netlet.net/review");
     expect(emailLink("https://netlet.net", "/account/orders?order=NL-1", "shopper")).toBe("https://netlet.net/account/orders?order=NL-1");
     expect(emailLink("https://netlet.net", null, "seller")).toBeNull();
   });

@@ -5,10 +5,15 @@
  *
  * The app keeps its one route table, where every portal page lives under
  * `/admin`; on a portal address the address bar simply leaves that prefix off
- * (`admin.netlet.net/orders` is `/admin/orders` inside the app). The move is
- * switched on by `PORTAL_DOMAIN` (`netlet.net`), so a deployment whose
- * subdomains do not exist yet — or a laptop, or a preview — keeps the portal
- * at `/admin` and nothing changes.
+ * (`admin.netlet.net/orders` is `/admin/orders` inside the app).
+ *
+ * **The shop has no `/admin` of its own, on the owner's word** ("remove this
+ * url … it should only be admin.netlet.net, and for vendor, vendor.netlet.net"):
+ * the portal is drawn only on its two addresses. `PORTAL_DOMAIN` names the
+ * domain they hang from; unset, it is the shop's own address less `www.`
+ * (`domainOfShopHost`), so the live shop's links reach `admin.netlet.net`
+ * whether or not a build carried the setting, and a laptop's reach
+ * `admin.localhost`.
  */
 import type { Actor } from "./inventory/permissions.js";
 
@@ -38,6 +43,18 @@ const kept = (path: string) => KEPT.some(rule => rule.test(path));
 export function portalDomain(raw: string | null | undefined): string | null {
   const host = (raw ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/^(www|admin|vendor)\./, "");
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : null;
+}
+
+/**
+ * The domain the portals hang from when no setting names it: the shop's own
+ * host less `www.` — `netlet.net` on the live shop, `localhost` on a laptop.
+ * Never an address by number, which no `admin.` name can hang from.
+ */
+export function domainOfShopHost(hostname: string): string | null {
+  const host = hostname.trim().toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+  if (host === "localhost") return host;
+  if (/^\d+(\.\d+){3}$/.test(host) || host.includes(":")) return null;
+  return portalDomain(host);
 }
 
 /* `admin.` or `vendor.` in front of a host name: `localhost` counts, since a

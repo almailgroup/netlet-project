@@ -17,14 +17,16 @@
  * sells for two companies, or who has been moved from manager to staff, is
  * told which hat they are putting on before they press anything.
  */
-import { Link } from "wouter";
 import { ArrowRight, Store } from "lucide-react";
 import { roleLabelKey } from "@/components/admin/AdminShell";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
+import { usePortalDoor } from "@/hooks/usePortalDoor";
+import { portalSideFor } from "@shared/portal";
 
 export function SellerMode() {
   const { t } = useTranslation();
+  const door = usePortalDoor();
   /* Cached hard: this answer changes when an administrator adds somebody to a
      store, which is not something to re-ask on every account page view. */
   const me = trpc.inventory.me.useQuery(undefined, { staleTime: 10 * 60 * 1000, retry: false });
@@ -60,13 +62,15 @@ export function SellerMode() {
 
       <p className="mt-3 text-[13px] leading-6 text-[#536b8c]">{t("account.sellerNote")}</p>
 
-      <Link
-        href="/admin"
+      {/* The portal is on its own address, not the shop's (`usePortalDoor`). */}
+      <a
+        href={door.href(portalSideFor(actor) ?? "vendor")}
+        onClick={event => door.open(event, portalSideFor(actor) ?? "vendor")}
         className="glass glass-navy pressable mt-4 inline-flex items-center gap-2 rounded-full px-5 py-3 text-xs font-extrabold"
       >
         {t("account.sellerSwitch")}
         <ArrowRight className="size-4 rtl:-scale-x-100" aria-hidden />
-      </Link>
+      </a>
     </div>
   );
 }
