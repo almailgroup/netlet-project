@@ -3,13 +3,22 @@ import { useQueryClient } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useMemo } from "react";
 
+/** How long the answer to "who is signed in" counts as fresh. */
+export const SESSION_FRESH_MS = 60_000;
+
 export function useAuth() {
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
 
+  /* Fresh for a minute: with no freshness every component that mounted and
+     asked who is signed in sent the question again. Whatever changes who is
+     signed in says so itself — every sign-in path invalidates this, signing
+     out and deleting an account set it to nobody, and a session the server
+     no longer honours clears it from any refusal (`main.tsx`). */
   const meQuery = trpc.auth.me.useQuery(undefined, {
     retry: false,
     refetchOnWindowFocus: false,
+    staleTime: SESSION_FRESH_MS,
   });
 
   const logoutMutation = trpc.auth.logout.useMutation({

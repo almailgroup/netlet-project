@@ -8013,6 +8013,13 @@ Locally the same thing is measured with a TCP proxy that holds every packet
   they belong to another sign-in** (`deviceOutOfDate`, `meOutOfDate`): kept
   fresh alone, the answer read while signed out was drawn after signing in,
   and the waiting screen never appeared. The device walk caught it.
+  **"Who is signed in" is fresh for a minute too** (`SESSION_FRESH_MS` in
+  `useAuth`), on the shop as well: every component that mounted and called
+  `useAuth` asked the server again. That is safe because whatever changes the
+  answer says so itself — every sign-in path invalidates it, signing out and
+  deleting an account set it to nobody, and a refusal for a session the server
+  no longer honours clears it (`main.tsx`); signing in, out and in again on the
+  shop was walked with the header following each at once.
 - **A page's reads go in one request** (`maxItems` 50, the address held
   under 7,000 characters): the overview's thirty were two requests at once,
   and **a burst of simultaneous requests is what starts a second server** —

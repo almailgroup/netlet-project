@@ -90,7 +90,9 @@ export default function SignIn() {
   /* On the admin portal a device the owner has not authorised is told so
      first (`Shared/auth/adminDevice.ts`): the form is behind a press, for an
      administrator asking for this device. */
-  const deviceCheck = trpc.devices.access.useQuery(undefined, { enabled: PORTAL_SIDE === "admin" && !DEMO_MODE && !handingOff });
+  /* The answer read as the app started (`routeData`) is used, not asked
+     again: it is about this browser signed out, which is what this page is. */
+  const deviceCheck = trpc.devices.access.useQuery(undefined, { enabled: PORTAL_SIDE === "admin" && !DEMO_MODE && !handingOff, staleTime: 60_000 });
   const [askToSignIn, setAskToSignIn] = useState(false);
   /* A check that could not be answered refuses too: the card's own button is
      the way to the form, so nobody is shut out, and nobody is let past by an error. */
