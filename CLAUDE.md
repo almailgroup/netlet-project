@@ -9051,3 +9051,22 @@ then says what is still missing, by name — and refuses two Supabase Auth
 mistakes outright: a project URL that is not https, and the anon and
 service-role variables holding the same value, which is the one that would put
 the key owning the whole project into every sign-in request.
+
+## Skills
+
+**`.claude/skills/` holds four skills from the owner's catalogue
+(aitmpl.com, `davila7/claude-code-templates`), chosen for this shop**:
+`frontend-design` (Anthropic's: deliberate type and layout, no template
+tells; its own rule that the brief wins keeps NetLet's navy, orange and
+pearl), `systematic-debugging` (the root cause before a fix, a failing test
+first — this file's "found by measuring, not by reading"),
+`verification-before-completion` (no "done" without the command that proves
+it, the owner's rule that every request is in before TestFlight) and
+`supabase-postgres-best-practices` (Supabase's own rules on indexes,
+pooling, locks and RLS; its contributor files left out). **Four were tried
+and taken out**: `senior-frontend` is a template with nothing in it,
+`brainstorming` holds every change for a design document the owner's
+requests do not need, `clean-code` asks before fixing and argues against
+the comments this codebase explains itself with, and the catalogue's
+SwiftUI-capable `mobile-design` is marked not to install. This file and the
+owner's word outrank any skill.
