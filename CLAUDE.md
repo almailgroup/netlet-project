@@ -9063,7 +9063,7 @@ first — this file's "found by measuring, not by reading"),
 `verification-before-completion` (no "done" without the command that proves
 it, the owner's rule that every request is in before TestFlight) and
 `supabase-postgres-best-practices` (Supabase's own rules on indexes,
-pooling, locks and RLS; its contributor files left out). **Four were tried
+pooling, locks and RLS; its contributor files left out, one dead path fixed). **Four were tried
 and taken out**: `senior-frontend` is a template with nothing in it,
 `brainstorming` holds every change for a design document the owner's
 requests do not need, `clean-code` asks before fixing and argues against

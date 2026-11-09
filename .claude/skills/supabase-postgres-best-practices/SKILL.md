@@ -51,3 +51,7 @@ Each rule file contains:
 - Optional EXPLAIN output or metrics
 - Additional context and references
 - Supabase-specific notes (when applicable)
+
+## Full Compiled Document
+
+For the complete guide with all rules expanded: `AGENTS.md`
