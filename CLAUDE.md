@@ -9317,7 +9317,11 @@ the types themselves — rather than one build per error. And **a helper in a
 `private extension` is its file's alone**: the portal's stock page reached for
 `Character.isASCIIDigit`, which `Money.swift` declares privately, and the
 redesign's first build failed on it — grep a helper's declaration before
-using it from another file. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
+using it from another file. And **a figure the server gives to a decimal is
+a `Double` in Swift**: the dashboard's best sellers carry their share to one
+decimal (51.1) where the departments' are whole, and the model read both as
+`Int`, so the recording failed to decode with "Number 51.1 is not
+representable" — read the shared rule's rounding, not the field's name. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
 green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also

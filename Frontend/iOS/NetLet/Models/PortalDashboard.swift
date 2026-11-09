@@ -56,7 +56,8 @@ struct PortalDashboard: Decodable, Hashable, Sendable {
         let title: String
         let units: Int
         let sales: Money
-        let percent: Int
+        /// Its share of the period's takings, to one decimal (51.1), never rounded to a whole.
+        let percent: Double
     }
 
     struct Joined: Decodable, Hashable, Sendable {
