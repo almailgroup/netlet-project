@@ -29,8 +29,9 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
-import { logoImage } from "@/lib/brandAssets";
-import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ChevronDown, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { isActiveHref, JumpButton, MenuDrawer, PageJump, Sidebar, useJumpShortcut, useRail, type FrameGroup } from "@/components/admin/frame";
+import { CopilotPanel } from "@/components/admin/CopilotPanel";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { createContext, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, Redirect, useLocation, useSearch } from "wouter";
@@ -162,6 +163,17 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   /* The frame outlives the page now, so a phone's open menu closes on any
      move, not only on a press inside it. */
   useEffect(() => setMenuOpen(false), [location]);
+  /* The wide menu folded to its icons, the page jump and the co-pilot. Asked
+     here, above every early return, so the frame's hooks never change in
+     number between renders. */
+  const [folded, setFolded] = useRail();
+  const [jumpOpen, setJumpOpen] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
+  const copilotButton = useRef<HTMLButtonElement>(null);
+  const framed = useRef(false);
+  useJumpShortcut(() => {
+    if (framed.current) setJumpOpen(true);
+  });
   const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
   const search = useSearch();
   /* On a portal's own address the portal keeps its own sign-in, so it has
@@ -274,9 +286,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   /* The menu is `ADMIN_MENU` (`content/adminMenu.ts`), which the iOS app
      reads too; this frame adds each link's icon. */
-  const groups = ADMIN_MENU
-    .map(group => ({ ...group, links: group.links.map(link => ({ ...link, icon: MENU_ICONS[link.href] })) }))
-    .map(group => ({ ...group, links: group.links.filter(link => canAny(actor, link.need)) }))
+  const groups: FrameGroup[] = ADMIN_MENU
+    .map(group => ({ label: group.label, links: group.links.filter(link => canAny(actor, link.need)).map(link => ({ href: link.href, label: link.label, icon: MENU_ICONS[link.href] })) }))
     .filter(group => group.links.length > 0);
 
   /* Somebody whose only way in is a grant has no overview of a store to see:
@@ -285,142 +296,137 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   if (location === "/admin" && !can(actor, "product.view") && first && first.href !== "/admin") {
     return <Redirect to={first.href} replace />;
   }
+  framed.current = true;
 
-  /* A product's own page is still Products: the link stays marked on every
-     page under it, which the exact match used to drop the moment a row was
-     opened. Overview is the one that must match exactly, or it would be
-     marked everywhere. */
-  const isActive = (href: string) => location === href || (href !== "/admin" && location.startsWith(`${href}/`));
-  const current = groups.flatMap(group => group.links).find(link => isActive(link.href));
-
-  const navList = (
-    <div className="space-y-5">
-      {groups.map(group => (
-        <div key={group.label ?? "top"}>
-          {group.label ? <p className="mb-1.5 px-3 text-[12px] font-semibold ink-muted">{t(group.label)}</p> : null}
-          <ul className="space-y-0.5">
-            {group.links.map(link => {
-              const active = isActive(link.href);
-              return (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    aria-current={active ? "page" : undefined}
-                    onClick={() => setMenuOpen(false)}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] font-semibold transition ${active ? "bg-[#0a285a] text-white" : "text-[#3d5376] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"}`}
-                  >
-                    <span aria-hidden className="shrink-0">{link.icon}</span>{t(link.label)}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-    </div>
-  );
+  const links = groups.flatMap(group => group.links);
+  const current = links.find(link => isActiveHref(location, link.href));
+  const pageLabel = (href: string) => {
+    const link = links.find(entry => entry.href === href);
+    return link ? t(link.label) : href;
+  };
+  /* The co-pilot reads what the shelf and the money pages read, so it is for
+     an administrator and a store's people — not a delivery company's, nor an
+     employee let in by one grant. */
+  const copilot = actor.kind === "admin" || (actor.kind === "vendor" && can(actor, "product.view", actor.vendorId));
+  const who = user?.name || user?.email || "";
 
   return (
     <ActorContext.Provider value={actor}>
-    <div className="min-h-screen bg-background text-[#0a285a]">
+    <div className="portal min-h-screen bg-[#f4f6fb] text-[#0a285a] lg:flex">
       <a
         href="#admin-main"
-        className="glass glass-navy sr-only rounded-full px-4 py-2 text-xs font-extrabold focus:not-sr-only focus:fixed focus:start-4 focus:top-3 focus:z-50"
+        className="glass glass-navy sr-only rounded-full px-4 py-2 text-xs font-extrabold focus:not-sr-only focus:fixed focus:start-4 focus:top-3 focus:z-[60]"
       >
         {t("nav.skipToContent")}
       </a>
-      <header className="sticky top-0 z-40 border-b border-[#e1e7ef] bg-white">
-        <div className="container flex h-16 items-center gap-3 sm:gap-4">
-          <Link href="/admin" className="flex shrink-0 items-center gap-2.5" aria-label={t("admin.overview")}>
-            <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-7 w-auto object-contain" />
-          </Link>
-          <span aria-hidden className="hidden h-6 w-px bg-[#e1e7ef] sm:block" />
-          {/* The label hides below `sm`, leaving an arrow with no accessible
-              name at all — on every admin page, on a phone. The `aria-label`
-              is the same string the span shows, so WCAG 2.5.3 holds when it
-              is visible and there is still a name when it is not. */}
-          <Link href="/" aria-label={t("admin.backToStore")} className="flex items-center gap-1.5 text-[13px] font-semibold text-[#536b8c] hover:text-[#0a285a]">
-            <ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />
-            <span className="hidden sm:inline">{t("admin.backToStore")}</span>
-          </Link>
-          <span className="ms-auto hidden truncate text-[13px] text-[#536b8c] md:inline">
-            {user?.name || user?.email ? t("admin.signedInAs", { name: user?.name ?? user?.email ?? "" }) : null}
-          </span>
-          <span className="ms-auto shrink-0 rounded-full bg-[#e7edf5] px-2.5 py-1 text-[12px] font-semibold text-[#0a285a] md:ms-0">
-            {t(roleLabelKey(actor))}
-          </span>
-          {PORTAL_SIDE ? (
+      <Sidebar groups={groups} folded={folded} onFold={setFolded} />
+      <MenuDrawer groups={groups} open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <PageJump groups={groups} open={jumpOpen} onClose={() => setJumpOpen(false)} />
+
+      <div className={`portal-column min-w-0 flex-1 ${copilotOpen ? "lg:pe-[400px]" : ""}`}>
+        <header className="sticky top-0 z-30 border-b border-[#e3e8f0] bg-white">
+          <div className="flex h-16 items-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
             <button
               type="button"
-              onClick={() => setSignOutOpen(true)}
-              aria-label={t("header.signOut")}
-              className="flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[13px] font-semibold text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"
+              onClick={() => setMenuOpen(true)}
+              aria-expanded={menuOpen}
+              aria-label={t("shell.openMenu")}
+              className="grid size-10 shrink-0 place-items-center rounded-xl text-[#0a285a] hover:bg-[#0a285a]/[.06] lg:hidden"
             >
-              <LogOut className="size-4" aria-hidden />
-              <span className="hidden sm:inline">{t("header.signOut")}</span>
+              <Menu className="size-5" aria-hidden />
             </button>
-          ) : null}
-        </div>
-      </header>
-      {PORTAL_SIDE ? (
-        <ConfirmDialog
-          open={signOutOpen}
-          tone="danger"
-          icon={<LogOut className="size-5" />}
-          title={t("account.signOutTitle")}
-          body={t("account.signOutBody")}
-          confirmLabel={t("header.signOut")}
-          pending={signingOut}
-          onClose={() => setSignOutOpen(false)}
-          onConfirm={async () => {
-            setSigningOut(true);
-            try {
-              await logout();
-              toast.success(t("header.signedOut"));
-              setSignOutOpen(false);
-            } finally {
-              setSigningOut(false);
-            }
-          }}
-        />
-      ) : null}
-
-      <div className="container grid gap-6 py-6 lg:grid-cols-[230px_minmax(0,1fr)] lg:gap-8 lg:py-8">
-        <nav aria-label={t("admin.title")} className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pb-6">
-          {/* Below `lg` the menu folds into one button naming where you are:
-              twenty-eight links in a sideways strip was a list nobody could
-              see the end of. */}
-          <button
-            type="button"
-            onClick={() => setMenuOpen(open => !open)}
-            aria-expanded={menuOpen}
-            aria-controls="admin-menu"
-            className="flex h-11 w-full items-center justify-between gap-2 rounded-xl border border-[#cfd9e6] bg-white px-4 text-[14px] font-semibold hover:bg-[#f0f2f5] lg:hidden"
-          >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <Menu className="size-4 shrink-0" aria-hidden />
-              <span className="truncate">{current ? t(current.label) : t("admin.menu")}</span>
-            </span>
-            <ChevronDown className={`size-4 shrink-0 transition ${menuOpen ? "rotate-180" : ""}`} aria-hidden />
-          </button>
-          <div id="admin-menu" className={`${menuOpen ? "mt-2 block rounded-xl border border-[#e1e7ef] bg-white p-2" : "hidden"} lg:mt-0 lg:block lg:border-0 lg:bg-transparent lg:p-0`}>
-            {navList}
+            {/* The page a phone is on, beside the menu that would change it. */}
+            <p className="min-w-0 flex-1 truncate text-[15px] font-bold text-[#0a285a] sm:hidden">{current ? t(current.label) : t("admin.title")}</p>
+            <JumpButton onOpen={() => setJumpOpen(true)} />
+            <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+              {copilot ? (
+                <button
+                  ref={copilotButton}
+                  type="button"
+                  onClick={() => setCopilotOpen(open => !open)}
+                  aria-expanded={copilotOpen}
+                  aria-label={t("shell.copilot")}
+                  className={`copilot-button inline-flex h-10 items-center gap-2 rounded-xl px-3 text-[14px] font-semibold ${copilotOpen ? "bg-[#0a285a] text-white" : "bg-[#eef0fd] text-[#3730a3] tint-on-hover"}`}
+                >
+                  <Sparkles className={`size-4 ${copilotOpen ? "text-[#ffab85]" : ""}`} aria-hidden />
+                  <span className="hidden sm:inline">{t("shell.copilot")}</span>
+                </button>
+              ) : null}
+              {/* The label hides below `md`; the `aria-label` is the same
+                  string, so WCAG 2.5.3 holds when it is visible and there is
+                  still a name when it is not. */}
+              <Link href="/" aria-label={t("admin.backToStore")} title={t("admin.backToStore")} className="grid h-10 shrink-0 place-items-center rounded-xl px-2.5 text-[13px] font-semibold text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a] md:flex md:gap-1.5">
+                <Store className="size-[18px]" aria-hidden />
+                <span className="hidden xl:inline">{t("admin.backToStore")}</span>
+              </Link>
+              <span aria-hidden className="hidden h-7 w-px bg-[#e3e8f0] md:block" />
+              <div className="hidden items-center gap-2.5 md:flex">
+                <span aria-hidden className="grid size-9 place-items-center rounded-full bg-[#0a285a] text-[13px] font-bold text-white">{initialsOf(who)}</span>
+                <span className="min-w-0 leading-tight">
+                  <span className="block max-w-40 truncate text-[13px] font-semibold text-[#0a285a]">{who ? <bdi>{who}</bdi> : t("shell.account")}</span>
+                  <span className="block text-[12px] ink-muted">{t(roleLabelKey(actor))}</span>
+                </span>
+              </div>
+              {PORTAL_SIDE ? (
+                <button
+                  type="button"
+                  onClick={() => setSignOutOpen(true)}
+                  aria-label={t("header.signOut")}
+                  title={t("header.signOut")}
+                  className="grid size-10 shrink-0 place-items-center rounded-xl text-[#536b8c] hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]"
+                >
+                  <LogOut className="size-[18px] rtl:-scale-x-100" aria-hidden />
+                </button>
+              ) : null}
+            </div>
           </div>
-        </nav>
+        </header>
+        {PORTAL_SIDE ? (
+          <ConfirmDialog
+            open={signOutOpen}
+            tone="danger"
+            icon={<LogOut className="size-5" />}
+            title={t("account.signOutTitle")}
+            body={t("account.signOutBody")}
+            confirmLabel={t("header.signOut")}
+            pending={signingOut}
+            onClose={() => setSignOutOpen(false)}
+            onConfirm={async () => {
+              setSigningOut(true);
+              try {
+                await logout();
+                toast.success(t("header.signedOut"));
+                setSignOutOpen(false);
+              } finally {
+                setSigningOut(false);
+              }
+            }}
+          />
+        ) : null}
+
         {/* Any word that cannot fit breaks rather than pushing the page
             sideways: names, emails and links here are typed by merchants and
             shoppers, and one long enough held a phone layout 55px open.
             Only this part waits while a page's code arrives; the bar and the
             menu stay where they are. */}
-        <main id="admin-main" tabIndex={-1} className="min-w-0 outline-none [overflow-wrap:anywhere]">
+        <main id="admin-main" tabIndex={-1} className="mx-auto w-full max-w-[1440px] min-w-0 px-4 py-6 outline-none [overflow-wrap:anywhere] sm:px-6 lg:px-8 lg:py-8">
           <Suspense fallback={<SkeletonCards count={3} label={t("admin.loading")} />}>
             <div key={location} className={enter}>{children}</div>
           </Suspense>
         </main>
       </div>
+      {copilot ? (
+        <CopilotPanel open={copilotOpen} onClose={() => setCopilotOpen(false)} opener={copilotButton} pageLabel={pageLabel} />
+      ) : null}
     </div>
     </ActorContext.Provider>
   );
+}
+
+/** Up to two letters for the bar's avatar, from a name or an address. */
+function initialsOf(name: string): string {
+  const words = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
+  return (words.length > 1 ? `${words[0][0]}${words[1][0]}` : (words[0] ?? "").slice(0, 2)).toUpperCase() || "N";
 }
 
 /** Sends this tab to the portal its person belongs on, on the same page. */

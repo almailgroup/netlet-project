@@ -21,7 +21,9 @@ import { TRPCClientError, type TRPCLink } from "@trpc/client";
 import { observable } from "@trpc/server/observable";
 import type { AppRouter } from "../../../../Backend/src/routes";
 import { summarise } from "@shared/commerce/salesSummary";
-import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHistory } from "@/lib/demoInventory";
+import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHealth, demoStockHistory } from "@/lib/demoInventory";
+import { buildDashboard, DEFAULT_DASHBOARD_RANGE, type DashboardRange } from "@shared/commerce/dashboard";
+import { briefFrom } from "@shared/ai/copilot";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 import { DEFAULT_PAGE_SIZE } from "@shared/pagination";
 import { NETLET_CONTACT, contactEmail, visitDetails } from "@shared/commerce/contact";
@@ -1117,6 +1119,35 @@ function resolve(path: string, rawInput: unknown): unknown {
       return summarise([], [], new Date());
     case "inventory.lowStock":
       return onePage(demoLowStock);
+    /* The same empty takings as the sales summary, over the fixtures' shelf. */
+    case "inventory.dashboard":
+      return buildDashboard({
+        lines: [],
+        now: new Date(),
+        range: ((input as { range?: DashboardRange } | undefined)?.range ?? DEFAULT_DASHBOARD_RANGE),
+        stock: demoStockHealth,
+        accountDays: null,
+      });
+    case "inventory.stockHealth":
+      return demoStockHealth;
+    /* The brief is rules over the fixtures; with no model behind the demo,
+       the question box is not drawn — the branch a shop with no gateway takes. */
+    case "inventory.copilot.brief":
+      return {
+        insights: briefFrom({
+          today: new Date().toISOString().slice(0, 10),
+          stock: { ...demoStockHealth, lowest: [] },
+          waiting: [],
+          pages: ["/admin", "/admin/products", "/admin/stock", "/admin/orders"],
+        }),
+        ask: false,
+        inquiries: 0,
+      };
+    case "inventory.copilot.ask":
+      return { kind: "unavailable" };
+    /* Nothing is written in the demo: the answer the server gives, discarded. */
+    case "inventory.variants.setReorderPoint":
+      return { variantId: (input as { variantId: number }).variantId, lowStockAt: (input as { lowStockAt: number | null }).lowStockAt };
     case "inventory.stockHistory":
       return demoStockHistory;
     /* Derived from the same fixtures the product list renders, so the panel
@@ -1156,8 +1187,13 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.setImages":
     case "inventory.products.setStatus":
     case "inventory.products.review":
+    /* What the shelf would read, as the server answers; nothing is kept. */
+    case "inventory.variants.adjustStock": {
+      const { variantId, delta } = input as { variantId: number; delta: number };
+      const variant = demoInventoryProducts.flatMap(row => row.variants).find(entry => entry.id === variantId);
+      return Math.max(0, (variant?.stock ?? 0) + delta);
+    }
     case "inventory.variants.save":
-    case "inventory.variants.adjustStock":
     case "inventory.people.setAdmin":
     case "inventory.people.addToVendor":
     case "inventory.people.removeFromVendor":

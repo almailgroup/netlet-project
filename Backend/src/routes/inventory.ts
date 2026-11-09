@@ -45,6 +45,8 @@ import {
   resolveActor,
   reviewProduct,
   saveVariant,
+  setReorderPoint,
+  MAX_REORDER_POINT,
   setMemberRole,
   setProductAddons,
   setProductImages,
@@ -67,6 +69,10 @@ import {
   updateProduct,
   vendorHealthFor,
 } from "../services/inventory.js";
+import { askCopilot, copilotBrief } from "../services/copilot.js";
+import { COPILOT_TURNS } from "../../../Shared/ai/copilot.js";
+import { dashboard, stockHealth } from "../services/dashboard.js";
+import { DEFAULT_DASHBOARD_RANGE } from "../../../Shared/commerce/dashboard.js";
 import { assertCan, GRANTABLE, VENDOR_ROLES, type Capability } from "../../../Shared/inventory/permissions.js";
 import { GrantRefused, setGrant } from "../services/grants.js";
 import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } from "../services/audit.js";
@@ -902,6 +908,17 @@ export const inventoryRouter = router({
         return guard(() => saveVariant(actor, input));
       }),
 
+    /** The level a variant counts as running low at, or null for none. */
+    setReorderPoint: protectedProcedure
+      .input(z.object({
+        variantId: rowId,
+        lowStockAt: z.number().int().min(0).max(MAX_REORDER_POINT).nullable(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => setReorderPoint(actor, input.variantId, input.lowStockAt));
+      }),
+
     adjustStock: protectedProcedure
       .input(z.object({
         variantId: rowId,
@@ -933,6 +950,41 @@ export const inventoryRouter = router({
   sales: protectedProcedure.query(async ({ ctx }) => {
     const actor = await resolveActor(ctx.user);
     return guard(() => salesSummary(actor));
+  }),
+
+  /**
+   * The co-pilot (`Shared/ai/copilot.ts`): a brief that needs no model, and one
+   * answer from the model over the facts this person's pages would show. It
+   * carries out nothing — the page does what it proposes, on Confirm.
+   */
+  copilot: router({
+    brief: protectedProcedure.query(async ({ ctx }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(() => copilotBrief(actor));
+    }),
+    ask: protectedProcedure
+      .input(z.object({
+        turns: z.array(z.object({ role: z.enum(["admin", "copilot"]), text: z.string().max(4000) })).min(1).max(COPILOT_TURNS * 2),
+        locale: z.enum(["en", "ar"]),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => askCopilot(actor, input));
+      }),
+  }),
+
+  /** The dashboard: the trend with its estimate, the period against the one before, departments, shelf and activity. */
+  dashboard: protectedProcedure
+    .input(z.object({ range: z.union([z.literal(7), z.literal(30), z.literal(90)]).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(() => dashboard(actor, input?.range ?? DEFAULT_DASHBOARD_RANGE));
+    }),
+
+  /** The shelf's health alone: what the stock page opens on, for any rank that reads the shelf. */
+  stockHealth: protectedProcedure.query(async ({ ctx }) => {
+    const actor = await resolveActor(ctx.user);
+    return guard(() => stockHealth(actor));
   }),
 
   lowStock: protectedProcedure

@@ -18,11 +18,22 @@ import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import type { HealthDetailKey } from "@shared/inventory/vendorHealth";
-import { PageHeader, SectionHeading } from "@/components/admin/ui";
+import { Notice, PageHeader, SectionHeading, Segmented, surfaceClass } from "@/components/admin/ui";
 import { StoreWarnings } from "@/components/admin/StoreWarnings";
-import { SalesPanel } from "@/components/admin/SalesPanel";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ActivityPanel, DepartmentsPanel, KpiRow, Panel, StockPanel, TopPanel, TrendPanel, useToday } from "@/components/admin/Dashboard";
+import { readStored, writeStored } from "@/lib/browserStore";
+import { DASHBOARD_RANGES, DEFAULT_DASHBOARD_RANGE, type DashboardRange } from "@shared/commerce/dashboard";
+import { ArrowRight, CheckCircle2, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import { Link } from "wouter";
+
+const RANGE_KEY = "portal:range";
+
+/** The period the dashboard was last read over on this device. */
+function storedRange(): DashboardRange {
+  const stored = Number(readStored(RANGE_KEY));
+  return (DASHBOARD_RANGES as readonly number[]).includes(stored) ? (stored as DashboardRange) : DEFAULT_DASHBOARD_RANGE;
+}
 
 export default function AdminOverview() {
   usePageMeta(privatePageMeta("Overview"));
@@ -49,6 +60,13 @@ function Overview({ actor }: { actor: Actor }) {
    * a question the server would refuse.
    */
   const vendorScope = actor.kind === "vendor" ? actor.vendorId : undefined;
+  /* The dashboard is the money, so a rank that reads payouts gets it; one that
+     reads only the shelf gets the shelf's card. */
+  const mayMoney = !isCourier && can(actor, "payouts.view", vendorScope);
+  const [range, setRange] = useState<DashboardRange>(storedRange);
+  const board = trpc.inventory.dashboard.useQuery({ range }, { enabled: mayMoney, placeholderData: previous => previous, retry: false });
+  const shelf = trpc.inventory.stockHealth.useQuery(undefined, { enabled: !isCourier && !mayMoney });
+  const today = useToday();
   const waitingOffers = trpc.offers.waiting.useQuery(
     { vendorId: vendorScope },
     { enabled: can(actor, "offer.answer", vendorScope) },
@@ -179,22 +197,57 @@ function Overview({ actor }: { actor: Actor }) {
     ...(maySeeVendors ? [{ label: "admin.countVendorsApproved" as const, value: data.vendorsApproved, href: "/admin/vendors" }] : []),
   ];
 
+  const rangeControl = mayMoney ? (
+    <Segmented
+      label={t("dashboard.range")}
+      value={String(range) as `${DashboardRange}`}
+      onChange={value => {
+        const next = Number(value) as DashboardRange;
+        setRange(next);
+        writeStored(RANGE_KEY, String(next));
+      }}
+      options={[
+        { value: "7", label: t("dashboard.range7") },
+        { value: "30", label: t("dashboard.range30") },
+        { value: "90", label: t("dashboard.range90") },
+      ]}
+    />
+  ) : null;
+
   return (
     <>
-      <PageHeader title={t("admin.overview")} description={t("admin.overviewIntro")} />
+      <PageHeader title={t("admin.overview")} description={t("dashboard.asOf", { date: today })} actions={rangeControl} />
 
-      <section aria-labelledby="needs-you">
-        <SectionHeading><span id="needs-you">{t("admin.needsYou")}</span></SectionHeading>
-        {waiting.length === 0 ? (
-          <AllClear>{t("admin.allClear")}</AllClear>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {waiting.map(tile => <Tile key={tile.label} tile={tile} />)}
+      {mayMoney && board.data ? (
+        /* Sized by its own column, not the window: with the co-pilot open the
+           column is 400px narrower, and the window's breakpoints cut a dinar
+           amount to "K". */
+        <div className={`@container space-y-4 transition-opacity ${board.isFetching && board.isPlaceholderData ? "opacity-60" : ""}`}>
+          {board.data.truncated ? <Notice tone="warning">{t("dashboard.truncated")}</Notice> : null}
+          <KpiRow board={board.data} />
+          <div className="grid items-start gap-4 @5xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <TrendPanel board={board.data} />
+            <div className="grid gap-4 @2xl:grid-cols-2 @5xl:grid-cols-1">
+              <NeedsYou waiting={waiting} />
+              <StockPanel stock={board.data.stock} />
+            </div>
           </div>
-        )}
-      </section>
-
-      {can(actor, "payouts.view", vendorScope) ? <SalesPanel /> : null}
+          <div className="grid items-start gap-4 @3xl:grid-cols-2">
+            <DepartmentsPanel board={board.data} />
+            <ActivityPanel board={board.data} />
+          </div>
+          <TopPanel board={board.data} />
+        </div>
+      ) : mayMoney && board.isError ? (
+        <QueryGate queries={[board]}>{() => null}</QueryGate>
+      ) : mayMoney ? (
+        <DashboardSkeleton label={t("admin.loading")} />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <NeedsYou waiting={waiting} />
+          {shelf.data ? <StockPanel stock={shelf.data} /> : null}
+        </div>
+      )}
 
       {health.data ? <HealthPanel health={health.data} /> : null}
 
@@ -208,6 +261,59 @@ function Overview({ actor }: { actor: Actor }) {
         </div>
       </section>
     </>
+  );
+}
+
+/**
+ * What waits on this person, as one list beside the sales line: each queue
+ * named, its count, and the page that clears it. Only queues with something
+ * in them; nothing waiting is said in a sentence.
+ */
+function NeedsYou({ waiting }: { waiting: Tile[] }) {
+  const { t } = useTranslation();
+  return (
+    <Panel id="needs-you" title={t("admin.needsYou")}>
+      {waiting.length === 0 ? (
+        <p className="flex items-center gap-2.5 rounded-xl bg-[#eef8f0] px-4 py-4 text-[14px] text-[#1f4d2a]">
+          <CheckCircle2 className="size-5 shrink-0" aria-hidden />{t("admin.allClear")}
+        </p>
+      ) : (
+        <ul className="-mx-2 space-y-0.5">
+          {waiting.map(tile => (
+            <li key={tile.label}>
+              <Link href={tile.href} className="group flex min-h-11 items-center gap-3 rounded-xl px-2 py-2 hover:bg-[#0a285a]/[.06]">
+                <span aria-hidden className={`h-7 w-1 shrink-0 rounded-full ${tile.tone === "urgent" ? "bg-[#f2683a]" : "bg-[#cbd4e0]"}`} />
+                <span className="min-w-0 flex-1 text-[14px] font-semibold text-[#0a285a]">{t(tile.label)}</span>
+                <span className="shrink-0 rounded-full bg-[#0a285a] px-2.5 py-0.5 text-[12px] font-bold tabular-nums text-white"><bdi dir="ltr">{tile.value}</bdi></span>
+                <ChevronRight className="size-4 shrink-0 text-[#536b8c] rtl:-scale-x-100" aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/** The dashboard's shape while it is read, so nothing moves when the figures land. */
+function DashboardSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" className="@container space-y-4">
+      <span className="sr-only">{label}</span>
+      <div aria-hidden className="grid grid-cols-1 gap-3 @md:grid-cols-2 @5xl:grid-cols-4">
+        {[0, 1, 2, 3].map(index => (
+          <div key={index} className={`h-[132px] p-5 ${surfaceClass}`}>
+            <div className="portal-shimmer h-4 w-1/2 rounded" />
+            <div className="portal-shimmer mt-5 h-7 w-2/3 rounded" />
+            <div className="portal-shimmer mt-4 h-3 w-3/4 rounded" />
+          </div>
+        ))}
+      </div>
+      <div aria-hidden className="grid gap-4 @5xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className={`h-[380px] p-5 ${surfaceClass}`}><div className="portal-shimmer h-full w-full rounded-xl" /></div>
+        <div className={`h-[380px] p-5 ${surfaceClass}`}><div className="portal-shimmer h-full w-full rounded-xl" /></div>
+      </div>
+    </div>
   );
 }
 
@@ -258,7 +364,7 @@ function HealthPanel({ health }: {
   return (
     <section aria-labelledby="account-health" className="mt-8">
       <SectionHeading description={t("admin.healthNote")}><span id="account-health">{t("admin.health")}</span></SectionHeading>
-      <div className="rounded-2xl border border-[#e1e7ef] bg-white p-5">
+      <div className={`p-5 ${surfaceClass}`}>
         <div className="flex flex-wrap items-baseline gap-3">
           {/* A score is a number: isolated so it reads the same in both scripts. */}
           <p className="text-[32px] leading-none font-extrabold" style={{ color: tone }}><bdi dir="ltr">{health.score}</bdi></p>
@@ -307,7 +413,7 @@ function Tile({ tile }: { tile: Tile }) {
   return (
     <Link
       href={tile.href}
-      className={`group block rounded-2xl border border-[#e1e7ef] bg-white p-4 transition hover:border-[#0a285a]/30 hover:bg-[#f0f2f5] hover:shadow-sm ${urgent ? "border-s-4 border-s-[#d9622b]" : ""}`}
+      className={`group block p-4 transition hover:border-[#0a285a]/30 hover:bg-[#f0f2f5] ${surfaceClass} ${urgent ? "border-s-4 border-s-[#d9622b]" : ""}`}
     >
       {/* The number is read as a number, so it stays LTR even in Arabic. */}
       <p className="text-[28px] leading-9 font-extrabold text-[#0a285a] tabular-nums">

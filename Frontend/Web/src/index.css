@@ -1971,3 +1971,127 @@ html[data-page-arriving] .assistant-launcher {
     transform: translateY(-6px);
   }
 }
+
+/*
+ * The portal (admin.netlet.net and vendor.netlet.net): the menu folding to
+ * its rail, the drawer and the co-pilot sliding in from their edges, the page
+ * jump dropping into place, and the dashboard's charts drawing themselves
+ * once. Each moves only to show what changed, by a transform or an opacity,
+ * and none of it moves for somebody who asked for less motion.
+ */
+.portal-sidebar {
+  transition: width 220ms var(--ease-out);
+}
+.portal-link {
+  transition:
+    background-color 120ms var(--ease-out),
+    color 120ms var(--ease-out);
+}
+.portal-shimmer {
+  background: #eef1f6;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .portal-column {
+    transition: padding 260ms var(--ease-out);
+  }
+  .portal-drawer {
+    animation: portal-from-start 260ms var(--ease-out) both;
+  }
+  [dir="rtl"] .portal-drawer {
+    animation-name: portal-from-start-rtl;
+  }
+  .copilot-panel {
+    animation: portal-from-end 280ms var(--ease-out) both;
+  }
+  [dir="rtl"] .copilot-panel {
+    animation-name: portal-from-end-rtl;
+  }
+  .portal-pop {
+    animation: portal-pop 180ms var(--ease-out) both;
+  }
+  .copilot-rise {
+    animation: portal-rise 220ms var(--ease-out) both;
+  }
+  .portal-shimmer {
+    background: linear-gradient(90deg, #eef1f6 0%, #f7f9fc 45%, #eef1f6 90%);
+    background-size: 220% 100%;
+    animation: portal-shimmer 1.4s linear infinite;
+  }
+  /* A line drawn with `pathLength="1"` traces itself in. */
+  .chart-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: chart-draw 900ms var(--ease-out) forwards;
+  }
+  .chart-fade {
+    animation: chart-fade 700ms var(--ease-out) both;
+  }
+  .chart-grow {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: chart-grow 520ms var(--ease-out) both;
+  }
+  .chart-segment {
+    transition:
+      flex-grow 600ms var(--ease-out),
+      opacity 160ms var(--ease-out);
+  }
+  .chart-point {
+    transition: transform 90ms var(--ease-out);
+  }
+}
+@keyframes portal-from-start {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes portal-from-start-rtl {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes portal-from-end {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes portal-from-end-rtl {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes portal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+@keyframes portal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes portal-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+@keyframes chart-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes chart-grow {
+  from {
+    transform: scaleY(0);
+  }
+}

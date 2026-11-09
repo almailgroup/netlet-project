@@ -20,9 +20,19 @@ import { cloneElement, isValidElement, useId, useState, type ReactElement, type 
 /** Re-exported so every portal page takes it from where it takes the rest. */
 export { isolate } from "@/lib/isolate";
 
+/**
+ * A surface on the portal's cool ground: white, one hairline, and a lift so
+ * faint it reads as the card sitting on the page rather than floating over it.
+ */
+export const surfaceClass = "rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]";
+
 /** A text box, a select or a textarea. Grows to 44px, so a thumb can hit it. */
 export const fieldClass =
   "type-body h-11 w-full rounded-xl border border-[#cfd9e6] bg-white px-3.5 text-[14px] text-[#0a285a] outline-none transition placeholder:text-[#6b7c93] focus:border-[#0a285a] focus:ring-2 focus:ring-[#0a285a]/15 disabled:cursor-not-allowed disabled:bg-[#f4f6f9] disabled:text-[#536b8c] aria-[invalid=true]:border-[#b3412c] aria-[invalid=true]:focus:ring-[#b3412c]/15";
+
+/** A number box inside a table's row: the field's look at the row's height and a number's width. */
+export const compactFieldClass =
+  "h-9 w-20 rounded-lg border border-[#cfd9e6] bg-white px-2.5 text-[14px] text-[#0a285a] tabular-nums outline-none transition placeholder:text-[#6b7c93] focus:border-[#0a285a] focus:ring-2 focus:ring-[#0a285a]/15 aria-[invalid=true]:border-[#b3412c]";
 
 const buttonBase =
   "inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl px-4 text-[14px] font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0a285a] disabled:cursor-not-allowed disabled:opacity-60";
@@ -51,9 +61,9 @@ export const textareaClass = `${fieldClass} h-auto min-h-24 py-2.5 leading-6`;
 
 /** A list's table, its header cells and its body cells. */
 export const tableClass = {
-  wrap: "overflow-x-auto rounded-2xl border border-[#e1e7ef] bg-white",
+  wrap: "overflow-x-auto rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]",
   table: "w-full text-start text-[14px]",
-  head: "border-b border-[#e1e7ef] bg-[#fafbfd] text-[13px] text-[#536b8c]",
+  head: "border-b border-[#e3e8f0] bg-[#f8fafc] text-[13px] text-[#536b8c]",
   th: "px-4 py-3 text-start font-semibold whitespace-nowrap",
   /* A header cell's own alignment is the browser's centre, not inherited, so
      a right-hand column needs its own class rather than `th` plus `text-end`
@@ -98,7 +108,7 @@ export function SectionHeading({ children, description, actions, className = "" 
 /** Nothing here yet, said in a sentence, with the one thing to do about it. */
 export function EmptyState({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-[#c3cfdd] bg-white/70 px-6 py-12 text-center">
       <p className="text-[15px] font-bold text-[#0a285a]">{title}</p>
       {children ? <div className="mx-auto mt-2 max-w-md text-[14px] leading-6 text-[#536b8c]">{children}</div> : null}
       {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
@@ -161,7 +171,7 @@ export function Segmented<T extends string>({ label, options, value, onChange, c
   className?: string;
 }) {
   return (
-    <div role="group" aria-label={label} className={`hide-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-xl bg-[#eef1f5] p-1 ${className}`}>
+    <div role="group" aria-label={label} className={`hide-scrollbar flex max-w-full gap-1 overflow-x-auto rounded-xl border border-[#e3e8f0] bg-[#eef1f6] p-1 ${className}`}>
       {options.map(option => (
         <button
           key={option.value}
@@ -224,7 +234,7 @@ export function Stat({ label, value, note, href, tone = "normal" }: {
       {note ? <span className="mt-0.5 block text-[12px] leading-5 ink-muted">{note}</span> : null}
     </>
   );
-  const box = "block h-full rounded-2xl border border-[#e1e7ef] bg-white p-4";
+  const box = `block h-full p-4 ${surfaceClass}`;
   return (
     <li className="min-w-0">
       {href ? (
@@ -249,10 +259,10 @@ export function SkeletonCards({ count = 3, label }: { count?: number; label: str
     <div role="status" className="space-y-4">
       <span className="sr-only">{label}</span>
       {Array.from({ length: count }, (_, index) => (
-        <div key={index} aria-hidden className="rounded-2xl border border-[#e1e7ef] bg-white p-5">
-          <div className="h-4 w-1/3 animate-pulse rounded bg-[#eef1f6]" />
-          <div className="mt-4 h-3 w-2/3 animate-pulse rounded bg-[#f3f5f8]" />
-          <div className="mt-2 h-3 w-1/2 animate-pulse rounded bg-[#f3f5f8]" />
+        <div key={index} aria-hidden className={`p-5 ${surfaceClass}`}>
+          <div className="portal-shimmer h-4 w-1/3 rounded" />
+          <div className="portal-shimmer mt-4 h-3 w-2/3 rounded" />
+          <div className="portal-shimmer mt-2 h-3 w-1/2 rounded" />
         </div>
       ))}
     </div>
@@ -313,7 +323,7 @@ export function Card({ id, title, description, step, footer, tone = "normal", ch
     <section
       id={id}
       aria-labelledby={headingId}
-      className={`scroll-mt-24 rounded-2xl border bg-white ${tone === "danger" ? "border-[#efc6bd]" : "border-[#e1e7ef]"}`}
+      className={`scroll-mt-24 rounded-2xl border bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] ${tone === "danger" ? "border-[#efc6bd]" : "border-[#e3e8f0]"}`}
     >
       <div className="px-5 pt-5 sm:px-6">
         <h2 id={headingId} className={`flex items-center gap-2.5 text-[16px] leading-6 font-bold ${tone === "danger" ? "text-[#8c2f22]" : "text-[#0a285a]"}`}>
@@ -431,16 +441,16 @@ export function PasswordBox({ value, onChange, id, "aria-describedby": described
 /** Placeholder rows while a table loads, announced once rather than drawn silently. */
 export function SkeletonRows({ rows = 5, label }: { rows?: number; label: string }) {
   return (
-    <div role="status" className="space-y-px overflow-hidden rounded-2xl border border-[#e1e7ef] bg-white">
+    <div role="status" className={`space-y-px overflow-hidden ${surfaceClass}`}>
       <span className="sr-only">{label}</span>
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} aria-hidden className="flex items-center gap-4 border-b border-[#f0f2f6] px-4 py-3.5 last:border-b-0">
-          <div className="size-11 shrink-0 animate-pulse rounded-lg bg-[#eef1f6]" />
+          <div className="portal-shimmer size-11 shrink-0 rounded-lg" />
           <div className="min-w-0 flex-1 space-y-2">
-            <div className="h-3 w-2/5 animate-pulse rounded bg-[#eef1f6]" />
-            <div className="h-2.5 w-1/4 animate-pulse rounded bg-[#f3f5f8]" />
+            <div className="portal-shimmer h-3 w-2/5 rounded" />
+            <div className="portal-shimmer h-2.5 w-1/4 rounded" />
           </div>
-          <div className="hidden h-3 w-16 animate-pulse rounded bg-[#eef1f6] sm:block" />
+          <div className="portal-shimmer hidden h-3 w-16 rounded sm:block" />
         </div>
       ))}
     </div>

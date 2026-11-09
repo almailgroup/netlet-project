@@ -1,4 +1,72 @@
 {
+  "copilot.insight.out": {
+    "param": "count",
+    "en": {
+      "one": "1 item is sold out."
+    },
+    "ar": {
+      "one": "نفد منتج واحد.",
+      "two": "نفد منتجان.",
+      "many": "نفد {count} منتجاً.",
+      "other": "نفد {count} منتج."
+    }
+  },
+  "copilot.insight.runningOut": {
+    "param": "days",
+    "en": {
+      "one": "{product} runs out in about a day at the last four weeks' pace."
+    },
+    "ar": {
+      "one": "ينفد {product} خلال يوم تقريباً بوتيرة الأسابيع الأربعة الماضية.",
+      "two": "ينفد {product} خلال يومين تقريباً بوتيرة الأسابيع الأربعة الماضية.",
+      "many": "ينفد {product} خلال {days} يوماً تقريباً بوتيرة الأسابيع الأربعة الماضية.",
+      "other": "ينفد {product} خلال {days} يوم تقريباً بوتيرة الأسابيع الأربعة الماضية."
+    }
+  },
+  "dashboard.vsPrevious": {
+    "param": "days",
+    "ar": {
+      "few": "مقارنةً بالـ{days} أيام السابقة",
+      "other": "مقارنةً بالـ{days} يوم السابقة"
+    }
+  },
+  "dashboard.ordersOn": {
+    "param": "count",
+    "en": {
+      "one": "1 order"
+    },
+    "ar": {
+      "zero": "لا طلبات",
+      "one": "طلب واحد",
+      "two": "طلبان",
+      "many": "{count} طلباً",
+      "other": "{count} طلب"
+    }
+  },
+  "dashboard.topUnits": {
+    "param": "count",
+    "en": {
+      "one": "1 sold"
+    },
+    "ar": {
+      "one": "بيعت قطعة واحدة",
+      "two": "بيعت قطعتان",
+      "many": "بيعت {count} قطعة",
+      "other": "بيعت {count} قطعة"
+    }
+  },
+  "stock.daysLeft": {
+    "param": "count",
+    "en": {
+      "one": "About a day left"
+    },
+    "ar": {
+      "one": "يكفي يوماً تقريباً",
+      "two": "يكفي يومين تقريباً",
+      "many": "يكفي {count} يوماً تقريباً",
+      "other": "يكفي {count} يوم تقريباً"
+    }
+  },
   "header.seeAllCount": {
     "param": "count",
     "en": {

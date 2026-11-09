@@ -12,6 +12,7 @@
  */
 import { demoCatalog } from "@/lib/demoCatalog";
 import { vendorHealth } from "@shared/inventory/vendorHealth";
+import { stockState } from "@shared/commerce/dashboard";
 
 const VENDOR_ID = 1;
 
@@ -106,7 +107,19 @@ export const demoLowStock = demoInventoryProducts
     vendorName: "NetLet",
     /* Sold out with shoppers waiting, so the demand line (3.1.1) is visible. */
     waiting: 3,
+    preorderStock: 0,
+    /* The invented catalogue has sold nothing, so no pace to measure. */
+    soldLately: 0,
   }));
+
+/** The shelf's health over the published fixtures, by `stockState`'s rule. */
+export const demoStockHealth = (() => {
+  const health = { healthy: 0, low: 0, out: 0, preorder: 0 };
+  for (const variant of demoInventoryProducts.filter(row => row.status === "published").flatMap(row => row.variants)) {
+    health[stockState({ stock: variant.stock, lowStockAt: variant.lowStockAt, preorderStock: 0 })] += 1;
+  }
+  return health;
+})();
 
 /** A short, plausible movement log so the panel is not an empty box. */
 export const demoStockHistory = [

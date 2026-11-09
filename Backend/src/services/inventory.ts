@@ -46,6 +46,7 @@ import { standingWarnings } from "./warnings.js";
 import { memberPriceProblem } from "../../../Shared/commerce/membership.js";
 import { isValidMeasure, type SellUnit } from "../../../Shared/commerce/units.js";
 import { awardedBadges, vendorHealth, type HealthInputs } from "../../../Shared/inventory/vendorHealth.js";
+import { unitsSoldLately } from "./dashboard.js";
 import { getDb } from "./db.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
 import { createAccount, EmailTakenError } from "../core/accounts.js";
@@ -1419,6 +1420,47 @@ async function adjustStockNow(actor: Actor, variantId: number, delta: number, re
   return resulting;
 }
 
+/** The highest reorder point a variant can carry; a shelf counted past this is not one that runs low. */
+export const MAX_REORDER_POINT = 100_000;
+
+/**
+ * Sets the level at which a variant counts as running low — its reorder
+ * point — or clears it (null).
+ *
+ * Nothing wrote `low_stock_at` before this: the overview, the stock page and
+ * the dashboard all read it, and the editor never offered it, so every
+ * variant was "low" only once it reached zero. It is a stock setting, so the
+ * rank that moves stock (`stock.adjust`) sets it, and it is on the trail with
+ * what it was, because it decides which shelves somebody is told to refill.
+ */
+export async function setReorderPoint(actor: Actor, variantId: number, lowStockAt: number | null) {
+  if (lowStockAt !== null && (!Number.isInteger(lowStockAt) || lowStockAt < 0 || lowStockAt > MAX_REORDER_POINT)) {
+    throw new Error("admin.badReorderPoint");
+  }
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [row] = await db
+    .select({ variant: productVariants, productTitle: products.title, vendorId: products.vendorId })
+    .from(productVariants)
+    .innerJoin(products, eq(products.id, productVariants.productId))
+    .where(eq(productVariants.id, variantId))
+    .limit(1);
+  if (!row) throw new Error("NOT_FOUND");
+  assertCan(actor, "stock.adjust", row.vendorId);
+  if (row.variant.lowStockAt === lowStockAt) return { variantId, lowStockAt };
+  await db.update(productVariants).set({ lowStockAt }).where(eq(productVariants.id, variantId));
+  await recordAudit(await auditActor(actor), {
+    action: "stock.setReorderPoint",
+    subjectType: "variant",
+    subjectId: variantId,
+    subjectLabel: `${row.productTitle} — ${row.variant.title}`,
+    vendorId: row.vendorId,
+    before: { lowStockAt: row.variant.lowStockAt },
+    after: { lowStockAt },
+  });
+  return { variantId, lowStockAt };
+}
+
 export async function saveVariant(actor: Actor, input: Parameters<typeof saveVariantNow>[1]) {
   return withProductAlerts([input.productId], () => saveVariantNow(actor, input));
 }
@@ -1796,10 +1838,14 @@ export type LowStockRow = {
   sku: string | null;
   stock: number;
   lowStockAt: number | null;
+  /** What may still be promised ahead of stock: a variant at zero with an allowance is a pre-order, not sold out. */
+  preorderStock: number;
   productId: number;
   productTitle: string;
   productStatus: string;
   vendorName: string;
+  /** Units sold over the last four weeks, for how long the shelf lasts at that pace (`daysOfCover`). */
+  soldLately: number;
   /**
    * Shoppers waiting to hear it is back (3.1.1) — the half of "vendor sees
    * demand" that was missing: the count was only ever drawn for shoppers.
@@ -1816,7 +1862,7 @@ export type LowStockRow = {
  * something that reorders at twenty is the emergency. Sorting by raw stock
  * would put them the wrong way round.
  */
-export async function lowStock(actor: Actor, request: PageRequest = {}) {
+export async function lowStock(actor: Actor, request: PageRequest = {}, now = new Date()) {
   assertCan(actor, "product.view", scopeOf(actor));
   const db = await getDb();
   if (!db) return emptyPage<LowStockRow>(request);
@@ -1846,6 +1892,7 @@ export async function lowStock(actor: Actor, request: PageRequest = {}) {
       sku: productVariants.sku,
       stock: productVariants.stock,
       lowStockAt: productVariants.lowStockAt,
+      preorderStock: productVariants.preorderStock,
       productId: products.id,
       productTitle: products.title,
       productStatus: products.status,
@@ -1860,7 +1907,8 @@ export async function lowStock(actor: Actor, request: PageRequest = {}) {
     .limit(pageSize)
     .offset(offset);
 
-  return { rows, total, page, pageSize };
+  const sold = await unitsSoldLately(actor, rows.map(row => row.variantId), now);
+  return { rows: rows.map(row => ({ ...row, soldLately: sold.get(row.variantId) ?? 0 })) as LowStockRow[], total, page, pageSize };
 }
 
 /**

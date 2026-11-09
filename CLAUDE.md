@@ -6746,6 +6746,114 @@ queue draws a link only for one; a damage claim's evidence was already https.
 React 19 blocks `javascript:` in `href`, but a reviewer's session is not the
 place to rely on the renderer.
 
+## The portal's frame, dashboard and co-pilot
+
+**The portal was redrawn as an operations desk, on the owner's word** ("a
+modern, high-end, executive-grade dashboard … vibrant colours across cards and
+dynamic components … an AI co-pilot … a persistent side navigation"). The
+backend it calls is the one it always called; what is new on the server is
+three reads and one write, below.
+
+**The frame** (`AdminShell`'s `AdminLayout`, `components/admin/frame.tsx`): a
+deep navy column at the page's start (`#0a1f45`), the menu's groups in white,
+the page you are on a lighter plate with an orange edge, and a press at its
+foot folding it to a 76px rail of icons (each still named — `sr-only` words,
+a `title` for the pointer), remembered on the device (`portal:rail`). Below
+`lg` it is a drawer from the same edge (`MenuDrawer`, a modal by `useOverlay`).
+The bar above the page is white: the page jump, the co-pilot, back to the
+store, who is signed in and their rank, and Sign out on a portal's address.
+**The page jump** is the menu typed (`PageJump`, Ctrl or ⌘ with K, or the
+bar's box): the WAI-ARIA combobox over the links `can()` allows, folded for
+Arabic's spellings. The frame's hooks sit above every early return in
+`AdminLayout`, `hookOrder.test.ts`'s rule.
+
+**The look is the kit's**, so every desk took it at once: the cool ground
+(`#f4f6fb`), `surfaceClass` (white, one hairline, a lift so faint it reads as
+the card sitting on the page), a shimmer for loading (`.portal-shimmer`)
+where the cards pulsed, and the house hover tint everywhere
+(`markup.test.ts`). The chart colours are a validated categorical order —
+indigo `#4f46e5`, amber `#d97706`, cyan `#0891b2`, raspberry `#be185d`,
+emerald `#16a34a`, violet `#9333ea` (the dataviz validator on white: every
+adjacent pair apart for colour-blind eyes, every one 3:1) — given to
+departments in that order and never by rank; stock states wear the status
+colours, always beside an icon and a word; words stay in the page's inks.
+
+**The overview is the dashboard** (`components/admin/Dashboard.tsx`,
+`charts.tsx`), for a rank that reads payouts, over 7, 30 or 90 days
+(remembered, `portal:range`): four figures — sales, orders, average order,
+customers — each with how it moved against the period before and its own
+sparkline; **the sales line**, the page's one bold thing, with the period
+before in grey on the same axis and the next seven days dashed after it, a
+crosshair tooltip and a table a press away; what waits on you and the
+shelf's health beside it; revenue by department as one segmented bar with
+its figures listed; customers who bought and accounts opened per day; and
+the best sellers. A rank that reads the shelf and not the money gets what
+waits and the shelf. Its grids are sized by their own column
+(`@container`), not the window, or the co-pilot's 400px cut a dinar amount to
+"K". Motion is the line tracing itself once, bars rising, a segment easing —
+transforms and opacities, and none of it under reduced motion. The charts
+are drawn by hand in SVG: five shapes did not earn a library.
+
+**The numbers are `Shared/commerce/dashboard.ts`**, pure, and
+`inventory.dashboard` reads them (`services/dashboard.ts`, the lines, the
+shelf and the accounts in one go, scoped like the sales summary and gated on
+`payouts.view`; accounts opened are NetLet's alone). The frozen lines, never a
+recomputed price; Kuwaiti days; a change is against the period just before,
+null with nothing to compare; customers are counted over the period, so one
+who bought on two days is one; department shares are whole percentages that
+add to a hundred (`wholePercents`, the reviews' rule); **the estimate is
+arithmetic said as an estimate** — each coming day is the average of the
+same weekday over the four whole weeks before today. `stockState` is the one
+rule for a variant's shelf — sold out, pre-order only, running low (at or
+under its reorder point), in stock — which the dashboard counts in SQL and
+the stock page draws.
+
+**The stock page keeps itself current** (asked again every 30 seconds while
+open, with the time it last heard and Refresh), opens on the four states
+counted, and each low shelf says its state, how many are left against its
+reorder point, **how long it lasts at the last four weeks' pace**
+(`daysOfCover`), and — for a rank that moves stock — takes a reorder point
+and a delivery where it stands. **Nothing could write a reorder point
+before this**: `low_stock_at` was read by the overview, the stock page and
+every "running low" count, and no page or procedure set it, so every
+variant was low only at zero. `inventory.variants.setReorderPoint`
+(`setReorderPoint`, `stock.adjust`, 0 to 100,000 or none) writes it and is on
+the trail (`stock.setReorderPoint`); the page suggests two weeks of sales
+(`reorderFor`). A delivery is the ordinary `adjustStock` with the reason
+"received".
+
+**The co-pilot** (`Shared/ai/copilot.ts` the rule, `services/copilot.ts` the
+server, `CopilotPanel` the page): a panel at the page's end — beside a page
+that stays usable on a wide screen, a sheet over it on a phone. **Its brief
+needs no model**: what has run out, what runs out within a week at its pace
+(with a reorder point to set), what waits — reviews, returns, applications,
+NetLet's inbox — and how sales and the coming week look, each a message key
+with the one act that answers it. **A question goes to NetLet AI**
+(`adminCopilot` in `SERVER_TASKS`, `MAX_COPILOT_PER_HOUR` per account, behind
+`ai`), over facts the server builds for that person from the reads their
+own pages make (`copilotFacts`): a store's own money and shelf, a staff
+member's shelf alone, and for an administrator NetLet's waiting
+conversations — the topic, how long, and the shopper's last words, withheld
+whole if they carry contact details (`inquiryText`). The facts and the turns
+are fenced as data; the question is held to the contact filter. **It carries
+out nothing.** It may propose two acts — open one of `COPILOT_PAGES` this
+person may open, or set a reorder point on a shelf in its facts — and the
+panel does each only on Confirm, through the procedure the stock page calls,
+which asks its permission again; a proposal naming anything else is dropped
+(`copilotPieces`). With no gateway the brief stands alone and says so.
+`copilot.test.ts` and `dashboard.test.ts` hold the scoping against a real
+Postgres; the shared tests hold the rules.
+
+**The iOS app's portal is not redrawn yet**: it reads the same server and
+still opens on its own overview. The new procedures are there for it.
+
+Measured on a production build against a local Postgres seeded with two
+months of orders, at 320, 390 and 1440 in both languages: the dashboard, the
+co-pilot open (focus in, Escape back to its button), the page jump to Stock,
+the stock page, the rail and the drawer — axe clean on each, no sideways
+scroll, no page errors. The co-pilot's `<header>` was a second page banner
+to a screen reader until it was a plain block; found by the walk.
+
 ## Colour and contrast
 
 **The brand orange is a fill, not an ink.** `#f2683a` on a pale surface
@@ -7754,8 +7862,10 @@ Face ID words in both languages (every `ios.*` key ships in the one
 dictionary), then 954 KB (276 KB), choosing what to check out and the
 photo's glass and typed count, then 958 KB (276 KB), My orders'
 filters and the compact profile's words, then 959 KB (277 KB), Saved
-items and wishlists, the history's selection and the haptics switch, and
-is 970 KB (278 KB) now, the authorised devices' words in both languages,
+items and wishlists, the history's selection and the haptics switch, then
+970 KB (278 KB), the authorised devices' words in both languages, and is
+985 KB (283 KB) now, the portal dashboard's and co-pilot's words in both
+languages,
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

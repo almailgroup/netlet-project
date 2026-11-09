@@ -40,6 +40,8 @@ export const AUDIT_ACTIONS = [
   "product.autoApprove",
   "product.setStatus",
   "product.priceChange",
+  /* The level a shelf counts as running low at: which shelves somebody is told to refill. */
+  "stock.setReorderPoint",
   "product.create",
   "product.delete",
   /* A product handed from one store to another, by an administrator. */

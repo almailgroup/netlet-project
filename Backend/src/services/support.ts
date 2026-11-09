@@ -346,6 +346,37 @@ export async function waitingOnStaff(actor: Actor): Promise<number> {
 }
 
 /**
+ * The conversations waiting on NetLet, oldest wait first, as the co-pilot may
+ * be told about them: the topic, how long it has waited and the shopper's
+ * last words — nothing else of theirs, never a name, an email or the order's
+ * reference. The co-pilot's own `inquiryText` withholds words carrying
+ * contact details before they leave.
+ */
+export async function waitingInquiries(actor: Actor, limit: number, now = new Date()): Promise<{ topic: SupportTopic; waitingHours: number; lastMessage: string }[]> {
+  assertCan(actor, "support.answer");
+  const db = await handle();
+  const waiting = await db
+    .select({ id: supportConversations.id, topic: supportConversations.topic, lastMessageAt: supportConversations.lastMessageAt })
+    .from(supportConversations)
+    .where(and(eq(supportConversations.status, "open"), or(isNull(supportConversations.staffReadAt), gt(supportConversations.lastMessageAt, supportConversations.staffReadAt))))
+    .orderBy(asc(supportConversations.lastMessageAt), asc(supportConversations.id))
+    .limit(limit);
+  if (waiting.length === 0) return [];
+  const words = await db
+    .select({ conversationId: supportMessages.conversationId, body: supportMessages.body, id: supportMessages.id })
+    .from(supportMessages)
+    .where(and(inArray(supportMessages.conversationId, waiting.map(row => row.id)), eq(supportMessages.author, "shopper")))
+    .orderBy(desc(supportMessages.id));
+  const last = new Map<number, string>();
+  for (const row of words) if (!last.has(row.conversationId) && row.body) last.set(row.conversationId, row.body);
+  return waiting.map(row => ({
+    topic: row.topic,
+    waitingHours: Math.max(0, Math.floor((now.getTime() - row.lastMessageAt.getTime()) / 3_600_000)),
+    lastMessage: last.get(row.id) ?? "",
+  }));
+}
+
+/**
  * What a model may be shown to draft a reply (3.5.1): the topic, the order's
  * facts as they stand *now* — recomputed, because the automatic answer was
  * true when it was given and a parcel has moved since — and the turns, each
