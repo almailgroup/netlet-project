@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { COOKIE_NAME } from "../../../Shared/const.js";
-import { users, vendorMembers, vendors } from "../../database/schema.js";
+import { staffGrants, users, vendorMembers, vendors } from "../../database/schema.js";
 import type { TrpcContext } from "../core/context.js";
 import type { User } from "../../database/schema.js";
 
@@ -246,5 +246,59 @@ describe("each portal's sign-in is its own", () => {
     await expect(signIn("vendor.netlet.net", admin)).rejects.toThrow("auth.portalVendorsOnly");
     await expect(signIn("admin.netlet.net", owner)).rejects.toThrow("auth.portalAdminsOnly");
     for (const user of [admin, owner, shopper]) expect((await signIn("netlet.net", user)).id).toBe(user.id);
+  });
+});
+
+/*
+ * NetLet's administrators never sign in on the shop's website, on the owner's
+ * word ("it should not let you sign in from the website itself at all … only
+ * in admin.netlet.net"): a browser on the shop's address is refused an
+ * administrator's or a granted employee's sign-in, after the password, with
+ * no cookie set. Everybody else signs in there as before, and so does the
+ * iPhone app, which calls the shop's address and is not a browser.
+ */
+describe("the shop's website turns NetLet's administrators away", () => {
+  const BROWSER = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36";
+  const APP = "NetLet/186 CFNetwork/3826.500.111 Darwin/25.0.0";
+  const signIn = (host: string, user: User, agent: string, cookies: Cookie[] = [], password = PASSWORD) => {
+    const ctx = contextAt(host, null, cookies);
+    (ctx.req.headers as Record<string, string>)["user-agent"] = agent;
+    return appRouter.createCaller(ctx).auth.login({ email: user.email!, password, portal: true });
+  };
+
+  it("refuses an administrator in a browser on the shop, setting nothing", async () => {
+    vi.stubEnv("PORTAL_DOMAIN", "netlet.net");
+    const admin = await account("admin");
+    for (const host of ["netlet.net", "www.netlet.net"]) {
+      const cookies: Cookie[] = [];
+      await expect(signIn(host, admin, BROWSER, cookies)).rejects.toThrow("auth.adminSignsInOnPortal");
+      expect(cookies).toEqual([]);
+    }
+    /* On the portal's own address, the same browser signs in. */
+    expect((await signIn("admin.netlet.net", admin, BROWSER)).id).toBe(admin.id);
+  });
+
+  it("says nothing about an administrator's address until the password is right", async () => {
+    vi.stubEnv("PORTAL_DOMAIN", "netlet.net");
+    const admin = await account("admin");
+    await expect(signIn("netlet.net", admin, BROWSER, [], "not-the-password-1")).rejects.toThrow("auth.invalidCredentials");
+  });
+
+  it("refuses an employee holding a grant too", async () => {
+    vi.stubEnv("PORTAL_DOMAIN", "netlet.net");
+    const employee = await account();
+    await db.insert(staffGrants).values({ userId: employee.id, capability: "vendor.setCommission" });
+    await expect(signIn("netlet.net", employee, BROWSER)).rejects.toThrow("auth.adminSignsInOnPortal");
+  });
+
+  it("signs in a shopper and a store's owner on the shop as before, and the app's administrator", async () => {
+    vi.stubEnv("PORTAL_DOMAIN", "netlet.net");
+    const shopper = await account();
+    const owner = await storeOwner();
+    expect((await signIn("netlet.net", shopper, BROWSER)).id).toBe(shopper.id);
+    const handed = await signIn("netlet.net", owner, BROWSER);
+    expect(handed.portal?.url).toMatch(/^https:\/\/vendor\.netlet\.net\/signin\?/);
+    const admin = await account("admin");
+    expect((await signIn("netlet.net", admin, APP)).id).toBe(admin.id);
   });
 });

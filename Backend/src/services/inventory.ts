@@ -495,14 +495,17 @@ export async function listProductsFor(
   /* The store's name rather than "#3": an administrator scanning every
      store's shelf reads names, and one query for the page is all it costs. */
   const vendorIds = Array.from(new Set(rows.map(row => row.vendorId)));
-  const names = vendorIds.length
-    ? await db.select({ id: vendors.id, name: vendors.name }).from(vendors).where(inArray(vendors.id, vendorIds))
-    : [];
   const categoryIds = Array.from(new Set(rows.map(row => row.categoryId).filter((id): id is number => id !== null)));
-  const departments = categoryIds.length
-    ? await db.select({ id: categories.id, name: categories.name }).from(categories).where(inArray(categories.id, categoryIds))
-    : [];
-  const hydrated = await hydrate(db, rows);
+  /* The names and the variants need nothing from each other: asked together. */
+  const [names, departments, hydrated] = await Promise.all([
+    vendorIds.length
+      ? db.select({ id: vendors.id, name: vendors.name }).from(vendors).where(inArray(vendors.id, vendorIds))
+      : Promise.resolve([] as { id: number; name: string }[]),
+    categoryIds.length
+      ? db.select({ id: categories.id, name: categories.name }).from(categories).where(inArray(categories.id, categoryIds))
+      : Promise.resolve([] as { id: number; name: string }[]),
+    hydrate(db, rows),
+  ]);
   return {
     rows: hydrated.map(row => ({
       ...row,
@@ -1723,53 +1726,55 @@ export async function overview(actor: Actor) {
   const vendorId = scopeOf(actor);
   const mine = vendorId ? eq(products.vendorId, vendorId) : undefined;
 
-  const byStatus = await db
-    .select({ status: products.status, count: sql<number>`count(*)::int` })
-    .from(products)
-    .where(mine)
-    .groupBy(products.status);
-
-  const countOf = (status: string) => byStatus.find(row => row.status === status)?.count ?? 0;
-
-  // Stock questions are about variants, joined back to products for scope.
-  const [stock] = await db
-    .select({
-      outOfStock: sql<number>`count(*) filter (where ${productVariants.stock} <= 0)::int`,
-      // Only variants that declare a threshold can be "low". A variant with no
-      // lowStockAt has not been given a level to be low against, and counting
-      // it as fine is the honest reading.
-      lowStock: sql<number>`count(*) filter (where ${productVariants.lowStockAt} is not null and ${productVariants.stock} > 0 and ${productVariants.stock} <= ${productVariants.lowStockAt})::int`,
-    })
-    .from(productVariants)
-    .innerJoin(products, eq(productVariants.productId, products.id))
-    .where(mine ? and(mine, eq(products.status, "published")) : eq(products.status, "published"));
-
-  let vendorsPending = 0;
-  let vendorsApproved = 0;
-  let zeroCommission: { id: number; name: string }[] = [];
-  if (actor.kind === "admin") {
-    const byVendorStatus = await db
-      .select({ status: vendors.status, count: sql<number>`count(*)::int` })
-      .from(vendors)
-      .groupBy(vendors.status);
-    vendorsPending = byVendorStatus.find(row => row.status === "pending")?.count ?? 0;
-    vendorsApproved = byVendorStatus.find(row => row.status === "approved")?.count ?? 0;
+  /* The four counts need nothing from each other, so they are asked
+     together: the overview's first tile waited for four reads in a row. */
+  const admin = actor.kind === "admin";
+  const [byStatus, [stock], byVendorStatus, zeroCommission] = await Promise.all([
+    db
+      .select({ status: products.status, count: sql<number>`count(*)::int` })
+      .from(products)
+      .where(mine)
+      .groupBy(products.status),
+    // Stock questions are about variants, joined back to products for scope.
+    db
+      .select({
+        outOfStock: sql<number>`count(*) filter (where ${productVariants.stock} <= 0)::int`,
+        // Only variants that declare a threshold can be "low". A variant with no
+        // lowStockAt has not been given a level to be low against, and counting
+        // it as fine is the honest reading.
+        lowStock: sql<number>`count(*) filter (where ${productVariants.lowStockAt} is not null and ${productVariants.stock} > 0 and ${productVariants.stock} <= ${productVariants.lowStockAt})::int`,
+      })
+      .from(productVariants)
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .where(mine ? and(mine, eq(products.status, "published")) : eq(products.status, "published")),
+    admin
+      ? db
+        .select({ status: vendors.status, count: sql<number>`count(*)::int` })
+        .from(vendors)
+        .groupBy(vendors.status)
+      : Promise.resolve([] as { status: string; count: number }[]),
     /*
      * A live store charged nothing. Zero is a real instruction — "this store
      * earns us nothing" — so it is allowed, but it is far more often a rate
      * nobody set than one somebody chose, and it costs NetLet every sale until
      * somebody notices. Said where an administrator looks first.
      */
-    zeroCommission = await db
-      .select({ id: vendors.id, name: vendors.name })
-      .from(vendors)
-      .where(and(
-        eq(vendors.status, "approved"),
-        sql`${vendors.commissionPercent} = 0`,
-        sql`coalesce(${vendors.commissionFixed}, 0) = 0`,
-      ))
-      .orderBy(asc(vendors.name), asc(vendors.id));
-  }
+    admin
+      ? db
+        .select({ id: vendors.id, name: vendors.name })
+        .from(vendors)
+        .where(and(
+          eq(vendors.status, "approved"),
+          sql`${vendors.commissionPercent} = 0`,
+          sql`coalesce(${vendors.commissionFixed}, 0) = 0`,
+        ))
+        .orderBy(asc(vendors.name), asc(vendors.id))
+      : Promise.resolve([] as { id: number; name: string }[]),
+  ]);
+
+  const countOf = (status: string) => byStatus.find(row => row.status === status)?.count ?? 0;
+  const vendorsPending = byVendorStatus.find(row => row.status === "pending")?.count ?? 0;
+  const vendorsApproved = byVendorStatus.find(row => row.status === "approved")?.count ?? 0;
 
   return {
     draft: countOf("draft"),

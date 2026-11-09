@@ -50,6 +50,22 @@ export const DB_MAX_CONNECTIONS = 5;
 export const DB_IDLE_SECONDS = 5;
 
 /**
+ * The cloud region a Supabase pooler address names (`aws-0-eu-central-1.pooler.supabase.com`
+ * is `eu-central-1`), for the readiness check to say beside the function's
+ * own region. Only the region, never the address, which carries the project.
+ * A direct `db.<project>.supabase.co` address names no region: null.
+ */
+export function databaseRegionOf(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const match = /^aws-\d+-([a-z]{2}-[a-z]+-\d)\.pooler\.supabase\.com$/.exec(new URL(url).hostname);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Lazily create the drizzle instance, so tests and local tooling run without a
  * database and every query path degrades to a no-op instead of throwing.
  *

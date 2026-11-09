@@ -328,21 +328,23 @@ export async function sellerChanges(options: { since?: Date | null; vendorId?: n
     options.vendorId ? eq(auditLog.vendorId, options.vendorId) : undefined,
   );
 
-  const rows = await db
-    .select()
-    .from(auditLog)
-    .where(scope)
-    // Ends on the id for the reason `listAudit` does: `createdAt` ties.
-    .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
-    .limit(options.limit ?? 100);
-
-  /* Counted in SQL rather than over the page just fetched: a count taken from
-     100 loaded rows silently stops at 100 and reports a shop that has been
-     busy as one that has been quiet. */
-  const [counted] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(auditLog)
-    .where(options.since ? and(scope, gte(auditLog.createdAt, options.since)) : scope);
+  /* The page and its count are asked together. */
+  const [rows, [counted]] = await Promise.all([
+    db
+      .select()
+      .from(auditLog)
+      .where(scope)
+      // Ends on the id for the reason `listAudit` does: `createdAt` ties.
+      .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
+      .limit(options.limit ?? 100),
+    /* Counted in SQL rather than over the page just fetched: a count taken from
+       100 loaded rows silently stops at 100 and reports a shop that has been
+       busy as one that has been quiet. */
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(auditLog)
+      .where(options.since ? and(scope, gte(auditLog.createdAt, options.since)) : scope),
+  ]);
 
   return { rows, unseen: counted?.n ?? 0 };
 }

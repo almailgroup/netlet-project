@@ -14,6 +14,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CircleAlert, Eye, EyeOff, LoaderCircle } from "lucide-react";
 import { CodeBoxes, PasswordChecklist } from "@/components/auth/AuthForm";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AdminElsewhere } from "@/components/auth/AdminElsewhere";
 import { trpc } from "@/lib/trpc";
 import { isCodeShaped, normaliseCode } from "@shared/auth/emailCode";
 import { checkPassword, passwordAgainProblem } from "@shared/auth/passwordStrength";
@@ -155,7 +156,10 @@ export function ResetByCode({ email, remember = true, onSignedIn, onVerify, auto
       {refusal ? (
         <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-[#f2c4b9] bg-[#fdeceb] px-4 py-3 text-[14px] leading-5 text-[#8c2f22]">
           <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <p>{tError(refusal)}</p>
+          <div>
+            <p>{tError(refusal)}</p>
+            <AdminElsewhere message={refusal} />
+          </div>
         </div>
       ) : null}
 

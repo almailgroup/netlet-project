@@ -167,12 +167,25 @@ describe("an administrator's rights hold only on an authorised device", () => {
     expect(await db.select().from(adminDevices).where(eq(adminDevices.userId, admin.id))).toHaveLength(1);
   });
 
-  it("keeps no secret and asks nothing for a sign-in on the shop's own address", async () => {
+  it("turns an administrator away from the shop's website, keeping no secret and asking nothing", async () => {
     const admin = await account("admin");
     const shop = deviceAt("netlet.test");
-    await appRouter.createCaller({ user: null, req: shop.req(), res: shop.res() }).auth.login({ email: admin.email, password: PASSWORD });
-    expect(shop.cookies.some(cookie => cookie.name === DEVICE_COOKIE)).toBe(false);
+    await expect(appRouter.createCaller({ user: null, req: shop.req(), res: shop.res() }).auth.login({ email: admin.email, password: PASSWORD }))
+      .rejects.toThrow("auth.adminSignsInOnPortal");
+    expect(shop.cookies).toEqual([]);
     expect(await db.select().from(adminDevices).where(eq(adminDevices.userId, admin.id))).toHaveLength(0);
+  });
+
+  it("tells a browser on the shop from the portal and from the app", () => {
+    const browser = "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1";
+    const app = "NetLet/186 CFNetwork/3826.500.111 Darwin/25.0.0";
+    const at = (hostname: string, ua: string) => ({ hostname, headers: { host: hostname, "user-agent": ua } });
+    expect(gate.browserOnShop(at("netlet.net", browser))).toBe(true);
+    expect(gate.browserOnShop(at("www.netlet.net", browser))).toBe(true);
+    expect(gate.browserOnShop(at("admin.netlet.net", browser))).toBe(false);
+    expect(gate.browserOnShop(at("vendor.netlet.net", browser))).toBe(false);
+    expect(gate.browserOnShop(at("netlet.net", app))).toBe(false);
+    expect(gate.browserOnShop({ hostname: "netlet.net", headers: { host: "netlet.net" } })).toBe(false);
   });
 
   it("takes the app's own secret from its header, and sets no cookie", async () => {

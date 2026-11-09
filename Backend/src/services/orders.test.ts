@@ -1083,6 +1083,94 @@ describe("what an order looks like from the platform's side", () => {
   });
 });
 
+/*
+ * The risk column was three reads per order, one after another; it is four
+ * reads for the whole page now. The old reads are kept here as the answer the
+ * new ones must give, over a page holding every case they count: several
+ * accounts at one door, a guest at it, an account's own repeat orders,
+ * refunds, an order out of the thirty-day window and one out of the day.
+ */
+describe("the risk column reads a page at once and answers as before", () => {
+  async function oneOrderAtATime(orderIds: number[]) {
+    const { fraudFlags, riskOf } = await import("../../../Shared/commerce/fraudSignals.js");
+    const { gt, ne } = await import("drizzle-orm");
+    const rows = await db
+      .select({ id: orders.id, userId: orders.userId, grandTotal: orders.grandTotal, paymentMethod: orders.paymentMethod, addressLine: orders.addressLine, placedAt: orders.placedAt, accountCreatedAt: users.createdAt })
+      .from(orders).leftJoin(users, eq(users.id, orders.userId)).where(inArray(orders.id, orderIds));
+    const judged = [];
+    for (const row of rows) {
+      const dayBefore = new Date(row.placedAt.getTime() - 24 * 60 * 60 * 1000);
+      const [history] = row.userId
+        ? await db.select({
+            all: sql<string>`count(*)`,
+            refunded: sql<string>`count(*) filter (where ${orders.status} = 'refunded')`,
+            lastDay: sql<string>`count(*) filter (where ${gt(orders.placedAt, dayBefore)})`,
+          }).from(orders).where(eq(orders.userId, row.userId))
+        : [undefined];
+      const [atAddress] = row.addressLine
+        ? await db.select({ accounts: sql<string>`count(distinct ${orders.userId})` }).from(orders).where(and(
+            eq(orders.addressLine, row.addressLine),
+            row.userId ? ne(orders.userId, row.userId) : undefined,
+            gt(orders.placedAt, new Date(row.placedAt.getTime() - 30 * 24 * 60 * 60 * 1000)),
+          ))
+        : [undefined];
+      const [largest] = await db.select({ quantity: sql<string>`coalesce(max(${orderItems.quantity}), 0)` }).from(orderItems).where(eq(orderItems.orderId, row.id));
+      const flags = fraudFlags({
+        grandTotal: row.grandTotal,
+        paymentMethod: row.paymentMethod,
+        accountAgeHours: row.accountCreatedAt ? Math.max(0, (row.placedAt.getTime() - row.accountCreatedAt.getTime()) / 3_600_000) : 0,
+        ordersLastDay: Number(history?.lastDay ?? 1),
+        accountsAtAddress: Number(atAddress?.accounts ?? 0) + 1,
+        ordersAllTime: Number(history?.all ?? 1),
+        refundedAllTime: Number(history?.refunded ?? 0),
+        largestLineQuantity: Number(largest?.quantity ?? 1),
+      });
+      judged.push({ orderId: row.id, risk: riskOf(flags), flags });
+    }
+    return judged;
+  }
+
+  it("gives every order on a mixed page the answer the one-at-a-time reads gave", async () => {
+    const door = "Block 9, Street 1, House 2";
+    await db.update(productVariants).set({ stock: 500 }).where(eq(productVariants.id, ids.lampVariant));
+    const accounts: number[] = [];
+    for (let n = 0; n < 3; n += 1) {
+      const [person] = await db.insert(users).values({ email: `door${n}-${Date.now()}@example.test`, name: `Door ${n}` }).returning();
+      accounts.push(person.id);
+    }
+    const placed: number[] = [];
+    const place = async (userId: number | undefined, addressLine: string, quantity = 1) => {
+      const order = await ordersModule.placeOrder(
+        await basket([{ variantId: ids.lampVariant, quantity }], userId),
+        { ...DETAILS, userId, addressLine },
+      );
+      placed.push(order.order.id);
+      return order.order.id;
+    };
+    const atDoor: number[] = [];
+    for (const person of accounts) atDoor.push(await place(person, door));
+    await place(accounts[0], door, 6);
+    await place(undefined, door);
+    const old = await place(accounts[1], door);
+    const refunded = await place(ids.shopper, DETAILS.addressLine);
+    await place(ids.shopper, DETAILS.addressLine);
+    const yesterday = await place(ids.shopper, DETAILS.addressLine);
+    await db.update(orders).set({ placedAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000) }).where(eq(orders.id, old));
+    await db.update(orders).set({ placedAt: new Date(Date.now() - 30 * 60 * 60 * 1000) }).where(eq(orders.id, yesterday));
+    await db.update(orders).set({ status: "refunded" }).where(eq(orders.id, refunded));
+    /* Inside the thirty days and outside the one: the door's count and the
+       account's day must each read it from the order's own moment. */
+    await db.update(orders).set({ placedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) }).where(eq(orders.id, atDoor[2]));
+
+    const byId = (list: { orderId: number }[]) => [...list].sort((a, b) => a.orderId - b.orderId);
+    const now = byId(await fraud.riskForOrders(adminActor(), placed));
+    expect(now).toHaveLength(placed.length);
+    expect(now).toEqual(byId(await oneOrderAtATime(placed)));
+    /* And the page is not all alike: the door shared by three accounts is seen. */
+    expect(now.some(order => order.flags.some(flag => flag.signal === "addressManyAccounts"))).toBe(true);
+  });
+});
+
 describe("recording that the driver collected", () => {
   it("moves a cash order to paid, once", async () => {
     const placed = await ordersModule.placeOrder(

@@ -3,6 +3,7 @@ import { readStored, readStoredList, removeStored, writeStored } from "@/lib/bro
 import { switchLanguage } from "@/lib/languageSwitch";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { PORTAL_SIDE } from "@/lib/portalHost";
 import { trpc } from "@/lib/trpc";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { directionFor, type LocaleCode } from "@shared/i18n/dictionary";
@@ -98,7 +99,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<LocaleCode>(storedLocale);
   const mergingGuestIds = useRef(false);
   const profile = trpc.customer.profile.get.useQuery(undefined, { enabled: isAuthenticated });
-  const saved = trpc.customer.saved.list.useQuery(undefined, { enabled: isAuthenticated });
+  /* A portal's own address draws no heart and no wishlist, so it asks for
+     neither: on every admin page these two were reads nothing showed,
+     sharing the database's few connections with the page's own. */
+  const saved = trpc.customer.saved.list.useQuery(undefined, { enabled: isAuthenticated && !PORTAL_SIDE });
   const updateProfile = trpc.customer.profile.update.useMutation({
     onSuccess: () => profile.refetch(),
   });
@@ -106,7 +110,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     onSuccess: () => saved.refetch(),
   });
   const wishlistsOn = useFeature("wishlists");
-  const wished = trpc.wishlists.wishedIds.useQuery(undefined, { enabled: isAuthenticated && wishlistsOn });
+  const wished = trpc.wishlists.wishedIds.useQuery(undefined, { enabled: isAuthenticated && wishlistsOn && !PORTAL_SIDE });
   const unwish = trpc.wishlists.unwish.useMutation({
     onSuccess: () => { void saved.refetch(); void wished.refetch(); },
   });

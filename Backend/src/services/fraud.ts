@@ -55,74 +55,78 @@ export async function riskForOrders(actor: Actor, orderIds: number[]): Promise<O
 
 /** The judgement itself, unguarded: the page's door above and the alerts below. */
 async function judgeOrders(db: Db, orderIds: number[]): Promise<OrderRisk[]> {
-
-  const rows = await db
-    .select({
-      id: orders.id,
-      userId: orders.userId,
-      grandTotal: orders.grandTotal,
-      paymentMethod: orders.paymentMethod,
-      addressLine: orders.addressLine,
-      placedAt: orders.placedAt,
-      accountCreatedAt: users.createdAt,
-    })
-    .from(orders)
-    .leftJoin(users, eq(users.id, orders.userId))
-    .where(inArray(orders.id, orderIds));
-
-  const judged: OrderRisk[] = [];
-  for (const row of rows) {
-    /*
-     * One query each rather than one clever aggregate: these run over a page
-     * of twenty at most, and an aggregate joining a shopper's whole history to
-     * an address history to a refund count is the kind of query that is wrong
-     * in a way nobody notices for a year.
-     */
-    /*
-     * The day before this order, and the comparison built with `gt` rather
-     * than written into the fragment by hand.
-     *
-     * Two separate traps here, and the second is the one this codebase has
-     * already been bitten by. `${date} - interval '1 day'` binds the date as
-     * an untyped parameter with no column beside it to infer from, and
-     * Postgres refuses the whole query. Interpolating a bare JS `Date` into a
-     * raw fragment skips the column's own mapper — which **PGlite accepts and
-     * postgres.js throws on**, so every test passes and every real request
-     * 500s. That is the wishlist's `lt(column, date)` lesson exactly, and it
-     * was reproduced here by calling the endpoint rather than by reasoning.
-     */
-    const dayBefore = new Date(row.placedAt.getTime() - 24 * 60 * 60 * 1000);
-    const [history] = row.userId
-      ? await db
-          .select({
-            all: sql<string>`count(*)`,
-            refunded: sql<string>`count(*) filter (where ${orders.status} = 'refunded')`,
-            lastDay: sql<string>`count(*) filter (where ${gt(orders.placedAt, dayBefore)})`,
-          })
-          .from(orders)
-          .where(eq(orders.userId, row.userId))
-      : [undefined];
-
+  if (orderIds.length === 0) return [];
+  /*
+   * Four reads for the whole page, asked together. It was three reads per
+   * order, one after another — sixty in a row for a page of twenty, which on
+   * a database a hundred milliseconds away was six seconds before the orders
+   * page could draw its risk column, and long enough that it often never did.
+   *
+   * Each count is still about one order and its own moment, as it was: the
+   * order is joined to the orders it is compared with, and the windows are
+   * measured from that order's own `placed_at` inside the query — a column
+   * minus an interval, never a JS `Date` written into a fragment, which binds
+   * as an untyped parameter Postgres refuses and which PGlite accepts while
+   * postgres.js throws (the wishlist's `lt(column, date)` lesson).
+   * `fraud.test.ts` holds the answers to the one-order-at-a-time reads they
+   * replaced, over a page with every case in it.
+   */
+  const theirs = alias(orders, "theirs");
+  const others = alias(orders, "others");
+  const [rows, histories, addresses, largests] = await Promise.all([
+    db
+      .select({
+        id: orders.id,
+        userId: orders.userId,
+        grandTotal: orders.grandTotal,
+        paymentMethod: orders.paymentMethod,
+        addressLine: orders.addressLine,
+        placedAt: orders.placedAt,
+        accountCreatedAt: users.createdAt,
+      })
+      .from(orders)
+      .leftJoin(users, eq(users.id, orders.userId))
+      .where(inArray(orders.id, orderIds)),
+    /* The shopper's whole history, and the day before this order. */
+    db
+      .select({
+        id: orders.id,
+        all: sql<string>`count(${theirs.id})`,
+        refunded: sql<string>`count(${theirs.id}) filter (where ${theirs.status} = 'refunded')`,
+        lastDay: sql<string>`count(${theirs.id}) filter (where ${theirs.placedAt} > ${orders.placedAt} - interval '24 hours')`,
+      })
+      .from(orders)
+      .innerJoin(theirs, eq(theirs.userId, orders.userId))
+      .where(inArray(orders.id, orderIds))
+      .groupBy(orders.id),
     /* Other accounts, not this one: the shopper's own repeat orders to their
        own address are the ordinary case and would drown the signal. */
-    const [atAddress] = row.addressLine
-      ? await db
-          .select({ accounts: sql<string>`count(distinct ${orders.userId})` })
-          .from(orders)
-          .where(
-            and(
-              eq(orders.addressLine, row.addressLine),
-              row.userId ? ne(orders.userId, row.userId) : undefined,
-              gt(orders.placedAt, new Date(row.placedAt.getTime() - 30 * 24 * 60 * 60 * 1000)),
-            ),
-          )
-      : [undefined];
-
-    const [largest] = await db
-      .select({ quantity: sql<string>`coalesce(max(${orderItems.quantity}), 0)` })
+    db
+      .select({ id: orders.id, accounts: sql<string>`count(distinct ${others.userId})` })
+      .from(orders)
+      .innerJoin(
+        others,
+        and(
+          eq(others.addressLine, orders.addressLine),
+          sql`(${orders.userId} is null or ${others.userId} <> ${orders.userId})`,
+          sql`${others.placedAt} > ${orders.placedAt} - interval '720 hours'`,
+        ),
+      )
+      .where(inArray(orders.id, orderIds))
+      .groupBy(orders.id),
+    db
+      .select({ id: orderItems.orderId, quantity: sql<string>`coalesce(max(${orderItems.quantity}), 0)` })
       .from(orderItems)
-      .where(eq(orderItems.orderId, row.id));
+      .where(inArray(orderItems.orderId, orderIds))
+      .groupBy(orderItems.orderId),
+  ]);
 
+  const historyOf = new Map(histories.map(row => [row.id, row]));
+  const accountsAt = new Map(addresses.map(row => [row.id, Number(row.accounts)]));
+  const largestOf = new Map(largests.map(row => [row.id, Number(row.quantity)]));
+
+  return rows.map(row => {
+    const history = row.userId ? historyOf.get(row.id) : undefined;
     const flags = fraudFlags({
       grandTotal: row.grandTotal,
       paymentMethod: row.paymentMethod,
@@ -134,16 +138,13 @@ async function judgeOrders(db: Db, orderIds: number[]): Promise<OrderRisk[]> {
       ordersLastDay: Number(history?.lastDay ?? 1),
       /* The order's own account is excluded above, so this is "others, plus
          this one" — which is what the threshold is written against. */
-      accountsAtAddress: Number(atAddress?.accounts ?? 0) + 1,
+      accountsAtAddress: (row.addressLine ? accountsAt.get(row.id) ?? 0 : 0) + 1,
       ordersAllTime: Number(history?.all ?? 1),
       refundedAllTime: Number(history?.refunded ?? 0),
-      largestLineQuantity: Number(largest?.quantity ?? 1),
+      largestLineQuantity: largestOf.get(row.id) ?? 0,
     });
-
-    judged.push({ orderId: row.id, risk: riskOf(flags), flags });
-  }
-
-  return judged;
+    return { orderId: row.id, risk: riskOf(flags), flags };
+  });
 }
 
 /* ------------------------------------------------- reviews and referrals --- */

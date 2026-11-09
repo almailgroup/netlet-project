@@ -23,7 +23,7 @@ import { sql } from "drizzle-orm";
 import { describeError } from "./describeError.js";
 import { remindAbandonedBags, sendDueEmails } from "../services/notifications.js";
 import { DrawingRefused, cleanUpPhoto } from "../services/aiImages.js";
-import { getDb } from "../services/db.js";
+import { databaseRegionOf, getDb } from "../services/db.js";
 import { holdUntilConnectionsIdle } from "./connectionRelease.js";
 import { sitemapEntries } from "../services/sitemap.js";
 import { portalRobotsTxt, robotsTxt, sitemapXml } from "../../../Shared/sitemap.js";
@@ -136,7 +136,23 @@ export function createApp(): Express {
       const db = await getDb();
       if (!db) throw new Error("no client");
       await db.execute(sql`select 1`);
-      res.json({ database: "ok" });
+      /* Where the function runs, where the database is and what one round
+         trip between them costs, read on a connection already open: a
+         function far from its database pays that on every query, and every
+         page asks several in a row. Region names only, never the address. */
+      const trips: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const started = performance.now();
+        await db.execute(sql`select 1`);
+        trips.push(performance.now() - started);
+      }
+      trips.sort((a, b) => a - b);
+      res.json({
+        database: "ok",
+        functionRegion: process.env.VERCEL_REGION ?? null,
+        databaseRegion: databaseRegionOf(process.env.DATABASE_URL),
+        roundTripMs: Math.round(trips[1]),
+      });
     } catch (error) {
       console.error(`[readyz] database unreachable: ${describeError(error)}`);
       res.status(503).json({ database: "unreachable" });

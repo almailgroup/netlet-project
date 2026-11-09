@@ -17,7 +17,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { BIOMETRIC_CHALLENGE_MS } from "../../../Shared/auth/biometricKey.js";
 import type { User } from "../../database/schema.js";
 import { getUserById } from "../services/db.js";
-import { gateAdminRights, type AdminDeviceClaim } from "../services/adminDevices.js";
+import { browserOnShop, gateAdminRights, startDeviceLookup, type AdminDeviceClaim } from "../services/adminDevices.js";
 import { ENV } from "./env.js";
 
 const ISSUER = "netlet";
@@ -149,6 +149,14 @@ export async function authenticateRequest(req: Request): Promise<SessionUser | n
   const token = parseCookies(req.headers.cookie ?? "")[COOKIE_NAME];
   const userId = await verifySession(token);
   if (userId === null) return null;
+  /* The device's row is read beside the account, not after it: one round
+     trip to the database for every request an administrator makes, not two. */
+  const lookup = startDeviceLookup(userId, req);
   const user = await getUserById(userId);
-  return user ? gateAdminRights(user, req) : null;
+  if (!user) return null;
+  /* An administrator's session on the shop's website, from before they were
+     turned away from signing in there (`startSession`), is not honoured
+     either: on the shop's address in a browser they are signed out. */
+  if (user.role === "admin" && browserOnShop(req)) return null;
+  return gateAdminRights(user, req, lookup);
 }

@@ -140,7 +140,22 @@ const refuseThrottled = t.middleware(({ ctx, next }) => {
 });
 
 /** Every procedure starts here, so every procedure refuses a flood, a NUL and a switched-off entry. */
-const base = t.procedure.use(refuseThrottled).use(refuseNul).use(refuseSwitchedOff);
+/**
+ * A procedure that took more than `SLOW_PROCEDURE_MS` says so in the server's
+ * log, with its name and how long — so a page somebody calls slow can be
+ * traced to the read that made it so from Vercel's logs, rather than guessed
+ * at. Only the name and the time: never the input, which may be anything a
+ * person typed.
+ */
+export const SLOW_PROCEDURE_MS = 2000;
+const noteSlow = t.middleware(async ({ path, type, next }) => {
+  const started = performance.now();
+  const result = await next();
+  const took = performance.now() - started;
+  if (took > SLOW_PROCEDURE_MS) console.warn(`[slow] ${type} ${path} took ${Math.round(took)}ms${result.ok ? "" : " and failed"}`);
+  return result;
+});
+const base = t.procedure.use(noteSlow).use(refuseThrottled).use(refuseNul).use(refuseSwitchedOff);
 
 export const publicProcedure = base;
 

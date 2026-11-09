@@ -190,7 +190,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       void utils.invalidate();
     }
   }, [held, device.data, utils]);
-  const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable && !held && (DEMO_MODE || device.isSuccess) });
+  /* Asked beside the device's answer, not after it (and both are asked as the
+     app starts, `routeData`): one round trip before the page where there were
+     three. Held, its answer is a shopper's, and nothing of it is drawn. */
+  const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable && !held });
 
   if ((!DEMO_MODE && authLoading) || (!DEMO_MODE && isAuthenticated && device.isLoading)) {
     return <Frame><p role="status" className="text-[14px] ink-muted">{t("admin.loading")}</p></Frame>;

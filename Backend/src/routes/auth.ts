@@ -68,7 +68,7 @@ import {
 } from "../services/biometricKeys.js";
 import { BIOMETRIC_KEY_ID, DEVICE_NAME_MAX, biometricMessage } from "../../../Shared/auth/biometricKey.js";
 import { resolveActor } from "../services/inventory.js";
-import { DeviceError, adminSide, deviceRuleOn, noteDeviceSignIn, requestDevice, tellOwnerOfDevice } from "../services/adminDevices.js";
+import { DeviceError, adminSide, browserOnShop, deviceRuleOn, noteDeviceSignIn, requestDevice, tellOwnerOfDevice } from "../services/adminDevices.js";
 import { DEVICE_HEADER, type DeviceAccess, type DeviceState } from "../../../Shared/auth/adminDevice.js";
 import { keepSecret } from "./devices.js";
 import { domainOfShopHost, isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
@@ -248,6 +248,20 @@ async function startSession(
   if (here && portalSideFor(await resolveActor(user)) !== here.side) {
     throw here.side === "admin" ? portalAdminsOnly : portalVendorsOnly;
   }
+  /*
+   * **NetLet's administrators never sign in on the shop's website, on the
+   * owner's word** ("it should not let you sign in from the website itself
+   * at all … only in admin.netlet.net"): an administrator, or an employee
+   * holding a grant, is refused on the shop's address before any cookie is
+   * set, by every door. Only once the password (or code, or Apple, or
+   * Google) has been accepted, so the refusal tells nobody which addresses
+   * are an administrator's. The iPhone app calls the shop's address too and
+   * is not a browser, so it is not refused here: its administrators are held
+   * to an authorised device like the portal's (`adminDevices.ts`).
+   */
+  if (!here && browserOnShop(ctx.req as Parameters<typeof browserOnShop>[0]) && portalSideFor(await resolveActor(user)) === "admin") {
+    throw adminSignsInOnPortal;
+  }
   /* Not remembered: a cookie with no expiry, which the browser drops when it
      closes, round a token that lapses in a day for a browser that keeps it. */
   if (remember === false) {
@@ -376,6 +390,8 @@ function portalDomainFor(req: RequestLike): string | null {
 /* On a portal's own address only that portal's people sign in — one answer
    for every door, so whoever asks learns only which portal this is. */
 const portalAdminsOnly = new TRPCError({ code: "FORBIDDEN", message: "auth.portalAdminsOnly" });
+const adminSignsInOnPortal = new TRPCError({ code: "FORBIDDEN", message: "auth.adminSignsInOnPortal" });
+
 const portalVendorsOnly = new TRPCError({ code: "FORBIDDEN", message: "auth.portalVendorsOnly" });
 
 /** A portal's origin as this request would reach it: the scheme and port it came in on. */

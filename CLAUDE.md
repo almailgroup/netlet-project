@@ -6159,6 +6159,21 @@ not carried it.
   only soon after a press, so a browser that refuses gets the toast's button,
   whose own press opens it. A store's team and a delivery company's people are
   handed on to the vendor portal the same way. The app never asks for a pass.
+- **NetLet's administrators never sign in on the shop's website, on the
+  owner's word** ("it should not let you sign in from the website itself at
+  all … only in admin.netlet.net"), which ended the hand-on above for them:
+  `startSession` refuses an administrator or a granted employee in a browser
+  on the shop's address (`browserOnShop`: a user agent starting "Mozilla/", a
+  host no portal names) with `auth.adminSignsInOnPortal`, by every door and
+  before any cookie, and the form draws "Open NetLet Admin" under it
+  (`AdminElsewhere`). **Only after the password**, the code, Apple or Google
+  has been accepted: refusing on the address alone would tell anybody which
+  addresses are an administrator's. An administrator's shop session from
+  before is not honoured either (`authenticateRequest`, a browser on the shop
+  reads as signed out). The iPhone app calls the shop's address and is no
+  browser, so its administrators still sign in there, held to an authorised
+  device like the portal's. The user agent is not a security boundary — the
+  device rule is; this only decides which address turns an administrator away.
 - **Mail links to the portal it is for**: a notice whose link is a portal
   page goes to the admin one when it is to the staff and to the vendor one
   otherwise (`emailLink`); a reset or confirmation asked for on a portal comes
@@ -7942,6 +7957,46 @@ twelve queries at once held five connections, and none was left 6.5 seconds
 later. **`/readyz` on the live site is `/api/readyz`**: `vercel.json` sends
 bare paths to the page, so `netlet.net/readyz` is the shop's 404 — which the
 Live check workflow's Health step asked for until it was moved to `/api/`.
+
+### Every query is a round trip, so the number in a row is the speed
+
+**The admin portal was slow because each page asked the database one thing
+after another, and each ask crosses the distance between the function and the
+database.** Measured from outside, one query from the live function cost about
+100ms (`/api/readyz`'s `select 1` against `/healthz`), which says the function
+(Vercel's `iad1`) and the database are not in one region. `/api/readyz` now
+reports `functionRegion` (`VERCEL_REGION`), `databaseRegion` (read off a
+Supabase pooler address, `databaseRegionOf`, the region name and never the
+address) and `roundTripMs`, the middle of three `select 1`s on an open
+connection — so the pairing is read, not guessed, and the fix for a mismatch
+is the function's region in Vercel's settings (or `regions` in `vercel.json`).
+Locally the same thing is measured with a TCP proxy that holds every packet
+15ms each way, and the portal's pages timed with every procedure's query count
+(`.scratch/admin-speed.mjs`, a trace that is not committed). What it found:
+
+- **The portal asked four things in a row before a page asked for anything**:
+  the session, then the device, then who is asking, then the page. The device
+  and the actor are asked beside the session as the app starts (`routeData`,
+  on any `/admin` address) and beside each other in `AdminLayout`.
+- **Every request read the account, then the device**: the device's row is
+  read beside the account now (`startDeviceLookup`), "last active" is written
+  without waiting, and `devices.access` answers a device the request's own
+  gate already trusted without reading it again.
+- **The shop's hearts and wishlists were read on every admin page**, sharing
+  an instance's five connections with the page; a portal address asks for
+  neither (`PORTAL_SIDE` in `CustomerContext`).
+- **The orders page's risk column read three things per order, in a row** —
+  sixty round trips for a page of twenty, six seconds live, long enough that
+  it often never drew. `judgeOrders` is four reads for the page, together, and
+  `orders.test.ts` holds its answers to the one-at-a-time reads' over a page
+  with every case (the thirty-day window was proved by breaking it).
+- **Reads that need nothing from each other go together** (`Promise.all`): the
+  overview's counts, the seller changes and their count, the dispatch board's
+  names, the product list's names and variants.
+
+A procedure over two seconds says so in the server's log (`noteSlow`,
+`[slow] query <name> took …ms`, the name and the time and never the input), so
+the next slow page is found in Vercel's logs rather than guessed at.
 
 ### A missing asset is a 404, never the page
 

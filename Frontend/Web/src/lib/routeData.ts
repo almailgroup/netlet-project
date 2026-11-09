@@ -48,6 +48,17 @@ export function prefetchRouteData(
   const ask = (work: Promise<unknown>) => void work.catch(() => undefined);
   ask(utils.auth.me.prefetch());
 
+  /* The portal's frame decides what to draw from who is asking and whether
+     this device may carry their rights. Asked with the session, in the same
+     request, rather than one after another once each answer is in — a
+     signed-out visitor's answer to the first is a refusal, which costs
+     nothing extra in a request already going. */
+  if (path.startsWith("/admin")) {
+    ask(utils.devices.access.prefetch());
+    ask(utils.inventory.me.prefetch());
+    return;
+  }
+
   /* The shop's frame, on every shopping page. */
   if (!path.startsWith("/admin") && !path.startsWith("/checkout")) {
     ask(utils.commerce.products.list.prefetch(catalogInput(HEADER_SHELF, locale)));

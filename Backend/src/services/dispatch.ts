@@ -333,27 +333,21 @@ export async function loadBoard(
     .orderBy(orderItems.id);
 
   /* One read for the names, rather than a join that would repeat them on every
-     line — and it is a short table by nature. */
-  const names = new Map(
-    (await db.select({ id: couriers.id, name: couriers.name }).from(couriers)).map(row => [row.id, row.name]),
-  );
-  const centres = new Map(
-    (await db.select({ id: fulfilmentCentres.id, name: fulfilmentCentres.name, addressLine: fulfilmentCentres.addressLine, governorate: fulfilmentCentres.governorate }).from(fulfilmentCentres))
-      .map(row => [row.id, { name: row.name, addressLine: row.addressLine, governorate: row.governorate }]),
-  );
-
-  /* The stores that deliver for themselves with a company not on NetLet. */
-  const selfDelivering = new Set(
-    (await db
-      .select({ id: vendors.id })
-      .from(vendors)
-      .where(and(eq(vendors.deliveryMode, "own"), isNull(vendors.deliveryCourierId))))
-      .map(row => row.id),
-  );
-
-  const owed = await stillOwedFor(db, window.map(order => ({
-    id: order.id, grandTotal: order.orderTotal, deliveryBreakdown: order.deliveryBreakdown,
-  })));
+     line — and it is a short table by nature. The four reads below need
+     nothing from each other, so they go together: one round trip to the
+     database where they were four in a row. */
+  const [courierRows, centreRows, selfRows, owed] = await Promise.all([
+    db.select({ id: couriers.id, name: couriers.name }).from(couriers),
+    db.select({ id: fulfilmentCentres.id, name: fulfilmentCentres.name, addressLine: fulfilmentCentres.addressLine, governorate: fulfilmentCentres.governorate }).from(fulfilmentCentres),
+    /* The stores that deliver for themselves with a company not on NetLet. */
+    db.select({ id: vendors.id }).from(vendors).where(and(eq(vendors.deliveryMode, "own"), isNull(vendors.deliveryCourierId))),
+    stillOwedFor(db, window.map(order => ({
+      id: order.id, grandTotal: order.orderTotal, deliveryBreakdown: order.deliveryBreakdown,
+    }))),
+  ]);
+  const names = new Map(courierRows.map(row => [row.id, row.name]));
+  const centres = new Map(centreRows.map(row => [row.id, { name: row.name, addressLine: row.addressLine, governorate: row.governorate }]));
+  const selfDelivering = new Set(selfRows.map(row => row.id));
 
   const byOrder = new Map<number, ParcelLine[]>();
   for (const line of lines) {

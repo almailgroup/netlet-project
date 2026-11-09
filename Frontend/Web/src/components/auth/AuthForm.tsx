@@ -75,6 +75,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { pressHaptic } from "@/lib/haptics";
 import { useTranslation } from "@/hooks/useTranslation";
+import { AdminElsewhere } from "@/components/auth/AdminElsewhere";
 import { checkPassword, passwordAgainProblem, type PasswordRule } from "@shared/auth/passwordStrength";
 import { suggestEmail } from "@shared/auth/emailTypo";
 import { CODE_LENGTH, isCodeShaped, normaliseCode, RESEND_WAIT_SECONDS as CODE_RESEND_SECONDS } from "@shared/auth/emailCode";
@@ -687,6 +688,7 @@ export function AuthForm({
             <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <div>
               <p>{tError(refusal.message)}</p>
+              <AdminElsewhere message={refusal.message} />
               {refusal.next ? (
                 <button
                   type="button"
@@ -1149,6 +1151,7 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
             <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <div>
               <p>{tError(refusal)}</p>
+              <AdminElsewhere message={refusal} />
               {expired ? (
                 <button type="button" onClick={onAskAgain} className="mt-1 rounded font-bold underline underline-offset-4">
                   {t("auth.resetAskAgain")}
@@ -1364,7 +1367,10 @@ function CodeStep({ awaiting, Heading, headingId, resending, onDone, onDifferent
         {refusal && refusal !== "auth.codeShape" ? (
           <div role="alert" className={`mt-4 ${alertClass}`}>
             <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <p>{tError(refusal)}</p>
+            <div>
+              <p>{tError(refusal)}</p>
+              <AdminElsewhere message={refusal} />
+            </div>
           </div>
         ) : null}
         {resentTo && !refusal ? (

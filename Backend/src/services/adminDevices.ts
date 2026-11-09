@@ -35,6 +35,7 @@ import {
 import { isMissingTable, describeError } from "../core/describeError.js";
 import { isOwnerEmail, ownerEmail } from "../core/owner.js";
 import { getDb } from "./db.js";
+import { portalDomain, portalOfHost } from "../../../Shared/portal.js";
 import { outer } from "./sqlRefs.js";
 import { notifyQuietly } from "./notifications.js";
 
@@ -50,7 +51,27 @@ export type AdminDeviceClaim = { token: string | null; trusted?: boolean; locked
 type RequestLike = {
   headers?: Record<string, string | string[] | undefined> & { cookie?: string };
   ip?: string;
+  hostname?: string;
 };
+
+/**
+ * A web browser on the shop's own address, where NetLet's administrators
+ * never sign in, on the owner's word ("it should not let you sign in from the
+ * website itself at all … only in admin.netlet.net"). A browser is told by
+ * its user agent, which every one starts "Mozilla/"; the iPhone app calls the
+ * shop's address too and is not one. Not a security boundary — a header can
+ * say anything — since what keeps an administrator's rights to their own
+ * devices is the device rule; this decides only which address turns an
+ * administrator away.
+ */
+export function browserOnShop(req: RequestLike): boolean {
+  const agent = req.headers?.["user-agent"];
+  const value = Array.isArray(agent) ? agent[0] : agent;
+  if (typeof value !== "string" || !/^Mozilla\//.test(value)) return false;
+  const hostHeader = req.headers?.host;
+  const host = (req.hostname ?? (Array.isArray(hostHeader) ? hostHeader[0] : hostHeader) ?? "").replace(/:\d+$/, "").toLowerCase();
+  return portalOfHost(host, portalDomain(process.env.PORTAL_DOMAIN)) === null;
+}
 
 export function deviceRuleOn(): boolean {
   return (process.env.ADMIN_DEVICES ?? "").trim().toLowerCase() !== "off" && ownerEmail() !== "";
@@ -83,7 +104,25 @@ export const DEVICE_COOKIE_MS = 400 * 24 * 60 * 60 * 1000;
 
 /* ------------------------------------------------------------- reading --- */
 
-async function rowFor(userId: number, token: string | null): Promise<AdminDevice | null | "missing"> {
+/** This account's row for this device, `"missing"` before migration 0079. */
+export type DeviceLookup = AdminDevice | null | "missing";
+
+/**
+ * The row the gate will ask about, started beside the account's own read
+ * (`authenticateRequest`), so an administrator's request pays one round trip
+ * to the database before its procedure rather than two. An error is kept in
+ * the promise for `deviceTrusted` to fail closed on, never thrown early.
+ */
+export function startDeviceLookup(userId: number, req: RequestLike): Promise<DeviceLookup> | undefined {
+  if (!deviceRuleOn()) return undefined;
+  const token = deviceTokenOf(req);
+  if (!token) return undefined;
+  const lookup = rowFor(userId, token);
+  lookup.catch(() => undefined);
+  return lookup;
+}
+
+async function rowFor(userId: number, token: string | null): Promise<DeviceLookup> {
   if (!token) return null;
   const db = await getDb();
   if (!db) return "missing";
@@ -105,17 +144,21 @@ async function rowFor(userId: number, token: string | null): Promise<AdminDevice
  * "last active" at most once a minute. Fails closed: anything but an
  * approved row is no.
  */
-export async function deviceTrusted(userId: number, token: string | null, address: string | null): Promise<boolean> {
+export async function deviceTrusted(userId: number, token: string | null, address: string | null, lookup?: Promise<DeviceLookup>): Promise<boolean> {
   try {
-    const row = await rowFor(userId, token);
+    const row = await (lookup ?? rowFor(userId, token));
     if (!row || row === "missing" || row.status !== "approved") return false;
     const now = Date.now();
     if (!row.lastSeenAt || now - row.lastSeenAt.getTime() >= DEVICE_SEEN_EVERY_MS) {
-      const db = await getDb();
-      await db
-        ?.update(adminDevices)
-        .set({ lastSeenAt: new Date(now), lastIp: address ?? row.lastIp })
-        .where(and(eq(adminDevices.id, row.id), or(isNull(adminDevices.lastSeenAt), lt(adminDevices.lastSeenAt, new Date(now - DEVICE_SEEN_EVERY_MS)))))
+      /* Not waited for: "last active" is a note about the request, and the
+         request should not pay a round trip to the database for it. The
+         function is kept awake until its connections are idle
+         (`connectionRelease.ts`), so the write still lands. */
+      void getDb()
+        .then(db => db
+          ?.update(adminDevices)
+          .set({ lastSeenAt: new Date(now), lastIp: address ?? row.lastIp })
+          .where(and(eq(adminDevices.id, row.id), or(isNull(adminDevices.lastSeenAt), lt(adminDevices.lastSeenAt, new Date(now - DEVICE_SEEN_EVERY_MS))))))
         .catch(error => console.error(`[devices] could not note device ${row.id} as seen: ${describeError(error)}`));
     }
     return true;
@@ -133,11 +176,11 @@ export async function deviceTrusted(userId: number, token: string | null, addres
  * say what to do about it. Every user carries the device's secret, so a
  * granted employee is checked where grants are read.
  */
-export async function gateAdminRights<U extends { id: number; role: string }>(user: U, req: RequestLike): Promise<U & { adminDevice?: AdminDeviceClaim }> {
+export async function gateAdminRights<U extends { id: number; role: string }>(user: U, req: RequestLike, lookup?: Promise<DeviceLookup>): Promise<U & { adminDevice?: AdminDeviceClaim }> {
   if (!deviceRuleOn()) return user;
   const token = deviceTokenOf(req);
   if (user.role !== "admin") return { ...user, adminDevice: { token } };
-  if (await deviceTrusted(user.id, token, req.ip ?? null)) return { ...user, adminDevice: { token, trusted: true } };
+  if (await deviceTrusted(user.id, token, req.ip ?? null, lookup)) return { ...user, adminDevice: { token, trusted: true } };
   return { ...user, role: "user", adminDevice: { token, trusted: false, lockedRole: "admin" } };
 }
 
@@ -179,6 +222,9 @@ export async function accessFor(
 ): Promise<DeviceAccessAnswer> {
   const owner = isOwnerEmail(user.email);
   if (!deviceRuleOn()) return { applies: false, access: "trusted", owner, deviceName: null, requestedAt: null };
+  /* The request's own gate already read this device and found it authorised:
+     nothing to ask the database again. */
+  if (user.role === "admin" && user.adminDevice?.trusted) return { applies: true, access: "trusted", owner, deviceName: null, requestedAt: null };
   const applies = await adminSide(user);
   if (!applies) return { applies: false, access: "none", owner, deviceName: null, requestedAt: null };
   const row = await rowFor(user.id, deviceTokenOf(req));
