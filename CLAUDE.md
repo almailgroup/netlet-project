@@ -7999,6 +7999,33 @@ Locally the same thing is measured with a TCP proxy that holds every packet
   overview's counts, the seller changes and their count, the dispatch board's
   names, the product list's names and variants.
 
+**Then the browser's side, measured in a browser against the live portal**
+(`.scratch/live-portal-load.mjs`, `.scratch/admin-requests.mjs`):
+
+- **The portal fetched the shop**: about a hundred files a portal load — the
+  bag drawer, the wishlist chooser, the product and department pages — fetched
+  while idle for a shop nobody was in. A portal address fetches none
+  (`PORTAL_SIDE` in `App`'s preloads and `CustomerContext`).
+- **Nothing the portal read was ever fresh** (the client's default
+  `staleTime` is zero), so every page that mounted a reader of the device's
+  answer or of who is asking sent both again beside its own reads. The frame's
+  two are fresh for a minute (`FRAME_FRESH_MS`) — **and asked again whenever
+  they belong to another sign-in** (`deviceOutOfDate`, `meOutOfDate`): kept
+  fresh alone, the answer read while signed out was drawn after signing in,
+  and the waiting screen never appeared. The device walk caught it.
+- **A page's reads go in one request** (`maxItems` 50, the address held
+  under 7,000 characters): the overview's thirty were two requests at once,
+  and **a burst of simultaneous requests is what starts a second server** —
+  measured: of six at once, four shared a warm server and two waited
+  1.2–1.9s for new ones to start.
+- **The portal wakes the server before the app has started**:
+  `route-preload.js` asks `/api/readyz` the moment the page arrives on a
+  portal address, so a cold start (and the database's connections) happens
+  while the 950 KB script downloads, not after it. Minifying the server's
+  bundle was measured and changes nothing — its start is the platform
+  compiling 5 MB, not reading it. A warm server stayed warm through five idle
+  minutes.
+
 A procedure over two seconds says so in the server's log (`noteSlow`,
 `[slow] query <name> took …ms`, the name and the time and never the input), so
 the next slow page is found in Vercel's logs rather than guessed at.

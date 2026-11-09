@@ -29,6 +29,13 @@
     if (onPortal && !/^\/(admin(\/|$)|signin$|invoices\/|terms$|privacy$|seller-agreement$)/.test(path)) {
       path = path === "/" ? "/admin" : "/admin" + path;
     }
+    /* On a portal, wake the server now. A server that has been idle takes a
+       second or two to start, and the portal's first request is sent only
+       once the app's script has downloaded and run; asked here, the start
+       happens while the script downloads, and the app's request finds a
+       server already up, its database connections open (/api/readyz asks
+       the database). Nothing waits on the answer. */
+    if (onPortal && window.fetch) fetch(table.base + "api/readyz", { credentials: "omit", cache: "no-store" }).catch(function () {});
     for (var i = 0; i < table.routes.length; i++) {
       if (!new RegExp(table.routes[i][0]).test(path)) continue;
       var files = table.routes[i][1];

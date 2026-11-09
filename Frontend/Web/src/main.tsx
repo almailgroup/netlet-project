@@ -130,7 +130,12 @@ const trpcClient = trpc.createClient({
       ? lazyDemoLink
       : splitLink({
           condition: op => op.type === "query",
-          true: httpBatchStreamLink({ url: "/api/trpc", transformer: superjson, fetch: fetchWithCredentials, maxItems: 20 }),
+          /* A page's reads in one request where it fits: the portal's overview
+             asks some thirty things, and split in two they were two requests
+             at once, each of which can land on a server just starting. The
+             answers still stream back one by one. The address is held under
+             what a server and a proxy reliably take. */
+          true: httpBatchStreamLink({ url: "/api/trpc", transformer: superjson, fetch: fetchWithCredentials, maxItems: 50, maxURLLength: 7000 }),
           false: httpBatchLink({ url: "/api/trpc", transformer: superjson, fetch: fetchWithCredentials }),
         }),
   ],

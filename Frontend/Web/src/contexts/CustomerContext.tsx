@@ -118,7 +118,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   /* What to do once the question asked by `chooseWishlist` has an answer. */
   const afterWish = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (wishlistsOn) return whenIdle(() => void WishChooser.preload());
+    if (wishlistsOn && !PORTAL_SIDE) return whenIdle(() => void WishChooser.preload());
   }, [wishlistsOn]);
 
   // The one writer of <html lang/dir>. Direction is a document property, and

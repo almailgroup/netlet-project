@@ -113,7 +113,8 @@ function BagDrawerWhenWanted() {
   useEffect(() => {
     if (isOpen) setWanted(true);
   }, [isOpen]);
-  useEffect(() => whenIdle(() => void BagDrawer.preload()), []);
+  /* A portal's own address has no bag to open, so it fetches no drawer. */
+  useEffect(() => (PORTAL_SIDE ? undefined : whenIdle(() => void BagDrawer.preload())), []);
   return wanted || isOpen ? <Suspense fallback={null}><BagDrawer /></Suspense> : null;
 }
 
@@ -419,7 +420,9 @@ function Prefetcher() {
   }), [parser]);
   /* In the portal, the pages somebody running a store opens most instead. */
   const [location] = useLocation();
-  const inPortal = ADMIN_AREA.test(location);
+  /* A portal's own address is the portal from its sign-in onwards: it never
+     fetched the shop's product and department pages for anybody to open. */
+  const inPortal = PORTAL_SIDE !== null || ADMIN_AREA.test(location);
   useEffect(() => whenIdle(() => {
     const likely = inPortal ? [AdminLayout, AdminOverview, AdminProducts, AdminOrders] : [ProductDetail, Category];
     for (const page of likely) void page.preload().catch(() => undefined);

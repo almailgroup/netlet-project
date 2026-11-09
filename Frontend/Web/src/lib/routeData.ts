@@ -56,6 +56,8 @@ export function prefetchRouteData(
   if (path.startsWith("/admin")) {
     ask(utils.devices.access.prefetch());
     ask(utils.inventory.me.prefetch());
+    /* The switches the portal's pages ask about, in the same request. */
+    ask(utils.features.states.prefetch());
     return;
   }
 

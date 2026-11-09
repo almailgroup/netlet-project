@@ -150,6 +150,9 @@ export function AdminNotFound() {
   );
 }
 
+/** How long the frame's own answers — the device, who is asking — count as fresh. */
+export const FRAME_FRESH_MS = 60_000;
+
 /** The frame, mounted once round every `/admin` page (see `App`). */
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -177,9 +180,23 @@ export function AdminLayout({ children }: { children: ReactNode }) {
      seconds while it waits, so the page opens by itself once the owner says yes. */
   const device = trpc.devices.access.useQuery(undefined, {
     enabled: !DEMO_MODE && isAuthenticated,
+    /* Asked again only once a minute old (or every five seconds while it
+       waits): with no freshness every page that mounted a reader of it asked
+       the server again, beside the page's own reads. The server checks the
+       device on every request regardless. */
+    staleTime: FRAME_FRESH_MS,
     refetchInterval: query => (query.state.data?.signedIn && query.state.data.applies && query.state.data.access === "pending" ? 5000 : false),
   });
-  const held = device.data?.signedIn && device.data.applies && device.data.access !== "trusted" ? device.data : null;
+  /* An answer kept from before a sign-in or a sign-out is about somebody
+     else: asked again, and nothing drawn from it meanwhile. Freshness alone
+     would have drawn the signed-out answer for a minute after signing in,
+     which is the waiting screen not appearing for a device that has just
+     asked. */
+  const deviceOutOfDate = !DEMO_MODE && Boolean(device.data) && device.data!.signedIn !== isAuthenticated;
+  useEffect(() => {
+    if (deviceOutOfDate) void device.refetch();
+  }, [deviceOutOfDate]);
+  const held = !deviceOutOfDate && device.data?.signedIn && device.data.applies && device.data.access !== "trusted" ? device.data : null;
   /* The moment the owner approves, everything this account was refused is its to read. */
   const wasHeld = useRef(false);
   const utils = trpc.useUtils();
@@ -193,9 +210,14 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   /* Asked beside the device's answer, not after it (and both are asked as the
      app starts, `routeData`): one round trip before the page where there were
      three. Held, its answer is a shopper's, and nothing of it is drawn. */
-  const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable && !held });
+  const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable && !held, staleTime: FRAME_FRESH_MS });
+  /* The same for who is asking: an answer for another account is asked again. */
+  const meOutOfDate = !DEMO_MODE && Boolean(me.data && user && me.data.userId !== user.id);
+  useEffect(() => {
+    if (meOutOfDate) void me.refetch();
+  }, [meOutOfDate]);
 
-  if ((!DEMO_MODE && authLoading) || (!DEMO_MODE && isAuthenticated && device.isLoading)) {
+  if ((!DEMO_MODE && authLoading) || (!DEMO_MODE && isAuthenticated && (device.isLoading || deviceOutOfDate || meOutOfDate))) {
     return <Frame><p role="status" className="text-[14px] ink-muted">{t("admin.loading")}</p></Frame>;
   }
 

@@ -20,7 +20,7 @@
  * those lines; an admin sees every order whole.
  */
 import { useFeature } from "@/hooks/useFeature";
-import { AdminShell } from "@/components/admin/AdminShell";
+import { AdminShell, FRAME_FRESH_MS } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { buttonClass, EmptyState, fieldClass, isolate, PageHeader, Pill, SkeletonRows, smallButtonClass, textareaClass } from "@/components/admin/ui";
@@ -252,7 +252,7 @@ function OrderDetail({ orderId, reference }: { orderId: number; reference: strin
   const formatDate = useDateFormat();
   const detail = trpc.orders.forSellerDetail.useQuery({ orderId });
   /* Already in the cache: the shell asked it before drawing the page. */
-  const me = trpc.inventory.me.useQuery();
+  const me = trpc.inventory.me.useQuery(undefined, { staleTime: FRAME_FRESH_MS });
   const utils = trpc.useUtils();
   const [cancelling, setCancelling] = useState<{ lineId: number; title: string } | null>(null);
   const [collecting, setCollecting] = useState(false);
