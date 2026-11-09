@@ -196,8 +196,13 @@ not enough.
    That address is granted the admin role on registration — so if you
    registered first, promote yourself once by hand instead: Supabase → Table
    Editor → `users` → your row → set `role` to `admin`.
-3. Open `/admin`. You should see Overview, Products, Stock, Review, Vendors,
-   People and Team.
+3. Open `admin.netlet.net` and sign in. NetLet Admin opens only on a device
+   you have authorised, so the first time it says this device is waiting:
+   press **Email me a code** and type the 6-digit code it sends to your
+   address (the "Magic Link" template, section on one-time codes, prints it).
+   You should then see Overview, Products, Stock, Review, Vendors, People,
+   Devices and Team. Every other administrator's device waits for you on
+   **Devices**, where you approve, turn down or remove each one.
 4. From `/admin/people` you can grant anyone else administrator, or add them
    to a vendor as staff, manager or owner — that is the page that decides who
    gets in from here on.

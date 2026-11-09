@@ -93,6 +93,8 @@ struct PortalRules: Decodable, Sendable {
     /// `can`: an administrator reaches everything, a delivery company's
     /// people their board, and a store's people their own store at their rank.
     func can(_ actor: SellerIdentity, _ capability: String, vendorId: Int? = nil) -> Bool {
+        /* Which devices carry an administrator's rights is the owner's alone. */
+        if capability == "platform.devices" { return actor.kind == "admin" && actor.owner == true }
         /* One capability an administrator granted on its own (3.3.9), and
            only one the rules let be granted. */
         if actor.grants?.contains(capability) == true, grantable?.contains(capability) == true { return true }
@@ -169,6 +171,8 @@ enum PortalPage: Hashable, Sendable {
     /// One guide; nil is a new one (`/admin/guides/new`).
     case guide(Int?)
     case couriers
+    /// The owner's authorised devices (`Shared/auth/adminDevice.ts`).
+    case devices
 
     init?(_ href: String) {
         let parts = href.split(separator: "?", maxSplits: 1).map(String.init)
@@ -233,6 +237,7 @@ enum PortalPage: Hashable, Sendable {
             case "support": self = .support
             case "guides": self = .guides
             case "couriers": self = .couriers
+            case "devices": self = .devices
             default: return nil
             }
         default: return nil
@@ -246,7 +251,9 @@ extension SellerIdentity {
     /// Whether this account has a portal at all: a store's people, a
     /// delivery company's, or an administrator.
     /// An employee granted one capability on its own (3.3.9) has a portal too.
-    var inPortal: Bool { kind == "vendor" || kind == "courier" || kind == "admin" || !(grants ?? []).isEmpty }
+    /// An administrator on an install the owner has not authorised still has
+    /// one: it is where the install asks to be authorised.
+    var inPortal: Bool { kind == "vendor" || kind == "courier" || kind == "admin" || !(grants ?? []).isEmpty || adminLocked == true }
 
     func can(_ capability: String, vendorId: Int? = nil) -> Bool {
         PortalRules.shared.can(self, capability, vendorId: vendorId)

@@ -10,6 +10,7 @@
  * because it only ever returns published products of approved vendors.
  */
 import { isOwnerEmail } from "../core/owner.js";
+import { grantsHold, type AdminDeviceClaim } from "./adminDevices.js";
 import { openingSpecs, warrantyRequired } from "../../../Shared/inventory/productDraft.js";
 import { merchantWarranty } from "../../../Shared/commerce/productDetail.js";
 import { stockMoveProblem, type StockReason } from "../../../Shared/inventory/stockMoves.js";
@@ -71,20 +72,27 @@ import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
  * of belonging to exactly one.
  */
 export async function resolveActor(
-  user: { id: number; role: string },
+  user: { id: number; role: string; email?: string | null; adminDevice?: AdminDeviceClaim },
   vendorId?: number,
 ): Promise<Actor> {
-  if (user.role === "admin") return { kind: "admin", userId: user.id };
+  if (user.role === "admin") return isOwnerEmail(user.email) ? { kind: "admin", userId: user.id, owner: true } : { kind: "admin", userId: user.id };
 
+  /* An administrator on a device the owner has not authorised: read as a
+     shopper by `authenticateRequest`, and marked so the pages can say why. */
+  const locked = user.adminDevice?.lockedRole === "admin";
   const db = await getDb();
-  if (!db) return { kind: "customer", userId: user.id };
+  if (!db) return locked ? { kind: "customer", userId: user.id, adminLocked: true } : { kind: "customer", userId: user.id };
   const resolved = await resolveRoleActor(db, user, vendorId);
   /* What an administrator granted this account on its own (3.3.9), read with
      every resolution like the membership is, so taking it back takes effect
-     on the next request. Only grantable capabilities are kept. */
+     on the next request. Only grantable capabilities are kept — and only on
+     a device the owner authorised, like an administrator's own rights. */
   const granted = await db.select({ capability: staffGrants.capability }).from(staffGrants).where(eq(staffGrants.userId, user.id));
   const grants = granted.map(row => row.capability as Capability).filter(capability => GRANTABLE.includes(capability));
-  return grants.length && resolved.kind !== "admin" ? { ...resolved, grants } : resolved;
+  if (resolved.kind === "admin") return resolved;
+  if (grants.length && !(await grantsHold(user))) return { ...resolved, adminLocked: true };
+  if (locked) return { ...resolved, adminLocked: true };
+  return grants.length ? { ...resolved, grants } : resolved;
 }
 
 async function resolveRoleActor(

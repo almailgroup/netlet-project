@@ -203,6 +203,15 @@ search engines to stay away. The AI
 gateway already lists both origins (`ALLOWED_ORIGINS` in
 `Backend/gateway/wrangler.toml`), deployed by Workers Builds on the push.
 
+**NetLet Admin opens only on authorised devices.** With `OWNER_EMAIL` set, an
+administrator's rights hold only on a device the owner approved, on the
+Devices page, or — for the owner's own device — with a code emailed to the
+owner. Paste migration 0079 (it is in `docs/supabase-bootstrap.sql`) right
+after the deploy that carries it: until then no device is authorised and the
+admin portal says it is closed. If the owner is ever locked out (the code
+email not arriving, say), set `ADMIN_DEVICES` = `off` on Production and
+redeploy; remove it again once a device is authorised.
+
 ## 4. Check it
 
 ```

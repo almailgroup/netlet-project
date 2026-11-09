@@ -232,6 +232,9 @@ jobs:
             shot 86-orders-reviews "$lang" section:reviews shopper
             # Saved items and wishlists in one page, opened on its Wishlists tab.
             shot 87-saved-wishlists "$lang" section:wishlists shopper
+            # Authorised devices: the owner's desk, and an install still waiting.
+            shot 88-admin-devices "$lang" portal:/admin/devices admin
+            shot 89-device-waiting "$lang" portal:/admin newdevice
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

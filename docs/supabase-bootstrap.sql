@@ -2095,6 +2095,33 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "biometric_keys_key_id_unique" ON "biometric_keys" USING btree ("key_id");
 CREATE INDEX IF NOT EXISTS "biometric_keys_user_idx" ON "biometric_keys" USING btree ("user_id");
 
+-- ===== 0079_admin_devices.sql =====
+CREATE TABLE IF NOT EXISTS "admin_devices" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"token_hash" varchar(64) NOT NULL,
+	"name" varchar(80),
+	"status" varchar(16) DEFAULT 'pending' NOT NULL,
+	"requested_ip" varchar(64),
+	"approved_by" integer,
+	"approved_how" varchar(16),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"decided_at" timestamp with time zone,
+	"last_sign_in_at" timestamp with time zone,
+	"last_seen_at" timestamp with time zone,
+	"last_ip" varchar(64),
+	CONSTRAINT "admin_devices_status_check" CHECK ("admin_devices"."status" in ('pending', 'approved', 'denied', 'revoked'))
+);
+DO $$ BEGIN
+  ALTER TABLE "admin_devices" ADD CONSTRAINT "admin_devices_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "admin_devices" ADD CONSTRAINT "admin_devices_approved_by_users_id_fk" FOREIGN KEY ("approved_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "admin_devices_user_token_unique" ON "admin_devices" USING btree ("user_id","token_hash");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2138,6 +2165,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  79 AS migrations_in_this_file,
+  80 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

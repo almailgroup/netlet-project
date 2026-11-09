@@ -51,6 +51,23 @@ final class SessionModel {
     func adopt(_ user: User) async {
         state = .signedIn(user)
         seller = try? await account.sellerIdentity()
+        await carryDeviceSecret()
+    }
+
+    /// An administrator on this install: from now on its requests carry the
+    /// install's secret (`AdminDeviceSecret`), and who they are is asked again
+    /// with it, since the rights hold only on an install the owner authorised.
+    private func carryDeviceSecret() async {
+        guard let seller, !AdminDeviceSecret.shared.enabled else { return }
+        guard seller.kind == "admin" || seller.adminLocked == true || !(seller.grants ?? []).isEmpty else { return }
+        AdminDeviceSecret.shared.enable()
+        self.seller = try? await account.sellerIdentity()
+    }
+
+    /// Who the account is to the portal again — after the owner authorises
+    /// this install, when its rights come back.
+    func refreshSeller() async {
+        seller = try? await account.sellerIdentity()
     }
 
     func updated(_ user: User) {

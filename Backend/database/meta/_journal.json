@@ -554,6 +554,13 @@
       "when": 1794143904129,
       "tag": "0078_biometric_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1794223514100,
+      "tag": "0079_admin_devices",
+      "breakpoints": true
     }
   ]
 }

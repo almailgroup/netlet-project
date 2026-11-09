@@ -19,7 +19,14 @@ struct PortalHomeView: View {
     var body: some View {
         PortalScreen(title: l.t("admin.overview"), intro: l.t("admin.overviewIntro"), refresh: { await load() }) {
             if let actor {
-                if actor.inPortal {
+                if actor.adminLocked == true {
+                    /* This install is not one the owner authorised: nothing of
+                       the portal is drawn, only where it stands. */
+                    DeviceGateView {
+                        await app.session.refreshSeller()
+                        await load()
+                    }
+                } else if actor.inPortal {
                     content(actor)
                 } else {
                     EmptyStateView(systemImage: "storefront", title: l.t("admin.noAccess"), note: l.t("admin.noAccessNote"))
@@ -84,6 +91,7 @@ struct PortalHomeView: View {
             add("admin.claimsOpenTile", waiting["claims"], "/admin/claims")
             return tiles
         }
+        add("devices.waitingTile", waiting["devices"], "/admin/devices")
         add("admin.applications", waiting["applications"], "/admin/applications")
         if let counts {
             if actor.can("product.review") { add("admin.countPendingReview", counts.pendingReview, "/admin/review") }
@@ -119,7 +127,7 @@ struct PortalHomeView: View {
             let who = try await api.call(API.portalIdentity, .init())
             actor = who
             failed = nil
-            guard who.inPortal else { return }
+            guard who.inPortal, who.adminLocked != true else { return }
             let own = who.ownVendor
             func asked<T>(_ allowed: Bool, _ ask: @escaping @Sendable () async throws -> T) async -> T? {
                 guard allowed else { return nil }
@@ -150,6 +158,8 @@ struct PortalHomeView: View {
             async let fraud = asked(who.can("platform.viewAll")) { try await api.call(API.fraudUnseen) }
             /* Product reviews the automatic check left for a person — an administrator's desk. */
             async let heldReviews = count("platform.manageUsers") { try await api.call(API.waitingReviewCount) }
+            /* Devices asking for an administrator's rights, waiting on the owner alone. */
+            async let devices = count("platform.devices") { try await api.call(API.devicesWaiting) }
             counts = await overview
             health = await score ?? nil
             sales = await summary
@@ -162,6 +172,7 @@ struct PortalHomeView: View {
                 "toReceive": floor?.toReceive, "toPick": floor?.toPick,
                 "fraudOrders": alerts?.orders, "fraudWatch": alerts?.watch,
                 "reviewsWaiting": await heldReviews,
+                "devices": await devices,
             ].compactMapValues { $0 }
         } catch {
             let failure = APIError.from(error)

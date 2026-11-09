@@ -28,11 +28,25 @@ export const RANK: Record<VendorRole, number> = { staff: 0, manager: 1, owner: 2
  * `staff_grants`): "allowed to set commission", and nothing else that comes
  * with being an administrator. Only what `GRANTABLE` names can be granted.
  */
-type Grants = { grants?: readonly Capability[] };
+type Grants = {
+  grants?: readonly Capability[];
+  /**
+   * An administrator's rights, or a granted capability, held back because
+   * this request's device is not one the owner authorised
+   * (`Shared/auth/adminDevice.ts`). The account can do nothing an ordinary
+   * shopper cannot, and still belongs on the admin portal — which is where
+   * the device is authorised.
+   */
+  adminLocked?: true;
+};
 
 export type Actor =
-  /** A platform administrator. Not scoped to any vendor. */
-  | { kind: "admin"; userId: number }
+  /**
+   * A platform administrator. Not scoped to any vendor. `owner` is the shop's
+   * owner (`OWNER_EMAIL`), the one account that decides which devices may
+   * carry an administrator's rights.
+   */
+  | { kind: "admin"; userId: number; owner?: true }
   /** Somebody acting for one vendor, at one rank. */
   | ({ kind: "vendor"; userId: number; vendorId: number; role: VendorRole } & Grants)
   /**
@@ -116,6 +130,9 @@ export type Capability =
   /* The feature switchboard (2.3). Turning a feature off for every store and
      every shopper at once is NetLet's decision about NetLet. */
   | "platform.configure"
+  /* Which devices may carry an administrator's rights (`Shared/auth/adminDevice.ts`):
+     the shop's owner alone, on the owner's word — not every administrator. */
+  | "platform.devices"
   /* Approving affiliates and setting their rate (3.7): money NetLet pays out
      of its own cut, so it sits with commission, outside any vendor rank. */
   | "affiliate.manage"
@@ -202,6 +219,7 @@ export const ADMIN_ONLY: Capability[] = [
   // a different question from who is an administrator of NetLet.
   "platform.manageUsers",
   "platform.configure",
+  "platform.devices",
   "affiliate.manage",
   "payouts.record",
   "support.answer",
@@ -227,7 +245,14 @@ export const COURIER_CAPABILITIES: Capability[] = ["delivery.view", "delivery.mo
  */
 export const GRANTABLE: Capability[] = ["vendor.setCommission"];
 
+/** An administrator's rights, or a grant, held back on this request's device (`Shared/auth/adminDevice.ts`). */
+export function adminHeldBack(actor: Actor | null | undefined): boolean {
+  return Boolean(actor && actor.kind !== "admin" && actor.adminLocked);
+}
+
 export function can(actor: Actor, capability: Capability, vendorId?: number): boolean {
+  /* Which devices carry an administrator's rights is the owner's alone. */
+  if (capability === "platform.devices") return actor.kind === "admin" && actor.owner === true;
   if (actor.kind === "admin") return true;
   /* A granted capability is platform-wide, like the administrator's it is cut from. */
   if (actor.grants?.includes(capability) && GRANTABLE.includes(capability)) return true;

@@ -536,6 +536,41 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertNotNil(DemoKeychain.keyId.range(of: "^[A-Za-z0-9_-]{22,64}$", options: .regularExpression))
     }
 
+    /// Authorised devices: where this install stands, the owner's desk with its
+    /// dates read as dates, and an install the owner has not authorised read
+    /// as held back — `Shared/auth/adminDevice.ts`.
+    func testAdminDevicesDecode() async throws {
+        let access = try await client.call(API.deviceAccess)
+        XCTAssertEqual(access.access, "trusted")
+        XCTAssertFalse(access.heldBack)
+        let desk = try await client.call(API.deviceDesk)
+        XCTAssertTrue(desk.ready)
+        let waiting = try await client.call(API.devicesWaiting)
+        XCTAssertEqual(desk.devices.filter { $0.status == "pending" }.count, waiting)
+        XCTAssertEqual(desk.devices.filter(\.current).count, 1, "exactly one row is the install the page is read on")
+        XCTAssertNotNil(desk.devices.first { $0.status == "approved" }?.decidedAt)
+        XCTAssertEqual(Set(desk.signIns.map(\.outcome)), ["waiting", "authorised", "refused"])
+
+        let newDevice = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "newdevice"))
+        let held = try await newDevice.call(API.deviceAccess)
+        XCTAssertTrue(held.heldBack)
+        XCTAssertEqual(held.owner, true)
+        let who = try await newDevice.call(API.portalIdentity, .init())
+        XCTAssertEqual(who.adminLocked, true)
+        XCTAssertTrue(who.inPortal, "the portal is where an install asks to be authorised")
+        XCTAssertFalse(who.can("platform.viewAll"))
+    }
+
+    /// The install's secret: made once, the same every time it is asked for,
+    /// and the shape the server takes.
+    func testTheDeviceSecretIsLongRandomAndKept() {
+        let secret = AdminDeviceSecret.shared.value
+        XCTAssertNotNil(secret)
+        XCTAssertEqual(AdminDeviceSecret.shared.value, secret)
+        XCTAssertNotNil(secret?.range(of: "^[A-Za-z0-9_-]{43,128}$", options: .regularExpression))
+        XCTAssertNotEqual(AdminDeviceSecret.make(), AdminDeviceSecret.make())
+    }
+
     func testSignInWithPhone() async throws {
         let ways = try await client.call(API.signInWays)
         XCTAssertEqual(ways.phone, true)
@@ -989,6 +1024,10 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(rules.can(staff, "stock.adjust", vendorId: 2))
         XCTAssertFalse(rules.can(staff, "product.publish", vendorId: 2), "staff move stock and publish nothing")
         XCTAssertTrue(rules.can(admin, "platform.manageUsers"))
+        // Which devices carry an administrator's rights is the owner's alone.
+        XCTAssertFalse(rules.can(admin, "platform.devices"))
+        XCTAssertTrue(rules.can(SellerIdentity(kind: "admin", userId: 1, vendorId: nil, role: nil, owner: true), "platform.devices"))
+        XCTAssertEqual(PortalPage("/admin/devices"), .devices)
         XCTAssertTrue(rules.can(courier, "delivery.view"))
         XCTAssertFalse(rules.can(courier, "product.view"))
         XCTAssertTrue(rules.menu(for: owner).flatMap(\.links).contains { $0.href == "/admin/products" })

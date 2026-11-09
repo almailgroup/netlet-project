@@ -30,7 +30,7 @@ import { can, type Actor, type Capability } from "@shared/inventory/permissions"
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
 import { logoImage } from "@/lib/brandAssets";
-import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ChevronDown, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ChevronDown, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
 import { createContext, Suspense, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, Redirect, useLocation, useSearch } from "wouter";
@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PORTAL_SIDE, portalHref } from "@/lib/portalHost";
 import { portalSideFor, type PortalSide } from "@shared/portal";
+import { DeviceGate } from "@/components/admin/DeviceGate";
 
 const ROLE_LABEL: Record<string, MessageKey> = {
   admin: "admin.roleAdmin",
@@ -91,6 +92,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin/vendors": <Store className="size-4" />,
   "/admin/applications": <ClipboardList className="size-4" />,
   "/admin/people": <ShieldCheck className="size-4" />,
+  "/admin/devices": <MonitorSmartphone className="size-4" />,
   "/admin/audit": <ScrollText className="size-4" />,
   "/admin/fraud": <ScanEye className="size-4" />,
   "/admin/subscriptions": <Repeat className="size-4" />,
@@ -170,9 +172,33 @@ export function AdminLayout({ children }: { children: ReactNode }) {
    * storefront's guest rule is bent, and only when there is no backend.
    */
   const reachable = DEMO_MODE || isAuthenticated;
-  const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable });
+  /* Whether this device may carry this account's rights (`Shared/auth/adminDevice.ts`):
+     asked before anything of the portal is drawn, and again every five
+     seconds while it waits, so the page opens by itself once the owner says yes. */
+  const device = trpc.devices.access.useQuery(undefined, {
+    enabled: !DEMO_MODE && isAuthenticated,
+    refetchInterval: query => (query.state.data?.signedIn && query.state.data.applies && query.state.data.access === "pending" ? 5000 : false),
+  });
+  const held = device.data?.signedIn && device.data.applies && device.data.access !== "trusted" ? device.data : null;
+  /* The moment the owner approves, everything this account was refused is its to read. */
+  const wasHeld = useRef(false);
+  const utils = trpc.useUtils();
+  useEffect(() => {
+    if (held) wasHeld.current = true;
+    else if (wasHeld.current && device.data?.signedIn) {
+      wasHeld.current = false;
+      void utils.invalidate();
+    }
+  }, [held, device.data, utils]);
+  const me = trpc.inventory.me.useQuery(undefined, { enabled: reachable && !held && (DEMO_MODE || device.isSuccess) });
 
-  if ((!DEMO_MODE && authLoading) || (reachable && me.isLoading)) {
+  if ((!DEMO_MODE && authLoading) || (!DEMO_MODE && isAuthenticated && device.isLoading)) {
+    return <Frame><p role="status" className="text-[14px] ink-muted">{t("admin.loading")}</p></Frame>;
+  }
+
+  if (held) return <Frame><DeviceGate state={held} /></Frame>;
+
+  if (reachable && me.isLoading) {
     // Announced rather than only drawn: somebody on a screen reader arriving
     // mid-load otherwise lands on a page that says nothing at all.
     return <Frame><p role="status" className="text-[14px] ink-muted">{t("admin.loading")}</p></Frame>;

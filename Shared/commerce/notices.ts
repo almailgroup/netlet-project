@@ -59,6 +59,7 @@ export const NOTICE_KINDS = [
   "staff_fraud_order",
   "staff_fraud_review",
   "staff_fraud_referral",
+  "staff_device_request",
   "account_password_changed",
   "account_email_changed",
 ] as const;
@@ -130,6 +131,9 @@ export const NOTICE_RULES: Record<NoticeKind, NoticeRule> = {
   staff_fraud_order: { audience: "staff", preference: null, email: true, key: "notice.staffFraudOrder" },
   staff_fraud_review: { audience: "staff", preference: null, email: true, key: "notice.staffFraudReview" },
   staff_fraud_referral: { audience: "staff", preference: null, email: true, key: "notice.staffFraudReferral" },
+  /* A device asking for an administrator's rights, told to the owner alone,
+     who decides (`Shared/auth/adminDevice.ts`). Never silenced. */
+  staff_device_request: { audience: "staff", preference: null, email: true, key: "notice.staffDeviceRequest" },
   /* A change to how the account is signed into (on the owner's word: "account
      and security" notifications stay on). Never silenced: it is how somebody
      learns that a password they did not change was changed. */

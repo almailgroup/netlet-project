@@ -133,5 +133,7 @@ export function portalSideFor(actor: Actor | null | undefined): PortalSide | nul
   if (!actor) return null;
   if (actor.kind === "admin") return "admin";
   if (actor.kind === "vendor" || actor.kind === "courier") return "vendor";
-  return actor.grants?.length ? "admin" : null;
+  /* Rights held back on a device not authorised still belong on the admin
+     portal: that is where the device is authorised. */
+  return actor.grants?.length || actor.adminLocked ? "admin" : null;
 }

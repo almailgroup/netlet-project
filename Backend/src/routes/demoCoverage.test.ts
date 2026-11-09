@@ -52,6 +52,16 @@ const NOT_IN_DEMO = new Set([
   // The demo is one address with no portals of its own to hand a sign-in on to.
   "auth.portalPass",
   "auth.portalHandoff",
+  // Authorised devices are a real administrator's real devices: the demo's
+  // portal has no sign-in and no owner, and never asks.
+  "devices.access",
+  "devices.request",
+  "devices.codeStart",
+  "devices.codeVerify",
+  "devices.desk",
+  "devices.waiting",
+  "devices.decide",
+  "devices.rename",
 ]);
 
 describe("demo mode", () => {

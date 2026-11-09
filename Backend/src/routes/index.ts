@@ -3,6 +3,7 @@ import { mediaRouter } from "./media.js";
 import { subscriptionsRouter } from "./subscriptions.js";
 import { supportRouter } from "./support.js";
 import { notificationsRouter } from "./notifications.js";
+import { devicesRouter } from "./devices.js";
 import { tryOnRouter } from "./tryOn.js";
 import { guidesRouter } from "./guides.js";
 import { fulfilmentRouter } from "./fulfilment.js";
@@ -40,6 +41,7 @@ export const appRouter = router({
   subscriptions: subscriptionsRouter,
   support: supportRouter,
   notifications: notificationsRouter,
+  devices: devicesRouter,
   tryOn: tryOnRouter,
   guides: guidesRouter,
   fulfilment: fulfilmentRouter,

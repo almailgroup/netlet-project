@@ -67,6 +67,7 @@ import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { usePortalDoor } from "@/hooks/usePortalDoor";
 import { portalSideFor } from "@shared/portal";
+import { adminHeldBack } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   Bell,
@@ -326,7 +327,9 @@ export function AccountHome({ user, has, badge, onSignOut }: {
 function SellerEntry() {
   const { t } = useTranslation();
   const me = trpc.inventory.me.useQuery(undefined, { staleTime: 10 * 60 * 1000, retry: false });
-  const seller = Boolean(me.data && me.data.kind !== "customer");
+  /* An administrator on a device not yet authorised is still taken to the
+     admin portal, which is where the device is authorised. */
+  const seller = Boolean(me.data && (me.data.kind !== "customer" || adminHeldBack(me.data)));
   const store = trpc.inventory.myStore.useQuery(undefined, { enabled: me.data?.kind === "vendor", staleTime: 10 * 60 * 1000, retry: false });
   /* The portal is on its own address, not the shop's (`usePortalDoor`). */
   const door = usePortalDoor();

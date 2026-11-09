@@ -1,12 +1,11 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import type { User } from "../../database/schema.js";
-import { authenticateRequest } from "./auth.js";
+import { authenticateRequest, type SessionUser } from "./auth.js";
 import { throttledAs, type Throttled } from "./security.js";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
-  user: User | null;
+  user: SessionUser | null;
   /** Over a ceiling (`security.ts`): the base procedure refuses it before anything runs. */
   throttled?: Throttled;
 };

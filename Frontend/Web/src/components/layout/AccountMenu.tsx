@@ -30,6 +30,7 @@ import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import { usePortalDoor } from "@/hooks/usePortalDoor";
 import { portalSideFor } from "@shared/portal";
+import { adminHeldBack } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NoticeDot } from "@/components/ui/CountBadge";
@@ -66,7 +67,7 @@ export function AccountMenu() {
 
   /* Cached hard and asked only when signed in: the same read the account page's Selling section makes. */
   const me = trpc.inventory.me.useQuery(undefined, { enabled: isAuthenticated, staleTime: 10 * 60 * 1000, retry: false });
-  const portal: MessageKey | null = me.data?.kind === "admin" ? "header.menuAdmin" : me.data?.kind === "vendor" ? "header.menuSeller" : null;
+  const portal: MessageKey | null = me.data?.kind === "admin" || adminHeldBack(me.data) ? "header.menuAdmin" : me.data?.kind === "vendor" ? "header.menuSeller" : null;
   /* Above the early returns, with every other hook (`hookOrder.test.ts`). */
   const signals = useAccountSignals();
   const door = usePortalDoor();

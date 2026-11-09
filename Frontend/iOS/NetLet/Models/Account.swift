@@ -117,6 +117,12 @@ struct SellerIdentity: Decodable, Hashable, Sendable {
     var courierId: Int? = nil
     /// Capabilities an administrator granted this account on their own (3.3.9).
     var grants: [String]? = nil
+    /// The shop's owner (`OWNER_EMAIL`), who alone decides which devices may
+    /// carry an administrator's rights.
+    var owner: Bool? = nil
+    /// An administrator's rights, or a grant, held back because this install
+    /// is not one the owner authorised (`Shared/auth/adminDevice.ts`).
+    var adminLocked: Bool? = nil
 
     /// Somebody who belongs to a store.
     var isStoreMember: Bool { kind == "vendor" && vendorId != nil }

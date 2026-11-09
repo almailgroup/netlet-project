@@ -175,6 +175,11 @@
           "need": "platform.manageUsers"
         },
         {
+          "href": "/admin/devices",
+          "label": "devices.title",
+          "need": "platform.devices"
+        },
+        {
           "href": "/admin/audit",
           "label": "admin.audit",
           "need": "platform.viewAll"
@@ -230,6 +235,7 @@
     "platform.viewAll",
     "platform.manageUsers",
     "platform.configure",
+    "platform.devices",
     "affiliate.manage",
     "payouts.record",
     "support.answer",

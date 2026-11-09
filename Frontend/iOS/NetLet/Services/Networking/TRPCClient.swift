@@ -103,6 +103,12 @@ final class TRPCClient: Sendable {
             }
         }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        /* This install's device secret, once an administrator has signed in
+           here: their rights hold in the app only on an install the owner
+           authorised (`AdminDeviceSecret`). A shopper's requests carry none. */
+        if AdminDeviceSecret.shared.enabled, let device = AdminDeviceSecret.shared.value {
+            request.setValue(device, forHTTPHeaderField: AdminDeviceSecret.header)
+        }
         return request
     }
 

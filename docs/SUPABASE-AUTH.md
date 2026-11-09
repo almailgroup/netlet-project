@@ -292,7 +292,9 @@ account, so it cannot be used to find out who is registered.
 
 One setting makes it work. **Authentication → Emails → Magic Link** is the
 email Supabase sends for it, and its default is a link, not a code: the
-template has to print `{{ .Token }}`, as the sign-up's does. An address whose
+template has to print `{{ .Token }}`, as the sign-up's does. The same mail
+carries the code the shop's owner authorises a new device for NetLet Admin
+with, so without it the owner cannot get a first device in. An address whose
 own sign-up code never came back gets the **Confirm signup** email instead,
 which the step above already fixed.
 

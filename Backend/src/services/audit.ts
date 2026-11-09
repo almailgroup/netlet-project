@@ -96,6 +96,13 @@ export const AUDIT_ACTIONS = [
      driver collects before and after. The order keeps no history of its own. */
   "order.shopperChange",
   "order.shopperAddress",
+  /* A device asking for an administrator's rights, and the owner's answer
+     (`Shared/auth/adminDevice.ts`): who may use the admin panel, and from where. */
+  "device.request",
+  "device.approve",
+  "device.deny",
+  "device.revoke",
+  "device.rename",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -109,7 +116,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "return" | "proposal" | "order";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "return" | "proposal" | "order" | "device";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;

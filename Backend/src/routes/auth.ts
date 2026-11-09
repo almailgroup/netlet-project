@@ -68,6 +68,9 @@ import {
 } from "../services/biometricKeys.js";
 import { BIOMETRIC_KEY_ID, DEVICE_NAME_MAX, biometricMessage } from "../../../Shared/auth/biometricKey.js";
 import { resolveActor } from "../services/inventory.js";
+import { DeviceError, adminSide, deviceRuleOn, noteDeviceSignIn, requestDevice, tellOwnerOfDevice } from "../services/adminDevices.js";
+import { DEVICE_HEADER, type DeviceAccess, type DeviceState } from "../../../Shared/auth/adminDevice.js";
+import { keepSecret } from "./devices.js";
 import { domainOfShopHost, isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
 import { recordReferral } from "../services/referral.js";
 import type { User } from "../../database/schema.js";
@@ -252,11 +255,55 @@ async function startSession(
   } else {
     ctx.res.cookie(COOKIE_NAME, await signSession(user.id), { ...getSessionCookieOptions(ctx.req), maxAge: SESSION_MAX_AGE_MS });
   }
+  const device = await registerAdminDevice(ctx, user);
   if (user.role === "admin") {
     await recordAudit(
       { id: user.id, email: user.email, role: "admin" },
-      { action: "admin.signIn", subjectType: "session", subjectId: user.id, subjectLabel: user.email, after: { address: ctx.req.ip ?? null, remembered: remember } },
+      {
+        action: "admin.signIn",
+        subjectType: "session",
+        subjectId: user.id,
+        subjectLabel: user.email,
+        after: { address: ctx.req.ip ?? null, remembered: remember, ...(device ? { device: device.name, deviceAccess: device.access } : {}) },
+      },
     );
+  }
+}
+
+/**
+ * The device an administrator — or a granted employee — signs in on, on the
+ * admin portal or in the app (`Shared/auth/adminDevice.ts`): a device NetLet
+ * has not seen asks for the account's rights, its secret is kept (the
+ * portal's cookie; the app sends its own), and the owner is told. Signing in
+ * never fails over it: a device the owner has not authorised is simply a
+ * shopper until they do, and the portal says so.
+ */
+async function registerAdminDevice(
+  ctx: { req: Parameters<typeof getSessionCookieOptions>[0] & RequestLike; res: { cookie: (name: string, value: string, options: object) => void } },
+  user: { id: number; email: string | null; role: string; name?: string | null },
+): Promise<{ name: string | null; access: DeviceAccess } | null> {
+  if (!deviceRuleOn()) return null;
+  const req = ctx.req as Parameters<typeof keepSecret>[0]["req"];
+  const fromApp = Boolean(req.headers?.[DEVICE_HEADER]);
+  const onAdminPortal = portalOfHost(hostOf(ctx.req), portalDomain(process.env.PORTAL_DOMAIN))?.side === "admin";
+  if (!fromApp && !onAdminPortal) return null;
+  try {
+    if (!(await adminSide(user))) return null;
+    const { token, created, row } = await requestDevice(user, req);
+    keepSecret({ req, res: ctx.res }, token);
+    await noteDeviceSignIn(user.id, token, ctx.req.ip ?? null);
+    if (created) {
+      await tellOwnerOfDevice(user, row);
+      await recordAudit(
+        { id: user.id, email: user.email, role: user.role },
+        { action: "device.request", subjectType: "device", subjectId: row.id, subjectLabel: `${user.email ?? user.id} · ${row.name ?? ""}`, after: { address: ctx.req.ip ?? null, device: row.name } },
+      );
+    }
+    return { name: row.name, access: row.status === "approved" ? "trusted" : (row.status as Exclude<DeviceState, "approved">) };
+  } catch (error) {
+    if (error instanceof DeviceError) return { name: null, access: "closed" };
+    console.error(`[devices] could not note the device of a sign-in: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
   }
 }
 
@@ -1298,7 +1345,9 @@ export const authRouter = router({
    * points that would go with it — read by "Your profile" before anybody
    * presses Delete (`services/accountDeletion.ts`).
    */
-  deletionCheck: protectedProcedure.query(({ ctx }) => deletionCheck(ctx.user)),
+  /* The account's own role, not the one a device not authorised reads it as:
+     an administrator is still one for whether the account may be deleted. */
+  deletionCheck: protectedProcedure.query(({ ctx }) => deletionCheck({ ...ctx.user, role: ctx.user.adminDevice?.lockedRole ?? ctx.user.role })),
 
   /**
    * Deletes the signed-in account, for good, on the owner's word. Asks for

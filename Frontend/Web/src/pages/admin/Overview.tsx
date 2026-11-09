@@ -97,6 +97,8 @@ function Overview({ actor }: { actor: Actor }) {
   const fraudAlerts = trpc.orders.fraudUnseen.useQuery(undefined, { enabled: can(actor, "platform.viewAll") });
   /* Product reviews the automatic check left for a person: the fraud desk's "Waiting" view. */
   const waitingReviews = trpc.reviews.waitingCount.useQuery(undefined, { enabled: actor.kind === "admin" });
+  /* Devices asking for an administrator's rights, waiting on the owner alone. */
+  const waitingDevices = trpc.devices.waiting.useQuery(undefined, { enabled: can(actor, "platform.devices") });
 
   if (isCourier) {
     return (
@@ -132,6 +134,7 @@ function Overview({ actor }: { actor: Actor }) {
    * Mixing the two teaches people to stop reading the row.
    */
   const waiting: Tile[] = [
+    { label: "devices.waitingTile" as const, value: waitingDevices.data ?? 0, href: "/admin/devices", tone: "urgent" as const },
     { label: "admin.applications" as const, value: waitingApplications.data ?? 0, href: "/admin/applications", tone: "urgent" as const },
     ...(mayReview ? [{ label: "admin.countPendingReview" as const, value: data.pendingReview, href: "/admin/review", tone: "urgent" as const }] : []),
     ...(maySeeVendors ? [{ label: "admin.countVendorsPending" as const, value: data.vendorsPending, href: "/admin/vendors", tone: "urgent" as const }] : []),

@@ -1,0 +1,22 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "signedIn": true,
+        "rule": true,
+        "applies": true,
+        "access": "trusted",
+        "owner": true,
+        "deviceName": "NetLet app on iPhone",
+        "requestedAt": "2026-11-02T08:14:03.512Z"
+      },
+      "meta": {
+        "values": {
+          "requestedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

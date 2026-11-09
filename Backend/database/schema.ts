@@ -1414,6 +1414,43 @@ export const biometricKeys = pgTable(
 );
 
 /**
+ * The devices allowed to use an administrator's rights (`Shared/auth/adminDevice.ts`),
+ * on the owner's word: "only authorised devices get access to the admin panel
+ * … I want it to be under my control". One row per account and device — a
+ * browser on the admin portal or an install of the iPhone app — holding the
+ * SHA-256 of a secret only that device keeps (an httpOnly cookie, or the
+ * app's Keychain), so a stolen database row authorises nothing. A row is
+ * `pending` until the owner decides; `approved` is the one state that carries
+ * rights. Gone with the account.
+ */
+export const adminDevices = pgTable(
+  "admin_devices",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull(),
+    name: varchar("name", { length: 80 }),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    requestedIp: varchar("requested_ip", { length: 64 }),
+    approvedBy: integer("approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedHow: varchar("approved_how", { length: 16 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    lastSignInAt: timestamp("last_sign_in_at", { withTimezone: true }),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    lastIp: varchar("last_ip", { length: 64 }),
+  },
+  table => [
+    uniqueIndex("admin_devices_user_token_unique").on(table.userId, table.tokenHash),
+    check("admin_devices_status_check", sql`${table.status} in ('pending', 'approved', 'denied', 'revoked')`),
+  ],
+);
+
+export type AdminDevice = typeof adminDevices.$inferSelect;
+
+/**
  * Where a driver is now (3.4.3) — one row per driver, overwritten, never a
  * trail. Written only while the driver has chosen to share from the dispatch
  * board, and deleted when they stop. The rules are `Shared/commerce/tracking.ts`.

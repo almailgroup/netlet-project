@@ -34,10 +34,10 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { privatePageMeta } from "@shared/seo";
 import { returnPath } from "@shared/auth/returnPath";
-import { PORTAL_SIDE } from "@/lib/portalHost";
+import { PORTAL_SIDE, shopHref } from "@/lib/portalHost";
 import { dropPortalPass, peekPortalPass } from "@/lib/portalPass";
 import { trpc } from "@/lib/trpc";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, ShieldX } from "lucide-react";
 
 export default function SignIn() {
   const { t } = useTranslation();
@@ -87,6 +87,16 @@ export default function SignIn() {
   }, [pass, spend]);
   const handingOff = Boolean(pass) && !passRefused;
 
+  /* On the admin portal a device the owner has not authorised is told so
+     first (`Shared/auth/adminDevice.ts`): the form is behind a press, for an
+     administrator asking for this device. */
+  const deviceCheck = trpc.devices.access.useQuery(undefined, { enabled: PORTAL_SIDE === "admin" && !DEMO_MODE && !handingOff });
+  const [askToSignIn, setAskToSignIn] = useState(false);
+  /* A check that could not be answered refuses too: the card's own button is
+     the way to the form, so nobody is shut out, and nobody is let past by an error. */
+  const refused = PORTAL_SIDE === "admin" && !askToSignIn && (deviceCheck.isError || (deviceCheck.data && !deviceCheck.data.signedIn && deviceCheck.data.rule && !deviceCheck.data.known));
+  const checkingDevice = PORTAL_SIDE === "admin" && !DEMO_MODE && !handingOff && deviceCheck.isLoading;
+
   /* Nothing to sign into twice. */
   useEffect(() => {
     if (!loading && isAuthenticated && !handingOff) navigate(next, { replace: true });
@@ -126,14 +136,20 @@ export default function SignIn() {
                 {t("auth.portalPassRefused")}
               </p>
             ) : null}
-            <AuthScreen
-              mode={mode}
-              onModeChange={changeMode}
-              onDone={() => navigate(next, { replace: true })}
-              heading="h1"
-              autoFocus
-              portal={PORTAL_SIDE}
-            />
+            {checkingDevice ? (
+              <p role="status" className="mx-auto max-w-[400px] py-16 text-center text-[15px] ink-muted">{t("admin.loading")}</p>
+            ) : refused ? (
+              <DeviceRefusal onSignIn={() => setAskToSignIn(true)} />
+            ) : (
+              <AuthScreen
+                mode={mode}
+                onModeChange={changeMode}
+                onDone={() => navigate(next, { replace: true })}
+                heading="h1"
+                autoFocus
+                portal={PORTAL_SIDE}
+              />
+            )}
           </>
         )}
       </main>
@@ -142,3 +158,25 @@ export default function SignIn() {
   );
 }
 
+/**
+ * What a browser the owner has not authorised meets on the admin portal:
+ * that it is not one, and, for an administrator, the way to ask.
+ */
+function DeviceRefusal({ onSignIn }: { onSignIn: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <section aria-labelledby="device-refused" className="mx-auto w-full max-w-md rounded-3xl border border-[#e1e7ef] bg-white px-6 py-8 shadow-[0_18px_50px_-30px_rgba(10,40,90,.45)] sm:px-8">
+      <span className="grid size-12 place-items-center rounded-full bg-[#fdecec] text-[#b42318]" aria-hidden>
+        <ShieldX className="size-6" />
+      </span>
+      <h1 id="device-refused" className="mt-4 text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("devices.refusedTitle")}</h1>
+      <p className="mt-2 text-[15px] leading-6 text-[#3d5170]">{t("devices.refusedBody")}</p>
+      <button type="button" onClick={onSignIn} className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#0a285a] px-5 text-[15px] font-semibold text-white hover:bg-[#0d3372]">
+        {t("devices.refusedSignIn")}
+      </button>
+      <a href={shopHref("/")} className="mt-3 flex min-h-11 w-full items-center justify-center text-[14px] font-semibold text-[#0a285a] underline underline-offset-4">
+        {t("admin.backToStore")}
+      </a>
+    </section>
+  );
+}

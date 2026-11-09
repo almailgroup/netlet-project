@@ -1,0 +1,11 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "kind": "customer",
+        "userId": 1,
+        "adminLocked": true
+      }
+    }
+  }
+}

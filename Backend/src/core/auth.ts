@@ -17,6 +17,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { BIOMETRIC_CHALLENGE_MS } from "../../../Shared/auth/biometricKey.js";
 import type { User } from "../../database/schema.js";
 import { getUserById } from "../services/db.js";
+import { gateAdminRights, type AdminDeviceClaim } from "../services/adminDevices.js";
 import { ENV } from "./env.js";
 
 const ISSUER = "netlet";
@@ -133,12 +134,21 @@ export async function verifyFaceChallenge(token: string): Promise<{ keyId: strin
   }
 }
 
+/**
+ * A signed-in user as a request sees them: the account, and what the device
+ * the request came from may do with it (`services/adminDevices.ts`). An
+ * administrator on a device the owner has not authorised is read as a
+ * shopper for that request.
+ */
+export type SessionUser = User & { adminDevice?: AdminDeviceClaim };
+
 /** Reads the session cookie and resolves the current user, or null. */
-export async function authenticateRequest(req: Request): Promise<User | null> {
+export async function authenticateRequest(req: Request): Promise<SessionUser | null> {
   // Parsed here rather than via cookie-parser: the app registers no such
   // middleware, and `cookie` is already a dependency.
   const token = parseCookies(req.headers.cookie ?? "")[COOKIE_NAME];
   const userId = await verifySession(token);
   if (userId === null) return null;
-  return (await getUserById(userId)) ?? null;
+  const user = await getUserById(userId);
+  return user ? gateAdminRights(user, req) : null;
 }

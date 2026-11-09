@@ -20,11 +20,12 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 75 tables, 793 columns, 138 indexes, 174 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 76 tables, 806 columns, 139 indexes, 176 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('ad_bookings', 'banner_headline,banner_headline_ar,banner_media_id,banner_note,banner_reviewed_at,banner_reviewed_by,banner_status,booked_by,cancelled_by,cancelled_on,category_id,created_at:nd,daily_rate:n,ends_on:n,id:pnd,product_id,product_title:n,slot:n,starts_on:n,total:n,vendor_id:n', 'ad_bookings_slot_idx,ad_bookings_vendor_idx', 'banner_media_id>media_files:n,banner_reviewed_by>users:n,booked_by>users:n,cancelled_by>users:n,category_id>categories:n,product_id>products:n,vendor_id>vendors:c'),
+  ('admin_devices', 'approved_by,approved_how,created_at:nd,decided_at,id:pnd,last_ip,last_seen_at,last_sign_in_at,name,requested_ip,status:nd,token_hash:n,user_id:n', 'admin_devices_user_token_unique:u', 'approved_by>users:n,user_id>users:c'),
   ('affiliates', 'channel,created_at:nd,decided_at,decided_by,disclosure_accepted_at:n,display_name:n,id:pnd,rate_percent:nd,status:nd,user_id:n', 'affiliates_status_idx,affiliates_user_unique:u', 'decided_by>users:n,user_id>users:c'),
   ('application_documents', 'application_id:n,byte_size:n,bytes:n,content_type:n,created_at:nd,file_name:n,id:pnd,kind:n,review_note,reviewed_at,reviewed_by,sha256:n,status:nd,uploaded_by', 'application_documents_application_idx', 'application_id>vendor_applications:c,reviewed_by>users:n,uploaded_by>users:n'),
   ('audit_log', 'action:n,actor_email,actor_id,actor_role,after,authorised_by_email,authorised_by_id,before,created_at:nd,id:pnd,subject_id,subject_label,subject_type:n,vendor_id', 'audit_log_action_idx,audit_log_actor_idx,audit_log_created_idx,audit_log_subject_idx', 'actor_id>users:n,authorised_by_id>users:n,vendor_id>vendors:n'),
@@ -248,7 +249,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 75 tables' AS object,
+    count(*) || ' of 76 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -262,7 +263,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 75 tables, 793 columns, 138 indexes, 174 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 76 tables, 806 columns, 139 indexes, 176 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

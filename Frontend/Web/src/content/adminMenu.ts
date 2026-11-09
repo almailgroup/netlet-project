@@ -68,6 +68,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     { href: "/admin/vendors", label: "admin.vendors", need: "platform.viewAll" },
     { href: "/admin/applications", label: "admin.applications", need: "platform.manageUsers" },
     { href: "/admin/people", label: "admin.people", need: "platform.manageUsers" },
+    /* Which devices may carry an administrator's rights: the owner's alone. */
+    { href: "/admin/devices", label: "devices.title", need: "platform.devices" },
     { href: "/admin/audit", label: "admin.audit", need: "platform.viewAll" },
     /* Reviews and referrals that do not look like a shopper's own (3.6.5); orders carry their own flags. */
     { href: "/admin/fraud", label: "fraud.title", need: "platform.viewAll" },

@@ -6172,6 +6172,67 @@ not carried it.
   shop's product; `route-preload.js` maps the path the same way, and so does
   `routeData`.
 
+**An administrator's rights hold only on a device the owner authorised, on
+the owner's word** ("only authorised devices get access to the admin panel …
+let me choose the authorised devices and later on … revoke access … under my
+control, to check who is signed in and when"; migration 0079,
+`admin_devices`; `Shared/auth/adminDevice.ts` the rule,
+`services/adminDevices.ts` the database half, `routes/devices.ts`). IP
+addresses were offered first and set aside: a phone on mobile data has a new
+one every hour, and the owner asked for devices.
+
+- **A device is a secret only it keeps**: the admin portal's httpOnly cookie
+  (`netlet_admin_device`, host-only, kept through a sign-out), or the app's
+  Keychain (`AdminDeviceSecret`, sent in `X-NetLet-Device` only once an
+  account on the install has turned out to be an administrator's, so a
+  shopper's requests carry nothing). NetLet keeps its SHA-256, one row per
+  account and device (`(user_id, token_hash)` unique), so one browser can
+  hold two administrators' devices.
+- **Every request decides it again** (`gateAdminRights`, in
+  `authenticateRequest`, the one door every request's user passes): an
+  administrator on any device not `approved` is read as a shopper for that
+  request — `role: "user"`, so `adminProcedure`, `resolveActor`, the error
+  formatter and an invoice answer as they do for a shopper without knowing
+  devices exist — and `resolveActor` drops an employee's grants the same way
+  (`grantsHold`). The actor carries `adminLocked`, so the shop's doors still
+  lead to the admin portal (`portalSideFor`, `adminHeldBack`), which is
+  where the device is authorised. A password alone opens nothing, on any
+  address, the iPhone app included.
+- **A new device asks by signing in**: on the admin portal or in the app,
+  `startSession` makes a `pending` row (`registerAdminDevice`), keeps the
+  secret and tells the owner (`staff_device_request`, never silenced, by email
+  too where configured) — their own account included, since a device they do
+  not recognise asking for it is somebody holding their password. The admin
+  portal then draws `DeviceGate` and nothing else, asking every five seconds,
+  and opens by itself on the owner's yes; a signed-out browser no device of
+  which is authorised meets "This device isn't authorised for NetLet Admin"
+  before the form (`devices.access`'s `known`). A device turned down or
+  removed cannot ask again; only the owner allows it again.
+- **The owner's own device is authorised by a code emailed to the owner**
+  (`devices.codeStart`/`codeVerify`: Supabase's "Magic Link" mail, the
+  sign-in code's, or the server log with no Supabase), which is how the first
+  one gets in — password and inbox together.
+- **The Devices page is the owner's alone** (`/admin/devices`,
+  `platform.devices`, which `can()` grants only to the admin actor marked
+  `owner`, and only on a device already authorised, since anywhere else the
+  owner is a shopper too): what waits, with Approve and Turn down; what is
+  authorised, with who, when and how, the last sign-in, last active (written
+  at most once a minute) and the address, with Rename and Remove (asked first,
+  and said when it is the device being read on); what was turned down or
+  removed, with Allow again; and the recent sign-ins to the admin side from
+  the audit trail (`admin.signIn` now records the device and whether it was
+  authorised). Each move names the state it leaves in its predicate and is
+  on the trail (`device.request`, `.approve`, `.deny`, `.revoke`, `.rename`).
+  The overview has the waiting tile; the app's portal is the same page
+  (`PortalDevicesView`, `DeviceGateView`).
+- **It fails closed, and has one way off.** No secret, a secret NetLet does
+  not hold, any state but `approved`, the table missing (before 0079 is
+  pasted, when the gate says so) and a read that failed are all "not
+  authorised"; with no `OWNER_EMAIL` there is nobody to approve and no rule.
+  `ADMIN_DEVICES=off` in Vercel turns it off for the day the owner is locked
+  out — somebody who can change that already owns the deployment.
+  `devices.test.ts` holds each of these against a real Postgres.
+
 Measured on a production build with `PORTAL_DOMAIN=netlet.localhost` (Chrome
 resolves `*.localhost` itself and does not upgrade it): signed-out `/orders`
 offers the sign-in and lands on Orders after it, every menu link drew without
@@ -7677,9 +7738,10 @@ one-time code's choice and step, then 947 KB (273 KB), the iPhone's
 Face ID words in both languages (every `ios.*` key ships in the one
 dictionary), then 954 KB (276 KB), choosing what to check out and the
 photo's glass and typed count, then 958 KB (276 KB), My orders'
-filters and the compact profile's words, and is 959 KB (277 KB) now,
-Saved items and wishlists, the history's selection and the haptics
-switch, nearly
+filters and the compact profile's words, then 959 KB (277 KB), Saved
+items and wishlists, the history's selection and the haptics switch, and
+is 970 KB (278 KB) now, the authorised devices' words in both languages,
+nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the
