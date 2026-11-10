@@ -8935,7 +8935,18 @@ more than a quarter of a second in the first half minute. A 1×1 element
 ("scroll-trace") hands it to the test, which writes it into the failure
 after the three drags and after the fourth. A trace with no "interacting"
 says the drags never reached the scroll; one that left the top and came back
-says something put it back; a held main thread says the app was busy.
+says something put it back; a held main thread says the app was busy. **The
+seventh sighting answered the first question** (run 42743392242, the Arabic
+home page): the drags did reach the scroll — interacting, decelerating, idle,
+three times — and the page left its top and went 1,376 points down, yet after
+the third drag it was back at the top, and no jump back was noted. Either it
+glided back in steps too small for the note (which watched only the step
+before), or the note fell past where XCTest cut the trace off: **XCTest reads at
+most 512 characters of an element's value**. So the trace is now handed over in
+eight pieces (`scroll-trace`, `scroll-trace-1` …), a return to the top is noted
+however it came, and it also notes where each phase began, content-height
+changes over 100 points, the tab bar going and coming, the search row taking the
+top, the logo's scroll to the top and each change of the hero's picture.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the

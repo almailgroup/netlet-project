@@ -106,6 +106,7 @@ struct ShopPage<Content: View>: View {
                         if header && logo {
                             LogoRow(back: back, reach: logoReaches ? statusBar : 0) {
                                 if root && app.selectedTab == .home {
+                                    ScrollTrace.note("logo to top")
                                     withAnimation(.easeInOut(duration: 0.35)) { proxy.scrollTo(ShopPageTop.id, anchor: .top) }
                                 } else {
                                     app.goHome()
@@ -143,7 +144,7 @@ struct ShopPage<Content: View>: View {
         .overlay(alignment: .topLeading) {
             // What the scroll did, for a UI test that finds it standing still.
             if UITestHooks.on {
-                ScrollTraceMarker().frame(width: 1, height: 1).allowsHitTesting(false)
+                ScrollTraceMarker().allowsHitTesting(false)
             }
         }
         .overlay(alignment: .bottomTrailing) {
@@ -217,11 +218,15 @@ struct ShopPage<Content: View>: View {
     private func follow(_ place: ScrollPlace) {
         ScrollTrace.scrolled(to: place.y, height: place.height, viewport: place.viewport)
         let atTop = place.y > ShopPageTop.logoHandover
-        if atTop != searchAtTop { searchAtTop = atTop }
+        if atTop != searchAtTop {
+            ScrollTrace.note(atTop ? "search row on top" : "logo row on top")
+            searchAtTop = atTop
+        }
         let next = scroll.state.next(y: place.y, viewport: place.viewport, height: place.height)
         scroll.state = next
         let away = next.away && !voiceOver
         guard away != barAway else { return }
+        ScrollTrace.note(away ? "bar away" : "bar back")
         let motion: Animation? = still ? nil : .smooth(duration: 0.38)
         withAnimation(motion) { barAway = away }
         if let ride = TabBarSlide.slide(away: away, animated: !still) {

@@ -181,6 +181,7 @@ struct HomeHero: View {
             // Decoded before it is shown, so its fade has a picture to fade.
             _ = WebAssets.image(slides[next])
             previous = current
+            ScrollTrace.note("slide \(next)")
             withAnimation(.easeInOut(duration: 1)) { current = next }
         }
     }

@@ -139,9 +139,18 @@ final class ScrollingUITests: XCTestCase {
     /// whether a drag ever reached it ("phase interacting"), whether it left
     /// its top and was put back, when the shelves arrived, and when the main
     /// thread was held.
+    /// The app hands it over in pieces (`ScrollTraceMarker`), since XCTest
+    /// reads at most 512 characters of one element's value — which cut the
+    /// first full trace off just before the page went back to its top.
     private func trace(_ app: XCUIApplication) -> String {
-        let marker = app.descendants(matching: .any).matching(identifier: "scroll-trace").firstMatch
-        return ((try? marker.snapshot())?.value as? String) ?? "no trace"
+        var whole = ""
+        for index in 0..<8 {
+            let name = index == 0 ? "scroll-trace" : "scroll-trace-\(index)"
+            let piece = app.descendants(matching: .any).matching(identifier: name).firstMatch
+            guard let value = (try? piece.snapshot())?.value as? String, !value.isEmpty else { break }
+            whole += value
+        }
+        return whole.isEmpty ? "no trace" : whole
     }
 
     /// What was in the way, for a failure to say why a page did not move. The
