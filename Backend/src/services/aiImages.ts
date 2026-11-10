@@ -29,6 +29,12 @@ import {
   guidePicturePrompt,
   tryOnFits,
 } from "../../../Shared/commerce/aiImages.js";
+import {
+  MAX_SUBCATEGORY_PICTURES_PER_HOUR,
+  SUBCATEGORY_PICTURE_SYSTEM,
+  findSubcategory,
+  subcategoryPicturePrompt,
+} from "../../../Shared/commerce/subcategoryPictures.js";
 import { sniffRemoteImage, MAX_REMOTE_IMAGE_BYTES } from "../../../Shared/commerce/manufacturerImages.js";
 import { can, type Actor } from "../../../Shared/inventory/permissions.js";
 import { featureOn } from "./features.js";
@@ -47,7 +53,8 @@ export type DrawingProblem =
   | "drawing.failed"
   | "tryOn.notFound"
   | "tryOn.notWearable"
-  | "tryOn.noProductPhoto";
+  | "tryOn.noProductPhoto"
+  | "subcategoryPictures.notFound";
 
 export class DrawingRefused extends Error {
   constructor(readonly reason: DrawingProblem) {
@@ -76,7 +83,7 @@ function drawnFrom(answer: GenerateAnswer | null): Drawn {
   return { type: type as ImageType, bytes };
 }
 
-async function draw(task: "photoCleanup" | "tryOn" | "guideImage", call: { system: string; prompt: string; image: CatalogImage | null; images?: CatalogImage[] }): Promise<Drawn> {
+async function draw(task: "photoCleanup" | "tryOn" | "guideImage" | "subcategoryImage", call: { system: string; prompt: string; image: CatalogImage | null; images?: CatalogImage[] }): Promise<Drawn> {
   const answer = await askModelFor(task, {
     system: call.system,
     prompt: call.prompt,
@@ -192,5 +199,23 @@ export async function drawGuidePicture(actor: Actor, step: { title: string; body
   if (!(await drawingAvailable())) throw new DrawingRefused("drawing.off");
   if (!(await takeHourlyAllowance(actor.userId, "guideDraw", MAX_GUIDE_PICTURES_PER_HOUR))) throw new DrawingRefused("drawing.tooMany");
   const drawn = await draw("guideImage", { system: GUIDE_PICTURE_SYSTEM, prompt: guidePicturePrompt(step), image: null });
+  return { mimeType: drawn.type, data: drawn.bytes.toString("base64") };
+}
+
+/* ------------------------------------------------ subcategory pictures --- */
+
+/**
+ * A picture for one subcategory, in the style of its department's own art
+ * (`reference`, sent by the page that asks), for the administrator choosing
+ * one (`Shared/commerce/subcategoryPictures.ts`). Handed back, never kept here.
+ */
+export async function drawSubcategoryPicture(actor: Actor, department: string, slug: string, reference: CatalogImage | null): Promise<CatalogImage> {
+  if (!can(actor, "platform.configure")) throw new DrawingRefused("media.notAllowed");
+  const subcategory = findSubcategory(department, slug);
+  if (!subcategory) throw new DrawingRefused("subcategoryPictures.notFound");
+  const style = reference ? asImage(Buffer.from(reference.data, "base64")) : null;
+  if (!(await drawingAvailable())) throw new DrawingRefused("drawing.off");
+  if (!(await takeHourlyAllowance(actor.userId, "subcatDraw", MAX_SUBCATEGORY_PICTURES_PER_HOUR))) throw new DrawingRefused("drawing.tooMany");
+  const drawn = await draw("subcategoryImage", { system: SUBCATEGORY_PICTURE_SYSTEM, prompt: subcategoryPicturePrompt(department, subcategory), image: style });
   return { mimeType: drawn.type, data: drawn.bytes.toString("base64") };
 }

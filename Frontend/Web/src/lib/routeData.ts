@@ -93,6 +93,7 @@ export function prefetchRouteData(
   /* The Categories page opens each department onto its subcategories' counts. */
   if (/^\/categories\/?$/.test(path)) {
     ask(utils.commerce.subcategoryCounts.prefetch());
+    ask(utils.subcategoryPictures.list.prefetch());
     /* Whether "Shop by brand" is drawn at all. */
     ask(utils.commerce.brands.prefetch());
   }

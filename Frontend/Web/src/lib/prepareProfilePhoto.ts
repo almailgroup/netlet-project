@@ -19,6 +19,15 @@ function encode(canvas: HTMLCanvasElement, type: string, quality: number): Promi
 }
 
 export async function prepareProfilePhoto(file: Blob): Promise<PreparedProfilePhoto | "media.notAnImage" | "media.tooLarge"> {
+  return prepareSquare(file, PROFILE_PHOTO_EDGE, MAX_PROFILE_PHOTO_BYTES);
+}
+
+/**
+ * The largest square a picture holds, from its centre, at `edgeMax` or its
+ * own size when smaller (never under the upload floor), re-encoded under
+ * `maxBytes` — the profile photo's, and a subcategory's picture.
+ */
+export async function prepareSquare(file: Blob, edgeMax: number, maxBytes: number): Promise<PreparedProfilePhoto | "media.notAnImage" | "media.tooLarge"> {
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file);
@@ -26,7 +35,7 @@ export async function prepareProfilePhoto(file: Blob): Promise<PreparedProfilePh
     return "media.notAnImage";
   }
   const side = Math.min(bitmap.width, bitmap.height);
-  const edge = Math.max(MIN_EDGE, Math.min(side, PROFILE_PHOTO_EDGE));
+  const edge = Math.max(MIN_EDGE, Math.min(side, edgeMax));
   const canvas = document.createElement("canvas");
   canvas.width = edge;
   canvas.height = edge;
@@ -46,7 +55,7 @@ export async function prepareProfilePhoto(file: Blob): Promise<PreparedProfilePh
       blob = await encode(canvas, "image/jpeg", quality);
       type = "image/jpeg";
     }
-    if (blob && blob.size <= MAX_PROFILE_PHOTO_BYTES) return { blob, type, edge };
+    if (blob && blob.size <= maxBytes) return { blob, type, edge };
   }
   return "media.tooLarge";
 }

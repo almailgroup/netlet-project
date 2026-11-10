@@ -37,6 +37,11 @@
           "href": "/admin/review",
           "label": "admin.review",
           "need": "product.review"
+        },
+        {
+          "href": "/admin/subcategory-pictures",
+          "label": "subpics.title",
+          "need": "platform.configure"
         }
       ]
     },

@@ -57,6 +57,7 @@ import { appPath } from "@/lib/basePath";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
+import { pictureFor } from "@shared/commerce/subcategoryPictures";
 import { categoriesMeta } from "@shared/seo";
 
 export default function Categories() {
@@ -65,6 +66,8 @@ export default function Categories() {
   usePageChrome({ activeDepartment: null });
   const counts = trpc.commerce.departmentCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const subCounts = trpc.commerce.subcategoryCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
+  /* A kept picture stands in the row's tile; the outline icon where there is none. */
+  const pictures = trpc.subcategoryPictures.list.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = drawsDeals(shelvesFor(shelf.data ?? []));
 
@@ -170,6 +173,7 @@ export default function Categories() {
                 <SubcategoryRow
                   href={`${department}?sub=${entry.slug}`}
                   icon={<SubcategoryIcon icon={entry.icon} />}
+                  picture={pictureFor(pictures.data, chosen.slug, entry.slug)}
                   title={label}
                   note={subCounts.data ? countLine(count) : placeholder}
                   quiet={Boolean(subCounts.data) && count === 0}
@@ -220,9 +224,11 @@ function TileArt({ slug }: { slug: string }) {
 }
 
 /** One row of the list: its picture in a pale tile, its name, what it holds. */
-function SubcategoryRow({ href, icon, title, note, quiet = false }: {
+function SubcategoryRow({ href, icon, picture = null, title, note, quiet = false }: {
   href: string;
   icon: ReactNode;
+  /** The subcategory's kept picture (`/media/...`), drawn on white in place of the icon. */
+  picture?: string | null;
   title: string;
   note: ReactNode;
   /** Nothing in it yet: drawn lighter, still a link. */
@@ -233,7 +239,13 @@ function SubcategoryRow({ href, icon, title, note, quiet = false }: {
       href={href}
       className={`${CARD} cat-row flex min-h-[4.5rem] items-center gap-3 p-3 shadow-[0_1px_2px_rgba(10,40,90,.06)] hover:border-[#d5dfeb] hover:bg-[#f0f2f5]`}
     >
-      <span aria-hidden className={`grid size-12 shrink-0 place-items-center rounded-xl ${quiet ? "bg-[#f4f5f8] text-[#536b8c]" : "bg-[#eef1f6] text-[#0a285a]"}`}>{icon}</span>
+      {picture ? (
+        <span aria-hidden className={`grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e6e9ef] bg-white ${quiet ? "opacity-70" : ""}`}>
+          <img src={appPath(picture)} alt="" loading="lazy" decoding="async" width={56} height={56} className="size-full object-contain" />
+        </span>
+      ) : (
+        <span aria-hidden className={`grid size-12 shrink-0 place-items-center rounded-xl ${quiet ? "bg-[#f4f5f8] text-[#536b8c]" : "bg-[#eef1f6] text-[#0a285a]"}`}>{icon}</span>
+      )}
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-bold leading-tight text-[#0a285a]">{title}</span>
         <span className="mt-0.5 block text-[13px] leading-5 ink-muted">{note}</span>

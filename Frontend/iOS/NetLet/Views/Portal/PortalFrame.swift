@@ -12,6 +12,7 @@ enum PortalIcons {
         "/admin/import": "square.and.arrow.down.on.square",
         "/admin/bundles": "square.stack.3d.up",
         "/admin/review": "checklist",
+        "/admin/subcategory-pictures": "photo.on.rectangle.angled",
         "/admin/orders": "list.bullet.rectangle.portrait",
         "/admin/dispatch": "box.truck",
         "/admin/fulfilment": "archivebox",

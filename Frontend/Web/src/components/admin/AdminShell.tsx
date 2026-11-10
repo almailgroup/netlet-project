@@ -29,7 +29,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
-import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Images, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { isActiveHref, JumpButton, MenuDrawer, PageJump, Sidebar, useJumpShortcut, useRail, type FrameGroup } from "@/components/admin/frame";
 import { CopilotPanel } from "@/components/admin/CopilotPanel";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
@@ -71,6 +71,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin/import": <Upload className="size-4" />,
   "/admin/bundles": <Boxes className="size-4" />,
   "/admin/review": <ClipboardCheck className="size-4" />,
+  "/admin/subcategory-pictures": <Images className="size-4" />,
   "/admin/orders": <Receipt className="size-4" />,
   "/admin/dispatch": <Truck className="size-4" />,
   "/admin/fulfilment": <Warehouse className="size-4" />,

@@ -33,6 +33,7 @@ const REMEMBERED = new Set([
   "commerce.products.byHandle",
   "commerce.departmentCounts",
   "commerce.subcategoryCounts",
+  "subcategoryPictures.list",
   "commerce.bestsellers",
   "commerce.trending",
   "commerce.brands",

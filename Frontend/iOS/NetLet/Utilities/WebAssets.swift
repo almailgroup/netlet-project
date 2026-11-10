@@ -45,6 +45,16 @@ enum WebAssets {
     static func department(_ slug: String) -> UIImage? {
         manifest.departments[slug].flatMap(image)
     }
+
+    /// A department's art as its file's own bytes (WebP) — the style a
+    /// subcategory's picture is drawn to match (`PortalSubcategoryPicturesView`).
+    static func departmentFile(_ slug: String) -> Data? {
+        guard let name = manifest.departments[slug] else { return nil }
+        let ext = (name as NSString).pathExtension
+        let base = (name as NSString).deletingPathExtension
+        guard let path = Bundle.main.path(forResource: base, ofType: ext) else { return nil }
+        return FileManager.default.contents(atPath: path)
+    }
 }
 
 /// A bundled picture, or nothing at all when the file is missing — a gap is

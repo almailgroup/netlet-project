@@ -173,6 +173,8 @@ enum PortalPage: Hashable, Sendable {
     case couriers
     /// The owner's authorised devices (`Shared/auth/adminDevice.ts`).
     case devices
+    /// The pictures beside the subcategories on Categories (`subcategoryPictures.ts`).
+    case subcategoryPictures
 
     init?(_ href: String) {
         let parts = href.split(separator: "?", maxSplits: 1).map(String.init)
@@ -238,6 +240,7 @@ enum PortalPage: Hashable, Sendable {
             case "guides": self = .guides
             case "couriers": self = .couriers
             case "devices": self = .devices
+            case "subcategory-pictures": self = .subcategoryPictures
             default: return nil
             }
         default: return nil

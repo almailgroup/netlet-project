@@ -4572,10 +4572,11 @@ The inbox links to the settings.
 
 ## Drawing
 
-**The gateway can draw now**, and three things use it: a seller's photo put on
+**The gateway can draw now**, and four things use it: a seller's photo put on
 white beside the rule-fixed one (3.3.4, `/api/media/ai-clean`), a shopper
-wearing a garment from their own photo (3.1.8, `tryOn.make`), and a guide
-step's picture (3.5.3, `guides.picture`). `GenerateRequest` grew `images` (up
+wearing a garment from their own photo (3.1.8, `tryOn.make`), a guide
+step's picture (3.5.3, `guides.picture`), and a subcategory's picture in its
+department's style (`subcategoryPictures.draw`, see Browsing). `GenerateRequest` grew `images` (up
 to `MAX_GENERATE_IMAGES` after `image`), `search` (Google Search grounding,
 with the pages read returned as `sources`) and `output: "image"`, which the
 Worker sends to `GATEWAY_IMAGE_MODEL` (`gemini-2.5-flash-image`, IMAGE and
@@ -4589,7 +4590,7 @@ bytes checked, re-encoded, shrunk — and is uploaded only when a person picks
 it; a try-on is shown and kept nowhere. What comes back is a picture **by its
 own bytes** or `drawing.failed`, so an SVG wearing a PNG's name is refused.
 Each use is counted per account per hour in `auth_attempts` *before* the call
-(`takeHourlyAllowance`: `photoClean`, `tryOn`, `guideDraw`, `guideDraft`), and
+(`takeHourlyAllowance`: `photoClean`, `tryOn`, `guideDraw`, `guideDraft`, `subcatDraw`), and
 all of it is behind `ai` like every model call. The try-on also has its own
 switch, `tryOn`, off by default; only something in the Style department
 (`TRY_ON_DEPARTMENTS`), only a published product of an approved store, only
@@ -7212,6 +7213,40 @@ that is still. The app is the same (`DepartmentBrowser`): 108-point art, the
 chosen tile at 1.08 on a spring, scrolled to the middle as it is chosen, the
 rows rising in by `RiseIn` 40ms apart, every press `SpringPressStyle`, and
 Reduce Motion drawing each in place.
+
+**A subcategory's row carries a real picture once one is kept, on the
+owner's word** ("add real images for the subcategories, not just an
+outline"; `Shared/commerce/subcategoryPictures.ts` the rule,
+`services/subcategoryPictures.ts` the database half): the picture on white in
+a 56px tile where the outline icon stood, and the icon still where none is
+kept (`subcategoryPictures.list`, public, asked with the page, remembered with
+the shelves; the app's `DepartmentBrowser`). **They are drawn from the portal
+with NetLet's own gateway, on the owner's word** — offered a key of their own
+or this, they chose this: `/admin/subcategory-pictures`
+(`platform.configure`, the catalogue group; the app's
+`PortalSubcategoryPicturesView`) is one card a department and a tile a
+subcategory, showing what the shop shows now and, beside it, what was just
+drawn, which goes nowhere until Keep is pressed. "Draw the missing ones"
+draws every subcategory with no picture and none waiting, one after another,
+and stops on Stop or on a refusal that would refuse the next too (the hour's
+`MAX_SUBCATEGORY_PICTURES_PER_HOUR`, the gateway off); "Keep every drawn one"
+keeps what is waiting. **Each drawing is sent its department's own art as the
+style to match** (`subcategoryImage` in `SERVER_TASKS`, the art's own bytes
+from the page, checked by `asImage`), so the six tiles and the rows read as
+one set. What comes back is prepared like any photo — the square it is drawn
+in at `SUBCATEGORY_PICTURE_EDGE` (384, `prepareSquare`, the profile photo's
+helper; the app's `squareJPEG`) — and uploaded to `/media` only when kept; a
+picture can also be uploaded by hand, which is how the page works with no
+gateway. **Kept in `platform_settings`, one row a subcategory under
+`subpic:`**, rather than a table of its own: an administrator's choice for
+the whole shop, like the rates there, for thirty-seven paths — no migration,
+and `resolveSettings` ignores a key it does not know, so the rows never reach
+the settings page (`subcategoryPictures.test.ts`). Only one of NetLet's own
+uploads that exists, only for a subcategory the shop has, and on the trail
+(`subcategory.setPicture`). **Nothing has been drawn yet**: drawing needs
+the Worker deployed with the new task, and this sandbox cannot reach Google's
+model — the page, the upload, the keep, the row and the removal were walked
+against a local Postgres at 320, 390 and 1440 in both languages, axe clean.
 
 **On a phone, sort and filter are the owner's reference: a row of filter
 chips and a floating Sort | Filter pill** (a picture of a shop's results page:

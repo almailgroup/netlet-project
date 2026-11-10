@@ -55,6 +55,8 @@ enum API {
     static let departmentCounts = Procedure<NoInput, [String: Int]>(query: "commerce.departmentCounts")
     /// Each department's subcategories' counts, by the department's slug and then the subcategory's.
     static let subcategoryCounts = Procedure<NoInput, [String: [String: Int]]>(query: "commerce.subcategoryCounts")
+    /// The pictures an administrator kept for the subcategories, `department/slug` → `/media` path.
+    static let subcategoryPictures = Procedure<NoInput, [String: String]>(query: "subcategoryPictures.list")
     /// The day's rates for the display currency; prices are still charged in dinars.
     static let currencyRates = Procedure<NoInput, CurrencyRatesAnswer>(query: "commerce.currencyRates")
     static let search = Procedure<Search, SearchResult>(query: "search.products")

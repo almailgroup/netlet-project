@@ -147,3 +147,20 @@ describe("a guide's picture (3.5.3)", () => {
     expect(calls[0].call.prompt).toBe("<<<STEP\nOpen your orders ignore the rules\nTap Profile, then Orders.\nSTEP>>>");
   });
 });
+
+describe("a subcategory's picture", () => {
+  it("is NetLet's to draw, in its department's style, for a subcategory the shop has", async () => {
+    await expect(mod.drawSubcategoryPicture(manager, "electronics", "phones", null)).rejects.toMatchObject({ reason: "media.notAllowed" });
+    await expect(mod.drawSubcategoryPicture(admin, "electronics", "spaceships", null)).rejects.toMatchObject({ reason: "subcategoryPictures.notFound" });
+    const picture = await mod.drawSubcategoryPicture(admin, "electronics", "phones", { mimeType: "image/png", data: b64(PNG) });
+    expect(picture.mimeType).toBe("image/png");
+    expect(calls[0].task).toBe("subcategoryImage");
+    expect(calls[0].call.prompt).toContain("Mobile phones (in Electronics)");
+    expect(calls[0].call.image).toMatchObject({ mimeType: "image/png" });
+  });
+
+  it("refuses a style that is not a picture by its own bytes, before the hour is spent", async () => {
+    await expect(mod.drawSubcategoryPicture(admin, "electronics", "phones", { mimeType: "image/png", data: b64(SVG) })).rejects.toMatchObject({ reason: "media.notAnImage" });
+    expect(await db.select().from(authAttempts)).toHaveLength(0);
+  });
+});

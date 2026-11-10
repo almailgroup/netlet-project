@@ -24,6 +24,9 @@ import SwiftUI
 struct DepartmentBrowser: View {
     @State private var chosen: String?
     @State private var subCounts: [String: [String: Int]]?
+    /// The pictures an administrator kept (`subcategoryPictures.list`), by
+    /// `department/slug`; a row with none keeps its symbol.
+    @State private var pictures: [String: String] = [:]
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
@@ -74,6 +77,7 @@ struct DepartmentBrowser: View {
         }
         .task {
             if let counts = try? await app.services.api.call(API.subcategoryCounts) { subCounts = counts }
+            if let kept = try? await app.services.api.call(API.subcategoryPictures) { pictures = kept }
         }
     }
 
@@ -134,6 +138,7 @@ struct DepartmentBrowser: View {
                 ForEach(Array(department.subs.enumerated()), id: \.element.id) { index, entry in
                     let count = subCounts?[department.slug]?[entry.slug] ?? 0
                     row(symbol: entry.symbol,
+                        picture: pictures["\(department.slug)/\(entry.slug)"],
                         title: entry.shown(l.current),
                         note: subCounts == nil ? nil : l.productCount(count),
                         quiet: subCounts != nil && count == 0) {
@@ -154,18 +159,29 @@ struct DepartmentBrowser: View {
     }
 
     /// One row: its picture in a pale tile, its name, what it holds, a chevron.
-    private func row(symbol: String, title: String, note: String?, quiet: Bool, open: @escaping () -> Void) -> some View {
+    private func row(symbol: String, picture: String? = nil, title: String, note: String?, quiet: Bool, open: @escaping () -> Void) -> some View {
         Button(action: open) {
             HStack(spacing: 12) {
-                Image(systemName: symbol)
-                    .font(.system(size: 21, weight: .regular))
-                    .foregroundStyle(quiet ? Brand.muted : Brand.navy)
-                    .frame(width: 48, height: 48)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(quiet ? Brand.photo : Color(red: 238 / 255, green: 241 / 255, blue: 246 / 255))
-                    )
-                    .accessibilityHidden(true)
+                if let picture {
+                    // The subcategory's kept picture, on white, where its symbol stood.
+                    RemoteImage(reference: picture, contentMode: .fit)
+                        .frame(width: 56, height: 56)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+                        .opacity(quiet ? 0.7 : 1)
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: symbol)
+                        .font(.system(size: 21, weight: .regular))
+                        .foregroundStyle(quiet ? Brand.muted : Brand.navy)
+                        .frame(width: 48, height: 48)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(quiet ? Brand.photo : Color(red: 238 / 255, green: 241 / 255, blue: 246 / 255))
+                        )
+                        .accessibilityHidden(true)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.inter(15, .bold))

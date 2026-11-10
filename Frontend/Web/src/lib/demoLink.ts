@@ -239,6 +239,9 @@ function resolve(path: string, rawInput: unknown): unknown {
       }
       return counts;
     }
+    /* No picture has been kept in the demo: the rows keep their outline icons. */
+    case "subcategoryPictures.list":
+      return {};
     case "commerce.subcategoryCounts": {
       /* The same rule over the invented catalogue: each product's own filing. */
       const counts: Record<string, Record<string, number>> = {};
@@ -700,7 +703,11 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "tryOn.make":
     case "guides.draft":
     case "guides.picture":
+    case "subcategoryPictures.draw":
       throw new Error("drawing.off");
+    /* The pictures are NetLet's to keep, and the demo is a store's manager. */
+    case "subcategoryPictures.set":
+      throw new Error("FORBIDDEN:platform.configure");
     /* The guides desk is NetLet's, and the demo is a store's manager. */
     case "guides.get":
     case "guides.save":
@@ -757,6 +764,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "tryOn.offered":
     case "media.aiAvailable":
     case "guides.aiAvailable":
+    case "subcategoryPictures.drawable":
       return false;
     /* No guide is written for an invented shop; the pages say there are none. */
     case "guides.published":

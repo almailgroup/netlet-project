@@ -105,6 +105,8 @@ export const AUDIT_ACTIONS = [
   "device.deny",
   "device.revoke",
   "device.rename",
+  /* A subcategory's picture kept or taken off the shop's Categories page. */
+  "subcategory.setPicture",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

@@ -25,6 +25,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     { href: "/admin/import", label: "admin.import", need: "product.create" },
     { href: "/admin/bundles", label: "admin.bundles", need: "product.view" },
     { href: "/admin/review", label: "admin.review", need: "product.review" },
+    /* The pictures beside the subcategories on the Categories page, drawn here. */
+    { href: "/admin/subcategory-pictures", label: "subpics.title", need: "platform.configure" },
   ] },
   /* What a seller opens the portal to do most days is pack what somebody
      bought, so this group comes straight after the shelf. */
