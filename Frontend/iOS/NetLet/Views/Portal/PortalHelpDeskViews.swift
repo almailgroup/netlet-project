@@ -722,7 +722,7 @@ private struct GuideStepCard: View {
             return
         }
         do {
-            let jpeg = try ImagePreparation.jpeg(from: bytes, rules: ReferenceData.shared.rules.media)
+            let jpeg = try await ImagePreparation.jpegOffMain(from: bytes, rules: ReferenceData.shared.rules.media)
             if let image = UIImage(data: jpeg) { drawn = (jpeg, image) }
         } catch ImagePreparation.Problem.tooSmall {
             app.toast(l.t("media.tooSmall"))
@@ -755,7 +755,7 @@ private struct GuideStepCard: View {
         }
         guard let data = try? await picked.loadTransferable(type: Data.self) else { return }
         do {
-            let jpeg = try ImagePreparation.jpeg(from: data, rules: ReferenceData.shared.rules.media)
+            let jpeg = try await ImagePreparation.jpegOffMain(from: data, rules: ReferenceData.shared.rules.media)
             let uploaded = try await app.services.seller.upload(jpeg: jpeg)
             step.imageUrl = uploaded.url
             app.toast(l.t("guides.pictureAdded"))

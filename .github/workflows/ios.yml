@@ -71,7 +71,8 @@ jobs:
 
       - name: Build and test
         # The whole log is kept; what is printed is the errors, the app's own
-        # warnings and each test's verdict. The step fails with xcodebuild.
+        # warnings, each test's verdict and anything a test says on purpose
+        # (a line carrying TEST-NOTE). The step fails with xcodebuild.
         run: |
           set +e
           mkdir -p build
@@ -83,7 +84,7 @@ jobs:
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee build/xcodebuild.log \
-            | grep --line-buffered -E "error:|warning: .*/NetLet(Tests|UITests)?/|Test Case .* (passed|failed|skipped)|Test skipped|Executed|\*\* (BUILD|TEST)"
+            | grep --line-buffered -E "error:|warning: .*/NetLet(Tests|UITests)?/|Test Case .* (passed|failed|skipped)|Test skipped|TEST-NOTE|Executed|\*\* (BUILD|TEST)"
           status=${PIPESTATUS[0]}
           exit "$status"
 

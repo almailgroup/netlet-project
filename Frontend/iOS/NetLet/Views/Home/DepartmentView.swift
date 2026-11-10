@@ -200,6 +200,7 @@ private struct BrowsePage: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 2)
             }
+            .glassRow()
             .padding(.horizontal, -16)
             .padding(.top, 16)
             .accessibilityElement(children: .contain)
@@ -373,6 +374,7 @@ private struct BrowsePage: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 2)
             }
+            .glassRow()
             .padding(.horizontal, -16)
             .padding(.top, 14)
             .accessibilityElement(children: .contain)

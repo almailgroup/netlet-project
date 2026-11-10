@@ -172,7 +172,7 @@ final class NewListingViewModel {
         guard canAddPhoto else { return }
         var photo = Photo(preview: data)
         do {
-            photo.preview = try ImagePreparation.jpeg(from: data, rules: rules.media)
+            photo.preview = try await ImagePreparation.jpegOffMain(from: data, rules: rules.media)
         } catch ImagePreparation.Problem.tooSmall {
             photo.failure = "media.tooSmall"
         } catch {

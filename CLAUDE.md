@@ -8524,7 +8524,16 @@ afterwards can displace it; nothing in the app brings a keyboard bar of its
 own. One listener installed at launch covers every field, the sheets, the
 search and the portal included; the words and the direction are the page's.
 `KeyboardUITests` types 3 into a product's quantity box, presses Done, and
-checks the keyboard went and the box reads 3. The web needs none: Safari on
+checks the keyboard went and the box reads 3. **The bar is a plain view with
+Done pinned to a side by name** (`leftAnchor` on the Arabic page, `rightAnchor`
+on the English one): it was a `UIToolbar` told its direction, and on iOS 26 a
+toolbar lays its items out by the phone's own language whatever
+`semanticContentAttribute` says, so on a phone set to English reading the
+Arabic page Done stayed at the right — over the first of the search sheet's
+quick links, which begin from the right there. It had been in every Arabic
+picture of the search since the bar was made, and was found by reading that
+picture for what the keyboard covered; `KeyboardUITests` now checks the side
+in both languages. The web needs none: Safari on
 an iPhone has its own Done above the keyboard, and every quantity box asks
 for a Done key (`enterKeyHint`) and applies on Enter.
 
@@ -8602,8 +8611,14 @@ into one shape — because Apple's own note is that effects outside a
 container each sample what is behind them again, and that the number on
 screen at once should be kept down; the header's four are left on their own.
 Still flat, deliberately: the portal's small buttons and anything that is a
-card, a row or a page. None of it has been seen on a screen from this
-sandbox until the CI's pictures.
+card, a row or a page. **A sideways row of glass chips draws past its
+scroll's frame** (`glassRow()`, the system's `scrollClipDisabled`): the
+system's glass brings a soft shadow round each control, and a scroll view
+clips at its bounds, which for a row of chips is a couple of points above and
+below them — so the first pictures had a grey band with hard edges along each
+row of a department's chips, seen by enlarging the picture and raising its
+contrast, which is how to look at any glass. The header's own, outside any
+scroll, were whole.
 
 **The Deals tab has a moment of its own, on the owner's word** ("when you tap
 on the deals icon in the bottom menu, it would display a cool animation for
@@ -9530,7 +9545,13 @@ a scrolling grid — the card's photo control, the shelves' cards, the product
 page's buy box, the account's panels and the rewards wallet had it. Each is the
 background shape's own shadow now, behind the content, the same picture. The
 glass bars' shadows are left as they were: their blur is redrawn every frame
-anyway, and a shape behind translucent glass would show through it. Not
+anyway, and a shape behind translucent glass would show through it. **A photo
+from the library is made ready off the main thread**
+(`ImagePreparation.jpegOffMain`, `squareJPEGOffMain`): twelve megapixels
+decoded, drawn smaller and encoded again is a few hundred milliseconds, and on
+the main thread that was a press that did not answer — on a review's photo, a
+profile photo, a new listing's and a guide's. The seller's photo fixes were
+already off it (`PhotoIntake.ready`). Not
 measured on a device here, which this sandbox cannot reach — Instruments'
 hitches template on a ProMotion iPhone is the check.
 
@@ -9710,7 +9731,20 @@ started while a push's tests ran, would have cancelled them — and with them
 that push's upload, since only a green push run uploads. **The other way round
 it does cancel**: `cancel-in-progress` is the newcomer's, so a push of an app
 change cancels a `share` run already going, previews and all — start one after
-the last app push of a round, never before it. Nothing that signs
+the last app push of a round, never before it. **And never in the seconds
+after a push either**: the group holds one running run and one waiting, so a
+run started by hand while the push's own run is still waiting for the
+cancelled one to stop takes its place in the queue, and the push's run is the
+one cancelled — da9bc83 lost its tests and its upload that way, eight seconds
+after the push. Start the hand run once the push's run shows `in_progress`; a
+push's run cancelled like this is put back with `rerun` on that run, which
+keeps its event and its commit. **A test can say something in the run's log
+without failing**: the workflow prints only errors, warnings and verdicts, and
+any line carrying `TEST-NOTE`, so a test that is finding out rather than
+judging prints one (`testCheckoutSaysWhetherItHasTheTabBar`: the CI's pictures
+have always shown the tab bar under Place order, though `CheckoutView` asks for
+none, and they open checkout as the app starts — the note says what a pressed
+Checkout gives before anything is changed for it). Nothing that signs
 lives in the repository: an App
 Store Connect API key (Admin, in four repository secrets the README names)
 lets `xcodebuild -exportArchive -allowProvisioningUpdates` make the

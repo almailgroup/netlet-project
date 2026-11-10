@@ -86,7 +86,7 @@ struct ShopperPhotoStrip: View {
             defer { uploading -= 1 }
             do {
                 guard let data = try await item.loadTransferable(type: Data.self) else { throw ImagePreparation.Problem.unreadable }
-                let jpeg = try ImagePreparation.jpeg(from: data, rules: ReferenceData.shared.rules.media)
+                let jpeg = try await ImagePreparation.jpegOffMain(from: data, rules: ReferenceData.shared.rules.media)
                 let uploaded = try await app.services.seller.uploadReviewPhoto(jpeg: jpeg)
                 if photos.count < max { photos.append(uploaded.url) }
             } catch ImagePreparation.Problem.tooSmall {

@@ -73,3 +73,22 @@ enum ImagePreparation {
         throw Problem.unreadable
     }
 }
+
+extension ImagePreparation {
+    /// `jpeg(from:rules:)` off the main thread. A photo from the library is
+    /// twelve megapixels: decoding it, drawing it smaller and encoding it
+    /// again takes a few hundred milliseconds, and on the main thread that is
+    /// a press that does not answer and a spinner that does not turn.
+    static func jpegOffMain(from data: Data, rules: Rules.Media) async throws -> Data {
+        try await Task.detached(priority: .userInitiated) {
+            try jpeg(from: data, rules: rules)
+        }.value
+    }
+
+    /// `squareJPEG` off the main thread, for the same reason.
+    static func squareJPEGOffMain(from image: UIImage, edge: Int, minEdge: Int, maxBytes: Int) async throws -> (data: Data, image: UIImage) {
+        try await Task.detached(priority: .userInitiated) {
+            try squareJPEG(from: image, edge: edge, minEdge: minEdge, maxBytes: maxBytes)
+        }.value
+    }
+}

@@ -128,7 +128,7 @@ struct ProfilePhotoRow: View {
                 throw ImagePreparation.Problem.unreadable
             }
             let rules = ReferenceData.shared.rules
-            let square = try ImagePreparation.squareJPEG(
+            let square = try await ImagePreparation.squareJPEGOffMain(
                 from: image,
                 edge: rules.accountRules.profilePhotoEdge,
                 minEdge: rules.media.minEdge,

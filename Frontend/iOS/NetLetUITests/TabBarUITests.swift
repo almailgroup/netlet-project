@@ -41,6 +41,47 @@ final class TabBarUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["الأقسام"].exists, "The Categories tab has no Arabic name.")
     }
 
+    /// Whether checkout, reached from the cart the way a shopper reaches it,
+    /// still has the tab bar under Place order. The app asks for none there
+    /// (`CheckoutView`), the web's rule for a payment page, and the CI's
+    /// pictures — which open checkout as the app starts — have shown the bar
+    /// all the same. **This asks and does not fail yet**: it says in the log
+    /// what a pressed Checkout gives (a `TEST-NOTE` line, which the workflow prints), so the fix is made
+    /// for what a phone does, not for what a picture taken at launch does.
+    func testCheckoutSaysWhetherItHasTheTabBar() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-NetLetDemo", "YES", "-netlet.language", "en", "-NetLetUITest", "YES",
+            "-NetLetOpen", "cart", "-NetLetDemoAs", "shopper",
+        ]
+        app.launch()
+        let bar = app.tabBars.firstMatch
+        guard bar.waitForExistence(timeout: 10) else {
+            print("TEST-NOTE checkout tab bar: no tab bar on the cart")
+            return
+        }
+        let checkout = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Checkout"))
+        let wanted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "count > 0"), object: checkout)
+        _ = XCTWaiter().wait(for: [wanted], timeout: 10)
+        guard let press = checkout.allElementsBoundByIndex.first(where: { $0.exists && $0.isHittable }) else {
+            print("TEST-NOTE checkout tab bar: no Checkout to press on the cart")
+            return
+        }
+        press.tap()
+        let place = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Place order")).firstMatch
+        guard place.waitForExistence(timeout: 12) else {
+            print("TEST-NOTE checkout tab bar: checkout did not open")
+            return
+        }
+        // Past the push's own animation, which is when a bar would go.
+        _ = XCTWaiter().wait(for: [XCTestExpectation(description: "settled")], timeout: 2)
+        let shown = bar.exists && bar.isHittable
+        let frame = bar.exists ? "\(bar.frame)" : "none"
+        let message = "TEST-NOTE checkout tab bar: shown=\(shown) bar=\(frame) placeOrder=\(place.frame) screen=\(app.frame)"
+        print(message)
+        XCTContext.runActivity(named: message) { _ in }
+    }
+
     private func launch(language: String = "en") -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-NetLetDemo", "YES", "-netlet.language", language, "-NetLetUITest", "YES", "-NetLetOpen", "home"]

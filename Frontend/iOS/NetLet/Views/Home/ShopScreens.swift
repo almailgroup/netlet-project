@@ -535,6 +535,7 @@ struct StoreView: View {
                         }
                     }
                 }
+                .glassRow()
                 .accessibilityLabel(l.t("stores.departments"))
             }
             if found.products.isEmpty {

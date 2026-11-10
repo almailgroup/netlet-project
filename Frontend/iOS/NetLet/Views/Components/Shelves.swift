@@ -221,6 +221,7 @@ struct TabbedShelf: View {
                         .padding(.vertical, 2)
                     }
                 }
+                .glassRow()
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(l.t("home.shelfTabs", ["title": title]))
             }

@@ -27,8 +27,16 @@ private nonisolated(unsafe) let keyboardBarKey = UnsafeMutableRawPointer.allocat
 ///
 /// One listener covers every field the app has and every one added later,
 /// the sheets, the search and the seller portal included. The words are the
-/// page's language, and the bar's direction follows it, so Done sits at the
-/// end of the line on either page.
+/// page's language, and Done sits at the end of the line on either page —
+/// the right in English, the left in Arabic.
+///
+/// **The bar is a plain view, and Done is pinned to a side by name.** It was
+/// a `UIToolbar` told its direction (`semanticContentAttribute`), and on iOS
+/// 26 a toolbar lays its items out by the phone's own language whatever it is
+/// told: on a phone set to English reading the Arabic page, Done stayed at
+/// the right, over the first of the search sheet's quick links, which start
+/// from the right there (the CI's Arabic picture of the search). Left and
+/// right anchors mean what they say on every iOS.
 @MainActor
 enum KeyboardBar {
     private static var observers: [NSObjectProtocol] = []
@@ -105,19 +113,40 @@ enum KeyboardBar {
         })
         button.accessibilityLabel = title
 
-        let done = UIBarButtonItem(customView: button)
-        // iOS 26 sets a bar's items on a glass capsule of their own; Done is
-        // its own navy capsule, so not a capsule in a capsule.
-        if #available(iOS 26.0, *) { done.hidesSharedBackground = true }
-        let bar = Bar(frame: CGRect(x: 0, y: 0, width: 320, height: 48))
-        bar.items = [UIBarButtonItem(systemItem: .flexibleSpace), done]
         let rightToLeft = language?.current.isRightToLeft ?? false
-        bar.semanticContentAttribute = rightToLeft ? .forceRightToLeft : .forceLeftToRight
-        button.semanticContentAttribute = bar.semanticContentAttribute
-        bar.sizeToFit()
+        button.semanticContentAttribute = rightToLeft ? .forceRightToLeft : .forceLeftToRight
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        let bar = Bar(frame: CGRect(x: 0, y: 0, width: 320, height: Bar.height))
+        bar.autoresizingMask = .flexibleWidth
+        bar.backgroundColor = .clear
+        // Before iOS 26 a keyboard's bar is a strip of its own; from 26 the
+        // navy capsule floats over the page, as the system's own do.
+        if #unavailable(iOS 26.0) {
+            let strip = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
+            strip.frame = bar.bounds
+            strip.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            bar.addSubview(strip)
+        }
+        bar.addSubview(button)
+        let edges = bar.safeAreaLayoutGuide
+        NSLayoutConstraint.activate([
+            button.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
+            rightToLeft
+                ? button.leftAnchor.constraint(equalTo: edges.leftAnchor, constant: Bar.margin)
+                : button.rightAnchor.constraint(equalTo: edges.rightAnchor, constant: -Bar.margin),
+        ])
         return bar
     }
 
     /// Ours, told apart from a bar a field brought itself.
-    final class Bar: UIToolbar {}
+    final class Bar: UIView {
+        static let height: CGFloat = 48
+        /// Done's distance from the screen's side.
+        static let margin: CGFloat = 20
+
+        override var intrinsicContentSize: CGSize {
+            CGSize(width: UIView.noIntrinsicMetric, height: Self.height)
+        }
+    }
 }

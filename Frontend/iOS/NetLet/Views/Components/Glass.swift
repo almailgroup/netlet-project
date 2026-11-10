@@ -200,4 +200,15 @@ extension View {
     func glassChip(chosen: Bool) -> some View {
         liquidGlass(chosen ? .navy : .clear)
     }
+
+    /// On a sideways scroll of glass chips: the row draws past the scroll's
+    /// own frame. The system's glass brings a soft shadow round each control,
+    /// and a scroll view clips at its bounds — a row's are its chips' height —
+    /// so the shadows were cut in a hard line a couple of points above and
+    /// below the chips, a grey band the width of the row (the CI's pictures of
+    /// a department's two rows, enlarged). The row is the screen's width, so
+    /// what scrolls out sideways still leaves by the screen's edge.
+    func glassRow() -> some View {
+        scrollClipDisabled()
+    }
 }
