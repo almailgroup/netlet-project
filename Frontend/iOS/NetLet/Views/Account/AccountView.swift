@@ -224,8 +224,7 @@ struct AccountView: View {
                     .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(Brand.navy)
                     .frame(width: 44, height: 44)
-                    .background(Circle().fill(Color.white))
-                    .overlay(Circle().strokeBorder(Brand.cardLine, lineWidth: 1))
+                    .liquidGlass(.frost, in: Circle())
                     .overlay(alignment: .topTrailing) {
                         CountBadge(value: unread).fixedSize().offset(x: 4, y: -2)
                     }
@@ -709,8 +708,7 @@ struct RoundBackTitle: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Brand.navy)
                     .frame(width: 44, height: 44)
-                    .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
-                    .contentShape(Circle())
+                    .liquidGlass(.frost, in: Circle(), lifted: true)
             }
             .buttonStyle(.tap)
             .accessibilityLabel(l.t("account.backToAccount"))

@@ -15,7 +15,6 @@ struct CategoriesView: View {
     var body: some View {
         ShopPage(root: true, logo: false, refresh: { await app.shelf.load(language: l.current, force: true) }) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: [l.t("nav.categories")])
                 Text(l.t("nav.categories")).pageTitle()
                 HStack(spacing: 12) {
                     // Only while there is a brand to list: a box that opens
@@ -130,7 +129,6 @@ struct SavedView: View {
         let missing = catalogue.value == nil ? 0 : max(0, ids.count - found.count)
         ShopPage(refresh: { if tab == .saved { await load() } }) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: [l.t("saved.andWishlists")])
                 Text(l.t("saved.andWishlists")).pageTitle()
                 TextTabs(tabs: [TextTab(id: Showing.saved, label: l.t("footer.savedItems")), TextTab(id: Showing.wishlists, label: l.t("saved.tabWishlists"))], selection: tab) { tab = $0 }
                     .padding(.top, 12)
@@ -263,7 +261,6 @@ struct BrandsView: View {
         let brands = app.shelf.brands
         ShopPage(refresh: { await app.shelf.load(language: l.current, force: true) }) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: [l.t("nav.categories"), l.t("brands.title")])
                 Text(l.t("brands.title")).pageTitle()
                 Text(l.t("brands.note"))
                     .font(.inter(15))
@@ -298,7 +295,6 @@ struct StoresView: View {
     var body: some View {
         ShopPage(refresh: { await load() }) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: [l.t("stores.title")])
                 Text(l.t("stores.title")).pageTitle()
                 if let list = stores.value {
                     Text(list.count == 1 ? l.t("stores.countOne") : l.t("stores.countMany", ["count": "\(list.count)"]))
@@ -361,16 +357,13 @@ struct StoreView: View {
             VStack(alignment: .leading, spacing: 0) {
                 switch page {
                 case .idle, .loading:
-                    Breadcrumbs(trail: [l.t("stores.title")])
                     LoadingView()
                 case .failed(let error):
-                    Breadcrumbs(trail: [l.t("stores.title")])
                     ErrorStateView(error: error) { await load() }
                 case .loaded(let found):
                     if let found {
                         content(found)
                     } else {
-                        Breadcrumbs(trail: [l.t("stores.title")])
                         EmptyStateView(systemImage: "storefront", title: l.t("stores.notFound"), note: l.t("stores.notFoundNote"), actionTitle: l.t("stores.seeAll")) {
                             app.push(.stores)
                         }
@@ -388,7 +381,6 @@ struct StoreView: View {
     @ViewBuilder
     private func content(_ found: StorePage) -> some View {
         let store = found.store
-        Breadcrumbs(trail: [l.t("stores.title"), store.name])
         profile(store)
         products(found)
         if !found.reviews.isEmpty {

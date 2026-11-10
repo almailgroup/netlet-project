@@ -189,6 +189,10 @@ final class AppModel {
     var cartPath = NavigationPath()
     var categoriesPath = NavigationPath()
     var dealsPath = NavigationPath()
+    /// Counts presses on the Deals tab: each plays the tab's burst (`DealsBurst`).
+    private(set) var dealsBurst = 0
+    /// For the screenshots: the burst held at this many seconds in. Debug builds only set it.
+    var dealsBurstFrozen: Double?
     /// The header's search, grown down over the page while it is open.
     var searchOpen = false
     var searchText = ""
@@ -452,6 +456,10 @@ final class AppModel {
         case "deals":
             // The Deals tab, its shelves drawn.
             selectedTab = .deals
+        case "dealsBurst":
+            // The Deals tab with its burst held mid-flight, for a picture.
+            selectedTab = .deals
+            dealsBurstFrozen = 0.74
         case "stores":
             selectedTab = .home
             homePath = NavigationPath([Route.stores])
@@ -715,6 +723,8 @@ final class AppModel {
             }
         }
         selectedTab = tab
+        // A press on Deals plays its burst, whichever tab it came from.
+        if tab == .deals { dealsBurst += 1 }
     }
 
     /// The search the header's field sends: its results page, on the tab

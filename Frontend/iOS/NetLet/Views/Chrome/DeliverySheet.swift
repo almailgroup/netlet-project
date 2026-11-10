@@ -163,7 +163,7 @@ struct DeliverySheet: View {
                 .font(.inter(15, .bold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity, minHeight: 48)
-                .background(Capsule().fill(Brand.navy))
+                .liquidGlass(.navy)
         }
         .buttonStyle(.tap)
     }
@@ -183,7 +183,7 @@ struct DeliverySheet: View {
                 .font(.inter(15, .bold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity, minHeight: 48)
-                .background(Capsule().fill(Brand.navy))
+                .liquidGlass(.navy)
         }
         .buttonStyle(.tap)
         Text(l.t("delivery.guestZones")).font(.inter(14, .semibold)).foregroundStyle(Brand.navy).padding(.top, 8)

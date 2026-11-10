@@ -20,6 +20,19 @@ extension API {
     }
 
     static let photoAvailable = Procedure<NoInput, PhotoAvailability>(query: "search.photoAvailable")
+
+    /// "Refine with NetLet AI" (`search.refine`): the shopper's words and a few
+    /// of the shelf's own titles, answered with the search to run instead.
+    struct RefineInput: Encodable, Sendable {
+        let query: String
+        let catalogTitles: [String]
+    }
+
+    struct RefinedSearch: Decodable, Sendable {
+        let query: String
+    }
+
+    static let refineSearch = Procedure<RefineInput, RefinedSearch>(mutation: "search.refine")
     static let photoSearch = Procedure<PhotoInput, PhotoQuery>(mutation: "search.photo")
 
     struct SimilarInput: Encodable, Sendable {

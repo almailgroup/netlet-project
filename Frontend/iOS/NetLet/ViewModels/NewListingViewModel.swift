@@ -190,6 +190,15 @@ final class NewListingViewModel {
         }
     }
 
+    /// A photo the before and after has already uploaded (`PhotoChoiceSheet`):
+    /// the version the seller chose, and the JPEG that went up for the tile.
+    func addUploaded(_ uploaded: UploadedPhoto, preview: Data) {
+        guard canAddPhoto else { return }
+        var photo = Photo(preview: preview)
+        photo.uploaded = uploaded
+        photos.append(photo)
+    }
+
     /// A photo by its web address (`photoUrlProblem`): the gallery's own rule.
     func addLink() {
         let value = photoLink.trimmingCharacters(in: .whitespaces)

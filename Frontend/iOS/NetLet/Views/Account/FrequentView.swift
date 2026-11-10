@@ -447,8 +447,7 @@ private struct FrequentSuggestions: View {
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 16)
                     .frame(minHeight: 40)
-                    .background(Capsule().fill(Color.white))
-                    .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.25), lineWidth: 1))
+                    .liquidGlass(.clear)
             }
             .buttonStyle(.action)
             .disabled(adding == entry.id)

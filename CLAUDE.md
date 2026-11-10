@@ -8514,6 +8514,75 @@ switch (`LanguageRow`, `LanguageSwitch`, one copy for both). Every shopping
 page keeps room under its content for the assistant's button now, since no
 footer follows it.
 
+**The app has no breadcrumbs, on the owner's word** ("remove this from the
+application but keep it for the website … I don't want to see anything like
+this in the app"): the "Home › Electronics" trail the web's pages lead with
+(`Breadcrumbs`) was over the title of Categories, a department, a search, a
+store, the stores, the brands, Saved and a product, and is gone from all of
+them with its view. A pushed page's way back is the chevron in its header, and
+Home is the tab bar's first press. The product page starts on its photo, 16
+points under the header.
+
+**Most of the app's buttons are Liquid Glass, on the owner's word** ("make
+most of the buttons that will look good in Liquid Glass, to make the app look
+new and up to date"; `LiquidGlass` and `GlassTone` in `Glass.swift`). The
+system's own glass from iOS 26 (`glassEffect`, interactive, so it gives and
+lights under the finger as the tab bar does), tinted so each button keeps its
+colour and its words their contrast — `.navy` under white words (the main
+action, Add to cart, the Sort | Filter pill), `.clear` with a breath of navy
+(the quiet action, Buy now, an order's pills, the quantity stepper, the filter
+chips, which keep a navy rim once ticked), `.orange` under navy words (Checkout,
+Place order), `.danger`, `.success` for the moment Add to cart says it worked,
+and `.frost`, the tab bar's white tint, for what sits on a photograph, a map or
+a moving page (the heart on a card, the discs and Find similar on a product's
+photo, the map's view switch, the assistant's pill, a sheet's Close). On iOS 17
+and 18 each draws the fill it had. **The glass is a control's surface and never
+a page's or a card's**; the header, the tab bar's page and the floating bars
+keep their own frosted surface, with glass buttons on it, since system glass
+does not sit inside system glass. Left as they were: the portal's small
+buttons (163 of them, dozens to a list), a card's Buy now pill, tabs and
+badges, and Google's button, which is drawn to Google's rules.
+
+**The Deals tab has a moment of its own, on the owner's word** ("when you tap
+on the deals icon in the bottom menu, it would display a cool animation for
+deals"; `DealsBurst`). A press on the tab — the one you are on too, never the
+app's own moves to it — sends the tab's red bag leaping out of the bar to the
+middle of the screen, where it lands with a squash and a tap and bursts: thirty
+percent chips, price tags, coins and streamers in the shop's colours fan out
+and fall away as two rings spread, the bag lifts off, and the page's shelves
+rise in under it (`DealRise`), a second and a half in all. It is one `Canvas`
+drawn by the clock over the whole app, taking no touch, so the page is usable
+from the first frame; the scene is a pure function of the time
+(`DealsBurstScene`, tested: where the bag leaves, lands and goes, and that
+every piece flies up and out before it falls), which is also how the CI
+photographs it held mid-flight (`-NetLetOpen dealsBurst`, `94-deals-burst`).
+The canvas may be drawn off the main actor, so the scene asks the device
+nothing: whether the bar is along the top (an iPad) is read by the view and
+handed in. Nothing plays under Reduce Motion.
+
+**The requirements were checked against the app, on the owner's word** ("go
+through the requirements document … and check if every requirement is met"),
+by listing every procedure the website calls beside every one the app calls
+(392 of 396 shared) and every dictionary key each draws. Four things the app
+lacked are in it now. **"Refine with NetLet AI"** under the search sheet's
+results (`search.refine`, drawn only while `ai.available` says a model is on).
+**The maker's images** (3.1.10; `MakerImagesSheet` in `PhotoIntake.swift`): the
+product's page on the maker's site, pasted or found from the product's name,
+its declared images fetched through NetLet (`/api/media/remote`). **The photo
+fixes** (3.3.4; `PhotoFixer`, `media.ts` and `preparePhoto.ts` in Swift on the
+shared rule's own cases): a photo from the library or a maker's page is shown
+as it was beside the fixed one — trimmed, squared on its own background,
+levelled — and, where a model can be asked, the one put on white by AI
+(`/api/media/ai-clean`), and the one chosen is uploaded (`PhotoChoiceSheet`,
+in the editor and the new-listing form), noting where a maker's came from.
+**A friend's invitation code** on Create account (3.1.14; `InviteCode`): one
+quiet line that opens a box, kept on the phone until an account is made by the
+emailed code, Apple, Google or a phone number, and sent with it. **One gap is
+left, and it is the Apple Developer site's**: a shared product link or
+invitation opens the website, not the app, so the app sends no `links` with an
+order; opening them in the app needs Associated Domains on the App ID and a
+file on netlet.net naming the team.
+
 **The Cart tab is the web's new bag, on the owner's word.** `CartView` opens on the title and the count with a heart to
 Saved at the line's end (`CartSavedButton`, the hearts counted), then where the order goes (`DeliveryAddressCard` in `CartParts.swift`,
 the web's own card: the address in use by `DeliveryModel.inUse` with its name,

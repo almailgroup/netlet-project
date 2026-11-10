@@ -72,9 +72,7 @@ private struct ProductPage: View {
     var body: some View {
         ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product, assistantFolded: true) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: crumbs)
                 ProductPhotos(product: product, index: $model.imageIndex) { photos = .photos }
-                    .padding(.top, 8)
                 buyBox
                     .padding(.top, 24)
                 // Complements before reviews, reviews before more to consider.
@@ -84,7 +82,8 @@ private struct ProductPage: View {
                 related
             }
             .padding(.horizontal, 16)
-            .padding(.top, 24)
+            // The photo leads the page now that no trail sits over it.
+            .padding(.top, 16)
             .padding(.bottom, 48)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -120,15 +119,6 @@ private struct ProductPage: View {
             app.photoViewerStart = nil
             photos = start
         }
-    }
-
-    private var crumbs: [String] {
-        var trail: [String] = []
-        if let type = product.productType, !type.isEmpty {
-            trail.append(ReferenceData.shared.department(named: type).map { l.t($0.label) } ?? type)
-        }
-        trail.append(product.title)
-        return trail
     }
 
     private var variant: ProductVariant? { model.variant ?? product.leadVariant }
@@ -792,8 +782,7 @@ struct PurchaseButtonStyle: ButtonStyle {
         configuration.label
             .font(.inter(size, .bold))
             .foregroundStyle(Brand.navy)
-            .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(configuration.isPressed ? Brand.pressFill : Color.white))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+            .liquidGlass(.clear, in: RoundedRectangle(cornerRadius: radius, style: .continuous), pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }
@@ -979,7 +968,7 @@ private struct ShareAndEarn: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 44)
-                    .background(Capsule().fill(Brand.navy))
+                    .liquidGlass(.navy)
             }
             .simultaneousGesture(TapGesture().onEnded { Haptics.tap() })
         }

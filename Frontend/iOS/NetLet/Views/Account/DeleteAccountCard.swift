@@ -100,9 +100,7 @@ struct DeleteAccountCard: View {
                     .foregroundStyle(Brand.danger)
                     .padding(.horizontal, 22)
                     .frame(minHeight: 48)
-                    .background(Capsule().fill(Color.white))
-                    .overlay(Capsule().strokeBorder(Brand.danger.opacity(0.35), lineWidth: 1))
-                    .contentShape(Capsule())
+                    .liquidGlass(.clear)
                 }
                 .buttonStyle(.tap)
                 .disabled(check == nil || deleting)

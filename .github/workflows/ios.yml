@@ -241,6 +241,8 @@ jobs:
             shot 91-admin-dashboard "$lang" portal:/admin admin
             shot 92-portal-stock "$lang" portal:/admin/stock shopper
             shot 93-portal-copilot "$lang" copilot shopper
+            # The Deals tab's burst, held mid-flight: the bag landed, the pieces out.
+            shot 94-deals-burst "$lang" dealsBurst ""
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

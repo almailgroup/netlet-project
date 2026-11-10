@@ -160,14 +160,19 @@ struct AccountService: AccountServicing {
 
     /// Always kept signed in, as the password's sign-in is: a phone is somebody's own.
     func appleSignIn(_ proof: AppleProof, name: AppleName) async throws -> User {
-        try await client.call(API.appleSignIn, .init(
+        let user = try await client.call(API.appleSignIn, .init(
             idToken: proof.idToken, nonce: proof.nonce, code: proof.code,
-            firstName: name.first, lastName: name.last, remember: true
+            firstName: name.first, lastName: name.last, remember: true, referral: InviteCode.stored()
         ))
+        // An invitation is used once: it cannot ride along on a second account.
+        InviteCode.clear()
+        return user
     }
 
     func googleSignIn(_ proof: GoogleProof) async throws -> User {
-        try await client.call(API.googleSignIn, .init(idToken: proof.idToken, nonce: proof.nonce, remember: true))
+        let user = try await client.call(API.googleSignIn, .init(idToken: proof.idToken, nonce: proof.nonce, remember: true, referral: InviteCode.stored()))
+        InviteCode.clear()
+        return user
     }
 
     func codeStart(email: String) async throws {
@@ -204,7 +209,9 @@ struct AccountService: AccountServicing {
 
     /// Always kept signed in, as every other sign-in in the app is.
     func phoneVerify(phone: String, code: String) async throws -> PhoneVerified {
-        try await client.call(API.phoneVerify, .init(phone: phone, code: code, remember: true))
+        let verified = try await client.call(API.phoneVerify, .init(phone: phone, code: code, remember: true, referral: InviteCode.stored()))
+        InviteCode.clear()
+        return verified
     }
 
     func addEmailStart(_ email: String) async throws {
@@ -225,11 +232,16 @@ struct AccountService: AccountServicing {
     }
 
     func register(email: String, password: String, name: String?, captcha: String?) async throws -> RegistrationResult {
-        try await client.call(API.register, .init(email: email, password: password, name: name, captcha: captcha))
+        let result = try await client.call(API.register, .init(email: email, password: password, name: name, captcha: captcha, referral: InviteCode.stored()))
+        // A project that confirms addresses itself made the account on the spot.
+        if case .signedIn = result { InviteCode.clear() }
+        return result
     }
 
     func verify(email: String, password: String, code: String, name: String?) async throws -> User {
-        try await client.call(API.verifyEmail, .init(email: email, password: password, code: code, name: name, remember: true))
+        let user = try await client.call(API.verifyEmail, .init(email: email, password: password, code: code, name: name, remember: true, referral: InviteCode.stored()))
+        InviteCode.clear()
+        return user
     }
 
     func resendCode(email: String) async throws {

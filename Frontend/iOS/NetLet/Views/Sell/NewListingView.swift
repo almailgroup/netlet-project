@@ -28,6 +28,10 @@ private struct NewListingForm: View {
     @Environment(LanguageSettings.self) private var l
     @State private var picked: [PhotosPickerItem] = []
     @State private var draftPicked: PhotosPickerItem?
+    /// Pictures on their way in, one before and after at a time (`PhotoChoiceSheet`).
+    @State private var waiting: [PhotoIntake] = []
+    @State private var intake: PhotoIntake?
+    @State private var makerOpen = false
 
     private var listing: Rules.Listing { ReferenceData.shared.rules.listing }
 
@@ -305,6 +309,9 @@ private struct NewListingForm: View {
                 if let problem = model.photoLinkProblem {
                     Text(l.t(problem, ["scheme": "https://"])).font(.footnote).foregroundStyle(Brand.danger)
                 }
+                // The maker's own pictures of the product (3.1.10).
+                Button { makerOpen = true } label: { Label(l.t("manufacturer.open"), systemImage: "building.2") }
+                    .buttonStyle(SecondaryButtonStyle())
             }
         }
         .card()
@@ -312,11 +319,33 @@ private struct NewListingForm: View {
             guard !items.isEmpty else { return }
             picked = []
             Task {
+                // Each photo is shown fixed beside the one taken, and the one
+                // chosen is uploaded (3.3.4) — one sheet after another.
                 for item in items {
-                    if let data = try? await item.loadTransferable(type: Data.self) { await model.addPhoto(data) }
+                    if let data = try? await item.loadTransferable(type: Data.self) { waiting.append(PhotoIntake(data: data)) }
                 }
+                nextIntake()
             }
         }
+        .sheet(item: $intake, onDismiss: nextIntake) { entering in
+            PhotoChoiceSheet(intake: entering) { uploaded, jpeg in
+                model.addUploaded(uploaded, preview: jpeg)
+            }
+            .buttonStyle(HapticDefaultStyle())
+        }
+        .sheet(isPresented: $makerOpen, onDismiss: nextIntake) {
+            MakerImagesSheet(productName: model.draft.title) { waiting.append($0) }
+                .buttonStyle(HapticDefaultStyle())
+        }
+    }
+
+    /// The next picture waiting for its before and after, once no sheet is up.
+    private func nextIntake() {
+        guard intake == nil, !makerOpen, model.canAddPhoto, !waiting.isEmpty else {
+            if !model.canAddPhoto { waiting = [] }
+            return
+        }
+        intake = waiting.removeFirst()
     }
 
     @ViewBuilder private func thumbnail(_ photo: NewListingViewModel.Photo) -> some View {

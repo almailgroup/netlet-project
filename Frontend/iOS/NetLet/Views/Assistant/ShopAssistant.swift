@@ -44,10 +44,7 @@ struct ShopAssistantButton: View {
                 }
                 .padding(5)
                 .padding(.trailing, folded ? 0 : 11)
-                .background(GlassSurface(top: 0.7, foot: 0.7).clipShape(Capsule()))
-                .overlay(Capsule().strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
-                .shadow(color: Brand.navy.opacity(0.22), radius: 12, x: 0, y: 6)
-                .contentShape(Capsule())
+                .liquidGlass(.frost, lifted: true)
             }
             .buttonStyle(.action)
             .accessibilityLabel(l.t("shopChat.needHelpName") + (app.chatUnread ? ", " + l.t("shopChat.unread") : ""))

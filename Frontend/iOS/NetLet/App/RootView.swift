@@ -51,6 +51,8 @@ struct RootView: View {
             .tag(AppModel.Tab.cart)
         }
         .modifier(NoBottomEdge())
+        // The Deals tab's burst, over every page and taking no touch.
+        .overlay { DealsBurst() }
         .overlay {
             if app.searchOpen {
                 SearchOverlay()

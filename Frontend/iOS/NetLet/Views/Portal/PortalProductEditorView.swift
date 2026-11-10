@@ -338,6 +338,11 @@ private struct GallerySection: View {
     @State private var picked: PhotosPickerItem?
     @State private var uploading = false
     @State private var saving = false
+    /// A picture on its way in: which version goes on the product (`PhotoChoiceSheet`).
+    @State private var intake: PhotoIntake?
+    /// "From the manufacturer's page" is open, and what it handed back.
+    @State private var makerOpen = false
+    @State private var fromMaker: PhotoIntake?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -377,16 +382,39 @@ private struct GallerySection: View {
             }
             if mayEdit {
                 FlowLayout(spacing: 8) {
-                    // A photo from the library is made ready on the phone and
-                    // uploaded at once, like the new-product form's.
+                    // A photo from the library is fixed on the phone and shown
+                    // beside the one taken, and the one chosen is uploaded (3.3.4).
                     PhotosPicker(selection: $picked, matching: .images) {
                         if uploading { ProgressView() } else { Label(l.t("media.upload"), systemImage: "photo.on.rectangle") }
                     }
                     .buttonStyle(PortalSmallButtonStyle())
-                    .disabled(uploading || items.count >= ReferenceData.shared.rules.listing.maxPhotos)
+                    .disabled(uploading || full)
+                    // The maker's own pictures of the product (3.1.10).
+                    Button { makerOpen = true } label: { Label(l.t("manufacturer.open"), systemImage: "building.2") }
+                        .buttonStyle(PortalSmallButtonStyle())
+                        .disabled(full)
                     Button { items.append(Item(url: "", altText: "", kind: "image", posterUrl: "")) } label: { Label(l.t("admin.addImage"), systemImage: "plus") }
                         .buttonStyle(PortalSmallButtonStyle())
                     SectionSave(pending: saving) { Task { await save() } }
+                }
+                // The sheets hang off this one row: a modifier on the group
+                // would be applied to every child, and present a sheet for each.
+                .sheet(item: $intake) { entering in
+                    PhotoChoiceSheet(intake: entering) { uploaded, _ in
+                        items.append(Item(url: uploaded.url, altText: "", kind: "image", posterUrl: ""))
+                        app.toast(l.t("media.uploaded"))
+                    }
+                    .buttonStyle(HapticDefaultStyle())
+                }
+                .sheet(isPresented: $makerOpen, onDismiss: {
+                    // One sheet at a time: the choice opens once this one is down.
+                    if let next = fromMaker {
+                        fromMaker = nil
+                        intake = next
+                    }
+                }) {
+                    MakerImagesSheet(productName: product.title) { fromMaker = $0 }
+                        .buttonStyle(HapticDefaultStyle())
                 }
             }
         }
@@ -404,6 +432,10 @@ private struct GallerySection: View {
         items = product.images.map { Item(url: $0.url, altText: $0.altText ?? "", kind: $0.kind, posterUrl: $0.posterUrl ?? "") }
     }
 
+    private var full: Bool { items.count >= ReferenceData.shared.rules.listing.maxPhotos }
+
+    /// The photo picked from the library goes to the before and after, which
+    /// uploads the version chosen.
     private func upload() async {
         guard let picked else { return }
         uploading = true
@@ -411,18 +443,11 @@ private struct GallerySection: View {
             uploading = false
             self.picked = nil
         }
-        guard let data = try? await picked.loadTransferable(type: Data.self) else { return }
-        do {
-            let jpeg = try ImagePreparation.jpeg(from: data, rules: ReferenceData.shared.rules.media)
-            let uploaded = try await app.services.seller.upload(jpeg: jpeg)
-            items.append(Item(url: uploaded.url, altText: "", kind: "image", posterUrl: ""))
-            Haptics.succeeded()
-        } catch ImagePreparation.Problem.tooSmall {
-            app.toast(l.t("media.tooSmall"))
-        } catch {
-            let key = APIError.from(error).messageKey(knownKey: Phrasebook.shared.has)
-            app.toast(l.t(key == "error.serverProblem" ? "media.notAnImage" : key))
+        guard let data = try? await picked.loadTransferable(type: Data.self) else {
+            app.toast(l.t("media.notAnImage"))
+            return
         }
+        intake = PhotoIntake(data: data)
     }
 
     private func save() async {

@@ -174,6 +174,8 @@ enum API {
         let password: String
         var name: String?
         var captcha: String?
+        /// A friend's invitation code (`InviteCode`), when one was typed.
+        var referral: String?
     }
 
     struct Verify: Encodable, Sendable {
@@ -182,6 +184,7 @@ enum API {
         let code: String
         var name: String?
         let remember: Bool
+        var referral: String?
     }
 
     struct Email: Encodable, Sendable {
@@ -219,6 +222,7 @@ enum API {
         let phone: String
         let code: String
         let remember: Bool
+        var referral: String?
     }
     /// Signing in with a one-time code emailed to the account
     /// (`auth.codeStart`, `auth.codeSignIn`). The answer to the first is the
@@ -294,6 +298,7 @@ enum API {
         var firstName: String?
         var lastName: String?
         let remember: Bool
+        var referral: String?
     }
 
     /// What stands between the shopper and deleting their account, and the

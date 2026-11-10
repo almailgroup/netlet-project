@@ -307,8 +307,7 @@ private struct ListRow: View {
             .foregroundStyle(danger ? Brand.danger : Brand.navy)
             .padding(.horizontal, 12)
             .frame(minHeight: 40)
-            .background(Capsule().fill(Color.white))
-            .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
+            .liquidGlass(.clear)
     }
 }
 
@@ -514,8 +513,7 @@ private struct WishlistDetailBody: View {
                 .foregroundStyle(Brand.navy)
                 .padding(.horizontal, 12)
                 .frame(minHeight: 40)
-                .background(Capsule().fill(Color.white))
-                .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
+                .liquidGlass(.clear)
         }
         .buttonStyle(.action)
         .accessibilityLabel("\(label): \(name)")

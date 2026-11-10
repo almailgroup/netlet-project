@@ -8,6 +8,15 @@ protocol SellerServicing: Sendable {
     func create(_ listing: API.NewListing) async throws -> CreatedListing
     func publish(id: Int) async throws -> String
     func upload(jpeg: Data) async throws -> UploadedPhoto
+    /// The same upload, saying where the picture came from — a maker's page
+    /// (3.1.10) — which the server keeps as the uploader's own note.
+    func upload(jpeg: Data, source: String?) async throws -> UploadedPhoto
+    /// One image from a maker's page, fetched by NetLet's server
+    /// (`POST /api/media/remote`), so the phone never contacts the maker.
+    func remoteImage(url: String) async throws -> Data
+    /// The photo put on white by a model (`POST /api/media/ai-clean`), handed
+    /// back for the seller to look at; nothing is stored until they choose it.
+    func cleanUpPhoto(jpeg: Data) async throws -> Data
     /// A shopper's photo for a review (`POST /api/media/review`): the same
     /// checks as a store's, for somebody who has had something delivered.
     func uploadReviewPhoto(jpeg: Data) async throws -> UploadedPhoto
@@ -18,6 +27,17 @@ protocol SellerServicing: Sendable {
 }
 
 extension SellerServicing {
+    // What a stand-in answers for the calls only the real server can make.
+    func upload(jpeg: Data, source: String?) async throws -> UploadedPhoto { try await upload(jpeg: jpeg) }
+
+    func remoteImage(url: String) async throws -> Data {
+        throw APIError.server(code: "BAD_REQUEST", message: "manufacturer.unreachable", status: 400)
+    }
+
+    func cleanUpPhoto(jpeg: Data) async throws -> Data {
+        throw APIError.server(code: "PRECONDITION_FAILED", message: "drawing.off", status: 503)
+    }
+
     /// A stand-in that takes no review photos refuses, as the server would a shopper with nothing delivered.
     func uploadReviewPhoto(jpeg: Data) async throws -> UploadedPhoto {
         throw APIError.server(code: "FORBIDDEN", message: "media.notAllowed", status: 403)
@@ -57,6 +77,52 @@ struct SellerService: SellerServicing {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = jpeg
         return try await send(request, fallback: "media.failed")
+    }
+
+    func upload(jpeg: Data, source: String?) async throws -> UploadedPhoto {
+        var request = URLRequest(url: client.configuration.url(path: "/api/media"))
+        request.httpMethod = "POST"
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        // A header holds plain ASCII: an address that is anything else goes unsaid.
+        if let source, source.count <= 2048, source.unicodeScalars.allSatisfy({ $0.value > 32 && $0.value < 127 }) {
+            request.setValue(source, forHTTPHeaderField: "X-NetLet-Source")
+        }
+        request.httpBody = jpeg
+        return try await send(request, fallback: "media.failed")
+    }
+
+    func remoteImage(url: String) async throws -> Data {
+        var request = URLRequest(url: client.configuration.url(path: "/api/media/remote"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(["url": url])
+        return try await bytes(request, fallback: "manufacturer.unreachable")
+    }
+
+    func cleanUpPhoto(jpeg: Data) async throws -> Data {
+        var request = URLRequest(url: client.configuration.url(path: "/api/media/ai-clean"))
+        request.httpMethod = "POST"
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        // A picture is drawn, which takes the model most of a minute at worst.
+        request.timeoutInterval = 70
+        request.httpBody = jpeg
+        return try await bytes(request, fallback: "drawing.failed")
+    }
+
+    /// A route that answers with a picture's own bytes, or `{ "error": … }`.
+    private func bytes(_ request: URLRequest, fallback: String) async throws -> Data {
+        let answer: (Data, HTTPURLResponse)
+        do {
+            answer = try await client.transport.send(request)
+        } catch {
+            throw APIError.from(error)
+        }
+        let (data, response) = answer
+        if (200..<300).contains(response.statusCode) { return data }
+        let reason = (try? JSONDecoder().decode(UploadRefusal.self, from: data))?.error ?? fallback
+        let code = response.statusCode == 401 ? "UNAUTHORIZED" : response.statusCode == 403 ? "FORBIDDEN" : response.statusCode == 429 ? "TOO_MANY_REQUESTS" : "BAD_REQUEST"
+        throw APIError.server(code: code, message: reason, status: response.statusCode)
     }
 
     func uploadReviewPhoto(jpeg: Data) async throws -> UploadedPhoto {

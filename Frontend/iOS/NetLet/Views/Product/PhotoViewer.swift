@@ -140,8 +140,7 @@ struct ProductPhotos: View {
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 14)
                     .frame(height: 40)
-                    .background(Capsule().fill(Color.white))
-                    .shadow(color: Brand.navy.opacity(0.14), radius: 5, x: 0, y: 2)
+                    .liquidGlass(.frost, lifted: true)
                 }
                 .buttonStyle(.tap)
                 .disabled(findingSimilar)
@@ -197,14 +196,13 @@ struct ProductPhotos: View {
         app.services.configuration.url(path: ReferralCode.productPath(handle: product.handle, code: app.memberCode))
     }
 
-    /// One of the white discs on the photo.
+    /// One of the glass discs on the photo.
     private func disc(symbol: String, tint: Color) -> some View {
         Image(systemName: symbol)
             .font(.system(size: 16, weight: .medium))
             .foregroundStyle(tint)
             .frame(width: 40, height: 40)
-            .background(Circle().fill(Color.white))
-            .shadow(color: Brand.navy.opacity(0.14), radius: 5, x: 0, y: 2)
+            .liquidGlass(.frost, in: Circle(), lifted: true)
             .contentShape(Circle().inset(by: -2))
     }
 
@@ -220,8 +218,7 @@ struct ProductPhotos: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Brand.navy)
                 .frame(width: 40, height: 40)
-                .background(Circle().fill(Color.white))
-                .shadow(color: Brand.navy.opacity(0.18), radius: 6, x: 0, y: 2)
+                .liquidGlass(.frost, in: Circle(), lifted: true)
                 .contentShape(Circle().inset(by: -2))
         }
         .buttonStyle(.tap)
@@ -573,8 +570,7 @@ struct ZoomViewer: View {
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(Brand.navy)
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.white))
-                .shadow(color: Brand.navy.opacity(0.18), radius: 6, x: 0, y: 2)
+                .liquidGlass(.frost, in: Circle(), lifted: true)
         }
         .buttonStyle(.tap)
         .accessibilityLabel(l.t(previous ? "product.prevImage" : "product.nextImage"))

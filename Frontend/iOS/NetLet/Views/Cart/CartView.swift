@@ -268,7 +268,7 @@ private struct CartSavedButton: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Brand.navy)
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 4, y: 1))
+                .liquidGlass(.frost, in: Circle(), lifted: true)
                 .overlay(alignment: .topTrailing) {
                     CountBadge(value: saved).fixedSize().offset(x: 6, y: -6)
                 }

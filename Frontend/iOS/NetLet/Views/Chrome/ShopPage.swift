@@ -537,32 +537,6 @@ struct SearchRow: View {
     /// type it holds, in the page's language — and asks plainly without one.
 }
 
-/// A screen's breadcrumbs, the web's `Breadcrumbs`: Home, then the trail, the
-/// last step the page itself.
-struct Breadcrumbs: View {
-    let trail: [String]
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Button(l.t("nav.home")) { app.goHome() }
-                .foregroundStyle(Brand.muted)
-            ForEach(Array(trail.enumerated()), id: \.offset) { index, step in
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Brand.muted)
-                    .accessibilityHidden(true)
-                Text(step)
-                    .foregroundStyle(index == trail.count - 1 ? Brand.body : Brand.muted)
-                    .lineLimit(1)
-            }
-        }
-        .font(.inter(13))
-        .padding(.bottom, 12)
-    }
-}
-
 /// A page's own room: the container's 16 either side and the same space
 /// above and below everywhere (`PageBody`), its title 24 with any note under it.
 struct PageBody<Content: View>: View {

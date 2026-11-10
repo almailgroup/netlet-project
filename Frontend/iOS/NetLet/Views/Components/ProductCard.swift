@@ -126,8 +126,7 @@ struct QuantityStepper: View {
         }
         .foregroundStyle(Brand.navy)
         .disabled(busy && !typing)
-        .background(Capsule().fill(Color.white))
-        .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+        .liquidGlass(.clear)
     }
 
     /// The typed number, once the keyboard is put away.
@@ -563,7 +562,7 @@ struct CardGallery: View {
     }
 }
 
-/// The heart on a card's photo: a white disc, red and filled once saved.
+/// The heart on a card's photo: a disc of Liquid Glass, red and filled once saved.
 struct HeartButton: View {
     let product: Product
     @Environment(AppModel.self) private var app
@@ -578,8 +577,7 @@ struct HeartButton: View {
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(saved ? Color(red: 230 / 255, green: 28 / 255, blue: 56 / 255) : Brand.navy)
                 .frame(width: 32, height: 32)
-                .background(Circle().fill(Color.white))
-                .overlay(Circle().strokeBorder(Brand.cardLine, lineWidth: 1))
+                .liquidGlass(.frost, in: Circle())
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }

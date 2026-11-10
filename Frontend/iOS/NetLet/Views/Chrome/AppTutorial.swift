@@ -112,9 +112,7 @@ struct AppTutorial: View {
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 18)
                     .frame(minHeight: 40)
-                    .background(Capsule().fill(Color.white))
-                    .overlay(Capsule().strokeBorder(Brand.cardLine, lineWidth: 1))
-                    .contentShape(Capsule())
+                    .liquidGlass(.frost)
             }
             .buttonStyle(TutorialPressStyle())
             .accessibilityHint(l.t("ios.tutorial.skipHint"))
@@ -171,9 +169,7 @@ struct AppTutorial: View {
                         .font(.inter(16, .bold))
                         .foregroundStyle(Brand.navy)
                         .frame(maxWidth: .infinity, minHeight: 52)
-                        .background(Capsule().fill(Color.white))
-                        .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5))
-                        .contentShape(Capsule())
+                        .liquidGlass(.clear)
                 }
                 .buttonStyle(TutorialPressStyle())
                 Button { finish(.shop) } label: {
@@ -197,14 +193,13 @@ struct AppTutorial: View {
 }
 
 private extension View {
-    /// The tutorial's main button: navy, full width, a capsule.
+    /// The tutorial's main button: navy Liquid Glass, full width, a capsule.
     func tutorialFilled() -> some View {
         self
             .font(.inter(16, .bold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 54)
-            .background(Capsule().fill(Brand.navy))
-            .contentShape(Capsule())
+            .liquidGlass(.navy)
     }
 }
 

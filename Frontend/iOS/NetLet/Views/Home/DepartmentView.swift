@@ -46,8 +46,10 @@ private struct DealShelvesView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(shelves) { shelf in
+            ForEach(Array(shelves.enumerated()), id: \.element.id) { index, shelf in
                 ProductRail(title: title(shelf), products: shelf.products, viewAll: viewAll(shelf))
+                    // Rising in under the Deals tab's burst, one after another.
+                    .modifier(DealRise(order: min(index, 5)))
             }
         }
         // The rails carry their own side room; the page's is given back.
@@ -99,7 +101,6 @@ private struct BrowsePage: View {
     var body: some View {
         ShopPage(root: root, logo: false, refresh: { await model.load(language: l.current) }, assistant: true, assistantFolded: true, searchTerm: model.searchTerm) {
             VStack(alignment: .leading, spacing: 0) {
-                Breadcrumbs(trail: activeSub.map { [departmentName, $0.shown(l.current)] } ?? [crumb])
                 Text(title)
                     .pageTitle()
                     .fixedSize(horizontal: false, vertical: true)
@@ -151,11 +152,6 @@ private struct BrowsePage: View {
 
     private var departmentName: String {
         model.department.map { l.t($0.label) } ?? l.t("browse.allProducts")
-    }
-
-    private var crumb: String {
-        if model.isDealsPage { return l.t("nav.deals") }
-        return model.query == nil ? departmentName : l.t("browse.searchCrumb")
     }
 
     /// The subcategory the page is narrowed to, by its department.
@@ -238,9 +234,9 @@ private struct BrowsePage: View {
             .padding(.leading, 14)
             .padding(.trailing, 12)
             .frame(minHeight: 44)
-            .background(Capsule().fill(on ? Brand.tint : Color.white))
-            .overlay(Capsule().strokeBorder(on ? Brand.navy : Brand.line, lineWidth: on ? 1.5 : 1))
-            .contentShape(Capsule())
+            // A chip of Liquid Glass; one with something ticked keeps its navy rim.
+            .liquidGlass(.clear)
+            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5).opacity(on ? 1 : 0))
         }
         .buttonStyle(SpringPressStyle(cornerRadius: 22))
         .accessibilityLabel(on ? "\(name), \(group.active)" : name)
@@ -293,7 +289,8 @@ private struct BrowsePage: View {
         .font(.inter(15, .bold))
         .foregroundStyle(.white)
         .frame(height: 50)
-        .background(Capsule().fill(Brand.navy).shadow(color: Brand.navy.opacity(0.28), radius: 15, x: 0, y: 10))
+        // Navy Liquid Glass: the page's cards pass under it.
+        .liquidGlass(.navy, lifted: true)
         .buttonStyle(.tap)
         .animation(still ? nil : .spring(response: 0.3, dampingFraction: 0.7), value: model.shownFilters.activeCount > 0)
         .frame(maxWidth: .infinity)
@@ -534,8 +531,7 @@ private struct SheetClose: View {
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(Brand.navy)
                 .frame(width: 36, height: 36)
-                .background(Circle().fill(Color.white))
-                .overlay(Circle().strokeBorder(Brand.cardLine, lineWidth: 1))
+                .liquidGlass(.frost, in: Circle())
                 .frame(width: 44, height: 44)
         }
         .buttonStyle(.tap)

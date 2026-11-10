@@ -750,8 +750,7 @@ struct SavedProductCard: View {
                         .font(.inter(13, .bold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity, minHeight: 36)
-                        .background(Capsule().fill(Brand.navy))
-                        .contentShape(Capsule())
+                        .liquidGlass(.navy)
                 }
                 .buttonStyle(.action)
                 .accessibilityLabel(l.t("cart.moveToCartName", ["name": product.title]))
@@ -766,9 +765,7 @@ struct SavedProductCard: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                         .frame(maxWidth: .infinity, minHeight: 40)
-                        .background(Capsule().fill(Color.white))
-                        .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.25), lineWidth: 1))
-                        .contentShape(Capsule())
+                        .liquidGlass(.clear)
                 }
                 .buttonStyle(PressFillStyle(cornerRadius: 20))
                 .accessibilityLabel(l.t("saved.moveToWishlistName", ["name": product.title]))

@@ -352,8 +352,8 @@ struct PinPickerSheet: View {
             }
         }
         .padding(3)
-        .background(Capsule().fill(Color.white.opacity(0.96)))
-        .shadow(color: Brand.navy.opacity(0.18), radius: 6, y: 2)
+        // Liquid Glass over the map, bright over streets and satellite alike.
+        .liquidGlass(.frost, lifted: true)
         .padding(.top, 10)
         .environment(\.layoutDirection, l.layoutDirection)
         .accessibilityElement(children: .contain)

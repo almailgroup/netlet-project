@@ -763,8 +763,7 @@ struct ReviewsSection: View {
                                 .foregroundStyle(Brand.navy)
                                 .padding(.horizontal, 12)
                                 .frame(minHeight: 36)
-                                .background(Capsule().fill(Color.white))
-                                .overlay(Capsule().stroke(Brand.line, lineWidth: 1))
+                                .liquidGlass(.clear)
                             }
                             .accessibilityLabel("\(l.t("review.sortLabel")): \(l.t(Self.sortKey(sort)))")
                         }

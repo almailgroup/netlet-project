@@ -254,7 +254,7 @@ private struct InviteCard: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .frame(minHeight: 40)
-                        .background(Capsule().fill(Brand.navy))
+                        .liquidGlass(.navy)
                 }
             }
             Text("\(l.t("rewards.invited", ["count": "\(view.invited)"])) · \(l.t("rewards.qualified", ["count": "\(view.qualified)"]))")

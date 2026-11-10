@@ -58,6 +58,13 @@ final class AuthViewModel {
 
     private(set) var step: Step = .form
     var name = ""
+    /// A friend's invitation code, typed on the Create account form (`InviteCode`).
+    var inviteCode = InviteCode.stored() ?? ""
+    /// Said under its box with Submit: a code that is not shaped like one.
+    var inviteProblem: String? {
+        let typed = inviteCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        return mode == .register && !typed.isEmpty && !InviteCode.isShaped(typed) ? "ios.invite.bad" : nil
+    }
     var email = "" {
         didSet { if email != oldValue { emailChanged() } }
     }
@@ -293,7 +300,9 @@ final class AuthViewModel {
         submitted = true
         refusal = nil
         let address = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard emailProblem == nil, passwordProblem == nil, captchaProblem == nil else { return nil }
+        guard emailProblem == nil, passwordProblem == nil, captchaProblem == nil, inviteProblem == nil else { return nil }
+        // Kept for whichever way the account is then made.
+        if mode == .register { InviteCode.keep(inviteCode) }
         working = true
         defer { working = false }
         switch mode {

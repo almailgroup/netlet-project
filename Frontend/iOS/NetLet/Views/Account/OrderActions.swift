@@ -320,8 +320,7 @@ struct OrderActionStyle: ButtonStyle {
             .foregroundStyle(danger ? Brand.danger : Brand.navy)
             .padding(.horizontal, 14)
             .frame(minHeight: 44)
-            .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
-            .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
+            .liquidGlass(.clear, enabled: isEnabled, pressed: configuration.isPressed)
             .opacity(isEnabled ? 1 : 0.5)
             .pressHaptic(configuration.isPressed)
     }

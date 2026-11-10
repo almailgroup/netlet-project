@@ -4,7 +4,8 @@ import SwiftUI
 /// the preview's own pair (`PREVIEW_TONE`), on the owner's word ("make the
 /// buttons for adding to cart and buying now better and compact"). Add to
 /// cart is the brand's navy with white words, and green for the moment it says
-/// it worked; Buy now is white with a navy rim. Side by side, in one row of
+/// it worked; Buy now is light glass under navy words — both Liquid Glass, on
+/// the owner's word (`LiquidGlass`). Side by side, in one row of
 /// capsules, each a thumb's height — the product page stacked two white
 /// buttons and a heart (one the photo already carries) over 124 points.
 ///
@@ -14,30 +15,29 @@ struct AddToCartStyle: ButtonStyle {
     /// It has just worked: green, for the moment the button says so.
     var done = false
     var size: CGFloat = 15
+    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.inter(size, .bold))
             .foregroundStyle(.white)
-            .background(
-                Capsule().fill(done ? Brand.success : (configuration.isPressed ? Color(red: 13 / 255, green: 51 / 255, blue: 114 / 255) : Brand.navy))
-            )
+            .liquidGlass(done ? .success : .navy, enabled: isEnabled, pressed: configuration.isPressed)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
             .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }
 
-/// Buy now: white, a navy rim and navy words.
+/// Buy now: light glass under navy words.
 struct BuyNowStyle: ButtonStyle {
     var size: CGFloat = 15
+    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.inter(size, .bold))
-            .foregroundStyle(Brand.navy)
-            .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
-            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5))
+            .foregroundStyle(Brand.navy.opacity(isEnabled ? 1 : 0.45))
+            .liquidGlass(.clear, enabled: isEnabled, pressed: configuration.isPressed)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(duration: 0.2, bounce: 0.3), value: configuration.isPressed)
             .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)

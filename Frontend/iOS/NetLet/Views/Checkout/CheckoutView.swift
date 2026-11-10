@@ -579,7 +579,7 @@ struct MenuField: View {
     }
 }
 
-/// Place order: the brand orange with navy words (4.65:1), full width, with the total in it.
+/// Place order: orange glass with navy words (4.65:1), full width, with the total in it.
 struct OrderButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
@@ -588,10 +588,7 @@ struct OrderButtonStyle: ButtonStyle {
             .font(.body.weight(.bold))
             .foregroundStyle(Brand.navy)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Brand.orange.opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.45))
-            )
+            .liquidGlass(.orange, enabled: isEnabled, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }

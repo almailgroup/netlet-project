@@ -85,6 +85,8 @@ private struct AuthForm: View {
     @State private var lastTried: String?
     /// "Continue with phone number" has the form's place while it is chosen.
     @State private var phone: PhoneSignInModel?
+    /// The invitation code's box has been asked for.
+    @State private var inviteOpen = false
 
     enum Field: Hashable {
         case name, email, password, code
@@ -252,6 +254,7 @@ private struct AuthForm: View {
                     }
                 }
             }
+            if model.mode == .register { inviteRow }
             if model.mode == .register, let key = model.captchaSiteKey {
                 VStack(alignment: .leading, spacing: 6) {
                     CaptchaView(siteKey: key, origin: app.services.configuration.baseURL, language: l.current) { token in
@@ -601,6 +604,36 @@ private struct AuthForm: View {
         case .signIn: return model.usesCode ? "auth.sendingSignInCode" : "auth.signingIn"
         case .register: return "auth.sendingCode"
         case .reset: return "auth.sending"
+        }
+    }
+
+    /// A friend's invitation code (3.1.14): one quiet line on a form kept
+    /// short on purpose, and a box only once it is pressed — or already
+    /// holds a code. A link opens the website, so the app takes the code typed.
+    @ViewBuilder
+    private var inviteRow: some View {
+        if inviteOpen || !model.inviteCode.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                LabeledField(
+                    label: l.t("ios.invite.label") + " " + l.t("auth.optional"),
+                    text: $model.inviteCode,
+                    problem: model.submitted ? model.inviteProblem : nil,
+                    leftToRight: true,
+                    soft: true,
+                    icon: "gift"
+                )
+                if InviteCode.isShaped(model.inviteCode) {
+                    Text(l.t("auth.referralInvited"))
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        } else {
+            Button(l.t("ios.invite.have")) { inviteOpen = true }
+                .font(.inter(14, .semibold))
+                .foregroundStyle(Brand.navy)
+                .frame(minHeight: 44)
         }
     }
 

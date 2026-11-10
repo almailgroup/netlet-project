@@ -286,9 +286,7 @@ struct PhoneSignInButton: View {
             .foregroundStyle(Brand.navy)
             .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, 16)
-            .background(Capsule().fill(Color.white))
-            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1))
-            .contentShape(Capsule())
+            .liquidGlass(.clear)
         }
         .buttonStyle(.tap)
         .accessibilityIdentifier("phoneSignIn")

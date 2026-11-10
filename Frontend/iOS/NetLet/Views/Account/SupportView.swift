@@ -87,7 +87,7 @@ struct CompactPrimaryStyle: ButtonStyle {
             .foregroundStyle(.white)
             .padding(.horizontal, 18)
             .frame(minHeight: 44)
-            .background(Capsule().fill(isEnabled ? (configuration.isPressed ? Brand.navyPressed : Brand.navy) : Brand.navy.opacity(0.35)))
+            .liquidGlass(.navy, enabled: isEnabled, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }

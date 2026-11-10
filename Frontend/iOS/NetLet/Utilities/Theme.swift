@@ -45,7 +45,7 @@ enum Brand {
     static let fromPinInk = Color(red: 122 / 255, green: 58 / 255, blue: 31 / 255)
 }
 
-/// The shop's main action: navy, full width, a thumb's height.
+/// The shop's main action: navy Liquid Glass, full width, a thumb's height.
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
@@ -55,16 +55,13 @@ struct PrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, 16)
-            .background(
-                Capsule()
-                    .fill(isEnabled ? (configuration.isPressed ? Brand.navyPressed : Brand.navy) : Brand.navy.opacity(0.35))
-            )
+            .liquidGlass(.navy, enabled: isEnabled, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed)
     }
 }
 
 /// An act that cannot be taken back — deleting for good: white on the shop's
-/// red, the web's danger button, only ever behind a confirmation.
+/// red glass, the web's danger button, only ever behind a confirmation.
 struct DangerButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
@@ -74,12 +71,12 @@ struct DangerButtonStyle: ButtonStyle {
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, 16)
-            .background(Capsule().fill(Brand.danger.opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.35)))
+            .liquidGlass(.danger, enabled: isEnabled, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed)
     }
 }
 
-/// The orange action, with navy words on it (4.65:1): Place order, Today's deals.
+/// The orange action, in orange glass with navy words on it (4.65:1): Checkout, Today's deals.
 struct AccentButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
@@ -89,22 +86,22 @@ struct AccentButtonStyle: ButtonStyle {
             .foregroundStyle(Brand.navy)
             .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, 16)
-            .background(Capsule().fill(Brand.orange.opacity(isEnabled ? 1 : 0.45)))
-            .overlay(Capsule().fill(Brand.navy.opacity(configuration.isPressed ? 0.06 : 0)))
+            .liquidGlass(.orange, enabled: isEnabled, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed)
     }
 }
 
-/// The quieter action beside it: white, a navy rim, navy words.
+/// The quieter action beside it: light glass under navy words.
 struct SecondaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.inter(15, .bold))
-            .foregroundStyle(Brand.navy)
+            .foregroundStyle(Brand.navy.opacity(isEnabled ? 1 : 0.45))
             .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, 16)
-            .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
-            .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+            .liquidGlass(.clear, enabled: isEnabled, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed)
     }
 }

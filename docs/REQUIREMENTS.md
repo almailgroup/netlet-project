@@ -16,6 +16,27 @@ rounding up. Nothing is marked done because the schema could support it.
 | Not applicable | 3 |
 | Not started | 2 |
 
+*Checked again on 10 November 2026, this time against the iPhone app as well
+as the website.* The statuses below describe the repository; the app is a
+second client of the same server, so every row was asked a second question:
+can somebody do this from the app? The check was mechanical first — every
+procedure the website calls against every procedure the app calls (392 of 396
+shared; the four left are the website's own, the reset link's landing and the
+portal's hand-on), and every dictionary key the website draws against the
+app's — and four things the website had and the app did not were built:
+"Refine with NetLet AI" under the app's search results (3.1.6, 2.4); the
+maker's images in the app's product editor and new-listing form (3.1.10);
+the automatic photo fixes and the AI clean-up, shown before and after
+(3.3.4), where the app's uploads were only shrunk; and a friend's invitation
+code on the app's Create account form (3.1.14), since an invitation link
+opens the website and the app had no way to take one. **One gap is left in
+the app, and it needs the Apple Developer account rather than code**: a
+shared product link or invitation opens the website, not the app, so a sale
+through a member's link is credited when the friend buys on the website; for
+the app to open those links itself the App ID needs Associated Domains turned
+on. No row's status moved: the rows that are partial still wait on a payment
+provider, a bank, WhatsApp and telephony accounts, or a lawyer.
+
 *Updated on 27 October 2026, when the four rows the last check moved to
 partial were finished:* the seller application asks for more documents as its
 own answer and tells the applicant every decision by notice and email (3.3.1);

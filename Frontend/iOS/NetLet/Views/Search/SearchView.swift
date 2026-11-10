@@ -39,6 +39,10 @@ private struct SearchSheet: View {
     @State private var unrolled = false
     /// The sheet is folding away; nothing more is pressed meanwhile.
     @State private var closing = false
+    /// "Refine with NetLet AI" is asking the model about the words.
+    @State private var refining = false
+    /// Why the refined search did not come, said under its button.
+    @State private var refineNote: String?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
@@ -412,6 +416,8 @@ private struct SearchSheet: View {
         // Each answer's rows move into place rather than being swapped in a
         // frame: a row that stays slides to its new place, a new one rises.
         .animation(still ? nil : .snappy(duration: 0.24), value: shownIDs)
+        // A note about other words says nothing about these.
+        .onChange(of: words) { _, _ in refineNote = nil }
     }
 
     /// The products the rows show now, to animate between one answer and the next.
@@ -442,8 +448,10 @@ private struct SearchSheet: View {
                     .padding(.vertical, 12)
             }
             seeAll(words, count: found.total)
+            refine(words)
         case .failed:
             seeAll(words, count: nil)
+            refine(words)
         case .idle, .loading:
             // The rows' own outline, breathing, rather than a spinner in a gap.
             SkeletonRows(still: still)
@@ -552,6 +560,76 @@ private struct SearchSheet: View {
         }
         .buttonStyle(.tap)
         .padding(.top, 4)
+    }
+
+    /// "Refine with NetLet AI", the web's quieter button under the results: a
+    /// model's version of the words, as an option and never the default. It
+    /// lands on the same results page; when it does not come the shopper is
+    /// told so and the standard results stay. Drawn only while the shop's
+    /// models are on (`ai.available`), so it is never a button that can only
+    /// apologise.
+    @ViewBuilder
+    private func refine(_ words: String) -> some View {
+        if words.count >= 2, app.ai?.chat == true || app.ai?.catalog == true {
+            VStack(alignment: .leading, spacing: 6) {
+                Button {
+                    Task { await askRefined(words) }
+                } label: {
+                    HStack(spacing: 8) {
+                        if refining {
+                            ProgressView().controlSize(.small).tint(Brand.navy)
+                        } else {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(Brand.accentInk)
+                        }
+                        Text(l.t(refining ? "header.refining" : "header.refineWithAi"))
+                            .font(.inter(14, .semibold))
+                            .foregroundStyle(Brand.navy)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .liquidGlass(.frost, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.tap)
+                .disabled(refining)
+                if let refineNote {
+                    Text(l.t(refineNote))
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.updatesFrequently)
+                }
+            }
+            .padding(.top, 6)
+        }
+    }
+
+    private func askRefined(_ words: String) async {
+        guard !refining else { return }
+        refining = true
+        refineNote = nil
+        defer { refining = false }
+        // The shelf's own titles for the model to choose among: what this
+        // search found, then what the app already holds.
+        var titles: [String] = []
+        for product in (model.result.value?.products ?? []) + model.held() where !titles.contains(product.title) {
+            titles.append(String(product.title.prefix(160)))
+            if titles.count == 24 { break }
+        }
+        guard !titles.isEmpty else {
+            refineNote = "header.aiUnavailable"
+            return
+        }
+        do {
+            let answer = try await app.services.api.call(API.refineSearch, API.RefineInput(query: String(words.prefix(120)), catalogTitles: titles))
+            let refined = answer.query.trimmingCharacters(in: .whitespacesAndNewlines)
+            submit(refined.isEmpty ? words : refined)
+        } catch {
+            // The ceiling is the one refusal with words of its own.
+            let said = APIError.from(error).serverMessage
+            refineNote = said == "search.refineTooMany" ? "search.refineTooMany" : "header.aiUnavailable"
+            announce(l.t(refineNote ?? "header.aiUnavailable"))
+        }
     }
 
     // MARK: Going somewhere
