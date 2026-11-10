@@ -526,10 +526,12 @@ struct StoreView: View {
             }
             if departments.count > 1 {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        chip(l.t("stores.allDepartments"), count: found.products.count, key: "")
-                        ForEach(departments, id: \.name) { entry in
-                            chip(departmentLabel(entry.name), count: entry.count, key: entry.name)
+                    GlassGroup {
+                        HStack(spacing: 8) {
+                            chip(l.t("stores.allDepartments"), count: found.products.count, key: "")
+                            ForEach(departments, id: \.name) { entry in
+                                chip(departmentLabel(entry.name), count: entry.count, key: entry.name)
+                            }
                         }
                     }
                 }
@@ -595,8 +597,7 @@ struct StoreView: View {
                 .foregroundStyle(on ? .white : Brand.navy)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 40)
-                .background(Capsule().fill(on ? Brand.navy : Color.white))
-                .overlay(Capsule().strokeBorder(on ? Brand.navy : Brand.line, lineWidth: 1))
+                .glassChip(chosen: on)
         }
         .buttonStyle(.tap)
         .accessibilityAddTraits(on ? [.isSelected] : [])

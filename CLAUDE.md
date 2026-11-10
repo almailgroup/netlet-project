@@ -4527,18 +4527,23 @@ saving a variant, a bulk reprice, stock moved, a receipt, a return restocked, a
 line cancelled or restored, a store's status), so the event is the change and
 not the act — an edit that lowers and raises a price in one save tells nobody.
 
-**A sold-out product's one action is "Remind me when back in stock", on the
+**A sold-out product's one action is "Notify me when back in stock", on the
 owner's word** ("an email will be sent to the user or a notification stating
 that the product is back in stock"; `StockReminder` and `useStockReminder` on
-the web, `StockReminderButton` over `StockReminders` in the app). It stands
+the web, `StockReminderButton` over `StockReminders` in the app). **It said
+"Remind me" first, and the owner asked for "Notify me"** ("instead of remind
+me for the sold out products, it should be notify me"): the words changed in
+both languages ("أعلمني") and the keys, `remind.*`, did not. It stands
 where Add to cart would — the product page's pair (a navy capsule, with a line
 saying how it will arrive and how many are waiting), the phone's floating buy
 bar, the preview's pair, the card's button, Saved's and Saved for later's
 Move to cart, Frequently bought's Add to cart — on every product nothing of
 which can be bought; one sold-out option of a product that has others keeps
 the greyed pair, since the reminder is the product's (`productStates`'
-`available`). It reads "Reminder set" with a tick once on, and a press turns
-it off. **It is the follow row's `backInStock` and nothing else**: a
+`available`). It reads "We'll notify you" with a tick once on — "Notifying"
+on a card and in the bar (`remind.setShort`), where the longer words were cut
+on a phone narrower than 390 (measured on the web: 103px of words in 70 at
+320) — and a press turns it off. **It is the follow row's `backInStock` and nothing else**: a
 reminder used to turn price-drop notices on too, because a flag the request
 left out read as on for a new row (`followFlags`, `Shared/commerce/follows.ts`,
 tested), and the price-drop button (`FollowProduct`, `FollowButton`) is now
@@ -8574,6 +8579,32 @@ does not sit inside system glass. Left as they were: the portal's small
 buttons (163 of them, dozens to a list), a card's Buy now pill, tabs and
 badges, and Google's button, which is drawn to Google's rules.
 
+**Then more of it, on the owner's word** ("It looks so good. Can you make
+more stuff Liquid Glass design?"). The header's own controls — the area a
+capsule, the heart, the bell and a pushed page's back arrow a disc each, in
+`.frost` on the bar's frosted surface, as a system bar's are; **the search
+field, in the header and in the sheet that grows out of it**, in a tone of its
+own, `.bright` (white at 82%: nearly white under words that are typed and read
+on it, glass at its rim — the muted example has to keep its contrast over
+whatever the bar is carrying, which is why the web's field is solid); the
+toast, a pane of the same bright glass; **every chip that narrows a list** —
+a shelf's department tabs, a department's subcategories, a store's
+departments, a product's sizes and colours — navy glass once chosen and clear
+glass otherwise (`glassChip`); the thumb of the sign-in switch and of the
+language switch; the chat's send and stop discs and its questions; the cart's
+Change pill; the card's Buy now and Notify me pills, which only a card whose
+product is in the bag or sold out wears, so a grid never carries one per
+card; and the portal's pager. **Glass that is not a button does not swell
+under a finger** (`interactive: false`: the field, the toast, a thumb).
+**A row of chips is one `GlassGroup`** — the system's `GlassEffectContainer`
+at a spacing of nothing, so the chips are drawn in one pass and never run
+into one shape — because Apple's own note is that effects outside a
+container each sample what is behind them again, and that the number on
+screen at once should be kept down; the header's four are left on their own.
+Still flat, deliberately: the portal's small buttons and anything that is a
+card, a row or a page. None of it has been seen on a screen from this
+sandbox until the CI's pictures.
+
 **The Deals tab has a moment of its own, on the owner's word** ("when you tap
 on the deals icon in the bottom menu, it would display a cool animation for
 deals"; `DealsBurst`). A press on the tab — the one you are on too, never the
@@ -9221,6 +9252,18 @@ points after a fast flick — while the three other home-page scrolling tests
 passed in the same run. So the grid was not the whole of it. That test said
 only how far the page moved; it keeps a screenshot, what was under the flick
 and the page's own trace now, as the drags' test does.
+**What is left on the page that guesses its size is its lazy rows, and their
+heights are held now** (`HeldHeight`, `heldHeight(for:)` in `Shelves.swift`).
+A `LazyHStack` in a sideways scroll is as tall as the cards it has made and
+lets them go once the row is off the screen, and the home page's lazy rows
+together — the departments, the sponsored shelf, the product rows — are about
+the 1,800 points the eighth trace saw the content's height flip by. A product
+row and the sponsored shelf (and the cart's Saved for later) keep the tallest
+height they have measured while they hold the same products and the bag
+holds the same number of lines, so nothing a lazy row forgets can move the
+page; the departments' six tiles are a plain `HStack`, made at once. This
+fits the trace and is not proven: the stand-still was never reproduced on
+demand, so only runs without it will say.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the

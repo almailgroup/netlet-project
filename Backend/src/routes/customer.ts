@@ -144,7 +144,7 @@ export const customerRouter = router({
     /**
      * How a reminder would reach this shopper: always the inbox, and email
      * too while the shop sends email, the account has an address and its
-     * email switch is on — so "Remind me" can say which without promising an
+     * email switch is on — so "Notify me" can say which without promising an
      * email that will never come.
      */
     reach: protectedProcedure.query(async ({ ctx }) => ({

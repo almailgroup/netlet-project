@@ -19,7 +19,7 @@
  * **It is portalled to `<body>` here, not by whoever opens it.** A product
  * card rises by a transform under a pointer, and a transform makes the card
  * the containing block for every `position: fixed` inside it — so opened from
- * a card's "Remind me" on a wide screen, this was the card's size and inside
+ * a card's "Notify me" on a wide screen, this was the card's size and inside
  * it (measured: 264 × 505 at 1440). Some callers portalled it themselves and
  * some did not; one portal here covers them all, and a second is harmless.
  */

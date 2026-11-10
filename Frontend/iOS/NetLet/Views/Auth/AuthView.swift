@@ -384,9 +384,9 @@ private struct AuthForm: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .background {
                             if on {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.white)
-                                    .shadow(color: Brand.navy.opacity(0.12), radius: 6, x: 0, y: 2)
+                                // The thumb, in Liquid Glass, sliding between the halves.
+                                Color.clear
+                                    .liquidGlass(.frost, in: RoundedRectangle(cornerRadius: 12, style: .continuous), lifted: true, interactive: false)
                                     .matchedGeometryEffect(id: "pill", in: switchPill)
                             }
                         }

@@ -1,14 +1,16 @@
 /**
- * The button a sold-out product wears in place of Add to cart: "Remind me when
+ * The button a sold-out product wears in place of Add to cart: "Notify me when
  * back in stock" (`useStockReminder`). On the product page and in the preview
  * it is the page's one action, a navy capsule the width of the pair it stands
  * in for, with a line under it saying how the reminder will arrive and how
  * many are waiting; on a card, in Saved and in Frequently bought it is the
- * card's own white button. Once set it reads "Reminder set" with a tick, and a
+ * card's own white button. Once set it reads "We'll notify you" with a tick —
+ * "Notifying" on a card and in the bar, where the longer words were cut on a
+ * phone narrower than 390 (measured: 103px of words in 70 at 320) — and a
  * press turns it off again.
  *
  * Its accessible name starts with the words drawn and ends with the product
- * ("Remind me: Smart watch"), the card's rule, so a grid of them is not one
+ * ("Notify me: Smart watch"), the card's rule, so a grid of them is not one
  * name said twenty times, and somebody driving the page by voice can say what
  * they see.
  */
@@ -58,11 +60,11 @@ export function StockReminder({ productId, title, tone = "card", className = "" 
           type="button"
           onClick={reminder.press}
           aria-pressed={reminder.on}
-          aria-label={t(reminder.on ? "remind.setName" : "remind.shortName", { name: title })}
+          aria-label={t(reminder.on ? "remind.setShortName" : "remind.shortName", { name: title })}
           className={`flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-4 text-[14px] font-bold ${reminder.on ? PREVIEW_TONE.buy : PREVIEW_TONE.add} ${className}`}
         >
           {icon}
-          {t(reminder.on ? "remind.set" : "remind.short")}
+          {t(reminder.on ? "remind.setShort" : "remind.short")}
         </button>
         {dialog}
       </>
@@ -76,11 +78,11 @@ export function StockReminder({ productId, title, tone = "card", className = "" 
           type="button"
           onClick={reminder.press}
           aria-pressed={reminder.on}
-          aria-label={t(reminder.on ? "remind.setName" : "remind.shortName", { name: title })}
+          aria-label={t(reminder.on ? "remind.setShortName" : "remind.shortName", { name: title })}
           className={`pressable flex h-11 w-full min-w-0 items-center justify-center gap-1.5 rounded-xl px-2.5 pointer-fine:h-10 ${reminder.on ? "border border-[#0a285a] bg-[#0a285a] text-white transition-colors hover:bg-[#0d3372]" : PURCHASE_TONE.add} ${className}`}
         >
           {icon}
-          <span className="truncate">{t(reminder.on ? "remind.set" : "remind.short")}</span>
+          <span className="truncate">{t(reminder.on ? "remind.setShort" : "remind.short")}</span>
         </button>
         {dialog}
       </>

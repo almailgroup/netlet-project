@@ -2,7 +2,7 @@
  * "Tell me if the price drops", under an in-stock product's buy buttons.
  *
  * A sold-out product draws nothing here: its page, its card and the preview
- * carry "Remind me when back in stock" in the buy buttons' place
+ * carry "Notify me when back in stock" in the buy buttons' place
  * (`StockReminder`), which is the same follow row's other flag. The two were
  * one button once, whose promise changed with the stock, and a sold-out
  * product's reminder sat small under two greyed buttons where nobody looked.

@@ -66,8 +66,10 @@ struct ProductStrip: View {
     var ranked = false
     /// A card's line in the store's place, where a shelf has one to say.
     var note: ((Product) -> String?)? = nil
+    @Environment(AppModel.self) private var app
 
     var body: some View {
+        let shown = products.prefix(HomeShelf.most).map(\.id)
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .bottom, spacing: 12) {
                 ForEach(Array(products.prefix(HomeShelf.most).enumerated()), id: \.element.id) { index, product in
@@ -87,6 +89,61 @@ struct ProductStrip: View {
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned)
+        // A card grows by its Buy now when its product goes in the bag, so
+        // the bag is part of what decides the row's height.
+        .heldHeight(for: shown + ["\(app.cart.cart?.items.count ?? 0)"])
+    }
+}
+
+/// **A lazy row keeps the height it has measured**, for as long as what it
+/// holds is the same. A `LazyHStack` in a sideways scroll is as tall as the
+/// cards it has made, and it lets them go once the row is off the screen —
+/// so its height fell to nothing and came back as the page moved, and the
+/// page's own height went with it. The scroll trace of the home page's
+/// stand-still shows exactly that (#136): the content's height flipping
+/// between 2,587 and about 4,390 points every frame or two — the home page's
+/// lazy rows together are about 1,800 — until the page stood still and was
+/// put back at its top. Held, a row's height can only grow while its
+/// contents are the same, so nothing a lazy row forgets can move the page.
+/// A change of `key` — other products, a product in or out of the bag — lets
+/// it settle again.
+struct HeldHeight<Key: Equatable>: ViewModifier {
+    let key: Key
+    @State private var held: CGFloat = 0
+    /// The last height measured, kept where writing it draws nothing again.
+    @State private var last = HeldHeightBox()
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onChange(of: proxy.size.height.rounded(), initial: true) { _, height in
+                            last.height = height
+                            if height > held { held = height }
+                        }
+                }
+            }
+            .frame(minHeight: held, alignment: .top)
+            .onChange(of: key) { _, _ in
+                // It may be shorter now: let go, and take what it settles at.
+                held = 0
+                Task { @MainActor in
+                    if last.height > held { held = last.height }
+                }
+            }
+    }
+}
+
+/// `HeldHeight`'s last measurement: a box, so a new one is not a new state.
+final class HeldHeightBox {
+    var height: CGFloat = 0
+}
+
+extension View {
+    /// Keeps a lazy row from getting shorter while `key` is the same.
+    func heldHeight<Key: Equatable>(for key: Key) -> some View {
+        modifier(HeldHeight(key: key))
     }
 }
 
@@ -152,13 +209,17 @@ struct TabbedShelf: View {
             .padding(.horizontal, 16)
             if !rows.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        chip(title: l.t("categories.allSub"), count: products.count, slug: nil, chosen: current?.slug)
-                        ForEach(rows) { row in
-                            chip(title: l.t(row.label), count: row.products.count, slug: row.slug, chosen: current?.slug)
+                    // Chips of Liquid Glass, drawn as one pass per row.
+                    GlassGroup {
+                        HStack(spacing: 8) {
+                            chip(title: l.t("categories.allSub"), count: products.count, slug: nil, chosen: current?.slug)
+                            ForEach(rows) { row in
+                                chip(title: l.t(row.label), count: row.products.count, slug: row.slug, chosen: current?.slug)
+                            }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 2)
                     }
-                    .padding(.horizontal, 16)
                 }
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(l.t("home.shelfTabs", ["title": title]))
@@ -181,9 +242,7 @@ struct TabbedShelf: View {
             .foregroundStyle(pressed ? Color.white : Brand.navy)
             .padding(.horizontal, 16)
             .frame(minHeight: 40)
-            .background(Capsule().fill(pressed ? Brand.navy : Color.white))
-            .overlay(Capsule().strokeBorder(pressed ? Brand.navy : Brand.line, lineWidth: 1))
-            .contentShape(Capsule())
+            .glassChip(chosen: pressed)
         }
         .buttonStyle(.tap)
         .accessibilityAddTraits(pressed ? .isSelected : [])
@@ -246,7 +305,9 @@ struct DepartmentCardGrid: View {
     var body: some View {
         if row {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 10) {
+                // Six tiles: made at once, so the row's height is never a
+                // lazy stack's guess (see `HeldHeight`).
+                HStack(alignment: .top, spacing: 10) {
                     tiles(width: 112)
                 }
                 .padding(.horizontal, 16)

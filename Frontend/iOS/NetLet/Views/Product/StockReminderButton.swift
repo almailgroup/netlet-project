@@ -1,13 +1,14 @@
 import SwiftUI
 
-/// The button a sold-out product wears in place of Add to cart — "Remind me
+/// The button a sold-out product wears in place of Add to cart — "Notify me
 /// when back in stock" — the web's `StockReminder` (`StockReminders` holds
 /// the state). On the product page and in the preview it is the page's one
 /// action, a navy capsule the width of the pair it stands in for, with a line
 /// under it saying how the reminder will arrive and how many are waiting; on
 /// a card, in Saved and in Frequently bought it is the card's own white
 /// capsule; in the floating buy bar it sits beside the price. Once set it
-/// reads "Reminder set" with a tick, and a press turns it off again.
+/// reads "We'll notify you" with a tick ("Notifying" on a card and in the
+/// bar, the web's short form), and a press turns it off again.
 struct StockReminderButton: View {
     enum Style { case page, card, bar }
 
@@ -55,16 +56,16 @@ struct StockReminderButton: View {
                 }
             case .bar:
                 Button(action: press) {
-                    label(on: on, words: l.t(on ? "remind.set" : "remind.short"), icon: 13, spinner: on ? Brand.navy : .white)
+                    label(on: on, words: l.t(on ? "remind.setShort" : "remind.short"), icon: 13, spinner: on ? Brand.navy : .white)
                         .padding(.horizontal, 16)
                         .frame(minHeight: 42)
                 }
                 .modifier(PageTone(on: on, size: 14))
-                .accessibilityLabel(l.t(on ? "remind.setName" : "remind.shortName", ["name": title]))
+                .accessibilityLabel(l.t(on ? "remind.setShortName" : "remind.shortName", ["name": title]))
                 .accessibilityAddTraits(on ? .isSelected : [])
             case .card:
                 Button(action: press) {
-                    label(on: on, words: l.t(on ? "remind.set" : "remind.short"), icon: 13, spinner: on ? .white : Brand.navy)
+                    label(on: on, words: l.t(on ? "remind.setShort" : "remind.short"), icon: 13, spinner: on ? .white : Brand.navy)
                         .font(.inter(14, .medium))
                         .foregroundStyle(on ? Color.white : Brand.navy)
                         .frame(maxWidth: .infinity, minHeight: 44)
@@ -72,7 +73,7 @@ struct StockReminderButton: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(ReminderCardStyle(on: on))
-                .accessibilityLabel(l.t(on ? "remind.setName" : "remind.shortName", ["name": title]))
+                .accessibilityLabel(l.t(on ? "remind.setShortName" : "remind.shortName", ["name": title]))
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
@@ -122,14 +123,14 @@ private struct PageTone: ViewModifier {
     }
 }
 
-/// The card's capsule: white with the card's rim off, navy on.
+/// The card's capsule, in Liquid Glass: clear off, navy on. Only a sold-out
+/// card wears one.
 private struct ReminderCardStyle: ButtonStyle {
     let on: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(Capsule().fill(on ? (configuration.isPressed ? Color(red: 13 / 255, green: 51 / 255, blue: 114 / 255) : Brand.navy) : (configuration.isPressed ? Brand.pressFill : Color.white)))
-            .overlay(Capsule().strokeBorder(Brand.navy.opacity(on ? 1 : 0.2), lineWidth: 1))
+            .liquidGlass(on ? .navy : .clear, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }

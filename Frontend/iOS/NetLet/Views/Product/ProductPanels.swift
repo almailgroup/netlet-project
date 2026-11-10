@@ -464,7 +464,7 @@ struct PriceRequestPanel: View {
 
 /// "Tell me if the price drops", under an in-stock product's buy buttons —
 /// the web's `FollowProduct`. A sold-out product draws nothing here: it
-/// carries "Remind me when back in stock" in the buy buttons' place
+/// carries "Notify me when back in stock" in the buy buttons' place
 /// (`StockReminderButton`), the same follow row's other flag.
 struct FollowButton: View {
     let product: Product

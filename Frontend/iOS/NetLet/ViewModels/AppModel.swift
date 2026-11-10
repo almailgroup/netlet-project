@@ -164,7 +164,7 @@ final class AppModel {
     /// The account's profile photo, drawn on the Profile tab and "Your profile".
     let profilePhoto: ProfilePhotoModel
     let saved: SavedModel
-    /// "Remind me when back in stock", held for the whole app (`StockReminders`).
+    /// "Notify me when back in stock", held for the whole app (`StockReminders`).
     let reminders: StockReminders
     /// What this phone looked at lately, for the home page's "Previously viewed" and the picks.
     let viewed: RecentlyViewed

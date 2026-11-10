@@ -179,6 +179,7 @@ struct SponsoredShelf: View {
                             }
                             .padding(.horizontal, 16)
                         }
+                        .heldHeight(for: products.map(\.id) + ["\(app.cart.cart?.items.count ?? 0)"])
                     }
                     .padding(.vertical, 24)
                 } else {

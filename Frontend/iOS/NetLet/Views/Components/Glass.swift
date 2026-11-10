@@ -71,6 +71,10 @@ enum GlassTone: Sendable {
     case danger
     /// Green, for the moment a button says it worked.
     case success
+    /// Nearly white glass under words that are typed and read on it: the
+    /// search field. Bright enough that the muted example keeps its contrast
+    /// over whatever the header's glass is carrying, glass at its rim.
+    case bright
 }
 
 /// A control's surface in Liquid Glass. Interactive while the control is
@@ -86,6 +90,9 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
     /// It floats over the page: a soft shadow under it before iOS 26, whose
     /// glass brings its own.
     var lifted = false
+    /// Off for glass that is a surface rather than a button — a field, a
+    /// toast, a switch's thumb — which should not swell under a finger.
+    var interactive = true
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
@@ -102,7 +109,7 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
     @available(iOS 26.0, *)
     private var glass: Glass {
         let tinted = Glass.regular.tint(tint)
-        return enabled ? tinted.interactive() : tinted
+        return enabled && interactive ? tinted.interactive() : tinted
     }
 
     /// The tint the system's glass takes. A whole colour gives glass of that
@@ -115,6 +122,7 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
         case .orange: return Brand.orange.opacity(enabled ? 1 : 0.45)
         case .danger: return Brand.danger.opacity(enabled ? 1 : 0.35)
         case .success: return Brand.success
+        case .bright: return Color.white.opacity(0.82)
         }
     }
 
@@ -145,18 +153,51 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
             shape.fill(Brand.danger.opacity(enabled ? (pressed ? 0.85 : 1) : 0.35))
         case .success:
             shape.fill(Brand.success)
+        case .bright:
+            shape.fill(Color.white)
+                .shadow(color: Brand.navy.opacity(lifted ? 0.12 : 0), radius: 12, y: 6)
+                .overlay(shape.strokeBorder(Brand.line, lineWidth: 1))
+        }
+    }
+}
+
+/// Glass controls that sit beside each other — a row of chips, a switch —
+/// drawn by the system in one pass (`GlassEffectContainer`), which is what
+/// Apple asks for wherever several glass effects share a screen: each effect
+/// on its own samples what is behind it again. The spacing is nothing, so two
+/// chips never run into one shape; before iOS 26 it is only its content.
+/// **One child**, a stack or a layout: how the container lays out several is
+/// the system's to decide.
+struct GlassGroup<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        if #available(iOS 26.0, *) {
+            GlassEffectContainer(spacing: 0) { content }
+        } else {
+            content
         }
     }
 }
 
 extension View {
     /// The control's surface in Liquid Glass, a capsule unless told otherwise.
-    func liquidGlass(_ tone: GlassTone, enabled: Bool = true, pressed: Bool = false, lifted: Bool = false) -> some View {
-        modifier(LiquidGlass(tone: tone, shape: Capsule(), enabled: enabled, pressed: pressed, lifted: lifted))
+    func liquidGlass(_ tone: GlassTone, enabled: Bool = true, pressed: Bool = false, lifted: Bool = false, interactive: Bool = true) -> some View {
+        modifier(LiquidGlass(tone: tone, shape: Capsule(), enabled: enabled, pressed: pressed, lifted: lifted, interactive: interactive))
     }
 
     /// The same in a shape of its own — a disc, a rounded box.
-    func liquidGlass<S: InsettableShape>(_ tone: GlassTone, in shape: S, enabled: Bool = true, pressed: Bool = false, lifted: Bool = false) -> some View {
-        modifier(LiquidGlass(tone: tone, shape: shape, enabled: enabled, pressed: pressed, lifted: lifted))
+    func liquidGlass<S: InsettableShape>(_ tone: GlassTone, in shape: S, enabled: Bool = true, pressed: Bool = false, lifted: Bool = false, interactive: Bool = true) -> some View {
+        modifier(LiquidGlass(tone: tone, shape: shape, enabled: enabled, pressed: pressed, lifted: lifted, interactive: interactive))
+    }
+
+    /// A chip that narrows a list — a shelf's department, a subcategory, a
+    /// size: navy glass under white words once chosen, clear glass otherwise.
+    func glassChip(chosen: Bool) -> some View {
+        liquidGlass(chosen ? .navy : .clear)
     }
 }

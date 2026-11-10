@@ -362,14 +362,16 @@ private struct ProductPage: View {
                     VStack(alignment: .leading, spacing: 8) {
                         (Text(option.name + ": ").font(.inter(14, .semibold)).foregroundColor(Brand.muted)
                             + Text(model.selection[option.name] ?? "").font(.inter(14, .bold)).foregroundColor(Brand.ink))
-                        FlowLayout(spacing: 8) {
-                            ForEach(option.values, id: \.self) { value in
-                                ChoiceChip(
-                                    title: value,
-                                    selected: model.selection[option.name] == value,
-                                    available: model.isAvailable(option: option.name, value: value, in: product)
-                                ) {
-                                    model.select(option: option.name, value: value, in: product)
+                        GlassGroup {
+                            FlowLayout(spacing: 8) {
+                                ForEach(option.values, id: \.self) { value in
+                                    ChoiceChip(
+                                        title: value,
+                                        selected: model.selection[option.name] == value,
+                                        available: model.isAvailable(option: option.name, value: value, in: product)
+                                    ) {
+                                        model.select(option: option.name, value: value, in: product)
+                                    }
                                 }
                             }
                         }
@@ -379,10 +381,12 @@ private struct ProductPage: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(l.t("product.chooseOption")).font(.inter(14, .semibold)).foregroundStyle(Brand.muted)
-                    FlowLayout(spacing: 8) {
-                        ForEach(product.variants) { variant in
-                            ChoiceChip(title: variant.title, selected: model.variant?.id == variant.id, available: variant.availableForSale) {
-                                model.select(variant: variant)
+                    GlassGroup {
+                        FlowLayout(spacing: 8) {
+                            ForEach(product.variants) { variant in
+                                ChoiceChip(title: variant.title, selected: model.variant?.id == variant.id, available: variant.availableForSale) {
+                                    model.select(variant: variant)
+                                }
                             }
                         }
                     }
@@ -900,8 +904,7 @@ struct ChoiceChip: View {
                 .foregroundStyle(selected ? .white : (available ? Brand.navy : Brand.muted))
                 .padding(.horizontal, 14)
                 .frame(minHeight: 44)
-                .background(Capsule().fill(selected ? Brand.navy : Color.white))
-                .overlay(Capsule().strokeBorder(selected ? Brand.navy : Brand.line, lineWidth: 1))
+                .glassChip(chosen: selected)
         }
         .buttonStyle(.tap)
         .accessibilityAddTraits(selected ? .isSelected : [])

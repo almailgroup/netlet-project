@@ -192,8 +192,10 @@ private struct BrowsePage: View {
         let groups = FilterGroups.of(model.facets, model.shownFilters)
         if !groups.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(groups) { group in filterChip(group) }
+                GlassGroup {
+                    HStack(spacing: 8) {
+                        ForEach(groups) { group in filterChip(group) }
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 2)
@@ -360,16 +362,19 @@ private struct BrowsePage: View {
             .filter { (counts[$0.slug] ?? 0) > 0 || $0.slug == model.filters.sub }
         if !subs.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    subChip(title: l.t("categories.allSub"), count: model.products.value?.count ?? 0, slug: nil)
-                    ForEach(subs) { entry in
-                        subChip(title: entry.shown(l.current), count: counts[entry.slug] ?? 0, slug: entry.slug)
+                GlassGroup {
+                    HStack(spacing: 8) {
+                        subChip(title: l.t("categories.allSub"), count: model.products.value?.count ?? 0, slug: nil)
+                        ForEach(subs) { entry in
+                            subChip(title: entry.shown(l.current), count: counts[entry.slug] ?? 0, slug: entry.slug)
+                        }
                     }
                 }
                 .padding(.horizontal, 16)
+                .padding(.vertical, 2)
             }
             .padding(.horizontal, -16)
-            .padding(.top, 16)
+            .padding(.top, 14)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(l.t("categories.subcategories"))
         }
@@ -388,9 +393,7 @@ private struct BrowsePage: View {
             .foregroundStyle(pressed ? Color.white : Brand.navy)
             .padding(.horizontal, 16)
             .frame(minHeight: 40)
-            .background(Capsule().fill(pressed ? Brand.navy : Color.white))
-            .overlay(Capsule().strokeBorder(pressed ? Brand.navy : Brand.line, lineWidth: 1))
-            .contentShape(Capsule())
+            .glassChip(chosen: pressed)
         }
         .buttonStyle(.tap)
         .accessibilityAddTraits(pressed ? .isSelected : [])

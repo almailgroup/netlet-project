@@ -387,15 +387,17 @@ private struct QuickViewContent: View {
                     VStack(alignment: .leading, spacing: 8) {
                         (Text(option.name + ": ").font(.inter(14, .semibold)).foregroundColor(Brand.muted)
                             + Text(model.selection[option.name] ?? "").font(.inter(14, .bold)).foregroundColor(Brand.ink))
-                        FlowLayout(spacing: 8) {
-                            ForEach(option.values, id: \.self) { value in
-                                ChoiceChip(
-                                    title: value,
-                                    selected: model.selection[option.name] == value,
-                                    available: model.isAvailable(option: option.name, value: value, in: product)
-                                ) {
-                                    failure = nil
-                                    model.select(option: option.name, value: value, in: product)
+                        GlassGroup {
+                            FlowLayout(spacing: 8) {
+                                ForEach(option.values, id: \.self) { value in
+                                    ChoiceChip(
+                                        title: value,
+                                        selected: model.selection[option.name] == value,
+                                        available: model.isAvailable(option: option.name, value: value, in: product)
+                                    ) {
+                                        failure = nil
+                                        model.select(option: option.name, value: value, in: product)
+                                    }
                                 }
                             }
                         }
@@ -405,11 +407,13 @@ private struct QuickViewContent: View {
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(l.t("product.chooseOption")).font(.inter(14, .semibold)).foregroundStyle(Brand.muted)
-                    FlowLayout(spacing: 8) {
-                        ForEach(product.variants) { option in
-                            ChoiceChip(title: option.title, selected: model.variant?.id == option.id, available: option.availableForSale) {
-                                failure = nil
-                                model.select(variant: option)
+                    GlassGroup {
+                        FlowLayout(spacing: 8) {
+                            ForEach(product.variants) { option in
+                                ChoiceChip(title: option.title, selected: model.variant?.id == option.id, available: option.availableForSale) {
+                                    failure = nil
+                                    model.select(variant: option)
+                                }
                             }
                         }
                     }

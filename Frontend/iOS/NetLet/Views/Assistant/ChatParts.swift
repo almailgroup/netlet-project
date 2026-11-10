@@ -252,21 +252,22 @@ struct ChatSuggestionsRow: View {
         if !questions.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text(label).font(.inter(12, .semibold)).foregroundStyle(Brand.muted)
-                FlowLayout(spacing: 6) {
-                    ForEach(questions, id: \.self) { question in
-                        Button {
-                            onAsk(question)
-                        } label: {
-                            Text(question)
-                                .font(.inter(13, .medium))
-                                .foregroundStyle(Brand.navy)
-                                .multilineTextAlignment(.leading)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Capsule().fill(Color.white.opacity(0.92)))
-                                .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.15), lineWidth: 1))
+                GlassGroup {
+                    FlowLayout(spacing: 6) {
+                        ForEach(questions, id: \.self) { question in
+                            Button {
+                                onAsk(question)
+                            } label: {
+                                Text(question)
+                                    .font(.inter(13, .medium))
+                                    .foregroundStyle(Brand.navy)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .liquidGlass(.bright, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            }
+                            .buttonStyle(.tap)
                         }
-                        .buttonStyle(.tap)
                     }
                 }
             }
@@ -354,7 +355,7 @@ struct ChatComposer: View {
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(width: 40, height: 40)
-                            .background(Circle().fill(Brand.navy))
+                            .liquidGlass(.navy, in: Circle())
                     }
                     .buttonStyle(.tap)
                     .accessibilityLabel(l.t("assistant.stop"))
@@ -367,7 +368,7 @@ struct ChatComposer: View {
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(.white)
                             .frame(width: 40, height: 40)
-                            .background(Circle().fill(problem == nil ? Brand.navy : Brand.navy.opacity(0.35)))
+                            .liquidGlass(.navy, in: Circle(), enabled: problem == nil)
                             .flipsForRightToLeftLayoutDirection(true)
                     }
                     .buttonStyle(.action)

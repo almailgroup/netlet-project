@@ -907,12 +907,12 @@ struct PhotoCartControl: View {
     }
 }
 
-/// The card's white button, shaded while a finger is down.
+/// The card's light button, in Liquid Glass: it is drawn only on a card
+/// whose product is in the bag, so a grid never carries one per card.
 struct CardPillStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(Capsule().fill(configuration.isPressed ? Brand.pressFill : Color.white))
-            .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
+            .liquidGlass(.clear, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)
     }
 }

@@ -192,10 +192,12 @@ private struct SearchSheet: View {
             .padding(.leading, 8)
             .padding(.trailing, 4)
             .frame(height: 44)
-            .background(Capsule().fill(Color.white))
+            // The header's own bright glass, so the field does not change
+            // under the words as the sheet grows out of it.
+            .liquidGlass(.bright, interactive: false)
             // `.glass-field:focus-within`: a navy edge and a soft navy ring,
             // which grows in as the field takes the keyboard.
-            .overlay(Capsule().strokeBorder(focused ? Brand.navy : Brand.line, lineWidth: 1))
+            .overlay(Capsule().strokeBorder(Brand.navy.opacity(focused ? 1 : 0), lineWidth: 1))
             .background(Capsule().stroke(Brand.navy.opacity(focused ? 0.12 : 0), lineWidth: focused ? 6 : 0))
             .animation(still ? nil : .easeOut(duration: 0.2), value: focused)
             Button(l.t("search.close")) { close() }

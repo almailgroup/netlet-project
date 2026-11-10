@@ -315,10 +315,14 @@ struct LogoRow: View {
             if let back {
                 Button(action: back) {
                     Image(systemName: "chevron.backward")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Brand.navy)
+                        .frame(width: 36, height: 36)
+                        .liquidGlass(.frost, in: Circle())
                         .frame(width: 36, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.tap)
                 .accessibilityLabel(l.t("ios.back"))
             }
             Button(action: onLogo) {
@@ -344,10 +348,14 @@ struct LogoRow: View {
                     areaLabel(place, chevron: false).fixedSize()
                     areaLabel(place, chevron: false)
                 }
+                // The bar's controls are Liquid Glass, as a system bar's are:
+                // the area a capsule, the heart and the bell a disc each.
+                .frame(minHeight: 38)
+                .liquidGlass(.frost)
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
+            .buttonStyle(.action)
             .accessibilityLabel("\(l.t("home.deliverTo")) \(place)")
             .accessibilityHint(l.t("delivery.buttonTitle"))
             .layoutPriority(1)
@@ -360,15 +368,17 @@ struct LogoRow: View {
                 app.push(.saved)
             } label: {
                 Image(systemName: "heart")
-                    .font(.system(size: 19, weight: .medium))
+                    .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(Brand.navy)
+                    .frame(width: 38, height: 38)
+                    .liquidGlass(.frost, in: Circle())
                     .frame(width: 40, height: 44)
                     .overlay(alignment: .topTrailing) {
-                        CountBadge(value: saved).fixedSize().offset(x: 2, y: 2)
+                        CountBadge(value: saved).fixedSize().offset(x: 3, y: 0)
                     }
                     .contentShape(Rectangle())
             }
-            .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
+            .buttonStyle(.action)
             .accessibilityLabel(l.t("header.savedItems", ["count": "\(saved)"]))
             // The notifications follow the heart, on the owner's word, with
             // what is unread counted; signed out it is the sign-in, the web's
@@ -378,18 +388,22 @@ struct LogoRow: View {
                 if signedIn { app.push(.notifications) } else { app.openAccount(nil) }
             } label: {
                 Image(systemName: "bell")
-                    .font(.system(size: 19, weight: .medium))
+                    .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(Brand.navy)
+                    .frame(width: 38, height: 38)
+                    .liquidGlass(.frost, in: Circle())
                     .frame(width: 40, height: 44)
                     .overlay(alignment: .topTrailing) {
-                        CountBadge(value: unread).fixedSize().offset(x: 2, y: 2)
+                        CountBadge(value: unread).fixedSize().offset(x: 3, y: 0)
                     }
                     .contentShape(Rectangle())
             }
-            .buttonStyle(PressFillStyle(cornerRadius: 12, strength: Haptics.actionStrength))
+            .buttonStyle(.action)
             .accessibilityLabel(l.t("notices.menu"))
             .accessibilityValue(unread == 0 ? "" : l.t("header.unreadCount", ["count": "\(unread)"]))
-            .padding(.trailing, -6)
+            // The disc's own edge sits a point inside its frame, so the row's
+            // 16 is its margin; the bare icon was pulled out by six.
+            .padding(.trailing, -1)
         }
         .padding(.horizontal, 16)
         .frame(height: 58)
@@ -420,14 +434,16 @@ struct SearchRow: View {
             if let back {
                 Button(action: back) {
                     Image(systemName: "chevron.backward")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Brand.navy)
-                        .frame(width: 36, height: 44)
+                        .frame(width: 36, height: 36)
+                        .liquidGlass(.frost, in: Circle())
+                        .frame(width: 40, height: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.tap)
                 .accessibilityLabel(l.t("ios.back"))
-                .padding(.leading, -8)
+                .padding(.leading, -4)
             }
             field
         }
@@ -509,8 +525,9 @@ struct SearchRow: View {
         .padding(.leading, 8)
         .padding(.trailing, 4)
         .frame(height: 44)
-        .background(Capsule().fill(Color.white))
-        .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
+        // Bright Liquid Glass, as the system's own search fields are: nearly
+        // white under the words, glass at its rim. Still, being a field.
+        .liquidGlass(.bright, interactive: false)
     }
 
     private var voiceOn: Bool { app.features.isOn("voiceSearch") && Dictation.isAvailable }

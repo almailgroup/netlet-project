@@ -1,5 +1,5 @@
 /**
- * "Remind me when back in stock" — one reminder per product, the shopper's
+ * "Notify me when back in stock" — one reminder per product, the shopper's
  * own, on every sold-out product the shop draws: its page, its card, the
  * preview, Saved and Frequently bought.
  *

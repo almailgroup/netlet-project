@@ -335,8 +335,7 @@ struct PortalPager: View {
                 .foregroundStyle(enabled ? Brand.navy : Brand.chevron)
                 .flipsForRightToLeftLayoutDirection(true)
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.white))
-                .overlay(Circle().strokeBorder(Brand.line, lineWidth: 1))
+                .liquidGlass(.clear, in: Circle(), enabled: enabled)
         }
         .buttonStyle(.tap)
         .disabled(!enabled)

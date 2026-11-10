@@ -2,7 +2,7 @@
  * What a follow on a product asks to be told — the rule `setFollowedProduct`
  * writes by, pure so it is tested apart from the database.
  *
- * **A follow is what was asked for and nothing more.** "Remind me when back in
+ * **A follow is what was asked for and nothing more.** "Notify me when back in
  * stock" on a sold-out product used to sign the shopper up for price-drop
  * notices too, because a flag the request left out read as on for a new row.
  * A flag left out keeps what the row already says, and on a new row it is off.

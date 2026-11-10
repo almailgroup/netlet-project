@@ -262,7 +262,12 @@ struct LanguageSwitch: View {
                         .fixedSize()
                         .padding(.horizontal, 16)
                         .frame(minHeight: 40)
-                        .background(Capsule().fill(active ? Color.white : Color.clear).shadow(color: Brand.navy.opacity(active ? 0.14 : 0), radius: 2, y: 1))
+                        .background {
+                            // The chosen language's thumb, in Liquid Glass.
+                            if active {
+                                Color.clear.liquidGlass(.frost, in: Capsule(), lifted: true, interactive: false)
+                            }
+                        }
                         .contentShape(Capsule())
                 }
                 .buttonStyle(PressFillStyle(cornerRadius: 20, strength: Haptics.actionStrength))

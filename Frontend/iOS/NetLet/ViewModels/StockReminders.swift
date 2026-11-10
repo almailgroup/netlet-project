@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// "Remind me when back in stock" — the web's `useStockReminder`: one
+/// "Notify me when back in stock" — the web's `useStockReminder`: one
 /// reminder per product, the shopper's own, on every sold-out product the app
 /// draws (its page, its card, the preview, Saved, Frequently bought).
 ///
@@ -15,7 +15,7 @@ import Observation
 @Observable
 @MainActor
 final class StockReminders {
-    /// A guest who pressed Remind me is signing in; the reminder is set once
+    /// A guest who pressed Notify me is signing in; the reminder is set once
     /// the session exists, and forgotten if they close sign-in instead.
     struct Pending: Equatable, Sendable {
         let productId: String
@@ -69,7 +69,7 @@ final class StockReminders {
 }
 
 extension AppModel {
-    /// A press on Remind me: on or off for somebody signed in; a guest signs
+    /// A press on Notify me: on or off for somebody signed in; a guest signs
     /// in first, and the reminder is set once they have.
     func pressReminder(productId: String, title: String) {
         guard session.isSignedIn else {

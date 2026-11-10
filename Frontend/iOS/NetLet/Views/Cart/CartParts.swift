@@ -59,9 +59,7 @@ struct DeliveryAddressCard: View {
                     .foregroundStyle(address == nil ? Color.white : Brand.navy)
                     .padding(.horizontal, 16)
                     .frame(minHeight: 36)
-                    .background(Capsule().fill(address == nil ? Brand.navy : Color.white))
-                    .overlay(Capsule().strokeBorder(Brand.navy.opacity(address == nil ? 0 : 0.2), lineWidth: 1))
-                    .contentShape(Capsule())
+                    .liquidGlass(address == nil ? .navy : .clear)
             }
             .buttonStyle(PressFillStyle(cornerRadius: 18, strength: Haptics.actionStrength))
             .accessibilityLabel(address == nil ? l.t("cart.choose") : l.t("cart.changeAddress"))
@@ -617,6 +615,8 @@ struct SavedForLaterRow: View {
                     .scrollTargetLayout()
                 }
                 .scrollTargetBehavior(.viewAligned)
+                // The row keeps its height while it holds the same cards (`HeldHeight`).
+                .heldHeight(for: shown.map(\.id) + ["\(waiting)"])
                 .padding(.horizontal, -16)
             }
         }
