@@ -10,7 +10,7 @@
  *   grown out of the corner across the foot of the photo. Each press changes
  *   the bag's line at once (`CartContext` draws it before the server answers)
  *   and starts the wait again.
- * - **The count**, a navy square with the cart and how many, once the stepper
+ * - **The count**, the cart and how many side by side (`CartCount`), once the stepper
  *   has been left alone for `SETTLE_MS` or a finger lands anywhere else. A
  *   press on it opens the stepper again.
  *
@@ -201,7 +201,7 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
         onClick={event => { pressHaptic(); follow(event, "step"); setOpen(true); }}
         aria-expanded={false}
         aria-label={t("card.changeQuantity", { count: String(quantity), name })}
-        className={`${corner} ${glass} grid size-11 place-items-center rounded-xl focus-visible:outline-offset-2`}
+        className={`${corner} ${glass} inline-flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-3 focus-visible:outline-offset-2`}
       >
         <Glass />
         <CartCount count={quantity} />
@@ -333,19 +333,21 @@ function PhotoQuantity({ quantity, ceiling, name, onSet }: { quantity: number; c
 }
 
 /**
- * The cart with how many inside its basket — one drawing, so the number sits
- * where the basket is in either language and at any size. Two digits are drawn
- * a little smaller, since a line holds up to 99.
+ * The cart and how many beside it, the number as large as the stepper's own
+ * — on the owner's word ("fix the number shown of that product that is
+ * already added to cart; make sure it's visible"). It was drawn inside the
+ * cart's basket at 7.5 to 9 pixels, where an 11 read as a smudge. The pair
+ * follows the page: the cart leads, at the start, in either language.
  */
 function CartCount({ count }: { count: number }) {
   return (
-    <svg viewBox="0 0 28 28" className="size-7" aria-hidden>
-      <path d="M2.5 4h3.2l2.7 12.4a1.6 1.6 0 0 0 1.6 1.3h10.7a1.6 1.6 0 0 0 1.6-1.2L24.6 8H6.6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="10.6" cy="22.6" r="1.7" fill="currentColor" />
-      <circle cx="20" cy="22.6" r="1.7" fill="currentColor" />
-      <text x="15.6" y="13" textAnchor="middle" dominantBaseline="central" fill="currentColor" fontSize={count > 9 ? 7.5 : 9} fontWeight={800} style={{ fontVariantNumeric: "tabular-nums" }}>
-        {count}
-      </text>
-    </svg>
+    <span aria-hidden className="inline-flex items-center gap-1.5">
+      <svg viewBox="0 0 28 28" className="size-5 shrink-0">
+        <path d="M2.5 4h3.2l2.7 12.4a1.6 1.6 0 0 0 1.6 1.3h10.7a1.6 1.6 0 0 0 1.6-1.2L24.6 8H6.6" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="10.6" cy="22.6" r="1.9" fill="currentColor" />
+        <circle cx="20" cy="22.6" r="1.9" fill="currentColor" />
+      </svg>
+      <span className="text-[16px] font-bold leading-none tabular-nums">{count}</span>
+    </span>
   );
 }

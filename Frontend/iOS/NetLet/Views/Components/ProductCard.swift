@@ -676,8 +676,12 @@ struct CardActions: View {
 /// - **The stepper** — the bin at one or a minus, the count, a plus — in navy
 ///   across the foot of the photo. Every press changes the bag's line and
 ///   starts the wait again.
-/// - **The count**, a navy square with the cart and how many, once the
-///   stepper has been left alone for `settleSeconds`. A press opens it again.
+/// - **The count**, the cart and how many side by side, once the stepper has
+///   been left alone for `settleSeconds`. A press opens it again. **The
+///   number is the stepper's own size, on the owner's word** ("fix the number
+///   shown of that product that is already added to cart; make sure it's
+///   visible"): it was drawn inside the cart's basket at nine points, where
+///   an 11 read as a smudge.
 ///
 /// It reads the bag's plain line for the variant (`plainLine`), the one Buy
 /// now follows. A product with sizes or colours opens its page instead, and a
@@ -721,7 +725,8 @@ struct PhotoCartControl: View {
                     }
                 }
             }
-            .frame(maxWidth: stepping ? 152 : 44, minHeight: 44, maxHeight: 44)
+            // The stepper's width, the count's (wider for two digits), or the plus's square.
+            .frame(maxWidth: stepping ? 152 : (line.map { Self.countWidth($0.quantity) } ?? 44), minHeight: 44, maxHeight: 44)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             // Liquid Glass, the tab bar's, on the owner's word ("make the
             // adding to cart design Liquid Glass, just like the bottom menu").
@@ -746,21 +751,27 @@ struct PhotoCartControl: View {
         .accessibilityLabel(label)
     }
 
-    /// The cart with how many in its basket, as the web draws it.
+    /// How wide the folded count is: the cart, the number and their room.
+    static func countWidth(_ count: Int) -> CGFloat { count > 9 ? 74 : 62 }
+
+    /// The cart and how many beside it, the number as large as the stepper's
+    /// own — the web's folded face. A line holds up to 99, so two digits.
     private func countFace(_ count: Int) -> some View {
         Button {
             open = true
             settleLater()
         } label: {
-            ZStack {
-                Image(systemName: "cart").font(.system(size: 22, weight: .regular))
+            HStack(spacing: 5) {
+                // The outline cart, as the web draws it, at the number's weight.
+                Image(systemName: "cart").font(.system(size: 16, weight: .bold))
                 Text("\(count)")
-                    .font(.inter(count > 9 ? 9 : 11, .bold))
+                    .font(.inter(16, .heavy))
                     .monospacedDigit()
-                    .offset(x: 1.5, y: -3)
+                    // Never cut to "1…": the number is the point.
+                    .fixedSize()
             }
             .foregroundStyle(PhotoGlass.ink)
-            .frame(width: 44, height: 44)
+            .frame(width: Self.countWidth(count), height: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.action)

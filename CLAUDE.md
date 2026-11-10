@@ -1445,7 +1445,7 @@ plus in the photo's end corner (mirrored on the Arabic page) adds one at once
 and grows into a navy stepper across the photo's foot — a bin at one or a
 minus, the count, a plus — and once the presses stop for `SETTLE_MS` (2.5s),
 or a finger lands anywhere else, it folds into a navy square: a cart with the
-count inside its basket. A press on that opens the stepper again. Under the
+count beside it (below). A press on that opens the stepper again. Under the
 price there is nothing until the plus has put the product in, and then "Buy N
 now", following the same plain line. It is the bag's plain line for the
 variant, `CardAction`'s, so the photo and Buy now cannot disagree; a product with sizes gets a plus that opens the preview, and a
@@ -1462,6 +1462,23 @@ moves. Measured at 320 and 390 in both languages: add, step, fold after 2.5s,
 reopen, bin back to the plus, a tap elsewhere folding it, the sizes plus
 opening the preview, axe clean with the stepper open, no sideways scroll; at
 1440 the card is Add to cart over Buy now with nothing on the photo.
+
+**Folded, it is the cart and the count side by side, the number the
+stepper's own size, on the owner's word** (a picture of a card with eleven in
+the bag: "fix the number shown of that product that is already added to cart;
+make sure it's visible"). The count was drawn inside the cart's basket — 7.5
+to 9 pixels on the web, 9 to 11 points in the app — and an 11 read as a
+smudge. Now the face is a short pill at the photo's end corner: the outline
+cart, then the count at 16 bold in the tab bar's near-black ink, the cart
+leading at the start in either language (`CartCount` on the web, `countFace`
+in the app, wider for two digits — a line holds up to 99). Measured on the
+web's phone card at 320 and 390 in both languages with eleven in the bag: a
+73 × 44 face, the number 16px at weight 700, clear of the gallery's dots, a
+press opening the stepper on 11 again, axe clean, no sideways scroll; under a
+mouse at 1440 the control is not drawn, as before. The app's is the same
+drawing, not yet seen on a phone from this sandbox. An SF Symbol whose name
+starts with a dictionary namespace (`cart.fill`) fails the app's key check,
+so the outline `cart` is used.
 
 **The plus, the stepper and the folded square wear the tab bar's Liquid
 Glass, on the owner's word** ("make the adding to cart design Liquid Glass,
