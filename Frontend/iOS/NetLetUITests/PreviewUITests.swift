@@ -78,17 +78,38 @@ final class PreviewUITests: XCTestCase {
     /// the product is in it. The tick is 1.6s and a tap waits for the app to
     /// settle first, which on a busy runner can outlast it — so either one is
     /// the answer, and the line is checked absent before the press.
+    ///
+    /// **The preview's button is the one called exactly "Add to cart".** A
+    /// card's buttons always name their product ("Add to cart: …") and the
+    /// preview's never do, and a card on the page under the sheet can be in
+    /// the app's tree too — so the first button whose name starts with "Add"
+    /// need not be the preview's, and a press on one behind the sheet lands on
+    /// nothing. A failure says which buttons it saw and where.
     func testThePreviewAddsToTheBag() {
         let app = launch("preview:basmati-rice-5kg")
         XCTAssertTrue(app.staticTexts["Quick view"].waitForExistence(timeout: 30), "The preview never opened.")
-        let add = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Add")).firstMatch
-        XCTAssertTrue(add.waitForExistence(timeout: 10), "The preview has no Add to cart.")
+        let add = app.buttons["Add to cart"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 10), "The preview has no Add to cart. \(seen(app))")
         let inBag = app.staticTexts["In your cart"]
         XCTAssertFalse(inBag.exists, "The product was in the bag before the press.")
+        let before = seen(app)
         add.tap()
         let answer = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label BEGINSWITH %@ OR label == %@", "Added", "In your cart")).firstMatch
-        XCTAssertTrue(answer.waitForExistence(timeout: 10), "Add to cart in the preview said nothing.")
+        XCTAssertTrue(answer.waitForExistence(timeout: 10), "Add to cart in the preview said nothing. Before the press: \(before). After: \(seen(app)).")
+    }
+
+    /// What the test could see, for a failure to say: the buttons that add,
+    /// buy or open the cart — where each is, and whether a finger reaches it —
+    /// and which of the preview's own words are on the screen.
+    private func seen(_ app: XCUIApplication) -> String {
+        let named = NSPredicate(format: "label BEGINSWITH %@ OR label BEGINSWITH %@ OR label BEGINSWITH %@", "Add", "Buy", "View cart")
+        let buttons = app.buttons.matching(named).allElementsBoundByIndex.prefix(8).map { button -> String in
+            let place = frame(of: button) ?? .zero
+            return "\"\(button.label)\" at \(Int(place.midX)),\(Int(place.midY)) \(button.isEnabled ? "on" : "off") \(button.isHittable ? "reachable" : "covered")"
+        }
+        let words = ["Quick view", "In your cart", "Choose an option", "Your cart", "Checkout"].filter { app.staticTexts[$0].exists }
+        return "buttons [\(buttons.joined(separator: "; "))], words [\(words.joined(separator: ", "))]"
     }
 
     // MARK: Helpers
