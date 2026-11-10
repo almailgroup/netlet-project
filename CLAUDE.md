@@ -8605,6 +8605,15 @@ the eighth sighting of the home page's stand-still pointed at (see "A drag
 that moves nothing"): nothing on the page is estimated and then measured
 down its length any more.
 
+**The app's banner keeps its fade to its very foot, on the owner's word**
+(a picture of the home page: "bring down the fade for the banner; let the
+banner be visible clearly without this fade being on it a lot"): the last 36
+points of the picture melt into the page (`HomeHero.footHeight`), eased as
+before, so the band still ends without a line. It was the web's phone 96 over
+a band 240 points tall, which washed two fifths of every picture — the van's
+wheels and the road under it — toward the page's ground. The website's phone
+fade is as it was (`.hero-foot`).
+
 **In the app a department's subcategories, the stores and the brands are
 rounded squares, three to a row, on the owner's word** (a picture of the
 app's Categories: "for the subcategories, instead of being as a list, make it

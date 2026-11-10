@@ -124,7 +124,11 @@ struct HomeView: View {
 /// The pictures are a slideshow, on the owner's word: each stays three
 /// seconds, the next fades in over the last, which stays whole underneath so
 /// the navy never shows through mid-change. Nobody who asked for less motion
-/// sees it move. The band ends in a fade into the page rather than a line.
+/// sees it move. The band ends in a fade into the page rather than a line —
+/// **a short one, at the picture's very foot, on the owner's word** ("bring
+/// down the fade for the banner; let the banner be visible clearly without
+/// this fade being on it a lot"): the last 36 points, where it was the web's
+/// 96 over a band of 240, two fifths of the picture washed toward the page.
 struct HomeHero: View {
     @State private var current = 0
     @State private var previous: Int?
@@ -133,13 +137,16 @@ struct HomeHero: View {
 
     /// How long each picture stays before the next fades in (`SLIDE_MS`).
     static let slideSeconds = 3.0
+    /// How much of the picture's foot melts into the page: enough to end
+    /// without a line, little enough that the picture is seen whole.
+    static let footHeight: CGFloat = 36
     private let slides = WebAssets.manifest.heroSlides
 
     var body: some View {
         if !slides.isEmpty {
             pictures
                 .overlay(alignment: .bottom) {
-                    Self.foot.frame(height: 96).allowsHitTesting(false)
+                    Self.foot.frame(height: Self.footHeight).allowsHitTesting(false)
                 }
                 .background(Brand.navy)
                 .task(id: still) { await run() }
