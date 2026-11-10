@@ -9007,6 +9007,22 @@ eight pieces (`scroll-trace`, `scroll-trace-1` …), a return to the top is note
 however it came, and it also notes where each phase began, content-height
 changes over 100 points, the tab bar going and coming, the search row taking the
 top, the logo's scroll to the top and each change of the hero's picture.
+**The eighth sighting, with the whole trace, says what moves** (run
+42853379870, the English home page, on the push of the stock reminder and the
+subcategory pictures, neither of which is on the drag's path): the drags went
+1,363 points down as before, and **the content's height flipped between 2,587
+and about 4,390 points every frame or two** for as long as the scroll
+decelerated there, about 80 times in a second, into a stand-still with the
+height still flipping. The main thread was then held for 1.5 and 2.3 seconds,
+the hero changed picture, and thirty milliseconds later, on one of those flips
+down to 2,587, the page was back at its top with no jump of its own noted. So
+it is not a drag that went missing but a layout that does not settle: one
+block of the page about 1,800 points tall is being made and dropped in turn
+(a lazy grid's rows estimated and then measured is the likeliest shape — New
+arrivals is a grid inside the page's stack), and a drop at the wrong moment
+puts the offset back to zero. The next step is to find which block, by noting
+each block's height in the trace, or to take the lazy grid out of the stack and
+see whether the flipping stops.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the
