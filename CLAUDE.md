@@ -8628,6 +8628,30 @@ next to theirs. None of the three is lazy, which keeps a lazy grid out of a
 page's lazy stack (the home page's stand-still). The website keeps its rows
 and its store cards: this is the app's alone.
 
+**A press on a product card grows its photo into the product's page, on the
+owner's word** ("when tapping on a product in homepage, put an animation for
+it, which will expand the image of the product into product page … when
+tapping on any product card"). It is the system's own zoom, from iOS 18
+(`matchedTransitionSource` on the card's photo, `navigationTransition(.zoom)`
+on the page): the photo, with what is drawn on it, grows into the page, and
+going back the page shrinks into the card it came from — by the page's back
+arrow, a swipe from the edge, or **a drag down from the top of the page**,
+which the zoom brings with it, so a product page opened from a card is put
+away by that drag rather than refreshed by it (it reads itself afresh as it
+opens). **The card's own namespace travels with the press** (`CardOpening`, a
+`Hashable` of the product's handle and the card's `@Namespace`, registered
+beside `Route` in `routes()`), rather than one namespace for the app: a
+product can be on a page twice — a shelf and Previously viewed — and two
+sources under one name would leave the system to pick which card the page
+grows from. `ProductCard`'s photo and name open it this way on every page
+that draws one, and so does Saved's card (`SavedProductCard`); every other
+way to a product — a banner, a search row, a link, the photo's plus on a
+product with sizes — pushes it as before, having no photo of its own to grow
+from. iOS 17 pushes plainly, and Reduce Motion is the system's to honour.
+`PreviewUITests` taps a card's photo, checks the page, goes back and checks
+the page has gone. Not yet seen on a phone from this sandbox: the test says
+it opens and returns, not how it looks.
+
 **The Cart tab is the web's new bag, on the owner's word.** `CartView` opens on the title and the count with a heart to
 Saved at the line's end (`CartSavedButton`, the hearts counted), then where the order goes (`DeliveryAddressCard` in `CartParts.swift`,
 the web's own card: the address in use by `DeliveryModel.inUse` with its name,

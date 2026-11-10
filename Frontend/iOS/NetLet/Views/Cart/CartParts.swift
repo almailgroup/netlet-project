@@ -677,6 +677,8 @@ struct SavedProductCard: View {
     }
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    /// The card's own namespace: its photo is what the product's page grows out of (`CardOpening`).
+    @Namespace private var zoom
 
     var body: some View {
         let variant = product.variants.first(where: \.availableForSale)
@@ -684,7 +686,7 @@ struct SavedProductCard: View {
         VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topTrailing) {
                 Button {
-                    app.push(.product(handle: product.handle))
+                    app.push(card: CardOpening(handle: product.handle, namespace: zoom))
                 } label: {
                     Color.clear
                         .aspectRatio(1, contentMode: .fit)
@@ -694,6 +696,7 @@ struct SavedProductCard: View {
                 }
                 .buttonStyle(.tap)
                 .accessibilityHidden(true)
+                .modifier(ZoomSource(namespace: zoom))
                 Button {
                     Task { await app.saved.unsave(product.id) }
                 } label: {
@@ -714,7 +717,7 @@ struct SavedProductCard: View {
                 }
             }
             Button {
-                app.push(.product(handle: product.handle))
+                app.push(card: CardOpening(handle: product.handle, namespace: zoom))
             } label: {
                 Text(product.title)
                     .font(.inter(13, .bold))

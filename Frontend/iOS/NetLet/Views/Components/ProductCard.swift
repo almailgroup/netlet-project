@@ -196,6 +196,9 @@ struct ProductCard: View {
     @Environment(LanguageSettings.self) private var l
     /// Moves on with each hold, so the card under the finger is a new one.
     @State private var held = 0
+    /// The card's own namespace: its photo is what the product's page grows
+    /// out of when the card is pressed, and shrinks back into (`CardOpening`).
+    @Namespace private var zoom
 
     /// The card's identity: its product, and how many holds it has had.
     /// **It names the product, and that is what drew only one card.** It was
@@ -225,6 +228,8 @@ struct ProductCard: View {
             // between the photo and the spacer above Buy now: the photo shrank
             // to a narrower 4:5 in the middle and a gap opened under the price.
             .fixedSize(horizontal: false, vertical: true)
+            // The photo, with what is drawn on it: where the product's page grows from.
+            .modifier(ZoomSource(namespace: zoom))
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
                     if let line = note ?? product.vendor, !line.isEmpty {
@@ -233,7 +238,7 @@ struct ProductCard: View {
                             .foregroundStyle(Brand.muted)
                             .lineLimit(1)
                     }
-                    NavigationLink(value: Route.product(handle: product.handle)) {
+                    NavigationLink(value: CardOpening(handle: product.handle, namespace: zoom)) {
                         Text(product.title)
                             .font(.inter(feature ? 17 : 14, .semibold))
                             .foregroundStyle(Brand.navy)
@@ -283,10 +288,10 @@ struct ProductCard: View {
         app.previewing = product
     }
 
-    /// A short press on the photo: the product's page.
+    /// A short press on the photo: the product's page, grown out of the photo.
     private func open() {
         Haptics.tap()
-        app.push(.product(handle: product.handle))
+        app.push(card: CardOpening(handle: product.handle, namespace: zoom))
     }
 
     @ViewBuilder

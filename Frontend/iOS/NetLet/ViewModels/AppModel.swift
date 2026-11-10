@@ -614,12 +614,22 @@ final class AppModel {
     /// Opens a screen on top of the tab that is showing — the way a link on
     /// the web opens a page from wherever the shopper is.
     func push(_ route: Route) {
+        append(route)
+    }
+
+    /// A product opened from its card: the page grows out of the card's photo.
+    func push(card opening: CardOpening) {
+        append(opening)
+    }
+
+    /// Onto the stack of the tab that is showing.
+    private func append<Value: Hashable>(_ value: Value) {
         switch selectedTab {
-        case .home: homePath.append(route)
-        case .account: accountPath.append(route)
-        case .cart: cartPath.append(route)
-        case .categories: categoriesPath.append(route)
-        case .deals: dealsPath.append(route)
+        case .home: homePath.append(value)
+        case .account: accountPath.append(value)
+        case .cart: cartPath.append(value)
+        case .categories: categoriesPath.append(value)
+        case .deals: dealsPath.append(value)
         }
     }
 

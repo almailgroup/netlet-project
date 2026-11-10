@@ -64,6 +64,13 @@ final class PreviewUITests: XCTestCase {
         let buy = app.buttons.matching(NSPredicate(format: "label IN %@", ["Add to cart", "Buy now", "Pre-order now"])).firstMatch
         XCTAssertTrue(buy.waitForExistence(timeout: 12), "A tap on a card's photo did not open \(name).")
         XCTAssertFalse(app.staticTexts["Quick view"].exists, "A tap opened the preview rather than the product.")
+        // And back again: the page grew out of the card's photo (`CardOpening`)
+        // and has to shrink back into it, leaving the shelf as it was.
+        let back = app.buttons["Back"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 6), "The product page has no way back.")
+        back.tap()
+        XCTAssertTrue(waitForAbsence(buy, timeout: 10), "Going back from \(name) left its page on the screen.")
+        XCTAssertTrue(heart.waitForExistence(timeout: 6), "Going back from \(name) did not return to the shelf.")
     }
 
     /// The preview's Add to cart says it worked where the finger is: the tick

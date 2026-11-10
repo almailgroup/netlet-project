@@ -179,10 +179,68 @@ private struct ToastView: View {
 }
 
 extension View {
-    /// Every screen a `Route` names, so any stack can open any of them.
+    /// Every screen a `Route` names, so any stack can open any of them — and
+    /// a product opened from its card (`CardOpening`), which is the same
+    /// product page growing out of the card's photo.
     func routes(path: Binding<NavigationPath>? = nil) -> some View {
         navigationDestination(for: Route.self) { route in
             RouteDestination(route: route, path: path)
+        }
+        .navigationDestination(for: CardOpening.self) { opening in
+            RouteDestination(route: .product(handle: opening.handle), path: path)
+                .modifier(ZoomFromCard(namespace: opening.namespace))
+        }
+    }
+}
+
+/// A product opened by a press on its card, on the owner's word ("when
+/// tapping on a product in homepage, put an animation for it, which will
+/// expand the image of the product into product page … when tapping on any
+/// product card"). It is the system's own zoom, from iOS 18: the card's photo
+/// grows into the product page, and going back the page shrinks into the card
+/// it came from — by the back arrow, a swipe from the edge, or a drag down
+/// from the top of the page, which the zoom brings with it (so a page opened
+/// this way is put away by that drag rather than refreshed by it). iOS 17
+/// pushes the page as it always did, and Reduce Motion is the system's to
+/// honour.
+///
+/// **The card's own namespace travels with the press**, rather than one
+/// namespace for the app: a product can be on a page twice — a shelf and
+/// Previously viewed — and two sources under one name in one namespace would
+/// leave the system to pick which card the page grows from. In its own
+/// namespace a card's photo is the only thing called `photo`. The page is
+/// opened by the product's handle, so everything else about it is `Route`'s.
+struct CardOpening: Hashable {
+    let handle: String
+    /// The namespace of the card that was pressed.
+    let namespace: Namespace.ID
+
+    /// What a card's photo is called in the card's namespace.
+    static let photo = "photo"
+}
+
+/// On a card's photo: where its product's page grows from (`CardOpening`).
+struct ZoomSource: ViewModifier {
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.matchedTransitionSource(id: CardOpening.photo, in: namespace)
+        } else {
+            content
+        }
+    }
+}
+
+/// On the product page a card opened: it grows out of that card's photo.
+private struct ZoomFromCard: ViewModifier {
+    let namespace: Namespace.ID
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.navigationTransition(.zoom(sourceID: CardOpening.photo, in: namespace))
+        } else {
+            content
         }
     }
 }
