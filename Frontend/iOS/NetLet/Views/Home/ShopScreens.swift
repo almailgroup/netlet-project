@@ -251,8 +251,8 @@ struct SavedView: View {
 }
 
 /// Every brand on the shelf — what "Shop by brand" opens, the web's `/brands`:
-/// the same read the home shelf keeps (`HomeShelf.brands`), each tile opening
-/// everything of that brand.
+/// the same read the home shelf keeps (`HomeShelf.brands`), each a rounded
+/// square opening everything of that brand, three to a row like the stores.
 struct BrandsView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -272,7 +272,7 @@ struct BrandsView: View {
                         EmptyStateView(systemImage: "tag", title: l.t("brands.empty"), note: l.t("brands.emptyNote"))
                             .card(padding: 0)
                     } else {
-                        LazyVStack(spacing: 10) {
+                        TileGrid(spacing: 12, columns: 3, widest: 150, rowSpacing: 18) {
                             ForEach(brands) { brand in BrandTile(brand: brand) }
                         }
                     }
@@ -286,7 +286,9 @@ struct BrandsView: View {
     }
 }
 
-/// Every store with something on sale, the busiest first — the web's `/stores`.
+/// Every store with something on sale, the busiest first — the web's `/stores`,
+/// as rounded squares three to a row on the owner's word (`StoreTile`): it was
+/// a list, a row a store.
 struct StoresView: View {
     @State private var stores: LoadState<[StoreCard]> = .idle
     @Environment(AppModel.self) private var app
@@ -313,8 +315,8 @@ struct StoresView: View {
                             EmptyStateView(systemImage: "storefront", title: l.t("stores.empty"), note: l.t("stores.emptyNote"))
                                 .card(padding: 0)
                         } else {
-                            LazyVStack(spacing: 12) {
-                                ForEach(list) { store in StoreCardView(store: store) }
+                            TileGrid(spacing: 12, columns: 3, widest: 150, rowSpacing: 18) {
+                                ForEach(list) { store in StoreTile(store: store) }
                             }
                         }
                     }

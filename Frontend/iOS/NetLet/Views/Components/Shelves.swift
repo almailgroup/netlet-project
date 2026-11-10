@@ -319,46 +319,105 @@ struct DepartmentCardGrid: View {
     }
 }
 
-/// A store as the home page's row and `/stores` draw it: its mark, its name,
-/// a measured rating and how many products, and the badges it earned.
-struct StoreCardView: View {
+/// A rounded square as wide as its column: the face of a tile on the
+/// Categories page (a subcategory), the stores' page and the brands' — on the
+/// owner's word ("for the subcategories, instead of being as a list, make it
+/// rounded squares; the same for shop by stores"). It is the department
+/// tiles' own shape and corner, so the pages read as one set. The shadow is
+/// the shape's, never what it holds (see `PhotoCartControl`).
+struct SquareFace<Content: View>: View {
+    let fill: Color
+    let content: Content
+
+    init(fill: Color = .white, @ViewBuilder content: () -> Content) {
+        self.fill = fill
+        self.content = content()
+    }
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay { content }
+            .clipShape(shape)
+            .background(shape.fill(fill).shadow(color: Brand.navy.opacity(0.05), radius: 2, x: 0, y: 1))
+            .overlay(shape.strokeBorder(Brand.cardLine, lineWidth: 1.5))
+    }
+}
+
+/// The pale blue-grey a tile with no picture of its own is drawn on.
+extension Brand {
+    static let tileField = Color(red: 238 / 255, green: 241 / 255, blue: 246 / 255)
+}
+
+/// A store on the stores' page: a rounded square with its logo — or its
+/// initial on the pale field — and under it its name, how many products it
+/// has on sale and its measured rating. A store NetLet verified carries the
+/// seal on its square; what else it earned is on its own page. It was a row a
+/// store (`StoreCardView`), and the owner asked for squares.
+struct StoreTile: View {
     let store: StoreCard
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
+        let logo: String? = store.logoUrl.flatMap { $0.isEmpty ? nil : $0 }
+        let verified = store.badges.contains("verified")
+        let count = l.t(store.products == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(store.products)"])
         Button {
             app.push(.store(slug: store.slug))
         } label: {
-            HStack(spacing: 12) {
-                StoreMark(name: store.name, logoUrl: store.logoUrl)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(store.name)
-                        .font(.inter(15, .bold))
-                        .foregroundStyle(Brand.navy)
-                        .lineLimit(1)
-                    HStack(spacing: 6) {
-                        if let rating = store.rating {
-                            StoreRating(rating: rating)
-                            Text("·").accessibilityHidden(true)
-                        }
-                        Text(l.t(store.products == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(store.products)"]))
+            VStack(spacing: 8) {
+                SquareFace(fill: logo == nil ? Brand.tileField : .white) {
+                    if let logo {
+                        RemoteImage(reference: logo, contentMode: .fit).padding(12)
+                    } else {
+                        Text(store.name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "·")
+                            .font(.inter(34, .heavy))
+                            .foregroundStyle(Brand.navy)
                     }
-                    .font(.inter(12.5))
-                    .foregroundStyle(Brand.muted)
-                    StoreBadges(badges: store.badges)
-                        .padding(.top, 4)
                 }
-                Spacer(minLength: 0)
+                .overlay(alignment: .topTrailing) {
+                    if verified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 17))
+                            .foregroundStyle(Brand.success)
+                            .background(Circle().fill(Color.white).padding(3))
+                            .padding(7)
+                    }
+                }
+                Text(store.name)
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2, reservesSpace: true)
+                    .minimumScaleFactor(0.85)
+                VStack(spacing: 2) {
+                    Text(count)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    if let rating = store.rating { StoreRating(rating: rating) }
+                }
+                .font(.inter(12))
+                .foregroundStyle(Brand.muted)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(PressFillStyle(cornerRadius: 16))
+        .buttonStyle(SpringPressStyle(cornerRadius: 20))
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(spoken(count: count, verified: verified))
+        .accessibilityAddTraits(.isButton)
+    }
+
+    /// What the tile says in one breath: the name, what it sells, how it is rated, the seal.
+    private func spoken(count: String, verified: Bool) -> String {
+        var parts = [store.name, count]
+        if let rating = store.rating {
+            parts.append(l.t("product.ratingAriaCount", ["value": "\(rating.average)", "max": "5", "count": "\(rating.count)"]))
+        }
+        if verified { parts.append(l.t("badge.verified")) }
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -433,9 +492,10 @@ struct StoreBadges: View {
     }
 }
 
-/// One brand, opening everything of it — the `Brands` page's tile, the web's
-/// `BrandTile`: the initial in the shop's colours (NetLet holds no logos), the
-/// name and how many of its products are on sale.
+/// One brand, opening everything of it — the Brands page's tile: a rounded
+/// square with the initial in the shop's colours (NetLet holds no logos), the
+/// name and how many of its products are on sale under it. A square like the
+/// stores' beside it, on the owner's word; it was a row a brand.
 struct BrandTile: View {
     let brand: BrandCount
     @Environment(AppModel.self) private var app
@@ -445,34 +505,29 @@ struct BrandTile: View {
         Button {
             app.push(.brand(name: brand.name))
         } label: {
-            HStack(spacing: 12) {
-                Text(brand.name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "·")
-                    .font(.inter(18, .heavy))
-                    .foregroundStyle(Brand.navy)
-                    .frame(width: 44, height: 44)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(brand.name)
-                        .font(.inter(14, .bold))
+            VStack(spacing: 8) {
+                SquareFace(fill: Brand.tileField) {
+                    Text(brand.name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "·")
+                        .font(.inter(34, .heavy))
                         .foregroundStyle(Brand.navy)
-                        .lineLimit(1)
-                    Text(l.t(brand.count == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(brand.count)"]))
-                        .font(.inter(12))
-                        .foregroundStyle(Brand.muted)
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 13, weight: .semibold))
+                .accessibilityHidden(true)
+                Text(brand.name)
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2, reservesSpace: true)
+                    .minimumScaleFactor(0.85)
+                Text(l.t(brand.count == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(brand.count)"]))
+                    .font(.inter(12))
                     .foregroundStyle(Brand.muted)
-                    .accessibilityHidden(true)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(PressFillStyle(cornerRadius: 16))
+        .buttonStyle(SpringPressStyle(cornerRadius: 20))
         .accessibilityElement(children: .combine)
     }
 }
@@ -613,14 +668,40 @@ struct ShelfSkeleton: View {
     }
 }
 
-/// Two columns of tiles, each as tall as the tallest of them all — a `Grid`
-/// sizes each row on its own, so a title that wrapped made one row taller than
-/// the other. Placed from the leading edge; SwiftUI mirrors a custom layout on
-/// a right-to-left page, as it does `FlowLayout`. The account's four tiles and
-/// the help centre's issues; a tile fills the height it is given
-/// (`maxHeight: .infinity`), or it sits in the middle of its slot.
+/// Rows of tiles, each as tall as the tallest of them all — a `Grid` sizes
+/// each row on its own, so a title that wrapped made one row taller than the
+/// other. Two to a row unless told otherwise; with `widest`, a wide screen
+/// gets more to a row rather than tiles wider than that. Placed from the
+/// leading edge; SwiftUI mirrors a custom layout on a right-to-left page, as
+/// it does `FlowLayout`. The account's four tiles, the help centre's issues,
+/// and — three to a row — a department's subcategories, the stores and the
+/// brands; a tile fills the height it is given (`maxHeight: .infinity`), or
+/// it sits in the middle of its slot. It lays every tile out, which is what
+/// keeps a lazy grid out of a page's lazy stack.
 struct TileGrid: Layout {
     var spacing: CGFloat = 12
+    /// How many tiles share a row.
+    var columns = 2
+    /// On a wide screen, more to a row rather than tiles wider than this.
+    var widest: CGFloat? = nil
+    /// The room between rows, where it is not the room between tiles.
+    var rowSpacing: CGFloat? = nil
+
+    /// How many tiles share a row at this width: the count asked for, or as
+    /// many more as keep each no wider than `widest`. A width that is not a
+    /// number of points (a row asked for its ideal size) keeps the plain count.
+    nonisolated static func perRow(width: CGFloat, spacing: CGFloat, columns: Int, widest: CGFloat?) -> Int {
+        guard let widest, widest > 0, width.isFinite else { return max(columns, 1) }
+        return max(columns, Int(((width + spacing) / (widest + spacing)).rounded(.up)), 1)
+    }
+
+    private func perRow(in width: CGFloat) -> Int {
+        Self.perRow(width: width, spacing: spacing, columns: columns, widest: widest)
+    }
+
+    private func columnWidth(in width: CGFloat, perRow: Int) -> CGFloat {
+        max((width - spacing * CGFloat(perRow - 1)) / CGFloat(perRow), 0)
+    }
 
     private func tileHeight(_ subviews: Subviews, column: CGFloat) -> CGFloat {
         subviews.map { $0.sizeThatFits(ProposedViewSize(width: column, height: nil)).height }.max() ?? 0
@@ -628,18 +709,20 @@ struct TileGrid: Layout {
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? 360
-        let column = max((width - spacing) / 2, 0)
-        let rows = (subviews.count + 1) / 2
+        let across = perRow(in: width)
+        let column = columnWidth(in: width, perRow: across)
+        let rows = (subviews.count + across - 1) / across
         let height = tileHeight(subviews, column: column)
-        return CGSize(width: width, height: CGFloat(rows) * height + CGFloat(max(rows - 1, 0)) * spacing)
+        return CGSize(width: width, height: CGFloat(rows) * height + CGFloat(max(rows - 1, 0)) * (rowSpacing ?? spacing))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let column = max((bounds.width - spacing) / 2, 0)
+        let across = perRow(in: bounds.width)
+        let column = columnWidth(in: bounds.width, perRow: across)
         let height = tileHeight(subviews, column: column)
         for (index, subview) in subviews.enumerated() {
-            let x = bounds.minX + CGFloat(index % 2) * (column + spacing)
-            let y = bounds.minY + CGFloat(index / 2) * (height + spacing)
+            let x = bounds.minX + CGFloat(index % across) * (column + spacing)
+            let y = bounds.minY + CGFloat(index / across) * (height + (rowSpacing ?? spacing))
             subview.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: column, height: height))
         }
     }

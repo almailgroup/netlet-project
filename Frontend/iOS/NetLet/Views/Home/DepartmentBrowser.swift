@@ -6,13 +6,18 @@ import SwiftUI
 ///
 /// The departments are a sideways row of picture tiles, reaching the screen's
 /// edges so the one cut off there says there is more, the chosen one outlined
-/// in navy; under them, the chosen department's subcategories as rows, each
-/// with its picture (`Department.Subcategory.symbol`, from the icon
-/// `Shared/commerce/subcategories.ts` names), its name and how many it holds
-/// (`commerce.subcategoryCounts`), opening the department narrowed to it; a
-/// last row, "View all", opens the whole department. Every subcategory is
-/// listed, an empty one saying so, as the tiles keep all six. "All
-/// departments" ends the row and opens its page: it has no subcategories.
+/// in navy; under them, the chosen department's subcategories. **They are
+/// rounded squares, three to a row, on the owner's word** ("for the
+/// subcategories, instead of being as a list, make it rounded squares"): each
+/// a square (`SquareFace`, the department tiles' own shape) holding its kept
+/// picture, or its symbol on the pale field (`Department.Subcategory.symbol`,
+/// from the icon `Shared/commerce/subcategories.ts` names), with its name and
+/// how many it holds under it (`commerce.subcategoryCounts`), opening the
+/// department narrowed to it; a last square, "View all", opens the whole
+/// department. They were rows, one under another. Every subcategory is
+/// there, an empty one drawn lighter and saying so, as the tiles keep all
+/// six. "All departments" ends the row and opens its page: it has no
+/// subcategories.
 ///
 /// **The tiles are large, and the chosen one grows a little on a spring, on
 /// the owner's word** ("make the category images bigger, and when you select
@@ -132,21 +137,27 @@ struct DepartmentBrowser: View {
                         .foregroundStyle(Brand.muted)
                 }
             }
-            // Made afresh for each department, so its rows rise in again;
-            // the old ones go at once rather than sharing the column.
-            VStack(spacing: 8) {
+            // Made afresh for each department, so its squares rise in again;
+            // the old ones go at once rather than sharing the grid. Three to a
+            // row on a phone, more on a wide screen rather than wider squares.
+            TileGrid(spacing: 12, columns: 3, widest: 150, rowSpacing: 18) {
                 ForEach(Array(department.subs.enumerated()), id: \.element.id) { index, entry in
                     let count = subCounts?[department.slug]?[entry.slug] ?? 0
-                    row(symbol: entry.symbol,
-                        picture: pictures["\(department.slug)/\(entry.slug)"],
-                        title: entry.shown(l.current),
-                        note: subCounts == nil ? nil : l.productCount(count),
-                        quiet: subCounts != nil && count == 0) {
+                    square(symbol: entry.symbol,
+                           picture: pictures["\(department.slug)/\(entry.slug)"],
+                           title: entry.shown(l.current),
+                           note: subCounts == nil ? nil : l.productCount(count),
+                           quiet: subCounts != nil && count == 0) {
                         app.push(.subcategory(department: department.slug, sub: entry.slug))
                     }
                     .modifier(RiseIn(order: index))
                 }
-                row(symbol: "line.3.horizontal", title: l.t("home.viewAll"), note: l.t("categories.seeAllIn", ["name": name]), quiet: false) {
+                // The whole department: what it holds, where a row said so in words.
+                square(symbol: "line.3.horizontal",
+                       title: l.t("home.viewAll"),
+                       note: app.shelf.counts.map { l.productCount($0[department.slug] ?? 0) } ?? "",
+                       quiet: false,
+                       spoken: l.t("categories.seeAllIn", ["name": name])) {
                     app.push(.department(slug: department.slug))
                 }
                 .modifier(RiseIn(order: department.subs.count))
@@ -158,68 +169,55 @@ struct DepartmentBrowser: View {
         .accessibilityLabel(l.t("categories.subcategoriesOf", ["name": name]))
     }
 
-    /// One row: its picture in a pale tile, its name, what it holds, a chevron.
-    private func row(symbol: String, picture: String? = nil, title: String, note: String?, quiet: Bool, open: @escaping () -> Void) -> some View {
+    /// One subcategory as a rounded square — its kept picture on white, or its
+    /// symbol on the pale field — with its name and what it holds under it.
+    /// An empty one is drawn lighter. `spoken` is what VoiceOver says where
+    /// the words under the square are not the whole of it.
+    private func square(symbol: String, picture: String? = nil, title: String, note: String?, quiet: Bool, spoken: String? = nil, open: @escaping () -> Void) -> some View {
         Button(action: open) {
-            HStack(spacing: 12) {
-                if let picture {
-                    // The subcategory's kept picture, on white, where its symbol stood.
-                    RemoteImage(reference: picture, contentMode: .fit)
-                        .frame(width: 56, height: 56)
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-                        .opacity(quiet ? 0.7 : 1)
-                        .accessibilityHidden(true)
-                } else {
-                    Image(systemName: symbol)
-                        .font(.system(size: 21, weight: .regular))
-                        .foregroundStyle(quiet ? Brand.muted : Brand.navy)
-                        .frame(width: 48, height: 48)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(quiet ? Brand.photo : Color(red: 238 / 255, green: 241 / 255, blue: 246 / 255))
-                        )
-                        .accessibilityHidden(true)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.inter(15, .bold))
-                        .foregroundStyle(Brand.navy)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Group {
-                        if let note {
-                            Text(note)
-                        } else {
-                            Capsule().fill(Brand.photo).frame(width: 64, height: 12)
-                        }
+            VStack(spacing: 8) {
+                SquareFace(fill: picture != nil ? Color.white : (quiet ? Brand.photo : Brand.tileField)) {
+                    if let picture {
+                        RemoteImage(reference: picture, contentMode: .fit)
+                            .padding(8)
+                            .opacity(quiet ? 0.7 : 1)
+                    } else {
+                        Image(systemName: symbol)
+                            .font(.system(size: 34, weight: .regular))
+                            .foregroundStyle(quiet ? Brand.muted : Brand.navy)
                     }
-                    .font(.inter(13))
-                    .foregroundStyle(Brand.muted)
                 }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 13, weight: .semibold))
+                Text(title)
+                    .font(.inter(13, .bold))
                     .foregroundStyle(Brand.navy)
-                    .accessibilityHidden(true)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2, reservesSpace: true)
+                    .minimumScaleFactor(0.85)
+                Group {
+                    if let note {
+                        Text(note)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    } else {
+                        // The count is on its way.
+                        Capsule().fill(Brand.photo).frame(width: 56, height: 12)
+                    }
+                }
+                .font(.inter(12))
+                .foregroundStyle(Brand.muted)
+                .frame(height: 16)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: Brand.navy.opacity(0.06), radius: 1, x: 0, y: 1)
-            )
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(SpringPressStyle(cornerRadius: 16))
+        .buttonStyle(SpringPressStyle(cornerRadius: 20))
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(spoken ?? [title, note ?? ""].filter { !$0.isEmpty }.joined(separator: ", "))
+        .accessibilityAddTraits(.isButton)
     }
 }
 
-/// A row rising into place a beat behind the one before it — `order` beats,
+/// A square rising into place a beat behind the one before it — `order` beats,
 /// 40 milliseconds each — the web's `.cat-rise`. Shown at once under Reduce
 /// Motion.
 private struct RiseIn: ViewModifier {

@@ -7184,8 +7184,10 @@ department page draws its subcategories as a row of chips under the heading
 (those with something on the shelf and the one the address names), "All"
 first. The product page's "Type" row reads in Arabic on the Arabic page
 (`shownOption`; the app's `shownSpecifications`, which also gives a schema row
-its Arabic label there). The app is the same: `DepartmentBrowser` (the tiles
-and the rows; `-NetLetOpen categories:<slug>` chooses one), `Route.subcategory`,
+its Arabic label there). The app is the same but for the rows, which are
+rounded squares there (see "In the app a department's subcategories, the
+stores and the brands are rounded squares"): `DepartmentBrowser` (the tiles
+and the squares; `-NetLetOpen categories:<slug>` chooses one), `Route.subcategory`,
 the chips on `DepartmentView`, the names and icons exported with the
 departments (`departments.json`).
 
@@ -7211,7 +7213,7 @@ reduced motion the global guard shortens the springs to a cut, and
 and not a delay — rows held back 200ms read as a page that is slow, not one
 that is still. The app is the same (`DepartmentBrowser`): 108-point art, the
 chosen tile at 1.08 on a spring, scrolled to the middle as it is chosen, the
-rows rising in by `RiseIn` 40ms apart, every press `SpringPressStyle`, and
+subcategories rising in by `RiseIn` 40ms apart, every press `SpringPressStyle`, and
 Reduce Motion drawing each in place.
 
 **A subcategory's row carries a real picture once one is kept, on the
@@ -8602,6 +8604,29 @@ also takes the last lazy grid out of the home page's stack**, which is what
 the eighth sighting of the home page's stand-still pointed at (see "A drag
 that moves nothing"): nothing on the page is estimated and then measured
 down its length any more.
+
+**In the app a department's subcategories, the stores and the brands are
+rounded squares, three to a row, on the owner's word** (a picture of the
+app's Categories: "for the subcategories, instead of being as a list, make it
+rounded squares; the same for shop by stores"). Each is a square the width of
+its column in the department tiles' own shape (`SquareFace`, a 20-point
+corner, the shadow the shape's) with its words centred under it, laid out by
+`TileGrid`, which takes a number of columns now and, with `widest`, gives a
+wide screen more to a row rather than wider squares. **A subcategory**
+(`DepartmentBrowser`'s `square`): its kept picture on white, or its symbol
+at 34 points on the pale field (`Brand.tileField`), its name on two lines
+and how many it holds; an empty one lighter; "View all" the last square,
+with the department's count under it and "See everything in …" to VoiceOver.
+They still rise in one after another. **A store** (`StoreTile`, which
+replaced `StoreCardView`): its logo, or its initial on the pale field, its
+name, how many products and its measured rating; a store NetLet verified
+carries the seal on its square's corner, and what else it earned is on its
+own page — two more chips would not fit under a square a third of a phone
+wide. **A brand** (`BrandTile`) is its initial the same way: the owner named
+the stores, and the brands are the list beside them, opened from the box
+next to theirs. None of the three is lazy, which keeps a lazy grid out of a
+page's lazy stack (the home page's stand-still). The website keeps its rows
+and its store cards: this is the app's alone.
 
 **The Cart tab is the web's new bag, on the owner's word.** `CartView` opens on the title and the count with a heart to
 Saved at the line's end (`CartSavedButton`, the hearts counted), then where the order goes (`DeliveryAddressCard` in `CartParts.swift`,
