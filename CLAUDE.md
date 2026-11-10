@@ -9551,7 +9551,18 @@ from the library is made ready off the main thread**
 decoded, drawn smaller and encoded again is a few hundred milliseconds, and on
 the main thread that was a press that did not answer — on a review's photo, a
 profile photo, a new listing's and a guide's. The seller's photo fixes were
-already off it (`PhotoIntake.ready`). Not
+already off it (`PhotoIntake.ready`). **A price is written with a formatter
+made once** (`KeptFormatters` in `Money.swift`: one per language, currency and
+number of decimals, used under a lock): `Money.formatted` made a
+`NumberFormatter` for itself on every call, and a formatter reads a locale's
+whole table of symbols to be made, so a shelf of cards scrolled into view made
+dozens of them in a frame; the converted price and the points count use the
+same ones. **The home page's next picture is decoded off the main thread
+before it is shown** (`WebAssets.prepare`, the system's
+`byPreparingForDisplay`): a bundled picture's pixels were decoded when it was
+first drawn, on the main thread, and the hero's five come in one every three
+seconds — a pause in the middle of a scroll, five times in the first quarter
+of a minute after launch. Not
 measured on a device here, which this sandbox cannot reach — Instruments'
 hitches template on a ProMotion iPhone is the check.
 

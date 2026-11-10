@@ -35,6 +35,25 @@ enum WebAssets {
         return image
     }
 
+    /// The names whose pixels are already decoded (`prepare`).
+    private static let decoded = NSCache<NSString, NSNumber>()
+
+    /// Decodes a bundled picture off the main thread and keeps it, so drawing
+    /// it for the first time costs nothing. `image` only opens the file: its
+    /// pixels are decoded when it is first drawn, on the main thread — and
+    /// for the home page's pictures, each some 1,600 points wide and coming in
+    /// one after another every three seconds, that was a pause in the middle
+    /// of whatever the page was doing, a scroll included, five times in the
+    /// first quarter of a minute.
+    static func prepare(_ name: String) async {
+        let key = name as NSString
+        guard decoded.object(forKey: key) == nil, let opened = image(name) else { return }
+        if let ready = await opened.byPreparingForDisplay() {
+            cache.setObject(ready, forKey: key)
+        }
+        decoded.setObject(1, forKey: key)
+    }
+
     static var logo: UIImage? { image(manifest.logo) }
     static var footerLogo: UIImage? { image(manifest.footerLogo) }
     /// NetLet's own street — the first of the home page's slides, and the

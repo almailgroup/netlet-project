@@ -68,15 +68,9 @@ struct Money: Codable, Hashable, Comparable, Sendable {
     /// amount drawn clean — "KWD 129", not "KWD 129.000" — in Latin digits on
     /// both pages.
     func formatted(_ language: Language) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = language.locale
-        formatter.currencyCode = currencyCode
         let whole = fils % 1000 == 0
-        formatter.minimumFractionDigits = whole ? 0 : 3
-        formatter.maximumFractionDigits = whole ? 0 : 3
         let value = NSDecimalNumber(mantissa: UInt64(abs(fils)), exponent: -3, isNegative: fils < 0)
-        return formatter.string(from: value) ?? "\(currencyCode) \(amount)"
+        return KeptFormatters.currency(value, code: currencyCode, digits: whole ? 0 : 3, language: language) ?? "\(currencyCode) \(amount)"
     }
 
     // MARK: Codable
@@ -117,4 +111,55 @@ struct Money: Codable, Hashable, Comparable, Sendable {
 
 private extension Character {
     var isASCIIDigit: Bool { ("0"..."9").contains(self) }
+}
+
+/// The number formatters the app writes prices and counts with, made once
+/// each and kept. A `NumberFormatter` is slow to make — it reads a locale's
+/// whole table of symbols — and every price on every card made one for
+/// itself, on every draw: a shelf scrolled into view made dozens in a frame,
+/// which is the kind of work a scroll feels. One per language, currency and
+/// number of decimals is a handful for the life of the app.
+///
+/// Used under a lock, since a formatter is not to be shared between threads
+/// while it formats and a price may be written off the main one.
+enum KeptFormatters {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var kept: [String: NumberFormatter] = [:]
+
+    /// An amount in a currency, in the language's way of writing it.
+    static func currency(_ number: NSNumber, code: String, digits: Int, language: Language) -> String? {
+        string(number, key: "currency|\(language.rawValue)|\(code)|\(digits)") {
+            let made = NumberFormatter()
+            made.numberStyle = .currency
+            made.locale = language.locale
+            made.currencyCode = code
+            made.minimumFractionDigits = digits
+            made.maximumFractionDigits = digits
+            return made
+        }
+    }
+
+    /// A whole count with its thousands grouped.
+    static func count(_ number: NSNumber, language: Language) -> String? {
+        string(number, key: "count|\(language.rawValue)") {
+            let made = NumberFormatter()
+            made.numberStyle = .decimal
+            made.locale = language.locale
+            made.maximumFractionDigits = 0
+            return made
+        }
+    }
+
+    private static func string(_ number: NSNumber, key: String, make: () -> NumberFormatter) -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        let formatter: NumberFormatter
+        if let found = kept[key] {
+            formatter = found
+        } else {
+            formatter = make()
+            kept[key] = formatter
+        }
+        return formatter.string(from: number)
+    }
 }

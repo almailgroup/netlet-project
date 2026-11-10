@@ -185,8 +185,10 @@ struct HomeHero: View {
             try? await Task.sleep(for: .seconds(Self.slideSeconds))
             guard !Task.isCancelled else { return }
             let next = (current + 1) % slides.count
-            // Decoded before it is shown, so its fade has a picture to fade.
-            _ = WebAssets.image(slides[next])
+            // Decoded before it is shown, and off the main thread: its fade
+            // has a picture to fade, and nothing on the page waits for it.
+            await WebAssets.prepare(slides[next])
+            guard !Task.isCancelled else { return }
             previous = current
             ScrollTrace.note("slide \(next)")
             withAnimation(.easeInOut(duration: 1)) { current = next }

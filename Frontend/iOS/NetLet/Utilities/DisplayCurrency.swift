@@ -38,15 +38,9 @@ struct CurrencyTable: Decodable, Sendable {
     /// An amount in a currency, in the language's own way of writing it; a
     /// whole amount clean, as the dinar's is.
     func format(_ value: Double, code: String, language: Language) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = language.locale
-        formatter.currencyCode = code
         let whole = value.rounded() == value
         let digits = whole ? 0 : (minorDigits[code] ?? 2)
-        formatter.minimumFractionDigits = digits
-        formatter.maximumFractionDigits = digits
-        return formatter.string(from: NSNumber(value: value)) ?? "\(code) \(value)"
+        return KeptFormatters.currency(NSNumber(value: value), code: code, digits: digits, language: language) ?? "\(code) \(value)"
     }
 
     /// "US Dollar (USD)", named by the phone in the page's language.

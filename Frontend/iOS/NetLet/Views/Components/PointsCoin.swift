@@ -87,10 +87,6 @@ private struct CoinLetter: Shape {
 /// Latin digits on both pages, the web's `formatCount`.
 enum PointsFormat {
     static func count(_ value: Int, _ language: Language) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.locale = language.locale
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+        KeptFormatters.count(NSNumber(value: value), language: language) ?? "\(value)"
     }
 }
