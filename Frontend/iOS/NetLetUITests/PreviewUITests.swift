@@ -75,16 +75,22 @@ final class PreviewUITests: XCTestCase {
 
     /// The preview's Add to cart says it worked where the finger is: the tick
     /// for a moment, then the bag's own line ("In your cart") for as long as
-    /// the product is in it. The tick is 1.6s and a tap waits for the app to
-    /// settle first, which on a busy runner can outlast it — so either one is
-    /// the answer, and the line is checked absent before the press.
+    /// the product is in it.
     ///
-    /// **The preview's button is the one called exactly "Add to cart".** A
-    /// card's buttons always name their product ("Add to cart: …") and the
-    /// preview's never do, and a card on the page under the sheet can be in
-    /// the app's tree too — so the first button whose name starts with "Add"
-    /// need not be the preview's, and a press on one behind the sheet lands on
-    /// nothing. A failure says which buttons it saw and where.
+    /// **In the demo the tick is the only sign there is.** The demo answers
+    /// every product with its earbuds and its recorded bag never holds them,
+    /// so "In your cart" cannot come; and the tick is 1.6 seconds, where a
+    /// test reads the screen only once the app has settled. That was soon
+    /// enough until the button became Liquid Glass, whose touch animation
+    /// outlasts the tick: two runs in a row read the screen after it had
+    /// gone, the failure listing the preview's own button reachable and the
+    /// screen as it was before the press. So under `-NetLetUITest` the app
+    /// holds the tick long enough to be read. A press that did nothing would
+    /// still fail here, and say what it saw.
+    ///
+    /// The button is the one called exactly "Add to cart": a card's buttons
+    /// name their product ("Add to cart: …"), and the cards of the page under
+    /// the sheet are in the app's tree too.
     func testThePreviewAddsToTheBag() {
         let app = launch("preview:basmati-rice-5kg")
         XCTAssertTrue(app.staticTexts["Quick view"].waitForExistence(timeout: 30), "The preview never opened.")

@@ -9117,6 +9117,20 @@ photo for the product page; and presses the preview's Add to cart and Close.
 and a tap returns only once the app has settled, which on a busy runner
 outlasted it once — so the test takes the tick or the bag's own "In your
 cart", whichever it finds, having checked the line absent before the press.
+**In the demo the tick is the only sign there is, and Liquid Glass outlasted
+it.** The demo answers every product with its earbuds and its recorded bag
+never holds them, so "In your cart" cannot come; once Add to cart became a
+glass button, its touch animation kept the app from settling until the tick
+had gone, and the test failed twice running (4c2bbf9, 4935ea1) with nothing
+wrong in the app. The first reading — that the test's "starts with Add" had
+found a card's plus under the sheet — was wrong, and it was the failure's own
+words that said so: the test now lists the buttons it saw, where, and whether
+a finger reaches them, and it listed the preview's own button, reachable, and
+a screen unchanged by the press. Under `-NetLetUITest` the preview holds its
+tick eight seconds (`UITestHooks.on`, Debug only), which is long enough to be
+read; a press that did nothing still fails. **A test that waits on something
+that lasts under two seconds is waiting on the runner's speed**, and anything
+that lengthens a touch's animation will find it.
 **`NetLetUITests` is the proof, and the first UI test target the app has**:
 it opens the home page in both languages, all products, Categories, a product
 and the account from the recordings and moves each the ways a thumb does —
@@ -9187,6 +9201,14 @@ arrivals is a grid inside the page's stack), and a drop at the wrong moment
 puts the offset back to zero. The next step is to find which block, by noting
 each block's height in the trace, or to take the lazy grid out of the stack and
 see whether the flipping stops.
+**The grid is out of the stack and it happened again** (the ninth sighting,
+run 42893958965 on 4935ea1): New arrivals became a row with the rest of the
+home page's sections, so no lazy grid is left on the page, and one run later
+`testAFlickCarriesTheHomePageOn` read the page exactly where it started — 0.0
+points after a fast flick — while the three other home-page scrolling tests
+passed in the same run. So the grid was not the whole of it. That test said
+only how far the page moved; it keeps a screenshot, what was under the flick
+and the page's own trace now, as the drags' test does.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the

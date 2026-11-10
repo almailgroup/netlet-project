@@ -35,7 +35,12 @@ final class ScrollingUITests: XCTestCase {
         app.swipeUp(velocity: .fast)
         sleep(2)
         let travelled = frame(of: top).map { start - $0.minY } ?? .infinity
-        XCTAssertGreaterThan(travelled, 600, "A flick moved the home page only \(travelled) points.")
+        guard travelled <= 600 else { return }
+        // The page's own account of the flick, and what was under it: this is
+        // the stand-still the drags have met, and each sighting should say more.
+        keepScreenshot(app)
+        let centre = [CGVector(dx: 0.5, dy: 0.5)]
+        XCTFail("A flick moved the home page only \(travelled) points. \(surroundings(app, at: centre)). Trace: \(trace(app)).")
     }
 
     func testHomeReachesItsFootAndComesBack() {

@@ -589,7 +589,12 @@ private struct QuickViewContent: View {
         added = true
         addedReset?.cancel()
         addedReset = Task {
-            try? await Task.sleep(for: .seconds(1.6))
+            // 1.6 seconds for a shopper. A UI test reads the screen only once
+            // the app has settled, which the glass button's own touch
+            // animation outlasts, and in the demo the tick is the press's only
+            // sign (the recorded bag never holds the product previewed) — so
+            // under test it stays long enough to be read (`UITestHooks`).
+            try? await Task.sleep(for: .seconds(UITestHooks.on ? 8 : 1.6))
             guard !Task.isCancelled else { return }
             added = false
         }
