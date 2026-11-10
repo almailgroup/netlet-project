@@ -472,7 +472,20 @@ private struct ProductPage: View {
     /// (`AddToCartStyle`, `BuyNowStyle`): one row of capsules a thumb's
     /// height, where two white buttons and a heart were stacked. The heart is
     /// on the photo's corner, as on the card.
+    @ViewBuilder
     private var buttons: some View {
+        if soldOut {
+            // Two greyed buttons say nothing can be done; the reminder is the thing that can.
+            StockReminderButton(product: product, style: .page)
+        } else {
+            pair
+        }
+    }
+
+    /// Nothing of it can be bought, and none of it is in the bag.
+    private var soldOut: Bool { !product.isAvailable && bagLine == nil }
+
+    private var pair: some View {
         let ready = model.variant?.availableForSale == true || bagLine != nil
         return HStack(spacing: 10) {
             Button {
@@ -530,24 +543,30 @@ private struct ProductPage: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Button {
-                Task { await add(openCheckout: false) }
-            } label: {
-                AddToCartLabel(title: bagLine != nil ? l.t("product.viewCart") : l.t("product.addToCart"), adding: model.adding, done: added, iconSize: 13)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 42)
+            if soldOut {
+                StockReminderButton(product: product, style: .bar)
+            } else {
+                HStack(spacing: 8) {
+                    Button {
+                        Task { await add(openCheckout: false) }
+                    } label: {
+                        AddToCartLabel(title: bagLine != nil ? l.t("product.viewCart") : l.t("product.addToCart"), adding: model.adding, done: added, iconSize: 13)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 42)
+                    }
+                    .buttonStyle(AddToCartStyle(done: added, size: 14))
+                    Button {
+                        Task { await add(openCheckout: true) }
+                    } label: {
+                        BuyNowLabel(title: buyLabel, iconSize: 12)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 42)
+                    }
+                    .buttonStyle(BuyNowStyle(size: 14))
+                }
+                .disabled(model.variant?.availableForSale != true && bagLine == nil)
             }
-            .buttonStyle(AddToCartStyle(done: added, size: 14))
-            Button {
-                Task { await add(openCheckout: true) }
-            } label: {
-                BuyNowLabel(title: buyLabel, iconSize: 12)
-                    .padding(.horizontal, 14)
-                    .frame(minHeight: 42)
-            }
-            .buttonStyle(BuyNowStyle(size: 14))
         }
-        .disabled(model.variant?.availableForSale != true && bagLine == nil)
         .animation(still ? nil : .spring(duration: 0.3, bounce: 0.25), value: added)
         .padding(.leading, 18)
         .padding(.trailing, 7)

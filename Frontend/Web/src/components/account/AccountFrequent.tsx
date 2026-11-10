@@ -35,6 +35,7 @@ import { Check, ListRestart, PackageSearch, ShoppingBag, Trash2 } from "lucide-r
 import { toast } from "sonner";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { PANEL } from "@/components/account/profileParts";
+import { StockReminder } from "@/components/product/StockReminder";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { Thumb } from "@/components/product/Thumb";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -332,16 +333,21 @@ function FrequentRow({ item, inBag, onAdded, chosen, onChoose }: {
               <QuantityStepper value={quantity} onChange={changeQuantity} />
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => void add()}
-            disabled={state !== "ready" || addable === 0}
-            aria-label={t("frequent.addToCartOf", { title })}
-            className={`${ADD} ${added ? "bg-[#2f5d33] text-white" : "bg-[#0a285a] text-white hover:bg-[#0d3372]"} disabled:cursor-not-allowed disabled:opacity-45`}
-          >
-            {added ? <Check className="size-4" aria-hidden /> : <ShoppingBag className="size-4" aria-hidden />}
-            {added ? t("frequent.added") : t("product.addToCart")}
-          </button>
+          {state === "soldOut" && product && !product.variants.some(entry => entry.availableForSale) ? (
+            /* Nothing of it can be bought: a reminder for when it is back. */
+            <StockReminder tone="bar" productId={product.id} title={product.title} />
+          ) : (
+            <button
+              type="button"
+              onClick={() => void add()}
+              disabled={state !== "ready" || addable === 0}
+              aria-label={t("frequent.addToCartOf", { title })}
+              className={`${ADD} ${added ? "bg-[#2f5d33] text-white" : "bg-[#0a285a] text-white hover:bg-[#0d3372]"} disabled:cursor-not-allowed disabled:opacity-45`}
+            >
+              {added ? <Check className="size-4" aria-hidden /> : <ShoppingBag className="size-4" aria-hidden />}
+              {added ? t("frequent.added") : t("product.addToCart")}
+            </button>
+          )}
         </div>
       ) : null}
       <ConfirmDialog

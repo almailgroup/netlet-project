@@ -494,6 +494,21 @@ private struct QuickViewContent: View {
     // MARK: The buttons, kept under the thumb
 
     private func actions(_ proxy: ScrollViewProxy) -> some View {
+        Group {
+            if !product.isAvailable, bagLine == nil {
+                // Sold out: the reminder in the pair's place.
+                StockReminderButton(product: product, style: .page)
+            } else {
+                pair(proxy)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 12)
+        .background(Color.white.shadow(.drop(color: Brand.navy.opacity(0.08), radius: 10, y: -4)))
+    }
+
+    private func pair(_ proxy: ScrollViewProxy) -> some View {
         HStack(spacing: 10) {
             Button {
                 Task { await add(openCheckout: false, proxy: proxy) }
@@ -515,10 +530,6 @@ private struct QuickViewContent: View {
         .disabled(model.variant != nil && !ready)
         .opacity(model.variant != nil && !ready ? 0.5 : 1)
         .animation(still ? nil : .spring(duration: 0.3, bounce: 0.25), value: added)
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 12)
-        .background(Color.white.shadow(.drop(color: Brand.navy.opacity(0.08), radius: 10, y: -4)))
     }
 
     private var buyLabel: String {

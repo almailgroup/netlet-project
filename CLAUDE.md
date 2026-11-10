@@ -4510,6 +4510,31 @@ saving a variant, a bulk reprice, stock moved, a receipt, a return restocked, a
 line cancelled or restored, a store's status), so the event is the change and
 not the act — an edit that lowers and raises a price in one save tells nobody.
 
+**A sold-out product's one action is "Remind me when back in stock", on the
+owner's word** ("an email will be sent to the user or a notification stating
+that the product is back in stock"; `StockReminder` and `useStockReminder` on
+the web, `StockReminderButton` over `StockReminders` in the app). It stands
+where Add to cart would — the product page's pair (a navy capsule, with a line
+saying how it will arrive and how many are waiting), the phone's floating buy
+bar, the preview's pair, the card's button, Saved's and Saved for later's
+Move to cart, Frequently bought's Add to cart — on every product nothing of
+which can be bought; one sold-out option of a product that has others keeps
+the greyed pair, since the reminder is the product's (`productStates`'
+`available`). It reads "Reminder set" with a tick once on, and a press turns
+it off. **It is the follow row's `backInStock` and nothing else**: a
+reminder used to turn price-drop notices on too, because a flag the request
+left out read as on for a new row (`followFlags`, `Shared/commerce/follows.ts`,
+tested), and the price-drop button (`FollowProduct`, `FollowButton`) is now
+only drawn while something can be bought. **The toast says how it will
+arrive** (`customer.follows.reach`: email too only while Resend is
+configured, the account has an address and its email switch is on, the
+inbox always), so it never promises an email that will not come. A guest
+signs in where they are and the reminder is set once the session exists
+(`afterSignIn`; the web keeps the press for 15 seconds after the dialog
+closes, because it closes on success before the session is read). The
+notice itself is the one that was always written (`back_in_stock`, never
+silenced, emailed where it can be).
+
 **Email is Resend, and only where it is configured** (`RESEND_API_KEY`,
 `NOTIFY_EMAIL_FROM`; `pnpm preflight` says which is missing). Unset, the inbox
 is the whole feature and the account's email switch is not drawn. A send is

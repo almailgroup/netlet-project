@@ -74,6 +74,7 @@ import { ShareAndEarn } from "@/components/product/ShareAndEarn";
 import { FrequentButton } from "@/components/product/FrequentButton";
 import { VariantPicker, imageIndexForVariant } from "@/components/product/VariantPicker";
 import { FollowProduct } from "@/components/product/FollowProduct";
+import { StockReminder } from "@/components/product/StockReminder";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { useFeature } from "@/hooks/useFeature";
 import { useMembership } from "@/hooks/useMembership";
@@ -1279,6 +1280,8 @@ export default function ProductDetail() {
   const compareAtPrice = selectedVariant?.compareAtPrice ?? null;
   const savings = savingsPercent(price, compareAtPrice);
   const inStock = Boolean(selectedVariant?.availableForSale);
+  /* Nothing of it can be bought: the page's one action is the reminder. */
+  const soldOut = !product.variants.some(variant => variant.availableForSale) && !plainLine;
 
 
   return (
@@ -1405,7 +1408,7 @@ export default function ProductDetail() {
                 one of its members — rather than on an index nobody browses. */}
             <BundleOffer variantId={selectedVariant?.id} />
 
-            <div className="mt-6 flex items-center gap-3">
+            <div className={`mt-6 items-center gap-3 ${soldOut ? "hidden" : "flex"}`}>
               <span className="text-sm font-semibold ink-muted">{t("product.quantity")}:</span>
               {/* The shared control: the card grew the same thing, and two
                   copies is how one clamps at 1 and the other at 0. */}
@@ -1440,10 +1443,18 @@ export default function ProductDetail() {
                 page match" the app): one row of 48px capsules, where two
                 white buttons and a heart were stacked. The heart is on the
                 photo's corner, as on the card. */}
+            {soldOut ? (
+              /* Sold out, the pair would be two greyed buttons saying nothing
+                 can be done; the reminder is the thing that can. */
+              <div ref={buyRef} className="mt-6">
+                <StockReminder tone="page" productId={product.id} title={product.title} />
+              </div>
+            ) : (
             <div ref={buyRef} className="mt-6 flex gap-2.5">
               <button onClick={plainLine ? openCart : () => void addToCart()} disabled={!plainLine && !inStock} className={`${PREVIEW_TONE.add} flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[380px]:text-[15px]`}><ShoppingBag className="hidden size-[18px] shrink-0 min-[360px]:block" aria-hidden /><span className="truncate">{addLabel}</span></button>
               <button onClick={() => void buyNow()} disabled={!plainLine && !inStock} className={`${PREVIEW_TONE.buy} flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full px-3 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[380px]:text-[15px]`}><Zap className="hidden size-[17px] shrink-0 fill-current min-[360px]:block" aria-hidden /><span className="truncate">{buyLabel}</span></button>
             </div>
+            )}
 
             {selectedVariant?.preorder
               ? <p className="mt-3 text-[13px] leading-5 ink-muted">{t("product.preorderNote")}</p>
@@ -1545,6 +1556,7 @@ export default function ProductDetail() {
         disabled={!plainLine && !inStock}
         onAdd={plainLine ? openCart : () => void addToCart()}
         onBuy={() => void buyNow()}
+        reminder={soldOut ? <StockReminder tone="bar" productId={product.id} title={product.title} /> : null}
       />
     </>
   );
@@ -1561,7 +1573,7 @@ export default function ProductDetail() {
  * Hidden, it is `inert` and out of the accessibility tree, so a keyboard or a
  * screen reader never meets two sets of the same buttons at once.
  */
-function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, onAdd, onBuy }: {
+function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, onAdd, onBuy, reminder }: {
   shown: boolean;
   name: string;
   price: string;
@@ -1570,11 +1582,14 @@ function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, onAdd,
   disabled: boolean;
   onAdd: () => void;
   onBuy: () => void;
+  /** A sold-out product's reminder, in the pair's place. */
+  reminder?: ReactNode;
 }) {
   return (
     <PhoneActionBar shown={shown} label={name}>
       <div className="flex items-center gap-2">
         <p className="min-w-0 flex-1 truncate px-1.5 text-[15px] font-extrabold text-[#0a285a] min-[360px]:px-2 min-[360px]:text-[16px]">{price}</p>
+        {reminder ?? (<>
         <button type="button" onClick={onAdd} disabled={disabled} className={`${PREVIEW_TONE.add} flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-bold disabled:cursor-not-allowed disabled:opacity-50 min-[360px]:px-3 min-[360px]:text-[14px]`}>
           <ShoppingBag className="hidden size-4 min-[380px]:block" aria-hidden />
           {addLabel}
@@ -1583,6 +1598,7 @@ function StickyBuyBar({ shown, name, price, addLabel, buyLabel, disabled, onAdd,
           <Zap className="hidden size-4 fill-current min-[380px]:block" aria-hidden />
           {buyLabel}
         </button>
+        </>)}
       </div>
     </PhoneActionBar>
   );

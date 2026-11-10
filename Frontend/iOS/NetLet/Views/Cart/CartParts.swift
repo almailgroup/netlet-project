@@ -728,11 +728,8 @@ struct SavedProductCard: View {
                 .font(.inter(14, .heavy))
                 .foregroundStyle(Brand.navy)
             if variant == nil {
-                Text(l.t("product.soldOut"))
-                    .font(.inter(12, .bold))
-                    .foregroundStyle(Brand.muted)
-                    .frame(maxWidth: .infinity, minHeight: 36)
-                    .background(Capsule().fill(Brand.tint))
+                // Sold out: kept to come back to, so a reminder for when it is back.
+                StockReminderButton(product: product)
             } else if choosing {
                 Button {
                     app.push(.product(handle: product.handle))

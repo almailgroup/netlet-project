@@ -35,6 +35,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
+import { StockReminder } from "@/components/product/StockReminder";
 
 const SHOWN = 12;
 
@@ -170,7 +171,8 @@ export function SavedCard({ product, onMove, onRemove, onWish, grid = false, cho
       <p className="mt-1 text-[14px] font-extrabold text-[#0a285a]">{money(variant?.price ?? product.priceRange.min)}</p>
       <div className="mt-auto pt-2">
         {!variant ? (
-          <p className="flex min-h-9 items-center justify-center rounded-full bg-[#f0f2f5] text-[12px] font-bold ink-muted">{t("product.soldOut")}</p>
+          /* Sold out: kept to come back to, so a reminder for when it is back. */
+          <StockReminder productId={product.id} title={product.title} className={`!rounded-full ${grid ? "" : "!h-9"}`} />
         ) : choosing ? (
           <Link href={href} className="flex min-h-9 w-full items-center justify-center rounded-full border border-[#0a285a]/25 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
             {t("product.chooseOption")}

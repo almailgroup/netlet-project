@@ -34,7 +34,7 @@ import { StarRow } from "@/components/ui/StarRow";
 import { ArrowRight, ShoppingBag, X, Zap } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
-import { FollowProduct } from "@/components/product/FollowProduct";
+import { StockReminder } from "@/components/product/StockReminder";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { PREVIEW_TONE } from "@/lib/purchaseStyle";
 import { Select } from "@/components/ui/Select";
@@ -87,6 +87,8 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   /* In the bag already as a plain line, the stepper is that line and the
      minus is the bin at one — the product page's rule, on the owner's word. */
   const plainLine = variant ? cart?.items.find(item => item.variantId === variant.id && !item.addons?.length && !item.bundleName) ?? null : null;
+  /* Nothing of it can be bought: the reminder takes the pair's place. */
+  const soldOut = !product.variants.some(entry => entry.availableForSale) && !plainLine;
   const changeLine = (next: number) => {
     if (!plainLine) return;
     const failed = () => toast.error(t("cart.updateFailed"));
@@ -244,14 +246,14 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                       <QuantityStepper value={asked} onChange={next => setQuantity(current => (typeof next === "function" ? next(Math.min(current, room)) : next))} max={room} />
                     )}
                   </div>
-                ) : (
-                  // Out of stock is the moment a back-in-stock alert is worth
-                  // offering, so it takes the place the buttons would have had.
-                  <FollowProduct product={product} />
-                )}
+                ) : null}
 
                 {/* The preview's pair is the brand's navy (`PREVIEW_TONE`). Not
-                    `.pressable`, which would force its own size and weight. */}
+                    `.pressable`, which would force its own size and weight.
+                    Sold out, the reminder stands in its place. */}
+                {soldOut ? (
+                  <StockReminder tone="page" productId={product.id} title={product.title} />
+                ) : (
                 <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
                   <button
                     onClick={() => void add(false)}
@@ -269,6 +271,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                     <Zap className="size-[18px] fill-current" aria-hidden />{t((plainLine?.quantity ?? asked) > 1 ? "product.buyNowCount" : "product.buyNow", { count: String(plainLine?.quantity ?? asked) })}
                   </button>
                 </div>
+                )}
               </div>
 
               <a href={fullHref} className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-bold text-[#0a285a] underline underline-offset-4">

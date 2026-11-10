@@ -10,6 +10,7 @@ import {
   type User,
 } from "../../database/schema.js";
 import { gateQueries } from "./dbGate.js";
+import { followFlags } from "../../../Shared/commerce/follows.js";
 
 /*
  * `createUser`, `linkExternalUser` and `deleteUserRow` are in
@@ -188,20 +189,20 @@ export async function setFollowedProduct(
     .where(and(eq(followedProducts.userId, userId), eq(followedProducts.productId, productId)))
     .limit(1))[0];
 
-  const priceDrop = patch.priceDrop ?? existing?.priceDrop ?? true;
-  const backInStock = patch.backInStock ?? existing?.backInStock ?? true;
-
-  if (!priceDrop && !backInStock) {
+  /* What was asked for and nothing more (`followFlags`): "remind me when it is
+     back" used to sign a shopper up for price-drop notices too. */
+  const flags = followFlags(patch, existing);
+  if (!flags) {
     await db.delete(followedProducts).where(and(eq(followedProducts.userId, userId), eq(followedProducts.productId, productId)));
     return listFollowedProducts(userId);
   }
 
   await db
     .insert(followedProducts)
-    .values({ userId, productId, priceDrop, backInStock })
+    .values({ userId, productId, ...flags })
     .onConflictDoUpdate({
       target: [followedProducts.userId, followedProducts.productId],
-      set: { priceDrop, backInStock },
+      set: flags,
     });
   return listFollowedProducts(userId);
 }

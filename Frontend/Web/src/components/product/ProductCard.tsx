@@ -38,6 +38,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useStockLimit } from "@/hooks/useStockLimit";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { PreorderBadge } from "@/components/product/Availability";
+import { StockReminder } from "@/components/product/StockReminder";
 import type { Product } from "@shared/commerce/types";
 import { Eye, Heart, Minus, Plus, ShoppingBag, Trash2, Zap } from "lucide-react";
 import { StarRow } from "@/components/ui/StarRow";
@@ -231,11 +232,9 @@ function CardAction({ product, onChoose, onPhoto = false }: {
 
   let control: ReactNode;
   if (!variant?.availableForSale) {
-    control = (
-      <button type="button" disabled aria-label={t("product.unavailableName", { name })} className="pressable flex h-10 w-full cursor-not-allowed items-center justify-center rounded-xl border border-[#e6e9ef] bg-[#f4f6f9] ink-muted">
-        {t("product.soldOut")}
-      </button>
-    );
+    /* Sold out, the one thing worth pressing is a reminder for when it is
+       back — on a touch screen too, where the photo has no plus to offer. */
+    control = <StockReminder productId={product.id} title={product.title} />;
   } else if (choosing) {
     /* Both open the choice: the preview where there is one, the product page
        where there is not. Neither picks a quantity, because the preview has

@@ -737,6 +737,7 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(held?.state, "offered")
         _ = try await client.call(API.follows)
         _ = try await client.call(API.followers, .init(productId: "2"))
+        _ = try await client.call(API.followReach)
         _ = try await client.call(API.bundles, .init(variantId: "2"))
         let fit = try await client.call(API.fit, .init(productId: "10"))
         XCTAssertEqual(fit.tendency, "runsSmall", "four returns all too small is a tendency")

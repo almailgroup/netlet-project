@@ -462,49 +462,45 @@ struct PriceRequestPanel: View {
 
 // MARK: - Following
 
-/// "Tell me when the price drops", or "when it is back" on a sold-out product —
-/// the web's `FollowProduct`.
+/// "Tell me if the price drops", under an in-stock product's buy buttons —
+/// the web's `FollowProduct`. A sold-out product draws nothing here: it
+/// carries "Remind me when back in stock" in the buy buttons' place
+/// (`StockReminderButton`), the same follow row's other flag.
 struct FollowButton: View {
     let product: Product
     @State private var active = false
-    @State private var waiting = 0
     @State private var working = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        let inStock = product.isAvailable
         VStack(alignment: .leading, spacing: 6) {
-            Button {
-                Task { await toggle(inStock: inStock) }
-            } label: {
-                Label(active ? l.t("follow.watching") : l.t(inStock ? "follow.priceDrop" : "follow.backInStock"),
-                      systemImage: active ? "checkmark" : "bell.badge")
-                    .font(.inter(14, .bold))
-                    .foregroundStyle(Brand.navy)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(active ? Brand.tint : Color.white))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
-            }
-            .buttonStyle(.action)
-            .disabled(working)
-            .accessibilityAddTraits(active ? .isSelected : [])
-            if !inStock && waiting > 0 {
-                Text(waiting == 1 ? l.t("follow.waitingOne") : l.t("follow.waiting", ["count": "\(waiting)"]))
-                    .font(.inter(12))
-                    .foregroundStyle(Brand.muted)
+            if product.isAvailable {
+                Button {
+                    Task { await toggle() }
+                } label: {
+                    Label(active ? l.t("follow.watching") : l.t("follow.priceDrop"),
+                          systemImage: active ? "checkmark" : "bell.badge")
+                        .font(.inter(14, .bold))
+                        .foregroundStyle(Brand.navy)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(active ? Brand.tint : Color.white))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+                }
+                .buttonStyle(.action)
+                .disabled(working)
+                .accessibilityAddTraits(active ? .isSelected : [])
             }
         }
         .task(id: product.id) {
-            if app.session.isSignedIn, let follows = try? await app.services.api.call(API.follows),
-               let existing = follows.first(where: { $0.productId == product.id }) {
-                active = inStock ? existing.priceDrop : existing.backInStock
-            }
-            if !inStock { waiting = (try? await app.services.api.call(API.followers, .init(productId: product.id))) ?? 0 }
+            guard product.isAvailable, app.session.isSignedIn,
+                  let follows = try? await app.services.api.call(API.follows),
+                  let existing = follows.first(where: { $0.productId == product.id }) else { return }
+            active = existing.priceDrop
         }
     }
 
-    private func toggle(inStock: Bool) async {
+    private func toggle() async {
         guard app.session.isSignedIn else {
             app.toast(l.t("follow.signInFirst"))
             return
@@ -513,11 +509,7 @@ struct FollowButton: View {
         defer { working = false }
         let next = !active
         let worked = await app.attempt(fallback: "follow.failed") {
-            _ = try await app.services.api.call(API.setFollow, .init(
-                productId: product.id,
-                priceDrop: inStock ? next : nil,
-                backInStock: inStock ? nil : next
-            ))
+            _ = try await app.services.api.call(API.setFollow, .init(productId: product.id, priceDrop: next, backInStock: nil))
         }
         if worked {
             active = next

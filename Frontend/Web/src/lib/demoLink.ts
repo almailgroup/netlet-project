@@ -1029,6 +1029,9 @@ function resolve(path: string, rawInput: unknown): unknown {
     // Nobody is signed in to be waiting, so the demand line stays off.
     case "customer.follows.demand":
       return 0;
+    // Nobody is signed in to be reached; nothing is sent from the demo.
+    case "customer.follows.reach":
+      return { email: false };
     case "customer.details.get":
     case "customer.details.save":
       return { firstName: null, lastName: null, phone: null, gender: null, birthday: null };

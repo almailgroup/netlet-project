@@ -311,7 +311,17 @@ private struct FrequentRow: View {
         }
     }
 
+    @ViewBuilder
     private var addButton: some View {
+        if state == .soldOut, let product = item.product, !product.isAvailable {
+            // Nothing of it can be bought: a reminder for when it is back.
+            StockReminderButton(product: product, style: .bar)
+        } else {
+            plainAddButton
+        }
+    }
+
+    private var plainAddButton: some View {
         Button {
             Task { await add() }
         } label: {

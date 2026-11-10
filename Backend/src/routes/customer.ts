@@ -26,6 +26,8 @@ import { MAX_LABEL, MAX_LINE, MAX_NOTES } from "../../../Shared/commerce/address
 import { detailsFor, ProfileDetailsError, saveDetails } from "../services/profileDetails.js";
 import { GENDERS } from "../../../Shared/commerce/profileDetails.js";
 import { photoFor, removeProfilePhoto } from "../services/profilePhoto.js";
+import { emailConfigured } from "../core/email.js";
+import { emailPreference } from "../services/notifications.js";
 
 const zoneIdSchema = z.string().refine(value => kuwaitDeliveryZones.some(zone => zone.id === value), "Unknown delivery zone");
 const notificationKindSchema = z.enum(notificationKinds);
@@ -139,6 +141,15 @@ export const customerRouter = router({
     demand: publicProcedure
       .input(z.object({ productId: z.string().min(1).max(191) }))
       .query(({ input }) => countFollowers(input.productId)),
+    /**
+     * How a reminder would reach this shopper: always the inbox, and email
+     * too while the shop sends email, the account has an address and its
+     * email switch is on — so "Remind me" can say which without promising an
+     * email that will never come.
+     */
+    reach: protectedProcedure.query(async ({ ctx }) => ({
+      email: emailConfigured() && Boolean(ctx.user.email) && (await emailPreference(ctx.user.id)),
+    })),
   }),
   saved: router({
     list: protectedProcedure.query(({ ctx }) => listSavedProductIds(ctx.user.id)),

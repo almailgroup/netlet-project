@@ -257,6 +257,11 @@ struct ProductFollow: Decodable, Sendable {
     let backInStock: Bool
 }
 
+/// Whether a reminder will be emailed as well as sent to the inbox (`customer.follows.reach`).
+struct FollowReach: Decodable, Sendable {
+    let email: Bool
+}
+
 /// The shopper's own request on one variant (`offers.mine`).
 struct HeldPriceRequest: Decodable, Sendable {
     let id: Int

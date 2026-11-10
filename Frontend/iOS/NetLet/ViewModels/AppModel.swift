@@ -164,6 +164,8 @@ final class AppModel {
     /// The account's profile photo, drawn on the Profile tab and "Your profile".
     let profilePhoto: ProfilePhotoModel
     let saved: SavedModel
+    /// "Remind me when back in stock", held for the whole app (`StockReminders`).
+    let reminders: StockReminders
     /// What this phone looked at lately, for the home page's "Previously viewed" and the picks.
     let viewed: RecentlyViewed
     /// The home page's catalogue and shelves, shared with the header and the categories page.
@@ -346,6 +348,7 @@ final class AppModel {
         signals = AccountSignals(api: services.api)
         delivery = DeliveryModel(api: services.api, account: services.account, defaults: cartDefaults)
         savings = SavingsModel(api: services.api)
+        reminders = StockReminders(api: services.api)
         let api = services.api
         let gateway = AIGateway(mint: { try await api.call(API.chatSession) })
         self.gateway = gateway
@@ -730,6 +733,10 @@ final class AppModel {
         await session.adopt(user)
         authPresented = false
         await linkAccount()
+        if let pending = reminders.afterSignIn {
+            reminders.afterSignIn = nil
+            await setReminder(productId: pending.productId, title: pending.title, on: true)
+        }
         if let pending = wishAfterSignIn {
             wishAfterSignIn = nil
             // Once the sign-in sheet has gone.
@@ -825,6 +832,7 @@ final class AppModel {
         await session.signOut()
         cart.forget()
         saved.signedOut()
+        reminders.signedOut()
         accountPath = NavigationPath()
     }
 

@@ -406,6 +406,8 @@ extension API {
     static let follows = Procedure<NoInput, [ProductFollow]>(query: "customer.follows.list")
     static let setFollow = Procedure<Follow, Acknowledged>(mutation: "customer.follows.set")
     static let followers = Procedure<ProductId, Int>(query: "customer.follows.demand")
+    /// How a back-in-stock reminder reaches this account: always the inbox, email too where it is on.
+    static let followReach = Procedure<NoInput, FollowReach>(query: "customer.follows.reach")
     static let fit = Procedure<ProductId, FitFeedback>(query: "returns.fit")
     /// The signed-in shopper's own past lines in a product's department.
     static let mySizes = Procedure<ProductId, [PastSizeLine]>(query: "returns.mySizes")

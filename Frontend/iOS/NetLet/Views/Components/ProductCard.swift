@@ -637,13 +637,8 @@ struct CardActions: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
                 }
             } else {
-                Text(l.t("product.soldOut"))
-                    .font(.inter(14, .medium))
-                    .foregroundStyle(Brand.muted)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(Capsule().fill(Brand.photo))
-                    .overlay(Capsule().strokeBorder(Brand.cardLine, lineWidth: 1))
-                    .accessibilityLabel(l.t("product.unavailableName", ["name": product.title]))
+                // Sold out, the one thing worth pressing is a reminder for when it is back.
+                StockReminderButton(product: product)
             }
         }
     }

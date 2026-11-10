@@ -1,15 +1,11 @@
 /**
- * "Tell me when it changes."
+ * "Tell me if the price drops", under an in-stock product's buy buttons.
  *
- * Two requests, one control: a price-drop alert on anything, and a
- * back-in-stock alert on what is sold out. They are the same promise from the
- * shopper's side — *let me know* — so making them two unrelated features would
- * be an implementation detail leaking into the page.
- *
- * The waiting count is shown on a sold-out product because it is honest
- * information for the shopper ("this is in demand, it will go again") and it is
- * the demand signal the vendor needs. It is a count; who is waiting is nobody's
- * business.
+ * A sold-out product draws nothing here: its page, its card and the preview
+ * carry "Remind me when back in stock" in the buy buttons' place
+ * (`StockReminder`), which is the same follow row's other flag. The two were
+ * one button once, whose promise changed with the stock, and a sold-out
+ * product's reminder sat small under two greyed buttons where nobody looked.
  */
 import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -24,8 +20,7 @@ export function FollowProduct({ product, compact = false }: { product: Product; 
   const utils = trpc.useUtils();
 
   const inStock = product.variants.some(variant => variant.availableForSale);
-  const follows = trpc.customer.follows.list.useQuery(undefined, { enabled: isAuthenticated });
-  const demand = trpc.customer.follows.demand.useQuery({ productId: product.id }, { enabled: !inStock });
+  const follows = trpc.customer.follows.list.useQuery(undefined, { enabled: isAuthenticated && inStock, staleTime: 30_000 });
 
   const follow = trpc.customer.follows.set.useMutation({
     onSuccess: () => {
@@ -35,23 +30,16 @@ export function FollowProduct({ product, compact = false }: { product: Product; 
     onError: () => toast.error(t("follow.failed")),
   });
 
-  const existing = follows.data?.find(entry => entry.productId === product.id);
-  // Out of stock, the meaningful alert is "it is back"; in stock it is "it got
-  // cheaper". One button, and which promise it makes depends on the product.
-  const active = Boolean(inStock ? existing?.priceDrop : existing?.backInStock);
+  const active = Boolean(follows.data?.find(entry => entry.productId === product.id)?.priceDrop);
+  if (!inStock) return null;
 
   const toggle = () => {
     if (!isAuthenticated) return toast(t("follow.signInFirst"));
-    follow.mutate({
-      productId: product.id,
-      ...(inStock ? { priceDrop: !active } : { backInStock: !active }),
-    });
+    follow.mutate({ productId: product.id, priceDrop: !active });
     toast(t(active ? "follow.off" : "follow.on", { name: product.title }));
   };
 
-  const label = active
-    ? t("follow.watching")
-    : t(inStock ? "follow.priceDrop" : "follow.backInStock");
+  const label = active ? t("follow.watching") : t("follow.priceDrop");
 
   return (
     <div className={compact ? "" : "rounded-xl border border-[#d5dfeb] bg-white p-3"}>
@@ -64,11 +52,6 @@ export function FollowProduct({ product, compact = false }: { product: Product; 
         {follow.isPending ? <LoaderCircle className="size-4 animate-spin" /> : active ? <Check className="size-4" /> : <BellRing className="size-4" />}
         {label}
       </button>
-      {!inStock && (demand.data ?? 0) > 0 ? (
-        <p className="mt-2 text-center text-[12px] font-semibold ink-muted">
-          {demand.data === 1 ? t("follow.waitingOne") : t("follow.waiting", { count: demand.data ?? 0 })}
-        </p>
-      ) : null}
     </div>
   );
 }
