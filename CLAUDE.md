@@ -8583,6 +8583,26 @@ invitation opens the website, not the app, so the app sends no `links` with an
 order; opening them in the app needs Associated Domains on the App ID and a
 file on netlet.net naming the team.
 
+**Every section of the app's home page is a row scrolled sideways, on the
+owner's word** ("for all the sections in the homepage of the app, like best
+selling and all, let it be horizontally; the user can scroll between the
+products, from left to right"). The page scrolls down through its sections and
+each section scrolls across through its products from the page's start — the
+right on the Arabic page — a strip of twelve at most (`ProductStrip`,
+`HomeShelf.most`), with View all for the rest. Four sections were not rows
+and are now: Mega deals was a lead card the row wide with two more under it
+and is a strip on its navy band, the deepest saving first (`DealsBand`); New
+arrivals was a two-column grid of fifteen (`TabbedShelf`'s `grid`, gone);
+Picked for you and Deals picked for you were grids of four and are strips of
+the rail's eight, each card still saying why (`ProductStrip`'s `note`, in the
+store's place — under Saved, where the rail is the page's one shelf, it stays
+a grid); and the guides were three cards one under another and are a row of
+them. The website's home page is as it was: this is the app's alone. **It
+also takes the last lazy grid out of the home page's stack**, which is what
+the eighth sighting of the home page's stand-still pointed at (see "A drag
+that moves nothing"): nothing on the page is estimated and then measured
+down its length any more.
+
 **The Cart tab is the web's new bag, on the owner's word.** `CartView` opens on the title and the count with a heart to
 Saved at the line's end (`CartSavedButton`, the hearts counted), then where the order goes (`DeliveryAddressCard` in `CartParts.swift`,
 the web's own card: the address in use by `DeliveryModel.inUse` with its name,
@@ -8764,7 +8784,7 @@ out what a shelf above shows, the tabbed ones holding two dozen), under the
 hero slideshow, the six department cards, the Mega deals band, the deals
 picked for the shopper, Deals, Picked for you, Trending, the ranked
 Bestsellers, Previously viewed (`RecentlyViewed`, `RecentlyViewedRail`) and
-the grid — each shelf under its department tabs (`TabbedShelf`,
+New arrivals — every one a row scrolled sideways, below — each shelf under its department tabs (`TabbedShelf`,
 `HomeShelf.departmentTabs`, `HomeShelfRuleTests` on the recorded catalogue). The type is
 Inter from the web's own variable file (`Typography.swift`); the logo, the
 department art and the hero pictures are the web's files, copied byte for byte

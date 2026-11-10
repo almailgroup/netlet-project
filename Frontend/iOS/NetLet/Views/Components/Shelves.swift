@@ -56,10 +56,16 @@ struct ProductRail: View {
     }
 }
 
-/// The cards of a shelf, scrolled sideways: a strip's twelve at most.
+/// The cards of a shelf, scrolled sideways: a strip's twelve at most. **Every
+/// section of the home page is one of these, on the owner's word** ("for all
+/// the sections in the homepage … let it be horizontally; the user can scroll
+/// between the products"): the page scrolls down through its sections and
+/// each section scrolls across through its products, from the page's start.
 struct ProductStrip: View {
     let products: [Product]
     var ranked = false
+    /// A card's line in the store's place, where a shelf has one to say.
+    var note: ((Product) -> String?)? = nil
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -72,7 +78,7 @@ struct ProductStrip: View {
                         }
                         .frame(width: 200)
                     } else {
-                        ProductCard(product: product)
+                        ProductCard(product: product, note: note?(product))
                             .frame(width: 164)
                     }
                 }
@@ -95,11 +101,10 @@ struct ProductStrip: View {
 /// (`HomeShelf.departmentTabs`). "All" leads and is the shelf as decided; the
 /// choice is the shelf's own while the page is open. A ranked shelf
 /// renumbers inside the tab, so the places read "first among the
-/// electronics". The strip holds a strip's twelve; the grid, the web's fifteen.
+/// electronics". Every shelf is a strip of twelve, scrolled sideways.
 struct TabbedShelf: View {
     let title: String
     let products: [Product]
-    var grid = false
     var ranked = false
     /// Off for a shelf that is the shopper's own rather than the shop's.
     var tabs = true
@@ -158,12 +163,7 @@ struct TabbedShelf: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(l.t("home.shelfTabs", ["title": title]))
             }
-            if grid {
-                ProductGrid(products: Array(shown.prefix(15)))
-                    .padding(.horizontal, 16)
-            } else {
-                ProductStrip(products: shown, ranked: ranked)
-            }
+            ProductStrip(products: shown, ranked: ranked)
         }
     }
 

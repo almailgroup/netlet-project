@@ -107,7 +107,7 @@ struct HomeView: View {
             }
             RecentlyViewedRail()
             if !shelves.newest.isEmpty {
-                TabbedShelf(title: l.t("rail.newest.title"), products: shelves.newest, grid: true) { app.push(.newest) }
+                TabbedShelf(title: l.t("rail.newest.title"), products: shelves.newest) { app.push(.newest) }
             }
             GuideShelf()
         }
@@ -223,8 +223,9 @@ struct OccasionBand: View {
 }
 
 /// The deepest savings, as a navy band across the page — Mega deals, on the
-/// owner's word: the deepest saving leads, the whole row wide, and two more
-/// sit under it — never three with one left alone.
+/// owner's word: the deepest saving leads a row scrolled sideways, as every
+/// section of the home page is now. It was the lead card the whole row wide
+/// with two more under it.
 struct DealsBand: View {
     var titleKey = "rail.deals.title"
     let products: [Product]
@@ -235,15 +236,9 @@ struct DealsBand: View {
         VStack(alignment: .leading, spacing: 16) {
             // View all is the Deals tab, as the web's link lights it.
             ShelfHeading(title: l.t(titleKey), onDark: true) { app.select(.deals) }
-            if let lead = products.first {
-                ProductCard(product: lead, feature: true)
-            }
-            let rest = Array(products.dropFirst().prefix(2))
-            if !rest.isEmpty {
-                ProductGrid(products: rest)
-            }
+                .padding(.horizontal, 16)
+            ProductStrip(products: products)
         }
-        .padding(.horizontal, 16)
         .padding(.vertical, 32)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Brand.navy)

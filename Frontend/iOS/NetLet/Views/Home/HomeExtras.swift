@@ -288,12 +288,21 @@ struct RecommendedRail: View {
                                 .background(Capsule().fill(Brand.navy.opacity(0.08)))
                         }
                     }
-                    let items = Array(answer.items.prefix(4))
-                    ProductGrid(products: items.map(\.product)) { product in
-                        items.first { $0.product.id == product.id }?.reasons.first.map(reason)
+                    // The heading keeps the page's room; the row runs to the screen's edges.
+                    .padding(.horizontal, quiet ? 16 : 0)
+                    // On the home page a row scrolled sideways, as every section
+                    // there is; under Saved, where it is the page's one shelf, a grid.
+                    if quiet {
+                        ProductStrip(products: answer.items.map(\.product)) { product in
+                            answer.items.first { $0.product.id == product.id }?.reasons.first.map(reason)
+                        }
+                    } else {
+                        let items = Array(answer.items.prefix(4))
+                        ProductGrid(products: items.map(\.product)) { product in
+                            items.first { $0.product.id == product.id }?.reasons.first.map(reason)
+                        }
                     }
                 }
-                .padding(.horizontal, quiet ? 16 : 0)
                 .padding(.vertical, 24)
             }
         }
@@ -363,9 +372,17 @@ struct GuideShelf: View {
             if !guides.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
                     ShelfHeading(title: l.t("guides.homeTitle"), viewAllKey: "guides.all") { app.push(.guides) }
-                    ForEach(guides) { guide in GuideCardView(guide: guide) }
+                        .padding(.horizontal, 16)
+                    // A row scrolled sideways, as every section of the home page is.
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(alignment: .top, spacing: 12) {
+                            ForEach(guides) { guide in GuideCardView(guide: guide).frame(width: 264) }
+                        }
+                        .padding(.horizontal, 16)
+                        .scrollTargetLayout()
+                    }
+                    .scrollTargetBehavior(.viewAligned)
                 }
-                .padding(.horizontal, 16)
                 .padding(.vertical, 24)
             }
         }
