@@ -9623,9 +9623,22 @@ export function translate(
      (`plurals.ts`) — and the dictionary's own string otherwise. */
   const template = pluralForm(locale, key, values) ?? messages[locale]?.[key] ?? en[key] ?? key;
   if (!values) return template;
-  return template.replace(/\{(\w+)\}/g, (whole, name: string) =>
-    name in values ? String(values[name]) : whole,
-  );
+  return template.replace(/\{(\w+)\}(\.?)/g, (whole, name: string, stop: string) => {
+    if (!(name in values)) return whole;
+    const value = String(values[name]);
+    /* A value that already ends on its own dot is not given the sentence's
+       full stop as well: the dinar in Arabic is "د.ك.", and every sentence
+       ending on an amount read "د.ك.." on the web and in the app. */
+    return stop && endsOnDot(value) ? value : value + stop;
+  });
+}
+
+/** Direction marks a formatter puts after a value, which hide its last character. */
+const TRAILING_MARKS = /[‎‏؜⁦-⁩]+$/;
+
+/** Whether a filled-in value ends on a dot of its own ("د.ك.", "etc."). */
+export function endsOnDot(value: string): boolean {
+  return value.replace(TRAILING_MARKS, "").endsWith(".");
 }
 
 /** Arabic is right-to-left; everything else here is not. */

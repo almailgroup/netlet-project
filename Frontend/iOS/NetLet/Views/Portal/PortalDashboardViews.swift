@@ -72,33 +72,47 @@ extension DashboardPanel where Action == EmptyView {
     }
 }
 
-/// How a figure moved against the period before, said with an arrow and a word (`ChangeLine`).
+/// How a figure moved against the period before, said with an arrow and a word
+/// (`ChangeLine`): the change on a line of its own, then what it is against. In
+/// one row, "against the 30 days before" was cut on a phone's half-width card
+/// and "Down 12%" broke over two lines, so no two cards were the same height.
 struct DashboardChange: View {
     let change: Double?
     let days: Int
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        if let change {
-            let rounded = (abs(change) * 10).rounded() / 10
-            let shown = rounded.rounded() == rounded ? "\(Int(rounded))" : String(format: "%.1f", rounded)
-            HStack(spacing: 4) {
-                if change == 0 {
-                    Text(l.t("dashboard.flat")).font(.inter(12, .semibold)).foregroundStyle(Brand.muted)
-                } else {
-                    Image(systemName: change > 0 ? "arrow.up.right" : "arrow.down.right")
-                        .font(.system(size: 10, weight: .bold))
-                        .flipsForRightToLeftLayoutDirection(true)
-                        .accessibilityHidden(true)
-                    Text(l.t(change > 0 ? "dashboard.up" : "dashboard.down", ["change": shown])).font(.inter(12, .semibold))
+        VStack(alignment: .leading, spacing: 2) {
+            if let change {
+                let rounded = (abs(change) * 10).rounded() / 10
+                let shown = rounded.rounded() == rounded ? "\(Int(rounded))" : String(format: "%.1f", rounded)
+                HStack(spacing: 4) {
+                    if change == 0 {
+                        Text(l.t("dashboard.flat")).font(.inter(12, .semibold)).foregroundStyle(Brand.muted)
+                    } else {
+                        Image(systemName: change > 0 ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 10, weight: .bold))
+                            .flipsForRightToLeftLayoutDirection(true)
+                            .accessibilityHidden(true)
+                        Text(l.t(change > 0 ? "dashboard.up" : "dashboard.down", ["change": shown])).font(.inter(12, .semibold))
+                    }
                 }
-                Text(l.t("dashboard.vsPrevious", ["days": "\(days)"])).font(.inter(12)).foregroundStyle(Brand.muted).lineLimit(1).minimumScaleFactor(0.8)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .foregroundStyle(change > 0 ? PortalLook.up : change < 0 ? PortalLook.down : Brand.muted)
+                Text(l.t("dashboard.vsPrevious", ["days": "\(days)"]))
+                    .font(.inter(11))
+                    .foregroundStyle(Brand.muted)
+                    .lineLimit(2, reservesSpace: true)
+            } else {
+                Text(l.t("dashboard.noCompare"))
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .lineLimit(2, reservesSpace: true)
             }
-            .foregroundStyle(change > 0 ? PortalLook.up : change < 0 ? PortalLook.down : Brand.muted)
-            .accessibilityElement(children: .combine)
-        } else {
-            Text(l.t("dashboard.noCompare")).font(.inter(12)).foregroundStyle(Brand.muted)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -154,15 +168,15 @@ struct DashboardFigure: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .monospacedDigit()
-            HStack(alignment: .bottom, spacing: 4) {
-                DashboardChange(change: change, days: days)
-                Spacer(minLength: 0)
-            }
+            DashboardChange(change: change, days: days)
+            Spacer(minLength: 0)
             DashboardSparkline(values: series, color: color)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        /* As tall as the row's tallest card (`TileGrid` places each at that
+           height), the sparkline at the foot. */
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .portalSurface(cornerRadius: 18)
         .accessibilityElement(children: .combine)
     }
@@ -175,7 +189,7 @@ struct DashboardFigures: View {
 
     var body: some View {
         let totals = board.totals
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+        TileGrid(spacing: 10) {
             DashboardFigure(label: l.t("dashboard.sales"), value: totals.sales.current.formatted(l.current), change: totals.sales.change, days: board.range,
                             series: board.days.map { Double($0.sales.fils) / 1000 }, color: PortalLook.series[0], symbol: "banknote")
             DashboardFigure(label: l.t("dashboard.orders"), value: "\(totals.orders.current)", change: totals.orders.change, days: board.range,

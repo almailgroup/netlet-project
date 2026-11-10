@@ -74,13 +74,30 @@ final class Phrasebook: @unchecked Sendable {
             let name = String(rest[rest.index(after: open)..<close])
             if let value = params[name], !name.isEmpty, name.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) {
                 result += value
+                rest = rest[rest.index(after: close)...]
+                /* A value that already ends on its own dot is not given the
+                   sentence's full stop too — `translate()`'s rule: the dinar in
+                   Arabic is "د.ك.", and a sentence ending on an amount read
+                   "د.ك..". */
+                if rest.first == ".", Phrasebook.endsOnDot(value) {
+                    rest = rest.dropFirst()
+                }
             } else {
                 result += rest[open...close]
+                rest = rest[rest.index(after: close)...]
             }
-            rest = rest[rest.index(after: close)...]
         }
         result += rest
         return result
+    }
+
+    /// Whether a filled-in value ends on a dot of its own, past the direction
+    /// marks a formatter puts after it — `endsOnDot` in TypeScript.
+    static func endsOnDot(_ value: String) -> Bool {
+        let marks: Set<Unicode.Scalar> = ["\u{200E}", "\u{200F}", "\u{061C}", "\u{2066}", "\u{2067}", "\u{2068}", "\u{2069}"]
+        var scalars = Array(value.unicodeScalars)
+        while let last = scalars.last, marks.contains(last) { scalars.removeLast() }
+        return scalars.last == "."
     }
 
     private func pluralForm(_ key: String, language: Language, params: [String: String]) -> String? {

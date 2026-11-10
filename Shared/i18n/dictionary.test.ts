@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ar, directionFor, en, LOCALES, messages, translate, type MessageKey } from "./dictionary.js";
+import { ar, directionFor, en, endsOnDot, LOCALES, messages, translate, type MessageKey } from "./dictionary.js";
 
 describe("dictionary completeness", () => {
   it("translates every key — a gap would show an English word mid-sentence", () => {
@@ -105,6 +105,19 @@ describe("translate", () => {
   it("substitutes placeholders in both languages", () => {
     expect(translate("en", "cart.added", { name: "Aurora Lamp" })).toBe("Aurora Lamp added to your cart");
     expect(translate("ar", "cart.added", { name: "مصباح" })).toBe("تمت إضافة مصباح إلى سلتك");
+  });
+
+  it("gives no second full stop to a value that ends on its own", () => {
+    // The dinar in Arabic is "د.ك." with a direction mark after it, so a
+    // sentence ending on an amount read "د.ك.." on the web and in the app.
+    const dinars = "1,110.877 د.ك.\u200f";
+    const forecast = translate("ar", "copilot.insight.forecast", { amount: dinars });
+    expect(forecast.endsWith(`${dinars}`)).toBe(true);
+    expect(forecast).not.toContain("..");
+    // A value with no dot of its own still gets the sentence's.
+    expect(translate("ar", "copilot.insight.forecast", { amount: "KWD 12.500" })).toMatch(/KWD 12\.500\.$/);
+    expect(endsOnDot("د.ك.\u200f")).toBe(true);
+    expect(endsOnDot("KWD 12.500")).toBe(false);
   });
 
   it("leaves an unknown placeholder in place rather than printing undefined", () => {

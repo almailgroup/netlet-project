@@ -6900,7 +6900,10 @@ wrap rather than end in "…"; every desk's cards are the kit's one surface
 (some twenty pages drew an older border); the finance page's figures carry
 the dashboard's colours on their plates; the stock page's two boxes are
 narrow enough to sit side by side on a phone's card, halving each row; the
-product search has a line of its own, so its hint is read whole.
+product search has a line of its own, so its hint is read whole. On the app's dashboard the change is a line of its own with
+what it is against under it (two lines kept, `reservesSpace`), and the four
+figures are a `TileGrid`, so the cards are one height: in one row the
+comparison was cut and "Down 12%" broke over two lines.
 
 Measured on a production build against a local Postgres seeded with two
 months of orders, at 320, 390 and 1440 in both languages: the dashboard, the
@@ -7692,6 +7695,13 @@ with the Arabic product names already in place when it lands.
 preview on every product; it has its own key (`quick.settingsTitle`). A new
 sentence is a new key, the support answers' rule, even where an old one reads
 almost right.
+
+**A value that ends on its own dot takes no second one** (`endsOnDot`, in
+`translate` and the app's `Phrasebook.text`): the dinar in Arabic is "د.ك."
+with a direction mark after it, so every Arabic sentence ending on an amount —
+the co-pilot's forecast, a price drop, a payout — read "د.ك.." on both. Seen in
+the CI's Arabic pictures; the sentence's full stop is dropped only when the
+value already has one.
 
 **A counted sentence takes the form its number needs** (`Shared/i18n/plurals.ts`).
 Arabic counts a noun in the plural from three to ten, in the accusative singular

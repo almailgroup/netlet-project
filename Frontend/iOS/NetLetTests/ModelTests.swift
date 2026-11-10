@@ -60,6 +60,18 @@ final class PhrasebookTests: XCTestCase {
         XCTAssertEqual(book.text("cart.added", language: .en), "{name} added to your cart")
     }
 
+    /// `translate()`'s rule: a value ending on its own dot (the Arabic dinar,
+    /// "د.ك." and a direction mark) is not given the sentence's full stop too.
+    func testGivesNoSecondFullStopToAValueEndingOnItsOwn() {
+        let dinars = "1,110.877 د.ك.\u{200F}"
+        let forecast = book.text("copilot.insight.forecast", language: .ar, params: ["amount": dinars])
+        XCTAssertTrue(forecast.hasSuffix(dinars), forecast)
+        XCTAssertFalse(forecast.contains(".."), forecast)
+        XCTAssertTrue(book.text("copilot.insight.forecast", language: .ar, params: ["amount": "KWD 12.500"]).hasSuffix("KWD 12.500."))
+        XCTAssertTrue(Phrasebook.endsOnDot("د.ك.\u{200F}"))
+        XCTAssertFalse(Phrasebook.endsOnDot("KWD 12.500"))
+    }
+
     func testFallsBackToTheKeyRatherThanNothing() {
         XCTAssertEqual(book.text("no.such.key", language: .ar), "no.such.key")
     }
