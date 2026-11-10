@@ -13,12 +13,17 @@
  * they see.
  */
 import { BellRing, Check, LoaderCircle } from "lucide-react";
-import AuthDialog from "@/components/auth/AuthDialog";
+import { lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useStockReminder } from "@/hooks/useStockReminder";
 import { useTranslation } from "@/hooks/useTranslation";
 import { PREVIEW_TONE, PURCHASE_TONE } from "@/lib/purchaseStyle";
 import { trpc } from "@/lib/trpc";
+
+// Fetched when a guest presses the button, never with the page: a card wears
+// this, and cards are in what every shopper downloads first. Imported plainly,
+// it put the whole sign-in form there (70 KB of the main bundle, measured).
+const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
 
 export function StockReminder({ productId, title, tone = "card", className = "" }: {
   productId: string;
@@ -42,7 +47,9 @@ export function StockReminder({ productId, title, tone = "card", className = "" 
       ? <Check className="size-[18px] shrink-0" aria-hidden />
       : <BellRing className="size-[18px] shrink-0" aria-hidden />;
 
-  const dialog = reminder.signingIn ? <AuthDialog open onClose={reminder.closeSignIn} /> : null;
+  const dialog = reminder.signingIn
+    ? <Suspense fallback={null}><AuthDialog open onClose={reminder.closeSignIn} /></Suspense>
+    : null;
 
   if (tone === "bar") {
     return (

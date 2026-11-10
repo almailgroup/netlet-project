@@ -15,9 +15,17 @@
  * **On a phone it is the whole screen**, not a card floating over the shop:
  * the keyboard takes half of a 390px screen, and a card with a margin round it
  * left the password box under the keyboard. From `sm` up it is a card.
+ *
+ * **It is portalled to `<body>` here, not by whoever opens it.** A product
+ * card rises by a transform under a pointer, and a transform makes the card
+ * the containing block for every `position: fixed` inside it — so opened from
+ * a card's "Remind me" on a wide screen, this was the card's size and inside
+ * it (measured: 264 × 505 at 1440). Some callers portalled it themselves and
+ * some did not; one portal here covers them all, and a second is harmless.
  */
 import { X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { logoImage } from "@/lib/brandAssets";
@@ -43,7 +51,7 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }: {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#061b3b]/60" onClick={onClose}>
       <div className="flex min-h-full sm:items-center sm:justify-center sm:p-6">
         <div
@@ -65,6 +73,7 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }: {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

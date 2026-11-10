@@ -8009,7 +8009,14 @@ filters and the compact profile's words, then 959 KB (277 KB), Saved
 items and wishlists, the history's selection and the haptics switch, then
 970 KB (278 KB), the authorised devices' words in both languages, then
 985 KB (283 KB), the portal dashboard's and co-pilot's words in both
-languages, and is 984 KB (283 KB) now, the app's old sales panel's words gone,
+languages, then 984 KB (283 KB), the app's old sales panel's words gone, and
+is 993 KB (285 KB) now, the stock reminder and the subcategory pictures' words
+— **having been 1,054 KB (301 KB) for a week without anybody deciding it**:
+the card's "Remind me" imported the sign-in dialog plainly, and a card is in
+the first download, so the whole sign-in form came with it. It is `lazy` there
+now. **Anything a card, the header or the shell imports is in the first
+download**; read the main chunk's size after a round that touches one, not
+only whether the build passes —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
@@ -8033,7 +8040,12 @@ already has it.
   address book on both bars now, since a phone's logo row carries the location.
 
 - **Overlays load when opened.** The sign-in dialog, Home's preview and the
-  voice and photo sheets are `lazy`. The header is on every page and most
+  voice and photo sheets are `lazy`. **The sign-in dialog portals itself to
+  `<body>`** (`AuthDialog`): opened from a card's "Remind me" under a mouse it
+  was drawn inside the card, 264 × 505 at 1440, because a hovered card's lift
+  is a transform and a transform is the containing block for everything
+  `fixed` inside it. Some callers portalled it and some did not; it is the
+  dialog's own job now. The header is on every page and most
   visits never open any of them; the voice and photo sheets load only when a
   shop has switched one on or `?searchTest=` asks for one.
 - **The demo's fixtures load only in the demo.** `main.tsx` imported
