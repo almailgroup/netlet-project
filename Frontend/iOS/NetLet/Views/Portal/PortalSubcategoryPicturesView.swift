@@ -48,13 +48,15 @@ extension API {
 
 /// The subcategories' pictures — the web's `/admin/subcategory-pictures`
 /// (`Shared/commerce/subcategoryPictures.ts`), on the owner's word: one card
-/// a department, a row a subcategory, showing what the shop shows now and,
-/// beside it, what was just drawn, which goes nowhere until Keep is pressed.
-/// "Draw the missing ones" draws every subcategory with no picture and none
-/// waiting, one after another, and stops on Stop or on a refusal that would
-/// refuse the next too. Each drawing is sent the department's own art as the
-/// style to match; a picture can also be chosen from the phone's photos,
-/// which is how the page works with no gateway.
+/// a department, a row a subcategory, showing what the shop shows now — the
+/// picture kept here, or the subcategory's original, carried in the app
+/// (`WebAssets.subcategory`) — and, beside it, what was just drawn, which
+/// goes nowhere until Keep is pressed. Removing a kept picture brings the
+/// original back. Each drawing is sent the department's own art as the style
+/// to match; a picture can also be chosen from the phone's photos, which is
+/// how the page works with no gateway. "Draw the missing ones" went when the
+/// owner sent a picture for every subcategory: nothing is missing, and a
+/// button nobody can press is a dead control.
 struct PortalSubcategoryPicturesView: View {
     /// The edge a kept picture is made, square (`SUBCATEGORY_PICTURE_EDGE`).
     static let edge = 384
@@ -69,15 +71,20 @@ struct PortalSubcategoryPicturesView: View {
     @State private var failed: APIError?
     @State private var drafts: [String: Drawn] = [:]
     @State private var busy: [String: String] = [:]
-    @State private var running: (done: Int, total: Int)?
-    @State private var stopping = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         PortalScreen(title: l.t("subpics.title"), intro: l.t("subpics.intro"), refresh: { await load() }) {
             if let pictures {
-                actions(pictures)
+                if !drafts.isEmpty {
+                    Button {
+                        Task { await keepAll() }
+                    } label: {
+                        Label(l.t("subpics.keepDrawn"), systemImage: "photo.badge.plus")
+                    }
+                    .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                }
                 if !drawable {
                     PortalNotice(text: l.t("subpics.offNote"), tone: .warning)
                 }
@@ -106,50 +113,20 @@ struct PortalSubcategoryPicturesView: View {
         .task { await load() }
     }
 
-    @ViewBuilder
-    private func actions(_ pictures: [String: String]) -> some View {
-        if let running {
-            HStack(spacing: 10) {
-                ProgressView().tint(Brand.navy)
-                Text(l.t("subpics.progress", ["done": "\(running.done)", "total": "\(running.total)"]))
-                    .font(.inter(14, .semibold))
-                    .foregroundStyle(Brand.navy)
-                Spacer(minLength: 0)
-                Button(l.t("subpics.stop")) { stopping = true }
-                    .buttonStyle(PortalSmallButtonStyle(kind: .secondary))
-            }
-        } else {
-            FlowLayout(spacing: 8) {
-                Button {
-                    Task { await drawMissing(pictures) }
-                } label: {
-                    Label(l.t("subpics.drawMissing"), systemImage: "wand.and.stars")
-                }
-                .buttonStyle(PortalSmallButtonStyle(kind: .primary))
-                .disabled(!drawable || missing(pictures).isEmpty)
-                if !drafts.isEmpty {
-                    Button {
-                        Task { await keepAll() }
-                    } label: {
-                        Label(l.t("subpics.keepDrawn"), systemImage: "photo.badge.plus")
-                    }
-                    .buttonStyle(PortalSmallButtonStyle(kind: .secondary))
-                }
-            }
-        }
-    }
-
     private func row(department: String, subcategory: Department.Subcategory, kept: String?) -> some View {
         let key = "\(department)/\(subcategory.slug)"
         let name = subcategory.shown(l.current)
         let draft = drafts[key]
-        let working = busy[key] != nil || running != nil
+        let working = busy[key] != nil
         return VStack(alignment: .leading, spacing: 8) {
             Text(name).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
             HStack(alignment: .top, spacing: 12) {
-                tile(caption: l.t(kept == nil ? "subpics.none" : "subpics.onShop")) {
+                tile(caption: l.t(kept == nil ? "subpics.original" : "subpics.onShop")) {
                     if let kept {
                         RemoteImage(reference: kept, contentMode: .fit, label: l.t("subpics.keptAlt", ["name": name]))
+                    } else if let original = WebAssets.subcategory(department, subcategory.slug) {
+                        Image(uiImage: original).resizable().scaledToFit()
+                            .accessibilityLabel(l.t("subpics.keptAlt", ["name": name]))
                     } else {
                         Image(systemName: subcategory.symbol)
                             .font(.system(size: 26))
@@ -211,15 +188,6 @@ struct PortalSubcategoryPicturesView: View {
                         .strokeBorder(Brand.cardLine, style: StrokeStyle(lineWidth: 1, dash: dashed ? [4, 3] : []))
                 )
             Text(caption).font(.inter(12)).foregroundStyle(Brand.muted)
-        }
-    }
-
-    private func missing(_ pictures: [String: String]) -> [(String, Department.Subcategory)] {
-        ReferenceData.shared.departments.flatMap { department in
-            department.subs.compactMap { subcategory -> (String, Department.Subcategory)? in
-                let key = "\(department.slug)/\(subcategory.slug)"
-                return pictures[key] == nil && drafts[key] == nil ? (department.slug, subcategory) : nil
-            }
         }
     }
 
@@ -290,20 +258,6 @@ struct PortalSubcategoryPicturesView: View {
             return
         }
         await keep(department: department, subcategory: subcategory, picture: Drawn(jpeg: square.data, image: square.image))
-    }
-
-    private func drawMissing(_ pictures: [String: String]) async {
-        let queue = missing(pictures)
-        guard !queue.isEmpty else { return }
-        stopping = false
-        running = (0, queue.count)
-        for (index, entry) in queue.enumerated() {
-            if stopping { break }
-            let refused = await draw(department: entry.0, subcategory: entry.1)
-            running = (index + 1, queue.count)
-            if let refused, ["drawing.tooMany", "drawing.off", "media.notAllowed"].contains(refused) { break }
-        }
-        running = nil
     }
 
     private func keepAll() async {

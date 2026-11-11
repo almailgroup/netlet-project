@@ -13,7 +13,8 @@
  * placeholders on both sides, no key nothing uses) cover the app's copy too.
  *
  * The web's pictures come across the same way (`buildAssets`): the logo, the
- * department art, NetLet's street and the home page's slides are copied byte
+ * department art, each subcategory's own picture, NetLet's street and the
+ * home page's slides are copied byte
  * for byte from `Frontend/Web` into `NetLet/Resources/Web/`, under names that
  * say what each is, with `assets.json` saying which is which and the slides'
  * order. A picture replaced on the web is replaced in the app by running this,
@@ -30,6 +31,7 @@ import { en, ar } from "../../../Shared/i18n/dictionary.js";
 import { PLURAL_FORMS } from "../../../Shared/i18n/plurals.js";
 import { COMMON_PASSWORDS, MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
+import { everySubcategory, subcategoryArtPath } from "../../../Shared/commerce/subcategoryPictures.js";
 import { OCCASIONS } from "../../../Shared/commerce/occasions.js";
 import { subcategoriesOf } from "../../../Shared/commerce/subcategories.js";
 import { AREAS, PART_KEYS, PART_LABEL_AR, PART_LABEL_EN, PART_MAX, REQUIRED_PARTS } from "../../../Shared/commerce/kuwaitAddress.js";
@@ -143,7 +145,7 @@ const PICTURE = /\.(webp|png|jpe?g)$/i;
  * it is copied from. The slides are the street, then `assets/hero/` in
  * file-name order — `heroSlides` in `brandAssets.ts`.
  */
-export function buildAssets(): { files: Record<string, string>; manifest: { logo: string; footerLogo: string; heroSlides: string[]; departments: Record<string, string> } } {
+export function buildAssets(): { files: Record<string, string>; manifest: { logo: string; footerLogo: string; heroSlides: string[]; departments: Record<string, string>; subcategories: Record<string, string> } } {
   const files: Record<string, string> = {
     "brand-logo.png": path.join(WEB, "public/brand/netlet-logo.png"),
     "brand-logo-white.png": path.join(WEB, "public/brand/netlet-logo-white.png"),
@@ -153,6 +155,14 @@ export function buildAssets(): { files: Record<string, string>; manifest: { logo
     const name = `department-${slug}.webp`;
     files[name] = path.join(WEB, `public/departments/${slug}.webp`);
     departments[slug] = name;
+  }
+  /* Each subcategory's own picture, by `department/slug` — the key the kept
+     pictures' list uses, so the app asks both the same way. */
+  const subcategories: Record<string, string> = {};
+  for (const { department, subcategory } of everySubcategory()) {
+    const name = `subcategory-${department}-${subcategory.slug}.webp`;
+    files[name] = path.join(WEB, "public", subcategoryArtPath(department, subcategory.slug));
+    subcategories[`${department}/${subcategory.slug}`] = name;
   }
   const heroSlides: string[] = [];
   const street = readdirSync(path.join(WEB, "src/assets/auth")).filter(file => /^welcome\.(webp|png|jpe?g)$/i.test(file)).sort()[0];
@@ -166,7 +176,7 @@ export function buildAssets(): { files: Record<string, string>; manifest: { logo
     files[name] = path.join(WEB, "src/assets/hero", slide);
     heroSlides.push(name);
   }
-  return { files, manifest: { logo: "brand-logo.png", footerLogo: "brand-logo-white.png", heroSlides, departments } };
+  return { files, manifest: { logo: "brand-logo.png", footerLogo: "brand-logo-white.png", heroSlides, departments, subcategories } };
 }
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;

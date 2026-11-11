@@ -26,10 +26,13 @@
  * screen. The departments are a row of picture tiles (a sideways row on a
  * phone, all six across from `sm`), the chosen one outlined in navy; under
  * them, the chosen department's subcategories as rows, each with its picture
- * (`SubcategoryIcon`, from the name `Shared/commerce/subcategories.ts` gives
- * it), its name and how many it holds (`commerce.subcategoryCounts`), opening
- * the department narrowed to it (`?sub=`); a last row, "View all", opens the
- * whole department. Every subcategory is listed, an empty one saying so, as
+ * — its own file, `public/subcategories/<department>-<slug>.webp`, which the
+ * owner sent for all thirty-five, or the one kept from the portal in its
+ * place (`shownSubcategoryPicture`); the outline icon
+ * (`SubcategoryIcon`) only where a picture cannot be read — its name and how
+ * many it holds (`commerce.subcategoryCounts`), opening the department
+ * narrowed to it (`?sub=`); a last row, "View all", opens the whole
+ * department. Every subcategory is listed, an empty one saying so, as
  * the tiles keep all six. The choice is the address's (`?dept=`, replaced
  * rather than pushed, so Back leaves the page rather than stepping through
  * the departments), and the first department with none. **The tiles are
@@ -43,7 +46,7 @@
  * pressed card, which the owner found harder to read than a list.
  */
 import { ChevronRight, Menu, Store, Tag, Tags } from "lucide-react";
-import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { SubcategoryIcon } from "@/components/browse/SubcategoryIcon";
 import { subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
@@ -57,7 +60,7 @@ import { appPath } from "@/lib/basePath";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
-import { pictureFor } from "@shared/commerce/subcategoryPictures";
+import { shownSubcategoryPicture } from "@shared/commerce/subcategoryPictures";
 import { categoriesMeta } from "@shared/seo";
 
 export default function Categories() {
@@ -66,7 +69,7 @@ export default function Categories() {
   usePageChrome({ activeDepartment: null });
   const counts = trpc.commerce.departmentCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const subCounts = trpc.commerce.subcategoryCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
-  /* A kept picture stands in the row's tile; the outline icon where there is none. */
+  /* A picture kept from the portal stands in place of the subcategory's own file. */
   const pictures = trpc.subcategoryPictures.list.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const shelf = useCatalog(24, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = drawsDeals(shelvesFor(shelf.data ?? []));
@@ -173,7 +176,7 @@ export default function Categories() {
                 <SubcategoryRow
                   href={`${department}?sub=${entry.slug}`}
                   icon={<SubcategoryIcon icon={entry.icon} />}
-                  picture={pictureFor(pictures.data, chosen.slug, entry.slug)}
+                  picture={shownSubcategoryPicture(pictures.data, chosen.slug, entry.slug)}
                   title={label}
                   note={subCounts.data ? countLine(count) : placeholder}
                   quiet={Boolean(subCounts.data) && count === 0}
@@ -227,21 +230,25 @@ function TileArt({ slug }: { slug: string }) {
 function SubcategoryRow({ href, icon, picture = null, title, note, quiet = false }: {
   href: string;
   icon: ReactNode;
-  /** The subcategory's kept picture (`/media/...`), drawn on white in place of the icon. */
+  /** The subcategory's picture — its own file, or the one kept in its place — filling the tile on white. */
   picture?: string | null;
   title: string;
   note: ReactNode;
   /** Nothing in it yet: drawn lighter, still a link. */
   quiet?: boolean;
 }) {
+  /* A picture that cannot be read gives the tile back to the icon; which one
+     failed is kept, so another department's picture is not held to it. */
+  const [failed, setFailed] = useState<string | null>(null);
+  const shown = picture && failed !== picture ? picture : null;
   return (
     <Link
       href={href}
       className={`${CARD} cat-row flex min-h-[4.5rem] items-center gap-3 p-3 shadow-[0_1px_2px_rgba(10,40,90,.06)] hover:border-[#d5dfeb] hover:bg-[#f0f2f5]`}
     >
-      {picture ? (
+      {shown ? (
         <span aria-hidden className={`grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e6e9ef] bg-white ${quiet ? "opacity-70" : ""}`}>
-          <img src={appPath(picture)} alt="" loading="lazy" decoding="async" width={56} height={56} className="size-full object-contain" />
+          <img src={appPath(shown)} alt="" loading="lazy" decoding="async" width={56} height={56} onError={() => setFailed(shown)} className="size-full object-contain" />
         </span>
       ) : (
         <span aria-hidden className={`grid size-12 shrink-0 place-items-center rounded-xl ${quiet ? "bg-[#f4f5f8] text-[#536b8c]" : "bg-[#eef1f6] text-[#0a285a]"}`}>{icon}</span>

@@ -144,6 +144,27 @@ final class ReferenceDataTests: XCTestCase {
         XCTAssertNotNil(UIImage(systemName: "line.3.horizontal"), "View all's picture")
     }
 
+    /// Every subcategory's own picture is in the app — the files the owner
+    /// sent, copied from the web by `pnpm ios:resources` — and the square the
+    /// web's is, so no square on the Categories tab falls back to its symbol
+    /// for want of a file.
+    func testEverySubcategoryHasItsOwnPictureInTheApp() {
+        var count = 0
+        for department in reference.departments {
+            for entry in department.subs {
+                let picture = WebAssets.subcategory(department.slug, entry.slug)
+                XCTAssertNotNil(picture, "\(department.slug)/\(entry.slug) has no picture in the app")
+                if let picture {
+                    XCTAssertEqual(picture.size.width * picture.scale, 384, accuracy: 0.5, "\(department.slug)/\(entry.slug)")
+                    XCTAssertEqual(picture.size.height * picture.scale, 384, accuracy: 0.5, "\(department.slug)/\(entry.slug)")
+                }
+                count += 1
+            }
+        }
+        XCTAssertEqual(WebAssets.manifest.subcategories.count, count)
+        XCTAssertNil(WebAssets.subcategory("electronics", "shoes"))
+    }
+
     /// The tab bar draws the web's own icons: every tab in both forms, each
     /// path read whole and inside the 24 grid.
     func testTheTabBarDrawsTheWebsIcons() throws {

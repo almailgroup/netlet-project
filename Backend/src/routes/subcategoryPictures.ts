@@ -2,7 +2,7 @@
  * The subcategories' pictures, as endpoints (`Shared/commerce/subcategoryPictures.ts`).
  *
  * `list` is public: the shop's Categories page draws a kept picture in the
- * row's tile and the icon where there is none. The rest is NetLet's own desk
+ * row's tile, in place of the subcategory's own file. The rest is NetLet's own desk
  * (`platform.configure`, decided in the data layer): `draw` hands a picture
  * back for the page to prepare and upload like any photo, and `set` keeps the
  * uploaded one, or takes it off with null.

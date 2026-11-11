@@ -9,11 +9,12 @@ import SwiftUI
 /// in navy; under them, the chosen department's subcategories. **They are
 /// rounded squares, three to a row, on the owner's word** ("for the
 /// subcategories, instead of being as a list, make it rounded squares"): each
-/// a square (`SquareFace`, the department tiles' own shape) holding its kept
-/// picture, or its symbol on the pale field (`Department.Subcategory.symbol`,
-/// from the icon `Shared/commerce/subcategories.ts` names), with its name and
-/// how many it holds under it (`commerce.subcategoryCounts`), opening the
-/// department narrowed to it; a last square, "View all", opens the whole
+/// a square (`SquareFace`, the department tiles' own shape) holding its
+/// picture — its own, carried in the app (`WebAssets.subcategory`, the files
+/// the owner sent for all thirty-five), or the one kept from the portal in its
+/// place; its symbol on the pale field (`Department.Subcategory.symbol`) only
+/// where there is neither — with its name and how many it holds under it
+/// (`commerce.subcategoryCounts`), opening the department narrowed to it; a last square, "View all", opens the whole
 /// department. They were rows, one under another. Every subcategory is
 /// there, an empty one drawn lighter and saying so, as the tiles keep all
 /// six. "All departments" ends the row and opens its page: it has no
@@ -30,7 +31,7 @@ struct DepartmentBrowser: View {
     @State private var chosen: String?
     @State private var subCounts: [String: [String: Int]]?
     /// The pictures an administrator kept (`subcategoryPictures.list`), by
-    /// `department/slug`; a row with none keeps its symbol.
+    /// `department/slug`; a square with none draws its own picture.
     @State private var pictures: [String: String] = [:]
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -144,6 +145,7 @@ struct DepartmentBrowser: View {
                 ForEach(Array(department.subs.enumerated()), id: \.element.id) { index, entry in
                     let count = subCounts?[department.slug]?[entry.slug] ?? 0
                     square(symbol: entry.symbol,
+                           art: WebAssets.subcategory(department.slug, entry.slug),
                            picture: pictures["\(department.slug)/\(entry.slug)"],
                            title: entry.shown(l.current),
                            note: subCounts == nil ? nil : l.productCount(count),
@@ -169,17 +171,26 @@ struct DepartmentBrowser: View {
         .accessibilityLabel(l.t("categories.subcategoriesOf", ["name": name]))
     }
 
-    /// One subcategory as a rounded square — its kept picture on white, or its
-    /// symbol on the pale field — with its name and what it holds under it.
-    /// An empty one is drawn lighter. `spoken` is what VoiceOver says where
-    /// the words under the square are not the whole of it.
-    private func square(symbol: String, picture: String? = nil, title: String, note: String?, quiet: Bool, spoken: String? = nil, open: @escaping () -> Void) -> some View {
+    /// One subcategory as a rounded square — its picture on white (the one
+    /// kept from the portal, else its own, `art`), or its symbol on the pale
+    /// field — with its name and what it holds under it. An empty one is
+    /// drawn lighter. `spoken` is what VoiceOver says where the words under
+    /// the square are not the whole of it.
+    private func square(symbol: String, art: UIImage? = nil, picture: String? = nil, title: String, note: String?, quiet: Bool, spoken: String? = nil, open: @escaping () -> Void) -> some View {
         Button(action: open) {
             VStack(spacing: 8) {
-                SquareFace(fill: picture != nil ? Color.white : (quiet ? Brand.photo : Brand.tileField)) {
+                SquareFace(fill: picture != nil || art != nil ? Color.white : (quiet ? Brand.photo : Brand.tileField)) {
                     if let picture {
                         RemoteImage(reference: picture, contentMode: .fit)
                             .padding(8)
+                            .opacity(quiet ? 0.7 : 1)
+                    } else if let art {
+                        // Its own picture fills the square: its margin is in
+                        // the file, and an object its sheet cut off meets the
+                        // square's edge rather than floating short of it.
+                        Image(uiImage: art)
+                            .resizable()
+                            .scaledToFit()
                             .opacity(quiet ? 0.7 : 1)
                     } else {
                         Image(systemName: symbol)

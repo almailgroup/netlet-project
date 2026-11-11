@@ -3,25 +3,28 @@
  * the owner's word: "add real images for the subcategories, not just an
  * outline", drawn from the portal with NetLet's own gateway.
  *
- * One card a department, a tile a subcategory: what the shop shows now (the
- * kept picture, or "No picture yet" over the outline icon the row falls back
- * to), and beside it what was just drawn, which goes nowhere until Keep is
- * pressed. "Draw the missing ones" draws every subcategory with no picture
- * and nothing waiting, one after another, and stops on Stop or on a refusal
- * that would refuse the next one too (the hour spent, the gateway off). Each
- * drawing is sent the department's own art as the style to match. A picture
- * can also be uploaded by hand, which is how this page works with no gateway.
+ * One card a department, a tile a subcategory: what the shop shows now — the
+ * picture kept here, or the subcategory's original, the file that comes with
+ * the shop (`subcategoryArtPath`) — and beside it what was just drawn, which
+ * goes nowhere until Keep is pressed. Removing a kept picture brings the
+ * original back. Each drawing is sent the department's own art as the style
+ * to match. A picture can also be uploaded by hand, which is how this page
+ * works with no gateway.
+ *
+ * **"Draw the missing ones" went when every subcategory got a picture of its
+ * own**: the owner sent all thirty-five, so nothing is missing, and a button
+ * that can never be pressed is a dead control. One is drawn at a time, where
+ * somebody wants another; "Keep every drawn one" keeps what is waiting.
  *
  * What was drawn is prepared like any photo — its own bytes checked, made the
  * square it is drawn in, re-encoded — and uploaded only when kept.
  */
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { ImagePlus, LoaderCircle, Sparkles, Square, Trash2, Upload, Wand2 } from "lucide-react";
+import { ImagePlus, LoaderCircle, Sparkles, Square, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { buttonClass, Card, Notice, PageHeader, smallButtonClass } from "@/components/admin/ui";
-import { SubcategoryIcon } from "@/components/browse/SubcategoryIcon";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
@@ -35,6 +38,7 @@ import {
   departmentArtPath,
   everySubcategory,
   pictureFor,
+  subcategoryArtPath,
   type SubcategoryPictures,
 } from "@shared/commerce/subcategoryPictures";
 import { privatePageMeta } from "@shared/seo";
@@ -46,13 +50,10 @@ export default function AdminSubcategoryPictures() {
 
 type Draft = { blob: Blob; url: string; type: StoredType };
 type Busy = "drawing" | "keeping" | "removing";
-/** A run over many: drawing the missing ones, or keeping every drawn one. */
-type Run = { kind: "draw" | "keep"; done: number; total: number };
+/** A run over many: keeping every drawn one. */
+type Run = { done: number; total: number };
 
 const keyOf = (department: string, slug: string) => `${department}/${slug}`;
-
-/** The refusals that would refuse the next drawing too, so a run stops on them. */
-const STOPS_A_RUN = new Set(["drawing.tooMany", "drawing.off", "media.notAllowed"]);
 
 async function blobToBase64(blob: Blob): Promise<string> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -174,32 +175,15 @@ function Desk() {
     await keepOne(department, subcategory, prepared);
   };
 
-  const missing = (map: SubcategoryPictures) => everySubcategory().filter(({ department, subcategory }) =>
-    !pictureFor(map, department, subcategory.slug) && !drafts[keyOf(department, subcategory.slug)]);
-
-  const drawMissing = async () => {
-    const queue = missing(pictures.data ?? {});
-    if (!queue.length) return;
-    stop.current = false;
-    setRun({ kind: "draw", done: 0, total: queue.length });
-    for (const [index, { department, subcategory }] of queue.entries()) {
-      if (stop.current) break;
-      const refused = await drawOne(department, subcategory);
-      setRun({ kind: "draw", done: index + 1, total: queue.length });
-      if (refused && STOPS_A_RUN.has(refused)) break;
-    }
-    setRun(null);
-  };
-
   const keepAll = async () => {
     const waiting = everySubcategory().filter(({ department, subcategory }) => draftsRef.current[keyOf(department, subcategory.slug)]);
     if (!waiting.length) return;
     stop.current = false;
-    setRun({ kind: "keep", done: 0, total: waiting.length });
+    setRun({ done: 0, total: waiting.length });
     for (const [index, { department, subcategory }] of waiting.entries()) {
       if (stop.current) break;
       await keepOne(department, subcategory);
-      setRun({ kind: "keep", done: index + 1, total: waiting.length });
+      setRun({ done: index + 1, total: waiting.length });
     }
     setRun(null);
   };
@@ -216,23 +200,16 @@ function Desk() {
           <button type="button" onClick={() => { stop.current = true; }} className={buttonClass.secondary}>
             <Square className="size-4" aria-hidden />{t("subpics.stop")}
           </button>
-        ) : (
-          <>
-            {waitingCount > 0 ? (
-              <button type="button" onClick={() => void keepAll()} className={buttonClass.secondary}>
-                <ImagePlus className="size-4" aria-hidden />{t("subpics.keepDrawn")}
-              </button>
-            ) : null}
-            <button type="button" onClick={() => void drawMissing()} disabled={!canDraw || !pictures.data || missing(pictures.data).length === 0} className={buttonClass.primary}>
-              <Wand2 className="size-4" aria-hidden />{t("subpics.drawMissing")}
-            </button>
-          </>
-        )}
+        ) : waitingCount > 0 ? (
+          <button type="button" onClick={() => void keepAll()} className={buttonClass.primary}>
+            <ImagePlus className="size-4" aria-hidden />{t("subpics.keepDrawn")}
+          </button>
+        ) : undefined}
       />
       {run ? (
         <p role="status" className="mb-4 flex items-center gap-2 text-[14px] font-semibold text-[#0a285a]">
           <LoaderCircle className="size-4 animate-spin" aria-hidden />
-          {t(run.kind === "draw" ? "subpics.progress" : "subpics.progressKeeping", { done: run.done, total: run.total })}
+          {t("subpics.progressKeeping", { done: run.done, total: run.total })}
         </p>
       ) : null}
       {drawable.data === false ? <Notice tone="warning" className="mb-4">{t("subpics.offNote")}</Notice> : null}
@@ -253,7 +230,7 @@ function Desk() {
                       <PictureTile
                         key={key}
                         name={nameOf(subcategory)}
-                        icon={subcategory.icon}
+                        original={subcategoryArtPath(department.slug, subcategory.slug)}
                         kept={pictureFor(pictures.data, department.slug, subcategory.slug)}
                         draft={drafts[key]?.url ?? null}
                         busy={busy[key] ?? null}
@@ -277,9 +254,10 @@ function Desk() {
   );
 }
 
-function PictureTile({ name, icon, kept, draft, busy, canDraw, locked, onDraw, onKeep, onDiscard, onRemove, onUpload }: {
+function PictureTile({ name, original, kept, draft, busy, canDraw, locked, onDraw, onKeep, onDiscard, onRemove, onUpload }: {
   name: string;
-  icon: Subcategory["icon"];
+  /** The subcategory's own picture, which the shop shows while nothing is kept here. */
+  original: string;
   kept: string | null;
   draft: string | null;
   busy: Busy | null;
@@ -300,11 +278,9 @@ function PictureTile({ name, icon, kept, draft, busy, canDraw, locked, onDraw, o
       <div className="mt-2.5 flex flex-wrap gap-3">
         <figure className="m-0">
           <span className="grid size-24 place-items-center overflow-hidden rounded-xl border border-[#e3e8f0] bg-white">
-            {kept
-              ? <img src={appPath(kept)} alt={t("subpics.keptAlt", { name })} loading="lazy" decoding="async" className="size-full object-contain" />
-              : <span className="text-[#536b8c]"><SubcategoryIcon icon={icon} className="size-8" /></span>}
+            <img src={appPath(kept ?? original)} alt={t("subpics.keptAlt", { name })} loading="lazy" decoding="async" className="size-full object-contain" />
           </span>
-          <figcaption className="mt-1 text-[12px] ink-muted">{t(kept ? "subpics.onShop" : "subpics.none")}</figcaption>
+          <figcaption className="mt-1 text-[12px] ink-muted">{t(kept ? "subpics.onShop" : "subpics.original")}</figcaption>
         </figure>
         {draft || busy === "drawing" ? (
           <figure className="m-0">

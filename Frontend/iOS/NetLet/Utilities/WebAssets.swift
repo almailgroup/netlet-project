@@ -2,7 +2,8 @@ import SwiftUI
 import UIKit
 
 /// The web's own pictures, carried in the app: the logo, each department's
-/// art, NetLet's street and the home page's slides.
+/// art, each subcategory's own picture, NetLet's street and the home page's
+/// slides.
 ///
 /// `pnpm ios:resources` copies them byte for byte from `Frontend/Web` into
 /// `Resources/Web/` and writes `assets.json` saying which file is which and
@@ -16,8 +17,10 @@ enum WebAssets {
         let footerLogo: String
         let heroSlides: [String]
         let departments: [String: String]
+        /// Each subcategory's own picture, by `department/slug`.
+        let subcategories: [String: String]
 
-        static let empty = Manifest(logo: "", footerLogo: "", heroSlides: [], departments: [:])
+        static let empty = Manifest(logo: "", footerLogo: "", heroSlides: [], departments: [:], subcategories: [:])
     }
 
     static let manifest: Manifest = (try? JSONDecoder().decode(Manifest.self, from: Bundle.main.resource("assets", "json"))) ?? .empty
@@ -63,6 +66,14 @@ enum WebAssets {
     /// A department's art by its slug, "all" for every department.
     static func department(_ slug: String) -> UIImage? {
         manifest.departments[slug].flatMap(image)
+    }
+
+    /// A subcategory's own picture — the file that comes with the shop, which
+    /// the owner sent for every one (`subcategoryArtPath` on the web): square,
+    /// on white, an object cut by its sheet set flush with that edge. A
+    /// picture kept from the portal stands in its place.
+    static func subcategory(_ department: String, _ slug: String) -> UIImage? {
+        manifest.subcategories["\(department)/\(slug)"].flatMap(image)
     }
 
     /// A department's art as its file's own bytes (WebP) — the style a

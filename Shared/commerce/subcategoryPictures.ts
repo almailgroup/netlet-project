@@ -18,9 +18,19 @@
  *
  * **Kept in `platform_settings`, one row a subcategory, under `subpic:`.** It
  * is an administrator's choice for the whole shop like the rates there, and a
- * table of its own would be a migration for a list of thirty-seven paths. The
+ * table of its own would be a migration for a list of thirty-five paths. The
  * settings reader ignores a key it does not know (`resolveSettings`), so the
  * rows never reach the settings page.
+ *
+ * **Every subcategory has a picture of its own, a file, on the owner's
+ * word** ("add all these for the sub-category"): the owner had the thirty-five
+ * made in the department art's style and sent them, and each is
+ * `Frontend/Web/public/subcategories/<department>-<slug>.webp`, the
+ * departments' rule — a picture is replaced by dropping in a file of the same
+ * name. That file is what the shop draws (`shownSubcategoryPicture`); a
+ * picture kept from the portal stands in its place, and removing the kept one
+ * brings the file back. So nothing waits on the portal, the database or a
+ * model for a row to have its picture.
  */
 import { DEPARTMENTS } from "./departments.js";
 import { isMediaPath } from "./media.js";
@@ -48,6 +58,19 @@ export type SubcategoryPictures = Record<string, string>;
 /** The map's key for a subcategory: `electronics/phones`. */
 export function pictureFor(pictures: SubcategoryPictures | null | undefined, department: string, slug: string): string | null {
   return pictures?.[`${department}/${slug}`] ?? null;
+}
+
+/**
+ * A subcategory's own picture, the file that comes with the shop: 384 pixels
+ * square on white, an object cut by its sheet set flush with that edge.
+ */
+export function subcategoryArtPath(department: string, slug: string): string {
+  return `/subcategories/${department}-${slug}.webp`;
+}
+
+/** What the shop draws for a subcategory: the picture kept from the portal, else its own. */
+export function shownSubcategoryPicture(pictures: SubcategoryPictures | null | undefined, department: string, slug: string): string {
+  return pictureFor(pictures, department, slug) ?? subcategoryArtPath(department, slug);
 }
 
 /** The kept rows as the map the shop reads, leaving out anything that is not a kept picture of a subcategory the shop has. */

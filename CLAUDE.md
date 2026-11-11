@@ -7238,23 +7238,21 @@ chosen tile at 1.08 on a spring, scrolled to the middle as it is chosen, the
 subcategories rising in by `RiseIn` 40ms apart, every press `SpringPressStyle`, and
 Reduce Motion drawing each in place.
 
-**A subcategory's row carries a real picture once one is kept, on the
-owner's word** ("add real images for the subcategories, not just an
-outline"; `Shared/commerce/subcategoryPictures.ts` the rule,
+**A subcategory's row carries a real picture, on the owner's word** ("add
+real images for the subcategories, not just an outline";
+`Shared/commerce/subcategoryPictures.ts` the rule,
 `services/subcategoryPictures.ts` the database half): the picture on white in
-a 56px tile where the outline icon stood, and the icon still where none is
-kept (`subcategoryPictures.list`, public, asked with the page, remembered with
-the shelves; the app's `DepartmentBrowser`). **They are drawn from the portal
+a 56px tile where the outline icon stood — its own file (below), or the one
+kept from the portal in its place (`subcategoryPictures.list`, public, asked
+with the page, remembered with the shelves; the app's `DepartmentBrowser`). **They are drawn from the portal
 with NetLet's own gateway, on the owner's word** — offered a key of their own
 or this, they chose this: `/admin/subcategory-pictures`
 (`platform.configure`, the catalogue group; the app's
 `PortalSubcategoryPicturesView`) is one card a department and a tile a
 subcategory, showing what the shop shows now and, beside it, what was just
-drawn, which goes nowhere until Keep is pressed. "Draw the missing ones"
-draws every subcategory with no picture and none waiting, one after another,
-and stops on Stop or on a refusal that would refuse the next too (the hour's
-`MAX_SUBCATEGORY_PICTURES_PER_HOUR`, the gateway off); "Keep every drawn one"
-keeps what is waiting. **Each drawing is sent its department's own art as the
+drawn, which goes nowhere until Keep is pressed; "Keep every drawn one"
+keeps what is waiting (at most `MAX_SUBCATEGORY_PICTURES_PER_HOUR` drawings
+an hour). **Each drawing is sent its department's own art as the
 style to match** (`subcategoryImage` in `SERVER_TASKS`, the art's own bytes
 from the page, checked by `asImage`), so the six tiles and the rows read as
 one set. What comes back is prepared like any photo — the square it is drawn
@@ -7263,14 +7261,48 @@ helper; the app's `squareJPEG`) — and uploaded to `/media` only when kept; a
 picture can also be uploaded by hand, which is how the page works with no
 gateway. **Kept in `platform_settings`, one row a subcategory under
 `subpic:`**, rather than a table of its own: an administrator's choice for
-the whole shop, like the rates there, for thirty-seven paths — no migration,
+the whole shop, like the rates there, for thirty-five paths — no migration,
 and `resolveSettings` ignores a key it does not know, so the rows never reach
 the settings page (`subcategoryPictures.test.ts`). Only one of NetLet's own
 uploads that exists, only for a subcategory the shop has, and on the trail
-(`subcategory.setPicture`). **Nothing has been drawn yet**: drawing needs
-the Worker deployed with the new task, and this sandbox cannot reach Google's
-model — the page, the upload, the keep, the row and the removal were walked
-against a local Postgres at 320, 390 and 1440 in both languages, axe clean.
+(`subcategory.setPicture`). Drawing has never been run against Google's
+live model from this sandbox, which cannot reach it.
+
+**Every subcategory has a picture of its own, a file, on the owner's word**
+("there you go, add all these for the sub-category and push it to netlet app
+and the website"): the owner had all thirty-five made in the department
+art's style and sent them, and each is
+`Frontend/Web/public/subcategories/<department>-<slug>.webp`
+(`subcategoryArtPath`), 384 pixels square on white — the departments' rule,
+so a picture is replaced by dropping in a file of the same name and running
+`pnpm ios:resources`, which copies them into the app (`assets.json`'s
+`subcategories`, `WebAssets.subcategory`). **That file is what the shop
+draws** (`shownSubcategoryPicture`): the web's row tile and the app's square
+show it from the first frame, with nothing waiting on the portal, the
+database or a model; a picture kept from the portal stands in its place and
+removing the kept one brings the file back, which the portal says
+("The original picture" under a tile with nothing kept). The outline icon is
+drawn only where a picture cannot be read. **"Draw the missing ones" went
+with it**, on the web and in the app: nothing is missing, and a button nobody
+can press is a dead control; one is drawn at a time where somebody wants
+another. `subcategoryPictures.test.ts` fails on a subcategory with no file, a
+file no subcategory names, or one that is not the 384 square; the app's
+`ModelTests` on one missing from its bundle. **The files arrived cut from a
+sheet a little off its grid lines** — the lesson the department art already
+taught — so twenty carried a strip of the picture above them and a hairline,
+twenty-two had lost their own bottom edge and seven their right. The strips
+and lines are gone and each is trimmed and fitted at one margin; what was
+cut off cannot be put back (a band of the sheet between two cells is in
+neither file), so **a cut edge is set flush with the tile's edge**, where an
+object reads as cropped by the frame rather than sliced in mid-air, and the
+app's square draws its own picture with no padding for that reason. Sent the
+uncut sheet, each can be cut along its own lines and the file swapped.
+Three repeat their department's own art (Fragrance, Furniture and
+Sportswear, whose picture is a handbag, sunglasses and trainers). Walked on a
+production build against a local Postgres at 320, 390 and 1440 in both
+languages: all thirty-five rows drawing their own file at every width, an
+upload on the portal replacing one on the shop and Remove bringing the
+original back, axe clean, no sideways scroll.
 
 **On a phone, sort and filter are the owner's reference: a row of filter
 chips and a floating Sort | Filter pill** (a picture of a shop's results page:
@@ -8731,7 +8763,8 @@ its column in the department tiles' own shape (`SquareFace`, a 20-point
 corner, the shadow the shape's) with its words centred under it, laid out by
 `TileGrid`, which takes a number of columns now and, with `widest`, gives a
 wide screen more to a row rather than wider squares. **A subcategory**
-(`DepartmentBrowser`'s `square`): its kept picture on white, or its symbol
+(`DepartmentBrowser`'s `square`): its picture on white — its own, carried in
+the app, or the one kept from the portal — or, with neither, its symbol
 at 34 points on the pale field (`Brand.tileField`), its name on two lines
 and how many it holds; an empty one lighter; "View all" the last square,
 with the department's count under it and "See everything in …" to VoiceOver.
