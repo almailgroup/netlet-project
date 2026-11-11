@@ -62,7 +62,8 @@ export function pictureFor(pictures: SubcategoryPictures | null | undefined, dep
 
 /**
  * A subcategory's own picture, the file that comes with the shop: 384 pixels
- * square on white, an object cut by its sheet set flush with that edge.
+ * square on white, its objects centred at one margin (an edge the sheet cut
+ * melts into the white rather than ending on a slice).
  */
 export function subcategoryArtPath(department: string, slug: string): string {
   return `/subcategories/${department}-${slug}.webp`;

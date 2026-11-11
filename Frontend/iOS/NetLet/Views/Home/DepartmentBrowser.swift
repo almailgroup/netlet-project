@@ -16,7 +16,7 @@ import SwiftUI
 /// where there is neither — with its name and how many it holds under it
 /// (`commerce.subcategoryCounts`), opening the department narrowed to it; a last square, "View all", opens the whole
 /// department. They were rows, one under another. Every subcategory is
-/// there, an empty one drawn lighter and saying so, as the tiles keep all
+/// there, an empty one saying so under its picture, as the tiles keep all
 /// six. "All departments" ends the row and opens its page: it has no
 /// subcategories.
 ///
@@ -173,25 +173,27 @@ struct DepartmentBrowser: View {
 
     /// One subcategory as a rounded square — its picture on white (the one
     /// kept from the portal, else its own, `art`), or its symbol on the pale
-    /// field — with its name and what it holds under it. An empty one is
-    /// drawn lighter. `spoken` is what VoiceOver says where the words under
-    /// the square are not the whole of it.
+    /// field — with its name and what it holds under it. An empty one's
+    /// symbol is drawn lighter; its picture never is. `spoken` is what
+    /// VoiceOver says where the words under the square are not the whole of it.
     private func square(symbol: String, art: UIImage? = nil, picture: String? = nil, title: String, note: String?, quiet: Bool, spoken: String? = nil, open: @escaping () -> Void) -> some View {
         Button(action: open) {
             VStack(spacing: 8) {
                 SquareFace(fill: picture != nil || art != nil ? Color.white : (quiet ? Brand.photo : Brand.tileField)) {
+                    // A picture is drawn at full strength whether or not the
+                    // subcategory holds anything: faded to 70% for an empty
+                    // one, black and silver goods read as dull grey, and the
+                    // owner asked why. The line under it says "No products".
                     if let picture {
                         RemoteImage(reference: picture, contentMode: .fit)
                             .padding(8)
-                            .opacity(quiet ? 0.7 : 1)
                     } else if let art {
-                        // Its own picture fills the square: its margin is in
-                        // the file, and an object its sheet cut off meets the
-                        // square's edge rather than floating short of it.
+                        // Its own picture fills the square: every file holds
+                        // its objects centred at one margin, so no padding
+                        // here keeps the thirty-five the same size.
                         Image(uiImage: art)
                             .resizable()
                             .scaledToFit()
-                            .opacity(quiet ? 0.7 : 1)
                     } else {
                         Image(systemName: symbol)
                             .font(.system(size: 34, weight: .regular))

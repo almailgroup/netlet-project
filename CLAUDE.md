@@ -7226,8 +7226,8 @@ than stepping through departments, and the first department with none. Under
 the row, the department's name and count, then a row per subcategory — **its
 icon in a pale tile**, its name, how many it holds — and a last row, "View
 all" with a menu icon, opening the whole department; one column on a phone,
-two from `sm`, three from `lg`. An empty subcategory is still a row, drawn
-lighter, as the tiles keep all six. **The icon is a name on the subcategory
+two from `sm`, three from `lg`. An empty subcategory is still a row, its
+icon lighter and its picture never (below), as the tiles keep all six. **The icon is a name on the subcategory
 (`SUBCATEGORY_ICONS`), the departments' rule**: each client turns it into a
 drawing through a record the type makes exhaustive — lucide on the web
 (`SubcategoryIcon`, with a dress drawn in lucide's hand, lucide having none),
@@ -7330,10 +7330,23 @@ taught — so twenty carried a strip of the picture above them and a hairline,
 twenty-two had lost their own bottom edge and seven their right. The strips
 and lines are gone and each is trimmed and fitted at one margin; what was
 cut off cannot be put back (a band of the sheet between two cells is in
-neither file), so **a cut edge is set flush with the tile's edge**, where an
-object reads as cropped by the frame rather than sliced in mid-air, and the
-app's square draws its own picture with no padding for that reason. Sent the
-uncut sheet, each can be cut along its own lines and the file swapped.
+neither file). **Every picture is centred in its square, both ways, at one
+margin, and a cut edge melts into the white, on the owner's word** (a
+screenshot of the app's Electronics: "the subcategory images are not aligned
+correctly and some of them are dull in colour. Why?"). A cut edge was set
+flush with the tile's edge at first, so an object would read as cropped by
+the frame: twenty-two of the thirty-five then sat on the bottom of their
+squares, under the rounded corners, beside thirteen that sat in the middle,
+and the grid read as misaligned. Now the objects' box is fitted to the square
+less 8.5% each side and centred, and a cut edge fades to white over 7% of the
+tile at the foot and 4% at a side, so nothing ends on a straight slice; the
+app's square draws its own picture with no padding, the margin being in the
+file. **And a picture is never faded for an empty subcategory**: it was drawn
+at 70% (the outline icons' "drawn lighter", carried over), which turned black
+and silver goods grey — seven of Electronics' nine in the owner's
+screenshot; "No products" under it says it, and only the icon that stands in
+for a picture that cannot be read is still lighter. Sent the uncut sheet,
+each can be cut along its own lines and the file swapped.
 Three repeat their department's own art (Fragrance, Furniture and
 Sportswear, whose picture is a handbag, sunglasses and trainers). Walked on a
 production build against a local Postgres at 320, 390 and 1440 in both
@@ -8813,7 +8826,7 @@ wide screen more to a row rather than wider squares. **A subcategory**
 (`DepartmentBrowser`'s `square`): its picture on white — its own, carried in
 the app, or the one kept from the portal — or, with neither, its symbol
 at 34 points on the pale field (`Brand.tileField`), its name on two lines
-and how many it holds; an empty one lighter; "View all" the last square,
+and how many it holds, an empty one saying so; "View all" the last square,
 with the department's count under it and "See everything in …" to VoiceOver.
 They still rise in one after another. **A store** (`StoreTile`, which
 replaced `StoreCardView`): its logo, or its initial on the pale field, its

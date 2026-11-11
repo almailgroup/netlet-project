@@ -70,8 +70,8 @@ enum WebAssets {
 
     /// A subcategory's own picture — the file that comes with the shop, which
     /// the owner sent for every one (`subcategoryArtPath` on the web): square,
-    /// on white, an object cut by its sheet set flush with that edge. A
-    /// picture kept from the portal stands in its place.
+    /// on white, its objects centred at one margin. A picture kept from the
+    /// portal stands in its place.
     static func subcategory(_ department: String, _ slug: String) -> UIImage? {
         manifest.subcategories["\(department)/\(slug)"].flatMap(image)
     }

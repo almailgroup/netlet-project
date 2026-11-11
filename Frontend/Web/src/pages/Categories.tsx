@@ -234,7 +234,9 @@ function SubcategoryRow({ href, icon, picture = null, title, note, quiet = false
   picture?: string | null;
   title: string;
   note: ReactNode;
-  /** Nothing in it yet: drawn lighter, still a link. */
+  /** Nothing in it yet: its icon is drawn lighter, still a link. A picture
+   *  never is — faded, black and silver goods read as dull grey, and the
+   *  owner asked why; the count beside it says "No products". */
   quiet?: boolean;
 }) {
   /* A picture that cannot be read gives the tile back to the icon; which one
@@ -247,7 +249,7 @@ function SubcategoryRow({ href, icon, picture = null, title, note, quiet = false
       className={`${CARD} cat-row flex min-h-[4.5rem] items-center gap-3 p-3 shadow-[0_1px_2px_rgba(10,40,90,.06)] hover:border-[#d5dfeb] hover:bg-[#f0f2f5]`}
     >
       {shown ? (
-        <span aria-hidden className={`grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e6e9ef] bg-white ${quiet ? "opacity-70" : ""}`}>
+        <span aria-hidden className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#e6e9ef] bg-white">
           <img src={appPath(shown)} alt="" loading="lazy" decoding="async" width={56} height={56} onError={() => setFailed(shown)} className="size-full object-contain" />
         </span>
       ) : (
