@@ -24,8 +24,6 @@ struct CheckoutView: View {
     let path: Binding<NavigationPath>?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
-    /// `UITestHooks.tabBarProbe`'s "toggle": asked for after the page is up.
-    @State private var probeHides = false
 
     var body: some View {
         Group {
@@ -47,26 +45,9 @@ struct CheckoutView: View {
         .navigationTitle(l.t("checkout.heading"))
         .navigationBarTitleDisplayMode(.inline)
         // No tab bar on a payment page, the web's rule: every extra way out is
-        // an invitation to take it.
-        .toolbar(UITestHooks.tabBarProbe == "toggle" && !probeHides ? .automatic : .hidden, for: .tabBar)
-        .onAppear { probe(appeared: true) }
-        .onDisappear { probe(appeared: false) }
-        .task {
-            guard UITestHooks.tabBarProbe == "toggle" else { return }
-            try? await Task.sleep(for: .milliseconds(400))
-            probeHides = true
-        }
-    }
-
-    /// The ways of putting the bar away that are not SwiftUI's, each tried by
-    /// `TabBarUITests` under its own name and by nobody else.
-    private func probe(appeared: Bool) {
-        switch UITestHooks.tabBarProbe ?? "" {
-        case "uikitHidden": TabBarSlide.systemHide(appeared, legacy: true)
-        case "uikitSet": TabBarSlide.systemHide(appeared, legacy: false)
-        case "slide": TabBarSlide.slide(away: appeared, animated: false)
-        default: break
-        }
+        // an invitation to take it. It holds only while no page under this one
+        // says the bar is visible (`ShopPage`).
+        .toolbar(.hidden, for: .tabBar)
     }
 }
 

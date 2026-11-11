@@ -162,4 +162,32 @@ enum KeptFormatters {
         }
         return formatter.string(from: number)
     }
+
+    nonisolated(unsafe) private static var dates: [String: DateFormatter] = [:]
+
+    /// A date written by the formatter kept under `key`, made by `make` the
+    /// first time it is asked for. A `DateFormatter` costs what a number's
+    /// does to make, and every date in a list of orders or notices made one
+    /// or two of its own on every draw.
+    static func date(_ date: Date, key: String, make: () -> DateFormatter) -> String {
+        dateFormatter(key, make) { $0.string(from: date) }
+    }
+
+    /// A date read by the formatter kept under `key`.
+    static func date(from text: String, key: String, make: () -> DateFormatter) -> Date? {
+        dateFormatter(key, make) { $0.date(from: text) }
+    }
+
+    private static func dateFormatter<Answer>(_ key: String, _ make: () -> DateFormatter, _ use: (DateFormatter) -> Answer) -> Answer {
+        lock.lock()
+        defer { lock.unlock() }
+        let formatter: DateFormatter
+        if let found = dates[key] {
+            formatter = found
+        } else {
+            formatter = make()
+            dates[key] = formatter
+        }
+        return use(formatter)
+    }
 }

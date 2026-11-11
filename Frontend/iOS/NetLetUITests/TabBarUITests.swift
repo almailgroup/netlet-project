@@ -41,64 +41,55 @@ final class TabBarUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["الأقسام"].exists, "The Categories tab has no Arabic name.")
     }
 
-    /// Which way of putting the tab bar away works on checkout. The app asks
-    /// for none there (`CheckoutView`), the web's rule for a payment page,
-    /// and on iOS 26 a pressed Checkout showed it all the same — this test's
-    /// first run said so (`shown=true`, the bar hittable under Place order).
-    /// Reading the code could not say why, so the app has one switch per
-    /// suspect (`UITestHooks.tabBarProbe`) and this opens checkout under each
-    /// and says what it found, and whether the bar is back on the cart
-    /// afterwards. **It asks and does not fail**: each line is a `TEST-NOTE`,
-    /// which the workflow prints and posts, and the way that works becomes
-    /// the app's with a test that does fail.
-    func testCheckoutSaysWhetherItHasTheTabBar() {
-        for way in ["asIs", "rootAuto", "toggle", "uikitHidden", "uikitSet", "slide"] {
-            let said = whatCheckoutShows(way)
-            print("TEST-NOTE checkout tab bar [\(way)]: \(said)")
-        }
-    }
-
-    private func whatCheckoutShows(_ way: String) -> String {
+    /// Checkout has no tab bar, the web's rule for a payment page, and the
+    /// cart gets it back. On iOS 26 a pressed Checkout kept the bar under
+    /// Place order for as long as the page under it (`ShopPage`) said the bar
+    /// was visible: a root's "visible" wins over a pushed page's "hidden"
+    /// there. Found by opening checkout six ways in one run, each changing
+    /// one thing, and reading what each showed; the way that worked is the
+    /// app's now, and this is what keeps it.
+    func testCheckoutHasNoTabBarAndTheCartGetsItBack() {
         let app = XCUIApplication()
         app.launchArguments = [
             "-NetLetDemo", "YES", "-netlet.language", "en", "-NetLetUITest", "YES",
-            "-NetLetOpen", "cart", "-NetLetDemoAs", "shopper", "-NetLetTabBarProbe", way,
+            "-NetLetOpen", "cart", "-NetLetDemoAs", "shopper",
         ]
         app.launch()
-        guard app.tabBars.firstMatch.waitForExistence(timeout: 10) else { return "no tab bar on the cart" }
-        let onCart = bar(in: app)
+        let home = app.tabBars.buttons["Home"]
+        XCTAssertTrue(home.waitForExistence(timeout: 10), "No tab bar on the cart.")
+
         let checkout = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Checkout"))
         let wanted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "count > 0"), object: checkout)
         _ = XCTWaiter().wait(for: [wanted], timeout: 10)
         guard let press = checkout.allElementsBoundByIndex.first(where: { $0.exists && $0.isHittable }) else {
-            return "no Checkout to press on the cart"
+            return XCTFail("No Checkout to press on the cart.")
         }
         press.tap()
         let place = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Place order")).firstMatch
-        guard place.waitForExistence(timeout: 12) else { return "checkout did not open" }
-        // Past the push's own animation, which is when a bar would go.
-        pause(2)
-        let onCheckout = "\(bar(in: app)) placeOrder=\(place.frame)"
-        // And back: a way that hides the bar has to give it back.
+        XCTAssertTrue(place.waitForExistence(timeout: 12), "Checkout did not open.")
+
+        // The bar goes with the push's own animation, so it is waited for.
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: home)
+        let left = XCTWaiter().wait(for: [gone], timeout: 6)
+        XCTAssertEqual(left, .completed, "The tab bar is still on checkout: \(bar(in: app)) placeOrder=\(place.frame)")
+        // And the page has the room it left: Place order sits at the screen's foot.
+        XCTAssertGreaterThan(place.frame.maxY, app.frame.maxY - 70, "Place order is not at the foot of the screen: \(place.frame) in \(app.frame)")
+
         let back = app.navigationBars.buttons.firstMatch
-        guard back.exists, back.isHittable else { return "cart: \(onCart) | checkout: \(onCheckout) | no way back" }
+        XCTAssertTrue(back.exists && back.isHittable, "Checkout has no way back.")
         back.tap()
-        pause(2)
-        return "cart: \(onCart) | checkout: \(onCheckout) | back: \(bar(in: app)) screen=\(app.frame)"
+        let returned = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND hittable == true"), object: home)
+        let came = XCTWaiter().wait(for: [returned], timeout: 6)
+        XCTAssertEqual(came, .completed, "The tab bar did not come back on the cart: \(bar(in: app))")
     }
 
-    /// The bar and its first tab, as a test sees them: the bar's own frame
-    /// stays put when its layers are slid away, and a tab's does not.
+    /// The bar and its first tab, as a test sees them, for a failure to say.
     private func bar(in app: XCUIApplication) -> String {
         let bar = app.tabBars.firstMatch
         let home = app.tabBars.buttons["Home"]
         let barSays = bar.exists ? "hittable=\(bar.isHittable) \(bar.frame)" : "none"
         let homeSays = home.exists ? "hittable=\(home.isHittable) \(home.frame)" : "none"
         return "bar[\(barSays)] home[\(homeSays)]"
-    }
-
-    private func pause(_ seconds: TimeInterval) {
-        _ = XCTWaiter().wait(for: [XCTestExpectation(description: "settled")], timeout: seconds)
     }
 
     private func launch(language: String = "en") -> XCUIApplication {

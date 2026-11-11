@@ -832,11 +832,13 @@ struct DeliveryLine: View {
 
     /// "Tue 13 Oct", on Kuwait's calendar, in the page's language.
     static func shortDay(_ date: Date, _ language: Language) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = language.locale
-        formatter.timeZone = kuwait
-        formatter.setLocalizedDateFormatFromTemplate("EEEdMMM")
-        return formatter.string(from: date)
+        KeptFormatters.date(date, key: "shortDay|\(language.rawValue)") {
+            let formatter = DateFormatter()
+            formatter.locale = language.locale
+            formatter.timeZone = kuwait
+            formatter.setLocalizedDateFormatFromTemplate("EEEdMMM")
+            return formatter
+        }
     }
 
     /// The slowest band among a parcel's lines, which is when it is complete

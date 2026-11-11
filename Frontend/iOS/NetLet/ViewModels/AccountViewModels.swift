@@ -395,32 +395,41 @@ enum OrderWording {
 
     /// A day and a time, in Kuwait's time — the web's `useDateTimeFormat`.
     static func dateTime(_ date: Date, language: Language) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = language == .ar ? Locale(identifier: "ar_KW@numbers=latn") : Locale(identifier: "en_GB")
-        formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return isolated(formatter.string(from: date))
+        isolated(KeptFormatters.date(date, key: "dateTime|\(language.rawValue)") {
+            let formatter = DateFormatter()
+            formatter.locale = language == .ar ? Locale(identifier: "ar_KW@numbers=latn") : Locale(identifier: "en_GB")
+            formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter
+        })
     }
 
     /// A day the server sends as `yyyy-mm-dd`, which is a Kuwaiti day already.
     static func day(_ text: String, language: Language) -> String {
-        let reader = DateFormatter()
-        reader.dateFormat = "yyyy-MM-dd"
-        reader.locale = Locale(identifier: "en_US_POSIX")
-        reader.timeZone = TimeZone(identifier: "Asia/Kuwait")
-        guard let parsed = reader.date(from: String(text.prefix(10))) else { return text }
+        let parsed = KeptFormatters.date(from: String(text.prefix(10)), key: "day|read") {
+            let reader = DateFormatter()
+            reader.dateFormat = "yyyy-MM-dd"
+            reader.locale = Locale(identifier: "en_US_POSIX")
+            reader.timeZone = TimeZone(identifier: "Asia/Kuwait")
+            return reader
+        }
+        guard let parsed else { return text }
         return date(parsed, language: language)
     }
 
     /// Every date in Kuwait's time, whoever is reading — the web's `SHOP_TIME_ZONE`.
+    /// Written by formatters made once (`KeptFormatters`): a list of orders
+    /// or notices writes one of these a row.
     static func date(_ date: Date, language: Language) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = language.locale
-        formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return isolated(formatter.string(from: date))
+        isolated(KeptFormatters.date(date, key: "date|\(language.rawValue)") {
+            let formatter = DateFormatter()
+            formatter.locale = language.locale
+            formatter.timeZone = TimeZone(identifier: "Asia/Kuwait")
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            return formatter
+        })
     }
 
     /// A date set apart from the line it sits in (first-strong isolate). An

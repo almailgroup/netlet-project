@@ -61,26 +61,12 @@ enum TabBarSlide {
         layer.add(slide, forKey: key)
     }
 
-    /// The system's own hide, asked of the tab bar controller itself rather
-    /// than through SwiftUI's preference. `legacy` is the bar's `isHidden`;
-    /// otherwise the controller's own call from iOS 18.
-    static func systemHide(_ hidden: Bool, legacy: Bool) {
-        guard let tabs = tabController() else { return }
-        if !legacy, #available(iOS 18.0, *) {
-            tabs.setTabBarHidden(hidden, animated: false)
-        } else {
-            tabs.tabBar.isHidden = hidden
-        }
-    }
-
     /// The bar of the window's tab bar controller — the one `RootView`'s
     /// `TabView` is built on.
-    private static func tabBar() -> UITabBar? { tabController()?.tabBar }
-
-    private static func tabController() -> UITabBarController? {
+    private static func tabBar() -> UITabBar? {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow) ?? scenes.first?.windows.first
-        return controller(in: window?.rootViewController)
+        return controller(in: window?.rootViewController)?.tabBar
     }
 
     private static func controller(in parent: UIViewController?) -> UITabBarController? {

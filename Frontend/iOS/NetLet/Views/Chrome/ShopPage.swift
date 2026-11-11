@@ -176,7 +176,11 @@ struct ShopPage<Content: View>: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar(barHidden ? .hidden : (UITestHooks.tabBarProbe == "rootAuto" ? .automatic : .visible), for: .tabBar)
+        // Hidden or left to the system, never `.visible`: on iOS 26 a root
+        // page that says the tab bar is visible wins over a page pushed on it
+        // that says it is hidden, so checkout kept the bar under Place order
+        // for as long as this said `.visible` (`TabBarUITests`).
+        .toolbar(barHidden ? .hidden : .automatic, for: .tabBar)
         .task {
             guard !settled else { return }
             try? await Task.sleep(for: .milliseconds(250))

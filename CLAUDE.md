@@ -8878,7 +8878,9 @@ footer went (above) nothing navy reaches the foot of any page. A
 press ticks
 and pressing the current tab goes to its top, both in the selection binding's
 setter, which the system calls only for a press. Checkout hides it with
-`.toolbar(.hidden, for: .tabBar)`, the bare-header rule. **It slides away on a
+`.toolbar(.hidden, for: .tabBar)`, the bare-header rule — which holds only
+while no page under it says the bar is visible, so `ShopPage` never does (see
+"The first thing it found was the tab bar on checkout"). **It slides away on a
 scroll down and back on a scroll up**, on the owner's word, by the web's
 numbers (`TabBarScroll`, tested on `tabBarScroll.test.ts`'s cases): `ShopPage`
 follows its scroll — the system's reading from iOS 18, the content's frame on
@@ -9557,7 +9559,11 @@ number of decimals, used under a lock): `Money.formatted` made a
 `NumberFormatter` for itself on every call, and a formatter reads a locale's
 whole table of symbols to be made, so a shelf of cards scrolled into view made
 dozens of them in a frame; the converted price and the points count use the
-same ones. **The home page's next picture is decoded off the main thread
+same ones. **So is a date** (`KeptFormatters.date`, one per language and
+style): every date in a list of orders, notices or a parcel's steps made a
+`DateFormatter` or two of its own on every draw (`OrderWording.date`,
+`dateTime` and `day`, some ninety places, and the delivery line's
+`shortDay`). **The home page's next picture is decoded off the main thread
 before it is shown** (`WebAssets.prepare`, the system's
 `byPreparingForDisplay`): a bundled picture's pixels were decoded when it was
 first drawn, on the main thread, and the hero's five come in one every three
@@ -9756,15 +9762,27 @@ judging prints one, **and the notes are posted as a check run the moment the
 tests end** ("Post what the tests noted", one neutral check named "iOS test
 notes", only when a test noted something): the job's log can be read only
 once the whole job is over, previews and all, which is forty minutes after
-the tests, and the checks API answers at once. The first to use it was
-`testCheckoutSaysWhetherItHasTheTabBar`: the CI's pictures have always shown
-the tab bar under Place order, though `CheckoutView` asks for none, and they
-open checkout as the app starts — so the test pressed Checkout from the cart,
-and the bar was there too (hittable at the screen's foot, under Place order).
-**The tab bar on checkout is a real fault on iOS 26, not the pictures'**, and
-reading the code could not say why, so the app has a switch per suspect
-(`UITestHooks.tabBarProbe`, Debug and UI tests only) and the test opens
-checkout under each and notes which puts the bar away and gives it back.
+the tests, and the checks API answers at once. **The first thing it found
+was the tab bar on checkout.** The CI's pictures had always shown the bar
+under Place order, though `CheckoutView` asks for none, and they open checkout
+as the app starts, so it passed for the pictures' doing; a test that pressed
+Checkout from the cart noted the bar there too, hittable at the screen's foot.
+Reading the code could not say why, so for one run the app had a switch per
+suspect (Debug and UI tests only) and the test opened checkout under each:
+as it was; the page under it saying `.automatic` rather than `.visible`; the
+hide asked for after the page was up; the bar's own `isHidden`; the tab
+controller's `setTabBarHidden`; and the slide. **A page that says the tab bar
+is visible wins over a page pushed on it that says it is hidden**, on iOS 26:
+with `ShopPage` saying `.automatic` the bar went, Place order took the room it
+left (from 725 to 774 of 874 points) and the bar was back on the cart, and
+asking again later changed nothing while the root still said `.visible`. So
+`ShopPage` says `.hidden` or `.automatic`, never `.visible`, and
+`testCheckoutHasNoTabBarAndTheCartGetsItBack` fails if checkout has a bar,
+if Place order is not at the screen's foot or if the cart does not get the bar
+back. (UIKit's two hid it too, `isHidden` without giving the room back; the
+slide was undone by the cart page's own `onDisappear`, which puts the bar
+back.) The switches are gone again; `git show 332d96f` has them, as the shape
+for the next question only a Mac can answer.
 Nothing that signs
 lives in the repository: an App
 Store Connect API key (Admin, in four repository secrets the README names)
