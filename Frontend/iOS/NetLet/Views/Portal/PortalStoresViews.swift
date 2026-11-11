@@ -405,6 +405,9 @@ struct PortalStoreView: View {
                 profile(store)
                 contact
                 licences(store)
+                /* The papers themselves — the scans of what the card above
+                   records by number — added by NetLet or the store's owner. */
+                StoreDocumentsCard(vendorId: vendorId, audience: .netlet)
                 delivery
                 payments
                 terms(store)

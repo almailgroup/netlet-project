@@ -24,6 +24,25 @@ protocol SellerServicing: Sendable {
     func downloadDocument(id: Int, fileName: String) async throws -> URL
     /// NetLet's final contract attached to an application, for the applicant to sign (3.3.1).
     func attachContract(applicationId: Int, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument
+    /// A paper added to a store's own documents (`POST /api/vendors/:id/documents`),
+    /// by NetLet or by the store's owner.
+    func uploadStoreDocument(vendorId: Int, upload: StoreDocumentUpload) async throws -> StoreDocument
+    /// One of a store's documents, saved for Quick Look to open
+    /// (`GET /api/vendors/documents/:id`).
+    func downloadStoreDocument(id: Int, fileName: String) async throws -> URL
+}
+
+/// What goes up with a store's document: the file, and what it is.
+struct StoreDocumentUpload: Sendable {
+    let kind: String
+    var title: String?
+    /// The paper's last day, `yyyy-mm-dd` on Kuwait's calendar, or nil.
+    var expiresOn: String?
+    /// NetLet's alone to set; the server ignores it from anybody else.
+    var netletOnly = false
+    let fileName: String
+    let contentType: String
+    let data: Data
 }
 
 extension SellerServicing {
@@ -46,6 +65,15 @@ extension SellerServicing {
     /// A stand-in with no contract step refuses, as the server would a store.
     func attachContract(applicationId: Int, fileName: String, contentType: String, data: Data) async throws -> ApplicationDocument {
         throw APIError.server(code: "FORBIDDEN", message: "documents.notFound", status: 403)
+    }
+
+    /// A stand-in keeps no store documents: it answers as the server does before the section is open.
+    func uploadStoreDocument(vendorId: Int, upload: StoreDocumentUpload) async throws -> StoreDocument {
+        throw APIError.server(code: "BAD_REQUEST", message: "storeDocs.unavailable", status: 503)
+    }
+
+    func downloadStoreDocument(id: Int, fileName: String) async throws -> URL {
+        throw APIError.server(code: "NOT_FOUND", message: "documents.failed", status: 404)
     }
 }
 
@@ -163,12 +191,52 @@ struct SellerService: SellerServicing {
         return try await send(request, fallback: "documents.failed")
     }
 
+    /// A store's own document goes up on a route of its own
+    /// (`POST /api/vendors/:id/documents`): what it is rides in headers, the
+    /// words percent-encoded, and the server reads what the file is from its
+    /// first bytes. Who may add to which store is the server's question.
+    func uploadStoreDocument(vendorId: Int, upload: StoreDocumentUpload) async throws -> StoreDocument {
+        var request = URLRequest(url: client.configuration.url(path: "/api/vendors/\(vendorId)/documents"))
+        request.httpMethod = "POST"
+        request.setValue(upload.contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue(upload.kind, forHTTPHeaderField: "X-NetLet-Document-Kind")
+        request.setValue(Self.headerWords(upload.fileName) ?? "document", forHTTPHeaderField: "X-NetLet-File-Name")
+        if let title = upload.title, let words = Self.headerWords(title) { request.setValue(words, forHTTPHeaderField: "X-NetLet-Document-Title") }
+        if let day = upload.expiresOn { request.setValue(day, forHTTPHeaderField: "X-NetLet-Document-Expires") }
+        if upload.netletOnly { request.setValue("1", forHTTPHeaderField: "X-NetLet-Only") }
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.httpBody = upload.data
+        return try await send(request, fallback: "documents.failed")
+    }
+
+    /// Words made safe for a header, which the server reads back with
+    /// `decodeURIComponent`: every character outside ASCII percent-encoded
+    /// (the set is ASCII's own, so an Arabic name never rides raw), as the
+    /// application documents' file name is.
+    private static func headerWords(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+    }
+
+    /// One of a store's documents (`GET /api/vendors/documents/:id`, which
+    /// answers NetLet and the store's owner, and anybody else with the same
+    /// 404), saved under its own name for Quick Look to open.
+    func downloadStoreDocument(id: Int, fileName: String) async throws -> URL {
+        try await download(path: "/api/vendors/documents/\(id)", folder: "store-documents/\(id)", fileName: fileName)
+    }
+
     /// A paper from an application, for the administrator reviewing it
     /// (`GET /api/applications/documents/:id`, which answers only the applicant
     /// and an administrator, and anybody else with the same 404). It is saved
     /// under its own name in a folder of its own, for Quick Look to open.
     func downloadDocument(id: Int, fileName: String) async throws -> URL {
-        var request = URLRequest(url: client.configuration.url(path: "/api/applications/documents/\(id)"))
+        try await download(path: "/api/applications/documents/\(id)", folder: "documents/\(id)", fileName: fileName)
+    }
+
+    /// Fetches a private file and saves it in a temporary folder of its own.
+    private func download(path: String, folder name: String, fileName: String) async throws -> URL {
+        var request = URLRequest(url: client.configuration.url(path: path))
         request.httpMethod = "GET"
         let answer: (Data, HTTPURLResponse)
         do {
@@ -179,7 +247,7 @@ struct SellerService: SellerServicing {
         guard (200..<300).contains(answer.1.statusCode) else {
             throw APIError.server(code: answer.1.statusCode == 403 ? "FORBIDDEN" : "NOT_FOUND", message: "documents.failed", status: answer.1.statusCode)
         }
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("documents/\(id)", isDirectory: true)
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(name, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let safe = fileName.replacingOccurrences(of: "/", with: "-")
         let file = folder.appendingPathComponent(safe.isEmpty ? "document" : safe)

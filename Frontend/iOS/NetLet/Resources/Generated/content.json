@@ -543,6 +543,43 @@
       "image/png",
       "image/webp"
     ],
-    "maxDocumentBytes": 4000000
+    "maxDocumentBytes": 4000000,
+    "storeDocuments": {
+      "kinds": [
+        {
+          "kind": "trade_licence",
+          "label": "documents.kindTradeLicence"
+        },
+        {
+          "kind": "commercial_registration",
+          "label": "storeDocs.kindRegistration"
+        },
+        {
+          "kind": "signatory_id",
+          "label": "documents.kindSignatoryId"
+        },
+        {
+          "kind": "iban_letter",
+          "label": "documents.kindIbanLetter"
+        },
+        {
+          "kind": "authorisation",
+          "label": "documents.kindAuthorisation"
+        },
+        {
+          "kind": "contract",
+          "label": "storeDocs.kindContract"
+        },
+        {
+          "kind": "discount_permit",
+          "label": "storeDocs.kindDiscountPermit"
+        },
+        {
+          "kind": "other",
+          "label": "documents.kindOther"
+        }
+      ],
+      "titleMax": 120
+    }
   }
 }

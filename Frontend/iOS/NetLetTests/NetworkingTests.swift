@@ -1211,6 +1211,41 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(PortalPage("/admin/guides/new"), .guide(nil))
         XCTAssertEqual(PortalPage("/admin/guides/2"), .guide(2))
         XCTAssertEqual(PortalPage("/admin/couriers"), .couriers)
+        XCTAssertEqual(PortalPage("/admin/store-documents"), .storeDocuments)
+    }
+
+    /// A store's documents, as a real server listed them for the store's
+    /// owner and for NetLet: the owner is never sent a file kept for NetLet
+    /// alone, may remove only the store's own, and NetLet may remove any.
+    func testAStoresDocumentsDecode() async throws {
+        let mine = try await client.call(API.storeDocuments, .init(vendorId: 2))
+        XCTAssertTrue(mine.ready)
+        XCTAssertFalse(mine.netlet)
+        XCTAssertFalse(mine.documents.isEmpty)
+        XCTAssertFalse(mine.documents.contains { $0.netletOnly }, "a store is never sent a file kept for NetLet")
+        XCTAssertTrue(mine.documents.allSatisfy { $0.mayRemove == ($0.by == "store") }, "a store removes its own and never NetLet's")
+        XCTAssertTrue(mine.documents.filter { $0.by == "netlet" }.allSatisfy { $0.uploader == nil }, "a store is told NetLet added it, not who")
+        XCTAssertEqual(mine.documents.first { $0.expiry.kind == "expired" }?.needsAttention, true)
+        XCTAssertEqual(mine.documents.first { $0.expiry.kind == "valid" }?.needsAttention, false)
+
+        let admin = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "admin"))
+        let theirs = try await admin.call(API.storeDocuments, .init(vendorId: 2))
+        XCTAssertTrue(theirs.netlet)
+        XCTAssertEqual(theirs.documents.count, mine.documents.count + 1)
+        XCTAssertEqual(theirs.documents.filter { $0.netletOnly }.count, 1)
+        XCTAssertTrue(theirs.documents.allSatisfy { $0.mayRemove })
+        XCTAssertEqual(theirs.room, mine.room, "a file the store cannot see still takes one of its places")
+
+        // Every kind the server sends has a name here, and every name is a key.
+        let rules = StoreDocumentRules.shared
+        XCTAssertFalse(rules.kinds.isEmpty)
+        XCTAssertTrue(rules.kinds.allSatisfy { Phrasebook.shared.has($0.label) })
+        XCTAssertTrue(theirs.documents.allSatisfy { document in rules.kinds.contains { $0.kind == document.kind } })
+        XCTAssertEqual(rules.label("trade_licence"), "documents.kindTradeLicence")
+        XCTAssertGreaterThan(rules.titleMax, 0)
+
+        let removed = try await client.call(API.removeStoreDocument, .init(id: mine.documents[0].id))
+        XCTAssertEqual(removed.vendorId, 2)
     }
 
     /// "Your profile"'s details, as the server answered the demo shopper.

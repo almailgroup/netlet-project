@@ -42,6 +42,7 @@ struct PortalRouter: View {
         case .commission: PortalCommissionView()
         case .devices: PortalDevicesView()
         case .subcategoryPictures: PortalSubcategoryPicturesView()
+        case .storeDocuments: PortalStoreDocumentsView()
         case .membership: PortalMembershipView()
         case .support: PortalSupportView()
         case .supportThread(let id): PortalSupportThreadView(conversationId: id)

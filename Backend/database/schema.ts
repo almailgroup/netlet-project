@@ -47,6 +47,7 @@ import { FULFILMENT_STATES } from "../../Shared/commerce/fulfilment.js";
 import type { SizeChart } from "../../Shared/commerce/sizeGuide.js";
 import { AD_SLOTS, type BannerStatus } from "../../Shared/commerce/adBookings.js";
 import type { DocumentKind, DocumentStatus, DocumentType } from "../../Shared/inventory/applicationDocuments.js";
+import type { StoreDocumentKind } from "../../Shared/inventory/storeDocuments.js";
 import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../../Shared/commerce/support.js";
 import { INBOUND_STATUSES } from "../../Shared/commerce/netletFulfilment.js";
 import type { GuideAudience, GuideStatus, GuideStep } from "../../Shared/commerce/guides.js";
@@ -2711,6 +2712,45 @@ export const applicationDocuments = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [index("application_documents_application_idx").on(table.applicationId, table.kind, table.createdAt)],
+);
+
+/**
+ * A store's own papers, kept with the store (on the owner's word: "for the
+ * vendors there should be a section that will allow to upload documents for
+ * the vendor. Store documents"): the trade licence, the signatory's civil ID,
+ * the bank's IBAN letter, the contract, the discount permit, anything else.
+ * NetLet's administrators and the store's owner each upload and read them;
+ * `Shared/inventory/storeDocuments.ts` is the rule.
+ *
+ * **Its own table, never `/media`**, for the application documents' reason:
+ * a civil ID must not be public at any address and a licence is usually a
+ * PDF. The bytes leave only through an authenticated route, as an attachment.
+ * And not `application_documents`, whose rows belong to an application and go
+ * with it — a store opened by an administrator never had one.
+ *
+ * `netlet_only` is a file NetLet keeps about a store that the store does not
+ * see (a note from the bank, an internal check); only an administrator sets
+ * it. `expires_on` is the paper's own last day, where it has one, as a
+ * Kuwaiti calendar day.
+ */
+export const vendorDocuments = pgTable(
+  "vendor_documents",
+  {
+    id: serial("id").primaryKey(),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    kind: varchar("kind", { length: 24 }).notNull().$type<StoreDocumentKind>(),
+    title: varchar("title", { length: 120 }),
+    fileName: varchar("file_name", { length: 200 }).notNull(),
+    contentType: varchar("content_type", { length: 40 }).notNull().$type<DocumentType>(),
+    byteSize: integer("byte_size").notNull(),
+    sha256: char("sha256", { length: 64 }).notNull(),
+    bytes: bytea("bytes").notNull(),
+    expiresOn: date("expires_on", { mode: "string" }),
+    netletOnly: boolean("netlet_only").notNull().default(false),
+    uploadedBy: integer("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("vendor_documents_vendor_idx").on(table.vendorId, table.createdAt)],
 );
 
 /**

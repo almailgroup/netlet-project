@@ -34,6 +34,7 @@ import { runDueSubscriptions } from "../services/subscriptions.js";
 import { MediaError, readMedia, saveReviewPhoto, saveUpload } from "../services/media.js";
 import { ProfilePhotoError, readProfilePhoto, setProfilePhoto } from "../services/profilePhoto.js";
 import { attachContract, DocumentRefused, readDocument, uploadDocument } from "../services/applicationDocuments.js";
+import { readStoreDocument, storeOfDocument, StoreDocumentRefused, uploadStoreDocument } from "../services/storeDocuments.js";
 import { can } from "../../../Shared/inventory/permissions.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, type DocumentKind } from "../../../Shared/inventory/applicationDocuments.js";
 import { fetchManufacturerImage, ImportRefused } from "../services/manufacturerImages.js";
@@ -470,6 +471,80 @@ export function createApp(): Express {
       res.end(Buffer.from(found.bytes));
     } catch (error) {
       console.error(`[documents] read failed: ${describeError(error)}`);
+      res.status(503).type("text/plain").send("Unavailable");
+    }
+  });
+
+  /**
+   * A store's own document (`Shared/inventory/storeDocuments.ts`): the file
+   * is the body, and what it is — its kind, its name, a title, its last day
+   * and, from NetLet, "only NetLet sees this" — rides in headers, the words
+   * URI-encoded. The application documents' rules, for their reasons: no HTML
+   * form can send this body type, the cookie is Lax, and the bytes decide
+   * what the file is. Who may add to which store is the service's question.
+   */
+  app.post("/api/vendors/:vendorId/documents", (req, res, next) => documentBody(req, res, error => {
+    if (error) { res.status(413).json({ error: "documents.tooLarge" }); return; }
+    next();
+  }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "documents.notFound" }); return; }
+      if (!/^\d{1,9}$/.test(req.params.vendorId)) { res.status(404).json({ error: "documents.notFound" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "documents.notAccepted" }); return; }
+      const vendorId = Number(req.params.vendorId);
+      const actor = await resolveActor(user, vendorId);
+      /* Another store's number and a store that does not exist are one answer. */
+      if (!can(actor, "vendor.editProfile", vendorId)) { res.status(404).json({ error: "documents.notFound" }); return; }
+      const words = (name: string) => {
+        try { return decodeURIComponent(String(req.headers[name] ?? "")) || null; } catch { return null; }
+      };
+      const saved = await uploadStoreDocument(actor, vendorId, {
+        kind: String(req.headers["x-netlet-document-kind"] ?? ""),
+        title: words("x-netlet-document-title"),
+        expiresOn: String(req.headers["x-netlet-document-expires"] ?? "") || null,
+        netletOnly: req.headers["x-netlet-only"] === "1",
+        fileName: words("x-netlet-file-name"),
+        declaredType: req.headers["content-type"] ?? "",
+        bytes: new Uint8Array(req.body),
+      });
+      res.status(201).json(saved);
+    } catch (error) {
+      if (error instanceof StoreDocumentRefused) {
+        const status = error.reason === "documents.tooMany" ? 429 : error.reason === "documents.notFound" ? 404 : error.reason === "storeDocs.unavailable" ? 503 : 400;
+        res.status(status).json({ error: error.reason });
+        return;
+      }
+      console.error(`[store documents] upload failed: ${describeError(error)}`);
+      res.status(500).json({ error: "documents.failed" });
+    }
+  });
+
+  /**
+   * One store document, to NetLet or to the owner of the store it belongs
+   * to, and always as a download — `attachment`, `nosniff` and a sandbox.
+   * Anybody else, a file kept for NetLet alone and a number that names
+   * nothing all get the same 404.
+   */
+  app.get("/api/vendors/documents/:id", async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      const id = Number(req.params.id);
+      const vendorId = user && /^\d{1,9}$/.test(req.params.id) ? await storeOfDocument(id) : null;
+      const found = user && vendorId !== null ? await readStoreDocument(await resolveActor(user, vendorId), id) : null;
+      if (!found) { res.status(404).type("text/plain").send("Not found"); return; }
+      const ascii = found.fileName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+      res.set({
+        "Content-Type": found.contentType,
+        "Content-Length": String(found.bytes.length),
+        "Content-Disposition": `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(found.fileName)}`,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Cache-Control": "private, no-store",
+      });
+      res.end(Buffer.from(found.bytes));
+    } catch (error) {
+      console.error(`[store documents] read failed: ${describeError(error)}`);
       res.status(503).type("text/plain").send("Unavailable");
     }
   });

@@ -21,6 +21,7 @@
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StoreAvatar, StoreStatusPill } from "@/components/admin/StoreAvatar";
+import { StoreDocuments } from "@/components/admin/StoreDocuments";
 import { StoreWarnings } from "@/components/admin/StoreWarnings";
 import { Card, Field, PageHeader, PasswordBox, Stat, Toggle, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
@@ -180,6 +181,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
     { id: "profile", label: "admin.sectionProfile" },
     { id: "contact", label: "admin.sectionContact" },
     { id: "licences", label: "admin.sectionLicences" },
+    { id: "documents", label: "storeDocs.title" },
     { id: "delivery", label: "admin.sectionDelivery" },
     { id: "payments", label: "admin.sectionPayments" },
     { id: "terms", label: "admin.commercialTerms" },
@@ -360,6 +362,10 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               </Field>
             </div>
           </Card>
+
+          {/* The store's papers themselves — the scans of what the card above
+              records by number — uploaded by NetLet or by the store's owner. */}
+          <StoreDocuments vendorId={vendorId} audience="netlet" />
 
           {/* What this store charges to deliver (3.2.4), how fast (3.2.5), and
               who carries it (3.4.13). Blank is free and blank says nothing —

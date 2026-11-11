@@ -175,6 +175,9 @@ enum PortalPage: Hashable, Sendable {
     case devices
     /// The pictures beside the subcategories on Categories (`subcategoryPictures.ts`).
     case subcategoryPictures
+    /// A store's own documents, for its owner (`Shared/inventory/storeDocuments.ts`);
+    /// NetLet reads each store's on that store's page.
+    case storeDocuments
 
     init?(_ href: String) {
         let parts = href.split(separator: "?", maxSplits: 1).map(String.init)
@@ -241,6 +244,7 @@ enum PortalPage: Hashable, Sendable {
             case "couriers": self = .couriers
             case "devices": self = .devices
             case "subcategory-pictures": self = .subcategoryPictures
+            case "store-documents": self = .storeDocuments
             default: return nil
             }
         default: return nil

@@ -67,6 +67,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
   ] },
   { label: "admin.navPlatform", links: [
     { href: "/admin/team", label: "admin.team", need: "vendor.viewMembers" },
+    /* The store's own papers, for its owner; NetLet reads each store's on its page. */
+    { href: "/admin/store-documents", label: "storeDocs.title", need: "vendor.editProfile" },
     { href: "/admin/vendors", label: "admin.vendors", need: "platform.viewAll" },
     { href: "/admin/applications", label: "admin.applications", need: "platform.manageUsers" },
     { href: "/admin/people", label: "admin.people", need: "platform.manageUsers" },

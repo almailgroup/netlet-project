@@ -59,7 +59,8 @@ export function useFileSize() {
   return (bytes: number) => {
     const megabytes = bytes >= 1_000_000;
     const value = megabytes ? bytes / 1_000_000 : Math.max(1, Math.round(bytes / 1000));
-    const size = new Intl.NumberFormat(locale === "ar" ? "ar-KW" : "en", { maximumFractionDigits: megabytes ? 1 : 0 }).format(value);
+    /* Latin digits on the Arabic page too, as its dates and counts are: "1 كيلوبايت" beside "11 نوفمبر 2026". */
+    const size = new Intl.NumberFormat(locale === "ar" ? "ar-KW-u-nu-latn" : "en", { maximumFractionDigits: megabytes ? 1 : 0 }).format(value);
     return t(megabytes ? "documents.sizeMb" : "documents.sizeKb", { size });
   };
 }

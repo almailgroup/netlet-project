@@ -39,6 +39,12 @@ export type PluralEntry = {
 };
 
 export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
+  /* ---------------------------------------------------- store documents --- */
+  "storeDocs.expiresIn": {
+    param: "count",
+    en: { one: "Expires in 1 day" },
+    ar: { one: "ينتهي خلال يوم واحد", two: "ينتهي خلال يومين", many: "ينتهي خلال {count} يوماً", other: "ينتهي خلال {count} يوم" },
+  },
   /* ------------------------------------------------------ the dashboard --- */
   "copilot.insight.out": {
     param: "count",

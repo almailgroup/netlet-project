@@ -66,6 +66,7 @@ import { SETTLEMENT_DAYS } from "../../../Shared/commerce/payoutSchedule.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
 import { AGREEMENT_VERSION, MAX_COMMISSION_NOTE } from "../../../Shared/inventory/sellerApplication.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "../../../Shared/inventory/applicationDocuments.js";
+import { STORE_DOCUMENT_KINDS, STORE_DOCUMENT_KIND_LABEL, STORE_DOCUMENT_TITLE_MAX } from "../../../Shared/inventory/storeDocuments.js";
 import { MAX_RETURN_NOTE, OPEN_RETURN_STATUSES, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
 import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT } from "../../../Shared/commerce/deliveryRatings.js";
 import { CLAIM_WINDOW_DAYS, MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js";
@@ -424,6 +425,13 @@ export function buildContent() {
       documentKinds: DOCUMENT_KINDS,
       documentTypes: DOCUMENT_TYPES,
       maxDocumentBytes: MAX_DOCUMENT_BYTES,
+      /* A store's own documents (`Shared/inventory/storeDocuments.ts`): the
+         kinds in the form's order with each one's name, and a name's width.
+         A file is held to the application documents' types and size above. */
+      storeDocuments: {
+        kinds: STORE_DOCUMENT_KINDS.map(kind => ({ kind, label: STORE_DOCUMENT_KIND_LABEL[kind] })),
+        titleMax: STORE_DOCUMENT_TITLE_MAX,
+      },
     },
   };
 }

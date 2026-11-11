@@ -29,7 +29,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
-import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, Gauge, Images, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, ClipboardCheck, ClipboardList, Coins, FileText, FolderLock, Gauge, Images, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { isActiveHref, JumpButton, MenuDrawer, PageJump, Sidebar, useJumpShortcut, useRail, type FrameGroup } from "@/components/admin/frame";
 import { CopilotPanel } from "@/components/admin/CopilotPanel";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
@@ -91,6 +91,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin/affiliates": <Megaphone className="size-4" />,
   "/admin/commission": <Percent className="size-4" />,
   "/admin/team": <Users className="size-4" />,
+  "/admin/store-documents": <FolderLock className="size-4" />,
   "/admin/vendors": <Store className="size-4" />,
   "/admin/applications": <ClipboardList className="size-4" />,
   "/admin/people": <ShieldCheck className="size-4" />,

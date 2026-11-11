@@ -888,6 +888,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "warnings.issue":
     case "warnings.withdraw":
       throw new Error("vendor.approve");
+    /* A store's documents are its owner's and NetLet's; the demo's manager is neither. */
+    case "storeDocuments.list":
+    case "storeDocuments.remove":
+      throw new Error("vendor.editProfile");
     case "commission.propose":
     case "commission.withdraw":
     case "commission.decide":

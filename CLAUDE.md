@@ -5742,6 +5742,86 @@ theirs to edit; once submitted, nothing under the reviewer changes. An
 application that gave links before uploads existed keeps them, and the form
 shows the link boxes only to it.
 
+## Store documents
+
+**A store's own papers are kept with the store, on the owner's word** ("for
+the vendors there should be a section that will allow to upload documents for
+the vendor. Store documents"; migration 0080, `vendor_documents`, approved as
+shown; `Shared/inventory/storeDocuments.ts` the rule,
+`Backend/src/services/storeDocuments.ts` the database half, the two routes in
+`app.ts`). The trade licence, the commercial registration, the signatory's
+civil ID, the bank's IBAN letter, an authorisation to sign, the contract with
+NetLet, the discount permit, anything else — each with an optional name and an
+optional last day. **Not `application_documents`**: those rows belong to an
+application and go with it, and a store an administrator opened never had one.
+Never `/media`, for the application documents' reason.
+
+**NetLet and the store's owner, the owner's choice** (`vendor.editProfile`, the
+rank that edits the payout account these papers are about — not a manager's).
+NetLet reads and adds to a store's on that store's page (a card after
+Licences, `StoreDocuments` with `audience="netlet"`); the store's owner has
+`/admin/store-documents` in the vendor portal (the menu's "Store documents";
+an administrator opening it is pointed at the stores, the Team page's rule).
+The app is the same: `StoreDocumentsCard` on `PortalStoreView` and
+`PortalStoreDocumentsView`. Each side sees what the other uploaded, **except a
+file an administrator marks NetLet only**, which the store is never listed,
+handed or told exists — its number answers the same 404 as one that names
+nothing, and it still takes one of the store's places.
+
+**Whose a file is comes from who uploaded it**, not a column: an
+administrator's account is NetLet's, any other the store's, since only those
+two can upload at all (the approved table has no `by_netlet`, and adding one
+would be a column the owner had not seen). A store removes what its own people
+added and never what NetLet did (`storeDocs.notYours`), so a contract NetLet
+filed cannot be taken out of the record by the other party to it; NetLet
+removes any; a file whose uploader's account is gone is NetLet's alone to
+remove. **The server answers `mayRemove` on every row** and `netlet` on the
+list, so the page draws exactly the buttons the API accepts. A store is told
+"Added by NetLet", never which of NetLet's people.
+
+**A file is the application documents' rule, reused whole**: PDF, JPEG, PNG or
+WebP by its own first bytes, at most 4 MB, stored under a cleaned name, and
+only ever handed back as an attachment (`nosniff`, a sandboxing CSP,
+`private, no-store`). It goes up to `POST /api/vendors/:vendorId/documents`
+with what it is in headers (the words URI-encoded) and comes down from
+`GET /api/vendors/documents/:id`; the list and the removal are
+`storeDocuments.list` and `.remove`. **Who is asking is resolved for the
+document's own store** (`storeOfDocument`), because somebody who owns two
+stores acts for one at a time. Sixty files a store and thirty uploads an hour
+an account (`storeDocument` in `auth_attempts`), counted last, so a file
+refused for what it is does not spend the hour.
+
+**A paper's last day is read, never run**: `expires_on` is a Kuwaiti calendar
+day, and `expiryState` says on every read whether it has passed, ends within
+`EXPIRY_SOON_DAYS` (30) or stands — the server's answer, so the app does no
+date arithmetic — drawn as a pill, with a line above the list while any needs
+renewing. A day already gone can be recorded: that is how somebody finds out
+a licence needs renewing.
+
+**NetLet hears of a store's upload on the trail**, there being no notice kind
+for it (one would be a value on the `notification_kind` enum, a migration):
+`vendor.document.add` and `.remove` are audited and are in `SELLER_ACTIONS`,
+so an owner adding a renewed licence counts in "what the sellers changed".
+**Closed, not broken, until 0080 is pasted**: a missing table lists as
+`ready: false` and the section says it is not open yet
+(`storeDocs.unavailable`); `storeDocuments.test.ts` renames the table away.
+
+Walked on a production build against a local Postgres at 320, 390 and 1440 in
+both languages, as NetLet and as a store's owner: Upload with nothing chosen
+saying both problems under their boxes with focus on the kind, a text file
+refused as it was chosen, a NetLet-only file absent from the owner's list and
+a 404 to the owner's fetch, an owner posting to another store's number a 404,
+the download's headers, Remove asking first with focus on Cancel, axe clean
+and no sideways scroll. **The store's own page found one**: with no card
+heading over it, the form's `h3` sat straight under the page's `h1`, so the
+heading's level follows the audience. The app's answers were recorded off
+that server (`demo.storeDocuments.list.json`, `.admin.json`) and
+`testAStoresDocumentsDecode` reads them; the CI photographs the owner's page
+(`95-store-documents`). A library photo is shrunk off the main thread like
+every other, and a document opens in Quick Look. Not yet seen on a phone from
+this sandbox. `useFileSize` writes Latin digits on the Arabic page now, as
+its dates do.
+
 ## Selling and shopping are one account
 
 A vendor member is a shopper with a `vendor_members` row, and for a long time
@@ -8096,14 +8176,17 @@ filters and the compact profile's words, then 959 KB (277 KB), Saved
 items and wishlists, the history's selection and the haptics switch, then
 970 KB (278 KB), the authorised devices' words in both languages, then
 985 KB (283 KB), the portal dashboard's and co-pilot's words in both
-languages, then 984 KB (283 KB), the app's old sales panel's words gone, and
-is 993 KB (285 KB) now, the stock reminder and the subcategory pictures' words
+languages, then 984 KB (283 KB), the app's old sales panel's words gone, then
+993 KB (285 KB), the stock reminder and the subcategory pictures' words
 — **having been 1,054 KB (301 KB) for a week without anybody deciding it**:
 the card's "Remind me" imported the sign-in dialog plainly, and a card is in
 the first download, so the whole sign-in form came with it. It is `lazy` there
 now. **Anything a card, the header or the shell imports is in the first
 download**; read the main chunk's size after a round that touches one, not
-only whether the build passes —
+only whether the build passes — then 1,000 KB (287 KB), the authorised
+devices' remove-or-block words, and is 1,007 KB (288 KB) now, the store
+documents' words in both languages (measured against the commit before:
+seven kilobytes, the words alone) —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

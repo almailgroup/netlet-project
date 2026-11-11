@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 76 tables, 806 columns, 139 indexes, 176 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 77 tables, 819 columns, 140 indexes, 178 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -94,6 +94,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('support_messages', 'answer,author:n,author_id,body,conversation_id:n,created_at:nd,id:pnd', 'support_messages_conversation_idx', 'author_id>users:n,conversation_id>support_conversations:c'),
   ('users', 'audit_seen_at,created_at:nd,email,id:pnd,last_signed_in:nd,name,password_hash,phone,role:nd,supabase_uid,updated_at:nd', 'users_email_unique:u,users_phone_unique:uw,users_supabase_uid_unique:uw', ''),
   ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at:nd,governorate,id:pnd,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_fixed,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status:nd,store_name:n,store_name_ar,under_platform_licence:nd,updated_at:nd,user_id:n,vendor_id', 'vendor_applications_open_unique:uw,vendor_applications_status_idx', 'reviewed_by>users:n,user_id>users:c,vendor_id>vendors:n'),
+  ('vendor_documents', 'byte_size:n,bytes:n,content_type:n,created_at:nd,expires_on,file_name:n,id:pnd,kind:n,netlet_only:nd,sha256:n,title,uploaded_by,vendor_id:n', 'vendor_documents_vendor_idx', 'uploaded_by>users:n,vendor_id>vendors:c'),
   ('vendor_members', 'created_at:nd,id:pnd,role:nd,user_id:n,vendor_id:n', 'vendor_members_user_id_idx,vendor_members_vendor_user_unique:u', 'user_id>users:c,vendor_id>vendors:c'),
   ('vendor_warnings', 'created_at:nd,expires_at:n,id:pnd,issued_by,product_id,reason:n,vendor_id:n,withdrawn_at,withdrawn_by', 'vendor_warnings_vendor_idx', 'issued_by>users:n,product_id>products:n,vendor_id>vendors:c,withdrawn_by>users:n'),
   ('vendors', 'accepts_cod:nd,accepts_offers:nd,address_line,auto_publish:nd,badges:nd,cod_ceiling,commission_fixed,commission_percent:nd,contact_email,contact_phone,created_at:nd,delivery_courier_id,delivery_flat,delivery_free_over,delivery_mode:nd,delivery_provider,delivery_speed,description,description_ar,discount_licence_expires_at,discount_licence_number,fast_delivery_fee,fast_delivery_speed,governorate,id:pnd,licence_expires_at,licence_number,logo_url,name:n,name_ar,payout_iban,slug:n,status:nd,subscription_percent,under_platform_licence:nd,updated_at:nd,warnings_since', 'vendors_slug_unique:u', 'delivery_courier_id>couriers:n'),
@@ -249,7 +250,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 76 tables' AS object,
+    count(*) || ' of 77 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -263,7 +264,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 76 tables, 806 columns, 139 indexes, 176 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 77 tables, 819 columns, 140 indexes, 178 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

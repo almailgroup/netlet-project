@@ -12,6 +12,7 @@ import { membershipRouter } from "./membership.js";
 import { affiliatesRouter } from "./affiliates.js";
 import { commissionRouter } from "./commission.js";
 import { warningsRouter } from "./warnings.js";
+import { storeDocumentsRouter } from "./storeDocuments.js";
 import { authRouter } from "./auth.js";
 import { router } from "../core/trpc.js";
 import { commerceRouter } from "./commerce.js";
@@ -51,6 +52,7 @@ export const appRouter = router({
   affiliates: affiliatesRouter,
   commission: commissionRouter,
   warnings: warningsRouter,
+  storeDocuments: storeDocumentsRouter,
   auth: authRouter,
   commerce: commerceRouter,
   customer: customerRouter,

@@ -1,0 +1,119 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "netlet": true,
+        "room": 55,
+        "documents": [
+          {
+            "id": 8,
+            "kind": "trade_licence",
+            "title": "Trade licence 2026",
+            "fileName": "Trade licence 2026.pdf",
+            "contentType": "application/pdf",
+            "byteSize": 1260015,
+            "expiresOn": "2027-07-09",
+            "expiry": {
+              "kind": "valid"
+            },
+            "netletOnly": false,
+            "by": "store",
+            "uploader": "Omar Al-Mutairi",
+            "mayRemove": true,
+            "createdAt": "2026-11-11T15:34:59.837Z"
+          },
+          {
+            "id": 7,
+            "kind": "other",
+            "title": "Bank's note on the payout account",
+            "fileName": "Bank confirmation.pdf",
+            "contentType": "application/pdf",
+            "byteSize": 96015,
+            "expiresOn": "2026-12-02",
+            "expiry": {
+              "kind": "soon",
+              "days": 21
+            },
+            "netletOnly": true,
+            "by": "netlet",
+            "uploader": "Nadia Al-Rashid",
+            "mayRemove": true,
+            "createdAt": "2026-11-11T15:34:59.796Z"
+          },
+          {
+            "id": 6,
+            "kind": "signatory_id",
+            "title": null,
+            "fileName": "Civil ID front and back.jpg",
+            "contentType": "image/jpeg",
+            "byteSize": 934004,
+            "expiresOn": null,
+            "expiry": {
+              "kind": "none"
+            },
+            "netletOnly": false,
+            "by": "store",
+            "uploader": "Omar Al-Mutairi",
+            "mayRemove": true,
+            "createdAt": "2026-11-11T15:34:59.665Z"
+          },
+          {
+            "id": 5,
+            "kind": "discount_permit",
+            "title": null,
+            "fileName": "Discount permit.pdf",
+            "contentType": "application/pdf",
+            "byteSize": 188015,
+            "expiresOn": "2026-10-30",
+            "expiry": {
+              "kind": "expired",
+              "days": 12
+            },
+            "netletOnly": false,
+            "by": "store",
+            "uploader": "Omar Al-Mutairi",
+            "mayRemove": true,
+            "createdAt": "2026-11-11T15:34:59.534Z"
+          },
+          {
+            "id": 4,
+            "kind": "contract",
+            "title": "Seller agreement, signed",
+            "fileName": "NetLet seller agreement.pdf",
+            "contentType": "application/pdf",
+            "byteSize": 412015,
+            "expiresOn": null,
+            "expiry": {
+              "kind": "none"
+            },
+            "netletOnly": false,
+            "by": "netlet",
+            "uploader": "Nadia Al-Rashid",
+            "mayRemove": true,
+            "createdAt": "2026-11-11T15:34:59.460Z"
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "documents.0.createdAt": [
+            "Date"
+          ],
+          "documents.1.createdAt": [
+            "Date"
+          ],
+          "documents.2.createdAt": [
+            "Date"
+          ],
+          "documents.3.createdAt": [
+            "Date"
+          ],
+          "documents.4.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

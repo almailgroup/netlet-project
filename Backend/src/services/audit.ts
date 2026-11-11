@@ -116,6 +116,10 @@ export const AUDIT_ACTIONS = [
   "device.removeOthers",
   /* A subcategory's picture kept or taken off the shop's Categories page. */
   "subcategory.setPicture",
+  /* A paper added to a store's documents, or taken out of them — by NetLet or
+     by the store's owner (`Shared/inventory/storeDocuments.ts`). */
+  "vendor.document.add",
+  "vendor.document.remove",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -304,7 +308,7 @@ export async function listAudit(options: {
  */
 const SELLER_ROLES = ["owner", "manager", "staff"] as const;
 
-/** The acts a seller performs on their own catalogue, which an admin watches. */
+/** The acts a seller performs on their own catalogue and store, which an admin watches. */
 const SELLER_ACTIONS: AuditAction[] = [
   "product.create",
   "product.delete",
@@ -312,6 +316,10 @@ const SELLER_ACTIONS: AuditAction[] = [
   "product.setStatus",
   "product.setAffiliate",
   "commission.propose",
+  /* A store's owner adding a paper to the store's documents, or removing one:
+     how NetLet hears that a licence was renewed without anybody writing in. */
+  "vendor.document.add",
+  "vendor.document.remove",
 ];
 
 /**

@@ -87,6 +87,8 @@ struct SiteContent: Decodable, Sendable {
         let documentKinds: [String]
         let documentTypes: [String]
         let maxDocumentBytes: Int
+        /// A store's own documents: the kinds and a name's width (`storeDocuments.ts`).
+        var storeDocuments: StoreDocumentRules?
     }
 
     let help: Help
