@@ -8596,10 +8596,15 @@ buttons (163 of them, dozens to a list), a card's Buy now pill, tabs and
 badges, and Google's button, which is drawn to Google's rules.
 
 **Then more of it, on the owner's word** ("It looks so good. Can you make
-more stuff Liquid Glass design?"). The header's own controls — the area a
-capsule, the heart, the bell and a pushed page's back arrow a disc each, in
-`.frost` on the bar's frosted surface, as a system bar's are; **the search
-field, in the header and in the sheet that grows out of it**, in a tone of its
+more stuff Liquid Glass design?"). **The logo row's controls were among it for
+two builds and are not now, also on the owner's word** (a picture of the home
+page's header: "Don't let this options be Liquid Glass, revert it back to the
+previous design. It was better"): the area had become a glass capsule and the
+heart, the bell and the row's back arrow a glass disc each, and they are the
+plain pin and name, heart, bell and chevron they were, with their press fill
+(`LogoRow`, put back as it stood before). Still glass: the back arrow beside a
+search-only header's field, and **the search field, in the header and in the
+sheet that grows out of it**, in a tone of its
 own, `.bright` (white at 82%: nearly white under words that are typed and read
 on it, glass at its rim — the muted example has to keep its contrast over
 whatever the bar is carrying, which is why the web's field is solid); the
@@ -8616,7 +8621,7 @@ under a finger** (`interactive: false`: the field, the toast, a thumb).
 at a spacing of nothing, so the chips are drawn in one pass and never run
 into one shape — because Apple's own note is that effects outside a
 container each sample what is behind them again, and that the number on
-screen at once should be kept down; the header's four are left on their own.
+screen at once should be kept down.
 Still flat, deliberately: the portal's small buttons and anything that is a
 card, a row or a page. **A sideways row of glass chips draws past its
 scroll's frame** (`glassRow()`, the system's `scrollClipDisabled`): the
@@ -8629,20 +8634,42 @@ scroll, were whole.
 
 **The Deals tab has a moment of its own, on the owner's word** ("when you tap
 on the deals icon in the bottom menu, it would display a cool animation for
-deals"; `DealsBurst`). A press on the tab — the one you are on too, never the
-app's own moves to it — sends the tab's red bag leaping out of the bar to the
-middle of the screen, where it lands with a squash and a tap and bursts: thirty
-percent chips, price tags, coins and streamers in the shop's colours fan out
-and fall away as two rings spread, the bag lifts off, and the page's shelves
-rise in under it (`DealRise`), a second and a half in all. It is one `Canvas`
-drawn by the clock over the whole app, taking no touch, so the page is usable
-from the first frame; the scene is a pure function of the time
-(`DealsBurstScene`, tested: where the bag leaves, lands and goes, and that
-every piece flies up and out before it falls), which is also how the CI
+deals", then "work on the deals animation to make it better. Add a sound
+effect"; `DealsBurst`). A press on the tab — the one you are on too, never the
+app's own moves to it — sends the tab's red bag leaping out of the bar at the
+icon's own size, turning over once, three fainter bags behind it where it just
+was; it lands in the middle with a crouch and a tap as a sunburst of twelve
+flat rays opens behind it (the coin's amber and the brand's orange, turning
+slowly; flat colour, never a glow); it springs and throws its deals — forty-six
+percent chips, price tags, coins and streamers, tumbling, in two throws a beat
+apart — while two rings spread and eight sparkles twinkle round it; then it
+crouches once more and **hops home into the tab it came from**, shrinking to
+the icon's size, where a small ring and a lighter tap mark the landing. It
+lifted off and faded before; coming home makes the drawn bag and the tab's one
+bag. Just under two seconds, the page's shelves rising in under the pieces
+(`DealRise`). It is one `Canvas` drawn by the clock over the whole app, taking
+no touch, so the page is usable from the first frame; the scene is a pure
+function of the time (`DealsBurstScene`, tested: where the bag leaves, lands
+and comes home, that it never leaves the screen, and that every piece flies up
+and out before it falls and is gone by the end), which is also how the CI
 photographs it held mid-flight (`-NetLetOpen dealsBurst`, `94-deals-burst`).
 The canvas may be drawn off the main actor, so the scene asks the device
 nothing: whether the bar is along the top (an iPad) is read by the view and
-handed in. Nothing plays under Reduce Motion.
+handed in. **Its sound is `deals-burst.wav`, made for it beat for beat**
+(`DealsChime`): air rising as the bag leaps, a low thump as it lands (0.42s), a
+bright bell with a metallic tick as it bursts (0.52), a higher bell on the
+second throw (0.70) with small high pings scattered after it like coins, a
+soft falling whistle as it hops home and a small pock as it lands in the tab
+(1.66) — E major, the key of the launch and the order sounds, at their
+loudness. Ambient, so the Ring/Silent switch silences it and music keeps
+playing; made ready three seconds after launch so the first press starts it
+with the leap; started again from its beginning by a second press, as the
+burst is. A test holds that the file is in the app and as long as the burst.
+Nothing plays under Reduce Motion, sound included. **The look was drawn first
+in a browser canvas with the same arithmetic** (a scratch prototype, not
+committed), because one frozen frame from the CI cannot say how a two-second
+animation moves; the Swift is that prototype ported, and its tests'
+expectations were checked against it.
 
 **The requirements were checked against the app, on the owner's word** ("go
 through the requirements document … and check if every requirement is met"),
@@ -9689,7 +9716,9 @@ seconds, inside the line's own height so the field never jumps. They are
 sells, product types on its shelves, taken in turn, at most ten — never a
 phrase the shop may not sell, which is why the web's field stopped cycling.
 Still under Reduce Motion and while VoiceOver runs, which reads the field's
-own name.
+own name. A long example is drawn a little smaller rather than cut
+(`minimumScaleFactor`): beside the microphone and the camera, "Search for home
+& kitchen" read "home & kitch…" in the owner's own screenshot.
 
 **It runs against recordings as well as a server.** `-NetLetDemo YES` answers
 every call from `NetLet/Resources/Demo/demo.<procedure>.json`, captured off a

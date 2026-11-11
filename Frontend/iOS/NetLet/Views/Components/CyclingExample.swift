@@ -34,6 +34,10 @@ struct CyclingExample: View {
                 if !before.isEmpty { Text(before).layoutPriority(1) }
                 ZStack(alignment: .leading) {
                     Text(examples[turn % examples.count])
+                        // A long one — "home & kitchen" beside the microphone
+                        // and the camera — is drawn a little smaller rather
+                        // than cut to "home & kitch…".
+                        .minimumScaleFactor(0.82)
                         .id(turn)
                         .transition(.asymmetric(
                             insertion: .move(edge: .bottom).combined(with: .opacity),
