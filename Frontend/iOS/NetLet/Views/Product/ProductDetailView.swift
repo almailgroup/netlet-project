@@ -92,7 +92,7 @@ private struct ProductPage: View {
             ZStack(alignment: .bottom) {
                 if buttonsGone {
                     stickyBar
-                        .offset(y: app.tabBarRide)
+                        .floatsAtFoot()
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }

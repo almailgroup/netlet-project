@@ -39,6 +39,60 @@ final class KeyboardUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [applied], timeout: 6), .completed, "Done put the keyboard away but the 3 typed was not applied.")
     }
 
+    /// What floats over a page's foot steps aside while a keyboard is up, and
+    /// comes back when it goes. At the foot of what a keyboard leaves, the
+    /// assistant's button sat on the end of the sign-in form's own button,
+    /// where a thumb goes to press Continue (the CI's pictures of the form).
+    func testTheAssistantStepsAsideForTheKeyboard() {
+        let app = XCUIApplication()
+        // A guest's Profile tab is the sign-in form, its first box the email.
+        app.launchArguments = ["-NetLetDemo", "YES", "-netlet.language", "en", "-NetLetUITest", "YES", "-NetLetOpen", "account"]
+        app.launch()
+
+        let assistant = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Need help?")).firstMatch
+        XCTAssertTrue(assistant.waitForExistence(timeout: 15), "No assistant button on the sign-in form.")
+        let email = app.textFields.firstMatch
+        XCTAssertTrue(email.waitForExistence(timeout: 10), "No box to type in on the sign-in form.")
+        email.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "Pressing the email box brought up no keyboard.")
+
+        let aside = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false OR hittable == false"), object: assistant)
+        XCTAssertEqual(XCTWaiter().wait(for: [aside], timeout: 6), .completed, "The assistant's button is still over the form with the keyboard up.")
+
+        let done = app.buttons["Done"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 5), "No Done above the keyboard.")
+        done.tap()
+        let back = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND hittable == true"), object: assistant)
+        XCTAssertEqual(XCTWaiter().wait(for: [back], timeout: 8), .completed, "The assistant's button did not come back once the keyboard went.")
+    }
+
+    /// Finding out, not judging. From iOS 26 the row Done floats in is clear
+    /// and the form's own button shows through it — "Send code" on the phone
+    /// step, which follows the box being typed in. The row lets a touch
+    /// through now (`KeyboardBar.Bar.hitTest`), but whether it then reaches
+    /// the page is the keyboard window's to say, so this notes what a press
+    /// there did instead of failing.
+    func testNotesWhetherAButtonUnderTheDoneRowTakesAPress() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-NetLetDemo", "YES", "-netlet.language", "en", "-NetLetUITest", "YES", "-NetLetOpen", "phone"]
+        app.launch()
+
+        let send = app.buttons["Send code"].firstMatch
+        guard send.waitForExistence(timeout: 15), app.keyboards.firstMatch.waitForExistence(timeout: 8) else {
+            print("TEST-NOTE done row: no Send code, or no keyboard, on the phone step")
+            return
+        }
+        let done = app.buttons["Done"].firstMatch
+        _ = done.waitForExistence(timeout: 5)
+        let sameRow = done.exists && send.frame.minY < done.frame.maxY && done.frame.minY < send.frame.maxY
+        // A quarter of the way along, well clear of Done at the other end.
+        send.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).tap()
+        // Pressed with no number typed, the form says so under the box.
+        let said = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Enter your mobile number.")).firstMatch
+        let taken = said.waitForExistence(timeout: 4)
+        print("TEST-NOTE done row: send=\(send.frame) done=\(done.exists ? "\(done.frame)" : "none") sameRow=\(sameRow) pressTaken=\(taken)")
+    }
+
     /// Done sits at the end of the line on either page. On the Arabic page
     /// that is the left: at the right it sat over the first of the search
     /// sheet's quick links, which begin from the right there. The phone under

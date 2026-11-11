@@ -81,7 +81,7 @@ struct CartView: View {
             ZStack(alignment: .bottom) {
                 if let cart, barShown {
                     bar(cart)
-                        .offset(y: app.tabBarRide)
+                        .floatsAtFoot()
                         .transition(.opacity)
                 }
             }

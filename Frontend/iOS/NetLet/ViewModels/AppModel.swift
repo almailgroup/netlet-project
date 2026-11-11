@@ -217,6 +217,11 @@ final class AppModel {
     /// How far the tab bar has slid down out of the way (`TabBarSlide`), for
     /// what floats over a page to ride down with it; zero while it is there.
     var tabBarRide: CGFloat = 0
+    /// A keyboard is up. What floats over a page's foot steps aside for it
+    /// (`floatsAtFoot`): at the foot of what a keyboard leaves it sat on the
+    /// form being typed in — the assistant's button on the end of the sign-in
+    /// form's Continue, where a thumb goes to press it.
+    var keyboardUp = false
     /// A guest who chose a wishlist is signing in; which list is asked once
     /// the session exists, and forgotten if they close sign-in instead.
     var wishAfterSignIn: WishTarget?

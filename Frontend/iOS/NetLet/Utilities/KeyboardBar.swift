@@ -62,6 +62,19 @@ enum KeyboardBar {
         })
     }
 
+    /// Says when a keyboard comes up and when it goes, for what floats over a
+    /// page's foot to step aside for it (`floatsAtFoot`); called once, as the
+    /// app starts.
+    static func watch(_ changed: @escaping @MainActor (Bool) -> Void) {
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { changed(true) }
+        })
+        observers.append(center.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { changed(false) }
+        })
+    }
+
     /// Hands the field a bar in the language in use now, and has the keyboard
     /// ask for it again.
     private static func attach(_ field: UIResponder?) {
@@ -103,6 +116,10 @@ enum KeyboardBar {
         configuration.cornerStyle = .capsule
         configuration.baseBackgroundColor = UIColor(Brand.navy)
         configuration.baseForegroundColor = .white
+        // A white rim, so over a navy button showing through the row Done
+        // reads as its own control: "Send code" and Done ran into one pill.
+        configuration.background.strokeColor = UIColor.white.withAlphaComponent(0.9)
+        configuration.background.strokeWidth = 1.5
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 7, leading: 16, bottom: 7, trailing: 16)
         let button = UIButton(configuration: configuration, primaryAction: UIAction { _ in
             MainActor.assumeIsolated {
@@ -147,6 +164,16 @@ enum KeyboardBar {
 
         override var intrinsicContentSize: CGSize {
             CGSize(width: UIView.noIntrinsicMetric, height: Self.height)
+        }
+
+        /// Only Done takes a touch; the rest of the row lets it through. From
+        /// iOS 26 the row is clear and the page shows through it — the form's
+        /// own button, often, since it follows the box being typed in — and a
+        /// clear row that kept the touch made that button one that could be
+        /// seen and not pressed.
+        override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+            let hit = super.hitTest(point, with: event)
+            return hit === self ? nil : hit
         }
     }
 }

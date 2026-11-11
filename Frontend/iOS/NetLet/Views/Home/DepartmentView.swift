@@ -301,7 +301,7 @@ private struct BrowsePage: View {
         // The assistant's mark is 50 points at the end, 16 from the edge.
         .padding(.trailing, app.assistantOn ? 16 + 50 + 12 : 16)
         .padding(.bottom, 16)
-        .offset(y: app.tabBarRide)
+        .floatsAtFoot()
     }
 
     // MARK: What is ticked

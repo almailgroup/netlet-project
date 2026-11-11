@@ -8533,7 +8533,14 @@ Arabic page Done stayed at the right — over the first of the search sheet's
 quick links, which begin from the right there. It had been in every Arabic
 picture of the search since the bar was made, and was found by reading that
 picture for what the keyboard covered; `KeyboardUITests` now checks the side
-in both languages. The web needs none: Safari on
+in both languages. **Only Done takes a touch in that row** (`Bar.hitTest`):
+from iOS 26 the row is clear and the page shows through it — the form's own
+button, often, since it follows the box being typed in ("Send code" on the
+phone step) — and a clear row that kept the touch made that a button seen and
+not pressed; Done has a white rim, so over a navy button it reads as its own
+control. Whether the touch then reaches the page is the keyboard window's to
+say, so a test notes what a press there did (`TEST-NOTE done row`) rather than
+failing. The web needs none: Safari on
 an iPhone has its own Done above the keyboard, and every quantity box asks
 for a Done key (`enterKeyHint`) and applies on Enter.
 
@@ -9628,6 +9635,19 @@ each now fixed**:
 And the order page's line on returns named "the button beside it", from
 before an item's actions moved behind its ⋯; it names the ⋯ menu now, and so
 do the help page's answer and the returns page.
+
+**What floats over a page's foot steps aside while a keyboard is up**
+(`floatsAtFoot` in `ShopPage.swift`; `AppModel.keyboardUp`, set by
+`KeyboardBar.watch`): the assistant's button, the cart's Checkout bar, the
+product page's buy bar and a department's Sort | Filter pill are overlays at
+the foot of what a keyboard leaves, so with one up the assistant's mark sat on
+the end of the sign-in form's Continue, where a thumb goes to press it — in
+every CI picture of the code steps, in both languages, and read as a defect
+only on the pass after build 218. The web's button stays at the screen's foot,
+under a phone's keyboard, and needed nothing. The one modifier also reads the
+tab bar's ride in a body of its own, so a slide of the bar no longer draws
+again every page that has something floating over it. `KeyboardUITests` types
+on a guest's sign-in form and checks the button goes and comes back.
 
 **A new install opens on a tutorial, and it can always be skipped — on the
 owner's word** ("work on app tutorial, for a new user that downloads and opens

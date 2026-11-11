@@ -156,7 +156,7 @@ struct ShopPage<Content: View>: View {
                     ShopAssistantButton(product: assistantProduct, folded: barAway || assistantFolded)
                         .padding(.trailing, 16)
                         .padding(.bottom, 16)
-                        .offset(y: app.tabBarRide)
+                        .floatsAtFoot()
                 }
             }
             .animation(still ? nil : .easeOut(duration: 0.2), value: showsAssistant)
@@ -556,6 +556,33 @@ struct SearchRow: View {
 
     /// The field's example comes from the live catalogue — the first product
     /// type it holds, in the page's language — and asks plainly without one.
+}
+
+/// What floats over a page's foot — the assistant's button, the cart's
+/// Checkout bar, the product page's buy bar, a department's Sort | Filter
+/// pill — rides down with the tab bar into the room it leaves, and steps
+/// aside while a keyboard is up. At the foot of what a keyboard leaves it sat
+/// on the form being typed in: the assistant's mark on the end of the sign-in
+/// form's Continue, where a thumb goes to press it (the CI's pictures of the
+/// code step). The ride and the keyboard are read here, in a body of its
+/// own, so neither a slide of the tab bar nor a keyboard draws the page it
+/// floats over again.
+private struct FloatsAtFoot: ViewModifier {
+    @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var still
+
+    func body(content: Content) -> some View {
+        content
+            .offset(y: app.tabBarRide)
+            .opacity(app.keyboardUp ? 0 : 1)
+            .allowsHitTesting(!app.keyboardUp)
+            .accessibilityHidden(app.keyboardUp)
+            .animation(still ? nil : .easeOut(duration: 0.15), value: app.keyboardUp)
+    }
+}
+
+extension View {
+    func floatsAtFoot() -> some View { modifier(FloatsAtFoot()) }
 }
 
 /// A page's own room: the container's 16 either side and the same space

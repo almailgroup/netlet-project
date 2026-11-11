@@ -23,6 +23,8 @@ struct NetLetApp: App {
         _opening = State(initialValue: !UITestHooks.on && open == nil)
         // "Hide keyboard" over every field the app has (`KeyboardBar`).
         KeyboardBar.install(language: model.language)
+        // What floats over a page's foot steps aside while a keyboard is up.
+        KeyboardBar.watch { [weak model] up in model?.keyboardUp = up }
     }
 
     var body: some Scene {
