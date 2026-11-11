@@ -88,6 +88,45 @@ jobs:
           status=${PIPESTATUS[0]}
           exit "$status"
 
+      # What the tests said on purpose (their TEST-NOTE lines), posted as one
+      # neutral check run the moment the tests end. The job's log can be read
+      # only once the whole job is over, and the previews after this are forty
+      # minutes of it; the checks API answers at once. Nothing is posted when
+      # no test noted anything, so an ordinary push hangs no extra check.
+      - name: Post what the tests noted
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          try:
+              lines = open("build/xcodebuild.log", encoding="utf-8", errors="replace").read().splitlines()
+          except OSError:
+              lines = []
+          notes = []
+          for line in lines:
+              at = line.find("TEST-NOTE")
+              if at >= 0 and line[at:].strip() not in notes:
+                  notes.append(line[at:].strip())
+          if not notes:
+              print("no test notes")
+              raise SystemExit(0)
+          body = {
+              "name": "iOS test notes",
+              "head_sha": os.environ["SHA"],
+              "status": "completed",
+              "conclusion": "neutral",
+              "output": {"title": f"{len(notes)} note(s) from the tests", "summary": "\n\n".join(notes)[:60000]},
+          }
+          subprocess.run(["gh", "api", f"repos/{os.environ['REPO']}/check-runs", "--input", "-"],
+                         input=json.dumps(body).encode(), check=True, stdout=subprocess.DEVNULL)
+          print(f"posted {len(notes)} test note(s)")
+          PY
+
       # A preview for anybody without a Mac: the app built above, installed on
       # the same simulator and opened on each screen in both languages,
       # answering from the demo recordings (-NetLetDemo YES). Full-size

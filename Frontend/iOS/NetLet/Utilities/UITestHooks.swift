@@ -5,8 +5,15 @@ import SwiftUI
 enum UITestHooks {
     #if DEBUG
     static let on = UserDefaults.standard.bool(forKey: "NetLetUITest")
+    /// A way of putting the tab bar away on checkout for `TabBarUITests` to
+    /// try (`-NetLetTabBarProbe`). Checkout asks for no tab bar and iOS 26
+    /// draws one all the same, and reading the code could not say why; each
+    /// name here changes one thing, so one run on the Mac says which of them
+    /// puts the bar away. Gone again once the answer is in the app.
+    static let tabBarProbe: String? = on ? UserDefaults.standard.string(forKey: "NetLetTabBarProbe") : nil
     #else
     static let on = false
+    static let tabBarProbe: String? = nil
     #endif
 }
 

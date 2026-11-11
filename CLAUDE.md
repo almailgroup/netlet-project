@@ -9752,10 +9752,20 @@ push's run cancelled like this is put back with `rerun` on that run, which
 keeps its event and its commit. **A test can say something in the run's log
 without failing**: the workflow prints only errors, warnings and verdicts, and
 any line carrying `TEST-NOTE`, so a test that is finding out rather than
-judging prints one (`testCheckoutSaysWhetherItHasTheTabBar`: the CI's pictures
-have always shown the tab bar under Place order, though `CheckoutView` asks for
-none, and they open checkout as the app starts — the note says what a pressed
-Checkout gives before anything is changed for it). Nothing that signs
+judging prints one, **and the notes are posted as a check run the moment the
+tests end** ("Post what the tests noted", one neutral check named "iOS test
+notes", only when a test noted something): the job's log can be read only
+once the whole job is over, previews and all, which is forty minutes after
+the tests, and the checks API answers at once. The first to use it was
+`testCheckoutSaysWhetherItHasTheTabBar`: the CI's pictures have always shown
+the tab bar under Place order, though `CheckoutView` asks for none, and they
+open checkout as the app starts — so the test pressed Checkout from the cart,
+and the bar was there too (hittable at the screen's foot, under Place order).
+**The tab bar on checkout is a real fault on iOS 26, not the pictures'**, and
+reading the code could not say why, so the app has a switch per suspect
+(`UITestHooks.tabBarProbe`, Debug and UI tests only) and the test opens
+checkout under each and notes which puts the bar away and gives it back.
+Nothing that signs
 lives in the repository: an App
 Store Connect API key (Admin, in four repository secrets the README names)
 lets `xcodebuild -exportArchive -allowProvisioningUpdates` make the

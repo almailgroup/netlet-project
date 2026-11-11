@@ -176,7 +176,7 @@ struct ShopPage<Content: View>: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar(barHidden ? .hidden : .visible, for: .tabBar)
+        .toolbar(barHidden ? .hidden : (UITestHooks.tabBarProbe == "rootAuto" ? .automatic : .visible), for: .tabBar)
         .task {
             guard !settled else { return }
             try? await Task.sleep(for: .milliseconds(250))
