@@ -15,11 +15,104 @@
  * address, which is how the first one gets in; every other device waits for
  * the owner to approve it on the Devices page, which only the owner, on an
  * authorised device, can open.
+ *
+ * **Taking a device off is two different acts, on the owner's word** ("I
+ * can't fully remove a device from the devices list. I should be able to
+ * decide to remove a device … and decide whether they can be logged in and
+ * added again or blocked forever"). **Removing** forgets the device: its row
+ * goes, it loses its rights at once, and if its user signs in there again it
+ * asks afresh like any new device. **Blocking** keeps the row so the device
+ * is known and refused: it loses its rights at once and can never ask again,
+ * until the owner unblocks it (which is removing the block's row) or
+ * authorises it outright. Before this a device taken off stayed on the list
+ * for ever and could only be "allowed again".
+ *
+ * **No new state and no migration**: a blocked device is one of the two
+ * states the table already had — `denied` for one blocked while it waited,
+ * `revoked` for one blocked after it was authorised, which is also what tells
+ * the owner whether it ever had access — and a removed one is no row at all.
+ *
+ * **A block is on what the device remembers**, its secret. A browser whose
+ * site data is cleared, or an app deleted and installed again, comes back as
+ * a device NetLet has never seen and may ask. It cannot get in without the
+ * owner's yes, and the request says when its account or its address already
+ * has a blocked device (`DeviceWarning`); somebody to be kept out altogether
+ * has their administrator role taken away on People.
  */
 
 /** What a device row says. `approved` is the one state that carries rights. */
 export const DEVICE_STATES = ["pending", "approved", "denied", "revoked"] as const;
 export type DeviceState = (typeof DEVICE_STATES)[number];
+
+/** Blocked: turned away while it waited (`denied`), or after it was authorised (`revoked`). */
+export function isBlocked(state: DeviceState): boolean {
+  return state === "denied" || state === "revoked";
+}
+
+/**
+ * What the owner decides about one device: authorise it, block it, or remove
+ * it from the list. `deny` and `revoke` are what blocking was called before
+ * there was a choice, and the app's earlier builds still send them.
+ */
+export const DEVICE_DECISIONS = ["approve", "block", "remove", "deny", "revoke"] as const;
+export type DeviceDecision = (typeof DEVICE_DECISIONS)[number];
+export type DeviceMove = "approve" | "block" | "remove";
+
+export function moveOf(decision: DeviceDecision): DeviceMove {
+  return decision === "deny" || decision === "revoke" ? "block" : decision;
+}
+
+/**
+ * Where a decision takes a device: its next state, `"removed"` for a row that
+ * goes, or null for a move the rule does not offer — authorising one already
+ * authorised, blocking one already blocked.
+ */
+export function deviceMove(state: DeviceState, decision: DeviceDecision): DeviceState | "removed" | null {
+  switch (moveOf(decision)) {
+    case "approve":
+      return state === "approved" ? null : "approved";
+    case "block":
+      return state === "pending" ? "denied" : state === "approved" ? "revoked" : null;
+    case "remove":
+      return "removed";
+  }
+}
+
+/** The states a decision may be taken from, for the write's own predicate. */
+export function statesFor(decision: DeviceDecision): DeviceState[] {
+  return DEVICE_STATES.filter(state => deviceMove(state, decision) !== null);
+}
+
+/**
+ * What the trail calls a decision, from the state it found: taking a blocked
+ * device off the list is unblocking it; taking one that waits off is
+ * declining it; anything else removed was authorised.
+ */
+export function deviceAuditAction(before: DeviceState, decision: DeviceDecision): "device.approve" | "device.block" | "device.remove" | "device.decline" | "device.unblock" {
+  const move = moveOf(decision);
+  if (move === "approve") return "device.approve";
+  if (move === "block") return "device.block";
+  return isBlocked(before) ? "device.unblock" : before === "pending" ? "device.decline" : "device.remove";
+}
+
+/** A device seen this recently is in use now. */
+export const DEVICE_ACTIVE_MS = 5 * 60 * 1000;
+
+export function deviceActive(lastSeenAt: Date | string | null | undefined, now: Date = new Date()): boolean {
+  if (!lastSeenAt) return false;
+  const seen = new Date(lastSeenAt).getTime();
+  return Number.isFinite(seen) && now.getTime() - seen < DEVICE_ACTIVE_MS;
+}
+
+/**
+ * Why the owner should look twice at a device that is asking: its account
+ * already has a blocked device, or it asks from the address a blocked device
+ * used — either can be the blocked device back with its memory wiped.
+ */
+export type DeviceWarning = "accountBlocked" | "addressBlocked";
+
+/** How many blocked devices the desk lists. */
+export const BLOCKED_DEVICES_SHOWN = 200;
 
 /** The cookie a browser on the admin portal keeps its device secret in. */
 export const DEVICE_COOKIE = "netlet_admin_device";

@@ -61,6 +61,7 @@ const NOT_IN_DEMO = new Set([
   "devices.desk",
   "devices.waiting",
   "devices.decide",
+  "devices.removeOthers",
   "devices.rename",
 ]);
 

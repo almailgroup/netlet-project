@@ -19,18 +19,24 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { parse as parseCookies } from "cookie";
-import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { adminDevices, auditLog, staffGrants, users, type AdminDevice } from "../../database/schema.js";
 import {
+  BLOCKED_DEVICES_SHOWN,
   DEVICE_COOKIE,
   DEVICE_HEADER,
   DEVICE_SEEN_EVERY_MS,
   deviceLabel,
+  deviceMove,
   deviceNameFrom,
+  isBlocked,
   isDeviceToken,
+  moveOf,
   type ApprovedHow,
   type DeviceAccess,
+  type DeviceDecision,
   type DeviceState,
+  type DeviceWarning,
 } from "../../../Shared/auth/adminDevice.js";
 import { isMissingTable, describeError } from "../core/describeError.js";
 import { isOwnerEmail, ownerEmail } from "../core/owner.js";
@@ -238,9 +244,10 @@ export class DeviceError extends Error {}
 
 /**
  * This device asks to carry this account's rights: a waiting row, made once
- * per account and device. A device the owner turned down or removed cannot
- * ask again — the owner can allow it again from the Devices page — so a
- * stolen password cannot keep knocking. Answers the secret to keep (new, or
+ * per account and device. A device the owner blocked cannot ask again — its
+ * row is still there, so nothing is made and nobody is told — which is what
+ * stops a stolen password knocking for ever; one the owner removed from the
+ * list has no row, so it asks afresh. Answers the secret to keep (new, or
  * the one the device already had) and whether a new row was made.
  */
 export async function requestDevice(
@@ -321,6 +328,8 @@ export type DeviceSummary = {
   lastIp: string | null;
   /** The device this page is being read on. */
   current: boolean;
+  /** Why to look twice at one that is asking (`DeviceWarning`); empty for any other. */
+  warnings: DeviceWarning[];
 };
 
 export type SignInEntry = {
@@ -333,17 +342,30 @@ export type SignInEntry = {
   outcome: "authorised" | "waiting" | "refused" | "unknown";
 };
 
-/** How many ended devices, and how many sign-ins, the desk shows. */
+/** How many sign-ins the desk shows. */
 export const DEVICE_HISTORY = 30;
 
+export type DeviceDesk = {
+  ready: boolean;
+  devices: DeviceSummary[];
+  signIns: SignInEntry[];
+  /** How many devices are blocked in all, where the list shows only the newest. */
+  blockedTotal: number;
+};
+
+const millis = (value: Date | null): number => (value ? value.getTime() : 0);
+
 /**
- * Everything on the Devices page: every device waiting or authorised, the
- * last of those turned down or removed, and the recent sign-ins to the admin
- * side from the audit trail. `ready` false before 0079.
+ * Everything on the Devices page: every device waiting (oldest first, the
+ * order to answer them in), every one authorised (the one being read on
+ * first, then the most recently used), every one blocked (the newest block
+ * first), and the recent sign-ins to the admin side from the audit trail.
+ * A device that asks is marked when its account or its address already has a
+ * blocked device. `ready` false before 0079.
  */
-export async function deviceDesk(currentToken: string | null): Promise<{ ready: boolean; devices: DeviceSummary[]; signIns: SignInEntry[] }> {
+export async function deviceDesk(currentToken: string | null, ownerId?: number): Promise<DeviceDesk> {
   const db = await getDb();
-  if (!db) return { ready: false, devices: [], signIns: [] };
+  if (!db) return { ready: false, devices: [], signIns: [], blockedTotal: 0 };
   try {
     const approver = sql<string | null>`(select approver.email from users as approver where approver.id = ${outer(adminDevices.approvedBy)})`;
     const rows = await db
@@ -357,9 +379,26 @@ export async function deviceDesk(currentToken: string | null): Promise<{ ready: 
       .innerJoin(users, eq(users.id, adminDevices.userId))
       .orderBy(desc(adminDevices.createdAt), desc(adminDevices.id));
     const currentHash = currentToken ? hashDeviceToken(currentToken) : null;
-    const live = rows.filter(row => row.device.status === "pending" || row.device.status === "approved");
-    const ended = rows.filter(row => row.device.status === "denied" || row.device.status === "revoked").slice(0, DEVICE_HISTORY);
-    const devices = [...live, ...ended].map(({ device, account, accountName, approvedBy }) => ({
+    /* The device being read on is this browser's row for the owner's own
+       account: a browser can hold another administrator's device too. */
+    const isCurrent = (device: AdminDevice) => currentHash !== null && device.tokenHash === currentHash && (ownerId === undefined || device.userId === ownerId);
+    const waiting = rows.filter(row => row.device.status === "pending").sort((left, right) => millis(left.device.createdAt) - millis(right.device.createdAt) || left.device.id - right.device.id);
+    const authorised = rows
+      .filter(row => row.device.status === "approved")
+      .sort((left, right) => Number(isCurrent(right.device)) - Number(isCurrent(left.device)) || millis(right.device.lastSeenAt) - millis(left.device.lastSeenAt) || right.device.id - left.device.id);
+    const everyBlocked = rows
+      .filter(row => isBlocked(row.device.status as DeviceState))
+      .sort((left, right) => millis(right.device.decidedAt) - millis(left.device.decidedAt) || right.device.id - left.device.id);
+    const blockedAccounts = new Set(everyBlocked.map(row => row.device.userId));
+    const blockedAddresses = new Set(everyBlocked.flatMap(row => [row.device.requestedIp, row.device.lastIp]).filter((address): address is string => Boolean(address)));
+    const warningsFor = (device: AdminDevice): DeviceWarning[] =>
+      device.status !== "pending"
+        ? []
+        : [
+            ...(blockedAccounts.has(device.userId) ? (["accountBlocked"] as const) : []),
+            ...(device.requestedIp && blockedAddresses.has(device.requestedIp) ? (["addressBlocked"] as const) : []),
+          ];
+    const devices = [...waiting, ...authorised, ...everyBlocked.slice(0, BLOCKED_DEVICES_SHOWN)].map(({ device, account, accountName, approvedBy }) => ({
       id: device.id,
       userId: device.userId,
       account,
@@ -375,7 +414,8 @@ export async function deviceDesk(currentToken: string | null): Promise<{ ready: 
       lastSignInAt: device.lastSignInAt,
       lastSeenAt: device.lastSeenAt,
       lastIp: device.lastIp,
-      current: currentHash !== null && device.tokenHash === currentHash,
+      current: isCurrent(device),
+      warnings: warningsFor(device),
     }));
     const audit = await db
       .select({ id: auditLog.id, at: auditLog.createdAt, account: auditLog.actorEmail, after: auditLog.after })
@@ -389,9 +429,9 @@ export async function deviceDesk(currentToken: string | null): Promise<{ ready: 
         after.deviceAccess === "trusted" ? "authorised" : after.deviceAccess === "pending" || after.deviceAccess === "none" ? "waiting" : after.deviceAccess ? "refused" : "unknown";
       return { id: entry.id, at: entry.at, account: entry.account, address: after.address ?? null, device: after.device ?? null, outcome };
     });
-    return { ready: true, devices, signIns };
+    return { ready: true, devices, signIns, blockedTotal: everyBlocked.length };
   } catch (error) {
-    if (isMissingTable(error)) return { ready: false, devices: [], signIns: [] };
+    if (isMissingTable(error)) return { ready: false, devices: [], signIns: [], blockedTotal: 0 };
     throw error;
   }
 }
@@ -409,31 +449,75 @@ export async function devicesWaiting(): Promise<number> {
   }
 }
 
+/** What became of a device the owner decided about: its row as it is now, or as it was when it was removed. */
+export type DeviceDecided = { row: AdminDevice; status: DeviceState | "removed" };
+
 /**
- * The owner's decision on one device. Approving works on a device that is
- * waiting or was turned down or removed (allowing it again); turning down
- * only on one waiting; removing only on one authorised. Each move names the
- * state it leaves in its predicate, so two presses cannot both land.
+ * The owner's decision on one device, from the row as it was just read
+ * (`deviceMove` is the rule): authorising one that waits or is blocked,
+ * blocking one that waits or is authorised, or removing one from the list
+ * whatever it is, which deletes its row so the device is forgotten and may
+ * ask again. `"current"` for blocking the device the owner is deciding on —
+ * removing it is offered instead, since a block there can only be undone
+ * from another device. Each write names the state it found in its predicate,
+ * so two presses cannot both land; null when somebody else got there first
+ * or the rule does not offer the move.
  */
 export async function decideDevice(
   ownerId: number,
-  id: number,
-  decision: "approve" | "deny" | "revoke",
-): Promise<AdminDevice | null> {
+  before: AdminDevice,
+  decision: DeviceDecision,
+  currentToken: string | null,
+): Promise<DeviceDecided | "current" | null> {
   const db = await getDb();
   if (!db) return null;
-  const from: DeviceState[] = decision === "approve" ? ["pending", "denied", "revoked"] : decision === "deny" ? ["pending"] : ["approved"];
-  const to: DeviceState = decision === "approve" ? "approved" : decision === "deny" ? "denied" : "revoked";
+  const found = before.status as DeviceState;
+  const to = deviceMove(found, decision);
+  if (!to) return null;
+  const unchanged = and(eq(adminDevices.id, before.id), eq(adminDevices.status, found));
+  if (to === "removed") {
+    const [gone] = await db.delete(adminDevices).where(unchanged).returning();
+    return gone ? { row: gone, status: "removed" } : null;
+  }
+  if (moveOf(decision) === "block" && currentToken && before.userId === ownerId && before.tokenHash === hashDeviceToken(currentToken)) return "current";
   const [row] = await db
     .update(adminDevices)
     .set({
       status: to,
       decidedAt: new Date(),
-      ...(decision === "approve" ? { approvedBy: ownerId, approvedHow: "owner" satisfies ApprovedHow } : {}),
+      ...(to === "approved" ? { approvedBy: ownerId, approvedHow: "owner" satisfies ApprovedHow } : {}),
     })
-    .where(and(eq(adminDevices.id, id), inArray(adminDevices.status, from)))
+    .where(unchanged)
     .returning();
-  return row ?? null;
+  return row ? { row, status: to } : null;
+}
+
+/**
+ * Every authorised device but the one the owner is on, removed from the list
+ * in one go — for the day a password may have leaked. Each loses its rights
+ * at once and asks afresh at its next sign-in; devices that wait and devices
+ * that are blocked are left as they are. Refused (null) with no device to
+ * keep, which would take the owner's own off too.
+ */
+export async function removeOtherDevices(ownerId: number, currentToken: string | null): Promise<(AdminDevice & { account: string | null })[] | null> {
+  if (!currentToken) return null;
+  const db = await getDb();
+  if (!db) return null;
+  const currentHash = hashDeviceToken(currentToken);
+  const [kept] = await db
+    .select({ id: adminDevices.id })
+    .from(adminDevices)
+    .where(and(eq(adminDevices.userId, ownerId), eq(adminDevices.tokenHash, currentHash), eq(adminDevices.status, "approved")))
+    .limit(1);
+  if (!kept) return null;
+  const gone = await db
+    .delete(adminDevices)
+    .where(and(eq(adminDevices.status, "approved"), ne(adminDevices.id, kept.id)))
+    .returning();
+  if (!gone.length) return [];
+  const accounts = await db.select({ id: users.id, email: users.email }).from(users).where(inArray(users.id, [...new Set(gone.map(row => row.userId))]));
+  const emailOf = new Map(accounts.map(account => [account.id, account.email]));
+  return gone.map(row => ({ ...row, account: emailOf.get(row.userId) ?? null }));
 }
 
 /** The owner's own name for a device ("Office PC"). */

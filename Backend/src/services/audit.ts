@@ -102,9 +102,18 @@ export const AUDIT_ACTIONS = [
      (`Shared/auth/adminDevice.ts`): who may use the admin panel, and from where. */
   "device.request",
   "device.approve",
+  /* What blocking was recorded as before removing and blocking were two acts. */
   "device.deny",
   "device.revoke",
   "device.rename",
+  /* Blocked (it can never ask again), removed from the list (it may ask
+     again), declined while it waited, unblocked, and every other authorised
+     device removed at once. */
+  "device.block",
+  "device.remove",
+  "device.decline",
+  "device.unblock",
+  "device.removeOthers",
   /* A subcategory's picture kept or taken off the shop's Categories page. */
   "subcategory.setPicture",
 ] as const;

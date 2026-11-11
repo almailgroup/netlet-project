@@ -2,6 +2,50 @@ import AVFoundation
 import SwiftUI
 import UIKit
 
+/// When a press on the Deals tab plays the burst, on the owner's word ("the
+/// deals animation should only be played once, when app is opened and when
+/// the user taps on it … and should play it again after 20 taps on deals").
+/// The first press after the app is opened plays it, and then every twentieth
+/// press after that — the 21st, the 41st — so it stays a treat and is never
+/// the price of using the tab. It played on every press before. Half an hour
+/// away from the app is the app opened again: a phone keeps an app in memory
+/// for days, and somebody who comes back to it the next morning has opened it.
+enum DealsBurstRule {
+    /// How many presses there are from one burst to the next.
+    static let every = 20
+    /// How long away from the app counts as having left it.
+    static let away: TimeInterval = 30 * 60
+
+    /// Whether this press on Deals plays the burst: `press` counts them since
+    /// the app was opened, from 1.
+    static func plays(press: Int) -> Bool {
+        press >= 1 && (press - 1) % every == 0
+    }
+
+    /// Whether coming back after this many seconds away starts the count again.
+    static func opensAfresh(awayFor seconds: TimeInterval) -> Bool {
+        seconds >= away
+    }
+}
+
+/// Says when the app goes to the background and when it comes back, for the
+/// count above; called once, as the app starts.
+@MainActor
+enum AppAway {
+    private static var observers: [NSObjectProtocol] = []
+
+    static func watch(left: @escaping @MainActor () -> Void, returned: @escaping @MainActor () -> Void) {
+        guard observers.isEmpty else { return }
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { left() }
+        })
+        observers.append(center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { returned() }
+        })
+    }
+}
+
 /// The Deals tab's own moment, on the owner's word — first "when you tap on
 /// the deals icon in the bottom menu, it would display a cool animation for
 /// deals, to make it more appealing", then "work on the deals animation to
@@ -17,8 +61,9 @@ import UIKit
 /// It is drawn over the whole app in one `Canvas` by the clock, so it lays
 /// nothing out and re-renders no page, runs at the screen's own rate, and
 /// **takes no touch**: the Deals page under it is usable from the first
-/// frame. A press on the tab plays it — the tab you are on too — and the
-/// app's own moves to the tab never do. Reduce Motion plays nothing, sound
+/// frame. A press on the tab plays it — the first after the app is opened, and
+/// every twentieth after that (`DealsBurstRule`) — and the app's own moves to
+/// the tab never do. Reduce Motion plays nothing, sound
 /// included, and VoiceOver is told nothing, since nothing it says has changed.
 ///
 /// The bag is the tab icon's own drawing (`tabIcons.json`), its percent in

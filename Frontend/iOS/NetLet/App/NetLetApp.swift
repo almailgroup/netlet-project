@@ -25,6 +25,8 @@ struct NetLetApp: App {
         KeyboardBar.install(language: model.language)
         // What floats over a page's foot steps aside while a keyboard is up.
         KeyboardBar.watch { [weak model] up in model?.keyboardUp = up }
+        // Half an hour away is the app opened again, for the Deals burst's count.
+        AppAway.watch(left: { [weak model] in model?.appLeft() }, returned: { [weak model] in model?.appReturned() })
     }
 
     var body: some Scene {

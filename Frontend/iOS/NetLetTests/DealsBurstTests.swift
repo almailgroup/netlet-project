@@ -150,6 +150,53 @@ final class DealsBurstTests: XCTestCase {
         XCTAssertEqual(DealsBurstScene.bump(-2), 0, accuracy: 0.0001)
     }
 
+    /// The first press after the app is opened plays it, then every twentieth:
+    /// the 21st and the 41st, and none between.
+    func testItPlaysOnTheFirstPressAndEveryTwentiethAfter() {
+        let played = (1...60).filter { DealsBurstRule.plays(press: $0) }
+        XCTAssertEqual(played, [1, 21, 41])
+        XCTAssertFalse(DealsBurstRule.plays(press: 0))
+        XCTAssertFalse(DealsBurstRule.plays(press: 2))
+        XCTAssertFalse(DealsBurstRule.plays(press: 20))
+        XCTAssertEqual(DealsBurstRule.every, 20)
+        // Half an hour away is the app opened again; a look at another app is not.
+        XCTAssertFalse(DealsBurstRule.opensAfresh(awayFor: 60))
+        XCTAssertFalse(DealsBurstRule.opensAfresh(awayFor: 29 * 60))
+        XCTAssertTrue(DealsBurstRule.opensAfresh(awayFor: 30 * 60))
+    }
+
+    /// The app's own count: a burst on the first press, none on the next
+    /// nineteen, one on the twenty-first; and again on the first press after
+    /// a long time away, but not after a short one.
+    @MainActor
+    func testTheAppCountsItsDealsPresses() {
+        let app = AppModel.live(arguments: ["-NetLetDemo"])
+        XCTAssertEqual(app.dealsBurst, 0)
+        app.select(.deals)
+        XCTAssertEqual(app.dealsBurst, 1)
+        for _ in 2...20 { app.select(.deals) }
+        XCTAssertEqual(app.dealsBurst, 1)
+        app.select(.deals)
+        XCTAssertEqual(app.dealsBurst, 2)
+        // Other tabs are not counted.
+        app.select(.home)
+        app.select(.cart)
+        XCTAssertEqual(app.dealsBurst, 2)
+        // A minute in another app changes nothing.
+        let now = Date()
+        app.appLeft(at: now)
+        app.appReturned(at: now.addingTimeInterval(60))
+        app.select(.deals)
+        XCTAssertEqual(app.dealsBurst, 2)
+        // An hour away is the app opened again.
+        app.appLeft(at: now)
+        app.appReturned(at: now.addingTimeInterval(3600))
+        app.select(.deals)
+        XCTAssertEqual(app.dealsBurst, 3)
+        app.select(.deals)
+        XCTAssertEqual(app.dealsBurst, 3)
+    }
+
     /// The sound is in the app, and runs as long as the burst it was made for.
     func testTheSoundIsInTheAppAndAsLongAsTheBurst() throws {
         let url = try XCTUnwrap(Bundle.main.url(forResource: "deals-burst", withExtension: "wav"), "deals-burst.wav is not in the app.")

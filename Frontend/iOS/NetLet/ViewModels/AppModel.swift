@@ -189,8 +189,14 @@ final class AppModel {
     var cartPath = NavigationPath()
     var categoriesPath = NavigationPath()
     var dealsPath = NavigationPath()
-    /// Counts presses on the Deals tab: each plays the tab's burst (`DealsBurst`).
+    /// Counts the presses on the Deals tab that play its burst (`DealsBurst`):
+    /// the first after the app is opened and every twentieth after it
+    /// (`DealsBurstRule`).
     private(set) var dealsBurst = 0
+    /// Presses on the Deals tab since the app was opened.
+    @ObservationIgnored private var dealsPresses = 0
+    /// When the app went to the background, to tell coming back to it from opening it.
+    @ObservationIgnored private var leftAt: Date?
     /// For the screenshots: the burst held at this many seconds in. Debug builds only set it.
     var dealsBurstFrozen: Double?
     /// The header's search, grown down over the page while it is open.
@@ -738,8 +744,24 @@ final class AppModel {
             }
         }
         selectedTab = tab
-        // A press on Deals plays its burst, whichever tab it came from.
-        if tab == .deals { dealsBurst += 1 }
+        // A press on Deals plays its burst the first time after the app is
+        // opened, and again every twentieth press, whichever tab it came from.
+        if tab == .deals {
+            dealsPresses += 1
+            if DealsBurstRule.plays(press: dealsPresses) { dealsBurst += 1 }
+        }
+    }
+
+    /// The app went to the background.
+    func appLeft(at now: Date = Date()) {
+        leftAt = now
+    }
+
+    /// The app came back: after long enough away it has been opened again, and
+    /// the next press on Deals plays its burst.
+    func appReturned(at now: Date = Date()) {
+        if let leftAt, DealsBurstRule.opensAfresh(awayFor: now.timeIntervalSince(leftAt)) { dealsPresses = 0 }
+        leftAt = nil
     }
 
     /// The search the header's field sends: its results page, on the tab

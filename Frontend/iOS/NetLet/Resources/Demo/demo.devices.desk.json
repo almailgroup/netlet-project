@@ -20,7 +20,10 @@
             "lastSignInAt": "2026-11-09T09:12:44.031Z",
             "lastSeenAt": null,
             "lastIp": "37.36.24.118",
-            "current": false
+            "current": false,
+            "warnings": [
+              "accountBlocked"
+            ]
           },
           {
             "id": 2,
@@ -38,7 +41,8 @@
             "lastSignInAt": "2026-11-08T18:02:51.660Z",
             "lastSeenAt": "2026-11-09T09:40:12.118Z",
             "lastIp": "85.154.31.9",
-            "current": true
+            "current": true,
+            "warnings": []
           },
           {
             "id": 1,
@@ -56,7 +60,8 @@
             "lastSignInAt": "2026-11-09T05:58:31.000Z",
             "lastSeenAt": "2026-11-09T08:44:02.000Z",
             "lastIp": "62.150.14.2",
-            "current": false
+            "current": false,
+            "warnings": []
           },
           {
             "id": 3,
@@ -71,26 +76,105 @@
             "approvedBy": "owner@netlet.net",
             "createdAt": "2026-11-03T11:00:00.000Z",
             "decidedAt": "2026-11-06T13:20:00.000Z",
-            "lastSignInAt": "2026-11-05T10:00:00.000Z",
+            "lastSignInAt": "2026-11-08T07:41:09.000Z",
             "lastSeenAt": "2026-11-05T10:20:00.000Z",
             "lastIp": "37.36.24.90",
-            "current": false
+            "current": false,
+            "warnings": []
           }
         ],
         "signIns": [
-          { "id": 91, "at": "2026-11-09T09:12:44.031Z", "account": "sara@netlet.net", "address": "37.36.24.118", "device": "Chrome on Windows", "outcome": "waiting" },
-          { "id": 88, "at": "2026-11-09T05:58:31.000Z", "account": "owner@netlet.net", "address": "62.150.14.2", "device": "Office PC", "outcome": "authorised" },
-          { "id": 84, "at": "2026-11-08T18:02:51.660Z", "account": "owner@netlet.net", "address": "85.154.31.9", "device": "NetLet app on iPhone", "outcome": "authorised" },
-          { "id": 80, "at": "2026-11-07T22:41:09.000Z", "account": "owner@netlet.net", "address": "102.89.4.17", "device": "Firefox on Linux", "outcome": "refused" }
-        ]
+          {
+            "id": 91,
+            "at": "2026-11-09T09:12:44.031Z",
+            "account": "sara@netlet.net",
+            "address": "37.36.24.118",
+            "device": "Chrome on Windows",
+            "outcome": "waiting"
+          },
+          {
+            "id": 88,
+            "at": "2026-11-09T05:58:31.000Z",
+            "account": "owner@netlet.net",
+            "address": "62.150.14.2",
+            "device": "Office PC",
+            "outcome": "authorised"
+          },
+          {
+            "id": 84,
+            "at": "2026-11-08T18:02:51.660Z",
+            "account": "owner@netlet.net",
+            "address": "85.154.31.9",
+            "device": "NetLet app on iPhone",
+            "outcome": "authorised"
+          },
+          {
+            "id": 80,
+            "at": "2026-11-07T22:41:09.000Z",
+            "account": "owner@netlet.net",
+            "address": "102.89.4.17",
+            "device": "Firefox on Linux",
+            "outcome": "refused"
+          }
+        ],
+        "blockedTotal": 1
       },
       "meta": {
         "values": {
-          "devices.0.createdAt": ["Date"], "devices.0.lastSignInAt": ["Date"],
-          "devices.1.createdAt": ["Date"], "devices.1.decidedAt": ["Date"], "devices.1.lastSignInAt": ["Date"], "devices.1.lastSeenAt": ["Date"],
-          "devices.2.createdAt": ["Date"], "devices.2.decidedAt": ["Date"], "devices.2.lastSignInAt": ["Date"], "devices.2.lastSeenAt": ["Date"],
-          "devices.3.createdAt": ["Date"], "devices.3.decidedAt": ["Date"], "devices.3.lastSignInAt": ["Date"], "devices.3.lastSeenAt": ["Date"],
-          "signIns.0.at": ["Date"], "signIns.1.at": ["Date"], "signIns.2.at": ["Date"], "signIns.3.at": ["Date"]
+          "devices.0.createdAt": [
+            "Date"
+          ],
+          "devices.0.lastSignInAt": [
+            "Date"
+          ],
+          "devices.1.createdAt": [
+            "Date"
+          ],
+          "devices.1.decidedAt": [
+            "Date"
+          ],
+          "devices.1.lastSignInAt": [
+            "Date"
+          ],
+          "devices.1.lastSeenAt": [
+            "Date"
+          ],
+          "devices.2.createdAt": [
+            "Date"
+          ],
+          "devices.2.decidedAt": [
+            "Date"
+          ],
+          "devices.2.lastSignInAt": [
+            "Date"
+          ],
+          "devices.2.lastSeenAt": [
+            "Date"
+          ],
+          "devices.3.createdAt": [
+            "Date"
+          ],
+          "devices.3.decidedAt": [
+            "Date"
+          ],
+          "devices.3.lastSignInAt": [
+            "Date"
+          ],
+          "devices.3.lastSeenAt": [
+            "Date"
+          ],
+          "signIns.0.at": [
+            "Date"
+          ],
+          "signIns.1.at": [
+            "Date"
+          ],
+          "signIns.2.at": [
+            "Date"
+          ],
+          "signIns.3.at": [
+            "Date"
+          ]
         }
       }
     }

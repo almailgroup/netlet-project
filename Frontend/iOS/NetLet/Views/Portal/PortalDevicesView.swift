@@ -239,15 +239,27 @@ private struct OwnerDeviceCode: View {
     }
 }
 
-/// The owner's Devices page — the web's `/admin/devices`: every install
-/// waiting or authorised, those turned down or removed, and the recent
-/// sign-ins to the admin side. Removing asks first, and says so when it is
-/// this install.
+/// The owner's Devices page — the web's `/admin/devices`: under their
+/// counts, every install waiting (Approve, or Decline), every one authorised
+/// (Rename, or Remove) and every one blocked (Unblock, or Authorise), then
+/// the recent sign-ins to the admin side.
+///
+/// **Taking a device off asks what happens afterwards, on the owner's word**
+/// ("decide whether they can be logged in and added again or blocked
+/// forever"): Decline and Remove each ask, with one answer that takes the
+/// device off the list so it may ask again and one that blocks it for good.
+/// This install can be removed but not blocked, since a block here could only
+/// be undone from another device. A device that asks says so when its account
+/// or its address already has a blocked device, and "Remove all other
+/// devices" is the one press for a password that may have leaked.
 struct PortalDevicesView: View {
     @State private var desk: DeviceDesk?
     @State private var failed: APIError?
     @State private var busy = false
     @State private var removing: AdminDeviceRow?
+    @State private var declining: AdminDeviceRow?
+    @State private var authorising: AdminDeviceRow?
+    @State private var clearing = false
     @State private var renaming: AdminDeviceRow?
     @State private var name = ""
     @Environment(AppModel.self) private var app
@@ -269,10 +281,32 @@ struct PortalDevicesView: View {
         }
         .task { await load() }
         .alert(l.t("devices.revokeTitle"), isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), presenting: removing) { row in
-            Button(l.t("devices.revoke"), role: .destructive) { Task { await decide(row, "revoke") } }
+            Button(l.t("devices.revoke"), role: .destructive) { Task { await decide(row, "remove", done: "devices.revokedToast") } }
+            if !row.current {
+                Button(l.t("devices.removeAndBlock"), role: .destructive) { Task { await decide(row, "block", done: "devices.blockedToast") } }
+            }
             Button(l.t("common.cancel"), role: .cancel) { removing = nil }
         } message: { row in
-            Text(l.t(row.current ? "devices.revokeBodyCurrent" : "devices.revokeBody", ["device": label(row)]))
+            Text(question(l.t(row.current ? "devices.revokeBodyCurrent" : "devices.revokeBody", ["device": label(row)]), plain: "devices.revoke", block: row.current ? nil : "devices.removeAndBlock", current: row.current))
+        }
+        .alert(l.t("devices.declineTitle"), isPresented: Binding(get: { declining != nil }, set: { if !$0 { declining = nil } }), presenting: declining) { row in
+            Button(l.t("devices.deny"), role: .destructive) { Task { await decide(row, "remove", done: "devices.deniedToast") } }
+            Button(l.t("devices.declineAndBlock"), role: .destructive) { Task { await decide(row, "block", done: "devices.blockedToast") } }
+            Button(l.t("common.cancel"), role: .cancel) { declining = nil }
+        } message: { row in
+            Text(question(l.t("devices.declineBody", ["device": label(row)]), plain: "devices.deny", block: "devices.declineAndBlock", current: false))
+        }
+        .alert(l.t("devices.authoriseTitle"), isPresented: Binding(get: { authorising != nil }, set: { if !$0 { authorising = nil } }), presenting: authorising) { row in
+            Button(l.t("devices.allowAgain")) { Task { await decide(row, "approve", done: "devices.approvedToast") } }
+            Button(l.t("common.cancel"), role: .cancel) { authorising = nil }
+        } message: { row in
+            Text(l.t("devices.authoriseBody", ["device": label(row)]))
+        }
+        .alert(l.t("devices.removeOthersTitle"), isPresented: $clearing) {
+            Button(l.t("devices.removeOthers"), role: .destructive) { Task { await removeOthers() } }
+            Button(l.t("common.cancel"), role: .cancel) { clearing = false }
+        } message: {
+            Text(l.t("devices.removeOthersBody"))
         }
         .alert(l.t("devices.renameTitle"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }), presenting: renaming) { row in
             TextField(l.t("devices.nameLabel"), text: $name)
@@ -287,7 +321,19 @@ struct PortalDevicesView: View {
     private func sections(_ desk: DeviceDesk) -> some View {
         let waiting = desk.devices.filter { $0.status == "pending" }
         let authorised = desk.devices.filter { $0.status == "approved" }
-        let ended = desk.devices.filter { $0.status == "denied" || $0.status == "revoked" }
+        let blocked = desk.devices.filter { $0.blocked }
+        let blockedTotal = desk.blockedTotal ?? blocked.count
+        HStack(alignment: .top, spacing: 8) {
+            PortalStat(label: l.t("devices.waitingHeading"), value: "\(waiting.count)")
+            PortalStat(label: l.t("devices.authorisedHeading"), value: "\(authorised.count)")
+            PortalStat(label: l.t("devices.endedHeading"), value: "\(blockedTotal)")
+        }
+        if authorised.contains(where: { $0.current }), authorised.contains(where: { !$0.current }) {
+            Button { clearing = true } label: { Label(l.t("devices.removeOthers"), systemImage: "xmark.shield") }
+                .buttonStyle(PortalSmallButtonStyle(kind: .danger))
+                .disabled(busy)
+        }
+
         PortalSectionHeading(title: l.t("devices.waitingHeading"))
         if waiting.isEmpty {
             PortalEmpty(text: l.t("devices.noneWaiting"))
@@ -295,11 +341,16 @@ struct PortalDevicesView: View {
             ForEach(waiting) { row in
                 PortalCard {
                     head(row)
+                    ForEach(row.warnings ?? [], id: \.self) { warning in
+                        if let key = Self.warningKeys[warning] {
+                            PortalNotice(text: l.t(key), tone: .warning)
+                        }
+                    }
                     facts([("devices.askedAt", OrderWording.dateTime(row.createdAt, language: l.current)), ("devices.address", row.requestedIp)])
                     HStack(spacing: 8) {
-                        Button { Task { await decide(row, "approve") } } label: { Label(l.t("devices.approve"), systemImage: "checkmark") }
+                        Button { Task { await decide(row, "approve", done: "devices.approvedToast") } } label: { Label(l.t("devices.approve"), systemImage: "checkmark") }
                             .buttonStyle(PortalSmallButtonStyle(kind: .primary))
-                        Button { Task { await decide(row, "deny") } } label: { Label(l.t("devices.deny"), systemImage: "xmark") }
+                        Button { declining = row } label: { Label(l.t("devices.deny"), systemImage: "xmark") }
                             .buttonStyle(PortalSmallButtonStyle(kind: .danger))
                     }
                     .disabled(busy)
@@ -331,16 +382,34 @@ struct PortalDevicesView: View {
             }
         }
 
-        if !ended.isEmpty {
-            PortalSectionHeading(title: l.t("devices.endedHeading"))
-            ForEach(ended) { row in
+        PortalSectionHeading(title: l.t("devices.endedHeading"), note: l.t("devices.blockedNote"))
+        if blocked.isEmpty {
+            PortalEmpty(text: l.t("devices.noneBlocked"))
+        } else {
+            ForEach(blocked) { row in
                 PortalCard {
                     head(row)
-                    facts([(row.status == "denied" ? "devices.deniedAt" : "devices.revokedAt", row.decidedAt.map { OrderWording.dateTime($0, language: l.current) }), ("devices.address", row.lastIp ?? row.requestedIp)])
-                    Button { Task { await decide(row, "approve") } } label: { Label(l.t("devices.allowAgain"), systemImage: "checkmark") }
-                        .buttonStyle(PortalSmallButtonStyle(kind: .secondary))
-                        .disabled(busy)
+                    Text(l.t(row.status == "revoked" ? "devices.hadAccess" : "devices.neverHadAccess"))
+                        .font(.inter(13)).foregroundStyle(Brand.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                    facts([
+                        ("devices.deniedAt", row.decidedAt.map { OrderWording.dateTime($0, language: l.current) }),
+                        ("devices.triedAt", row.triedAt.map { OrderWording.dateTime($0, language: l.current) }),
+                        ("devices.address", row.lastIp ?? row.requestedIp),
+                    ])
+                    HStack(spacing: 8) {
+                        Button { Task { await decide(row, "remove", done: "devices.unblockedToast") } } label: { Label(l.t("devices.unblock"), systemImage: "arrow.uturn.backward") }
+                            .buttonStyle(PortalSmallButtonStyle(kind: .secondary))
+                        Button { authorising = row } label: { Label(l.t("devices.allowAgain"), systemImage: "checkmark") }
+                            .buttonStyle(PortalSmallButtonStyle(kind: .secondary))
+                    }
+                    .disabled(busy)
                 }
+            }
+            if blockedTotal > blocked.count {
+                Text(l.t("devices.blockedMore", ["shown": "\(blocked.count)", "total": "\(blockedTotal)"]))
+                    .font(.inter(13)).foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
 
@@ -368,19 +437,28 @@ struct PortalDevicesView: View {
         }
     }
 
+    /// The warnings a device that asks can carry, by the server's names for them.
+    private static let warningKeys: [String: String] = [
+        "accountBlocked": "devices.warnAccount",
+        "addressBlocked": "devices.warnAddress",
+    ]
+
     private func head(_ row: AdminDeviceRow) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: Self.isPhone(row.name) ? "iphone" : "desktopcomputer")
+            Image(systemName: row.blocked ? "nosign" : Self.isPhone(row.name) ? "iphone" : "desktopcomputer")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Brand.navy)
+                .foregroundStyle(row.blocked ? Brand.danger : Brand.navy)
                 .frame(width: 40, height: 40)
-                .background(Circle().fill(Brand.tint))
+                .background(Circle().fill(row.blocked ? Brand.danger.opacity(0.1) : Brand.tint))
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(row.name ?? l.t("devices.unnamed")).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if row.current { StatusPill(label: l.t("devices.thisOne"), tone: .portal("navy")) }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(row.name ?? l.t("devices.unnamed")).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
+                    .fixedSize(horizontal: false, vertical: true)
+                if row.current || row.active() {
+                    HStack(spacing: 6) {
+                        if row.current { StatusPill(label: l.t("devices.thisOne"), tone: .portal("navy")) }
+                        if row.active() { StatusPill(label: l.t("devices.activeNow"), tone: .portal("good")) }
+                    }
                 }
                 HStack(spacing: 6) {
                     Text(row.account ?? "#\(row.userId)").font(.inter(13)).foregroundStyle(Brand.body)
@@ -399,6 +477,15 @@ struct PortalDevicesView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    /// What a question says under its title: what happens now, then what each
+    /// answer means for afterwards, by the words on its button.
+    private func question(_ body: String, plain: String, block: String?, current: Bool) -> String {
+        var lines = [body, "\(l.t(plain)): \(l.t("devices.choiceAskAgainNote"))"]
+        if let block { lines.append("\(l.t(block)): \(l.t("devices.choiceBlockNote"))") }
+        if current { lines.append(l.t("devices.blockCurrentNote")) }
+        return lines.joined(separator: "\n\n")
     }
 
     /// A phone or a tablet, by the name the device gave, for its picture.
@@ -455,16 +542,34 @@ struct PortalDevicesView: View {
         }
     }
 
-    private func decide(_ row: AdminDeviceRow, _ decision: String) async {
+    /// One decision about one device — `approve`, `block` or `remove` — saying
+    /// `done` when it lands. The list is read again either way: a refusal is
+    /// usually somebody else having decided first.
+    private func decide(_ row: AdminDeviceRow, _ decision: String, done: String) async {
         busy = true
         defer { busy = false }
-        let done = decision == "approve" ? "devices.approvedToast" : decision == "deny" ? "devices.deniedToast" : "devices.revokedToast"
-        if await app.attempt(done: done, fallback: "admin.saveFailed", {
+        _ = await app.attempt(done: done, fallback: "admin.saveFailed", {
             _ = try await app.services.api.call(API.decideDevice, .init(id: row.id, decision: decision))
-        }) {
-            removing = nil
-            await load()
+        })
+        removing = nil
+        declining = nil
+        authorising = nil
+        await load()
+    }
+
+    private func removeOthers() async {
+        busy = true
+        defer { busy = false }
+        clearing = false
+        do {
+            let answer = try await app.services.api.call(API.removeOtherDevices)
+            app.toast(l.t(answer.removed > 0 ? "devices.removedOthersToast" : "devices.noOthersToast"))
+        } catch {
+            let refusal = APIError.from(error).messageKey(knownKey: Phrasebook.shared.has)
+            Haptics.refused()
+            app.toast(l.t(refusal == "error.serverProblem" ? "admin.saveFailed" : refusal))
         }
+        await load()
     }
 
     private func rename(_ row: AdminDeviceRow) async {

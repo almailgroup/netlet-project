@@ -6269,8 +6269,9 @@ one every hour, and the owner asked for devices.
   portal then draws `DeviceGate` and nothing else, asking every five seconds,
   and opens by itself on the owner's yes; a signed-out browser no device of
   which is authorised meets "This device isn't authorised for NetLet Admin"
-  before the form (`devices.access`'s `known`). A device turned down or
-  removed cannot ask again; only the owner allows it again.
+  before the form (`devices.access`'s `known`). A device the owner blocked
+  cannot ask again; one the owner only removed asks afresh at its next
+  sign-in (below).
 - **The owner's own device is authorised by a code emailed to the owner**
   (`devices.codeStart`/`codeVerify`: Supabase's "Magic Link" mail, the
   sign-in code's, or the server log with no Supabase), which is how the first
@@ -6278,16 +6279,52 @@ one every hour, and the owner asked for devices.
 - **The Devices page is the owner's alone** (`/admin/devices`,
   `platform.devices`, which `can()` grants only to the admin actor marked
   `owner`, and only on a device already authorised, since anywhere else the
-  owner is a shopper too): what waits, with Approve and Turn down; what is
-  authorised, with who, when and how, the last sign-in, last active (written
-  at most once a minute) and the address, with Rename and Remove (asked first,
-  and said when it is the device being read on); what was turned down or
-  removed, with Allow again; and the recent sign-ins to the admin side from
-  the audit trail (`admin.signIn` now records the device and whether it was
-  authorised). Each move names the state it leaves in its predicate and is
-  on the trail (`device.request`, `.approve`, `.deny`, `.revoke`, `.rename`).
-  The overview has the waiting tile; the app's portal is the same page
+  owner is a shopper too): three counts leading to three lists — what waits,
+  what is authorised (who, when and how, the last sign-in, last active,
+  written at most once a minute, the address, "Active now" inside
+  `DEVICE_ACTIVE_MS`, the device being read on first), and what is blocked —
+  and the recent sign-ins to the admin side from the audit trail
+  (`admin.signIn` records the device and whether it was authorised). The
+  overview has the waiting tile; the app's portal is the same page
   (`PortalDevicesView`, `DeviceGateView`).
+- **Taking a device off is the owner's choice of two, on the owner's word**
+  ("I can't fully remove a device from the devices list … decide whether they
+  can be logged in and added again or blocked forever"). It had one answer:
+  Remove kept the row as `revoked` and Turn down as `denied`, so the device
+  stayed on the page for good and could never ask again unless the owner
+  found "Allow again". Now **Remove deletes the row** — the device is
+  forgotten, off every list, and its next sign-in asks afresh like a device
+  NetLet never saw — and **Block keeps it** (`denied` from waiting, `revoked`
+  from authorised: the two states the table always had, so no migration),
+  listed under Blocked devices with whether it ever had access and when it
+  last tried, refused at every sign-in without the owner being asked.
+  Declining a request and removing an authorised device each ask which
+  (`AfterwardsChoice`, two radios, "It can ask again" chosen to start; the
+  app's alerts offer both buttons); a blocked device has **Unblock** (the row
+  goes, it may ask again) and **Authorise** (straight to `approved`, asked
+  first). `deviceMove` and `deviceAuditAction` (`Shared/auth/adminDevice.ts`)
+  are the rule, pure: `decideDevice` deletes or updates with the state it
+  found in the predicate, so two presses cannot both land (`devices.moved`),
+  and the trail says which it was (`device.approve`, `.block`, `.remove`,
+  `.decline`, `.unblock`, `.removeOthers`, beside `.request` and `.rename`).
+  An installed app that still sends `deny` or `revoke` blocks, as it meant.
+  **The device the owner is reading on can be removed and never blocked**
+  (`devices.blockCurrent`; the choice is drawn off with the reason), since a
+  block there would lock the owner out with nobody to undo it. **"Remove all
+  other devices"** (`devices.removeOthers`) forgets every authorised device
+  but the owner's own in one press, leaving what waits and what is blocked,
+  and refuses when the owner is not on an authorised device of their own
+  (`devices.noDeviceToKeep`). **A request says when its account or its
+  address already has a blocked device** (`DeviceWarning`, `warnAccount`,
+  `warnAddress`), because **a block is on the secret the device keeps**: a
+  browser whose site data was cleared, or an app deleted and installed
+  again, is a new device to NetLet and can ask. Keeping a person out
+  altogether is taking their administrator role away on People.
+  `devices.test.ts` holds each move against a real Postgres. Walked on a
+  production build against a local Postgres at 320, 390 and 1440 in both
+  languages: every dialog axe clean with focus on Cancel, the block choice
+  off for the owner's own device, each press landing as designed, no sideways
+  scroll.
 - **It fails closed, and has one way off.** No secret, a secret NetLet does
   not hold, any state but `approved`, the table missing (before 0079 is
   pasted, when the gate says so) and a read that failed are all "not
@@ -8695,13 +8732,23 @@ soft falling whistle as it hops home and a small pock as it lands in the tab
 (1.66) — E major, the key of the launch and the order sounds, at their
 loudness. Ambient, so the Ring/Silent switch silences it and music keeps
 playing; made ready three seconds after launch so the first press starts it
-with the leap; started again from its beginning by a second press, as the
-burst is. A test holds that the file is in the app and as long as the burst.
+with the leap; started from its beginning each time the burst plays. A test
+holds that the file is in the app and as long as the burst.
 Nothing plays under Reduce Motion, sound included. **The look was drawn first
 in a browser canvas with the same arithmetic** (a scratch prototype, not
 committed), because one frozen frame from the CI cannot say how a two-second
 animation moves; the Swift is that prototype ported, and its tests'
-expectations were checked against it.
+expectations were checked against it. **It plays on the first press of Deals
+after the app is opened and on every twentieth after that, on the owner's
+word** ("should only play once, when the app is opened and the user taps on
+it … and again after 20 taps on deals"; `DealsBurstRule`, tested: presses 1,
+21 and 41): it played on every press, which is a treat the first time and a
+two-second delay the tenth. `AppModel.select` counts the presses and moves
+`dealsBurst` only for those, so the sound, the taps and the shelves' rise go
+with it and every other press just opens the page. **Thirty minutes in the
+background is opening the app again** (`AppAway`, `appLeft` and
+`appReturned`): iOS keeps an app alive for days, so "opened" read as a cold
+launch alone would be once a week; a glance at another app is not opening it.
 
 **The requirements were checked against the app, on the owner's word** ("go
 through the requirements document … and check if every requirement is met"),

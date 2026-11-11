@@ -7,14 +7,15 @@
  * Two halves. **This device**: where it stands, asking, and — for the owner
  * alone — authorising it with a code emailed to the owner's address, which is
  * how the owner's first device gets in. **The owner's desk**: every device
- * waiting or authorised, the sign-ins to the admin side, and approving,
- * turning down, removing and naming them — `platform.devices`, which only the
- * owner holds, and only on a device already authorised, since an account on
- * any other device is a shopper for that request.
+ * waiting, authorised or blocked, the sign-ins to the admin side, and
+ * authorising, blocking, removing from the list and naming them —
+ * `platform.devices`, which only the owner holds, and only on a device
+ * already authorised, since an account on any other device is a shopper for
+ * that request.
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { DEVICE_COOKIE, DEVICE_HEADER, DEVICE_NAME_MAX } from "../../../Shared/auth/adminDevice.js";
+import { DEVICE_COOKIE, DEVICE_DECISIONS, DEVICE_HEADER, DEVICE_NAME_MAX, deviceAuditAction, type DeviceState } from "../../../Shared/auth/adminDevice.js";
 import { isCodeShaped, normaliseCode } from "../../../Shared/auth/emailCode.js";
 import { can } from "../../../Shared/inventory/permissions.js";
 import { getSessionCookieOptions } from "../core/cookies.js";
@@ -36,6 +37,7 @@ import {
   deviceTokenOf,
   devicesWaiting,
   knownDevice,
+  removeOtherDevices,
   renameDevice,
   requestDevice,
   tellOwnerOfDevice,
@@ -176,7 +178,7 @@ export const devicesRouter = router({
   /** The owner's desk: every device and the recent sign-ins. */
   desk: protectedProcedure.query(async ({ ctx }) => {
     await deskActor(ctx);
-    return deviceDesk(deviceTokenOf(ctx.req));
+    return deviceDesk(deviceTokenOf(ctx.req), ctx.user.id);
   }),
 
   /** How many devices wait for the owner, for the overview's tile. */
@@ -185,28 +187,58 @@ export const devicesRouter = router({
     return devicesWaiting();
   }),
 
-  /** Approve (or allow again), turn down, or remove one device. */
+  /**
+   * The owner's decision on one device: authorise it, block it (it can never
+   * ask again), or remove it from the list (it is forgotten, and asks afresh
+   * if its user signs in there again). The device the owner is deciding on
+   * can be removed but not blocked.
+   */
   decide: protectedProcedure
-    .input(z.object({ id: rowId, decision: z.enum(["approve", "deny", "revoke"]) }))
+    .input(z.object({ id: rowId, decision: z.enum(DEVICE_DECISIONS) }))
     .mutation(async ({ ctx, input }) => {
       await deskActor(ctx);
       const before = await deviceById(input.id);
       if (!before) throw new TRPCError({ code: "NOT_FOUND", message: "devices.notFound" });
-      const row = await decideDevice(ctx.user.id, input.id, input.decision);
-      if (!row) throw new TRPCError({ code: "CONFLICT", message: "devices.moved" });
+      const decided = await decideDevice(ctx.user.id, before, input.decision, deviceTokenOf(ctx.req));
+      if (decided === "current") throw new TRPCError({ code: "BAD_REQUEST", message: "devices.blockCurrent" });
+      if (!decided) throw new TRPCError({ code: "CONFLICT", message: "devices.moved" });
       await recordAudit(
         { id: ctx.user.id, email: ctx.user.email, role: "admin" },
         {
-          action: input.decision === "approve" ? "device.approve" : input.decision === "deny" ? "device.deny" : "device.revoke",
+          action: deviceAuditAction(before.status as DeviceState, input.decision),
           subjectType: "device",
-          subjectId: row.id,
-          subjectLabel: `${before.account ?? before.userId} · ${row.name ?? ""}`,
+          subjectId: before.id,
+          subjectLabel: `${before.account ?? before.userId} · ${before.name ?? ""}`,
           before: { status: before.status },
-          after: { status: row.status, ...(input.decision === "approve" ? { how: "owner" } : {}) },
+          after: { status: decided.status, ...(decided.status === "approved" ? { how: "owner" } : {}) },
         },
       );
-      return { id: row.id, status: row.status };
+      return { id: before.id, status: decided.status };
     }),
+
+  /**
+   * Every authorised device but this one, removed from the list at once: the
+   * lever for a password that may have leaked. Each asks afresh at its next
+   * sign-in.
+   */
+  removeOthers: protectedProcedure.mutation(async ({ ctx }) => {
+    await deskActor(ctx);
+    const gone = await removeOtherDevices(ctx.user.id, deviceTokenOf(ctx.req));
+    if (!gone) throw new TRPCError({ code: "BAD_REQUEST", message: "devices.noDeviceToKeep" });
+    if (gone.length) {
+      await recordAudit(
+        { id: ctx.user.id, email: ctx.user.email, role: "admin" },
+        {
+          action: "device.removeOthers",
+          subjectType: "device",
+          subjectId: null,
+          subjectLabel: String(gone.length),
+          after: { removed: gone.slice(0, 50).map(row => `${row.account ?? row.userId} · ${row.name ?? ""}`) },
+        },
+      );
+    }
+    return { removed: gone.length };
+  }),
 
   /** The owner's own name for a device. */
   rename: protectedProcedure

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deviceLabel, deviceNameFrom, isDeviceToken } from "./adminDevice";
+import { DEVICE_STATES, deviceActive, deviceAuditAction, deviceLabel, deviceMove, deviceNameFrom, isBlocked, isDeviceToken, moveOf, statesFor } from "./adminDevice";
 
 describe("a device secret", () => {
   it("is long, random and URL-safe", () => {
@@ -39,5 +39,58 @@ describe("a device's name", () => {
     expect(deviceLabel("  Office   PC ")).toBe("Office PC");
     expect(deviceLabel("   ")).toBeNull();
     expect(deviceLabel("x".repeat(100))).toHaveLength(80);
+  });
+});
+
+describe("what the owner decides about a device", () => {
+  it("authorises one that waits or is blocked, and not one already authorised", () => {
+    expect(deviceMove("pending", "approve")).toBe("approved");
+    expect(deviceMove("denied", "approve")).toBe("approved");
+    expect(deviceMove("revoked", "approve")).toBe("approved");
+    expect(deviceMove("approved", "approve")).toBeNull();
+  });
+
+  it("blocks one that waits or is authorised, keeping which it was", () => {
+    expect(deviceMove("pending", "block")).toBe("denied");
+    expect(deviceMove("approved", "block")).toBe("revoked");
+    expect(deviceMove("denied", "block")).toBeNull();
+    expect(deviceMove("revoked", "block")).toBeNull();
+    expect(isBlocked("denied")).toBe(true);
+    expect(isBlocked("revoked")).toBe(true);
+    expect(isBlocked("pending")).toBe(false);
+    expect(isBlocked("approved")).toBe(false);
+  });
+
+  it("removes one from the list whatever it was", () => {
+    for (const state of DEVICE_STATES) expect(deviceMove(state, "remove")).toBe("removed");
+    expect(statesFor("remove")).toEqual([...DEVICE_STATES]);
+  });
+
+  it("reads the older names as blocking", () => {
+    expect(moveOf("deny")).toBe("block");
+    expect(moveOf("revoke")).toBe("block");
+    expect(deviceMove("pending", "deny")).toBe("denied");
+    expect(deviceMove("approved", "revoke")).toBe("revoked");
+    expect(statesFor("block")).toEqual(["pending", "approved"]);
+    expect(statesFor("approve")).toEqual(["pending", "denied", "revoked"]);
+  });
+
+  it("names each decision for the trail by what it found", () => {
+    expect(deviceAuditAction("pending", "approve")).toBe("device.approve");
+    expect(deviceAuditAction("approved", "block")).toBe("device.block");
+    expect(deviceAuditAction("pending", "deny")).toBe("device.block");
+    expect(deviceAuditAction("approved", "remove")).toBe("device.remove");
+    expect(deviceAuditAction("pending", "remove")).toBe("device.decline");
+    expect(deviceAuditAction("denied", "remove")).toBe("device.unblock");
+    expect(deviceAuditAction("revoked", "remove")).toBe("device.unblock");
+  });
+
+  it("calls a device active only while it was seen in the last five minutes", () => {
+    const now = new Date("2026-11-11T12:00:00Z");
+    expect(deviceActive(new Date("2026-11-11T11:57:00Z"), now)).toBe(true);
+    expect(deviceActive("2026-11-11T11:55:01Z", now)).toBe(true);
+    expect(deviceActive(new Date("2026-11-11T11:54:59Z"), now)).toBe(false);
+    expect(deviceActive(null, now)).toBe(false);
+    expect(deviceActive("not a date", now)).toBe(false);
   });
 });

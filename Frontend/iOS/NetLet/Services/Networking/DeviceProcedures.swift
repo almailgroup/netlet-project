@@ -35,6 +35,23 @@ struct AdminDeviceRow: Decodable, Sendable, Identifiable, Hashable {
     let lastIp: String?
     /// The install this page is being read on.
     let current: Bool
+    /// Why to look twice at one that is asking: `accountBlocked`, `addressBlocked`.
+    var warnings: [String]?
+
+    /// Blocked: turned away while it waited (`denied`) or after it was authorised (`revoked`).
+    var blocked: Bool { status == "denied" || status == "revoked" }
+
+    /// In use now: seen in the last five minutes (`deviceActive`).
+    func active(now: Date = Date()) -> Bool {
+        guard status == "approved", let lastSeenAt else { return false }
+        return now.timeIntervalSince(lastSeenAt) < 5 * 60
+    }
+
+    /// When a blocked device last tried to sign in, if it has since it was blocked.
+    var triedAt: Date? {
+        guard blocked, let lastSignInAt, let decidedAt, lastSignInAt > decidedAt else { return nil }
+        return lastSignInAt
+    }
 }
 
 /// One sign-in to the admin side, from the audit trail.
@@ -53,6 +70,12 @@ struct DeviceDesk: Decodable, Sendable {
     let ready: Bool
     let devices: [AdminDeviceRow]
     let signIns: [AdminSignIn]
+    /// How many devices are blocked in all, where the list shows only the newest.
+    var blockedTotal: Int?
+}
+
+struct DevicesRemoved: Decodable, Sendable {
+    let removed: Int
 }
 
 struct DeviceAccessReply: Decodable, Sendable {
@@ -76,7 +99,8 @@ extension API {
 
     struct DeviceDecision: Encodable, Sendable {
         let id: Int
-        /// `approve`, `deny` or `revoke`.
+        /// `approve`, `block` (it can never ask again) or `remove` (it is
+        /// forgotten, and may ask again) — `deviceMove` on the server.
         let decision: String
     }
 
@@ -93,4 +117,5 @@ extension API {
     static let devicesWaiting = Procedure<NoInput, Int>(query: "devices.waiting")
     static let decideDevice = Procedure<DeviceDecision, DeviceDecided>(mutation: "devices.decide")
     static let renameDevice = Procedure<DeviceRename, Acknowledged>(mutation: "devices.rename")
+    static let removeOtherDevices = Procedure<NoInput, DevicesRemoved>(mutation: "devices.removeOthers")
 }

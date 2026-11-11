@@ -7,8 +7,9 @@
  * employee's grant — hold only on a device the owner authorised, on every
  * address; a password alone opens nothing; the owner's first device gets in
  * by the emailed code; only the owner, on an authorised device, decides any
- * device; removing one ends its rights on the next request; a device turned
- * down cannot keep asking; and with the table missing nothing is authorised.
+ * device; taking one off ends its rights on the next request; a device that
+ * is blocked cannot keep asking, and one removed from the list is forgotten
+ * and asks afresh; and with the table missing nothing is authorised.
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
@@ -16,7 +17,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { adminDevices, auditLog, notifications, staffGrants, users, type User } from "../../database/schema.js";
+import { adminDevices, auditLog, authAttempts, notifications, staffGrants, users, type User } from "../../database/schema.js";
 import type { TrpcContext } from "../core/context.js";
 import { DEVICE_COOKIE, DEVICE_HEADER } from "../../../Shared/auth/adminDevice.js";
 import { can } from "../../../Shared/inventory/permissions.js";
@@ -119,7 +120,11 @@ beforeAll(async () => {
   owner = await account("admin", "owner@netlet.test");
 }, 60_000);
 
-afterEach(() => {
+afterEach(async () => {
+  /* Every test that needs the owner on a device has a code emailed, and the
+     ceiling on those is counted per address: it is not what is being tested
+     here, so each test starts with none sent. */
+  await db.delete(authAttempts);
   vi.unstubAllEnvs();
   vi.stubEnv("JWT_SECRET", "a-test-secret-for-signing-sessions-0123456789");
   vi.stubEnv("DATABASE_URL", "postgres://unused@localhost:5432/unused");
@@ -247,7 +252,8 @@ describe("the owner decides", () => {
     expect((await asSeenFrom(laptop, admin)).role).toBe("user");
     expect(await (await callerFrom(laptop, admin)).devices.access()).toMatchObject({ access: "revoked", deviceName: "Office PC" });
     const actions = (await db.select({ action: auditLog.action }).from(auditLog).where(eq(auditLog.subjectId, waiting.id))).map(row => row.action);
-    expect(actions).toEqual(expect.arrayContaining(["device.request", "device.approve", "device.rename", "device.revoke"]));
+    // `revoke` is what blocking an authorised device was called, and still is to an earlier build of the app.
+    expect(actions).toEqual(expect.arrayContaining(["device.request", "device.approve", "device.rename", "device.block"]));
     // Twice is refused rather than written twice.
     await expect((await callerFrom(ownerDevice, owner)).devices.decide({ id: waiting.id, decision: "revoke" })).rejects.toMatchObject({ code: "CONFLICT" });
   });
@@ -268,6 +274,162 @@ describe("the owner decides", () => {
     // The owner can allow it again.
     await (await callerFrom(ownerDevice, owner)).devices.decide({ id: row.id, decision: "approve" });
     expect((await asSeenFrom(laptop, admin)).role).toBe("admin");
+  });
+});
+
+describe("taking a device off is the owner's choice of two", () => {
+  /** An administrator's laptop, signed in on the admin portal and so asking. */
+  async function asking() {
+    const admin = await account("admin");
+    const laptop = deviceAt("admin.netlet.test");
+    const signIn = () => appRouter.createCaller({ user: null, req: laptop.req(), res: laptop.res() }).auth.login({ email: admin.email, password: PASSWORD });
+    await signIn();
+    const row = async () => (await db.select().from(adminDevices).where(eq(adminDevices.userId, admin.id)))[0];
+    return { admin, laptop, signIn, row };
+  }
+  const requests = async () => (await db.select().from(notifications).where(eq(notifications.kind, "staff_device_request"))).length;
+  const trail = async (id: number) => (await db.select({ action: auditLog.action }).from(auditLog).where(and(eq(auditLog.subjectType, "device"), eq(auditLog.subjectId, id)))).map(entry => entry.action);
+
+  it("forgets a device removed from the list, which then asks afresh", async () => {
+    const desk = await callerFrom(await ownersDevice(), owner);
+    const { admin, laptop, signIn, row } = await asking();
+    const first = await row();
+    await desk.devices.decide({ id: first.id, decision: "approve" });
+    expect((await asSeenFrom(laptop, admin)).role).toBe("admin");
+
+    expect(await desk.devices.decide({ id: first.id, decision: "remove" })).toEqual({ id: first.id, status: "removed" });
+    expect(await row()).toBeUndefined();
+    // Its rights are gone on the next request, and it is a device nobody knows.
+    expect((await asSeenFrom(laptop, admin)).role).toBe("user");
+    expect(await (await callerFrom(laptop, admin)).devices.access()).toMatchObject({ access: "none" });
+    expect(await trail(first.id)).toEqual(expect.arrayContaining(["device.remove"]));
+    expect((await desk.devices.desk()).devices.some((device: { id: number }) => device.id === first.id)).toBe(false);
+
+    // Signing in there again asks the owner again, as a new device would.
+    const told = await requests();
+    await signIn();
+    const again = await row();
+    expect(again).toMatchObject({ status: "pending" });
+    expect(again.id).not.toBe(first.id);
+    expect(await requests()).toBe(told + 1);
+    // Removing what is gone is refused, not written.
+    await expect(desk.devices.decide({ id: first.id, decision: "remove" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("declines a device that waits without blocking it", async () => {
+    const desk = await callerFrom(await ownersDevice(), owner);
+    const { admin, laptop, row } = await asking();
+    const first = await row();
+    await desk.devices.decide({ id: first.id, decision: "remove" });
+    expect(await trail(first.id)).toEqual(expect.arrayContaining(["device.decline"]));
+    expect(await row()).toBeUndefined();
+    await (await callerFrom(laptop, admin)).devices.request();
+    expect(await row()).toMatchObject({ status: "pending" });
+  });
+
+  it("blocks a device for good, until the owner unblocks it", async () => {
+    const desk = await callerFrom(await ownersDevice(), owner);
+    const { admin, laptop, signIn, row } = await asking();
+    const first = await row();
+    await desk.devices.decide({ id: first.id, decision: "approve" });
+    expect(await desk.devices.decide({ id: first.id, decision: "block" })).toEqual({ id: first.id, status: "revoked" });
+    expect((await asSeenFrom(laptop, admin)).role).toBe("user");
+    expect(await (await callerFrom(laptop, admin)).devices.access()).toMatchObject({ access: "revoked" });
+
+    // It cannot ask again: signing in and asking make nothing and tell nobody.
+    const told = await requests();
+    await signIn();
+    await (await callerFrom(laptop, admin)).devices.request();
+    expect(await row()).toMatchObject({ id: first.id, status: "revoked" });
+    expect(await requests()).toBe(told);
+    const listed = (await desk.devices.desk()).devices.find((device: { id: number }) => device.id === first.id);
+    expect(listed).toMatchObject({ status: "revoked", warnings: [] });
+    expect((await desk.devices.desk()).blockedTotal).toBeGreaterThan(0);
+    // Blocked already: blocking again is refused.
+    await expect(desk.devices.decide({ id: first.id, decision: "block" })).rejects.toMatchObject({ code: "CONFLICT" });
+
+    // Unblocking is removing the block: the device is forgotten, and may ask.
+    expect(await desk.devices.decide({ id: first.id, decision: "remove" })).toEqual({ id: first.id, status: "removed" });
+    expect(await trail(first.id)).toEqual(expect.arrayContaining(["device.block", "device.unblock"]));
+    expect(await (await callerFrom(laptop, admin)).devices.access()).toMatchObject({ access: "none" });
+    await signIn();
+    expect(await row()).toMatchObject({ status: "pending" });
+    expect(await requests()).toBe(told + 1);
+  });
+
+  it("blocks a device that waits, and authorises a blocked one outright", async () => {
+    const desk = await callerFrom(await ownersDevice(), owner);
+    const { admin, laptop, row } = await asking();
+    const first = await row();
+    expect(await desk.devices.decide({ id: first.id, decision: "block" })).toEqual({ id: first.id, status: "denied" });
+    expect(await (await callerFrom(laptop, admin)).devices.access()).toMatchObject({ access: "denied" });
+    expect(await desk.devices.decide({ id: first.id, decision: "approve" })).toEqual({ id: first.id, status: "approved" });
+    expect((await asSeenFrom(laptop, admin)).role).toBe("admin");
+  });
+
+  it("marks a request whose account or address already has a blocked device", async () => {
+    const desk = await callerFrom(await ownersDevice(), owner);
+    const { admin, row } = await asking();
+    await desk.devices.decide({ id: (await row()).id, decision: "block" });
+    // The same person, from a browser with nothing remembered.
+    const wiped = deviceAt("admin.netlet.test");
+    await appRouter.createCaller({ user: null, req: wiped.req(), res: wiped.res() }).auth.login({ email: admin.email, password: PASSWORD });
+    const listed = (await desk.devices.desk()).devices.filter((device: { userId: number; status: string }) => device.userId === admin.id && device.status === "pending");
+    expect(listed).toHaveLength(1);
+    expect(listed[0].warnings).toEqual(["accountBlocked", "addressBlocked"]);
+    // Somebody else at that address is marked for the address alone.
+    const other = await asking();
+    const theirs = (await desk.devices.desk()).devices.find((device: { userId: number }) => device.userId === other.admin.id);
+    expect(theirs.warnings).toEqual(["addressBlocked"]);
+  });
+
+  it("will not block the device the owner is on, and removes it", async () => {
+    const device = await ownersDevice();
+    const desk = await callerFrom(device, owner);
+    const mine = (await desk.devices.desk()).devices.find((row: { current: boolean }) => row.current);
+    expect(mine).toMatchObject({ userId: owner.id, status: "approved" });
+    // The device being read on leads the authorised list.
+    expect((await desk.devices.desk()).devices.filter((row: { status: string }) => row.status === "approved")[0].id).toBe(mine.id);
+    await expect(desk.devices.decide({ id: mine.id, decision: "block" })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "devices.blockCurrent" });
+    expect((await asSeenFrom(device, owner)).role).toBe("admin");
+
+    await desk.devices.decide({ id: mine.id, decision: "remove" });
+    expect((await asSeenFrom(device, owner)).role).toBe("user");
+    // The owner comes back the way the first device got in: signing in, then the emailed code.
+    await appRouter.createCaller({ user: null, req: device.req(), res: device.res() }).auth.login({ email: owner.email, password: PASSWORD });
+    const back = await callerFrom(device, owner);
+    const code = await emailedCode(() => back.devices.codeStart());
+    expect(await back.devices.codeVerify({ code })).toEqual({ access: "trusted" });
+  });
+
+  it("removes every other authorised device at once, and keeps this one", async () => {
+    const device = await ownersDevice();
+    const desk = await callerFrom(device, owner);
+    const first = await asking();
+    const second = await asking();
+    const waits = await asking();
+    const barred = await asking();
+    await desk.devices.decide({ id: (await first.row()).id, decision: "approve" });
+    await desk.devices.decide({ id: (await second.row()).id, decision: "approve" });
+    await desk.devices.decide({ id: (await barred.row()).id, decision: "block" });
+    // Only the owner, on an authorised device, has the lever.
+    await expect((await callerFrom(first.laptop, first.admin)).devices.removeOthers()).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const answer = await desk.devices.removeOthers();
+    expect(answer.removed).toBeGreaterThanOrEqual(2);
+    expect((await asSeenFrom(first.laptop, first.admin)).role).toBe("user");
+    expect((await asSeenFrom(second.laptop, second.admin)).role).toBe("user");
+    expect(await first.row()).toBeUndefined();
+    expect((await asSeenFrom(device, owner)).role).toBe("admin");
+    // What waits and what is blocked are left as they are.
+    expect(await waits.row()).toMatchObject({ status: "pending" });
+    expect(await barred.row()).toMatchObject({ status: "denied" });
+    const approved = await db.select().from(adminDevices).where(eq(adminDevices.status, "approved"));
+    expect(approved).toHaveLength(1);
+    expect(approved[0].userId).toBe(owner.id);
+    const noted = await db.select().from(auditLog).where(eq(auditLog.action, "device.removeOthers"));
+    expect(noted.at(-1)?.after).toMatchObject({ removed: expect.arrayContaining([expect.stringContaining(first.admin.email!)]) });
+    expect(await desk.devices.removeOthers()).toEqual({ removed: 0 });
   });
 });
 
