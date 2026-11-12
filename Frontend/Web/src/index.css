@@ -538,7 +538,10 @@
      white — a pearl tick-box row, a row on the navy summary — laid over the
      fill rather than replacing it, so pearl stays pearl and navy stays navy. */
   @media (hover: hover) {
-    .tint-on-hover:hover {
+    .tint-on-hover:hover,
+    /* The same, on the one part of a larger link that has a fill — a category
+       tile's picture, a store's circle — while the pointer is anywhere on it. */
+    .group:hover > .tint-in-group {
       box-shadow: inset 0 0 0 100vmax var(--hover-tint);
     }
   }
@@ -670,32 +673,11 @@
 }
 
 /*
- * The Categories page (`pages/Categories.tsx`), on the owner's word ("when
- * you select any of them it gets a bit bigger … smooth animation for
- * everything"). The chosen department's tile grows on a spring that settles
- * a touch past its size and back; a press gives under the finger; the
- * department's subcategories rise into place one after another, each a
- * beat behind the one before (`--rise`, its place in the list); a row lifts
- * a little under a mouse and gives under a press. Transforms and opacity on
- * plain white cards, nothing behind them to blur. Under reduced motion the
- * chosen tile is still the larger, without the spring, and nothing rises.
+ * The Categories page (`pages/Categories.tsx`): a department's subcategories
+ * rise into place one after another as it opens, each a beat behind the one
+ * before (`--rise`, its place in the list), and a row gives under a press.
+ * Transforms and opacity alone; nothing rises under reduced motion.
  */
-.cat-tile {
-  transition:
-    transform 460ms cubic-bezier(0.34, 1.56, 0.64, 1),
-    border-color 220ms var(--ease-out),
-    box-shadow 320ms var(--ease-out);
-}
-.cat-tile[data-chosen] {
-  transform: scale(1.08);
-}
-.cat-tile-press:active .cat-tile {
-  transform: scale(0.95);
-  transition-duration: 140ms;
-}
-.cat-tile-press:active .cat-tile[data-chosen] {
-  transform: scale(1.03);
-}
 .cat-rise {
   animation: cat-rise 420ms var(--ease-out) both;
   animation-delay: calc(var(--rise, 0) * 40ms);
@@ -727,13 +709,17 @@
 }
 /*
  * A department's tile on the Categories page, which opens and closes its
- * panel: it gives under the finger, and the open one is rimmed in navy.
+ * subcategories: it gives under the finger, and the open one's picture is
+ * rimmed in navy (an outline, which follows the rounded corners and leaves
+ * the hover's inset tint its own box-shadow).
  */
 .cat-dtile {
+  transition: transform 220ms var(--ease-out);
+}
+.cat-dtile-art {
   transition:
-    transform 220ms var(--ease-out),
-    border-color 220ms var(--ease-out),
-    box-shadow 320ms var(--ease-out);
+    outline-color 220ms var(--ease-out),
+    box-shadow 120ms var(--ease-out);
 }
 .cat-dtile:active {
   transform: scale(0.97);
@@ -762,8 +748,7 @@
     animation: none;
   }
   .cat-row:active,
-  .cat-dtile:active,
-  .cat-tile-press:active .cat-tile {
+  .cat-dtile:active {
     transform: none;
   }
   .cat-unfold {

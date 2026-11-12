@@ -6,12 +6,14 @@ import SwiftUI
 /// words their products are called by answer (each saying which department
 /// it is in), and the stores by either of their names, in place of the
 /// tiles; with nothing, the shop's own search for the same words a press away.
+/// A department found opens the page on it; a subcategory found opens its
+/// products, as a row of the open department does.
 /// Matched by `SearchRank.textsMatch`, the shop's own folding and stemming.
 struct CategoriesResults: View {
     let term: String
     /// Every store, asked the first time the page is searched; nil while asked.
     let stores: [StoreCard]?
-    /// A department pressed — or `department/sub` — the page itself, opened on it.
+    /// A department pressed: the page itself, opened on it.
     let chooseDepartment: (String) -> Void
     @State private var subCounts: [String: [String: Int]]?
     @Environment(AppModel.self) private var app
@@ -49,8 +51,8 @@ struct CategoriesResults: View {
                         row(art: WebAssets.subcategory(found.department.slug, found.sub.slug), symbol: found.sub.symbol,
                             title: found.sub.shown(l.current),
                             note: count.map { "\(within) · \(l.productCount($0))" } ?? within) {
-                            // The page again, on its department with the stores selling it shown.
-                            chooseDepartment("\(found.department.slug)/\(found.sub.slug)")
+                            // Its products, the stores that sell it leading them.
+                            app.push(.subcategory(department: found.department.slug, sub: found.sub.slug))
                         }
                     }
                 }

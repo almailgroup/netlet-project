@@ -1,17 +1,17 @@
 /**
- * The stores that sell what a search found, or what a subcategory holds, at
- * the top of the page, on the owner's word ("when you search for something it
- * would show the stores that sell it at the top"): a sideways row of the
- * stores, the one selling the most first, each with how many of them it sells
- * (`rankStores`, the server's order). A press opens the store narrowed to the
- * same thing — the words searched, or the department.
- *
- * Small on purpose: it leads the page without pushing the products off a
- * phone's first screen, one line of chips 56px tall.
+ * The stores that sell what a page holds — a subcategory, a department, a
+ * search — over its products, on the owner's word ("when you tap on a sub
+ * category, it should show the products for that sub category, with the
+ * stores shown at the top"). Drawn as the owner's picture draws a shop's
+ * brands: "Shop by store" over a sideways row of large circles, each the
+ * store's logo — or its initial — on a pale ground with its name under it,
+ * the store selling the most first (`rankStores`, the server's order). A
+ * press opens the store narrowed to the same thing: the words searched, or
+ * the department.
  */
-import { ChevronRight } from "lucide-react";
 import { Link } from "wouter";
-import { StoreMark, type StoreCardData } from "@/components/store/StoreCard";
+import { Thumb } from "@/components/product/Thumb";
+import type { StoreCardData } from "@/components/store/StoreCard";
 import { useTranslation } from "@/hooks/useTranslation";
 
 export type SellingStoreData = StoreCardData & { matching: number };
@@ -21,21 +21,26 @@ export function StoresSellingRow({ stores, hrefFor }: { stores: SellingStoreData
   if (!stores.length) return null;
   const count = (matching: number) => (matching === 1 ? t("browse.countOne") : t("browse.countMany", { count: matching }));
   return (
-    <section aria-labelledby="stores-selling" className="mb-4">
-      <h2 id="stores-selling" className="mb-2 text-[14px] font-bold text-[#0a285a]">{t("search.storesSelling")}</h2>
-      <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+    <section aria-labelledby="stores-selling" className="mb-5 mt-2">
+      <h2 id="stores-selling" className="mb-3 text-[19px] font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-xl">{t("browse.shopByStore")}</h2>
+      <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:gap-4 sm:px-0">
         {stores.map(store => (
-          <li key={store.slug} className="shrink-0">
+          <li key={store.slug} className="w-[84px] shrink-0 sm:w-[104px]">
             <Link
               href={hrefFor(store.slug)}
-              className="flex h-14 max-w-[15rem] items-center gap-2.5 rounded-2xl border border-[#d5dfeb] bg-white ps-2 pe-3 hover:bg-[#f0f2f5]"
+              aria-label={`${store.name}, ${count(store.matching)}`}
+              className="group flex flex-col items-center gap-2 rounded-2xl text-center hover:bg-transparent"
             >
-              <StoreMark name={store.name} logoUrl={store.logoUrl} size="sm" />
-              <span className="min-w-0">
-                <bdi dir="auto" className="block truncate text-[14px] font-bold leading-5 text-[#0a285a]">{store.name}</bdi>
-                <span className="block truncate text-[12px] leading-4 ink-muted">{count(store.matching)}</span>
+              <span className="tint-in-group grid size-[84px] place-items-center overflow-hidden rounded-full bg-[#f1f3f6] sm:size-[104px]">
+                <Thumb
+                  src={store.logoUrl || undefined}
+                  alt=""
+                  className="size-full object-contain p-3.5"
+                  fallbackClassName="bg-[#f1f3f6] text-[#0a285a]"
+                  icon={<span aria-hidden className="text-[30px] font-extrabold sm:text-[36px]">{Array.from(store.name.trim())[0]?.toLocaleUpperCase() ?? "·"}</span>}
+                />
               </span>
-              <ChevronRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
+              <bdi dir="auto" aria-hidden className="line-clamp-2 w-full text-[13px] font-semibold leading-tight text-[#0a285a]">{store.name}</bdi>
             </Link>
           </li>
         ))}

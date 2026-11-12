@@ -84,8 +84,8 @@ private enum BrowseSheet: Identifiable {
 }
 
 /// The page both draw: where it sits, its name with how many products under
-/// it, the subcategories, a row of filter chips, the chips of what is ticked,
-/// and the grid — and floating over the tab bar, a navy Sort | Filter pill.
+/// it, the subcategories, a row of filter chips, the stores that sell what it
+/// holds ("Shop by store"), the chips of what is ticked, and the grid — and floating over the tab bar, a navy Sort | Filter pill.
 /// Both after the owner's reference: each chip opens its own group, and the
 /// pill is always in reach, where a Filters row in the page went up under the
 /// header with the first scroll. The assistant folds to its mark beside the
@@ -121,10 +121,10 @@ private struct BrowsePage: View {
                     .padding(.top, 8)
                     .accessibilityAddTraits(.updatesFrequently)
                 subcategoryRow
-                // The stores that sell it, at the top, on the owner's word.
-                StoresSellingRow(stores: model.stores)
-                    .padding(.top, 16)
                 filterChips
+                // The stores that sell it, over the products, on the owner's word.
+                StoresSellingRow(stores: model.stores)
+                    .padding(.top, 20)
                 chips
                     .padding(.top, 12)
                 results

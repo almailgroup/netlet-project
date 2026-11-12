@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The departments as a page, the phone's Categories tab — the department
-/// tiles in a row and the chosen one's subcategories under them
-/// (`DepartmentBrowser`), and Today's deals under those only while the home
-/// page would draw them.
-/// **Shop by brand leads it** (`BrandsView`), drawn only while the shop has
-/// a brand. Shop by stores stood beside it, and **the stores are under each
-/// department now, on the owner's word** ("remove the shop by stores,
-/// instead add the stores to the sub category"; `DepartmentBrowser`).
+/// The departments as a page, the phone's Categories tab — the web's
+/// `/categories`, drawn after the owner's picture of a shop's Categories
+/// screen: the departments as a grid of pictures, a press opening its
+/// subcategories as a list under its row, and a row opening that
+/// subcategory's products, which lead with the filter chips and the stores
+/// that sell it (`DepartmentBrowser`). Nothing else stands over the grid:
+/// the row of ways into the shop went with the panels, being a second answer
+/// to where to go.
 ///
 /// **Its search searches the page, on the owner's word** ("the search bar
 /// should only search for what's in the specific page"): the header's field
@@ -37,12 +37,8 @@ struct CategoriesView: View {
                         .padding(.top, 20)
                         .padding(.bottom, 48)
                 } else {
-                    shopWays
-                        .padding(.top, 20)
-                    ShelfHeading(title: l.t("home.shopByCategory"))
-                        .padding(.top, 26)
-                        .padding(.bottom, 16)
                     DepartmentBrowser()
+                        .padding(.top, 20)
                         .padding(.bottom, 48)
                 }
             }
@@ -55,50 +51,6 @@ struct CategoriesView: View {
             // holding "nothing matches" back for ever.
             allStores = (try? await app.services.api.call(API.stores, .init(locale: l.current.rawValue, limit: 200))) ?? []
         }
-    }
-
-    /// The ways into the whole shop, over the departments — the row Amazon and
-    /// noon open their categories on, the web's `ShopWays`: Today's deals
-    /// while the home page draws that shelf, Shop by brand while there is a
-    /// brand, the stores, the newest and everything. A sideways row.
-    private var shopWays: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                if app.shelf.dealsDrawn {
-                    way(symbol: "tag", title: l.t("home.heroDeals"), strong: true) { app.push(.deals) }
-                }
-                if !app.shelf.brands.isEmpty {
-                    way(symbol: "tag.circle", title: l.t("home.shopByBrand")) { app.push(.brands) }
-                }
-                way(symbol: "storefront", title: l.t("stores.title")) { app.push(.stores) }
-                way(symbol: "sparkles", title: l.t("browse.sort.newest")) { app.push(.newest) }
-                way(symbol: "line.3.horizontal", title: l.t("nav.allDepartments")) { app.push(.department(slug: nil)) }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 4)
-        }
-        .padding(.horizontal, -16)
-        .glassRow()
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(l.t("categories.waysToShop"))
-    }
-
-    private func way(symbol: String, title: String, strong: Bool = false, open: @escaping () -> Void) -> some View {
-        Button(action: open) {
-            HStack(spacing: 7) {
-                Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(strong ? Color(red: 1, green: 171 / 255, blue: 133 / 255) : Brand.navy)
-                    .accessibilityHidden(true)
-                Text(title).lineLimit(1)
-            }
-            .font(.inter(14, .bold))
-            .foregroundStyle(strong ? Color.white : Brand.navy)
-            .padding(.horizontal, 16)
-            .frame(minHeight: 44)
-            .glassChip(chosen: strong)
-        }
-        .buttonStyle(.tap)
     }
 }
 

@@ -90,13 +90,8 @@ export function prefetchRouteData(
     ask(utils.commerce.trending.prefetch({ locale }));
     ask(utils.commerce.bestsellers.prefetch({ locale }));
   }
-  /* The Categories page opens each department onto its subcategories' counts. */
-  if (/^\/categories\/?$/.test(path)) {
-    ask(utils.commerce.subcategoryCounts.prefetch());
-    ask(utils.subcategoryPictures.list.prefetch());
-    /* Whether "Shop by brand" is drawn at all. */
-    ask(utils.commerce.brands.prefetch());
-  }
+  /* The Categories page opens each department onto its subcategories' pictures. */
+  if (/^\/categories\/?$/.test(path)) ask(utils.subcategoryPictures.list.prefetch());
   /* The account's home asked for its tiles, its counts and its rows only once
      the session check had answered, a second round trip after the first; asked
      with it, they are one request. For a guest the answers are refusals, which

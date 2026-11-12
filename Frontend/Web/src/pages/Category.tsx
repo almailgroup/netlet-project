@@ -245,14 +245,17 @@ export default function Category() {
     return browse(catalog, filters);
   }, [searching, catalog, matched, filters, occasionSlug, inPage, curatedOccasion, dealsPage, typed]);
   /*
-   * The stores that sell it, at the top, on the owner's word: what a search
-   * found (asked with the search), or what a subcategory holds (`storesSelling`).
+   * The stores that sell it, over the products, on the owner's word: what a
+   * search found (asked with the search), or what a subcategory or a whole
+   * department holds (`storesSelling`) — not the Deals page or an occasion,
+   * which are shelves of their own.
    */
+  const asksStores = !onSearchPage && !searching && category !== "all" && !dealsPage && !occasionSlug;
   const subStores = trpc.commerce.storesSelling.useQuery(
     { department: category, sub: filters.sub, locale },
-    { enabled: !onSearchPage && !searching && Boolean(filters.sub) && category !== "all", staleTime: 5 * 60 * 1000 },
+    { enabled: asksStores, staleTime: 5 * 60 * 1000 },
   );
-  const sellingStores = searching ? answer.data?.stores ?? [] : filters.sub && category !== "all" ? subStores.data ?? [] : [];
+  const sellingStores = searching ? answer.data?.stores ?? [] : asksStores ? subStores.data ?? [] : [];
   const storeHref = (slug: string) => `/stores/${encodeURIComponent(slug)}${searching ? `?q=${encodeURIComponent(typed)}` : `?dept=${categorySlug(category)}`}`;
   const correctedTo = searching ? answer.data?.correctedTo ?? null : null;
   const elsewhere = searching && category !== "all" && !results.length ? answer.data?.elsewhere ?? 0 : 0;
@@ -508,8 +511,6 @@ export default function Category() {
           </div>
         ) : null}
 
-        <StoresSellingRow stores={sellingStores} hrefFor={storeHref} />
-
         {/* The filter groups as chips, the owner's reference: each opens its
             own group, and one with something ticked says how many. */}
         {!wide && groups.length ? (
@@ -542,6 +543,10 @@ export default function Category() {
             })}
           </div>
         ) : null}
+
+        {/* Then the stores that sell it, as the owner's picture draws a shop's
+            brands: after the filters, over the products. */}
+        <StoresSellingRow stores={sellingStores} hrefFor={storeHref} />
 
         <div className="grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-7">
           {/* Sticky so the filters stay reachable through a long grid, and

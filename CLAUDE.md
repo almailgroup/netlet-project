@@ -1989,11 +1989,10 @@ it turned its `margin-inline-end` into a right margin on the Arabic page too,
 where the scroller then clipped the "1".
 
 **The stores are what says this is a marketplace** — the one thing
-departments, shelves and a grid never said. **They are under each department
-on `/categories`, and the brands a box at its top — not rows on the home page,
-on the owner's word** (see Browsing): a department opened lists the stores
-selling in it first, right under its tile, then "See all stores" (`/stores`),
-a subcategory pressed lists its own, and "Shop by brand" opens `/brands`. `commerce.stores`
+departments, shelves and a grid never said. **They lead a department's, a
+subcategory's and a search's products as "Shop by store" — not rows on the
+home page, on the owner's word** (see Browsing), and `/stores` lists them
+all. `commerce.stores`
 (`listStoreCards` in `Backend/src/services/catalog.ts`) is approved stores with something
 published, the busiest first and ties by id, named in the page's language by
 the same `pick` their products use. Each card opens the store's own page, and
@@ -7357,33 +7356,23 @@ is not.
 opens it.** The tab slid a sheet in over whatever page the shopper was on: no
 address, so Back left the page under it rather than the list, and nothing to
 send anybody. The owner asked for a page, and it is the home page's department
-cards made the page's subject (`pages/Categories.tsx`) — the same art, two to a
-row on a phone and six on a wide screen, each with its count from
-`commerce.departmentCounts`, "All departments" last with no count (a product
-filed under a seller's own type is in it and in no department, so a sum would
-be short), and Today's deals under the grid only while the home page would
-draw that shelf. All six, as the cards keep them: an empty department says "No
-products" rather than leaving the one page that lists them all. The function
+cards made the page's subject (`pages/Categories.tsx`) — the same art, three
+to a row on a phone and six on a wide screen, "All departments" last (see
+"`/categories` is three steps" for what a press does). All six, as the cards
+keep them, rather than leaving the one page that lists them all. The function
 writes its head like the stores index's (`categoriesMeta`, a `vercel.json`
 rewrite) and it is in the sitemap. **`/categories` starts with `/category`**,
 so anything that reads a department page off the address asks for
 `/category/` with its slash — the footer's clearance for the department page's
 Sort | Filter pill does, or it would leave room for a pill this page has not got.
-**"Shop by brand" leads it** — a press lists the brands (`/brands`,
-`pages/Brands.tsx`: every brand as a `BrandTile`, each opening a search for
-it) — and the department cards follow under "Shop by category". **"Shop by
-stores" stood beside it and went, on the owner's word** ("remove the shop by
-stores, instead add the stores to the sub category"): **the stores are under
-the chosen department's subcategories**, under "Stores selling {name}" — the
-stores that sell in it, the one selling the most first, each saying how many
-of its products it sells there (`commerce.storesSelling`, six on the web and
-seven squares in the app), then "See all stores" (`/stores`, see "A store has
-a page"). The app's Categories is the same (`wayIn`, `BrandsView`,
-`DepartmentBrowser`'s `stores`). **Shop by brand is drawn only while there is
-a brand to list** (`commerce.brands`, asked with the page, `routeData`; the
-app's `app.shelf.brands`): the live shop has none — no product carries a Brand
-row — and the box opened "No brands yet", which is a control that leads
-nowhere.
+**Nothing stands over the grid any more**: "Shop by brand" led it for a
+while, then a row of ways into the shop (Today's deals, the brands, the
+stores, the newest, everything), and both went with the panels — the
+reference opens on the grid. The brands page (`/brands`, `pages/Brands.tsx`,
+the app's `BrandsView`) still answers its address, a link already shared not
+being a 404, and nothing in the shop links to it now; a brand is chosen by the
+Brand filter chip, as in the reference. The stores are a page's "Shop by
+store" (below) and `/stores`.
 
 **The stores that sell it lead a search and a subcategory, on the owner's
 word** ("when you search for something it would show the stores that sell it
@@ -7395,10 +7384,15 @@ the stores selling what it found (`sellingStoreCards` in
 order, each with `matching`), and `commerce.storesSelling`
 (`services/storesSelling.ts`) the stores selling in a department or one of its
 subcategories, the subcategory decided by `subcategoryFor` as the products'
-own. A results page and a subcategory page draw them as a row of small chips
-over the grid (`StoresSellingRow`, 56px tall, so the products stay on a phone's
-first screen; a press opens the store, narrowed to the words searched), and
-the header's suggestions start with two of them (`SUGGESTED_STORES`, "Store"
+own. **A results page, a department page and a subcategory page draw them as
+"Shop by store"**, on the owner's word, after their picture of a shop's "Shop
+by brand" row: under the filter chips and over the grid, a sideways row of
+84px circles (104px from `sm`; `StoresSellingRow`, the app's of the same
+name), each the store's logo on the pale field or its initial, its name under
+it; a press opens the store. Not on the Deals page, an occasion's or
+everything (`asksStores` in `Category.tsx`, `loadStores` in the app, tested
+in `BrowseStoresTests`). It was a row of 56px chips over the filter chips.
+The header's suggestions start with two of them (`SUGGESTED_STORES`, "Store"
 beside each), the app's search sheet too. **A store card carries its name in
 the other language** (`otherName`), so a page's own search finds "Gadget Hub"
 on the Arabic page, where it reads "غادجت هب" — found by the walk, which typed
@@ -7468,62 +7462,58 @@ shelf), so a count and the page it opens agree whichever language the shopper
 reads. No schema change: a product's filing is a spec row it may carry and its
 words.
 
-**On `/categories` the departments open and close in place, on the
-owner's word** ("make the category bigger … the behaviour should be in a way
-that it can collapse and expand … very user friendly for searching products
-by categories … you can get reference from other applications … like Amazon,
-noon"). The departments are a grid of large picture tiles — two to a row on a
-phone, three from `sm`, all six across from `lg` (the app: two, three on a
-wide screen) — each its art in a 4:3 field the tile's width, its name, its
-count and a chevron in a circle. A tile is a button (`aria-expanded`) that
-unfolds its department in a panel the width of the page **directly under its
-row** (inserted after the row's last tile, so which row depends on the
-columns), with a notch pointing up at the tile on the web and a navy caret
-under the tile in the app; pressed again, or its Close pressed, it folds.
-One is open at a time, and none to start with. "All departments" is the last
-tile, and a link. **The panel is what the department offers, in the owner's
-order**: its name and count, "See all in {name}" and Close; **the stores
-that sell in it first, right under the tiles** (`commerce.storesSelling`, a
-sideways row of small cards, the one selling the most first, then "See all
-stores"); then the ways in a shop like Amazon or noon offers — its deals,
-its newest, its highest rated — each **only where it leads somewhere**
-(`departmentWays` over `departmentFacts`, `Shared/commerce/categoryGuide.ts`:
-Deals with a deal, New arrivals from two products, Highest rated from two
-with stars; read off the department page's own shelf, `DEPARTMENT_SHELF`, so
-"Deals · 3" is the three that page draws; the app's `CategoryGuide`, tested
-on the recorded catalogue, over the department's own read, which the
-department page then opens on); then its subcategories, **at the size they
-were, on the owner's word** ("return the size of the subcategories to what
-they were") — rows with their 56px picture on the web, one column on a phone,
-two from `sm`, three from `lg`; rounded squares three to a row in the app;
-and last its top brands, when a product carries one (`TOP_BRANDS`, each
-opening the department narrowed to it). **A subcategory pressed shows the
-stores that sell it, on the owner's word** ("when you tap on a sub category,
-the stores must be shown"): it is a button too, and its panel unfolds under
-its row — its name and count, "Shop {name}" (absent for an empty one), its
-deals where it has any, and the stores selling it, or "No store sells this
-yet." Above the tiles, the ways into the whole shop (`ShopWays`, the app's
-`shopWays`): Today's deals while the home page draws that shelf, Shop by
-brand while there is a brand, the stores, the newest and everything. **What
-is open is the address's** (`?dept=`, `&sub=`, replaced rather than pushed,
-so Back leaves the page), and a department or subcategory found by the
-page's own search opens the page on it (the app: `categoriesOpen`, `dept` or
-`dept/sub`; `-NetLetOpen categories:<slug>`). **The unfolding is the panel's
-height** (`.cat-unfold`: a grid row from `0fr` to `1fr` over 300ms, so what
-is below moves with it rather than jumping, and the same folding back before
-the panel leaves; a cut under reduced motion); the app's is a spring with an
-opacity and a slight scale from the top. Subcategories still rise in 40ms
-apart (`.cat-rise`, `RiseIn`). Measured at 320, 390, 768 and 1440 in both
-languages: a department opening and closing, its stores, a subcategory
-opening onto its stores, axe clean and no sideways scroll. It replaced a row
-of tiles with the chosen one's subcategories under it, which the owner found
-was not what they wanted. **The icon is a name on the subcategory
+**`/categories` is three steps, drawn after the owner's pictures of a
+shop's Categories screen** ("I didn't like what you did with the categories
+page. It's so confusing … when you tap on a category, it must open the sub
+category of that category. And then when you tap on a sub category, it should
+show the products for that sub category, with the stores shown at the top,
+with the filters option"). **The departments are a grid of pictures with their
+names under them** — three to a row on a phone, six across from `lg` (the
+app: three, six on a wide screen) — each the home page's art on the pale
+field (`#eef1f6`, `Brand.tileField`), "All departments" last and a link.
+**A press on one opens its subcategories directly under its row**: the
+tile's picture is rimmed in navy (an `outline`, so the hover's inset shadow
+stays free — `.tint-in-group`, which the tile's `group` hover gives its
+picture, since `group-hover:` is not one of the tints `markup.test.ts`
+allows) and a list unfolds — rows on a pale grey (`#f1f3f6`), each the
+subcategory's picture on white (its own file, or the one kept from the
+portal) and its name, one column on a phone, two from `sm` and three from
+`lg` (two on a wide screen in the app), ending on "View all", the whole
+department. A second press, or another department, folds it; one is open at
+a time and none to start with. **A row is a link to that subcategory's
+products** (`/category/<slug>?sub=`, the app's `.subcategory`), the
+department page narrowed to it, which leads with the filter chips, then
+"Shop by store" (below), then the grid, under the Sort | Filter pill. What
+went, as the confusing part: the stores, the ways in (deals, newest,
+highest rated) and the top brands in each department's panel, a second panel
+under each subcategory with its own stores, the ways into the whole shop over
+the tiles, and with them `Shared/commerce/categoryGuide.ts`, the app's
+`CategoryGuide` and its `newestIn`, `topRatedIn` and `brandIn` routes.
+**What is open is the address's** (`?dept=`, replaced rather than pushed, so
+Back leaves the page; the app's `categoriesOpen`, `-NetLetOpen
+categories:<slug>`), and a department found by the page's own search opens
+the page on it, a subcategory found its products. **The list's unfolding is
+its height** (`.cat-unfold`: a grid row from `0fr` to `1fr` over 300ms, so
+what is below moves with it, and the same folding back before it leaves; a
+cut under reduced motion; the app's a spring with an opacity), and its rows
+rise in 40ms apart (`.cat-rise`, `RiseIn`). An opened department whose list
+starts low on the screen is scrolled up to its tile. Measured at 320, 390
+and 1440 in both languages (`.scratch/cat-flow.mjs`): ten rows under
+Electronics' row and eight under Style's, a second press folding them, a row
+landing on its products with the filter chips, then two 84px store circles
+(104px wide), then the grid; "Shop by store" on a department page and not on
+the Deals page; `?dept=` opening the page as shared; axe clean and no
+sideways scroll. It replaced, in turn, a
+row of tiles with the chosen one's subcategories under it and an accordion
+of panels; the owner found neither was what they wanted.
+
+**The icon is a name on the subcategory
 (`SUBCATEGORY_ICONS`), the departments' rule**: each client turns it into a
 drawing through a record the type makes exhaustive — lucide on the web
 (`SubcategoryIcon`, with a dress drawn in lucide's hand, lucide having none),
 SF Symbols in the app (`Department.Subcategory.symbols`, the likeliest symbol
 first and a fallback after, since a symbol's first iOS is not always known;
-`ModelTests` holds that every one draws). "Shop {name}" opens
+`ModelTests` holds that every one draws). A subcategory's row opens
 `/category/<slug>?sub=<sub>`: **the subcategory is the page, not a filter** —
 `BrowseFilters.sub`, not counted among the filters and kept by "Clear all",
 the heading its name and the breadcrumb through its department, facets over
@@ -9090,33 +9080,23 @@ a band 240 points tall, which washed two fifths of every picture — the van's
 wheels and the road under it — toward the page's ground. The website's phone
 fade is as it was (`.hero-foot`).
 
-**In the app a department's subcategories, the stores and the brands are
-rounded squares, on the owner's word** — a department's subcategories three
-to a row, the size they were before a round that made them four and the owner
-asked for them back, beside department tiles two to a row (see "On
-`/categories` the departments open and close in place"); its stores are a
-sideways row of small cards there, and the stores and brands lists three (a picture of the
-app's Categories: "for the subcategories, instead of being as a list, make it
-rounded squares; the same for shop by stores"). Each is a square the width of
-its column in the department tiles' own shape (`SquareFace`, a 20-point
-corner, the shadow the shape's) with its words centred under it, laid out by
-`TileGrid`, which takes a number of columns now and, with `widest`, gives a
-wide screen more to a row rather than wider squares. **A subcategory**
-(`DepartmentBrowser`'s `square`): its picture on white — its own, carried in
-the app, or the one kept from the portal — or, with neither, its symbol
-at 34 points on the pale field (`Brand.tileField`), its name on two lines
-and how many it holds, an empty one saying so; "View all" the last square,
-with the department's count under it and "See everything in …" to VoiceOver.
-They still rise in one after another. **A store** (`StoreTile`, which
-replaced `StoreCardView`): its logo, or its initial on the pale field, its
-name, how many products and its measured rating; a store NetLet verified
-carries the seal on its square's corner, and what else it earned is on its
-own page — two more chips would not fit under a square a third of a phone
-wide. **A brand** (`BrandTile`) is its initial the same way: the owner named
-the stores, and the brands are the list beside them, opened from the box
-next to theirs. None of the three is lazy, which keeps a lazy grid out of a
-page's lazy stack (the home page's stand-still). The website keeps its rows
-and its store cards: this is the app's alone.
+**In the app the stores' and the brands' lists are rounded squares, on the
+owner's word** (a picture of the app's Categories: "for the subcategories,
+instead of being as a list, make it rounded squares; the same for shop by
+stores"), three to a row. The subcategories were squares too, until the
+owner's later pictures of a shop's Categories screen asked for a list under
+the department again (see "`/categories` is three steps"). Each is a square
+the width of its column (`SquareFace`, a 20-point corner, the shadow the
+shape's) with its words centred under it, laid out by `TileGrid`, which takes
+a number of columns and, with `widest`, gives a wide screen more to a row
+rather than wider squares. **A store** (`StoreTile`, which replaced
+`StoreCardView`): its logo, or its initial on the pale field, its name, how
+many products and its measured rating; a store NetLet verified carries the
+seal on its square's corner, and what else it earned is on its own page — two
+more chips would not fit under a square a third of a phone wide. **A brand**
+(`BrandTile`) is its initial the same way. Neither is lazy, which keeps a lazy
+grid out of a page's lazy stack (the home page's stand-still). The website
+keeps its rows and its store cards: this is the app's alone.
 
 **Each of the four pages searches itself in the app too** (see "Each of four
 pages searches itself" under Browsing). On Categories and the Deals page the
@@ -9129,8 +9109,8 @@ department opens the page on it, `categoriesOpen`), the Profile tab with
 its stores' lines, and the Deals page its grid. A subcategory's words travel
 in `departments.json` now, so the app finds "Wearables" by "smartwatch" as the
 website does. The search sheet starts with two stores selling what the words
-found, and a results page and a subcategory page carry the stores row
-(`StoresSellingRow`). `demo.commerce.storesSelling.json` and
+found, and a results page, a department page and a subcategory page carry
+"Shop by store" (`StoresSellingRow`). `demo.commerce.storesSelling.json` and
 `demo.commerce.stores.json` were recorded off a local server, and the search
 recording gained its `stores`; `testTheStoresThatSellItLeadThePage` decodes
 them.
@@ -9400,7 +9380,7 @@ keeps its Add to cart and Buy now. The dots sit at the photo's start.
 box (`QuantityStepper`'s `typed`, `TypedQuantity` — `typedQuantity.ts` on its
 own cases in `TypedQuantityTests`), empty with the count as its placeholder
 when a press opens the number pad, and read when the keyboard is put away;
-Shop by brand leads Categories, the stores under each department; the bell follows
+Categories is the web's three steps (tiles, subcategories, products); the bell follows
 the heart in `LogoRow`, with `signals.unreadNotices`, the inbox for somebody
 signed in and the sign-in for a guest; and every badge is `CountBadge` or
 `NoticeDot` (`CountBadge.swift`). The system tab bar's own badge is the

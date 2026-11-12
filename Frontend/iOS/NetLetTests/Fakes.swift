@@ -336,6 +336,13 @@ final class FakeCatalogService: CatalogServicing, @unchecked Sendable {
     func brands() async throws -> [BrandCount] { [] }
     func contact() async throws -> ShopContact { ShopContact.fallback }
 
+    /// Each `department/sub` the stores were asked for, `department/` with no sub.
+    var storesAsked: [String] = []
+    func storesSelling(department: String, sub: String?, language: Language) async throws -> [StoreCard] {
+        storesAsked.append("\(department)/\(sub ?? "")")
+        return []
+    }
+
     func search(_ query: String, department: String?, limit: Int, language: Language) async throws -> SearchResult {
         asked.append(query)
         if let delay = delays[query] { try await Task.sleep(for: delay) }

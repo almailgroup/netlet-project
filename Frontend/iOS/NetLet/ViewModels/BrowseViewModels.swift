@@ -6,8 +6,6 @@ import Observation
 /// `/category/all?offer=1`, `?sort=newest` and `?brand=`.
 enum ShelfView: Hashable {
     case all, deals, newest
-    /// Highest rated first, the web's `?sort=rating`.
-    case topRated
     case brand(String)
 }
 
@@ -388,8 +386,8 @@ final class BrowseModel {
     /// The catalogue's own spelling, when a search found nothing as typed.
     private(set) var correctedTo: String?
     /// The stores that sell what the page shows, the one selling the most
-    /// first — a search's answer, or a subcategory's (`loadStores`) — drawn
-    /// at the top of the page, on the owner's word.
+    /// first — a search's answer, or a department's or a subcategory's
+    /// (`loadStores`) — drawn over the products, on the owner's word.
     private(set) var stores: [StoreCard] = []
     /// The Deals page's own search (`PageSearchField`): the deals whose words
     /// hold every word typed, never the shop's.
@@ -415,8 +413,6 @@ final class BrowseModel {
                 sort = .discount
             case .newest:
                 sort = .newest
-            case .topRated:
-                sort = .rating
             case .brand(let name):
                 filters.brands = [name]
             }
@@ -507,12 +503,13 @@ final class BrowseModel {
         return narrowed.filter { SearchRank.score(SearchRank.doc($0), words) > 0 }
     }
 
-    /// The stores that sell a subcategory, when the page is one. A search's
-    /// come with its answer; any other page has none.
+    /// The stores that sell what a department holds, or one subcategory of
+    /// it, when the page is one — the web's rule: not the Deals page, nor an
+    /// occasion's, nor everything. A search's come with its answer.
     func loadStores(language: Language) async {
-        guard case .shelf = source else { return }
-        guard let department, let sub = filters.sub else { stores = []; return }
-        stores = (try? await catalog.storesSelling(department: department.name, sub: sub, language: language)) ?? []
+        guard case .shelf(_, let view) = source else { return }
+        guard let department, view == .all, filters.occasion == nil else { stores = []; return }
+        stores = (try? await catalog.storesSelling(department: department.name, sub: filters.sub, language: language)) ?? []
     }
 
     /// The Deals page, on the owner's word: the whole shop narrowed to what

@@ -17,12 +17,6 @@ enum Route: Hashable {
     case dealsIn(department: String, sub: String?)
     /// The newest products, the home page's "View all" under New arrivals.
     case newest
-    /// One department, newest first — its "New arrivals" on the Categories tab.
-    case newestIn(department: String)
-    /// One department, highest rated first — its "Highest rated" on the Categories tab.
-    case topRatedIn(department: String)
-    /// One brand within a department — a top brand on the Categories tab.
-    case brandIn(department: String, name: String)
     /// Everything of one brand, from the home page's brand tiles.
     case brand(name: String)
     /// A search over the whole catalogue, or within one department — the web's

@@ -149,6 +149,24 @@ final class CartQueueTests: XCTestCase {
     }
 }
 
+/// "Shop by store" over a department's and a subcategory's products — the
+/// web's rule: asked for a department or one subcategory of it, never for the
+/// Deals page, an occasion's page or everything.
+@MainActor
+final class BrowseStoresTests: XCTestCase {
+    func testTheStoresAreAskedForADepartmentAndASubcategoryAlone() async {
+        let catalog = FakeCatalogService()
+        await BrowseModel(source: .shelf(slug: "grocery", view: .all), catalog: catalog).loadStores(language: .en)
+        await BrowseModel(source: .shelf(slug: "grocery", view: .all), catalog: catalog, sub: "pantry").loadStores(language: .en)
+        XCTAssertEqual(catalog.storesAsked, ["Grocery/", "Grocery/pantry"])
+        await BrowseModel(source: .shelf(slug: nil, view: .all), catalog: catalog).loadStores(language: .en)
+        await BrowseModel(source: .shelf(slug: nil, view: .deals), catalog: catalog).loadStores(language: .en)
+        await BrowseModel(source: .shelf(slug: "grocery", view: .deals), catalog: catalog, sub: "pantry").loadStores(language: .en)
+        await BrowseModel(source: .shelf(slug: "grocery", view: .all), catalog: catalog, occasion: "ramadan").loadStores(language: .en)
+        XCTAssertEqual(catalog.storesAsked.count, 2, "everything, the Deals page and an occasion ask nothing")
+    }
+}
+
 @MainActor
 final class SearchViewModelTests: XCTestCase {
     func testWaitsForTypingToPauseAndAsksOnce() async throws {
