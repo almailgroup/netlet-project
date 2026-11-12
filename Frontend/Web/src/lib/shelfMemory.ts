@@ -41,6 +41,7 @@ const REMEMBERED = new Set([
   "commerce.store",
   "features.states",
   "guides.published",
+  "occasions.live",
   "support.channels",
 ]);
 

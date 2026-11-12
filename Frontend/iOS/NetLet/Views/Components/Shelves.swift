@@ -147,6 +147,19 @@ extension View {
     }
 }
 
+/// An occasion's banner, 3:1 as it was cropped when it was uploaded
+/// (`OccasionBanner` on the web), on the shelf's pale orange while it loads.
+struct OccasionBanner: View {
+    let reference: String
+
+    var body: some View {
+        Color(red: 253 / 255, green: 227 / 255, blue: 214 / 255)
+            .aspectRatio(3, contentMode: .fit)
+            .overlay { RemoteImage(reference: reference) }
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
 /// A shelf with a row of department tabs over it — the web's `TabbedShelf`,
 /// Noon's bestsellers, on the owner's word ("category tabs at the top …
 /// allowing customers to switch between categories without leaving the
@@ -171,6 +184,8 @@ struct TabbedShelf: View {
     var note: String? = nil
     /// On a panel of the brand's pale orange, for a season's shelf.
     var tinted = false
+    /// A picture across the top of the shelf, 3:1, as a `/media` path: an occasion's banner.
+    var banner: String? = nil
     var viewAll: (() -> Void)?
     @State private var chosen: String?
     @Environment(LanguageSettings.self) private var l
@@ -197,6 +212,15 @@ struct TabbedShelf: View {
         let current = rows.first { $0.slug == chosen }
         let shown = current?.products ?? products
         return VStack(alignment: .leading, spacing: 16) {
+            if let banner {
+                // The shelf's own page for the eye and the finger; "View all"
+                // under it is the same press for VoiceOver, so the picture is
+                // hidden from it — the card photo's rule.
+                Button { viewAll?() } label: { OccasionBanner(reference: banner) }
+                    .buttonStyle(.tap)
+                    .padding(.horizontal, 16)
+                    .accessibilityHidden(true)
+            }
             VStack(alignment: .leading, spacing: 4) {
                 ShelfHeading(title: title, viewAllKey: viewAllKey, viewAllChevron: viewAllChevron, viewAll: viewAll)
                 if let note {

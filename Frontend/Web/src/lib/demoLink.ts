@@ -708,6 +708,14 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* The pictures are NetLet's to keep, and the demo is a store's manager. */
     case "subcategoryPictures.set":
       throw new Error("FORBIDDEN:platform.configure");
+    /* The occasions desk is NetLet's too. */
+    case "occasions.list":
+    case "occasions.get":
+    case "occasions.save":
+    case "occasions.setStatus":
+    case "occasions.hide":
+    case "occasions.delete":
+      throw new Error("FORBIDDEN:platform.configure");
     /* The guides desk is NetLet's, and the demo is a store's manager. */
     case "guides.get":
     case "guides.save":
@@ -766,6 +774,11 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "guides.aiAvailable":
     case "subcategoryPictures.drawable":
       return false;
+    /* Nobody curated an occasion for an invented shop: the home page is the calendar's own. */
+    case "occasions.live":
+      return { ready: false, occasions: [], replaced: [] };
+    case "occasions.bySlug":
+      return { occasion: null, hidden: false, products: [] };
     /* No guide is written for an invented shop; the pages say there are none. */
     case "guides.published":
       return [];

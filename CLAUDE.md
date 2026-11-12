@@ -1808,7 +1808,7 @@ sliver of it beside the grocery basket.
 
 Then the paid placements and **the shelves in the order the owner asked
 for, as a list**: Mega deals, Deals picked for you, Deals, Picked for you,
-(the seasons and occasions, which wait on a table of their own — see below),
+(the seasons and the occasions, NetLet's own first — see below),
 Trending, Bestsellers, Previously viewed, then the new arrivals as a grid to
 browse, the newest three shoppers' guides (see "Guides") once one is
 published, and the footer. **A strip below four products is not drawn**:
@@ -1900,10 +1900,59 @@ page: `BrowseFilters.occasion`, the subcategory's rule — the page it names
 rather than a filter, not counted, kept by Clear all, not indexed; the app's
 `Route.occasion` and `BrowseFilters.occasion`. An occasion with nothing
 tagged draws nothing, the shelves' rule, so the live shop shows none until a
-store tags something. A desk where NetLet curates a season by hand — a
-picture, its own dates, products chosen rather than tagged — is an
-`occasions` table, a migration to show the owner first; this is what could
-be built without one.
+store tags something.
+
+**NetLet curates occasions of its own too, on the owner's word** (migration
+0081, `occasions` and `occasion_products`, approved as shown;
+`Shared/commerce/occasionDesk.ts` the rule, pure;
+`Backend/src/services/occasions.ts` the database half). An occasion NetLet
+writes has both names, an address, a 3:1 banner picture of NetLet's own
+upload (cropped in the browser as a paid banner's is, `prepareBanner`, and
+checked to be a `media_files` row that exists), its own first and last
+Kuwaiti day, the products chosen for it in order, and whether what the
+stores tagged for it is shown too. **A calendar occasion's address is how
+NetLet takes one over**: published, it replaces the calendar's own
+(`replacedSlugs`), may keep the calendar's window by having no days of its
+own, and still counts the calendar's words; `hidden`, allowed only for a
+calendar address (`statusAllowed`), switches it off. **The home page draws
+NetLet's first** (`occasions.live`: what is published and running on
+Kuwait's day, `curatedOn`, at most `MAX_LIVE_OCCASIONS`, the chosen read
+through `listProductsByIds` so a product the shop would not show is
+absent): `shelvesFor` shows what was chosen whole and in its order — a
+curator who picked six sees six, whatever a shelf above holds — then the
+tagged ones not shown above, from four and at most twelve, under the banner
+(`OccasionBanner`, a link hidden from a screen reader, View all being the
+link) with "Picked by NetLet for the season"; the calendar's follow, but for
+one taken over or switched off, `MAX_OCCASIONS` in all. **Its page is the
+occasion's address** (`/category/all?occasion=<slug>`, `occasions.bySlug`):
+the banner over its name, the chosen order kept under relevance; a
+switched-off one names nothing. **The desk is `/admin/occasions`**
+(`platform.configure`, after Subcategory pictures; the app's
+`PortalOccasionsView`): NetLet's own, each with its status, where it stands
+today (`occasionSeason`), its days and counts, and how many more it needs to
+be drawn; and the calendar's ten, each in or out of season, how many are
+tagged, and what stands over it, with Customise (`?from=<slug>`, the names
+and words filled in, nothing saved until Save) and Hide, which asks first,
+or Show again. The editor (`OccasionEditor`, `PortalOccasionEditorView`) says
+each problem under its box with Save and focuses the first (both sides ask
+`occasionProblems`; `OccasionRules` in Swift, on the TypeScript's cases);
+the address follows the English name until it is typed and is fixed once
+published; products are searched from the shelf, put in order and taken
+off; a product not on the shop today is marked rather than dropped.
+Publishing, taking down and deleting are on the trail (`occasion.setStatus`,
+`occasion.delete`). **Closed, not broken, until 0081 is pasted**: every read
+answers `ready: false` on a missing table, the desk says "Occasions are not
+open yet", and the home page is the calendar's own. Walked on a production
+build against a local Postgres at 320, 390 and 1440 in both languages:
+errors under their boxes with focus on the first, a picture uploaded at
+1600 × 533, products added, reordered and removed, Publish locking the
+address, Winter customised from the calendar and Halloween switched off
+behind its question, the home page's two bands with the banner and an
+occasion's page in the chosen order; axe clean and no sideways scroll. The
+app's answers were recorded off that server (`demo.occasions.*`, the
+`curated` and `admin` variants), `CuratedOccasionTests` decodes them and
+holds the rules, and the CI photographs the desk, the editor and an
+occasion's page (`96`–`98`).
 
 **Mega deals is a navy band across the page, led by the deepest saving.** The
 lead card is `ProductCard`'s `feature` — two of five columns on a wide screen,
@@ -8184,9 +8233,13 @@ the first download, so the whole sign-in form came with it. It is `lazy` there
 now. **Anything a card, the header or the shell imports is in the first
 download**; read the main chunk's size after a round that touches one, not
 only whether the build passes — then 1,000 KB (287 KB), the authorised
-devices' remove-or-block words, and is 1,007 KB (288 KB) now, the store
+devices' remove-or-block words, then 1,007 KB (288 KB), the store
 documents' words in both languages (measured against the commit before:
-seven kilobytes, the words alone) —
+seven kilobytes, the words alone), and is 1,029 KB (296 KB) now, the
+occasions desk's words in both languages — about fifteen of the twenty-two
+kilobytes — with the desk's rule, which the home page's band shares with the
+editor, so the editor's checks come with it (3 KB minified, not worth a
+second module) —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

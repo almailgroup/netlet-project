@@ -6,6 +6,7 @@ import { notificationsRouter } from "./notifications.js";
 import { devicesRouter } from "./devices.js";
 import { tryOnRouter } from "./tryOn.js";
 import { guidesRouter } from "./guides.js";
+import { occasionsRouter } from "./occasions.js";
 import { subcategoryPicturesRouter } from "./subcategoryPictures.js";
 import { fulfilmentRouter } from "./fulfilment.js";
 import { membershipRouter } from "./membership.js";
@@ -46,6 +47,7 @@ export const appRouter = router({
   devices: devicesRouter,
   tryOn: tryOnRouter,
   guides: guidesRouter,
+  occasions: occasionsRouter,
   subcategoryPictures: subcategoryPicturesRouter,
   fulfilment: fulfilmentRouter,
   membership: membershipRouter,

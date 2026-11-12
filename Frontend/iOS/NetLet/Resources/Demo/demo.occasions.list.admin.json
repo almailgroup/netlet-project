@@ -1,0 +1,151 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "rows": [
+          {
+            "slug": "halloween",
+            "title": "Halloween",
+            "titleAr": "هالوين",
+            "imageUrl": null,
+            "includeTagged": true,
+            "startsOn": null,
+            "endsOn": null,
+            "status": "hidden",
+            "id": 5,
+            "calendar": true,
+            "season": {
+              "state": "outOfSeason"
+            },
+            "chosen": 0,
+            "live": 0,
+            "tagged": 0,
+            "updatedAt": "2026-11-12T06:20:48.751Z"
+          },
+          {
+            "slug": "winter",
+            "title": "Winter",
+            "titleAr": "الشتاء",
+            "imageUrl": null,
+            "includeTagged": true,
+            "startsOn": "2026-11-12",
+            "endsOn": "2026-12-22",
+            "status": "published",
+            "id": 4,
+            "calendar": true,
+            "season": {
+              "state": "on",
+              "daysLeft": 40
+            },
+            "chosen": 1,
+            "live": 1,
+            "tagged": 4,
+            "updatedAt": "2026-11-12T06:20:45.947Z"
+          },
+          {
+            "slug": "white-friday",
+            "title": "White Friday",
+            "titleAr": "الجمعة البيضاء",
+            "imageUrl": "/media/KjSOfY3N7mhUPLELv5g2lv7N.webp",
+            "includeTagged": true,
+            "startsOn": "2026-11-10",
+            "endsOn": "2026-11-18",
+            "status": "published",
+            "id": 3,
+            "calendar": false,
+            "season": {
+              "state": "on",
+              "daysLeft": 6
+            },
+            "chosen": 4,
+            "live": 4,
+            "tagged": 0,
+            "updatedAt": "2026-11-12T06:20:41.149Z"
+          }
+        ],
+        "calendar": [
+          {
+            "slug": "ramadan",
+            "on": false,
+            "tagged": 0,
+            "row": null
+          },
+          {
+            "slug": "eid-al-fitr",
+            "on": false,
+            "tagged": 0,
+            "row": null
+          },
+          {
+            "slug": "eid-al-adha",
+            "on": false,
+            "tagged": 0,
+            "row": null
+          },
+          {
+            "slug": "national-day",
+            "on": false,
+            "tagged": 0,
+            "row": null
+          },
+          {
+            "slug": "mothers-day",
+            "on": false,
+            "tagged": 0,
+            "row": null
+          },
+          {
+            "slug": "summer",
+            "on": false,
+            "tagged": 0,
+            "row": null
+          },
+          {
+            "slug": "back-to-school",
+            "on": false,
+            "tagged": 0,
+            "row": null
+          },
+          {
+            "slug": "halloween",
+            "on": false,
+            "tagged": 0,
+            "row": {
+              "id": 5,
+              "status": "hidden"
+            }
+          },
+          {
+            "slug": "winter",
+            "on": false,
+            "tagged": 4,
+            "row": {
+              "id": 4,
+              "status": "published"
+            }
+          },
+          {
+            "slug": "new-year",
+            "on": false,
+            "tagged": 0,
+            "row": null
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "rows.0.updatedAt": [
+            "Date"
+          ],
+          "rows.1.updatedAt": [
+            "Date"
+          ],
+          "rows.2.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

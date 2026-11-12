@@ -33,6 +33,11 @@ enum API {
         let locale: String
     }
 
+    struct OccasionSlug: Encodable, Sendable {
+        let slug: String
+        let locale: String
+    }
+
     struct StoreList: Encodable, Sendable {
         let locale: String
         var limit: Int?
@@ -43,6 +48,10 @@ enum API {
     static let bestsellers = Procedure<LocaleOnly, [Product]>(query: "commerce.bestsellers")
     /// The home page's Trending: what was bought, bagged, hearted and wished for this week.
     static let trending = Procedure<LocaleOnly, [Product]>(query: "commerce.trending")
+    /// NetLet's own occasions running today, each with the products chosen for it.
+    static let liveOccasions = Procedure<LocaleOnly, LiveOccasions>(query: "occasions.live")
+    /// One occasion's page: NetLet's published occasion at an address, or nothing.
+    static let occasionPage = Procedure<OccasionSlug, OccasionPage>(query: "occasions.bySlug")
     /// Stores with something on sale, the busiest first.
     static let stores = Procedure<StoreList, [StoreCard]>(query: "commerce.stores")
     /// One store's public page, or nil for an address no approved store answers to.

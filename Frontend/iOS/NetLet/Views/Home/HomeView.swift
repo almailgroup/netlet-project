@@ -9,7 +9,8 @@ import SwiftUI
 /// shelf after the departments is drawn only when it has something true to
 /// show (`shelvesFor`, in `HomeShelf`), and most carry a row of department
 /// tabs (`TabbedShelf`); the seasons and occasions whose shopping is on today
-/// sit after Picked for you (`OccasionBand`).
+/// — NetLet's own first, then the calendar's — sit after Picked for you
+/// (`OccasionBand`).
 struct HomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -97,7 +98,7 @@ struct HomeView: View {
             RecommendedRail(quiet: true)
             // The seasons and the occasions whose shopping is on today.
             ForEach(shelves.occasions) { entry in
-                OccasionBand(occasion: entry.occasion, products: entry.products)
+                OccasionBand(shelf: entry)
             }
             if !shelves.trending.isEmpty {
                 TabbedShelf(title: l.t("rail.trending.title"), products: shelves.trending)
@@ -214,19 +215,28 @@ struct HomeHero: View {
 }
 
 /// A season's or an occasion's shelf — Back to school, Ramadan, the New Year
-/// — on the owner's word; the web's `OccasionBand`: the products the stores
-/// tagged for it (`Occasion.matches`), on a panel of the brand's pale orange
-/// under the occasion's own name and a line saying whose picks they are.
-/// "View all" is the occasion's page.
+/// — on the owner's word; the web's `OccasionBand`, on a panel of the brand's
+/// pale orange. The calendar's is the products the stores tagged for it
+/// (`Occasion.matches`), under the dictionary's name. One NetLet curated
+/// (`CuratedOccasion`) is under its own name, with its banner across the top
+/// when it has one and the products NetLet chose leading. "View all" is the
+/// occasion's page.
 struct OccasionBand: View {
-    let occasion: Occasion
-    let products: [Product]
+    let shelf: HomeShelf.OccasionShelf
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        TabbedShelf(title: l.t(occasion.label), products: products, tabs: false, note: l.t("rail.occasion.note"), tinted: true) {
-            app.push(.occasion(slug: occasion.slug))
+        let name = shelf.curated?.name(l.current) ?? shelf.occasion.map { l.t($0.label) } ?? ""
+        TabbedShelf(
+            title: name,
+            products: shelf.products,
+            tabs: false,
+            note: l.t(shelf.curated == nil ? "rail.occasion.note" : "rail.occasion.noteNetLet"),
+            tinted: true,
+            banner: shelf.curated?.imageUrl
+        ) {
+            app.push(.occasion(slug: shelf.slug))
         }
     }
 }

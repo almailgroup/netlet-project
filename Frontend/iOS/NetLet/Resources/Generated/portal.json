@@ -42,6 +42,11 @@
           "href": "/admin/subcategory-pictures",
           "label": "subpics.title",
           "need": "platform.configure"
+        },
+        {
+          "href": "/admin/occasions",
+          "label": "occasions.title",
+          "need": "platform.configure"
         }
       ]
     },
@@ -904,5 +909,11 @@
     "stepBodyMax": 1000,
     "maxSteps": 10,
     "topicMax": 200
+  },
+  "occasions": {
+    "titleMax": 80,
+    "slugMax": 40,
+    "maxProducts": 60,
+    "maxDays": 366
   }
 }

@@ -127,7 +127,7 @@ describe("what each shelf shows", () => {
     const newYear = Array.from({ length: 4 }, (_, i) => product(`n${i}`, null, null, ["new-year"]));
     const august = new Date("2026-08-20T09:00:00Z");
     const shelves = shelvesFor([...school, ...winter, ...plain(3)], [], [], august);
-    expect(shelves.occasions.map(entry => entry.occasion.slug)).toEqual(["back-to-school"]);
+    expect(shelves.occasions.map(entry => entry.slug)).toEqual(["back-to-school"]);
     expect(shelves.occasions[0].products.map(p => p.id)).toEqual(["s0", "s1", "s2", "s3", "s4"]);
     /* What an occasion shows leaves the shelves below it. */
     expect(shelves.newest.map(p => p.id).filter(id => id.startsWith("s"))).toEqual([]);
@@ -140,8 +140,53 @@ describe("what each shelf shows", () => {
     expect(shelvesFor(school.slice(0, 3), [], [], august).newest).toHaveLength(3);
     /* The end of the year has winter and the New Year; two is the most, and the table's order decides. */
     const december = shelvesFor([...winter, ...newYear], [], [], new Date("2026-12-25T09:00:00Z"));
-    expect(december.occasions.map(entry => entry.occasion.slug)).toEqual(["winter", "new-year"]);
+    expect(december.occasions.map(entry => entry.slug)).toEqual(["winter", "new-year"]);
     expect(MAX_OCCASIONS).toBe(2);
+  });
+
+  /* NetLet's own occasions (`occasions.live`), on the owner's word: its own
+     picture, dates and products. They lead the calendar's, show what NetLet
+     chose whole, and stand in the place of a calendar occasion taken over or
+     switched off. */
+  it("leads with the occasions NetLet curated, and leaves out what it took over or switched off", () => {
+    const winter = Array.from({ length: 4 }, (_, i) => product(`w${i}`, null, null, ["winter"]));
+    const newYear = Array.from({ length: 4 }, (_, i) => product(`n${i}`, null, null, ["new-year"]));
+    const friday = { slug: "white-friday", title: "White Friday", titleAr: "الجمعة البيضاء", imageUrl: "/media/abcdefghijklmnop.webp", includeTagged: true };
+    const december = new Date("2026-12-25T09:00:00Z");
+    const chosen = [product("c0"), product("c1"), product("c2")];
+    const catalog = [...winter, ...newYear, ...chosen, product("t0", null, null, ["White Friday"]), ...plain(2)];
+
+    const shelves = shelvesFor(catalog, [], [], december, { occasions: [{ ...friday, products: chosen }], replaced: [] });
+    /* Two in all: NetLet's, then the first of the calendar's. */
+    expect(shelves.occasions.map(entry => entry.slug)).toEqual(["white-friday", "winter"]);
+    expect(shelves.occasions[0]).toMatchObject({ occasion: null, curated: friday });
+    /* The chosen in their order, then what a store tagged with its name. */
+    expect(shelves.occasions[0].products.map(p => p.id)).toEqual(["c0", "c1", "c2", "t0"]);
+    expect(shelves.newest.map(p => p.id).filter(id => id.startsWith("c") || id === "t0")).toEqual([]);
+
+    /* Under four it is not drawn, and the calendar's keep their two places. */
+    const thin = shelvesFor(catalog, [], [], december, { occasions: [{ ...friday, includeTagged: false, products: chosen }], replaced: [] });
+    expect(thin.occasions.map(entry => entry.slug)).toEqual(["winter", "new-year"]);
+
+    /* A calendar occasion switched off is not drawn by the calendar either. */
+    const hidden = shelvesFor(catalog, [], [], december, { occasions: [], replaced: ["winter"] });
+    expect(hidden.occasions.map(entry => entry.slug)).toEqual(["new-year"]);
+
+    /* One taken over is drawn once, as NetLet's, with the calendar's own tags still counting. */
+    const mine = { slug: "winter", title: "Winter warmers", titleAr: "دفء الشتاء", imageUrl: null, includeTagged: true };
+    const taken = shelvesFor(catalog, [], [], december, { occasions: [{ ...mine, products: [chosen[0]] }], replaced: ["winter"] });
+    expect(taken.occasions.map(entry => entry.slug)).toEqual(["winter", "new-year"]);
+    expect(taken.occasions[0].curated).toEqual(mine);
+    expect(taken.occasions[0].products.map(p => p.id)).toEqual(["c0", "w0", "w1", "w2", "w3"]);
+  });
+
+  it("shows what NetLet chose whole, whatever a shelf above holds", () => {
+    /* Four mega deals, all of them chosen for the occasion too. */
+    const deals = offers(4);
+    const friday = { slug: "white-friday", title: "White Friday", titleAr: "الجمعة البيضاء", imageUrl: null, includeTagged: false };
+    const shelves = shelvesFor([...deals, ...plain(3)], [], [], new Date("2026-11-25T09:00:00Z"), { occasions: [{ ...friday, products: deals }], replaced: [] });
+    expect(shelves.mega.map(p => p.id)).toEqual(["d0", "d1", "d2", "d3"]);
+    expect(shelves.occasions[0].products.map(p => p.id)).toEqual(["d0", "d1", "d2", "d3"]);
   });
 
   it("says a deals shelf is drawn when either deals shelf is", () => {

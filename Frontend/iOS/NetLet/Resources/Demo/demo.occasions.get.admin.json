@@ -1,0 +1,67 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "slug": "white-friday",
+        "title": "White Friday",
+        "titleAr": "الجمعة البيضاء",
+        "imageUrl": "/media/KjSOfY3N7mhUPLELv5g2lv7N.webp",
+        "includeTagged": true,
+        "startsOn": "2026-11-10",
+        "endsOn": "2026-11-18",
+        "status": "published",
+        "id": 3,
+        "calendar": false,
+        "season": {
+          "state": "on",
+          "daysLeft": 6
+        },
+        "chosen": 4,
+        "live": 4,
+        "tagged": 0,
+        "updatedAt": "2026-11-12T06:20:41.149Z",
+        "products": [
+          {
+            "id": 11,
+            "title": "Wireless earbuds",
+            "titleAr": "سماعات لاسلكية",
+            "vendorName": "Acme Electronics",
+            "imageUrl": "/subcategories/electronics-audio.webp",
+            "live": true
+          },
+          {
+            "id": 12,
+            "title": "Gaming console",
+            "titleAr": "جهاز ألعاب",
+            "vendorName": "Acme Electronics",
+            "imageUrl": "/subcategories/electronics-gaming.webp",
+            "live": true
+          },
+          {
+            "id": 14,
+            "title": "Evening perfume",
+            "titleAr": "عطر مسائي",
+            "vendorName": "Acme Electronics",
+            "imageUrl": "/subcategories/beauty-fragrance.webp",
+            "live": true
+          },
+          {
+            "id": 20,
+            "title": "Tablet 11 inch",
+            "titleAr": "جهاز لوحي 11 بوصة",
+            "vendorName": "Acme Electronics",
+            "imageUrl": "/subcategories/electronics-tablets.webp",
+            "live": true
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

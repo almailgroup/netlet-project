@@ -1648,12 +1648,205 @@ final class OccasionTests: XCTestCase {
         let plain = HomeShelf.shelves(products, bestsellers: [], now: Date(), occasions: [])
         let tagged = products.filter { always.matches($0) && !plain.mega.contains($0) && !plain.deals.contains($0) }
         if tagged.count >= HomeShelf.floor {
-            XCTAssertEqual(shelves.occasions.map(\.occasion.slug), ["test-season"])
+            XCTAssertEqual(shelves.occasions.map(\.slug), ["test-season"])
             XCTAssertEqual(Set(shelves.occasions[0].products.map(\.id)), Set(tagged.prefix(HomeShelf.most).map(\.id)))
             XCTAssertTrue(Set(shelves.trending.map(\.id) + shelves.bestsellers.map(\.id) + shelves.newest.map(\.id)).isDisjoint(with: shelves.occasions[0].products.map(\.id)))
         } else {
             XCTAssertEqual(shelves.occasions, [])
         }
         XCTAssertEqual(HomeShelf.shelves(products, bestsellers: [], now: Date(), occasions: [never]).occasions, [])
+    }
+}
+
+/// NetLet's own occasions (`Shared/commerce/occasionDesk.ts`): the desk's
+/// rules on the TypeScript's own cases, what a curated occasion shows, the
+/// home page's merge with the calendar, and the desk's answers as a real
+/// server recorded them for an administrator.
+final class CuratedOccasionTests: XCTestCase {
+    private func draft(_ change: (inout OccasionDraft) -> Void = { _ in }) -> OccasionDraft {
+        var draft = OccasionDraft(slug: "white-friday", title: "White Friday", titleAr: "الجمعة البيضاء", imageUrl: nil,
+                                  startsOn: "2026-11-20", endsOn: "2026-11-30")
+        change(&draft)
+        return draft
+    }
+
+    private func day(_ iso: String) -> Date {
+        ISO8601DateFormatter().date(from: "\(iso)T06:00:00Z")!
+    }
+
+    /// A product from the recording, under another id and with the tags given.
+    private func product(_ id: String, _ tags: [String] = []) throws -> Product {
+        let data = Bundle.main.resource("demo.occasions.live.curated", "json")
+        let root = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let result = try XCTUnwrap(root["result"] as? [String: Any])
+        let answer = try XCTUnwrap((result["data"] as? [String: Any])?["json"] as? [String: Any])
+        let occasions = try XCTUnwrap(answer["occasions"] as? [[String: Any]])
+        var template = try XCTUnwrap((occasions.first?["products"] as? [[String: Any]])?.first)
+        template["id"] = id
+        template["handle"] = "product-\(id)"
+        template["tags"] = tags
+        return try TRPCClient.makeDecoder().decode(Product.self, from: JSONSerialization.data(withJSONObject: template))
+    }
+
+    func testAnAddressIsLowerCaseLettersDigitsAndSingleHyphens() {
+        for good in ["white-friday", "eid2027", "a", "back-to-school"] { XCTAssertTrue(OccasionRules.isSlug(good), good) }
+        for bad in ["", "White-Friday", "white friday", "-white", "white-", "white--friday", "عيد", String(repeating: "a", count: 41)] {
+            XCTAssertFalse(OccasionRules.isSlug(bad), bad)
+        }
+        XCTAssertEqual(OccasionRules.slug("White Friday 2026!"), "white-friday-2026")
+        XCTAssertEqual(OccasionRules.slug("  Mother's   Day "), "mother-s-day")
+        XCTAssertEqual(OccasionRules.slug("الجمعة البيضاء"), "occasion")
+        XCTAssertTrue(OccasionRules.isSlug(OccasionRules.slug("A very long name for an occasion that goes on and on and on")))
+    }
+
+    func testWhatIsWrongIsNamedByItsBoxAndEveryProblemIsASentence() {
+        XCTAssertEqual(OccasionRules.problems(draft()), [:])
+        XCTAssertNil(OccasionRules.first([:]))
+        let problems = OccasionRules.problems(draft {
+            $0.title = " "
+            $0.titleAr = ""
+            $0.slug = "White Friday"
+            $0.imageUrl = "https://example.com/a.jpg"
+            $0.startsOn = "2026-11-30"
+            $0.endsOn = "2026-11-20"
+        })
+        XCTAssertEqual(problems, [
+            .title: "occasions.needTitle",
+            .titleAr: "occasions.needTitleAr",
+            .slug: "occasions.badSlug",
+            .imageUrl: "occasions.badPicture",
+            .endsOn: "occasions.endsBeforeStart",
+        ])
+        for key in problems.values { XCTAssertTrue(Phrasebook.shared.has(key), key) }
+        XCTAssertEqual(OccasionRules.first(problems)?.field, .title)
+        XCTAssertEqual(OccasionRules.first(problems)?.problem, "occasions.needTitle")
+        XCTAssertEqual(OccasionRules.problems(draft { $0.title = String(repeating: "x", count: 81) })[.title], "occasions.titleTooLong")
+        XCTAssertEqual(OccasionRules.problems(draft { $0.titleAr = "اتصل 99887766" })[.titleAr], "occasions.contactDetails")
+    }
+
+    func testOneOfNetLetsOwnWantsBothDaysAndACalendarOccasionMayKeepTheCalendars() {
+        XCTAssertEqual(OccasionRules.problems(draft { $0.startsOn = nil; $0.endsOn = nil }), [.startsOn: "occasions.needDates"])
+        XCTAssertEqual(OccasionRules.problems(draft { $0.slug = "winter"; $0.startsOn = nil; $0.endsOn = nil }), [:])
+        XCTAssertEqual(OccasionRules.problems(draft { $0.endsOn = nil }), [.endsOn: "occasions.needBothDates"])
+        XCTAssertEqual(OccasionRules.problems(draft { $0.startsOn = "" }), [.startsOn: "occasions.needBothDates"])
+        XCTAssertEqual(OccasionRules.problems(draft { $0.startsOn = "2026-02-30" })[.startsOn], "occasions.badDate")
+        XCTAssertEqual(OccasionRules.problems(draft { $0.endsOn = "soon" })[.endsOn], "occasions.badDate")
+        XCTAssertEqual(OccasionRules.problems(draft { $0.startsOn = "2026-01-01"; $0.endsOn = "2027-01-01" }), [:])
+        XCTAssertEqual(OccasionRules.problems(draft { $0.startsOn = "2026-01-01"; $0.endsOn = "2027-01-02" })[.endsOn], "occasions.tooLong")
+        XCTAssertEqual(OccasionRules.problems(draft { $0.startsOn = "2026-11-20"; $0.endsOn = "2026-11-20" }), [:])
+        XCTAssertEqual(OccasionRules.problems(draft { $0.imageUrl = "/media/abcdefghijklmnop.webp" }), [:])
+        XCTAssertTrue(OccasionRules.isCalendar("halloween"))
+        XCTAssertFalse(OccasionRules.isCalendar("white-friday"))
+    }
+
+    func testAStoresTagCountsByTheAddressOrEitherNameFolded() throws {
+        let friday = CuratedOccasion(slug: "white-friday", title: "White Friday", titleAr: "الجمعة البيضاء", imageUrl: nil, includeTagged: true)
+        for tag in ["white-friday", "White Friday", "WHITEFRIDAY", "الجمعة البيضاء", "الجمعه البيضاء"] {
+            XCTAssertEqual(friday.products(chosen: [], catalogue: [try product("1", [tag])]).count, 1, tag)
+        }
+        XCTAssertFalse(friday.keys().contains("blackfriday"))
+
+        // Taken over under another name, the calendar's own words still count.
+        let school = CuratedOccasion(slug: "back-to-school", title: "School season 2027", titleAr: "موسم المدارس", imageUrl: nil, includeTagged: true)
+        let catalogue = [try product("1", ["Back to School"]), try product("2", ["مدرسة"]), try product("3", ["school season 2027"]), try product("4", ["winter"])]
+        XCTAssertEqual(school.products(chosen: [], catalogue: catalogue).map(\.id), ["1", "2", "3"])
+    }
+
+    func testTheChosenComeFirstInTheirOrderThenTheTaggedEachOnce() throws {
+        let friday = CuratedOccasion(slug: "white-friday", title: "White Friday", titleAr: "الجمعة البيضاء", imageUrl: nil, includeTagged: true)
+        let chosen = [try product("9"), try product("3", ["white friday"]), try product("9")]
+        let catalogue = [try product("1", ["white friday"]), try product("3", ["white friday"]), try product("2"), try product("4", ["White-Friday"])]
+        XCTAssertEqual(friday.products(chosen: chosen, catalogue: catalogue).map(\.id), ["9", "3", "1", "4"])
+        let chosenAlone = CuratedOccasion(slug: friday.slug, title: friday.title, titleAr: friday.titleAr, imageUrl: nil, includeTagged: false)
+        XCTAssertEqual(chosenAlone.products(chosen: chosen, catalogue: catalogue).map(\.id), ["9", "3"])
+        XCTAssertEqual(friday.name(.ar), "الجمعة البيضاء")
+        XCTAssertEqual(friday.name(.en), "White Friday")
+        XCTAssertEqual(CuratedOccasion(slug: "x", title: "White Friday", titleAr: " ", imageUrl: nil, includeTagged: true).name(.ar), "White Friday")
+    }
+
+    /// The home page draws NetLet's own first — what was chosen whole and in its
+    /// order — and the calendar's after, but for one NetLet took over or switched off.
+    func testTheHomePageDrawsNetLetsOwnFirstAndTheCalendarAfter() async throws {
+        let curatedClient = TRPCClient(configuration: Fixtures.client.configuration, transport: DemoTransport(variant: "curated"))
+        let live = try await curatedClient.call(API.liveOccasions, .init(locale: "en"))
+        XCTAssertTrue(live.ready)
+        XCTAssertEqual(live.occasions.map(\.occasion.slug), ["winter", "white-friday"])
+        XCTAssertEqual(live.replaced, ["winter", "halloween"])
+
+        let products = try await Fixtures.products()
+        let shelves = HomeShelf.shelves(products, bestsellers: [], now: day("2026-11-12"), curated: live)
+        // Winter has one product chosen and nothing tagged in this catalogue: under four, so not drawn.
+        XCTAssertEqual(shelves.occasions.map(\.slug), ["white-friday"])
+        let friday = try XCTUnwrap(shelves.occasions.first)
+        XCTAssertEqual(friday.products.map(\.id), ["11", "12", "14", "20"])
+        XCTAssertNil(friday.occasion)
+        XCTAssertEqual(friday.curated?.imageUrl, live.occasions[1].occasion.imageUrl)
+        XCTAssertEqual(HomeShelf.shelves(products, bestsellers: [], now: day("2026-11-12"), curated: live, occasionsDrawn: false).occasions, [])
+
+        // Four products the stores tagged for winter, and a winter that is always on.
+        let tagged = try (1...4).map { try product("t\($0)", ["winter"]) }
+        let always = Occasion(slug: "winter", label: "occasion.winter", tags: ["winter"], window: .init(calendar: "gregorian", from: [1, 1], to: [12, 31]))
+        let plain = HomeShelf.shelves(tagged, bestsellers: [], now: day("2026-11-12"), occasions: [always], curated: .empty)
+        XCTAssertEqual(plain.occasions.map(\.slug), ["winter"])
+        XCTAssertNotNil(plain.occasions.first?.occasion, "the calendar's own")
+        let taken = LiveOccasions(ready: true, occasions: [], replaced: ["winter"])
+        XCTAssertEqual(HomeShelf.shelves(tagged, bestsellers: [], now: day("2026-11-12"), occasions: [always], curated: taken).occasions, [],
+                       "taken over or switched off, the calendar does not draw it")
+        // NetLet's winter takes the stores' winter tags as well as its own pick.
+        let mine = HomeShelf.shelves(tagged, bestsellers: [], now: day("2026-11-12"), occasions: [always], curated: live)
+        XCTAssertEqual(mine.occasions.map(\.slug), ["winter", "white-friday"])
+        XCTAssertEqual(mine.occasions.first?.products.map(\.id), ["19", "t1", "t2", "t3", "t4"])
+        XCTAssertNotNil(mine.occasions.first?.curated)
+    }
+
+    func testAnOccasionsPageDecodes() async throws {
+        let curatedClient = TRPCClient(configuration: Fixtures.client.configuration, transport: DemoTransport(variant: "curated"))
+        let page = try await curatedClient.call(API.occasionPage, .init(slug: "white-friday", locale: "en"))
+        XCTAssertEqual(page.occasion?.slug, "white-friday")
+        XCTAssertFalse(page.hidden)
+        XCTAssertEqual(page.products.map(\.id), ["11", "12", "14", "20"])
+        let none = try await Fixtures.client.call(API.occasionPage, .init(slug: "halloween", locale: "en"))
+        XCTAssertNil(none.occasion)
+        let calendarOnly = try await Fixtures.client.call(API.liveOccasions, .init(locale: "en"))
+        XCTAssertTrue(calendarOnly.occasions.isEmpty)
+    }
+
+    /// The desk as a real server listed it for an administrator.
+    func testTheDeskDecodes() async throws {
+        let admin = TRPCClient(configuration: Fixtures.client.configuration, transport: DemoTransport(variant: "admin"))
+        let desk = try await admin.call(API.occasionDesk)
+        XCTAssertTrue(desk.ready)
+        XCTAssertEqual(desk.rows.map(\.slug), ["halloween", "winter", "white-friday"])
+        XCTAssertEqual(desk.rows.map(\.status), ["hidden", "published", "published"])
+        XCTAssertEqual(desk.rows.first { $0.slug == "white-friday" }?.season, OccasionSeason(state: "on", daysLeft: 6))
+        XCTAssertEqual(desk.calendar.map(\.slug), ReferenceData.shared.occasions.map(\.slug))
+        XCTAssertEqual(desk.calendar.first { $0.slug == "halloween" }?.row?.status, "hidden")
+        for row in desk.rows {
+            XCTAssertTrue(Phrasebook.shared.has(OccasionRules.statusKey(row.status)), row.status)
+            XCTAssertEqual(row.calendar, OccasionRules.isCalendar(row.slug))
+        }
+
+        let detail = try await admin.call(API.occasionGet, .init(id: 3))
+        XCTAssertEqual(detail.occasion.slug, "white-friday")
+        XCTAssertEqual(detail.products.map(\.id), [11, 12, 14, 20])
+        XCTAssertTrue(detail.products.allSatisfy(\.live))
+        XCTAssertEqual(OccasionRules.problems(OccasionDraft(slug: detail.occasion.slug, title: detail.occasion.title, titleAr: detail.occasion.titleAr,
+                                                           imageUrl: detail.occasion.imageUrl, startsOn: detail.occasion.startsOn, endsOn: detail.occasion.endsOn)), [:],
+                       "what the server saved, the rules accept")
+
+        let sent = try TRPCClient.encodeInput(API.OccasionSave(id: OrNull<Int>(nil), occasion: OccasionDraft(slug: "winter", title: "Winter", titleAr: "الشتاء")))
+        XCTAssertTrue(sent.contains(#""id":null"#), sent)
+        XCTAssertTrue(sent.contains(#""startsOn":null"#), sent)
+        XCTAssertTrue(sent.contains(#""productIds":[]"#), sent)
+    }
+
+    func testTheDeskHasPagesOfItsOwn() {
+        XCTAssertEqual(PortalPage("/admin/occasions"), .occasions)
+        XCTAssertEqual(PortalPage("/admin/occasions/new"), .occasion(nil, from: nil))
+        XCTAssertEqual(PortalPage("/admin/occasions/new?from=winter"), .occasion(nil, from: "winter"))
+        XCTAssertEqual(PortalPage("/admin/occasions/3"), .occasion(3, from: nil))
+        XCTAssertNil(PortalPage("/admin/occasions/x"))
+        XCTAssertEqual(OccasionRules.limits.titleMax, 80)
+        XCTAssertEqual(OccasionRules.limits.maxProducts, 60)
     }
 }

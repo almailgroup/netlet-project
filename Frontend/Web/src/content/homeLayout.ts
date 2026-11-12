@@ -11,6 +11,7 @@ import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { browse, EMPTY_FILTERS, productsInCategory } from "@shared/commerce/browse";
 import { savingPercentOf } from "@shared/commerce/placement";
 import { occasionsOn, productsForOccasion, type Occasion } from "@shared/commerce/occasions";
+import { curatedProducts, type PublicOccasion } from "@shared/commerce/occasionDesk";
 import type { Product } from "@shared/commerce/types";
 
 /**
@@ -95,8 +96,20 @@ export const MIN_TAB_PRODUCTS = 2;
 /** The most occasions drawn on one day: the end of the year has three, and the page is not a calendar. */
 export const MAX_OCCASIONS = 2;
 
-/** An occasion whose shopping is on, with the products the stores tagged for it. */
-export type OccasionShelf = { occasion: Occasion; products: Product[] };
+/**
+ * NetLet's own occasions running today, as the server answers them
+ * (`occasions.live`): each with the products chosen for it, and the calendar
+ * occasions the calendar must not draw by itself — taken over, or switched
+ * off.
+ */
+export type CuratedShelves = { occasions: (PublicOccasion & { products: Product[] })[]; replaced: string[] };
+
+/**
+ * An occasion whose shopping is on, with what it shows. Either the calendar's
+ * (`occasion`), from the products the stores tagged for it, or one NetLet
+ * curated (`curated`), with its own names and picture.
+ */
+export type OccasionShelf = { slug: string; occasion: Occasion | null; curated: PublicOccasion | null; products: Product[] };
 export type HomeShelves = Record<HomeShelfId, Product[]> & { occasions: OccasionShelf[] };
 
 /**
@@ -105,7 +118,7 @@ export type HomeShelves = Record<HomeShelfId, Product[]> & { occasions: Occasion
  * so every product the shop has live is on the home page somewhere, and a
  * small shop is one honest grid rather than an empty page.
  */
-export function shelvesFor(catalog: Product[], bestsellers: Product[] = [], trending: Product[] = [], now = new Date()): HomeShelves {
+export function shelvesFor(catalog: Product[], bestsellers: Product[] = [], trending: Product[] = [], now = new Date(), curated?: CuratedShelves): HomeShelves {
   const shown = new Set<string>();
   const pick = (candidates: Product[], floor: number, most = MAX_SHELF_PRODUCTS) => {
     const fresh = candidates.filter(product => !shown.has(product.id));
@@ -121,10 +134,26 @@ export function shelvesFor(catalog: Product[], bestsellers: Product[] = [], tren
      products the stores tagged for it — after the deals, since a saving is
      the stronger reason to show a product, and before Trending. */
   const occasions: OccasionShelf[] = [];
+  /* NetLet's own lead (`Shared/commerce/occasionDesk.ts`). What it chose is
+     shown whole, in its order — a curator who picked six sees six, whatever a
+     shelf above holds — and what the stores tagged follows, less what a shelf
+     above shows. Still from four, the strips' floor. */
+  for (const { products: picked, ...occasion } of curated?.occasions ?? []) {
+    if (occasions.length >= MAX_OCCASIONS) break;
+    const chosen = new Set(picked.map(product => product.id));
+    const fresh = curatedProducts(occasion, picked, catalog).filter(product => chosen.has(product.id) || !shown.has(product.id));
+    if (fresh.length < MIN_SHELF_PRODUCTS) continue;
+    const products = fresh.slice(0, MAX_SHELF_PRODUCTS);
+    for (const product of products) shown.add(product.id);
+    occasions.push({ slug: occasion.slug, occasion: null, curated: occasion, products });
+  }
+  /* Then the calendar's, but for one NetLet took over or switched off. */
+  const replaced = new Set([...(curated?.replaced ?? []), ...occasions.map(shelf => shelf.slug)]);
   for (const occasion of occasionsOn(now)) {
     if (occasions.length >= MAX_OCCASIONS) break;
+    if (replaced.has(occasion.slug)) continue;
     const products = pick(productsForOccasion(catalog, occasion), MIN_SHELF_PRODUCTS);
-    if (products.length) occasions.push({ occasion, products });
+    if (products.length) occasions.push({ slug: occasion.slug, occasion, curated: null, products });
   }
   const hot = pick(trending, MIN_SHELF_PRODUCTS, MAX_TABBED_PRODUCTS);
   const best = pick(bestsellers, MIN_SHELF_PRODUCTS, MAX_TABBED_PRODUCTS);

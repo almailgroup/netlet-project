@@ -22,7 +22,7 @@ final class ShelfMemory: @unchecked Sendable {
     /// The procedures whose answers are kept, named by the app's own list of them.
     static let procedures: Set<String> = [
         API.products.path, API.bestsellers.path, API.trending.path, API.departmentCounts.path, API.subcategoryCounts.path,
-        API.stores.path, API.brands.path, API.contact.path,
+        API.stores.path, API.brands.path, API.contact.path, API.liveOccasions.path,
     ]
 
     private let folder: URL?

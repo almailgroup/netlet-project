@@ -66,6 +66,7 @@ struct PortalRules: Decodable, Sendable {
     var badges: BadgeRules?
     var money: MoneyRules?
     var guides: GuideLimits?
+    var occasions: OccasionLimits?
 
     /// How long after the sale a seller's money comes due (`SETTLEMENT_DAYS`).
     struct Settlement: Decodable, Sendable {
@@ -178,6 +179,10 @@ enum PortalPage: Hashable, Sendable {
     /// A store's own documents, for its owner (`Shared/inventory/storeDocuments.ts`);
     /// NetLet reads each store's on that store's page.
     case storeDocuments
+    /// The seasons and occasions NetLet curates (`Shared/commerce/occasionDesk.ts`).
+    case occasions
+    /// One of them; nil is a new one, which may start from a calendar occasion (`?from=winter`).
+    case occasion(Int?, from: String?)
 
     init?(_ href: String) {
         let parts = href.split(separator: "?", maxSplits: 1).map(String.init)
@@ -206,6 +211,10 @@ enum PortalPage: Hashable, Sendable {
         case 2 where rest[0] == "support":
             guard let id = Int(rest[1]) else { return nil }
             self = .supportThread(id)
+        case 2 where rest[0] == "occasions" && rest[1] == "new": self = .occasion(nil, from: query["from"])
+        case 2 where rest[0] == "occasions":
+            guard let id = Int(rest[1]) else { return nil }
+            self = .occasion(id, from: nil)
         case 2 where rest[0] == "guides" && rest[1] == "new": self = .guide(nil)
         case 2 where rest[0] == "guides":
             guard let id = Int(rest[1]) else { return nil }
@@ -245,6 +254,7 @@ enum PortalPage: Hashable, Sendable {
             case "devices": self = .devices
             case "subcategory-pictures": self = .subcategoryPictures
             case "store-documents": self = .storeDocuments
+            case "occasions": self = .occasions
             default: return nil
             }
         default: return nil

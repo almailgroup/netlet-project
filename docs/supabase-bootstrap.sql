@@ -2148,6 +2148,42 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS "vendor_documents_vendor_idx" ON "vendor_documents" USING btree ("vendor_id","created_at");
 
+-- ===== 0081_occasions.sql =====
+CREATE TABLE IF NOT EXISTS "occasion_products" (
+	"occasion_id" integer NOT NULL,
+	"product_id" integer NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	CONSTRAINT "occasion_products_occasion_id_product_id_pk" PRIMARY KEY("occasion_id","product_id")
+);
+CREATE TABLE IF NOT EXISTS "occasions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"slug" varchar(40) NOT NULL,
+	"title" varchar(80) NOT NULL,
+	"title_ar" varchar(80) NOT NULL,
+	"image_url" varchar(200),
+	"starts_on" date,
+	"ends_on" date,
+	"include_tagged" boolean DEFAULT true NOT NULL,
+	"status" varchar(12) DEFAULT 'draft' NOT NULL,
+	"created_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "occasion_products" ADD CONSTRAINT "occasion_products_occasion_id_occasions_id_fk" FOREIGN KEY ("occasion_id") REFERENCES "public"."occasions"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "occasion_products" ADD CONSTRAINT "occasion_products_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "occasions" ADD CONSTRAINT "occasions_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "occasion_products_product_idx" ON "occasion_products" USING btree ("product_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "occasions_slug_unique" ON "occasions" USING btree ("slug");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2191,6 +2227,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  81 AS migrations_in_this_file,
+  82 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -41,6 +41,13 @@ function orderings(text: string): string[] {
   return found;
 }
 
+/*
+ * A table whose key is a pair has no id to end on. `occasion_products` is
+ * keyed by the occasion and the product, and its ordering is within one
+ * occasion, so ending on the product is ending on something unique.
+ */
+const PAIR_KEYED = /\boccasionProducts\.productId\b/;
+
 describe("orderings by position", () => {
   it("reads a nested call whole", () => {
     expect(orderings("x.orderBy(asc(a.position), asc(a.id)).limit(1)")).toEqual(["asc(a.position), asc(a.id)"]);
@@ -49,7 +56,7 @@ describe("orderings by position", () => {
   it("end on the id everywhere in Backend/src/", () => {
     const offenders = sources(ROOT).flatMap(file =>
       orderings(readFileSync(file, "utf8"))
-        .filter(args => /\.position\b/.test(args) && !/\.id\b/.test(args) && !/\.name\b/.test(args))
+        .filter(args => /\.position\b/.test(args) && !/\.id\b/.test(args) && !/\.name\b/.test(args) && !PAIR_KEYED.test(args))
         .map(args => `${path.relative(ROOT, file)}: orderBy(${args})`));
     expect(offenders).toEqual([]);
   });

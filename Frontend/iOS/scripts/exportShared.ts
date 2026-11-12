@@ -48,6 +48,7 @@ import { defaultNotificationPreferences, notificationKinds, notificationLabelKey
 import { MONEY_PARAMS } from "../../../Shared/commerce/notices.js";
 import { MAX_OPEN_CONVERSATIONS, MAX_SUPPORT_MESSAGE, SUPPORT_TOPICS } from "../../../Shared/commerce/support.js";
 import { GUIDE_SUMMARY_MAX, GUIDE_TITLE_MAX, GUIDE_TOPIC_MAX, MAX_GUIDE_STEPS, STEP_BODY_MAX, STEP_TITLE_MAX } from "../../../Shared/commerce/guides.js";
+import { MAX_OCCASION_DAYS, MAX_OCCASION_PRODUCTS, OCCASION_SLUG_MAX, OCCASION_TITLE_MAX } from "../../../Shared/commerce/occasionDesk.js";
 import { MAX_REVIEW_BODY, MAX_REVIEW_PHOTOS, MAX_REVIEW_TITLE, RATING_MAX, REVIEW_PAGE } from "../../../Shared/commerce/reviews.js";
 import { MAX_PROFILE_PHOTO_BYTES, PROFILE_PHOTO_EDGE } from "../../../Shared/commerce/profilePhoto.js";
 import { MAX_AFFILIATE_PERCENT, MIN_AFFILIATE_PAYOUT_FILS } from "../../../Shared/commerce/affiliate.js";
@@ -388,6 +389,10 @@ export function buildResources(): Record<string, string> {
       guides: {
         titleMax: GUIDE_TITLE_MAX, summaryMax: GUIDE_SUMMARY_MAX, stepTitleMax: STEP_TITLE_MAX, stepBodyMax: STEP_BODY_MAX,
         maxSteps: MAX_GUIDE_STEPS, topicMax: GUIDE_TOPIC_MAX,
+      },
+      /* The occasions desk's limits (`occasionDesk.ts`), which the server refuses past. */
+      occasions: {
+        titleMax: OCCASION_TITLE_MAX, slugMax: OCCASION_SLUG_MAX, maxProducts: MAX_OCCASION_PRODUCTS, maxDays: MAX_OCCASION_DAYS,
       } }),
   };
 }

@@ -12,6 +12,10 @@ protocol CatalogServicing: Sendable {
     func store(slug: String, language: Language) async throws -> StorePage?
     func brands() async throws -> [BrandCount]
     func contact() async throws -> ShopContact
+    /// NetLet's own occasions running today, for the home page.
+    func liveOccasions(language: Language) async throws -> LiveOccasions
+    /// One occasion's page, by its address.
+    func occasionPage(slug: String, language: Language) async throws -> OccasionPage
 
     /// Today's answers to the same calls, kept on the phone (`ShelfMemory`):
     /// drawn at once while the calls are asked again. Nil when there is none.
@@ -21,10 +25,14 @@ protocol CatalogServicing: Sendable {
     func rememberedDepartmentCounts() -> [String: Int]?
     func rememberedStores(language: Language) -> [StoreCard]?
     func rememberedBrands() -> [BrandCount]?
+    func rememberedLiveOccasions(language: Language) -> LiveOccasions?
 }
 
-/// A stand-in remembers nothing.
+/// A stand-in remembers nothing, and has curated no occasion.
 extension CatalogServicing {
+    func liveOccasions(language: Language) async throws -> LiveOccasions { .empty }
+    func occasionPage(slug: String, language: Language) async throws -> OccasionPage { .empty }
+    func rememberedLiveOccasions(language: Language) -> LiveOccasions? { nil }
     func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]? { nil }
     func rememberedBestsellers(language: Language) -> [Product]? { nil }
     func rememberedTrending(language: Language) -> [Product]? { nil }
@@ -74,6 +82,18 @@ struct CatalogService: CatalogServicing {
 
     func contact() async throws -> ShopContact {
         try await client.call(API.contact)
+    }
+
+    func liveOccasions(language: Language) async throws -> LiveOccasions {
+        try await client.call(API.liveOccasions, .init(locale: language.rawValue))
+    }
+
+    func occasionPage(slug: String, language: Language) async throws -> OccasionPage {
+        try await client.call(API.occasionPage, .init(slug: slug, locale: language.rawValue))
+    }
+
+    func rememberedLiveOccasions(language: Language) -> LiveOccasions? {
+        client.remembered(API.liveOccasions, .init(locale: language.rawValue))
     }
 
     func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]? {

@@ -24,6 +24,11 @@ final class HomeShelf {
     private(set) var trending: [Product] = []
     private(set) var stores: [StoreCard] = []
     private(set) var brands: [BrandCount] = []
+    /// NetLet's own occasions running today (`occasions.live`); nil until the
+    /// server has answered or failed to, and until then no occasion is drawn
+    /// — the calendar's Halloween shown for a moment over one NetLet switched
+    /// off would be a band that flashes.
+    private(set) var curated: LiveOccasions?
     /// Products on sale per department; nil until the server has answered.
     private(set) var counts: [String: Int]?
     /// How to reach a person at NetLet, for the footer: the shop's defaults
@@ -72,11 +77,15 @@ final class HomeShelf {
         }
     }
 
-    /// An occasion whose shopping is on, with the products the stores tagged for it.
+    /// An occasion whose shopping is on, with what it shows: the calendar's
+    /// (`occasion`), from the products the stores tagged for it, or one
+    /// NetLet curated (`curated`), with its own names and picture.
     struct OccasionShelf: Equatable, Identifiable {
-        let occasion: Occasion
+        let slug: String
+        let occasion: Occasion?
+        let curated: CuratedOccasion?
         let products: [Product]
-        var id: String { occasion.slug }
+        var id: String { slug }
     }
 
     struct Shelves: Equatable {
@@ -97,7 +106,9 @@ final class HomeShelf {
         var id: String { slug }
     }
 
-    var shelves: Shelves { Self.shelves(catalogue.value ?? [], bestsellers: bestsellers, trending: trending) }
+    var shelves: Shelves {
+        Self.shelves(catalogue.value ?? [], bestsellers: bestsellers, trending: trending, curated: curated, occasionsDrawn: curated != nil)
+    }
 
     /// Whether the home page draws a deals shelf — Mega deals or Deals — the
     /// rule every link to deals keeps (`dealsDrawn`).
@@ -116,6 +127,7 @@ final class HomeShelf {
             stores = catalog.rememberedStores(language: language) ?? []
             brands = catalog.rememberedBrands() ?? brands
             counts = catalog.rememberedDepartmentCounts() ?? counts
+            curated = catalog.rememberedLiveOccasions(language: language) ?? curated
             warm(kept + bestsellers + trending)
         }
         if catalogue.value == nil { catalogue = .loading }
@@ -125,6 +137,7 @@ final class HomeShelf {
         async let storeCards = try? catalog.stores(language: language)
         async let brandRows = try? catalog.brands()
         async let channels = try? catalog.contact()
+        async let occasions = try? catalog.liveOccasions(language: language)
         do {
             let products = try await catalog.products(first: Self.size, department: nil, language: language)
             warm(products)
@@ -143,10 +156,15 @@ final class HomeShelf {
         brands = await brandRows ?? brands
         counts = await counted ?? counts
         contact = await channels ?? contact
+        // Answered or not, the page may draw its occasions now: with no answer
+        // it keeps the one it had, or is the calendar's own.
+        let answered = await occasions
+        curated = answered ?? curated ?? LiveOccasions.empty
+        warm(curated?.occasions.flatMap(\.products) ?? [])
     }
 
     /// `shelvesFor`, pure.
-    nonisolated static func shelves(_ catalogue: [Product], bestsellers: [Product], trending: [Product] = [], now: Date = Date(), occasions calendar: [Occasion] = ReferenceData.shared.occasions) -> Shelves {
+    nonisolated static func shelves(_ catalogue: [Product], bestsellers: [Product], trending: [Product] = [], now: Date = Date(), occasions calendar: [Occasion] = ReferenceData.shared.occasions, curated: LiveOccasions? = nil, occasionsDrawn: Bool = true) -> Shelves {
         var shown = Set<String>()
         func pick(_ candidates: [Product], floor: Int, most: Int = Self.most) -> [Product] {
             let fresh = candidates.filter { !shown.contains($0.id) }
@@ -161,9 +179,23 @@ final class HomeShelf {
         // The seasons and the occasions whose shopping is on today, each from
         // the products the stores tagged for it — after the deals, before Trending.
         var occasions: [OccasionShelf] = []
-        for occasion in calendar where occasion.isOn(now) && occasions.count < mostOccasions {
+        // NetLet's own lead. What it chose is shown whole, in its order — a
+        // curator who picked six sees six, whatever a shelf above holds — and
+        // what the stores tagged follows, less what a shelf above shows.
+        for entry in (occasionsDrawn ? curated?.occasions : nil) ?? [] where occasions.count < mostOccasions {
+            let chosen = Set(entry.products.map(\.id))
+            let fresh = entry.occasion.products(chosen: entry.products, catalogue: catalogue, calendar: calendar)
+                .filter { chosen.contains($0.id) || !shown.contains($0.id) }
+            guard fresh.count >= Self.floor else { continue }
+            let products = Array(fresh.prefix(Self.most))
+            for product in products { shown.insert(product.id) }
+            occasions.append(OccasionShelf(slug: entry.occasion.slug, occasion: nil, curated: entry.occasion, products: products))
+        }
+        // Then the calendar's, but for one NetLet took over or switched off.
+        let replaced = Set((curated?.replaced ?? []) + occasions.map(\.slug))
+        for occasion in (occasionsDrawn ? calendar : []) where occasion.isOn(now) && occasions.count < mostOccasions && !replaced.contains(occasion.slug) {
             let chosen = pick(catalogue.filter { occasion.matches($0) }, floor: Self.floor)
-            if !chosen.isEmpty { occasions.append(OccasionShelf(occasion: occasion, products: chosen)) }
+            if !chosen.isEmpty { occasions.append(OccasionShelf(slug: occasion.slug, occasion: occasion, curated: nil, products: chosen)) }
         }
         let hot = pick(trending, floor: Self.floor, most: tabbed)
         let sold = pick(bestsellers, floor: Self.floor, most: tabbed)

@@ -71,6 +71,10 @@ export const AUDIT_ACTIONS = [
   /* A guide published, taken down or deleted (3.5.3): NetLet speaking in public. */
   "guide.setStatus",
   "guide.delete",
+  /* An occasion published, taken down, switched off or deleted: what NetLet's
+     own front page says is in season. */
+  "occasion.setStatus",
+  "occasion.delete",
   /* A person's hand on a return (3.6.3): a request no rule could decide, the
      item received and what became of it, the cash handed back. The decisions
      a rule makes the moment a shopper asks are the rule's, and are not here. */
@@ -133,7 +137,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "return" | "proposal" | "order" | "device";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "occasion" | "return" | "proposal" | "order" | "device";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;

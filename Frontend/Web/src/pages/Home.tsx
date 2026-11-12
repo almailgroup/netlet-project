@@ -66,7 +66,12 @@ export default function Home() {
   const trending = trpc.commerce.trending.useQuery({ locale }, { staleTime: 5 * 60 * 1000 });
 
   /* The header search goes to the results page on Enter; the shelves are the shop's, not the search's. */
-  const shelves = useMemo(() => shelvesFor(catalog, bestsellers.data ?? [], trending.data ?? []), [catalog, bestsellers.data, trending.data]);
+  /* NetLet's own occasions running today (`occasions.live`), and the calendar's it took over or switched off. */
+  const occasions = trpc.occasions.live.useQuery({ locale }, { staleTime: 5 * 60 * 1000 });
+  const shelves = useMemo(
+    () => shelvesFor(catalog, bestsellers.data ?? [], trending.data ?? [], new Date(), occasions.data),
+    [catalog, bestsellers.data, trending.data, occasions.data],
+  );
   const articlesOn = useFeature("articles");
   const appBannerOn = useFeature("appBanner");
 
@@ -126,9 +131,11 @@ export default function Home() {
       <RecommendedRail deals quiet {...cards} />
       {shelf("deals")}
       <RecommendedRail quiet {...cards} />
-      {/* The seasons and the occasions whose shopping is on today, from the
-          products the stores tagged for them. */}
-      {ready ? shelves.occasions.map(entry => <OccasionBand key={entry.occasion.slug} occasion={entry.occasion} products={entry.products} {...cards} />) : null}
+      {/* The seasons and the occasions whose shopping is on today: NetLet's
+          own first, then the calendar's from the products the stores tagged.
+          Not before NetLet's answer is in: the calendar's Halloween drawn for
+          a moment over one NetLet switched off would be a band that flashes. */}
+      {ready && !occasions.isLoading ? shelves.occasions.map(entry => <OccasionBand key={entry.slug} shelf={entry} {...cards} />) : null}
       {shelf("trending")}
       {shelf("bestsellers")}
       <RecentlyViewedRail {...cards} />

@@ -51,6 +51,7 @@ import type { StoreDocumentKind } from "../../Shared/inventory/storeDocuments.js
 import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../../Shared/commerce/support.js";
 import { INBOUND_STATUSES } from "../../Shared/commerce/netletFulfilment.js";
 import type { GuideAudience, GuideStatus, GuideStep } from "../../Shared/commerce/guides.js";
+import type { OccasionStatus } from "../../Shared/commerce/occasionDesk.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -3480,6 +3481,57 @@ export const guides = pgTable(
   table => [
     uniqueIndex("guides_slug_unique").on(table.slug),
     index("guides_published_idx").on(table.status, table.audience, table.publishedAt, table.id),
+  ],
+);
+
+/* ------------------------------------------------------------- occasions --- */
+
+/**
+ * An occasion NetLet curates by hand (migration 0081,
+ * `Shared/commerce/occasionDesk.ts`): its names, its address, an optional
+ * banner picture and the days it runs. An address that is a calendar
+ * occasion's takes that occasion over once published, and `hidden` switches
+ * the calendar's off. The days are Kuwaiti calendar days, both inclusive;
+ * both empty keeps the calendar's own window, which only a calendar
+ * occasion has. Whether one is running is read from today's day, never
+ * stored.
+ */
+export const occasions = pgTable(
+  "occasions",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug", { length: 40 }).notNull(),
+    title: varchar("title", { length: 80 }).notNull(),
+    titleAr: varchar("title_ar", { length: 80 }).notNull(),
+    /** One of NetLet's own uploads (`/media/...`), cropped to 3:1 in the browser. */
+    imageUrl: varchar("image_url", { length: 200 }),
+    startsOn: date("starts_on", { mode: "string" }),
+    endsOn: date("ends_on", { mode: "string" }),
+    includeTagged: boolean("include_tagged").notNull().default(true),
+    status: varchar("status", { length: 12 }).$type<OccasionStatus>().notNull().default("draft"),
+    createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [uniqueIndex("occasions_slug_unique").on(table.slug)],
+);
+
+/**
+ * The products chosen for an occasion, in the order chosen. A table rather
+ * than a list on the row so a product deleted from the shop leaves every
+ * occasion by the cascade, and the index is what keeps that cascade from
+ * reading the whole table.
+ */
+export const occasionProducts = pgTable(
+  "occasion_products",
+  {
+    occasionId: integer("occasion_id").notNull().references(() => occasions.id, { onDelete: "cascade" }),
+    productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+  },
+  table => [
+    primaryKey({ columns: [table.occasionId, table.productId] }),
+    index("occasion_products_product_idx").on(table.productId),
   ],
 );
 

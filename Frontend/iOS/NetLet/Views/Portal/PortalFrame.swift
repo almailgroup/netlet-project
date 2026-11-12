@@ -33,6 +33,7 @@ enum PortalIcons {
         "/admin/commission": "percent",
         "/admin/team": "person.2",
         "/admin/store-documents": "folder",
+        "/admin/occasions": "calendar",
         "/admin/vendors": "storefront",
         "/admin/applications": "list.clipboard",
         "/admin/people": "person.crop.circle.badge.checkmark",

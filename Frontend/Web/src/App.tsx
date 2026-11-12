@@ -81,6 +81,8 @@ const AdminSubscriptions = lazyPage(() => import("@/pages/admin/Subscriptions"))
 const AdminGuides = lazyPage(() => import("@/pages/admin/Guides"));
 const AdminSubcategoryPictures = lazyPage(() => import("@/pages/admin/SubcategoryPictures"));
 const AdminGuideEditor = lazyPage(() => import("@/pages/admin/GuideEditor"));
+const AdminOccasions = lazyPage(() => import("@/pages/admin/Occasions"));
+const AdminOccasionEditor = lazyPage(() => import("@/pages/admin/OccasionEditor"));
 const AdminSupport = lazyPage(() => import("@/pages/admin/Support"));
 const AdminFulfilment = lazyPage(() => import("@/pages/admin/Fulfilment"));
 const AdminMembership = lazyPage(() => import("@/pages/admin/Membership"));
@@ -324,6 +326,8 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/admin/guides", page: AdminGuides, frame: "admin" },
   { path: "/admin/subcategory-pictures", page: AdminSubcategoryPictures, frame: "admin" },
   { path: "/admin/guides/:id", page: AdminGuideEditor, frame: "admin" },
+  { path: "/admin/occasions", page: AdminOccasions, frame: "admin" },
+  { path: "/admin/occasions/:id", page: AdminOccasionEditor, frame: "admin" },
   { path: "/admin/support", page: AdminSupport, frame: "admin" },
   { path: "/admin/fulfilment", page: AdminFulfilment, frame: "admin" },
   { path: "/admin/membership", page: AdminMembership, frame: "admin" },

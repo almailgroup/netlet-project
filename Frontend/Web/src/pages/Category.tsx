@@ -59,6 +59,8 @@ import { categoryMessageKey } from "@/content/homeLayout";
 import { departmentMeta, privatePageMeta } from "@shared/seo";
 import { findSubcategory, subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
 import { occasionFromSlug, productsForOccasion } from "@shared/commerce/occasions";
+import { curatedProducts, occasionName } from "@shared/commerce/occasionDesk";
+import { OccasionBanner } from "@/components/home/ProductShelf";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   ArrowUpDown, BadgePercent, Banknote, Check, ChevronDown, LayoutGrid, ListFilter, PackageOpen, SlidersHorizontal, Star, Store, Tag, Truck, X,
@@ -152,7 +154,20 @@ export default function Category() {
     { enabled: searching, placeholderData: previous => previous, staleTime: 30_000 },
   );
   const matched = useMemo(() => (searching ? answer.data?.products ?? [] : []), [searching, answer.data]);
-  const isLoading = searching ? answer.isLoading : shelf.isLoading;
+  /*
+   * An occasion's page (`?occasion=`). NetLet may have curated it — its own
+   * name, picture and chosen products, which the server answers — or taken
+   * one of the calendar's over, or switched it off; so the page asks before
+   * it draws, and the calendar's own rule decides only when NetLet has
+   * nothing published at that address.
+   */
+  const occasionSlug = onSearchPage ? null : filters.occasion;
+  const occasionPage = trpc.occasions.bySlug.useQuery(
+    { slug: occasionSlug ?? "", locale },
+    { enabled: Boolean(occasionSlug), staleTime: 60_000 },
+  );
+  const occasionLoading = Boolean(occasionSlug) && occasionPage.isLoading;
+  const isLoading = (searching ? answer.isLoading : shelf.isLoading) || occasionLoading;
   const error = searching ? answer.error : shelf.error;
   const refetch = searching ? answer.refetch : shelf.refetch;
 
@@ -161,12 +176,19 @@ export default function Category() {
   // used to tick it. On a search, what is in it is what the search found.
   const inCategory = useMemo(() => productsInCategory(catalog, category), [catalog, category]);
   /* An occasion's shelf, the products the stores tagged for it (`?occasion=`): the page, like a subcategory. */
-  const activeOccasion = onSearchPage ? null : occasionFromSlug(filters.occasion);
+  const curatedOccasion = occasionSlug ? occasionPage.data?.occasion ?? null : null;
+  const activeOccasion = occasionSlug && !curatedOccasion && !occasionPage.data?.hidden ? occasionFromSlug(occasionSlug) : null;
+  const chosenForOccasion = occasionPage.data?.products;
   /* A subcategory or an occasion is the page rather than a facet, so its facets are its own products'. */
   const inPage = useMemo(() => {
-    const narrowed = filters.sub ? inCategory.filter(product => product.subcategory === filters.sub) : inCategory;
-    return activeOccasion ? productsForOccasion(narrowed, activeOccasion) : narrowed;
-  }, [inCategory, filters.sub, activeOccasion]);
+    const within = (products: Product[]) => (filters.sub ? products.filter(product => product.subcategory === filters.sub) : products);
+    const narrowed = within(inCategory);
+    /* NetLet's own: what it chose, in its order, then what the stores tagged for it. */
+    if (curatedOccasion) return curatedProducts(curatedOccasion, within(productsInCategory(chosenForOccasion ?? [], category)), narrowed);
+    /* An address naming no occasion, or one switched off, narrows to nothing, never to everything. */
+    if (occasionSlug) return activeOccasion ? productsForOccasion(narrowed, activeOccasion) : [];
+    return narrowed;
+  }, [inCategory, filters.sub, activeOccasion, curatedOccasion, chosenForOccasion, occasionSlug, category]);
   /*
    * The Deals page, on the owner's word: the whole shop narrowed to what is on
    * offer — the Deals tab, and the footer's "On offer" — drawn as a shelf per
@@ -190,10 +212,18 @@ export default function Category() {
    * The sidebar narrows what it found; a chosen order wins over the ranking.
    */
   const results = useMemo(() => {
-    if (!searching) return browse(catalog, filters);
-    const narrowed = applyFilters(matched, filters);
-    return filters.sort === "relevance" ? narrowed : sortProducts(narrowed, filters.sort);
-  }, [searching, catalog, matched, filters]);
+    if (searching) {
+      const narrowed = applyFilters(matched, filters);
+      return filters.sort === "relevance" ? narrowed : sortProducts(narrowed, filters.sort);
+    }
+    if (occasionSlug) {
+      /* The occasion has already narrowed the page (`inPage`); the facets narrow it further.
+         One NetLet curated keeps the order it was chosen in until the shopper picks another. */
+      const narrowed = applyFilters(inPage, { ...filters, occasion: null });
+      return curatedOccasion && filters.sort === "relevance" ? narrowed : sortProducts(narrowed, filters.sort);
+    }
+    return browse(catalog, filters);
+  }, [searching, catalog, matched, filters, occasionSlug, inPage, curatedOccasion]);
   const correctedTo = searching ? answer.data?.correctedTo ?? null : null;
   const elsewhere = searching && category !== "all" && !results.length ? answer.data?.elsewhere ?? 0 : 0;
   /* More matched than one page holds: the best of them are here, and the page says how many there were. */
@@ -223,7 +253,9 @@ export default function Category() {
     : null;
   const title = searched
     ? category === "all" ? t("browse.searchTitle", { query: searched }) : t("browse.searchInTitle", { query: searched, name: departmentName })
-    : viewName ?? (activeOccasion ? t(activeOccasion.label) : activeSub ? subcategoryName(activeSub, locale === "ar") : departmentName);
+    : viewName ?? (curatedOccasion
+      ? occasionName(curatedOccasion, locale === "ar")
+      : activeOccasion ? t(activeOccasion.label) : activeSub ? subcategoryName(activeSub, locale === "ar") : departmentName);
 
   /* A department page is a page to be found; a search or a filtered view is not. */
   usePageMeta(
@@ -384,8 +416,12 @@ export default function Category() {
               ? [{ label: t("nav.deals") }]
               : activeSub
               ? [{ label: departmentName, href: basePath }, { label: subcategoryName(activeSub, locale === "ar") }]
+              : curatedOccasion || activeOccasion
+              ? [{ label: departmentName, href: basePath }, { label: curatedOccasion ? occasionName(curatedOccasion, locale === "ar") : t(activeOccasion!.label) }]
               : [{ label: departmentName }]}
         />
+        {/* One of NetLet's occasions with a picture opens on it, over its name. */}
+        {curatedOccasion?.imageUrl && !searched ? <OccasionBanner src={curatedOccasion.imageUrl} eager /> : null}
         {/* The count under the name rather than as the heading: "No results for Beauty"
             read as a search that failed, for a department that simply has nothing yet. */}
         <PageHeading

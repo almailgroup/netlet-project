@@ -1,0 +1,304 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "occasion": {
+          "slug": "white-friday",
+          "title": "White Friday",
+          "titleAr": "الجمعة البيضاء",
+          "imageUrl": "/media/KjSOfY3N7mhUPLELv5g2lv7N.webp",
+          "includeTagged": true
+        },
+        "hidden": false,
+        "products": [
+          {
+            "id": "11",
+            "handle": "wireless-earbuds",
+            "title": "Wireless earbuds",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "Electronics",
+            "vendor": "Acme Electronics",
+            "vendorSlug": "acme",
+            "vendorBadges": [],
+            "deliverySpeed": null,
+            "deliveryProvider": null,
+            "tags": [
+              "white friday"
+            ],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/subcategories/electronics-audio.webp",
+                "altText": "Wireless earbuds",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/subcategories/electronics-audio.webp",
+                "altText": "Wireless earbuds"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "20.500",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "20.500",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "14",
+                "title": "Default",
+                "sku": null,
+                "price": {
+                  "amount": "20.500",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 12,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "audio"
+          },
+          {
+            "id": "12",
+            "handle": "gaming-console",
+            "title": "Gaming console",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "Electronics",
+            "vendor": "Acme Electronics",
+            "vendorSlug": "acme",
+            "vendorBadges": [],
+            "deliverySpeed": null,
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/subcategories/electronics-gaming.webp",
+                "altText": "Gaming console",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/subcategories/electronics-gaming.webp",
+                "altText": "Gaming console"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "23.500",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "23.500",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "15",
+                "title": "Default",
+                "sku": null,
+                "price": {
+                  "amount": "23.500",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 12,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "gaming"
+          },
+          {
+            "id": "14",
+            "handle": "perfume",
+            "title": "Evening perfume",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "Beauty",
+            "vendor": "Acme Electronics",
+            "vendorSlug": "acme",
+            "vendorBadges": [],
+            "deliverySpeed": null,
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/subcategories/beauty-fragrance.webp",
+                "altText": "Evening perfume",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/subcategories/beauty-fragrance.webp",
+                "altText": "Evening perfume"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "29.500",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "29.500",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "17",
+                "title": "Default",
+                "sku": null,
+                "price": {
+                  "amount": "29.500",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 12,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "fragrance"
+          },
+          {
+            "id": "20",
+            "handle": "tablet",
+            "title": "Tablet 11 inch",
+            "description": "",
+            "descriptionHtml": "",
+            "productType": "Electronics",
+            "vendor": "Acme Electronics",
+            "vendorSlug": "acme",
+            "vendorBadges": [],
+            "deliverySpeed": null,
+            "deliveryProvider": null,
+            "tags": [],
+            "attributes": [],
+            "media": [
+              {
+                "url": "/subcategories/electronics-tablets.webp",
+                "altText": "Tablet 11 inch",
+                "kind": "image",
+                "posterUrl": null
+              }
+            ],
+            "images": [
+              {
+                "url": "/subcategories/electronics-tablets.webp",
+                "altText": "Tablet 11 inch"
+              }
+            ],
+            "priceRange": {
+              "min": {
+                "amount": "47.500",
+                "currencyCode": "KWD"
+              },
+              "max": {
+                "amount": "47.500",
+                "currencyCode": "KWD"
+              }
+            },
+            "options": [],
+            "variants": [
+              {
+                "id": "23",
+                "title": "Default",
+                "sku": null,
+                "price": {
+                  "amount": "47.500",
+                  "currencyCode": "KWD"
+                },
+                "compareAtPrice": null,
+                "memberPrice": null,
+                "availableForSale": true,
+                "preorder": null,
+                "maxQuantity": 12,
+                "measure": {
+                  "unit": "each",
+                  "stepAmount": 1
+                },
+                "selectedOptions": []
+              }
+            ],
+            "addons": [],
+            "sizeChart": null,
+            "subscription": null,
+            "reviewSummary": null,
+            "subcategory": "tablets"
+          }
+        ]
+      },
+      "meta": {
+        "referentialEqualities": {
+          "products.0.priceRange.min": [
+            "products.0.priceRange.max",
+            "products.0.variants.0.price"
+          ],
+          "products.1.priceRange.min": [
+            "products.1.priceRange.max",
+            "products.1.variants.0.price"
+          ],
+          "products.2.priceRange.min": [
+            "products.2.priceRange.max",
+            "products.2.variants.0.price"
+          ],
+          "products.3.priceRange.min": [
+            "products.3.priceRange.max",
+            "products.3.variants.0.price"
+          ]
+        }
+      }
+    }
+  }
+}

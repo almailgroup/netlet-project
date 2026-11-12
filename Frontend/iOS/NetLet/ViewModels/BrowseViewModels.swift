@@ -377,6 +377,12 @@ final class BrowseModel {
         return nil
     }
     private(set) var products: LoadState<[Product]> = .idle
+    /// One of NetLet's own occasions at this page's address (`occasions.bySlug`):
+    /// its names and banner, with the products chosen for it in `chosen`.
+    private(set) var curatedOccasion: CuratedOccasion?
+    /// A calendar occasion NetLet switched off: its page shows nothing.
+    private(set) var occasionHidden = false
+    private var chosen: [Product] = []
     /// The catalogue's own spelling, when a search found nothing as typed.
     private(set) var correctedTo: String?
     var filters = BrowseFilters()
@@ -416,9 +422,18 @@ final class BrowseModel {
         return nil
     }
 
+    /// The occasion in the page's address, when it is a shelf and not a search.
+    private var occasionSlug: String? {
+        if case .shelf = source { return filters.occasion }
+        return nil
+    }
+
     func load(language: Language) async {
-        // A department opened earlier today draws at once and is asked again behind.
-        if products.value == nil, case .shelf = source,
+        // A department opened earlier today draws at once and is asked again
+        // behind. Not an occasion's page: NetLet may have curated it, taken
+        // one of the calendar's over or switched it off, so it waits for the
+        // server rather than drawing the calendar's own for a moment.
+        if products.value == nil, case .shelf = source, occasionSlug == nil,
            let kept = catalog.rememberedProducts(first: Self.pageSize, department: department?.slug, language: language) {
             products = .loaded(kept)
         }
@@ -426,8 +441,19 @@ final class BrowseModel {
         do {
             switch source {
             case .shelf:
-                // The server narrows by the category's slug, which is the department's.
-                products = .loaded(try await catalog.products(first: Self.pageSize, department: department?.slug, language: language))
+                if let occasionSlug {
+                    // With no answer the calendar's own rule decides, as it did before there was a desk.
+                    async let asked = try? catalog.occasionPage(slug: occasionSlug, language: language)
+                    let all = try await catalog.products(first: Self.pageSize, department: department?.slug, language: language)
+                    let page = await asked
+                    curatedOccasion = page?.occasion
+                    occasionHidden = page?.hidden ?? false
+                    chosen = page?.products ?? []
+                    products = .loaded(all)
+                } else {
+                    // The server narrows by the category's slug, which is the department's.
+                    products = .loaded(try await catalog.products(first: Self.pageSize, department: department?.slug, language: language))
+                }
             case .search(let words, let scope):
                 let found = try await catalog.search(words, department: scope, limit: Self.searchLimit, language: language)
                 correctedTo = found.correctedTo
@@ -439,8 +465,30 @@ final class BrowseModel {
         }
     }
 
+    /// What the page's filters narrow: the shelf, or — on an occasion's page
+    /// — the occasion's own products. One NetLet curated is what it chose, in
+    /// its order, then what the stores tagged for it; the calendar's is what
+    /// the stores tagged; an address naming no occasion, or one switched off,
+    /// is nothing, never everything.
+    private var pool: [Product] {
+        let all = products.value ?? []
+        guard let slug = occasionSlug else { return all }
+        if let curatedOccasion { return curatedOccasion.products(chosen: chosen, catalogue: all) }
+        guard !occasionHidden, let occasion = ReferenceData.shared.occasion(slug: slug) else { return [] }
+        return all.filter { occasion.matches($0) }
+    }
+
+    /// The filters once the occasion has narrowed the page by itself.
+    private var poolFilters: BrowseFilters {
+        var narrowed = filters
+        if occasionSlug != nil { narrowed.occasion = nil }
+        return narrowed
+    }
+
+    /// The default order is the shelf's own, so a curated occasion keeps the
+    /// order it was chosen in until the shopper picks another.
     var shown: [Product] {
-        sort.apply(to: (products.value ?? []).filter(filters.admits))
+        sort.apply(to: pool.filter(poolFilters.admits))
     }
 
     /// The Deals page, on the owner's word: the whole shop narrowed to what
@@ -463,7 +511,7 @@ final class BrowseModel {
     /// the Deals page they are what is on offer, so a brand ticked there has
     /// deals to show.
     var facets: Facets {
-        var all = products.value ?? []
+        var all = pool
         if isDealsPage { all = all.filter(\.isOnOffer) }
         guard let sub = filters.sub else { return Facets(all) }
         return Facets(all.filter { $0.subcategory == sub })
@@ -478,9 +526,11 @@ final class BrowseModel {
         return counts
     }
 
-    /// The occasion the page is narrowed to, by its slug (`activeOccasion`).
+    /// The calendar's occasion the page is narrowed to, by its slug
+    /// (`activeOccasion`) — unless NetLet's own stands in its place or
+    /// switched it off.
     var activeOccasion: Occasion? {
-        query == nil ? ReferenceData.shared.occasion(slug: filters.occasion) : nil
+        query == nil && curatedOccasion == nil && !occasionHidden ? ReferenceData.shared.occasion(slug: filters.occasion) : nil
     }
 
     func clearFilters() {

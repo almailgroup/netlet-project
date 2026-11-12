@@ -101,6 +101,12 @@ private struct BrowsePage: View {
     var body: some View {
         ShopPage(root: root, logo: false, refresh: { await model.load(language: l.current) }, assistant: true, assistantFolded: true, searchTerm: model.searchTerm) {
             VStack(alignment: .leading, spacing: 0) {
+                // One of NetLet's occasions with a picture opens on it, over its name.
+                if model.query == nil, let banner = model.curatedOccasion?.imageUrl {
+                    OccasionBanner(reference: banner)
+                        .padding(.bottom, 16)
+                        .accessibilityHidden(true)
+                }
                 Text(title)
                     .pageTitle()
                     .fixedSize(horizontal: false, vertical: true)
@@ -161,6 +167,7 @@ private struct BrowsePage: View {
 
     private var title: String {
         if let query = model.query { return l.t("browse.searchTitle", ["query": query]) }
+        if model.query == nil, let curated = model.curatedOccasion { return curated.name(l.current) }
         if let occasion = model.activeOccasion { return l.t(occasion.label) }
         if let activeSub { return activeSub.shown(l.current) }
         if model.isDealsPage { return l.t("nav.deals") }

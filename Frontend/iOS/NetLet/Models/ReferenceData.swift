@@ -97,6 +97,97 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
     var artPath: String { "/departments/\(slug).webp" }
 }
 
+/// One of NetLet's own occasions as a shopper's page is told of it — the
+/// web's `PublicOccasion` (`Shared/commerce/occasionDesk.ts`): its two names,
+/// its address, its banner if it has one, and whether what the stores tagged
+/// for it follows the products NetLet chose. An address that is one of the
+/// calendar's occasions has taken that occasion over.
+struct CuratedOccasion: Decodable, Identifiable, Hashable, Sendable {
+    let slug: String
+    let title: String
+    let titleAr: String
+    /// One of NetLet's own uploads, 3:1, as a `/media` path.
+    let imageUrl: String?
+    let includeTagged: Bool
+    var id: String { slug }
+
+    /// Its name in the page's language (`occasionName`).
+    func name(_ language: Language) -> String {
+        let arabic = titleAr.trimmingCharacters(in: .whitespacesAndNewlines)
+        return language == .ar && !arabic.isEmpty ? titleAr : title
+    }
+
+    /// The folded words that put a store's product on it (`curatedKeys`): its
+    /// address and both its names, and the calendar occasion's own words when
+    /// it has taken one over.
+    func keys(calendar: [Occasion] = ReferenceData.shared.occasions) -> Set<String> {
+        var keys = calendar.first { $0.slug == slug }?.keys ?? []
+        for word in [slug, title, titleAr] {
+            let folded = Occasion.fold(word)
+            if !folded.isEmpty { keys.insert(folded) }
+        }
+        return keys
+    }
+
+    /// What it shows (`curatedProducts`): the products chosen for it, in the
+    /// order chosen, then — where it takes them — what the stores tagged for
+    /// it, in the order they came, each once.
+    func products(chosen: [Product], catalogue: [Product], calendar: [Occasion] = ReferenceData.shared.occasions) -> [Product] {
+        var seen = Set<String>()
+        var out: [Product] = []
+        for product in chosen where seen.insert(product.id).inserted { out.append(product) }
+        guard includeTagged else { return out }
+        let keys = keys(calendar: calendar)
+        for product in catalogue where !seen.contains(product.id) && product.tags.contains(where: { keys.contains(Occasion.fold($0)) }) {
+            seen.insert(product.id)
+            out.append(product)
+        }
+        return out
+    }
+}
+
+/// NetLet's own occasions running today (`occasions.live`): each with the
+/// products chosen for it, and the calendar occasions the calendar must not
+/// draw by itself — taken over, or switched off.
+struct LiveOccasions: Decodable, Equatable, Sendable {
+    struct Entry: Decodable, Equatable, Sendable {
+        let occasion: CuratedOccasion
+        let products: [Product]
+
+        private enum CodingKeys: String, CodingKey { case products }
+
+        init(occasion: CuratedOccasion, products: [Product]) {
+            self.occasion = occasion
+            self.products = products
+        }
+
+        /// The server sends the occasion's own fields beside its products, in one object.
+        init(from decoder: Decoder) throws {
+            occasion = try CuratedOccasion(from: decoder)
+            products = try decoder.container(keyedBy: CodingKeys.self).decode([Product].self, forKey: .products)
+        }
+    }
+
+    /// False while the server has no occasions table yet: the home page is the calendar's own.
+    var ready: Bool
+    var occasions: [Entry]
+    var replaced: [String]
+
+    /// Nothing curated: the home page is the calendar's own. Not `none`, which an optional would take for its own.
+    static let empty = LiveOccasions(ready: false, occasions: [], replaced: [])
+}
+
+/// One occasion's page (`occasions.bySlug`): NetLet's published occasion at
+/// that address with the products chosen for it, or nothing — and whether it
+/// is a calendar occasion NetLet switched off, whose page shows nothing.
+struct OccasionPage: Decodable, Equatable, Sendable {
+    let occasion: CuratedOccasion?
+    let hidden: Bool
+    let products: [Product]
+
+    static let empty = OccasionPage(occasion: nil, hidden: false, products: [])
+}
+
 /// A season or an occasion — Ramadan, Back to school, the New Year — and
 /// which products are for it (`Shared/commerce/occasions.ts`, exported to
 /// `occasions.json`): a name in both languages, the words a store tags a

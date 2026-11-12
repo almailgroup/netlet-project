@@ -21,8 +21,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { ProductCard } from "@/components/product/ProductCard";
 import { ScrollArrows } from "@/components/ui/ScrollArrows";
-import { departmentTabs, MAX_SHELF_PRODUCTS, type DepartmentTab } from "@/content/homeLayout";
-import type { Occasion } from "@shared/commerce/occasions";
+import { departmentTabs, MAX_SHELF_PRODUCTS, type DepartmentTab, type OccasionShelf } from "@/content/homeLayout";
+import { occasionName } from "@shared/commerce/occasionDesk";
 import { useSideScroll } from "@/hooks/useSideScroll";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { Product } from "@shared/commerce/types";
@@ -107,9 +107,11 @@ function DepartmentTabRow({ title, total, tabs, chosen, onChoose }: { title: str
  * screen. `ranked` draws each card beside its place in large outlined
  * figures, only for a shelf whose order *is* a ranking.
  */
-export function TabbedShelf({ id, title, products, layout, ranked = false, onViewAll, tabs = true, loading = false, failed = false, note, tinted = false, children, saved, onSave, onQuickView }: {
+export function TabbedShelf({ id, title, titleText, products, layout, ranked = false, onViewAll, tabs = true, loading = false, failed = false, note, tinted = false, banner, children, saved, onSave, onQuickView }: {
   id: string;
   title: MessageKey;
+  /** A name that is somebody's own words rather than the dictionary's: one of NetLet's occasions. */
+  titleText?: string;
   products: Product[];
   layout: "rail" | "grid";
   ranked?: boolean;
@@ -124,11 +126,13 @@ export function TabbedShelf({ id, title, products, layout, ranked = false, onVie
   note?: string;
   /** On a panel of the brand's pale orange, for a season's shelf. */
   tinted?: boolean;
+  /** A picture across the top of the shelf, over its heading. */
+  banner?: ReactNode;
   /** More for the heading, before "View all": the arrows, a Clear. */
   children?: ReactNode;
 } & ShelfCardProps) {
   const { t } = useTranslation();
-  const shelfTitle = t(title);
+  const shelfTitle = titleText ?? t(title);
   const rows = useMemo(() => (tabs ? departmentTabs(products) : []), [products, tabs]);
   const [chosen, setChosen] = useState<string | null>(null);
   /* A department that left the shelf leaves the row; the shelf is "All" again. */
@@ -145,6 +149,7 @@ export function TabbedShelf({ id, title, products, layout, ranked = false, onVie
     <section id={id} className="py-6 sm:py-8" aria-labelledby={`${id}-title`}>
       <div className="container">
        <div className={tinted ? "rounded-[1.5rem] bg-[#fff3ec] px-4 py-5 sm:px-6 sm:py-7" : ""}>
+        {banner}
         <ShelfHeading id={id} title={shelfTitle} onViewAll={onViewAll}>
           {children}
           {layout === "rail" && !loading && !failed ? (
@@ -182,27 +187,63 @@ export function TabbedShelf({ id, title, products, layout, ranked = false, onVie
 
 /**
  * A season's or an occasion's shelf — Back to school, Ramadan, the New Year
- * — on the owner's word: the products the stores tagged for it
- * (`Shared/commerce/occasions.ts`), on a panel of the brand's pale orange so
- * it reads as the season's rather than one more white shelf, under the
- * occasion's own name and a line saying whose picks they are. "View all" is
- * the occasion's page, `/category/all?occasion=<slug>`.
+ * — on the owner's word, on a panel of the brand's pale orange so it reads
+ * as the season's rather than one more white shelf. The calendar's
+ * (`Shared/commerce/occasions.ts`) is the products the stores tagged for it,
+ * under the dictionary's name. One NetLet curated
+ * (`Shared/commerce/occasionDesk.ts`) is under its own name, with its banner
+ * across the top when it has one and the products NetLet chose leading.
+ * "View all" is the occasion's page, `/category/all?occasion=<slug>`.
  */
-export function OccasionBand({ occasion, products, ...cards }: { occasion: Occasion; products: Product[] } & ShelfCardProps) {
-  const { t } = useTranslation();
+export function OccasionBand({ shelf, ...cards }: { shelf: OccasionShelf } & ShelfCardProps) {
+  const { t, locale } = useTranslation();
   const [, navigate] = useLocation();
+  const href = `/category/all?occasion=${shelf.slug}`;
+  const name = shelf.curated ? occasionName(shelf.curated, locale === "ar") : shelf.occasion ? t(shelf.occasion.label) : "";
   return (
     <TabbedShelf
-      id={`occasion-${occasion.slug}`}
-      title={occasion.label}
-      products={products}
+      id={`occasion-${shelf.slug}`}
+      title={shelf.occasion?.label ?? "occasions.title"}
+      titleText={name}
+      products={shelf.products}
       layout="rail"
       tabs={false}
       tinted
-      note={t("rail.occasion.note")}
-      onViewAll={() => navigate(`/category/all?occasion=${occasion.slug}`)}
+      banner={shelf.curated?.imageUrl ? <OccasionBanner src={shelf.curated.imageUrl} href={href} /> : null}
+      note={shelf.curated ? t("rail.occasion.noteNetLet") : t("rail.occasion.note")}
+      onViewAll={() => navigate(href)}
       {...cards}
     />
+  );
+}
+
+/**
+ * An occasion's banner, 3:1 as it was cropped when it was uploaded. It opens
+ * the occasion's page for the eye and the finger; "View all" under it is the
+ * same link for the keyboard and a screen reader, so the picture is hidden
+ * from both — the card photo's rule. A picture that cannot be read draws
+ * nothing rather than a broken frame.
+ */
+export function OccasionBanner({ src, href, eager = false }: { src: string; href?: string; /** At the top of its own page, where it is the first thing drawn. */ eager?: boolean }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  if (failed === src) return null;
+  /* On its own page a wide screen draws it 4:1, a strip off its top and foot:
+     whole, it was 459px of a 900px window, with the occasion's name and every
+     product under the fold. The home page's band keeps the 3:1 it was cropped to. */
+  const picture = (
+    <img
+      src={src}
+      alt=""
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      onError={() => setFailed(src)}
+      className={`aspect-[3/1] w-full rounded-2xl bg-[#fde3d6] object-cover ${href ? "" : "lg:aspect-[4/1]"}`}
+    />
+  );
+  return href ? (
+    <Link href={href} tabIndex={-1} aria-hidden className="mb-4 block">{picture}</Link>
+  ) : (
+    <div className="mb-4">{picture}</div>
   );
 }
 
