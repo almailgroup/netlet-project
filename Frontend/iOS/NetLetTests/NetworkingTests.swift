@@ -223,20 +223,18 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(all.contains { $0.otherName != nil && SearchRank.textsMatch([$0.name, $0.otherName], "غادجت") })
     }
 
-    /// The Deals page's shelves are the web's `dealShelves`: every deal on one
-    /// shelf, a kind standing alone only with two or more, the fullest shelf
-    /// first, the deepest saving leading each, cut to the shelf's size.
     /// What a department offers on the Categories tab is the web's
-    /// `departmentFacts` and `departmentWays`, on the recorded catalogue.
+    /// `departmentFacts` and `departmentWays`, on the recorded catalogue —
+    /// which sells groceries and style, so the grocery shelf is the one asked.
     func testACategorysWaysInFollowTheWebRule() async throws {
         let products = try await client.call(API.products, .init(first: 24))
-        let electronics = products.filter { $0.productType == "Electronics" }
-        XCTAssertFalse(electronics.isEmpty, "the recorded catalogue sells electronics")
-        let guide = CategoryGuide(shelf: electronics)
-        XCTAssertEqual(guide.products, electronics.count)
-        XCTAssertEqual(guide.deals, electronics.filter(\.isOnOffer).count)
-        XCTAssertEqual(guide.rated, electronics.filter { $0.rating != nil }.count)
-        XCTAssertEqual(guide.subDeals.values.reduce(0, +), electronics.filter { $0.isOnOffer && $0.subcategory != nil }.count)
+        let shelf = products.filter { $0.productType == "Grocery" }
+        XCTAssertFalse(shelf.isEmpty, "the recorded catalogue sells groceries")
+        let guide = CategoryGuide(shelf: shelf)
+        XCTAssertEqual(guide.products, shelf.count)
+        XCTAssertEqual(guide.deals, shelf.filter(\.isOnOffer).count)
+        XCTAssertEqual(guide.rated, shelf.filter { $0.rating != nil }.count)
+        XCTAssertEqual(guide.subDeals.values.reduce(0, +), shelf.filter { $0.isOnOffer && $0.subcategory != nil }.count)
         XCTAssertLessThanOrEqual(guide.brands.count, CategoryGuide.topBrands)
         XCTAssertEqual(guide.brands.map(\.count), guide.brands.map(\.count).sorted(by: >), "the most products first")
         // A way in only where it leads somewhere.
@@ -248,6 +246,9 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(empty.brands, [])
     }
 
+    /// The Deals page's shelves are the web's `dealShelves`: every deal on one
+    /// shelf, a kind standing alone only with two or more, the fullest shelf
+    /// first, the deepest saving leading each, cut to the shelf's size.
     func testTheDealsShelvesFollowTheWebRule() async throws {
         let products = try await client.call(API.products, .init(first: 24))
         let deals = products.filter(\.isOnOffer)
