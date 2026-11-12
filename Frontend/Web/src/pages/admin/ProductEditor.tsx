@@ -43,6 +43,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
 import { OPTION_NAME_MAX, OPTION_VALUE_MAX, optionPairs, optionPairsProblem, optionsDistinguish, optionsRecord, varyingOptionNames, type OptionPair } from "@shared/inventory/variantOptions";
 import { shopHref } from "@/lib/portalHost";
+import { warrantyRequired } from "@shared/inventory/productDraft";
+import { merchantWarranty } from "@shared/commerce/productDetail";
 
 const REASONS = STOCK_REASONS;
 
@@ -226,6 +228,16 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
      how to enable it. */
   const mayPrice = can(actor, "vendor.setCommission");
   const mayDelete = can(actor, "product.delete", row.vendorId);
+  /* What Publish would be refused for, said before it is pressed — the
+     server's own two rules (`assertPriced`, `assertWarrantyStated`), as the
+     new-product form says them while it is filled in. The sweep found an
+     electronics product's Publish answering only with a toast after the press. */
+  const publishBlockers: MessageKey[] = mayPublish && row.status !== "published"
+    ? [
+        ...(row.variants.length === 0 || row.variants.some(variant => Number.parseFloat(String(variant.price)) <= 0) ? ["admin.unpriced" as const] : []),
+        ...(warrantyRequired(departmentSlug) && !merchantWarranty(row.attributes ?? []) ? ["admin.needsWarranty" as const] : []),
+      ]
+    : [];
   const variantRecords = row.variants.map(variant => variant.options ?? {});
   const knownOptionNames = Array.from(new Set(variantRecords.flatMap(options => Object.keys(options))));
 
@@ -287,6 +299,15 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       {/* The shop is selling this at its price and not showing the saving,
           because the store's discount permit is missing or out of date. Said
           for as long as it is true, not only in the toast after Publish. */}
+      {publishBlockers.length ? (
+        <div role="note" className="-mt-2 mb-5 flex items-start gap-3 rounded-xl border border-[#ecd49a] bg-[#fff8e6] px-4 py-3 text-[14px] leading-6 text-[#5c3f0c]">
+          <Info className="mt-1 size-4 shrink-0" aria-hidden />
+          <ul className="grid min-w-0 flex-1 gap-1">
+            {publishBlockers.map(key => <li key={key}>{t(key)}</li>)}
+          </ul>
+        </div>
+      ) : null}
+
       {row.offerHidden ? (
         <div role="note" className="-mt-2 mb-5 flex flex-wrap items-start gap-x-3 gap-y-2 rounded-xl border border-[#ecd49a] bg-[#fff8e6] px-4 py-3 text-[14px] leading-6 text-[#5c3f0c]">
           <Info className="mt-1 size-4 shrink-0" aria-hidden />

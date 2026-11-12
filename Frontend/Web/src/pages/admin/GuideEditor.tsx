@@ -367,7 +367,9 @@ function StepCard({ index, count, step, drawable, onChange, onMove, onRemove }: 
               <ImageOff className="size-6 text-[#9aa8bb]" aria-label={t("guides.noPicture")} />
             )}
           </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
+          {/* A basis of its own, so on a phone the controls go under the picture
+              rather than squeezing beside it to a sliver the buttons spill out of. */}
+          <div className="flex min-w-0 flex-1 basis-56 flex-col gap-2">
             {drawn ? (
               <>
                 <p className="text-[12px] leading-5 ink-muted">{t("guides.drawnNote")}</p>

@@ -61,7 +61,10 @@ export const textareaClass = `${fieldClass} h-auto min-h-24 py-2.5 leading-6`;
 
 /** A list's table, its header cells and its body cells. */
 export const tableClass = {
-  wrap: "overflow-x-auto rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]",
+  /* `relative`, or an `sr-only` header inside it — absolute, its containing
+     block the page — is laid out past the box it scrolls in and widens the
+     whole page on a phone: the commission table's hidden "Save" did, at 320. */
+  wrap: "relative overflow-x-auto rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]",
   table: "w-full text-start text-[14px]",
   head: "border-b border-[#e3e8f0] bg-[#f8fafc] text-[13px] text-[#536b8c]",
   th: "px-4 py-3 text-start font-semibold whitespace-nowrap",

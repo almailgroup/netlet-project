@@ -742,6 +742,19 @@ rule: counting every sign-in let twenty people signing in correctly from one
 office lock the next out for a quarter of an hour. `throttle.test.ts` drives
 it through the site's own links.
 
+**A signed-in shopper is counted on their own, by their verified session.**
+The coarse ceiling's comment said so from the start and the code never did: it
+read `req.cookies`, which nothing in this app sets (the session cookie is
+parsed by hand, `authenticateRequest`), so every shopper was counted by
+address — a mobile network's one address, many shoppers behind it, 300 a
+minute among them. The bug hunt found it because the sweep's administrator,
+on a session of their own, was refused along with the guest browsing beside
+it from the same address. The key is now the account a cookie this server signed
+names (`verifySession`, an HMAC check, no database), and the address for
+anything else, so a made-up cookie is not a fresh allowance per request.
+`throttle.test.ts` holds both. **Anything that reads `req.cookies` reads
+nothing here**; parse `req.headers.cookie`.
+
 Two keys, because each catches what the other cannot see: by address alone, one
 office NAT hitting the ceiling locks out the whole building; by account alone,
 nothing stops one host spraying a common password across a thousand addresses.
@@ -2413,6 +2426,15 @@ only shows the viewport. Measure `scrollWidth` against the width asked for on ev
 `clientWidth` grows with the overflow and hides it); finding the culprit is easier by clipping each
 subtree in turn (`overflow: clip`) than by hiding it, which shifts the layout
 and points at the wrong element.
+
+**A `flex-1` column beside a fixed-width one in a wrapping row needs a
+basis.** `flex-1` is a basis of nothing, so the column never wraps under its
+neighbour: it stays on the line, squeezed to a sliver, and what is inside it
+spills off the screen — the guide editor's "Upload a photo" ran 68px past a
+320 phone beside the step's 192px picture. `basis-56` (the occasions list's,
+and now the guide step's) lets it drop under the picture when there is no
+room. `.scratch/full-sweep.mjs` (every route, every role, 320, 390 and 1440 in
+both languages) is what finds these.
 
 ## One frame, one template
 
@@ -5610,7 +5632,9 @@ kept.
 editor's table carried an `sr-only` caption; `sr-only` is `position: absolute`,
 and with no positioned ancestor its containing block is the viewport — so the
 scroll region could not clip it and the Arabic editor scrolled 43px sideways on
-a phone. The region is `relative` now. `min-w-0` was the first guess and did
+a phone. The region is `relative` now, and so is the portal's
+`tableClass.wrap`, after the commission table's hidden "Save" header did the
+same at 320. `min-w-0` was the first guess and did
 nothing; clipping subtrees found nothing either, because the culprit was not
 in any subtree's box. What found it was walking up from the region printing
 each ancestor's `scrollWidth`: every one fitted, and only `<html>` did not.
@@ -6713,6 +6737,13 @@ the thing in the shop at KWD 0, buyable for nothing. `assertPriced` now blocks
 it on both doors onto the shelf: `setProductStatus` and an admin approving
 from the review queue. Any variant at zero blocks, not merely all of them,
 since the zero one is buyable at zero the moment the product is live.
+
+**What Publish would be refused for is said before it is pressed.** The
+editor draws the server's two rules — a variant at zero (`admin.unpriced`)
+and an electronics product with no warranty (`admin.needsWarranty`) — as a
+note under the title while the product is not live, as the new-product form
+asks them while it is filled in; before, the only answer was a toast after
+the press, which the bug hunt's button presser found on a draft electronics product.
 
 The publish button says what will actually happen. A vendor without
 `autoPublish` pressing Publish sends the product for review, and the page says

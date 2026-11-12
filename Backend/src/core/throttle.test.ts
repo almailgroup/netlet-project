@@ -53,4 +53,22 @@ describe("a request over a ceiling", () => {
     expect(maps.status).toBe(429);
     expect(await maps.json()).toEqual({ error: "error.tooManyRequests" });
   });
+
+  /*
+   * The ceiling counts a signed-in shopper on their own and everybody else by
+   * address, so a mobile network's one address does not throttle every
+   * shopper behind it. It read `req.cookies`, which nothing in this app sets —
+   * the session cookie is parsed by hand — so every shopper was counted by
+   * address. A cookie is counted on its own only when it is a session this
+   * server signed, or a made-up one would be a fresh allowance each time.
+   * Runs after the test above, with this address's allowance spent.
+   */
+  it("counts a signed-in shopper apart from their address, and a forged cookie with it", async () => {
+    const { signSession } = await import("./auth.js");
+    const { COOKIE_NAME } = await import("../../../Shared/const.js");
+    const asked = (cookie?: string) => fetch(`${base}/api/trpc/ai.available`, { headers: cookie ? { cookie: `${COOKIE_NAME}=${cookie}` } : {} });
+    expect((await asked()).status).toBe(429);
+    expect((await asked(await signSession(41))).status).toBe(200);
+    expect((await asked("not-a-session-this-server-signed")).status).toBe(429);
+  });
 });

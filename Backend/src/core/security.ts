@@ -9,7 +9,9 @@ import compression from "compression";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import helmet from "helmet";
 import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
+import { parse as parseCookies } from "cookie";
 import { ENV } from "./env.js";
+import { verifySession } from "./auth.js";
 import { COOKIE_NAME } from "../../../Shared/const.js";
 import { MAP_TILE_ORIGIN } from "../../../Shared/commerce/geo.js";
 import { gatewayConfigured, gatewayOrigin } from "./aiGateway.js";
@@ -175,11 +177,15 @@ export const apiRateLimit: RequestHandler = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: overCeiling("api"),
-  // Signed-in shoppers get their own bucket, so one busy office network does
-  // not throttle everyone behind it.
-  keyGenerator: (req) => {
-    const session = (req as { cookies?: Record<string, string> }).cookies?.[COOKIE_NAME];
-    return session ? `session:${session.slice(-32)}` : ipKeyGenerator(req.ip ?? "unknown");
+  // Signed-in shoppers get their own bucket, so one busy office network — or
+  // a mobile network's one address — does not throttle everyone behind it.
+  // The cookie is parsed here because nothing in this app sets `req.cookies`
+  // (`authenticateRequest` parses it by hand too), and it counts on its own
+  // only once it is a session this server signed: a made-up cookie would
+  // otherwise be a fresh allowance on every request.
+  keyGenerator: async (req) => {
+    const userId = await verifySession(parseCookies(req.headers.cookie ?? "")[COOKIE_NAME]);
+    return userId === null ? ipKeyGenerator(req.ip ?? "unknown") : `user:${userId}`;
   },
 });
 
