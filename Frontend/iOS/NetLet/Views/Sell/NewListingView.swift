@@ -606,10 +606,10 @@ private struct PhotoTile: View {
         }
         .contextMenu {
             if !cover { Button(l.t("admin.newPhotoMakeCover"), action: makeCover) }
-            Button(l.t("admin.removeImage"), role: .destructive, action: remove)
+            Button(l.t("admin.removeImage"), role: .destructive) { Task { guard await RemovalQuestion.formRow(l) else { return }; remove() } }
         }
         .overlay(alignment: .topTrailing) {
-            Button(action: remove) {
+            Button { Task { guard await RemovalQuestion.formRow(l) else { return }; remove() } } label: {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(.white, Brand.navy)

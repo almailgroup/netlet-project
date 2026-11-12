@@ -36,7 +36,11 @@ struct ShopperPhotoStrip: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             .overlay(alignment: .topTrailing) {
                                 Button {
-                                    photos.removeAll { $0 == photo }
+                                    // Asks first, on the owner's word.
+                                    Task {
+                                        guard await RemovalQuestion.photo(l) else { return }
+                                        photos.removeAll { $0 == photo }
+                                    }
                                 } label: {
                                     Image(systemName: "xmark")
                                         .font(.system(size: 11, weight: .bold))

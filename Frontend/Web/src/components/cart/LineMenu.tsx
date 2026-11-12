@@ -35,6 +35,7 @@ import { appPath } from "@/lib/basePath";
 import type { CartItem } from "@shared/commerce/types";
 import { Bookmark, ExternalLink, Gift, MoreHorizontal, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAskRemoveFromCart } from "@/components/ui/ConfirmRemoval";
 
 export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   const { t } = useTranslation();
@@ -44,6 +45,7 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   const { savedIds, saveForLater, chooseWishlist, unsave } = useCustomer();
   const { isAuthenticated } = useAuth();
   const wishlistsOn = useFeature("wishlists");
+  const askRemove = useAskRemoveFromCart();
 
   const productId = item.productId;
   const plain = !item.addons?.length && !item.bundleName;
@@ -100,7 +102,13 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
     icon: <Trash2 className="size-[18px]" aria-hidden />,
     label: t("cart.removeFromCart"),
     danger: true,
-    run: () => { drop(); toPage(); },
+    /* Asks first, on the owner's word; saving for later and moving to a
+       wishlist do not, being moves rather than removals. */
+    run: () => void askRemove(title).then(sure => {
+      if (!sure) return;
+      drop();
+      toPage();
+    }),
   });
 
   return (

@@ -78,6 +78,7 @@ import { StockReminder } from "@/components/product/StockReminder";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { useFeature } from "@/hooks/useFeature";
 import { useMembership } from "@/hooks/useMembership";
+import { useAskRemoveFromCart, useAskUnheart } from "@/components/ui/ConfirmRemoval";
 
 /**
  * NetLet's delivery terms, not per-product data — the same six rows the
@@ -572,6 +573,8 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   onFindSimilar: () => void;
   findingSimilar: boolean;
 }) {
+  /* A filled heart asks before it takes something away, on the owner's word. */
+  const askUnheart = useAskUnheart();
   const { direction, t } = useTranslation();
   /*
    * `media`, not `images`: the video sits in the shopper's sequence between
@@ -829,7 +832,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
 
           <div className="absolute end-3 top-3 flex flex-col gap-2">
             <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><Share2 className="size-[18px]" /></button>
-            <button onClick={onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:bg-[#f0f2f5] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
+            <button onClick={isSaved ? () => void askUnheart(product.id, product.title).then(sure => { if (sure) onToggleSaved(); }) : onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:bg-[#f0f2f5] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
             <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><ZoomIn className="size-[18px]" /></button>
           </div>
 
@@ -1076,6 +1079,7 @@ export default function ProductDetail() {
   }, [product?.id]);
   const { data: catalog = [] } = useCatalog(24);
   const { addItem, cart, openCart, updateQuantity, removeItem, chooseOnly } = useCart();
+  const askRemove = useAskRemoveFromCart();
   const { heartedIds, toggleSaved, deliveryZone } = useCustomer();
   /* A member of the affiliate programme shares this page with their code on it (3.1.14, 3.7). */
   const memberCode = useMemberCode();
@@ -1181,7 +1185,8 @@ export default function ProductDetail() {
   const changeLine = (next: number) => {
     if (!plainLine) return;
     const failed = () => toast.error(t("cart.updateFailed"));
-    if (next <= 0) void removeItem(plainLine.lineId).catch(failed);
+    /* The bin at one and a typed zero ask first, on the owner's word. */
+    if (next <= 0) void askRemove(product?.title ?? plainLine.productTitle).then(sure => (sure ? removeItem(plainLine.lineId) : undefined)).catch(failed);
     else if (next !== plainLine.quantity) void updateQuantity(plainLine.lineId, next).catch(failed);
   };
   const related = useMemo(() => product ? relatedProducts(product, catalog) : [], [catalog, product]);

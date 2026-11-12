@@ -159,6 +159,9 @@ struct LineCodeRow: View {
 
     private func remove() async {
         guard !busy else { return }
+        // Asks first, on the owner's word.
+        let code = item.code?.code ?? item.codeProblem?.code ?? ""
+        guard await RemovalQuestion.code(code, scope: .line, l) else { return }
         busy = true
         defer { busy = false }
         if await app.cart.setLineCode(lineId: item.lineId, code: nil) != nil { Haptics.refused() }

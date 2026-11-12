@@ -420,7 +420,10 @@ private struct ProductPage: View {
                     QuantityStepper(quantity: line.quantity, maximum: BagStock.lineCeiling(line, in: lines), name: product.title, compact: true, typed: true) { next in
                         let app = self.app
                         let words = l.t("cart.updateFailed")
+                        let language = self.l
                         Task {
+                            // The bin at one and a typed zero ask first, on the owner's word.
+                            if next == 0, !(await RemovalQuestion.cart(product.title, language)) { return }
                             if !(await app.cart.setQuantity(lineId: line.lineId, to: next)) {
                                 Haptics.refused()
                                 app.toast(words)

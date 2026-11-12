@@ -177,14 +177,17 @@ struct SavedView: View {
     /// The chosen products out of Saved, with Undo in the toast.
     private func removeChosen(_ picked: [Product]) {
         let app = self.app
+        let l = self.l
         let gone = picked.map(\.id)
-        chosen = []
         Task {
+            // Asks first, on the owner's word.
+            guard await RemovalQuestion.ask(l, title: l.t("remove.savedChosenTitle"), message: l.t("remove.savedChosenBody")) else { return }
+            chosen = []
+            app.toast(l.t("saved.removedChosen"), undo: {
+                Task { for id in gone { await app.saved.save(id) } }
+            })
             for id in gone { await app.saved.unsave(id) }
         }
-        app.toast(l.t("saved.removedChosen"), undo: {
-            Task { for id in gone { await app.saved.save(id) } }
-        })
     }
 
     /// The saved products by id (`commerce.products.byIds`) — looked up in the

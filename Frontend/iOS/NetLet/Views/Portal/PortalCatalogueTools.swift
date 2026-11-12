@@ -93,7 +93,7 @@ struct PortalBundlesView: View {
             }
             .fixedSize()
             .accessibilityLabel(l.t("admin.bundleQuantity", ["name": label]))
-            Button { members.removeAll { $0.id == member.id } } label: {
+            Button { Task { guard await RemovalQuestion.formRow(l) else { return }; members.removeAll { $0.id == member.id } } } label: {
                 Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(Brand.danger).frame(width: 40, height: 40)
             }
             .buttonStyle(.tap)

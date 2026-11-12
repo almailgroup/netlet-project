@@ -242,6 +242,9 @@ struct PortalSubcategoryPicturesView: View {
     }
 
     private func remove(department: String, subcategory: Department.Subcategory) async {
+        // Asks first, on the owner's word.
+        let name = "\u{2068}\(subcategory.shown(l.current))\u{2069}"
+        guard await RemovalQuestion.ask(l, title: l.t("remove.pictureTitle"), message: l.t("remove.pictureBody", ["name": name])) else { return }
         let key = "\(department)/\(subcategory.slug)"
         busy[key] = "removing"
         defer { busy[key] = nil }

@@ -203,8 +203,11 @@ struct LineMenuButton: View {
         case .view:
             app.push(.product(handle: item.productHandle))
         case .remove:
-            announce(l.t("cart.removedName", ["name": title]))
+            // Asks first, on the owner's word; saving for later and moving to
+            // a wishlist do not, being moves rather than removals.
             Task {
+                guard await RemovalQuestion.cart(title, l) else { return }
+                announce(l.t("cart.removedName", ["name": title]))
                 if !(await app.cart.setQuantity(lineId: lineId, to: 0)) { app.toast(l.t("cart.updateFailed")) }
             }
         }
@@ -698,7 +701,11 @@ struct SavedProductCard: View {
                 .accessibilityHidden(true)
                 .modifier(ZoomSource(namespace: zoom))
                 Button {
-                    Task { await app.saved.unsave(product.id) }
+                    // Asks first, on the owner's word.
+                    Task {
+                        guard await RemovalQuestion.saved(product.title, l) else { return }
+                        await app.saved.unsave(product.id)
+                    }
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .bold))

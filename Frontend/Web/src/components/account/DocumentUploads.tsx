@@ -24,6 +24,8 @@ import {
   type DocumentStatus,
 } from "@shared/inventory/applicationDocuments";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
+import { isolate } from "@/lib/isolate";
 
 /* The kinds' names are shared, so a notice about a paper names it the way this page does. */
 export const KIND_LABEL: Record<DocumentKind, MessageKey> = DOCUMENT_KIND_LABEL;
@@ -78,6 +80,7 @@ export function DocumentUploads({ saved, editable, step = "papers" }: {
   step?: "papers" | "contract";
 }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const size = useFileSize();
   const utils = trpc.useUtils();
   const documents = trpc.inventory.applications.myDocuments.useQuery(undefined, { enabled: saved });
@@ -168,7 +171,7 @@ export function DocumentUploads({ saved, editable, step = "papers" }: {
                 {latest && latest.status !== "accepted" && editable ? (
                   <button
                     type="button"
-                    onClick={() => remove.mutate({ id: latest.id })}
+                    onClick={() => void ask({ title: t("remove.documentTitle"), body: t("remove.documentBody", { name: isolate(t(KIND_LABEL[kind])) }) }).then(sure => { if (sure) remove.mutate({ id: latest.id }); })}
                     disabled={remove.isPending}
                     aria-label={`${t("documents.remove")}: ${t(KIND_LABEL[kind])}`}
                     className="pressable inline-flex items-center gap-2 rounded-full px-3 py-2 text-[#8c2f22] hover:bg-[#fdeceb]"

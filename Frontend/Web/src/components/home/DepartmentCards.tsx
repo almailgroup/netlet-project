@@ -17,8 +17,14 @@
  * looks bigger than its neighbours'. About 25 KB each; they are the page's
  * first paint, so they load eagerly.
  *
- * Every card is a link, so it can be opened in a new tab. "All departments"
- * comes last, where a shopper who did not find theirs looks next.
+ * Every card is a link, so it can be opened in a new tab. **A department's
+ * card opens the Categories page with that department already open, on the
+ * owner's word** ("when choosing a category in the homepage, it should
+ * redirect you to the category page choosing that specific category"):
+ * `/categories?dept=<slug>`, its subcategories unfolded under its tile, a
+ * press away from their products. "All departments" comes last and opens the
+ * Categories page as it is, where a shopper who did not find theirs looks
+ * next.
  *
  * **They are one row that scrolls sideways, on the owner's word** — three to a
  * row on a phone made two rows of six tiles the whole first screen under the
@@ -36,14 +42,13 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useSideScroll } from "@/hooks/useSideScroll";
 import { ScrollArrows } from "@/components/ui/ScrollArrows";
 import { appPath } from "@/lib/basePath";
-import { categorySlug } from "@shared/commerce/browse";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { Link } from "wouter";
 
-const CARDS: { slug: string; query: string; label: MessageKey }[] = [
-  ...DEPARTMENTS.map(department => ({ slug: department.slug, query: department.name, label: department.label })),
-  { slug: "all", query: ALL_DEPARTMENTS.query, label: ALL_DEPARTMENTS.label },
+const CARDS: { slug: string; label: MessageKey }[] = [
+  ...DEPARTMENTS.map(department => ({ slug: department.slug, label: department.label })),
+  { slug: "all", label: ALL_DEPARTMENTS.label },
 ];
 
 export function DepartmentCards() {
@@ -67,7 +72,7 @@ export function DepartmentCards() {
         {cards.map(card => (
           <li key={card.slug} className="w-[104px] shrink-0 snap-start min-[390px]:w-[112px] sm:w-[148px] lg:min-w-[150px] lg:flex-[1_0_0]">
             <Link
-              href={`/category/${categorySlug(card.query)}`}
+              href={card.slug === "all" ? "/categories" : `/categories?dept=${card.slug}`}
               className="group flex h-full flex-col items-center rounded-2xl border border-transparent bg-white px-2 pb-3 pt-2 shadow-[0_1px_2px_rgba(10,40,90,.06)] transition-colors hover:border-[#d5dfeb] hover:bg-[#f0f2f5] sm:rounded-[1.375rem] sm:px-3 sm:pb-4 sm:pt-3"
             >
               <img

@@ -85,7 +85,12 @@ private struct CodeBoxRow: View {
                     }
                     Spacer(minLength: 8)
                     Button {
-                        savings.remove(box)
+                        // Asks first, on the owner's word.
+                        Task {
+                            let code = SavingsModel.normalise(held)
+                            guard await RemovalQuestion.code(code.isEmpty ? held : code, scope: box == .gift ? .giftCard : .order, l) else { return }
+                            savings.remove(box)
+                        }
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 13, weight: .bold))

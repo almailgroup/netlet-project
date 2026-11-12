@@ -28,6 +28,7 @@ import { privatePageMeta } from "@shared/seo";
 import { ImageOff, LoaderCircle, Plus, Search, Trash2 } from "lucide-react";
 import { useDeferredValue, useState } from "react";
 import { toast } from "sonner";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 /** One chosen item: enough to draw it and to price the set before saving. */
 type Member = { variantId: number; title: string; option: string | null; price: string; image: string | null; quantity: number };
@@ -41,6 +42,7 @@ export default function AdminBundles() {
 
 function Bundles({ actor }: { actor: Actor }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const money = useMoney();
   const list = trpc.inventory.bundles.list.useQuery();
   const utils = trpc.useUtils();
@@ -151,7 +153,7 @@ function Bundles({ actor }: { actor: Actor }) {
                   />
                   <button
                     type="button"
-                    onClick={() => setMembers(current => current.filter(entry => entry.variantId !== member.variantId))}
+                    onClick={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) setMembers(current => current.filter(entry => entry.variantId !== member.variantId)); })}
                     aria-label={t("admin.bundleRemoveItem", { name: isolate(label) })}
                     className={`${smallButtonClass.quietDanger} w-9 px-0`}
                   >

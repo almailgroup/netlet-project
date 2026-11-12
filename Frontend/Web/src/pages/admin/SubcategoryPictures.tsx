@@ -42,6 +42,8 @@ import {
   type SubcategoryPictures,
 } from "@shared/commerce/subcategoryPictures";
 import { privatePageMeta } from "@shared/seo";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
+import { isolate } from "@/lib/isolate";
 
 export default function AdminSubcategoryPictures() {
   usePageMeta(privatePageMeta("Subcategory pictures"));
@@ -71,6 +73,7 @@ async function uploadPicture(blob: Blob, type: StoredType): Promise<string> {
 
 function Desk() {
   const { t, tError, isArabic } = useTranslation();
+  const ask = useConfirmRemoval();
   const utils = trpc.useUtils();
   const pictures = trpc.subcategoryPictures.list.useQuery();
   const drawable = trpc.subcategoryPictures.drawable.useQuery();
@@ -154,6 +157,8 @@ function Desk() {
   };
 
   const removeOne = async (department: string, subcategory: Subcategory) => {
+    /* Asks first, on the owner's word. */
+    if (!(await ask({ title: t("remove.pictureTitle"), body: t("remove.pictureBody", { name: isolate(nameOf(subcategory)) }) }))) return;
     const key = keyOf(department, subcategory.slug);
     mark(key, "removing");
     try {

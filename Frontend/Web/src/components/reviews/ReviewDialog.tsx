@@ -33,6 +33,7 @@ import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { contactFindings } from "@shared/commerce/contactFilter";
 import { MAX_REVIEW_BODY, MAX_REVIEW_PHOTOS, MAX_REVIEW_TITLE, RATING_MAX, type ReviewState } from "@shared/commerce/reviews";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 export type MyReview = {
   id: number;
@@ -58,6 +59,7 @@ export function ReviewDialog({ target, onClose, onDone }: {
   onDone: (state: ReviewState | "deleted") => void;
 }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const existing = target.review;
   const [rating, setRating] = useState(existing?.rating ?? 0);
   const [title, setTitle] = useState(existing?.title ?? "");
@@ -221,7 +223,7 @@ export function ReviewDialog({ target, onClose, onDone }: {
                   <Thumb src={photo} alt="" className="size-20 rounded-xl border border-[#e7edf5] object-cover" />
                   <button
                     type="button"
-                    onClick={() => setPhotos(current => current.filter(entry => entry !== photo))}
+                    onClick={() => void ask({ title: t("remove.photoTitle"), body: t("remove.photoBody") }).then(sure => { if (sure) setPhotos(current => current.filter(entry => entry !== photo)); })}
                     aria-label={t("review.removePhoto", { index: String(index + 1) })}
                     className="absolute -end-2 -top-2 grid size-7 place-items-center rounded-full border border-[#d5dfeb] bg-white shadow-sm"
                   >

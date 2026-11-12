@@ -299,7 +299,13 @@ private struct SearchSheet: View {
             HStack {
                 heading(l.t("header.recentSearches"))
                 Spacer()
-                Button(l.t("header.clearRecent")) { model.clearRecent() }
+                // Asks first, on the owner's word.
+                Button(l.t("header.clearRecent")) {
+                    Task {
+                        guard await RemovalQuestion.ask(l, title: l.t("remove.recentTitle"), message: l.t("remove.recentBody"), confirm: l.t("header.clearRecent")) else { return }
+                        model.clearRecent()
+                    }
+                }
                     .font(.inter(14, .bold))
                     .foregroundStyle(Brand.accentInk)
                     .frame(minHeight: 44)

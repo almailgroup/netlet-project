@@ -40,6 +40,8 @@ import { Check, Gift, LoaderCircle, Ticket, X } from "lucide-react";
 import { Suspense, lazy, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "wouter";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
+import { isolate } from "@/lib/isolate";
 
 const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
 
@@ -129,6 +131,7 @@ export function BagSavings() {
 
 function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<typeof useSavingsBill> }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const money = useMoney();
   const { cart, skip } = useCart();
   const utils = trpc.useUtils();
@@ -170,9 +173,15 @@ function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<t
     }
   };
 
-  const remove = () => {
+  const remove = async () => {
     if (!cart) return;
     pressHaptic();
+    /* Asks first, on the owner's word. */
+    const named = isolate(normaliseCode(held) || held);
+    const sure = await ask(kind === "discount"
+      ? { title: t("remove.codeTitle"), body: t("remove.orderCodeBody", { code: named }) }
+      : { title: t("remove.giftTitle"), body: t("remove.giftBody", { code: named }) });
+    if (!sure) return;
     setSavings(cart.id, kind === "discount" ? { code: "" } : { giftCard: "" });
     setNote(null);
   };
@@ -205,7 +214,7 @@ function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<t
           </span>
           <button
             type="button"
-            onClick={remove}
+            onClick={() => void remove()}
             aria-label={t("cart.removeCode", { code: normaliseCode(held) || held })}
             className="tap-target -m-1 grid size-9 shrink-0 place-items-center rounded-full text-[#536b8c] hover:bg-[#0a285a]/[.06]"
           >

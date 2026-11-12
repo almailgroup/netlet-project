@@ -371,7 +371,7 @@ private struct GallerySection: View {
                         }
                     }
                     if mayEdit {
-                        Button { items.removeAll { $0.id == entry.id } } label: {
+                        Button { Task { guard await RemovalQuestion.formRow(l) else { return }; items.removeAll { $0.id == entry.id } } } label: {
                             Image(systemName: "trash").font(.system(size: 15)).foregroundStyle(Brand.danger).frame(width: 44, height: 44)
                         }
                         .buttonStyle(.tap)
@@ -612,7 +612,7 @@ private struct VariantEditor: View {
                         .textFieldStyle(.roundedBorder)
                         .accessibilityLabel(l.t("admin.optionValue"))
                     if mayEdit {
-                        Button { pairs.remove(at: index) } label: {
+                        Button { Task { guard await RemovalQuestion.formRow(l) else { return }; if index < pairs.count { pairs.remove(at: index) } } } label: {
                             Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(Brand.danger).frame(width: 40, height: 40)
                         }
                         .buttonStyle(.tap)
@@ -896,7 +896,7 @@ private struct SizeChartSection: View {
                         .textFieldStyle(.roundedBorder)
                         .accessibilityLabel(l.t("sizeGuide.size"))
                     if mayEdit {
-                        Button { rows.removeAll { $0.id == entry.id } } label: {
+                        Button { Task { guard await RemovalQuestion.formRow(l) else { return }; rows.removeAll { $0.id == entry.id } } } label: {
                             Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(Brand.danger).frame(width: 40, height: 40)
                         }
                         .buttonStyle(.tap)
@@ -1026,7 +1026,7 @@ private struct AddonsSection: View {
                     HStack(alignment: .top) {
                         LabeledField(label: l.t("admin.addonLabel"), text: item.label)
                         if mayEdit {
-                            Button { items.removeAll { $0.id == entry.id } } label: {
+                            Button { Task { guard await RemovalQuestion.formRow(l) else { return }; items.removeAll { $0.id == entry.id } } } label: {
                                 Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(Brand.danger).frame(width: 44, height: 44)
                             }
                             .buttonStyle(.tap)

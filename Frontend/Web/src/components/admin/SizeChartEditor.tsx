@@ -20,6 +20,7 @@ import { trpc } from "@/lib/trpc";
 import { chartProblem, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "@shared/commerce/sizeGuide";
 import { MEASURE_LABEL } from "@/lib/sizeGuideLabels";
 import { Select } from "@/components/ui/Select";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 
 /** Ranges are edited as text so a half-typed "9" is not coerced on every key. */
@@ -61,6 +62,7 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
   mayEdit: boolean;
 }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const utils = trpc.useUtils();
   const axes = useMemo(() => [...new Set(variantOptions.flatMap(options => Object.keys(options)))], [variantOptions]);
   const valuesFor = (axis: string) => [...new Set(variantOptions.map(options => options[axis]).filter((value): value is string => Boolean(value)))];
@@ -189,7 +191,7 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
                       {mayEdit ? (
                         <button
                           type="button"
-                          onClick={() => setDraft({ ...draft, rows: draft.rows.filter((_, i) => i !== index) })}
+                          onClick={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) setDraft({ ...draft, rows: draft.rows.filter((_, i) => i !== index) }); })}
                           aria-label={t("sizeGuide.removeSize", { size: row.size || "—" })}
                           className="pressable tap-target grid size-8 place-items-center rounded-full text-[#8c2f22]"
                         >

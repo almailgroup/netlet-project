@@ -38,6 +38,7 @@ import {
   type GuideStep,
 } from "@shared/commerce/guides";
 import { privatePageMeta } from "@shared/seo";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 const EMPTY_STEP: GuideStep = { title: "", titleAr: "", body: "", bodyAr: "", imageUrl: null };
 const EMPTY: GuideContent = { audience: "shopper", title: "", titleAr: "", summary: "", summaryAr: "", steps: [{ ...EMPTY_STEP }] };
@@ -84,6 +85,7 @@ function hasWords(content: GuideContent): boolean {
 
 function Editor({ id, initial, status, slug }: { id: number | null; initial: GuideContent; status: GuideStatus; slug: string | null }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const [content, setContent] = useState<GuideContent>(initial);
@@ -222,7 +224,7 @@ function Editor({ id, initial, status, slug }: { id: number | null; initial: Gui
             drawable={Boolean(ai.data)}
             onChange={change => patchStep(index, change)}
             onMove={by => moveStep(index, by)}
-            onRemove={() => setContent(current => ({ ...current, steps: current.steps.filter((_, at) => at !== index) }))}
+            onRemove={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) setContent(current => ({ ...current, steps: current.steps.filter((_, at) => at !== index) })); })}
           />
         ))}
 

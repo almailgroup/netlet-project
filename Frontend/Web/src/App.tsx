@@ -7,6 +7,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { CartProvider, useCart } from "@/contexts/CartContext";
 import { whenIdle } from "@/lib/idle";
 import { CustomerProvider } from "@/contexts/CustomerContext";
+import { ConfirmRemovalProvider } from "@/components/ui/ConfirmRemoval";
 import { BASE_PATH } from "@/lib/basePath";
 import { captureReferral } from "@/lib/referral";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from "react";
@@ -525,12 +526,15 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <CustomerProvider>
           <CartProvider>
-            <StorefrontToaster />
-            <Router />
-            {/* One drawer for the whole app: the cart button is on every page.
-                After the pages, so the skip link stays the first link on the
-                page — the drawer's lines are links to their products. */}
-            <BagDrawerWhenWanted />
+            {/* "Remove this?" before anything a shopper keeps is taken away. */}
+            <ConfirmRemovalProvider>
+              <StorefrontToaster />
+              <Router />
+              {/* One drawer for the whole app: the cart button is on every page.
+                  After the pages, so the skip link stays the first link on the
+                  page — the drawer's lines are links to their products. */}
+              <BagDrawerWhenWanted />
+            </ConfirmRemovalProvider>
           </CartProvider>
         </CustomerProvider>
       </ThemeProvider>

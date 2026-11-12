@@ -49,6 +49,7 @@ import { foldTag, occasionFromSlug } from "@shared/commerce/occasions";
 import { ar, en } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
 import { STATUS_LABEL, STATUS_TONE, SeasonPill } from "./Occasions";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 /** A product chosen for the occasion, as the list draws it. */
 type Chosen = { id: number; title: string; titleAr: string | null; vendorName: string | null; imageUrl: string | null; live: boolean };
@@ -361,6 +362,7 @@ function Editor({ id, initial, products, status, taking, season, tagged = 0 }: {
 /** The banner: what the home page will draw, or the way to choose one. */
 function PictureCard({ imageUrl, onChange }: { imageUrl: string | null; onChange: (imageUrl: string | null) => void }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -394,7 +396,7 @@ function PictureCard({ imageUrl, onChange }: { imageUrl: string | null; onChange
           {t(busy ? "occasions.pictureUploading" : imageUrl ? "occasions.changePicture" : "occasions.choosePicture")}
         </button>
         {imageUrl ? (
-          <button type="button" onClick={() => onChange(null)} disabled={busy} className={buttonClass.quietDanger}>
+          <button type="button" onClick={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) onChange(null); })} disabled={busy} className={buttonClass.quietDanger}>
             <X className="size-4" aria-hidden />{t("occasions.removePicture")}
           </button>
         ) : null}
@@ -411,6 +413,7 @@ function PictureCard({ imageUrl, onChange }: { imageUrl: string | null; onChange
  */
 function ProductsCard({ chosen, onChange, children }: { chosen: Chosen[]; onChange: (chosen: Chosen[]) => void; /** Under the search: whether the stores' tagged products follow. */ children?: ReactNode }) {
   const { t, isArabic } = useTranslation();
+  const ask = useConfirmRemoval();
   const [typed, setTyped] = useState("");
   const [term, setTerm] = useState("");
   /* Asked once the typing pauses, not per letter. */
@@ -457,7 +460,7 @@ function ProductsCard({ chosen, onChange, children }: { chosen: Chosen[]; onChan
                   <button type="button" onClick={() => move(index, 1)} disabled={index === chosen.length - 1} aria-label={t("occasions.moveDown", { name: label })} className={`${smallButtonClass.secondary} w-9 px-0`}>
                     <ArrowDown className="size-4" aria-hidden />
                   </button>
-                  <button type="button" onClick={() => onChange(chosen.filter(other => other.id !== one.id))} aria-label={t("occasions.removeNamed", { name: label })} className={`${smallButtonClass.quietDanger} w-9 px-0`}>
+                  <button type="button" onClick={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) onChange(chosen.filter(other => other.id !== one.id)); })} aria-label={t("occasions.removeNamed", { name: label })} className={`${smallButtonClass.quietDanger} w-9 px-0`}>
                     <X className="size-4" aria-hidden />
                   </button>
                 </span>

@@ -655,12 +655,16 @@ final class AppModel {
     /// heart asks first, on the owner's word: **Saved items or a wishlist?**,
     /// and for a wishlist which one (`WishSheet`) — a guest too, who is asked
     /// to sign in for a wishlist. A filled one comes off the lists and out of
-    /// Saved if it is on a list, and out of Saved otherwise. With wishlists
+    /// Saved if it is on a list, and out of Saved otherwise — after asking
+    /// whether the shopper is sure (`RemovalQuestion`). With wishlists
     /// switched off it saves without asking.
     func heart(_ product: Product) async {
         let name = "\u{2068}\(product.title)\u{2069}"
         if saved.isHearted(product.id) {
-            if session.isSignedIn && saved.wished.contains(product.id) {
+            // A filled heart asks before it takes anything away, on the owner's word.
+            let onLists = session.isSignedIn && saved.wished.contains(product.id)
+            guard await RemovalQuestion.unheart(product.title, wished: onLists, language) else { return }
+            if onLists {
                 await saved.unwish(product.id)
                 toast(language.t("wish.unwished", ["name": name]))
             } else {
@@ -736,6 +740,18 @@ final class AppModel {
     func goHome() {
         homePath = NavigationPath()
         selectedTab = .home
+    }
+
+    /// The Categories tab, opened on one department — its subcategories
+    /// unfolded under its tile — or with none open: the home page's category
+    /// tiles, on the owner's word ("when choosing a category in the homepage,
+    /// it should redirect you to the category page choosing that specific
+    /// category"). Anything pushed on that tab is put away first, so the page
+    /// itself is what shows; an empty preset closes what was open.
+    func openCategories(_ slug: String?) {
+        categoriesPath = NavigationPath()
+        selectedTab = .categories
+        categoriesOpen = slug ?? ""
     }
 
     /// A tab's press: that tab, or the top of it when it is already showing,

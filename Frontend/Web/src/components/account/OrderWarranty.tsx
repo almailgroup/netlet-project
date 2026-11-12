@@ -22,6 +22,7 @@ import { trpc } from "@/lib/trpc";
 import type { Detail } from "@/components/account/LineReturn";
 import { MAX_WARRANTY_PHOTOS, MAX_WARRANTY_PROBLEM, problemIssue, type ClaimStage } from "@shared/commerce/warranty";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 const STAGE: Record<ClaimStage, { label: MessageKey; className: string }> = {
   waiting: { label: "warranty.stageWaiting", className: "bg-[#fdf1d6] text-[#7a5200]" },
@@ -109,6 +110,7 @@ export function WarrantyForm({ reference, detail, lineId, onDone, onCancel }: {
   onCancel: () => void;
 }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const ids = useId();
   const eligible = detail.lines.filter(line => line.warrantyEligibility.allowed && (lineId === undefined || line.id === lineId));
   const [chosen, setChosen] = useState<number | null>(eligible.length === 1 ? eligible[0].id : null);
@@ -199,7 +201,7 @@ export function WarrantyForm({ reference, detail, lineId, onDone, onCancel }: {
               <img src={photo} alt="" loading="lazy" decoding="async" className="size-16 rounded-lg border border-[#e7edf5] object-cover" />
               <button
                 type="button"
-                onClick={() => setPhotos(current => current.filter(entry => entry !== photo))}
+                onClick={() => void ask({ title: t("remove.photoTitle"), body: t("remove.photoBody") }).then(sure => { if (sure) setPhotos(current => current.filter(entry => entry !== photo)); })}
                 aria-label={t("review.removePhoto")}
                 className="absolute -end-2 -top-2 grid size-7 place-items-center rounded-full bg-[#0a285a] text-white"
               >

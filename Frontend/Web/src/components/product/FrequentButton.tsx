@@ -21,9 +21,12 @@ import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import type { Product, ProductVariant } from "@shared/commerce/types";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
+import { isolate } from "@/lib/isolate";
 
 export function FrequentButton({ product, variant, quantity }: { product: Product; variant: ProductVariant | undefined; quantity: number }) {
   const { t } = useTranslation();
+  const ask = useConfirmRemoval();
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
   const [authOpen, setAuthOpen] = useState(false);
@@ -51,7 +54,8 @@ export function FrequentButton({ product, variant, quantity }: { product: Produc
   const press = () => {
     pressHaptic();
     if (!isAuthenticated) return setAuthOpen(true);
-    if (entry) remove.mutate({ id: entry.id });
+    /* Taking it off the list asks first, on the owner's word. */
+    if (entry) void ask({ title: t("frequent.removeTitle", { title: isolate(product.title) }), body: t("frequent.removeBody"), confirmLabel: t("frequent.removeConfirm") }).then(sure => { if (sure) remove.mutate({ id: entry.id }); });
     else add.mutate({ productId, variantId: Number(variant.id), quantity: Math.max(1, quantity) });
   };
 

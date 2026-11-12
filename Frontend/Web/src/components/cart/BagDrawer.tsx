@@ -25,6 +25,7 @@ import { ArrowRight, Check, ChevronRight, Minus, Plus, ShoppingBag, Store, Trash
 import { Link } from "wouter";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { useAskRemoveFromCart } from "@/components/ui/ConfirmRemoval";
 import { CARD } from "@/components/layout/Page";
 import { bagGroups, freeDeliveryProgress, type BagGroup } from "@/lib/bagGroups";
 import type { CartItem } from "@shared/commerce/types";
@@ -204,6 +205,8 @@ function BagLine({ item }: { item: CartItem }) {
   /* The line goes back to the server's answer on a refusal; this says why. */
   const failed = () => toast.error(t("cart.updateFailed"));
   const sayLimit = useStockLimit();
+  /* The bin asks first, on the owner's word. */
+  const askRemove = useAskRemoveFromCart();
   const href = `/products/${encodeURIComponent(item.productHandle)}`;
   const chosen = item.chosen !== false;
   return (
@@ -271,7 +274,7 @@ function BagLine({ item }: { item: CartItem }) {
           {item.quantity > 1 ? (
             <button onClick={() => void updateQuantity(item.lineId, item.quantity - 1).catch(failed)} aria-label={t("cart.decrease", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] disabled:opacity-40 pointer-fine:size-7"><Minus className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
           ) : (
-            <button onClick={() => void removeItem(item.lineId).catch(failed)} aria-label={t("cart.remove", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] hover:text-[#c2362a] pointer-fine:size-7"><Trash2 className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
+            <button onClick={() => void askRemove(title).then(sure => (sure ? removeItem(item.lineId) : undefined)).catch(failed)} aria-label={t("cart.remove", { name: title })} className="grid size-10 place-items-center rounded-full text-[#0a285a] hover:text-[#c2362a] pointer-fine:size-7"><Trash2 className="size-3.5 pointer-fine:size-3" aria-hidden /></button>
           )}
           <LineQuantity item={item} title={title} ceiling={ceiling} />
           {/* Faint at the limit, never dead: pressed, it says why (`useStockLimit`). */}
@@ -301,6 +304,7 @@ function BagLine({ item }: { item: CartItem }) {
 function LineQuantity({ item, title, ceiling }: { item: CartItem; title: string; ceiling: number }) {
   const { updateQuantity, removeItem } = useCart();
   const { t } = useTranslation();
+  const askRemove = useAskRemoveFromCart();
   const [draft, setDraft] = useState<string | null>(null);
   const cancelled = useRef(false);
   /* The press that focused the box would put the caret where it landed and
@@ -317,7 +321,8 @@ function LineQuantity({ item, title, ceiling }: { item: CartItem; title: string;
     const typed = typedQuantity(text, ceiling);
     if (!typed) return;
     if (typed.kind === "remove") {
-      void removeItem(item.lineId).catch(failed);
+      /* A typed zero asks as the bin does; kept, the box reads the line again. */
+      void askRemove(title).then(sure => (sure ? removeItem(item.lineId) : undefined)).catch(failed);
       return;
     }
     /* Held to what there is, or to the line ceiling — each said as what it is. */

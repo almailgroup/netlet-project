@@ -45,6 +45,7 @@ import { OPTION_NAME_MAX, OPTION_VALUE_MAX, optionPairs, optionPairsProblem, opt
 import { shopHref } from "@/lib/portalHost";
 import { warrantyRequired } from "@shared/inventory/productDraft";
 import { merchantWarranty } from "@shared/commerce/productDetail";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 const REASONS = STOCK_REASONS;
 
@@ -61,6 +62,7 @@ const inputClass = fieldClass;
 
 function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const { t, locale } = useTranslation();
+  const ask = useConfirmRemoval();
   const utils = trpc.useUtils();
   const [, navigate] = useLocation();
   const [deleting, setDeleting] = useState(false);
@@ -488,7 +490,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                     {mayEdit ? (
                       <button
                         type="button"
-                        onClick={() => setImages(images.filter((_, i) => i !== index))}
+                        onClick={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) setImages(images.filter((_, i) => i !== index)); })}
                         aria-label={t("admin.removeImage")}
                         title={t("admin.removeImage")}
                         className="grid size-10 shrink-0 place-items-center rounded-lg text-[#536b8c] hover:bg-[#fdeceb] hover:text-[#8c2f22]"
@@ -742,7 +744,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                     {mayEdit ? (
                       <button
                         type="button"
-                        onClick={() => setAddons(addons.filter((_, i) => i !== index))}
+                        onClick={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) setAddons(addons.filter((_, i) => i !== index)); })}
                         aria-label={t("admin.addonRemove")}
                         title={t("admin.addonRemove")}
                         className="grid size-10 shrink-0 place-items-center rounded-lg text-[#536b8c] hover:bg-[#fdeceb] hover:text-[#8c2f22]"
@@ -1090,6 +1092,7 @@ function VariantRow({ variant, knownNames, mayEdit, mayStock, onSave, onAdjust, 
   pending: boolean;
 }) {
   const { t } = useTranslation();
+  const ask = useConfirmRemoval();
   const [values, setValues] = useState({
     title: variant.title,
     sku: variant.sku ?? "",
@@ -1227,7 +1230,7 @@ function VariantRow({ variant, knownNames, mayEdit, mayStock, onSave, onAdjust, 
                 {mayEdit ? (
                   <button
                     type="button"
-                    onClick={() => setPairs(current => current.filter((_, at) => at !== index))}
+                    onClick={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) setPairs(current => current.filter((_, at) => at !== index)); })}
                     aria-label={t("admin.removeOption")}
                     title={t("admin.removeOption")}
                     className="grid size-11 place-items-center rounded-xl border border-[#cfd9e6] bg-white text-[#0a285a] hover:bg-[#f0f2f5]"

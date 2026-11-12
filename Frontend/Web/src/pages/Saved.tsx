@@ -53,6 +53,7 @@ import { lazy, Suspense, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
 
@@ -63,6 +64,7 @@ function SavedItems() {
   /* The products chosen for Move to cart or Remove. */
   const [chosen, setChosen] = useState<Set<string>>(() => new Set());
   const { t } = useTranslation();
+  const ask = useConfirmRemoval();
   const moves = useSavedMoves();
   /* By id, so a heart on something older than the newest sixty products is
      still a card — it used to be counted as no longer available. */
@@ -96,7 +98,9 @@ function SavedItems() {
     setChosen(new Set(stayed.map(product => product.id)));
     toast(going.length ? `${t("saved.movedChosen")}${stayed.length ? ` ${t("saved.someStayed")}` : ""}` : t("saved.someStayed"));
   };
-  const removeChosen = () => {
+  const removeChosen = async () => {
+    /* Asks first, on the owner's word. */
+    if (!(await ask({ title: t("remove.savedChosenTitle"), body: t("remove.savedChosenBody") }))) return;
     const gone = picked.map(product => product.id);
     for (const id of gone) moves.unsave(id);
     setChosen(new Set());
@@ -146,7 +150,7 @@ function SavedItems() {
                 <button type="button" onClick={moveChosen} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#0a285a] px-4 text-[13px] font-bold text-white hover:bg-[#0d3372]">
                   <ShoppingBag className="size-4" aria-hidden />{t("saved.moveChosen", { count: picked.length })}
                 </button>
-                <button type="button" onClick={removeChosen} className="inline-flex min-h-11 items-center rounded-full border border-[#0a285a]/25 bg-white px-4 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
+                <button type="button" onClick={() => void removeChosen()} className="inline-flex min-h-11 items-center rounded-full border border-[#0a285a]/25 bg-white px-4 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
                   {t("saved.removeChosen", { count: picked.length })}
                 </button>
               </>

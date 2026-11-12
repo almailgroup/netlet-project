@@ -58,6 +58,7 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { useAskRemoveFromCart } from "@/components/ui/ConfirmRemoval";
 
 /** How long the stepper stays open after the last press before it folds into the count. */
 export const SETTLE_MS = 2500;
@@ -67,6 +68,7 @@ type Focus = "plus" | "step" | "count" | null;
 export function PhotoCartControl({ product, onChoose }: { product: Product; onChoose?: () => void }) {
   const { t } = useTranslation();
   const { cart, addItem, updateQuantity, removeItem } = useCart();
+  const askRemove = useAskRemoveFromCart();
   const [open, setOpen] = useState(false);
   const [said, setSaid] = useState("");
   const box = useRef<HTMLDivElement>(null);
@@ -169,10 +171,16 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
     if (!line) return;
     pressHaptic();
     if (next < 1) {
-      follow(event, "plus");
-      setOpen(false);
-      setSaid(t("cart.removedName", { name }));
-      removeItem(line.lineId).catch(failed);
+      /* The bin asks first, on the owner's word. Whether the keyboard
+         pressed it is read now: the event is spent by the answer. */
+      const keyboard = event.detail === 0;
+      void askRemove(name).then(sure => {
+        if (!sure) return;
+        if (keyboard) focusNext.current = "plus";
+        setOpen(false);
+        setSaid(t("cart.removedName", { name }));
+        removeItem(line.lineId).catch(failed);
+      });
       return;
     }
     const ceiling = cardCeiling(variant, line, cart?.items ?? []);
@@ -230,12 +238,19 @@ export function PhotoCartControl({ product, onChoose }: { product: Product; onCh
           ceiling={ceiling}
           name={name}
           onSet={next => {
-            setSaid(next < 1 ? t("cart.removedName", { name }) : t("cart.quantityShort", { count: String(next) }));
             if (next < 1) {
-              focusNext.current = "plus";
-              setOpen(false);
-              removeItem(line.lineId).catch(failed);
-            } else updateQuantity(line.lineId, next).catch(failed);
+              /* A typed zero asks as the bin does. */
+              void askRemove(name).then(sure => {
+                if (!sure) return;
+                setSaid(t("cart.removedName", { name }));
+                focusNext.current = "plus";
+                setOpen(false);
+                removeItem(line.lineId).catch(failed);
+              });
+              return;
+            }
+            setSaid(t("cart.quantityShort", { count: String(next) }));
+            updateQuantity(line.lineId, next).catch(failed);
           }}
         />
         <button

@@ -1801,7 +1801,13 @@ hands a screen up to 640px wide; a picture with no copy is sent whole, so a
 missing copy costs a phone the download and nothing else.
 
 `DepartmentCards` follows under a heading of its own — six tiles, the five
-departments and "All departments", each a link, **in one row that scrolls
+departments and "All departments", each a link — **a department's opening the
+Categories page with that department already open, on the owner's word**
+("when choosing a category in the homepage, it should redirect you to the
+category page choosing that specific category"): `/categories?dept=<slug>`,
+its subcategories unfolded under its tile, and "All departments" the page as
+it is; the app's tiles do the same (`AppModel.openCategories`, the Categories
+tab with `categoriesOpen` set and its pushed pages put away), **in one row that scrolls
 sideways, on the owner's word**: three to a row on a phone made two rows that
 were the whole first screen under the band. The row reaches the screen's edges
 on a phone, so the tile cut off at the edge says there is more; from `lg` the
@@ -2435,6 +2441,45 @@ spills off the screen — the guide editor's "Upload a photo" ran 68px past a
 and now the guide step's) lets it drop under the picture when there is no
 room. `.scratch/full-sweep.mjs` (every route, every role, 320, 390 and 1440 in
 both languages) is what finds these.
+
+## Removing asks first
+
+**Anything a shopper keeps asks before it is taken away, on the owner's
+word** ("for removing anything, first it should ask you if you are sure you
+want to remove this, like removing products from cart"). On the web it is one
+dialog mounted once in `App` (`ConfirmRemovalProvider`,
+`components/ui/ConfirmRemoval.tsx`) and a hook a removal awaits —
+`useConfirmRemoval()`, and for the bag `useAskRemoveFromCart()`, for a filled
+heart `useAskUnheart()`, which says "and off your wishlists" for something on
+one (`wishedIds`). It is `ConfirmDialog` in its danger tone: the verb on the
+button, Cancel focused as it opens so a stray Enter keeps the thing, Escape
+and the dim answering no, portalled to `<body>` above every drawer and sheet
+(`z-[100]`), since a bin may be inside the bag drawer, a line's menu, the
+preview or a hovered card, whose lift is a transform. In the app it is the
+system's alert presented by UIKit from whatever is on top
+(`RemovalQuestion`, `Utilities/RemovalQuestion.swift`), because a SwiftUI
+`.alert` hung on a page cannot show over a sheet that page opened; with
+another alert already up it answers no rather than a question nobody can
+answer. **What asks**: every way a line leaves the bag — the bin, the minus at
+one, a typed zero, "Remove from cart" in the line's menu, the card's, the
+photo's, the product page's and the preview's steppers; a filled heart; the
+cross on a Saved card and Remove (n) on Saved; a product off Frequently bought
+from its page; a product off the browsing history; Clear on the recent
+searches; a line's code, the order's code and a gift card; a photo off a
+review or a warranty claim not yet sent; a document off a seller's
+application; and in the portal a kept subcategory picture, and the rows of a
+form — a photo, an extra, an option, a size, a bundle's item, a guide's step,
+an occasion's product or picture — which say nothing changes in the shop until
+the form is saved. Those that already asked (a wishlist's item or list, an
+address, the profile photo, deleting the account or a product, a review, a
+store document, a team member) keep their own question. **What does not**:
+moves — Save for later, Move to wishlist, Move to cart — and unticking a
+filter, closing a panel or clearing a field, which take nothing away. Walked
+at 320, 390 and 1440 in both languages (`.scratch/remove-walk.mjs`): the bin
+asking, Escape keeping the line, the menu's Remove asking and then taking it
+out, a filled heart asking and Cancel keeping it, axe clean with the dialog
+up; `RemovalUITests` holds the app's line menu and its Cancel, and a home
+tile landing on Categories with Electronics open.
 
 ## One frame, one template
 
@@ -8362,8 +8407,10 @@ seven kilobytes, the words alone), then 1,029 KB (296 KB), the
 occasions desk's words in both languages — about fifteen of the twenty-two
 kilobytes — with the desk's rule, which the home page's band shares with the
 editor, so the editor's checks come with it (3 KB minified, not worth a
-second module) — and is 1,038 KB (299 KB) now, each page's own search, the
+second module) — then 1,038 KB (299 KB), each page's own search, the
 account's places and the stores rows, with their words in both languages —
+and is 1,042 KB (300 KB) now, the removal question (`ConfirmRemoval`, on every
+page, since a card's bin and heart ask) and its words in both languages —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

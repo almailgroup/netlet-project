@@ -300,11 +300,15 @@ struct BrowsingHistoryView: View {
             }
             .buttonStyle(.tap)
             Button {
-                app.viewed.forget(product.id)
-                products.removeAll { $0.id == product.id }
-                chosen.remove(product.id)
-                Haptics.action()
-                UIAccessibility.post(notification: .announcement, argument: l.t("history.removed"))
+                // Asks first, on the owner's word.
+                Task {
+                    guard await RemovalQuestion.history(product.title, l) else { return }
+                    app.viewed.forget(product.id)
+                    products.removeAll { $0.id == product.id }
+                    chosen.remove(product.id)
+                    Haptics.action()
+                    UIAccessibility.post(notification: .announcement, argument: l.t("history.removed"))
+                }
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))

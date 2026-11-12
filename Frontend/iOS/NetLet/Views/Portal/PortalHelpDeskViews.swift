@@ -685,7 +685,7 @@ private struct GuideStepCard: View {
                     .buttonStyle(PortalSmallButtonStyle())
                     .disabled(index == count - 1)
                     .accessibilityLabel(l.t("guides.moveDown"))
-                Button(action: remove) { Label(l.t("guides.removeStep"), systemImage: "trash") }
+                Button { Task { guard await RemovalQuestion.formRow(l) else { return }; remove() } } label: { Label(l.t("guides.removeStep"), systemImage: "trash") }
                     .buttonStyle(PortalSmallButtonStyle(kind: .danger))
                     .disabled(count == 1)
             }

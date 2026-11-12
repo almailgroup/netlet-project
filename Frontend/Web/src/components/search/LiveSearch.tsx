@@ -23,6 +23,7 @@ import { Select } from "@/components/ui/Select";
 import { StoreMark } from "@/components/store/StoreCard";
 import type { SellingStoreData } from "@/components/store/StoresSellingRow";
 import { canListen } from "@/lib/speech";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
 /*
  * The voice and photo sheets are fetched when a shop has switched them on, or
@@ -98,6 +99,7 @@ const SHEET_MS = 320;
 
 export function LiveSearch({ catalog, value, onChange, onSelectProduct, department = null, dealsDrawn = false }: LiveSearchProps) {
   const { t, isArabic, locale } = useTranslation();
+  const ask = useConfirmRemoval();
   const money = useMoney();
   const uid = useId();
   const listboxId = `${uid}-suggestions`;
@@ -676,7 +678,12 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                     <button
                       type="button"
                       onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => { clearRecentSearches(); setRecent([]); setActiveIndex(-1); }}
+                      onClick={() => void ask({ title: t("remove.recentTitle"), body: t("remove.recentBody"), confirmLabel: t("header.clearRecent") }).then(sure => {
+                        if (!sure) return;
+                        clearRecentSearches();
+                        setRecent([]);
+                        setActiveIndex(-1);
+                      })}
                       aria-label={t("header.clearRecentAria")}
                       className="tap-target tint-on-hover rounded-full bg-white/80 px-3 py-1 text-[13px] font-bold ink-accent"
                     >

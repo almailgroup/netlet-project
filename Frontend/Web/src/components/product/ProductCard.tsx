@@ -50,6 +50,7 @@ import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation
 import { useCart } from "@/contexts/CartContext";
 import { DiscButton } from "@/components/ui/DiscButton";
 import { PURCHASE_TONE } from "@/lib/purchaseStyle";
+import { useAskRemoveFromCart, useAskUnheart } from "@/components/ui/ConfirmRemoval";
 
 /**
  * Share a product. For a member of the affiliate programme the address
@@ -177,6 +178,7 @@ function CardAction({ product, onChoose, onPhoto = false }: {
 }) {
   const { t } = useTranslation();
   const { cart, addItem, updateQuantity, removeItem, chooseOnly } = useCart();
+  const askRemove = useAskRemoveFromCart();
   const [, navigate] = useLocation();
   const [said, setSaid] = useState("");
   /** How many, before the item is in the bag. */
@@ -259,8 +261,9 @@ function CardAction({ product, onChoose, onPhoto = false }: {
           ...shared,
           canLess: true,
           lessIsRemove: quantity <= 1,
+          /* The bin at one asks first, on the owner's word. */
           less: () => quantity <= 1
-            ? run(() => removeItem(line.lineId), t("cart.removedName", { name }), "add")
+            ? void askRemove(name).then(sure => { if (sure) run(() => removeItem(line.lineId), t("cart.removedName", { name }), "add"); })
             : setQuantity(quantity - 1),
         }}
       >
@@ -353,6 +356,8 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
   const href = `/products/${encodeURIComponent(product.handle)}`;
   /* The CSS's own line between a mouse and a finger (`.reveal-control`). */
   const onPhoto = !useMediaQuery("(hover: hover) and (pointer: fine)");
+  /* A filled heart asks before it takes something away, on the owner's word. */
+  const askUnheart = useAskUnheart();
 
   return (
     <article className="product-card group relative flex h-full flex-col rounded-2xl border border-[#e6e9ef] bg-white hover:border-[#0a285a]/20">
@@ -396,7 +401,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           ) : null}
         </div>
 
-        <DiscButton onClick={onSave} aria-pressed={saved} aria-label={t(saved ? "product.removeSaved" : "product.save", { name: product.title })} className="absolute end-0 top-0" discClassName={`size-8 ${saved ? "!text-[#e61c38]" : ""}`}>
+        <DiscButton onClick={saved ? () => void askUnheart(product.id, product.title).then(sure => { if (sure) onSave(); }) : onSave} aria-pressed={saved} aria-label={t(saved ? "product.removeSaved" : "product.save", { name: product.title })} className="absolute end-0 top-0" discClassName={`size-8 ${saved ? "!text-[#e61c38]" : ""}`}>
           <Heart className={`size-4 ${saved ? "fill-current" : ""}`} />
         </DiscButton>
 

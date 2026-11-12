@@ -24,9 +24,12 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useProductsByIds } from "@/hooks/useCatalog";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { clearViewed, forgetViewed, VIEWED_DAYS, viewedIds } from "@/lib/recentlyViewed";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
+import { isolate } from "@/lib/isolate";
 
 export function AccountHistory() {
   const { t } = useTranslation();
+  const ask = useConfirmRemoval();
   const money = useMoney();
   const [ids, setIds] = useState(() => viewedIds());
   const [asking, setAsking] = useState(false);
@@ -108,7 +111,7 @@ export function AccountHistory() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => remove(product.id, product.title)}
+                  onClick={() => void ask({ title: t("remove.historyTitle"), body: t("remove.historyBody", { name: isolate(product.title) }) }).then(sure => { if (sure) remove(product.id, product.title); })}
                   aria-label={t("history.remove", { name: product.title })}
                   className="grid size-11 shrink-0 place-items-center rounded-full text-[#536b8c] hover:bg-[#f0f2f5]"
                 >

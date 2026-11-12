@@ -533,8 +533,12 @@ struct CartLineRow: View {
                     compact: true,
                     typed: true
                 ) { next in
-                    if next == 0 { announce(l.t("cart.removedName", ["name": title])) }
                     Task {
+                        // The bin at one and a typed zero ask first, on the owner's word.
+                        if next == 0 {
+                            guard await RemovalQuestion.cart(title, l) else { return }
+                            announce(l.t("cart.removedName", ["name": title]))
+                        }
                         if !(await app.cart.setQuantity(lineId: item.lineId, to: next)) { app.toast(l.t("cart.updateFailed")) }
                     }
                 }

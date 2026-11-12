@@ -867,11 +867,22 @@ struct PhotoCartControl: View {
     }
 
     private func change(_ line: CartItem, to quantity: Int) {
-        if quantity < 1 { open = false }
+        if quantity < 1 {
+            // The bin and a typed zero ask first, on the owner's word; kept,
+            // the stepper folds again in its own time.
+            Task {
+                guard await RemovalQuestion.cart(product.title, l) else {
+                    settleLater()
+                    return
+                }
+                open = false
+                announce(l.t("cart.removedName", ["name": product.title]))
+                if !(await app.cart.setQuantity(lineId: line.lineId, to: 0)) { app.toast(l.t("cart.updateFailed")) }
+            }
+            return
+        }
         settleLater()
-        announce(quantity < 1
-            ? l.t("cart.removedName", ["name": product.title])
-            : l.t("cart.quantityShort", ["count": "\(quantity)"]))
+        announce(l.t("cart.quantityShort", ["count": "\(quantity)"]))
         Task {
             if !(await app.cart.setQuantity(lineId: line.lineId, to: quantity)) { app.toast(l.t("cart.updateFailed")) }
         }

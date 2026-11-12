@@ -38,11 +38,13 @@ import { StockReminder } from "@/components/product/StockReminder";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { PREVIEW_TONE } from "@/lib/purchaseStyle";
 import { Select } from "@/components/ui/Select";
+import { useAskRemoveFromCart } from "@/components/ui/ConfirmRemoval";
 
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
   const money = useMoney();
   const { addItem, cart, openCart, updateQuantity, removeItem, proceedToCheckout, chooseOnly } = useCart();
+  const askRemove = useAskRemoveFromCart();
   const [quantity, setQuantity] = useState(1);
   const [variantId, setVariantId] = useState("");
   const [imageIndex, setImageIndex] = useState(0);
@@ -92,7 +94,8 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const changeLine = (next: number) => {
     if (!plainLine) return;
     const failed = () => toast.error(t("cart.updateFailed"));
-    if (next <= 0) void removeItem(plainLine.lineId).catch(failed);
+    /* The bin at one and a typed zero ask first, on the owner's word. */
+    if (next <= 0) void askRemove(product?.title ?? plainLine.productTitle).then(sure => (sure ? removeItem(plainLine.lineId) : undefined)).catch(failed);
     else if (next !== plainLine.quantity) void updateQuantity(plainLine.lineId, next).catch(failed);
   };
   const image = product.images[imageIndex] ?? product.images[0];

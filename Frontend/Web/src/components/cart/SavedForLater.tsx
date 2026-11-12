@@ -36,6 +36,8 @@ import { toast } from "sonner";
 import { Link } from "wouter";
 import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
 import { StockReminder } from "@/components/product/StockReminder";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
+import { isolate } from "@/lib/isolate";
 
 const SHOWN = 12;
 
@@ -139,6 +141,7 @@ export function SavedCard({ product, onMove, onRemove, onWish, grid = false, cho
   grid?: boolean;
 }) {
   const { t } = useTranslation();
+  const ask = useConfirmRemoval();
   const money = useMoney();
   const href = `/products/${encodeURIComponent(product.handle)}`;
   const variant = product.variants.find(entry => entry.availableForSale);
@@ -159,7 +162,11 @@ export function SavedCard({ product, onMove, onRemove, onWish, grid = false, cho
         ) : null}
         <button
           type="button"
-          onClick={() => { pressHaptic(); onRemove(); }}
+          /* Asks first, on the owner's word. */
+          onClick={() => {
+            pressHaptic();
+            void ask({ title: t("remove.savedTitle"), body: t("remove.savedBody", { name: isolate(product.title) }) }).then(sure => { if (sure) onRemove(); });
+          }}
           aria-label={t("product.removeSaved", { name: product.title })}
           title={t("product.removeSaved", { name: product.title })}
           className="tap-target absolute end-1.5 top-1.5 grid size-7 place-items-center rounded-full bg-white/95 text-[#0a285a] shadow-[0_1px_4px_rgba(10,40,90,.18)] hover:bg-[#f0f2f5]"

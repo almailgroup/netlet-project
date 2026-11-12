@@ -460,7 +460,12 @@ private struct DocumentRow: View {
                     .accessibilityLabel("\(l.t(entry == nil ? "documents.upload" : "documents.replace")): \(l.t(DocumentWords.label(kind)))")
                     if let latest = entry?.latest, latest.status != "accepted", model.editable {
                         Button(l.t("documents.remove")) {
-                            Task { await app.attempt(done: "documents.removed") { try await model.remove(latest) } }
+                            // Asks first, on the owner's word.
+                            Task {
+                                let name = "\u{2068}\(l.t(DocumentWords.label(kind)))\u{2069}"
+                                guard await RemovalQuestion.ask(l, title: l.t("remove.documentTitle"), message: l.t("remove.documentBody", ["name": name])) else { return }
+                                await app.attempt(done: "documents.removed") { try await model.remove(latest) }
+                            }
                         }
                         .font(.inter(13, .bold))
                         .foregroundStyle(Brand.danger)

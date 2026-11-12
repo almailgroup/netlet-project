@@ -25,9 +25,12 @@ import { normaliseCode } from "@shared/commerce/vouchers";
 import type { CartItem } from "@shared/commerce/types";
 import { Check, LoaderCircle, Ticket, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
+import { isolate } from "@/lib/isolate";
 
 export function LineCode({ item, title }: { item: CartItem; title: string }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const money = useMoney();
   const { setLineCode } = useCart();
   const [open, setOpen] = useState(false);
@@ -86,6 +89,8 @@ export function LineCode({ item, title }: { item: CartItem; title: string }) {
   const remove = async () => {
     if (busy) return;
     pressHaptic();
+    /* Asks first, on the owner's word. */
+    if (!(await ask({ title: t("remove.codeTitle"), body: t("remove.lineCodeBody", { code: isolate(item.code?.code ?? item.codeProblem?.code ?? "") }) }))) return;
     setBusy(true);
     try {
       await setLineCode(item.lineId, null);

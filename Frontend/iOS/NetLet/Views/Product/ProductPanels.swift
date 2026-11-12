@@ -1070,6 +1070,8 @@ struct FrequentProductButton: View {
         working = true
         defer { working = false }
         if let entry {
+            // Taking it off the list asks first, on the owner's word.
+            guard await RemovalQuestion.ask(l, title: l.t("frequent.removeTitle", ["title": "\u{2068}\(product.title)\u{2069}"]), message: l.t("frequent.removeBody"), confirm: l.t("frequent.removeConfirm")) else { return }
             if await app.attempt(done: "frequent.removed", {
                 _ = try await app.services.api.call(API.frequentRemove, .init(id: entry.id))
             }) { await load() }
