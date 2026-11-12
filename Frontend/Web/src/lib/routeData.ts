@@ -97,6 +97,25 @@ export function prefetchRouteData(
     /* Whether "Shop by brand" is drawn at all. */
     ask(utils.commerce.brands.prefetch());
   }
+  /* The account's home asked for its tiles, its counts and its rows only once
+     the session check had answered, a second round trip after the first; asked
+     with it, they are one request. For a guest the answers are refusals, which
+     say what the session check says, and the page is the sign-in form. */
+  if (/^\/account\/?$/.test(path)) {
+    ask(utils.customer.details.get.prefetch());
+    ask(utils.orders.list.prefetch({ pageSize: 4 }));
+    ask(utils.rewards.mine.prefetch());
+    ask(utils.frequent.list.prefetch({ locale }));
+    ask(utils.notifications.unread.prefetch());
+    ask(utils.support.unread.prefetch());
+    ask(utils.orders.onTheWay.prefetch());
+    ask(utils.inventory.me.prefetch());
+    ask(utils.subscriptions.mine.prefetch());
+    ask(utils.offers.list.prefetch());
+    ask(utils.customer.photo.get.prefetch());
+    ask(utils.membership.mine.prefetch());
+    ask(utils.affiliates.code.prefetch());
+  }
   const store = /^\/stores\/([^/?#]+)\/?$/.exec(path);
   if (store) ask(utils.commerce.store.prefetch({ slug: decodeURIComponent(store[1]), locale }));
   /* The guides list is the help page's too. */

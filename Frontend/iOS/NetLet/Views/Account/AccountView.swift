@@ -17,23 +17,18 @@ struct AccountView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var confirmingSignOut = false
-    /// Whether the shopper holds a standing order, a price request or an
-    /// affiliate account — what decides whether those rows are drawn.
-    @State private var holdings = Holdings()
-    @State private var orderPhotos: [String]?
-    @State private var savedPhotos: [String]?
-    @State private var frequentPhotos: [String]?
-    @State private var points: Int?
-    /// The phone the driver calls, saved under Your profile — nil until asked.
-    @State private var phone: String??
     /// The page's own search (`AccountSearch`), on the owner's word.
     @State private var term = ""
 
-    struct Holdings {
-        var subscriptions = false
-        var offers = false
-        var affiliate = false
-    }
+    // What the tiles and the rows draw is the app's (`AccountHome`), asked as
+    // soon as the app knew who was signed in, so the tab opens on it.
+    private var holdings: AccountHome.Holdings { app.accountHome.holdings }
+    private var orderPhotos: [String]? { app.accountHome.orderPhotos }
+    private var savedPhotos: [String]? { app.accountHome.savedPhotos }
+    private var frequentPhotos: [String]? { app.accountHome.frequentPhotos }
+    private var points: Int? { app.accountHome.points }
+    /// The phone the driver calls, saved under Your profile — nil until asked.
+    private var phone: String?? { app.accountHome.phone }
 
     var body: some View {
         switch app.session.state {
@@ -83,7 +78,7 @@ struct AccountView: View {
     }
 
     private func home(_ user: User) -> some View {
-        ShopPage(root: true, header: false, refresh: { await app.session.restore(); await loadPreviews() }) {
+        ShopPage(root: true, header: false, refresh: { await app.session.restore(); await app.warmAccount(force: true) }) {
             VStack(alignment: .leading, spacing: 12) {
                 topRow
                 // The account searched, on the owner's word ("the search bar
@@ -154,18 +149,10 @@ struct AccountView: View {
             .padding(.bottom, 48)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .task {
-            await app.signals.refresh()
-            async let photo: Void = app.profilePhoto.load()
-            await loadPreviews()
-            await photo
-            holdings.subscriptions = !((try? await app.services.api.call(API.standingOrders)) ?? []).isEmpty
-            holdings.offers = !((try? await app.services.api.call(API.priceRequests)) ?? []).isEmpty
-            if !app.features.isOn("affiliates") {
-                holdings.affiliate = ((try? await app.services.api.call(API.affiliate)) ?? nil) != nil
-            }
-        }
-        .onChange(of: app.saved.ids) { Task { await loadSaved() } }
+        // Drawn from what the app already holds, and asked again behind it
+        // when that is more than `AccountHome.freshFor` old.
+        .task { await app.warmAccount() }
+        .onChange(of: app.saved.ids) { Task { await app.accountHome.reloadSaved(ids: app.saved.ids, language: l.current) } }
         // Signing out asks first; the confirm button carries the verb and Cancel is the safe answer.
         .confirmationDialog(l.t("account.signOutTitle"), isPresented: $confirmingSignOut, titleVisibility: .visible) {
             Button(l.t("header.signOut"), role: .destructive) {
@@ -175,43 +162,6 @@ struct AccountView: View {
         } message: {
             Text(l.t("account.signOutBody"))
         }
-    }
-
-    /// The pictures on the tiles and the points: the newest orders' photos
-    /// (`orders.list`), the first saved hearts (`commerce.products.byIds`) and
-    /// what is on Frequently bought (`frequent.list`, the page's own call).
-    private func loadPreviews() async {
-        let api = app.services.api
-        async let orders = try? api.call(API.orders, .init(page: 1, pageSize: 4))
-        async let rewards = try? api.call(API.rewards)
-        async let details = try? app.services.account.profileDetails()
-        async let frequent = try? api.call(API.frequentList, API.LocaleOnly(locale: l.current.rawValue))
-        await loadSaved()
-        if let list = await frequent {
-            var seen = Set<String>()
-            frequentPhotos = list.items.compactMap { $0.product?.images.first?.url }.filter { seen.insert($0).inserted }.prefix(4).map { $0 }
-        } else if frequentPhotos == nil {
-            frequentPhotos = []
-        }
-        if let found = await details { phone = .some(found.phone) } else if phone == nil { phone = .some(nil) }
-        if let page = await orders {
-            var seen = Set<String>()
-            orderPhotos = page.rows.flatMap(\.summary.photos).filter { seen.insert($0).inserted }.prefix(4).map { $0 }
-        } else if orderPhotos == nil {
-            orderPhotos = []
-        }
-        points = (await rewards)?.balance
-        await app.refreshMemberCode()
-    }
-
-    private func loadSaved() async {
-        let ids = Array(app.saved.ids.prefix(4))
-        guard !ids.isEmpty else {
-            savedPhotos = []
-            return
-        }
-        let products = (try? await app.services.api.call(API.productsByIds, .init(ids: ids, locale: l.current.rawValue))) ?? []
-        savedPhotos = products.compactMap { $0.images.first?.url }
     }
 
     /// Who is signed in: the profile photo or the default avatar,
@@ -990,7 +940,11 @@ private struct ProfileForm: View {
             buttons(.phone, saving: .phone) {
                 guard model.phoneChanged else { close(.phone); return }
                 await model.savePhone()
-                if model.problems[.phone] == nil { done(.phone, "profile.saved") }
+                if model.problems[.phone] == nil {
+                    // The account home's card names the new number at once.
+                    app.accountHome.setPhone(model.details.phone)
+                    done(.phone, "profile.saved")
+                }
             }
         }
     }

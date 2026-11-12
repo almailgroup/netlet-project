@@ -107,6 +107,66 @@ final class TRPCClientTests: XCTestCase {
         XCTAssertEqual(broken.sent.count, 3, "a read is asked twice and no more")
     }
 
+    /// Reads asked in the same moment go as one request (`ReadBatch`), the
+    /// web client's batch: one address naming each procedure, the inputs by
+    /// their number with none for a procedure that takes nothing, and each
+    /// answer — a refusal included — handed back as that read's own.
+    func testReadsAskedTogetherGoAsOneBatch() async throws {
+        let transport = StubTransport { request in
+            let names = (request.url?.path ?? "").replacingOccurrences(of: "/api/trpc/", with: "").split(separator: ",").map(String.init)
+            let answers = names.map { name -> String in
+                switch name {
+                case "commerce.departmentCounts": return #"{"result":{"data":{"json":{"beauty":2}}}}"#
+                case "search.products": return #"{"result":{"data":{"json":{"products":[],"total":0,"correctedTo":null}}}}"#
+                default: return #"{"error":{"json":{"message":"ios.error.notFound","code":-32004,"data":{"code":"NOT_FOUND","httpStatus":404}}}}"#
+                }
+            }
+            return (207, "[" + answers.joined(separator: ",") + "]")
+        }
+        let client = TRPCClient(configuration: configuration, transport: transport, retryPause: .zero, batching: true, batchWindow: .milliseconds(300))
+        async let counted = client.call(API.departmentCounts)
+        async let searched = client.call(API.search, .init(q: "tea", locale: "en"))
+        let refusal = Task { () -> Bool in
+            do {
+                _ = try await client.call(API.subcategoryCounts)
+                return false
+            } catch let error as APIError {
+                return error == .server(code: "NOT_FOUND", message: "ios.error.notFound", status: 404)
+            } catch {
+                return false
+            }
+        }
+        let counts = try await counted
+        let found = try await searched
+        let refused = await refusal.value
+        XCTAssertEqual(counts, ["beauty": 2])
+        XCTAssertEqual(found.total, 0)
+        XCTAssertTrue(refused, "a refusal in the batch is that read's own")
+        XCTAssertEqual(transport.sent.count, 1, "three reads in one moment are one request")
+        let request = try XCTUnwrap(transport.sent.first)
+        let path = try XCTUnwrap(request.url?.path)
+        let names = Set(path.replacingOccurrences(of: "/api/trpc/", with: "").split(separator: ",").map(String.init))
+        XCTAssertEqual(names, ["commerce.departmentCounts", "search.products", "commerce.subcategoryCounts"])
+        let url = try XCTUnwrap(request.url)
+        let query = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery)
+        XCTAssertTrue(query.hasPrefix("batch=1&input="))
+        let json = try XCTUnwrap(String(query.dropFirst("batch=1&input=".count)).removingPercentEncoding)
+        let inputs = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any])
+        XCTAssertEqual(inputs.count, 1, "a procedure that takes nothing leaves its number out")
+        let search = try XCTUnwrap((inputs.values.first as? [String: Any])?["json"] as? [String: Any])
+        XCTAssertEqual(search["q"] as? String, "tea")
+    }
+
+    /// A read alone in its moment goes to its own address, as it always did.
+    func testAReadAloneIsSentAsItself() async throws {
+        let transport = StubTransport { _ in (200, #"{"result":{"data":{"json":{"beauty":27}}}}"#) }
+        let client = TRPCClient(configuration: configuration, transport: transport, batching: true, batchWindow: .milliseconds(20))
+        let counts = try await client.call(API.departmentCounts)
+        XCTAssertEqual(counts, ["beauty": 27])
+        XCTAssertEqual(transport.sent.first?.url?.path, "/api/trpc/commerce.departmentCounts")
+        XCTAssertNil(transport.sent.first?.url?.query)
+    }
+
     func testResolvesPicturesOnTheSiteAndLeavesFullAddressesAlone() {
         XCTAssertEqual(configuration.resolve("/departments/grocery.webp")?.absoluteString, "https://shop.example/departments/grocery.webp")
         XCTAssertEqual(configuration.resolve("https://cdn.example/a.jpg")?.absoluteString, "https://cdn.example/a.jpg")
@@ -166,6 +226,28 @@ final class FixtureDecodingTests: XCTestCase {
     /// The Deals page's shelves are the web's `dealShelves`: every deal on one
     /// shelf, a kind standing alone only with two or more, the fullest shelf
     /// first, the deepest saving leading each, cut to the shelf's size.
+    /// What a department offers on the Categories tab is the web's
+    /// `departmentFacts` and `departmentWays`, on the recorded catalogue.
+    func testACategorysWaysInFollowTheWebRule() async throws {
+        let products = try await client.call(API.products, .init(first: 24))
+        let electronics = products.filter { $0.productType == "Electronics" }
+        XCTAssertFalse(electronics.isEmpty, "the recorded catalogue sells electronics")
+        let guide = CategoryGuide(shelf: electronics)
+        XCTAssertEqual(guide.products, electronics.count)
+        XCTAssertEqual(guide.deals, electronics.filter(\.isOnOffer).count)
+        XCTAssertEqual(guide.rated, electronics.filter { $0.rating != nil }.count)
+        XCTAssertEqual(guide.subDeals.values.reduce(0, +), electronics.filter { $0.isOnOffer && $0.subcategory != nil }.count)
+        XCTAssertLessThanOrEqual(guide.brands.count, CategoryGuide.topBrands)
+        XCTAssertEqual(guide.brands.map(\.count), guide.brands.map(\.count).sorted(by: >), "the most products first")
+        // A way in only where it leads somewhere.
+        XCTAssertEqual(guide.ways.contains(.deals), guide.deals > 0)
+        XCTAssertEqual(guide.ways.contains(.newest), guide.products >= CategoryGuide.minForNewest)
+        XCTAssertEqual(guide.ways.contains(.rating), guide.rated >= CategoryGuide.minRated)
+        let empty = CategoryGuide(shelf: [])
+        XCTAssertEqual(empty.ways, [])
+        XCTAssertEqual(empty.brands, [])
+    }
+
     func testTheDealsShelvesFollowTheWebRule() async throws {
         let products = try await client.call(API.products, .init(first: 24))
         let deals = products.filter(\.isOnOffer)

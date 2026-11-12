@@ -45,12 +45,16 @@ final class TRPCClient: Sendable {
     /// How long a read that failed waits before its one more try — the web
     /// client's `retryDelay`.
     let retryPause: Duration
+    /// Reads asked in the same moment go as one request (`ReadBatch`); none
+    /// in the demo and the tests, which answer one address at a time.
+    let batch: ReadBatch?
 
-    init(configuration: APIConfiguration, transport: HTTPTransport, memory: ShelfMemory? = nil, retryPause: Duration = .milliseconds(1500)) {
+    init(configuration: APIConfiguration, transport: HTTPTransport, memory: ShelfMemory? = nil, retryPause: Duration = .milliseconds(1500), batching: Bool = false, batchWindow: Duration = ReadBatch.window) {
         self.configuration = configuration
         self.transport = transport
         self.memory = memory
         self.retryPause = retryPause
+        batch = batching ? ReadBatch(configuration: configuration, transport: transport, window: batchWindow) : nil
     }
 
     /// What the server answered today for this call, if it is one whose
@@ -149,7 +153,11 @@ final class TRPCClient: Sendable {
     private func attempt<Output: Decodable>(_ request: URLRequest, as type: Output.Type) async throws -> Output {
         let answer: (Data, HTTPURLResponse)
         do {
-            answer = try await transport.send(request)
+            if let batch, request.httpMethod == "GET" {
+                answer = try await batch.read(request)
+            } else {
+                answer = try await transport.send(request)
+            }
         } catch {
             throw APIError.from(error)
         }

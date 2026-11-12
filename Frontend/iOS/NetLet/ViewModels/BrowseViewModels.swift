@@ -6,6 +6,8 @@ import Observation
 /// `/category/all?offer=1`, `?sort=newest` and `?brand=`.
 enum ShelfView: Hashable {
     case all, deals, newest
+    /// Highest rated first, the web's `?sort=rating`.
+    case topRated
     case brand(String)
 }
 
@@ -413,6 +415,8 @@ final class BrowseModel {
                 sort = .discount
             case .newest:
                 sort = .newest
+            case .topRated:
+                sort = .rating
             case .brand(let name):
                 filters.brands = [name]
             }

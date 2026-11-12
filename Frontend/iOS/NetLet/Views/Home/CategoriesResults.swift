@@ -11,7 +11,7 @@ struct CategoriesResults: View {
     let term: String
     /// Every store, asked the first time the page is searched; nil while asked.
     let stores: [StoreCard]?
-    /// A department pressed: the page itself, on that department's subcategories.
+    /// A department pressed — or `department/sub` — the page itself, opened on it.
     let chooseDepartment: (String) -> Void
     @State private var subCounts: [String: [String: Int]]?
     @Environment(AppModel.self) private var app
@@ -49,7 +49,8 @@ struct CategoriesResults: View {
                         row(art: WebAssets.subcategory(found.department.slug, found.sub.slug), symbol: found.sub.symbol,
                             title: found.sub.shown(l.current),
                             note: count.map { "\(within) · \(l.productCount($0))" } ?? within) {
-                            app.push(.subcategory(department: found.department.slug, sub: found.sub.slug))
+                            // The page again, on its department with the stores selling it shown.
+                            chooseDepartment("\(found.department.slug)/\(found.sub.slug)")
                         }
                     }
                 }

@@ -17,6 +17,12 @@ enum Route: Hashable {
     case dealsIn(department: String, sub: String?)
     /// The newest products, the home page's "View all" under New arrivals.
     case newest
+    /// One department, newest first — its "New arrivals" on the Categories tab.
+    case newestIn(department: String)
+    /// One department, highest rated first — its "Highest rated" on the Categories tab.
+    case topRatedIn(department: String)
+    /// One brand within a department — a top brand on the Categories tab.
+    case brandIn(department: String, name: String)
     /// Everything of one brand, from the home page's brand tiles.
     case brand(name: String)
     /// A search over the whole catalogue, or within one department — the web's
@@ -211,6 +217,9 @@ final class AppModel {
     private(set) var features = FeatureStates.unknown
     /// What is waiting in the account: unread notices and messages, parcels on the way.
     let signals: AccountSignals
+    /// What the Profile tab draws beside who is signed in, asked as soon as
+    /// the app knows who that is (`warmAccount`) so the tab opens on it.
+    let accountHome: AccountHome
     /// Where the shop delivers, for the header's location button.
     let delivery: DeliveryModel
     /// The code, gift card and points chosen for the bag, in the cart or at
@@ -362,6 +371,7 @@ final class AppModel {
         // pretends, so the screenshots show the tile and the card.
         faceID = isDemo ? FaceIDModel(keychain: DemoKeychain(), defaults: Self.demoFaceIDDefaults()) : FaceIDModel(keychain: SecureEnclaveKeychain(), defaults: cartDefaults)
         signals = AccountSignals(api: services.api)
+        accountHome = AccountHome(api: services.api, account: services.account, warm: AccountHome.warmPhotos(resolve: services.configuration.resolve))
         delivery = DeliveryModel(api: services.api, account: services.account, defaults: cartDefaults)
         savings = SavingsModel(api: services.api)
         reminders = StockReminders(api: services.api)
@@ -412,7 +422,9 @@ final class AppModel {
         let demo = defaults.bool(forKey: "NetLetDemo") || arguments.contains("-NetLetDemo")
         // `-NetLetDemoAs shopper` answers as a signed-in shopper who also runs a store.
         let transport: HTTPTransport = demo ? DemoTransport(variant: defaults.string(forKey: "NetLetDemoAs")) : URLSessionTransport()
-        let client = TRPCClient(configuration: configuration, transport: transport, memory: demo ? nil : .shared)
+        // The real network sends the reads asked together as one request
+        // (`ReadBatch`); the demo answers one recorded address at a time.
+        let client = TRPCClient(configuration: configuration, transport: transport, memory: demo ? nil : .shared, batching: !demo)
         return AppModel(services: Services(client: client), isDemo: demo)
     }
 
@@ -875,6 +887,7 @@ final class AppModel {
         memberCode = nil
         affiliateJoined = nil
         signals.clear()
+        accountHome.forget()
         delivery.signedOut()
         profilePhoto.signedOut()
         await session.signOut()
@@ -900,17 +913,48 @@ final class AppModel {
         Task { try? await services.account.saveLanguage(next) }
     }
 
+    /// Everything that follows from who is signed in, asked side by side:
+    /// it was ten reads one after another, at every launch and every sign-in,
+    /// and the Profile tab waited behind them. Only the bag waits for the
+    /// account's language, which its titles are read in.
     private func linkAccount() async {
-        if let stored = try? await services.account.profile(), let locale = stored.locale.flatMap(Language.init(rawValue:)) {
-            language.set(locale)
+        let heartsBefore = saved.ids
+        let bag = Task {
+            if let stored = try? await self.services.account.profile(), let locale = stored.locale.flatMap(Language.init(rawValue:)) {
+                self.language.set(locale)
+            }
+            if let profile = try? await self.services.account.claimCart(self.cart.cartId, language: self.language.current) {
+                await self.cart.adopt(cartId: profile.cartId)
+            }
         }
-        if let profile = try? await services.account.claimCart(cart.cartId, language: language.current) {
-            await cart.adopt(cartId: profile.cartId)
+        let hearts = Task { await self.saved.adoptAccount() }
+        let addresses = Task { await self.delivery.refresh(signedIn: true) }
+        let account = Task { await self.warmAccount(force: true) }
+        await bag.value
+        await hearts.value
+        await addresses.value
+        await account.value
+        // The device's hearts joined the account's while the tiles were
+        // asked for: the Saved tile shows the account's.
+        if saved.ids != heartsBefore { await accountHome.reloadSaved(ids: saved.ids, language: language.current) }
+    }
+
+    /// What the Profile tab draws — the counts waiting, the photo, the
+    /// member's code and the tiles (`AccountHome`) — asked at once, and not
+    /// again within `AccountHome.freshFor` unless `force`.
+    func warmAccount(force: Bool = false) async {
+        guard let user = session.user else { return }
+        if !force, accountHome.isFresh(for: user.id) { return }
+        let waiting = Task { await self.signals.refresh() }
+        let photo = Task { await self.profilePhoto.load() }
+        let member = Task { await self.refreshMemberCode() }
+        let home = Task {
+            await self.accountHome.load(userId: user.id, savedIds: self.saved.ids, language: self.language.current, affiliatesOn: self.features.isOn("affiliates"))
         }
-        await saved.adoptAccount()
-        await signals.refresh()
-        await delivery.refresh(signedIn: true)
-        await refreshMemberCode()
+        await waiting.value
+        await photo.value
+        await member.value
+        await home.value
     }
 }
 

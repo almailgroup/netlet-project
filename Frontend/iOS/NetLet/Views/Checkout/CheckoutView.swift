@@ -309,6 +309,8 @@ private struct CheckoutForm: View {
         }
         landed = PlacedNotice(id: order.reference, total: total)
         confirming = false
+        // The Orders tile on the Profile tab shows this order's pictures next time.
+        app.accountHome.markStale()
         // What was left in the bag is chosen again, for the next order.
         app.cart.forgetChoice()
         await app.cart.refresh()

@@ -54,7 +54,9 @@ final class ScrollingUITests: XCTestCase {
     }
 
     func testCategoriesScrolls() {
-        assertDrags(launch("categories"), atLeast: 100)
+        // With a department open, as the tab is when a department is chosen: shut, the
+        // six tiles are about a screen, too little to drag a page by.
+        assertDrags(launch("categories:grocery"), atLeast: 100)
     }
 
     /// The product page draws a loading frame first and then the product, and

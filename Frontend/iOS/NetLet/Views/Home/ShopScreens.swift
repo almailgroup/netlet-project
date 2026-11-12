@@ -37,14 +37,12 @@ struct CategoriesView: View {
                         .padding(.top, 20)
                         .padding(.bottom, 48)
                 } else {
-                    // Only while there is a brand to list: a box that opens
-                    // "No brands yet" leads nowhere, the departments' rule.
-                    if !app.shelf.brands.isEmpty {
-                        wayIn(symbol: "tag", title: l.t("home.shopByBrand")) { app.push(.brands) }
-                            .padding(.top, 20)
-                    }
-                    departments
-                        .padding(.top, 28)
+                    shopWays
+                        .padding(.top, 20)
+                    ShelfHeading(title: l.t("home.shopByCategory"))
+                        .padding(.top, 26)
+                        .padding(.bottom, 16)
+                    DepartmentBrowser()
                         .padding(.bottom, 48)
                 }
             }
@@ -59,70 +57,48 @@ struct CategoriesView: View {
         }
     }
 
-    /// The box that opens the brands' list — a row the width of the page.
-    private func wayIn(symbol: String, title: String, open: @escaping () -> Void) -> some View {
-        Button(action: open) {
-            HStack(spacing: 12) {
-                Image(systemName: symbol)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.navy))
-                    .accessibilityHidden(true)
-                Text(title)
-                    .font(.inter(15, .heavy))
-                    .foregroundStyle(Brand.navy)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Brand.navy)
-                    .accessibilityHidden(true)
+    /// The ways into the whole shop, over the departments — the row Amazon and
+    /// noon open their categories on, the web's `ShopWays`: Today's deals
+    /// while the home page draws that shelf, Shop by brand while there is a
+    /// brand, the stores, the newest and everything. A sideways row.
+    private var shopWays: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                if app.shelf.dealsDrawn {
+                    way(symbol: "tag", title: l.t("home.heroDeals"), strong: true) { app.push(.deals) }
+                }
+                if !app.shelf.brands.isEmpty {
+                    way(symbol: "tag.circle", title: l.t("home.shopByBrand")) { app.push(.brands) }
+                }
+                way(symbol: "storefront", title: l.t("stores.title")) { app.push(.stores) }
+                way(symbol: "sparkles", title: l.t("browse.sort.newest")) { app.push(.newest) }
+                way(symbol: "line.3.horizontal", title: l.t("nav.allDepartments")) { app.push(.department(slug: nil)) }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
         }
-        .buttonStyle(PressFillStyle(cornerRadius: 16))
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
+        .padding(.horizontal, -16)
+        .glassRow()
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(l.t("categories.waysToShop"))
     }
 
-    /// The department cards under their own heading, and Today's deals under them.
-    private var departments: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ShelfHeading(title: l.t("home.shopByCategory")).padding(.bottom, 16)
-            DepartmentBrowser()
-            if app.shelf.dealsDrawn {
-                Button {
-                    app.push(.deals)
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "tag")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Brand.navy)
-                            .frame(width: 36, height: 36)
-                            .background(Circle().fill(Brand.orange))
-                        Text(l.t("home.heroDeals"))
-                            .font(.inter(15, .bold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(.horizontal, 16)
-                    .frame(minHeight: 56)
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.navy))
-                    .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.tap)
-                .padding(.top, 16)
+    private func way(symbol: String, title: String, strong: Bool = false, open: @escaping () -> Void) -> some View {
+        Button(action: open) {
+            HStack(spacing: 7) {
+                Image(systemName: symbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(strong ? Color(red: 1, green: 171 / 255, blue: 133 / 255) : Brand.navy)
+                    .accessibilityHidden(true)
+                Text(title).lineLimit(1)
             }
+            .font(.inter(14, .bold))
+            .foregroundStyle(strong ? Color.white : Brand.navy)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 44)
+            .glassChip(chosen: strong)
         }
+        .buttonStyle(.tap)
     }
 }
 

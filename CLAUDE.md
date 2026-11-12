@@ -1991,9 +1991,9 @@ where the scroller then clipped the "1".
 **The stores are what says this is a marketplace** — the one thing
 departments, shelves and a grid never said. **They are under each department
 on `/categories`, and the brands a box at its top — not rows on the home page,
-on the owner's word** (see Browsing): the department chosen lists the stores
-selling in it, then "See all stores" (`/stores`), and "Shop by brand" opens
-`/brands`. `commerce.stores`
+on the owner's word** (see Browsing): a department opened lists the stores
+selling in it first, right under its tile, then "See all stores" (`/stores`),
+a subcategory pressed lists its own, and "Shop by brand" opens `/brands`. `commerce.stores`
 (`listStoreCards` in `Backend/src/services/catalog.ts`) is approved stores with something
 published, the busiest first and ties by id, named in the page's language by
 the same `pick` their products use. Each card opens the store's own page, and
@@ -7468,67 +7468,74 @@ shelf), so a count and the page it opens agree whichever language the shopper
 reads. No schema change: a product's filing is a spec row it may carry and its
 words.
 
-**On `/categories` the departments are a row of picture tiles and the chosen
-one's subcategories are rows under them.** The tiles are the home page's art
-on white, a sideways row reaching the screen's edges on a phone and all six
-across from `sm`, the chosen one outlined in navy (`aria-pressed`, the portal's
-`Segmented` rule: it narrows a list, so it is not a tablist); "All departments"
-ends the row and is a link, having no subcategories. The choice is the
-address's `?dept=`, replaced rather than pushed, so Back leaves the page rather
-than stepping through departments, and the first department with none. Under
-the row, the department's name and count, then a row per subcategory — **its
-icon in a pale tile**, its name, how many it holds — and a last row, "View
-all" with a menu icon, opening the whole department; one column on a phone,
-two from `sm`, three from `lg`. An empty subcategory is still a row, its
-icon lighter and its picture never (below), as the tiles keep all six. **The icon is a name on the subcategory
+**On `/categories` the departments open and close in place, on the
+owner's word** ("make the category bigger … the behaviour should be in a way
+that it can collapse and expand … very user friendly for searching products
+by categories … you can get reference from other applications … like Amazon,
+noon"). The departments are a grid of large picture tiles — two to a row on a
+phone, three from `sm`, all six across from `lg` (the app: two, three on a
+wide screen) — each its art in a 4:3 field the tile's width, its name, its
+count and a chevron in a circle. A tile is a button (`aria-expanded`) that
+unfolds its department in a panel the width of the page **directly under its
+row** (inserted after the row's last tile, so which row depends on the
+columns), with a notch pointing up at the tile on the web and a navy caret
+under the tile in the app; pressed again, or its Close pressed, it folds.
+One is open at a time, and none to start with. "All departments" is the last
+tile, and a link. **The panel is what the department offers, in the owner's
+order**: its name and count, "See all in {name}" and Close; **the stores
+that sell in it first, right under the tiles** (`commerce.storesSelling`, a
+sideways row of small cards, the one selling the most first, then "See all
+stores"); then the ways in a shop like Amazon or noon offers — its deals,
+its newest, its highest rated — each **only where it leads somewhere**
+(`departmentWays` over `departmentFacts`, `Shared/commerce/categoryGuide.ts`:
+Deals with a deal, New arrivals from two products, Highest rated from two
+with stars; read off the department page's own shelf, `DEPARTMENT_SHELF`, so
+"Deals · 3" is the three that page draws; the app's `CategoryGuide`, tested
+on the recorded catalogue, over the department's own read, which the
+department page then opens on); then its subcategories, **at the size they
+were, on the owner's word** ("return the size of the subcategories to what
+they were") — rows with their 56px picture on the web, one column on a phone,
+two from `sm`, three from `lg`; rounded squares three to a row in the app;
+and last its top brands, when a product carries one (`TOP_BRANDS`, each
+opening the department narrowed to it). **A subcategory pressed shows the
+stores that sell it, on the owner's word** ("when you tap on a sub category,
+the stores must be shown"): it is a button too, and its panel unfolds under
+its row — its name and count, "Shop {name}" (absent for an empty one), its
+deals where it has any, and the stores selling it, or "No store sells this
+yet." Above the tiles, the ways into the whole shop (`ShopWays`, the app's
+`shopWays`): Today's deals while the home page draws that shelf, Shop by
+brand while there is a brand, the stores, the newest and everything. **What
+is open is the address's** (`?dept=`, `&sub=`, replaced rather than pushed,
+so Back leaves the page), and a department or subcategory found by the
+page's own search opens the page on it (the app: `categoriesOpen`, `dept` or
+`dept/sub`; `-NetLetOpen categories:<slug>`). **The unfolding is the panel's
+height** (`.cat-unfold`: a grid row from `0fr` to `1fr` over 300ms, so what
+is below moves with it rather than jumping, and the same folding back before
+the panel leaves; a cut under reduced motion); the app's is a spring with an
+opacity and a slight scale from the top. Subcategories still rise in 40ms
+apart (`.cat-rise`, `RiseIn`). Measured at 320, 390, 768 and 1440 in both
+languages: a department opening and closing, its stores, a subcategory
+opening onto its stores, axe clean and no sideways scroll. It replaced a row
+of tiles with the chosen one's subcategories under it, which the owner found
+was not what they wanted. **The icon is a name on the subcategory
 (`SUBCATEGORY_ICONS`), the departments' rule**: each client turns it into a
 drawing through a record the type makes exhaustive — lucide on the web
 (`SubcategoryIcon`, with a dress drawn in lucide's hand, lucide having none),
 SF Symbols in the app (`Department.Subcategory.symbols`, the likeliest symbol
 first and a fallback after, since a symbol's first iOS is not always known;
-`ModelTests` holds that every one draws). It replaced a panel that opened under
-the pressed card with a pointer and chips, which the owner found harder to
-read than a list. A row opens `/category/<slug>?sub=<sub>`: **the subcategory
-is the page, not a filter** — `BrowseFilters.sub`, not counted among the
-filters and kept by "Clear all", the heading its name and the breadcrumb
-through its department, facets over its own products, and not indexed. The
-department page draws its subcategories as a row of chips under the heading
-(those with something on the shelf and the one the address names), "All"
-first. The product page's "Type" row reads in Arabic on the Arabic page
-(`shownOption`; the app's `shownSpecifications`, which also gives a schema row
-its Arabic label there). The app is the same but for the rows, which are
-rounded squares there (see "In the app a department's subcategories, the
-stores and the brands are rounded squares"): `DepartmentBrowser` (the tiles
-and the squares; `-NetLetOpen categories:<slug>` chooses one), `Route.subcategory`,
-the chips on `DepartmentView`, the names and icons exported with the
-departments (`departments.json`).
-
-**The tiles are larger, the chosen one grows, and its subcategories rise in —
-on the owner's word** ("make the category images … bigger, and when you select
-any of them it gets a bit bigger … I want smooth animation for everything").
-**A department's tile is bigger than a subcategory's picture, on the owner's
-word** ("make the category icons bigger than the subcategory"): 120px on a
-phone, 132 from 390, beside a subcategory's 56px, and from `sm` the six share
-one row 896px wide (1024 from `lg`); the chosen one's frame grows to 108% on a curve
-that overshoots a little (`.cat-tile`, 460ms) with a deeper shadow, and
-on a phone the row glides it to the middle of the screen, since a tile chosen
-at the edge would grow half out of sight. **The tiles snap at their centres**
-(`snap-center`): at their starts, the row's snapping pulled the glide back so
-the chosen tile sat at the edge, 92px off the middle at 320 — measured, not
-seen, since at 390 the two happened to agree. A press gives under the finger
-(95%, 103% on the chosen one). The rows are not a second press away: choosing
-a tile *is* showing its subcategories, and they arrive one after another,
-each 40ms behind the last (`.cat-rise`, a rise of 12px and a fade, the section
-keyed by the department so a new choice plays it again). A row lifts 2px
-under a mouse and gives on a press. **Every one of them is opacity and
-transform alone**, so nothing beside a tile moves while it grows; under
-reduced motion the global guard shortens the springs to a cut, and
-`cat-rise` is switched off outright, because the guard shortens a duration
-and not a delay — rows held back 200ms read as a page that is slow, not one
-that is still. The app is the same (`DepartmentBrowser`): 132-point art, the
-chosen tile at 1.08 on a spring, scrolled to the middle as it is chosen, the
-subcategories rising in by `RiseIn` 40ms apart, every press `SpringPressStyle`, and
-Reduce Motion drawing each in place.
+`ModelTests` holds that every one draws). "Shop {name}" opens
+`/category/<slug>?sub=<sub>`: **the subcategory is the page, not a filter** —
+`BrowseFilters.sub`, not counted among the filters and kept by "Clear all",
+the heading its name and the breadcrumb through its department, facets over
+its own products, and not indexed. The department page draws its
+subcategories as a row of chips under the heading (those with something on
+the shelf and the one the address names), "All" first. The product page's
+"Type" row reads in Arabic on the Arabic page (`shownOption`; the app's
+`shownSpecifications`, which also gives a schema row its Arabic label there).
+The app's routes for the ways in are `Route.newestIn`, `.topRatedIn` and
+`.brandIn` beside `.dealsIn` and `.subcategory` (`ShelfView.topRated` sorts by
+stars), and the names and icons are exported with the departments
+(`departments.json`).
 
 **A subcategory's row carries a real picture, on the owner's word** ("add
 real images for the subcategories, not just an outline";
@@ -8433,7 +8440,12 @@ moment something knows it will be wanted:
   the inputs the pages' own queries use, so the page finds its answer in
   flight. The session check is there because, with the first draw held for
   the page's code, it was what the account page ended up waiting for. The
-  first data request went from about 1200ms to about 800ms.
+  first data request went from about 1200ms to about 800ms. **The account's
+  home asks for its tiles, counts and rows in that same request**, on the
+  owner's word ("it takes a few seconds for everything to load"): it asked
+  for them only once the session check had answered, a second round trip
+  after the first, and for a guest the answers are refusals that say what
+  the session check says.
 - **The first draw waits up to 400ms for the page's code**
   (`FIRST_PAGE_WAIT_MS`, `preloadFirstPage`), so it draws the page rather
   than an outline React then holds for 300ms. **And the frame paints a frame
@@ -9079,9 +9091,11 @@ wheels and the road under it — toward the page's ground. The website's phone
 fade is as it was (`.hero-foot`).
 
 **In the app a department's subcategories, the stores and the brands are
-rounded squares, on the owner's word** — a department's subcategories and its
-stores four to a row (about 80 points on a phone, smaller than the 132-point
-department tiles, on the owner's word), the stores and brands lists three (a picture of the
+rounded squares, on the owner's word** — a department's subcategories three
+to a row, the size they were before a round that made them four and the owner
+asked for them back, beside department tiles two to a row (see "On
+`/categories` the departments open and close in place"); its stores are a
+sideways row of small cards there, and the stores and brands lists three (a picture of the
 app's Categories: "for the subcategories, instead of being as a list, make it
 rounded squares; the same for shop by stores"). Each is a square the width of
 its column in the department tiles' own shape (`SquareFace`, a 20-point
@@ -9813,6 +9827,42 @@ app never holds a token. **A read that failed is asked once more after 1.5s**,
 the web client's rule (`APIError.worthAnotherTry`): never a 4xx, which says the
 same thing twice, nor an answer that did not decode; a mutation never, since
 the first may have landed.
+
+**Reads asked in the same moment go as one request** (`ReadBatch`), the web
+client's batch, on the owner's word ("make it faster … improving the loading
+speed of the app"): a read waits `ReadBatch.window` (8ms) for others to join
+it, and together they go to `/api/trpc/a,b,c?batch=1&input={"0":…,"2":…}` — a
+procedure that takes nothing leaving its number out — and the answer's array
+is handed back one entry each, every refusal that read's own with the status
+it would have had alone. A screen asks for half a dozen things as it opens,
+and sent one request each they were half a dozen function calls on Vercel,
+where a burst is what starts a second server (measured on the portal: of six
+at once, two waited 1.2–1.9s for a new one); as one, the server runs them side
+by side under `gateQueries`. A read alone in its moment goes to its own
+address as before, so `ShelfMemory` and everything else that reads an address
+sees no difference; mutations are never held or joined; at most
+`mostReads` (25) to a batch and an address under `longestAddress` (6,000
+characters). The demo and the tests answer one recorded address at a time,
+so they do not batch (`batching: false`, the default); `TRPCClientTests` holds
+the wire format with a batch window of 300ms.
+
+**The Profile tab opens on what the app already holds** (`AccountHome`, on
+`AppModel`), on the owner's word ("when I first open my profile page, it takes
+a few seconds for everything to load"). It took seconds because the tab asked
+one thing after another as it opened — the unread counts (three in a row),
+then the photo and the tiles, then the member's code, then standing orders,
+then price requests, then the affiliate account: about nine round trips in
+a row — and the launch's own account work was ten more in a row before it.
+Now `warmAccount` asks the counts, the photo, the member's code and every tile
+and row (`AccountHome.load`: orders, saved, frequently bought, points, phone,
+standing orders, price requests, the affiliate account) at once, as soon as
+the app knows who is signed in (`linkAccount`, at launch and after every
+sign-in, its other reads side by side too, only the bag waiting for the
+account's language), and fetches the tiles' pictures into the image pipeline;
+the tab draws from it and asks again behind only when it is older than
+`AccountHome.freshFor` (30s). Placing an order marks it stale, a saved phone
+number is drawn at once, and signing out forgets it. Not yet timed on a phone
+from this sandbox, which cannot reach the live site.
 
 **MVVM, one way.** Each screen's state is an `@Observable @MainActor` view
 model behind protocol services, made on first appearance by `ModelHost`

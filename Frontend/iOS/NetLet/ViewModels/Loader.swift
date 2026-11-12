@@ -77,10 +77,15 @@ final class AccountSignals {
     /// Everything waiting, for the Profile tab's badge.
     var total: Int { unreadNotices + unreadSupport }
 
+    /// The three asked together, so they go as one request (`ReadBatch`).
     func refresh() async {
-        if let count = try? await api.call(API.unreadNotices) { unreadNotices = count }
-        if let count = try? await api.call(API.unreadSupport) { unreadSupport = count }
-        if let road = try? await api.call(API.onTheWay) { onTheWay = road.count }
+        let api = api
+        let notices = Task { try? await api.call(API.unreadNotices) }
+        let support = Task { try? await api.call(API.unreadSupport) }
+        let parcels = Task { try? await api.call(API.onTheWay) }
+        if let count = await notices.value { unreadNotices = count }
+        if let count = await support.value { unreadSupport = count }
+        if let road = await parcels.value { onTheWay = road.count }
     }
 
     func clear() {

@@ -725,13 +725,49 @@
     box-shadow: 0 8px 20px rgba(10, 40, 90, 0.1);
   }
 }
+/*
+ * A department's tile on the Categories page, which opens and closes its
+ * panel: it gives under the finger, and the open one is rimmed in navy.
+ */
+.cat-dtile {
+  transition:
+    transform 220ms var(--ease-out),
+    border-color 220ms var(--ease-out),
+    box-shadow 320ms var(--ease-out);
+}
+.cat-dtile:active {
+  transform: scale(0.97);
+  transition-duration: 120ms;
+}
+/*
+ * A panel unfolding under the row that opened it, and folding back: a grid
+ * row from nothing to its content's height, so what is below moves down with
+ * it rather than jumping, and the same in reverse. Its inside clips while it
+ * moves (`min-h-0 overflow-hidden` on the child).
+ */
+.cat-unfold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 300ms var(--ease-out),
+    opacity 240ms var(--ease-out);
+}
+.cat-unfold[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
 @media (prefers-reduced-motion: reduce) {
   .cat-rise {
     animation: none;
   }
   .cat-row:active,
+  .cat-dtile:active,
   .cat-tile-press:active .cat-tile {
     transform: none;
+  }
+  .cat-unfold {
+    transition: none;
   }
 }
 
