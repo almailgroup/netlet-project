@@ -67,6 +67,17 @@ jobs:
             echo "$procedure: $(echo "$body" | jq -c '.error.json.message // (.result.data.json | if type == "array" then "\(length) rows" else . end)')"
           done
 
+      # NetLet's own occasions (migration 0081): `ready` is false until the
+      # bootstrap holding 0081 has been pasted, and then each running one
+      # says how many products it carries and which calendar ones it replaces.
+      - name: NetLet's own occasions
+        run: |
+          for locale in en ar; do
+            input=$(printf '{"json":{"locale":"%s"}}' "$locale" | jq -sRr @uri)
+            body=$(curl -sS -m 60 "$BASE/api/trpc/occasions.live?input=$input")
+            echo "occasions.live ($locale): $(echo "$body" | jq -c '.error.json.message // (.result.data.json | {ready, replaced, occasions: [.occasions[] | {slug, title, titleAr, picture: (.imageUrl != null), products: (.products | length)}]})')"
+          done
+
       - name: Does each product's first photo load
         run: |
           jq -r '.result.data.json[] | .images[0].url // empty' catalogue-en.json | while read -r photo; do
