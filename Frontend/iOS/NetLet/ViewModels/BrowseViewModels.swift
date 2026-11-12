@@ -385,6 +385,13 @@ final class BrowseModel {
     private var chosen: [Product] = []
     /// The catalogue's own spelling, when a search found nothing as typed.
     private(set) var correctedTo: String?
+    /// The stores that sell what the page shows, the one selling the most
+    /// first — a search's answer, or a subcategory's (`loadStores`) — drawn
+    /// at the top of the page, on the owner's word.
+    private(set) var stores: [StoreCard] = []
+    /// The Deals page's own search (`PageSearchField`): the deals whose words
+    /// hold every word typed, never the shop's.
+    var pageTerm = ""
     var filters = BrowseFilters()
     var sort: ProductSort = .relevance
 
@@ -457,6 +464,7 @@ final class BrowseModel {
             case .search(let words, let scope):
                 let found = try await catalog.search(words, department: scope, limit: Self.searchLimit, language: language)
                 correctedTo = found.correctedTo
+                stores = found.stores ?? []
                 products = .loaded(found.products)
             }
         } catch {
@@ -486,9 +494,21 @@ final class BrowseModel {
     }
 
     /// The default order is the shelf's own, so a curated occasion keeps the
-    /// order it was chosen in until the shopper picks another.
+    /// order it was chosen in until the shopper picks another. On the Deals
+    /// page its own search narrows the deals, keeping their order.
     var shown: [Product] {
-        sort.apply(to: pool.filter(poolFilters.admits))
+        let narrowed = sort.apply(to: pool.filter(poolFilters.admits))
+        let words = SearchRank.queryWords(pageTerm)
+        guard isDealsPage, !words.isEmpty else { return narrowed }
+        return narrowed.filter { SearchRank.score(SearchRank.doc($0), words) > 0 }
+    }
+
+    /// The stores that sell a subcategory, when the page is one. A search's
+    /// come with its answer; any other page has none.
+    func loadStores(language: Language) async {
+        guard case .shelf = source else { return }
+        guard let department, let sub = filters.sub else { stores = []; return }
+        stores = (try? await catalog.storesSelling(department: department.name, sub: sub, language: language)) ?? []
     }
 
     /// The Deals page, on the owner's word: the whole shop narrowed to what

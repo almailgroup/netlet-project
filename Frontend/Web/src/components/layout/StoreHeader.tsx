@@ -59,6 +59,7 @@ import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { useDeliveryArea } from "@/components/layout/deliveryArea";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { LiveSearch } from "@/components/search/LiveSearch";
+import { PageSearchField, type PageSearchSetup } from "@/components/layout/PageSearch";
 import { CountBadge } from "@/components/ui/CountBadge";
 import { dealsDrawn as drawsDeals, categoryRail, shelvesFor } from "@/content/homeLayout";
 import { useCart } from "@/contexts/CartContext";
@@ -97,11 +98,13 @@ function Count({ value }: { value: number }) {
   return <CountBadge value={value} className="absolute -end-2.5 -top-2.5" />;
 }
 
-export function StoreHeader({ activeDepartment, logoRow = true }: {
+export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = null }: {
   /** The department this page is in, by its query ("Electronics", "All"), so the row can mark it. */
   activeDepartment?: string | null;
   /** The phone's logo, delivery and heart row; off on product and category pages. */
   logoRow?: boolean;
+  /** The page searches itself — Categories, Deals, the account, the cart — so the field narrows it (`PageSearch.tsx`). */
+  pageSearch?: PageSearchSetup | null;
 }) {
   const { t, isArabic } = useTranslation();
   const [location, navigate] = useLocation();
@@ -171,7 +174,7 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
       const target = event.target as HTMLElement | null;
       if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
       if (document.querySelector("[aria-modal=true]")) return;
-      const input = [...document.querySelectorAll<HTMLInputElement>("header input[role=combobox]")].find(candidate => candidate.offsetParent !== null);
+      const input = [...document.querySelectorAll<HTMLInputElement>("header input[role=combobox], header input[data-page-search]")].find(candidate => candidate.offsetParent !== null);
       if (!input) return;
       event.preventDefault();
       input.focus();
@@ -180,7 +183,11 @@ export function StoreHeader({ activeDepartment, logoRow = true }: {
     return () => window.removeEventListener("keydown", toSearch);
   }, []);
 
-  const field = <LiveSearch catalog={shelf.data ?? []} value={search} onChange={setSearch} onSelectProduct={selectProduct} department={activeDepartment} dealsDrawn={dealsDrawn} />;
+  /* On a page that searches itself the field narrows that page, and is the
+     shop's search everywhere else. */
+  const field = pageSearch
+    ? <PageSearchField setup={pageSearch} />
+    : <LiveSearch catalog={shelf.data ?? []} value={search} onChange={setSearch} onSelectProduct={selectProduct} department={activeDepartment} dealsDrawn={dealsDrawn} />;
 
   const areaButton = (
     <button onClick={() => setDeliveryOpen(true)} title={area.title} className={plain}>

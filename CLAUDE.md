@@ -1989,9 +1989,10 @@ it turned its `margin-inline-end` into a right margin on the Arabic page too,
 where the scroller then clipped the "1".
 
 **The stores are what says this is a marketplace** — the one thing
-departments, shelves and a grid never said. **They and the brands are a box
-each at the top of `/categories`, not rows on the home page, on the owner's
-word** (see Browsing): "Shop by stores" opens `/stores`, "Shop by brand"
+departments, shelves and a grid never said. **They are under each department
+on `/categories`, and the brands a box at its top — not rows on the home page,
+on the owner's word** (see Browsing): the department chosen lists the stores
+selling in it, then "See all stores" (`/stores`), and "Shop by brand" opens
 `/brands`. `commerce.stores`
 (`listStoreCards` in `Backend/src/services/catalog.ts`) is approved stores with something
 published, the busiest first and ties by id, named in the page's language by
@@ -7368,17 +7369,81 @@ rewrite) and it is in the sitemap. **`/categories` starts with `/category`**,
 so anything that reads a department page off the address asks for
 `/category/` with its slash — the footer's clearance for the department page's
 Sort | Filter pill does, or it would leave room for a pill this page has not got.
-**Two boxes lead it, "Shop by brand" and "Shop by stores", on the owner's
-word** — a press lists the brands (`/brands`, `pages/Brands.tsx`: every brand
-as a `BrandTile`, each opening a search for it) or the stores (`/stores`, see
-"A store has a page") — and the department cards follow under "Shop by
-category". They were the brand and store rows for a while, which left the home
-page for here first; two boxes side by side keep the departments in the first
-screen. The app's Categories is the same (`wayIn`, `BrandsView`). **Shop by
-brand is drawn only while there is a brand to list** (`commerce.brands`, asked
-with the page, `routeData`; the app's `app.shelf.brands`): the live shop has
-none — no product carries a Brand row — and the box opened "No brands yet",
-which is a control that leads nowhere. Shop by stores then takes the row.
+**"Shop by brand" leads it** — a press lists the brands (`/brands`,
+`pages/Brands.tsx`: every brand as a `BrandTile`, each opening a search for
+it) — and the department cards follow under "Shop by category". **"Shop by
+stores" stood beside it and went, on the owner's word** ("remove the shop by
+stores, instead add the stores to the sub category"): **the stores are under
+the chosen department's subcategories**, under "Stores selling {name}" — the
+stores that sell in it, the one selling the most first, each saying how many
+of its products it sells there (`commerce.storesSelling`, six on the web and
+seven squares in the app), then "See all stores" (`/stores`, see "A store has
+a page"). The app's Categories is the same (`wayIn`, `BrandsView`,
+`DepartmentBrowser`'s `stores`). **Shop by brand is drawn only while there is
+a brand to list** (`commerce.brands`, asked with the page, `routeData`; the
+app's `app.shelf.brands`): the live shop has none — no product carries a Brand
+row — and the box opened "No brands yet", which is a control that leads
+nowhere.
+
+**The stores that sell it lead a search and a subcategory, on the owner's
+word** ("when you search for something it would show the stores that sell it
+at the top"). `Shared/commerce/storesSelling.ts` is the order, pure
+(`rankStores`: most matching products first, ties by the first to appear, at
+most `STORES_SELLING_LIMIT`); `search.products` with `stores: true` answers
+the stores selling what it found (`sellingStoreCards` in
+`services/catalog.ts`: approved stores with something published, in that
+order, each with `matching`), and `commerce.storesSelling`
+(`services/storesSelling.ts`) the stores selling in a department or one of its
+subcategories, the subcategory decided by `subcategoryFor` as the products'
+own. A results page and a subcategory page draw them as a row of small chips
+over the grid (`StoresSellingRow`, 56px tall, so the products stay on a phone's
+first screen; a press opens the store, narrowed to the words searched), and
+the header's suggestions start with two of them (`SUGGESTED_STORES`, "Store"
+beside each), the app's search sheet too. **A store card carries its name in
+the other language** (`otherName`), so a page's own search finds "Gadget Hub"
+on the Arabic page, where it reads "غادجت هب" — found by the walk, which typed
+the English name there and found nothing. `storesSelling.test.ts` holds both
+reads against a real Postgres: a suspended store and a draft never count.
+
+**Each of four pages searches itself, on the owner's word** ("the search bar
+should only search for what's in the specific page … category, deals, profile
+and cart page"). On Categories, the Deals page, the account's home and the
+cart, the field searches that page alone and never opens the shop's
+suggestions: "Search categories and stores", "Search deals", "Search your
+account", "Search your cart". **The words live in the address** (`?q=`,
+replaced rather than pushed, `PageSearch.tsx`'s `usePageTerm` and
+`useWritePageTerm`), so Back leaves the page rather than stepping through
+letters; a page says it searches itself through `usePageChrome`'s
+`pageSearch`, and the header then draws `PageSearchField` where `LiveSearch`
+was. A phone's account and cart have no header (`BARE_ON_PHONE`), so they draw
+the same field at their top (`useHeaderDrawn`). **Nothing is asked of the
+server while typing**: each page narrows what it holds by `textsMatch`
+(`Shared/commerce/search.ts`, the shop's own folding, stemming and synonyms;
+the app's `SearchRank.textsMatch`, on the same cases). What each finds:
+**Categories** the departments by name, the subcategories by name and the
+words their products are called by (each saying which department it is in,
+with its count), and the stores by either name (`commerce.stores`, asked the
+first time the page is searched); **Deals** the deals by the product search's
+own fields, one grid rather than shelves while searched, "Deals matching …:
+n"; **the account** every place on it a shopper looks for
+(`Shared/commerce/accountSearch.ts`, `ACCOUNT_PLACES`: a section, a row of
+"Your profile" or Preferences, a quick setting, by its name, its page and the
+words it answers to, in both languages through the dictionary, so "password"
+finds the password on either page — a place named by the search before one
+found by its page; exported in `rules.json`, the app's `AccountSearch`), each
+a row saying which page it is on, the quick settings, the seller's door and
+signing out drawn where they work; **the cart** its lines by name in both
+languages, option, set and store, "Items matching …: n", the recovery note
+and Saved for later put away while searching. Nothing found says so ("Nothing
+here matches …"), with the shop's own search for the same words a press away
+on Categories and Deals, where it can help, and not on the account or the
+cart. A term inside an Arabic sentence is isolated (`isolate`, first-strong),
+or "lamp" scrambled the sentence's order. Walked on a production build at 320,
+390 and 1440 in both languages (`.scratch/page-search-walk.mjs`): each page's
+placeholder, a subcategory and a store found on Categories, the account's
+"password" finding the password first, the cart narrowed three lines to one,
+the stores leading a search, a subcategory and the suggestions, axe clean and
+no sideways scroll.
 
 **Each department has subcategories, and the Categories page lists them
 under a row of the departments' pictures, on the owner's word** ("when you tap
@@ -7441,8 +7506,10 @@ departments (`departments.json`).
 **The tiles are larger, the chosen one grows, and its subcategories rise in —
 on the owner's word** ("make the category images … bigger, and when you select
 any of them it gets a bit bigger … I want smooth animation for everything").
-A phone's tile is 104px, 112 from 390, and from `sm` the six share one row
-896px wide (1024 from `lg`); the chosen one's frame grows to 108% on a curve
+**A department's tile is bigger than a subcategory's picture, on the owner's
+word** ("make the category icons bigger than the subcategory"): 120px on a
+phone, 132 from 390, beside a subcategory's 56px, and from `sm` the six share
+one row 896px wide (1024 from `lg`); the chosen one's frame grows to 108% on a curve
 that overshoots a little (`.cat-tile`, 460ms) with a deeper shadow, and
 on a phone the row glides it to the middle of the screen, since a tile chosen
 at the edge would grow half out of sight. **The tiles snap at their centres**
@@ -7458,7 +7525,7 @@ transform alone**, so nothing beside a tile moves while it grows; under
 reduced motion the global guard shortens the springs to a cut, and
 `cat-rise` is switched off outright, because the guard shortens a duration
 and not a delay — rows held back 200ms read as a page that is slow, not one
-that is still. The app is the same (`DepartmentBrowser`): 108-point art, the
+that is still. The app is the same (`DepartmentBrowser`): 132-point art, the
 chosen tile at 1.08 on a spring, scrolled to the middle as it is chosen, the
 subcategories rising in by `RiseIn` 40ms apart, every press `SpringPressStyle`, and
 Reduce Motion drawing each in place.
@@ -8294,11 +8361,12 @@ download**; read the main chunk's size after a round that touches one, not
 only whether the build passes — then 1,000 KB (287 KB), the authorised
 devices' remove-or-block words, then 1,007 KB (288 KB), the store
 documents' words in both languages (measured against the commit before:
-seven kilobytes, the words alone), and is 1,029 KB (296 KB) now, the
+seven kilobytes, the words alone), then 1,029 KB (296 KB), the
 occasions desk's words in both languages — about fifteen of the twenty-two
 kilobytes — with the desk's rule, which the home page's band shares with the
 editor, so the editor's checks come with it (3 KB minified, not worth a
-second module) —
+second module) — and is 1,038 KB (299 KB) now, each page's own search, the
+account's places and the stores rows, with their words in both languages —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
@@ -9011,7 +9079,9 @@ wheels and the road under it — toward the page's ground. The website's phone
 fade is as it was (`.hero-foot`).
 
 **In the app a department's subcategories, the stores and the brands are
-rounded squares, three to a row, on the owner's word** (a picture of the
+rounded squares, on the owner's word** — a department's subcategories and its
+stores four to a row (about 80 points on a phone, smaller than the 132-point
+department tiles, on the owner's word), the stores and brands lists three (a picture of the
 app's Categories: "for the subcategories, instead of being as a list, make it
 rounded squares; the same for shop by stores"). Each is a square the width of
 its column in the department tiles' own shape (`SquareFace`, a 20-point
@@ -9033,6 +9103,23 @@ the stores, and the brands are the list beside them, opened from the box
 next to theirs. None of the three is lazy, which keeps a lazy grid out of a
 page's lazy stack (the home page's stand-still). The website keeps its rows
 and its store cards: this is the app's alone.
+
+**Each of the four pages searches itself in the app too** (see "Each of four
+pages searches itself" under Browsing). On Categories and the Deals page the
+header's search row draws `PageSearchField` in place of the shop's field
+(`ShopPage`'s `pageSearch`); the Profile and Cart tabs, which have no header,
+draw it at their top. Categories answers with `CategoriesResults` (a
+department opens the page on it, `categoriesOpen`), the Profile tab with
+`AccountSearchResults` over `ACCOUNT_PLACES` from `rules.json`
+(`AccountSearch`, `accountPlacesMatching` on its own cases), the cart narrows
+its stores' lines, and the Deals page its grid. A subcategory's words travel
+in `departments.json` now, so the app finds "Wearables" by "smartwatch" as the
+website does. The search sheet starts with two stores selling what the words
+found, and a results page and a subcategory page carry the stores row
+(`StoresSellingRow`). `demo.commerce.storesSelling.json` and
+`demo.commerce.stores.json` were recorded off a local server, and the search
+recording gained its `stores`; `testTheStoresThatSellItLeadThePage` decodes
+them.
 
 **A press on a product card grows its photo into the product's page, on the
 owner's word** ("when tapping on a product in homepage, put an animation for
@@ -9299,7 +9386,7 @@ keeps its Add to cart and Buy now. The dots sit at the photo's start.
 box (`QuantityStepper`'s `typed`, `TypedQuantity` — `typedQuantity.ts` on its
 own cases in `TypedQuantityTests`), empty with the count as its placeholder
 when a press opens the number pad, and read when the keyboard is put away;
-Shop by brand and Shop by stores are two boxes leading Categories; the bell follows
+Shop by brand leads Categories, the stores under each department; the bell follows
 the heart in `LogoRow`, with `signals.unreadNotices`, the inbox for somebody
 signed in and the sign-in for a guest; and every badge is `CountBadge` or
 `NoticeDot` (`CountBadge.swift`). The system tab bar's own badge is the

@@ -449,7 +449,9 @@ struct StoreTile: View {
     var body: some View {
         let logo: String? = store.logoUrl.flatMap { $0.isEmpty ? nil : $0 }
         let verified = store.badges.contains("verified")
-        let count = l.t(store.products == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(store.products)"])
+        // What it sells here, under a department; its whole shelf on the stores list.
+        let count = store.matching.map { l.productCount($0) }
+            ?? l.t(store.products == 1 ? "home.brandCountOne" : "home.brandCountMany", ["count": "\(store.products)"])
         Button {
             app.push(.store(slug: store.slug))
         } label: {

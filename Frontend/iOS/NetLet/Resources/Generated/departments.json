@@ -11,55 +11,163 @@
         "slug": "phones",
         "name": "Mobile phones",
         "nameAr": "الهواتف",
-        "icon": "phone"
+        "icon": "phone",
+        "words": [
+          "phone",
+          "smartphone",
+          "mobile",
+          "iphone",
+          "galaxy",
+          "pixel",
+          "هاتف",
+          "هواتف",
+          "جوال",
+          "جوالات",
+          "موبايل",
+          "ايفون"
+        ]
       },
       {
         "slug": "tablets",
         "name": "Tablets",
         "nameAr": "الأجهزة اللوحية",
-        "icon": "tablet"
+        "icon": "tablet",
+        "words": [
+          "tablet",
+          "ipad",
+          "لوحي",
+          "تابلت",
+          "ايباد"
+        ]
       },
       {
         "slug": "computers",
         "name": "Laptops & computers",
         "nameAr": "الحواسيب",
-        "icon": "laptop"
+        "icon": "laptop",
+        "words": [
+          "laptop",
+          "notebook",
+          "macbook",
+          "computer",
+          "desktop",
+          "monitor",
+          "keyboard",
+          "mouse",
+          "لابتوب",
+          "حاسوب",
+          "حاسب",
+          "كمبيوتر",
+          "كيبورد",
+          "ماوس"
+        ]
       },
       {
         "slug": "audio",
         "name": "Audio",
         "nameAr": "الصوتيات",
-        "icon": "headphones"
+        "icon": "headphones",
+        "words": [
+          "headphone",
+          "headset",
+          "earphone",
+          "earbud",
+          "airpod",
+          "speaker",
+          "soundbar",
+          "سماعة",
+          "سماعات",
+          "مكبر"
+        ]
       },
       {
         "slug": "wearables",
         "name": "Wearables",
         "nameAr": "الأجهزة القابلة للارتداء",
-        "icon": "watch"
+        "icon": "watch",
+        "words": [
+          "smartwatch",
+          "watch",
+          "band",
+          "tracker",
+          "ساعة",
+          "ساعات",
+          "سوار"
+        ]
       },
       {
         "slug": "tv",
         "name": "TV & video",
         "nameAr": "التلفزيون والفيديو",
-        "icon": "tv"
+        "icon": "tv",
+        "words": [
+          "tv",
+          "television",
+          "projector",
+          "streaming",
+          "تلفزيون",
+          "تلفاز",
+          "بروجكتر"
+        ]
       },
       {
         "slug": "cameras",
         "name": "Cameras",
         "nameAr": "الكاميرات",
-        "icon": "camera"
+        "icon": "camera",
+        "words": [
+          "camera",
+          "lens",
+          "gopro",
+          "drone",
+          "كاميرا",
+          "كاميرات",
+          "عدسة",
+          "درون"
+        ]
       },
       {
         "slug": "gaming",
         "name": "Gaming",
         "nameAr": "الألعاب",
-        "icon": "gamepad"
+        "icon": "gamepad",
+        "words": [
+          "playstation",
+          "ps5",
+          "xbox",
+          "nintendo",
+          "console",
+          "controller",
+          "gaming",
+          "بلايستيشن",
+          "العاب",
+          "يد تحكم"
+        ]
       },
       {
         "slug": "accessories",
         "name": "Accessories",
         "nameAr": "الإكسسوارات",
-        "icon": "cable"
+        "icon": "cable",
+        "words": [
+          "charger",
+          "cable",
+          "case",
+          "cover",
+          "adapter",
+          "powerbank",
+          "power bank",
+          "battery",
+          "screen protector",
+          "شاحن",
+          "كيبل",
+          "كابل",
+          "غطاء",
+          "كفر",
+          "حافظة",
+          "بطارية",
+          "باور بانك"
+        ]
       }
     ]
   },
@@ -75,43 +183,176 @@
         "slug": "kitchen-appliances",
         "name": "Kitchen appliances",
         "nameAr": "أجهزة المطبخ",
-        "icon": "microwave"
+        "icon": "microwave",
+        "words": [
+          "blender",
+          "mixer",
+          "fryer",
+          "airfryer",
+          "kettle",
+          "toaster",
+          "microwave",
+          "oven",
+          "coffee",
+          "espresso",
+          "processor",
+          "juicer",
+          "خلاط",
+          "قلاية",
+          "غلاية",
+          "محمصة",
+          "ميكروويف",
+          "فرن",
+          "قهوة",
+          "عصارة"
+        ]
       },
       {
         "slug": "cookware",
         "name": "Cookware & dining",
         "nameAr": "أواني الطبخ والمائدة",
-        "icon": "dining"
+        "icon": "dining",
+        "words": [
+          "pan",
+          "pot",
+          "cookware",
+          "knife",
+          "plate",
+          "bowl",
+          "cup",
+          "mug",
+          "cutlery",
+          "dinnerware",
+          "مقلاة",
+          "قدر",
+          "سكين",
+          "صحن",
+          "صحون",
+          "كوب",
+          "اكواب",
+          "فنجان"
+        ]
       },
       {
         "slug": "furniture",
         "name": "Furniture",
         "nameAr": "الأثاث",
-        "icon": "sofa"
+        "icon": "sofa",
+        "words": [
+          "sofa",
+          "couch",
+          "chair",
+          "table",
+          "desk",
+          "bed",
+          "wardrobe",
+          "shelf",
+          "cabinet",
+          "كنبة",
+          "قنفة",
+          "كرسي",
+          "طاولة",
+          "مكتب",
+          "سرير",
+          "خزانة",
+          "رف"
+        ]
       },
       {
         "slug": "decor",
         "name": "Decor & lighting",
         "nameAr": "الديكور والإضاءة",
-        "icon": "lamp"
+        "icon": "lamp",
+        "words": [
+          "lamp",
+          "light",
+          "lighting",
+          "vase",
+          "mirror",
+          "rug",
+          "carpet",
+          "curtain",
+          "frame",
+          "candle",
+          "planter",
+          "مصباح",
+          "اضاءة",
+          "مزهرية",
+          "مراة",
+          "سجادة",
+          "ستارة",
+          "برواز",
+          "شمعة"
+        ]
       },
       {
         "slug": "bedding",
         "name": "Bedding & bath",
         "nameAr": "المفروشات والحمّام",
-        "icon": "bed"
+        "icon": "bed",
+        "words": [
+          "bedding",
+          "sheet",
+          "pillow",
+          "duvet",
+          "blanket",
+          "towel",
+          "bathrobe",
+          "شرشف",
+          "مخدة",
+          "وسادة",
+          "لحاف",
+          "بطانية",
+          "منشفة",
+          "فوطة"
+        ]
       },
       {
         "slug": "home-appliances",
         "name": "Home appliances",
         "nameAr": "الأجهزة المنزلية",
-        "icon": "washer"
+        "icon": "washer",
+        "words": [
+          "vacuum",
+          "iron",
+          "fan",
+          "heater",
+          "purifier",
+          "humidifier",
+          "washer",
+          "fridge",
+          "refrigerator",
+          "مكنسة",
+          "مكواة",
+          "مروحة",
+          "دفاية",
+          "منقي",
+          "ثلاجة",
+          "غسالة"
+        ]
       },
       {
         "slug": "cleaning",
         "name": "Cleaning & storage",
         "nameAr": "التنظيف والتخزين",
-        "icon": "spray"
+        "icon": "spray",
+        "words": [
+          "mop",
+          "broom",
+          "cleaner",
+          "detergent",
+          "laundry",
+          "storage",
+          "organiser",
+          "organizer",
+          "basket",
+          "ممسحة",
+          "منظف",
+          "غسيل",
+          "تخزين",
+          "منظم",
+          "سلة"
+        ]
       }
     ]
   },
@@ -127,31 +368,108 @@
         "slug": "skincare",
         "name": "Skincare",
         "nameAr": "العناية بالبشرة",
-        "icon": "drop"
+        "icon": "drop",
+        "words": [
+          "skin",
+          "skincare",
+          "cream",
+          "serum",
+          "moisturiser",
+          "moisturizer",
+          "cleanser",
+          "sunscreen",
+          "toner",
+          "mask",
+          "بشرة",
+          "كريم",
+          "سيروم",
+          "مرطب",
+          "غسول",
+          "واقي",
+          "قناع"
+        ]
       },
       {
         "slug": "makeup",
         "name": "Makeup",
         "nameAr": "المكياج",
-        "icon": "brush"
+        "icon": "brush",
+        "words": [
+          "makeup",
+          "lipstick",
+          "mascara",
+          "foundation",
+          "eyeliner",
+          "blush",
+          "palette",
+          "concealer",
+          "مكياج",
+          "روج",
+          "ماسكارا",
+          "كحل",
+          "بلاشر"
+        ]
       },
       {
         "slug": "haircare",
         "name": "Hair care",
         "nameAr": "العناية بالشعر",
-        "icon": "scissors"
+        "icon": "scissors",
+        "words": [
+          "hair",
+          "shampoo",
+          "conditioner",
+          "straightener",
+          "curler",
+          "شعر",
+          "شامبو",
+          "بلسم",
+          "مكواة شعر"
+        ]
       },
       {
         "slug": "fragrance",
         "name": "Fragrance",
         "nameAr": "العطور",
-        "icon": "sparkles"
+        "icon": "sparkles",
+        "words": [
+          "perfume",
+          "fragrance",
+          "oud",
+          "cologne",
+          "musk",
+          "bakhoor",
+          "incense",
+          "عطر",
+          "عطور",
+          "عود",
+          "دهن",
+          "مسك",
+          "بخور"
+        ]
       },
       {
         "slug": "personal-care",
         "name": "Personal care",
         "nameAr": "العناية الشخصية",
-        "icon": "bath"
+        "icon": "bath",
+        "words": [
+          "razor",
+          "shaver",
+          "trimmer",
+          "toothbrush",
+          "toothpaste",
+          "deodorant",
+          "soap",
+          "lotion",
+          "حلاقة",
+          "ماكينة",
+          "فرشاة",
+          "معجون",
+          "مزيل",
+          "صابون",
+          "لوشن"
+        ]
       }
     ]
   },
@@ -167,43 +485,148 @@
         "slug": "women",
         "name": "Women's clothing",
         "nameAr": "ملابس نسائية",
-        "icon": "dress"
+        "icon": "dress",
+        "words": [
+          "women",
+          "woman",
+          "ladies",
+          "dress",
+          "abaya",
+          "skirt",
+          "blouse",
+          "نسائي",
+          "نسائية",
+          "فستان",
+          "عباية",
+          "تنورة",
+          "بلوزة"
+        ]
       },
       {
         "slug": "men",
         "name": "Men's clothing",
         "nameAr": "ملابس رجالية",
-        "icon": "shirt"
+        "icon": "shirt",
+        "words": [
+          "men",
+          "mens",
+          "man",
+          "dishdasha",
+          "thobe",
+          "shirt",
+          "trousers",
+          "رجالي",
+          "رجالية",
+          "دشداشة",
+          "ثوب",
+          "قميص",
+          "بنطلون"
+        ]
       },
       {
         "slug": "kids",
         "name": "Kids",
         "nameAr": "الأطفال",
-        "icon": "baby"
+        "icon": "baby",
+        "words": [
+          "kids",
+          "kid",
+          "children",
+          "child",
+          "boys",
+          "girls",
+          "baby",
+          "اطفال",
+          "طفل",
+          "ولادي",
+          "بناتي",
+          "مواليد"
+        ]
       },
       {
         "slug": "shoes",
         "name": "Shoes",
         "nameAr": "الأحذية",
-        "icon": "shoe"
+        "icon": "shoe",
+        "words": [
+          "shoe",
+          "sneaker",
+          "trainer",
+          "sandal",
+          "boot",
+          "heels",
+          "slipper",
+          "loafer",
+          "حذاء",
+          "احذية",
+          "جوتي",
+          "نعال",
+          "صندل",
+          "بوت"
+        ]
       },
       {
         "slug": "bags",
         "name": "Bags",
         "nameAr": "الحقائب",
-        "icon": "bag"
+        "icon": "bag",
+        "words": [
+          "bag",
+          "handbag",
+          "backpack",
+          "wallet",
+          "purse",
+          "tote",
+          "luggage",
+          "حقيبة",
+          "حقائب",
+          "شنطة",
+          "محفظة"
+        ]
       },
       {
         "slug": "accessories",
         "name": "Accessories",
         "nameAr": "الإكسسوارات",
-        "icon": "glasses"
+        "icon": "glasses",
+        "words": [
+          "jewellery",
+          "jewelry",
+          "ring",
+          "necklace",
+          "bracelet",
+          "earring",
+          "sunglasses",
+          "belt",
+          "scarf",
+          "watch",
+          "مجوهرات",
+          "خاتم",
+          "قلادة",
+          "سوار",
+          "حلق",
+          "نظارة",
+          "حزام",
+          "شال",
+          "ساعة"
+        ]
       },
       {
         "slug": "sportswear",
         "name": "Sportswear",
         "nameAr": "الملابس الرياضية",
-        "icon": "dumbbell"
+        "icon": "dumbbell",
+        "words": [
+          "sport",
+          "sportswear",
+          "gym",
+          "running",
+          "training",
+          "yoga",
+          "رياضي",
+          "رياضية",
+          "جيم"
+        ]
       }
     ]
   },
@@ -219,43 +642,168 @@
         "slug": "fresh",
         "name": "Fruit & vegetables",
         "nameAr": "الفواكه والخضروات",
-        "icon": "produce"
+        "icon": "produce",
+        "words": [
+          "fruit",
+          "vegetable",
+          "apple",
+          "banana",
+          "orange",
+          "tomato",
+          "potato",
+          "onion",
+          "cucumber",
+          "فواكه",
+          "فاكهة",
+          "خضار",
+          "خضروات",
+          "تفاح",
+          "موز",
+          "برتقال",
+          "طماطم",
+          "بطاطا",
+          "بصل",
+          "خيار"
+        ]
       },
       {
         "slug": "pantry",
         "name": "Pantry",
         "nameAr": "المؤن",
-        "icon": "wheat"
+        "icon": "wheat",
+        "words": [
+          "rice",
+          "basmati",
+          "pasta",
+          "flour",
+          "sugar",
+          "oil",
+          "salt",
+          "spice",
+          "sauce",
+          "beans",
+          "lentil",
+          "عيش",
+          "رز",
+          "ارز",
+          "معكرونة",
+          "طحين",
+          "سكر",
+          "زيت",
+          "ملح",
+          "بهارات",
+          "عدس"
+        ]
       },
       {
         "slug": "dairy",
         "name": "Dairy & eggs",
         "nameAr": "الألبان والبيض",
-        "icon": "milk"
+        "icon": "milk",
+        "words": [
+          "milk",
+          "cheese",
+          "yoghurt",
+          "yogurt",
+          "laban",
+          "butter",
+          "cream cheese",
+          "egg",
+          "حليب",
+          "جبن",
+          "جبنة",
+          "لبن",
+          "زبادي",
+          "زبدة",
+          "بيض"
+        ]
       },
       {
         "slug": "bakery",
         "name": "Bakery",
         "nameAr": "المخبوزات",
-        "icon": "croissant"
+        "icon": "croissant",
+        "words": [
+          "bread",
+          "bakery",
+          "croissant",
+          "cake",
+          "bun",
+          "khubz",
+          "خبز",
+          "كعك",
+          "كيك",
+          "صمون"
+        ]
       },
       {
         "slug": "snacks",
         "name": "Snacks, dates & sweets",
         "nameAr": "الوجبات الخفيفة والتمور والحلويات",
-        "icon": "cookie"
+        "icon": "cookie",
+        "words": [
+          "snack",
+          "chips",
+          "crisps",
+          "chocolate",
+          "biscuit",
+          "cookie",
+          "candy",
+          "dates",
+          "medjool",
+          "nuts",
+          "تمر",
+          "تمور",
+          "رطب",
+          "شوكولاتة",
+          "بسكويت",
+          "حلويات",
+          "مكسرات",
+          "شيبس"
+        ]
       },
       {
         "slug": "beverages",
         "name": "Beverages",
         "nameAr": "المشروبات",
-        "icon": "cup"
+        "icon": "cup",
+        "words": [
+          "water",
+          "juice",
+          "tea",
+          "coffee",
+          "soda",
+          "drink",
+          "ماء",
+          "مياه",
+          "عصير",
+          "شاي",
+          "قهوة",
+          "مشروب",
+          "مشروبات"
+        ]
       },
       {
         "slug": "meat",
         "name": "Meat & seafood",
         "nameAr": "اللحوم والمأكولات البحرية",
-        "icon": "meat"
+        "icon": "meat",
+        "words": [
+          "meat",
+          "chicken",
+          "beef",
+          "lamb",
+          "mutton",
+          "fish",
+          "shrimp",
+          "prawn",
+          "لحم",
+          "لحوم",
+          "دجاج",
+          "غنم",
+          "سمك",
+          "روبيان"
+        ]
       }
     ]
   }

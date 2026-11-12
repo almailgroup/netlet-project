@@ -512,6 +512,56 @@ final class GalleryRulesTests: XCTestCase {
 /// The shop's search rule, ported from `Shared/commerce/search.ts` and held
 /// to the same cases its own tests use.
 final class SearchRankTests: XCTestCase {
+    /// A page's own search, on `search.test.ts`'s cases (`textsMatch`).
+    func testAPagesOwnSearchMatchesAsTheShopsSearchDoes() {
+        XCTAssertTrue(SearchRank.textsMatch(["Mobile phones", "الهواتف"], "phone"))
+        XCTAssertTrue(SearchRank.textsMatch(["Mobile phones"], "mob pho"))
+        XCTAssertTrue(SearchRank.textsMatch(["Wallet", "NetLet points"], "points wallet"))
+        XCTAssertFalse(SearchRank.textsMatch(["Mobile phones"], "phone case"))
+        XCTAssertTrue(SearchRank.textsMatch(["Sofa"], "قنفة"))
+        XCTAssertTrue(SearchRank.textsMatch(["ساعة ذكية"], "الساعات"))
+        XCTAssertTrue(SearchRank.textsMatch(["ساعة ذكية"], "ساعه"))
+        XCTAssertTrue(SearchRank.textsMatch([nil, "Smart watch", nil], "watches"))
+        XCTAssertTrue(SearchRank.textsMatch(["إلكترونيات"], "الكترونيات"))
+        XCTAssertTrue(SearchRank.textsMatch(["Anything"], "   "))
+        XCTAssertFalse(SearchRank.textsMatch([], "phone"))
+    }
+
+    /// The Profile tab's search is `accountPlacesMatching` on its own cases
+    /// (`accountSearch.test.ts`), over the list exported in `rules.json`.
+    func testTheAccountsOwnSearchFindsWhatTheWebsiteFinds() throws {
+        let places = try XCTUnwrap(ReferenceData.shared.rules.accountRules.accountPlaces)
+        XCTAssertFalse(places.isEmpty)
+        func ids(_ term: String, _ has: (String) -> Bool = { _ in true }) -> [String] {
+            AccountSearch.matching(term, in: places, has: has).map(\.id)
+        }
+        XCTAssertEqual(ids("password"), ["password", "profile"])
+        XCTAssertEqual(ids("كلمة المرور").first, "password")
+        XCTAssertEqual(ids("birthday"), ["about"])
+        XCTAssertEqual(ids("wallet"), ["wallet", "points", "cards"])
+        XCTAssertTrue(ids("track").contains("orders"))
+        XCTAssertEqual(ids("refund"), [])
+        XCTAssertEqual(ids("price requests"), ["offers"])
+        XCTAssertEqual(ids("price requests") { $0 != "offers" }, [])
+        XCTAssertEqual(Set(places.map(\.id)).count, places.count)
+        for place in places {
+            for key in [place.label] + [place.within].compactMap({ $0 }) + place.words {
+                XCTAssertTrue(Phrasebook.shared.has(key), key)
+            }
+        }
+    }
+
+    /// A subcategory is found by the words its products are called by, which
+    /// travel with it in `departments.json` (the Categories tab's own search).
+    func testASubcategoryIsFoundByWhatItsProductsAreCalled() throws {
+        let electronics = try XCTUnwrap(ReferenceData.shared.departments.first { $0.slug == "electronics" })
+        let wearables = try XCTUnwrap(electronics.sub("wearables"))
+        XCTAssertFalse((wearables.words ?? []).isEmpty)
+        XCTAssertTrue(SearchRank.textsMatch([wearables.name, wearables.nameAr] + (wearables.words ?? []), "smartwatch"))
+        XCTAssertTrue(SearchRank.textsMatch([wearables.name, wearables.nameAr] + (wearables.words ?? []), "ساعة"))
+        XCTAssertFalse(SearchRank.textsMatch([wearables.name, wearables.nameAr] + (wearables.words ?? []), "sofa"))
+    }
+
     func testFoldsWhatKeyboardsAndSpellersDisagreeOn() {
         XCTAssertEqual(SearchRank.fold("أإآٱ"), "اااا")
         XCTAssertEqual(SearchRank.fold("ساعة"), "ساعه")

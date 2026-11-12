@@ -26,13 +26,24 @@ import SwiftUI
 /// press gives under the thumb (`SpringPressStyle`), the chosen tile settles
 /// at 108% and is brought to the middle of the row, and its subcategories
 /// rise into place one after another (`RiseIn`). Reduce Motion keeps the
-/// chosen tile the larger and moves nothing.
+/// chosen tile the larger and moves nothing. **A department's tile is bigger
+/// than a subcategory's square, on the owner's word** ("make the category
+/// icons bigger than the subcategory"): 132 points, where the subcategories
+/// are four to a row, about 80 on a phone.
+///
+/// **The stores that sell in the chosen department follow its
+/// subcategories, on the owner's word** ("remove the shop by stores, instead
+/// add the stores to the sub category"): the same squares (`StoreTile`, its
+/// count what it sells here), the one selling the most first
+/// (`commerce.storesSelling`), and "See all stores" after them.
 struct DepartmentBrowser: View {
     @State private var chosen: String?
     @State private var subCounts: [String: [String: Int]]?
     /// The pictures an administrator kept (`subcategoryPictures.list`), by
     /// `department/slug`; a square with none draws its own picture.
     @State private var pictures: [String: String] = [:]
+    /// The stores that sell in each department, as they are asked for.
+    @State private var storesIn: [String: [StoreCard]] = [:]
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
@@ -94,8 +105,8 @@ struct DepartmentBrowser: View {
             VStack(spacing: 12) {
                 BundledImage(image: WebAssets.department(slug))
                     .aspectRatio(contentMode: .fit)
-                    .padding(8)
-                    .frame(width: 108, height: 108)
+                    .padding(10)
+                    .frame(width: 132, height: 132)
                     .background(
                         RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .fill(Color.white)
@@ -113,7 +124,7 @@ struct DepartmentBrowser: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2, reservesSpace: true)
             }
-            .frame(width: 112)
+            .frame(width: 136)
             .contentShape(Rectangle())
         }
         .buttonStyle(SpringPressStyle(cornerRadius: 20))
@@ -141,7 +152,7 @@ struct DepartmentBrowser: View {
             // Made afresh for each department, so its squares rise in again;
             // the old ones go at once rather than sharing the grid. Three to a
             // row on a phone, more on a wide screen rather than wider squares.
-            TileGrid(spacing: 12, columns: 3, widest: 150, rowSpacing: 18) {
+            TileGrid(spacing: 10, columns: 4, widest: 110, rowSpacing: 16) {
                 ForEach(Array(department.subs.enumerated()), id: \.element.id) { index, entry in
                     let count = subCounts?[department.slug]?[entry.slug] ?? 0
                     square(symbol: entry.symbol,
@@ -166,9 +177,43 @@ struct DepartmentBrowser: View {
             }
             .id(department.slug)
             .transition(.identity)
+            stores(department, name: name)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("categories.subcategoriesOf", ["name": name]))
+        .task(id: "\(department.slug)|\(l.current.rawValue)") {
+            if let found = try? await app.services.catalog.storesSelling(department: department.name, sub: nil, language: l.current) {
+                storesIn[department.slug] = found
+            }
+        }
+    }
+
+    /// The stores that sell in the department, under its subcategories, then
+    /// "See all stores". Only once somebody sells in it.
+    @ViewBuilder
+    private func stores(_ department: Department, name: String) -> some View {
+        if let found = storesIn[department.slug], !found.isEmpty {
+            Text(l.t("categories.storesIn", ["name": name]))
+                .font(.inter(16, .heavy))
+                .foregroundStyle(Brand.navy)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.top, 20)
+            TileGrid(spacing: 10, columns: 4, widest: 110, rowSpacing: 16) {
+                ForEach(Array(found.prefix(7).enumerated()), id: \.element.id) { index, store in
+                    StoreTile(store: store)
+                        .modifier(RiseIn(order: department.subs.count + 1 + index))
+                }
+                square(symbol: "storefront",
+                       title: l.t("stores.seeAll"),
+                       note: "",
+                       quiet: false,
+                       spoken: l.t("stores.seeAll")) {
+                    app.push(.stores)
+                }
+                .modifier(RiseIn(order: department.subs.count + 1 + min(7, found.count)))
+            }
+            .id("stores-\(department.slug)")
+        }
     }
 
     /// One subcategory as a rounded square — its picture on white (the one

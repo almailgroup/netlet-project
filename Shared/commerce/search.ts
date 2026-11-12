@@ -375,3 +375,21 @@ export function brandsMatching(term: string, brands: string[]): string[] {
     return words.every(word => tokens.some(token => wordMatch(token, word) > 0));
   });
 }
+
+/**
+ * Whether every word of a search is somewhere in these texts — a whole word,
+ * the start of one, or a synonym, folded and stemmed as the shop's search
+ * folds them, so "ساعه" finds "ساعات" and "phones" finds "Mobile phones".
+ *
+ * The rule a page's own search narrows its page by (Categories, Deals, the
+ * account and the cart, on the owner's word: "the search bar should only
+ * search for what's in the specific page"): a department, a subcategory, a
+ * store, a row of the account, a line of the bag is shown while its words
+ * hold every word typed. Nothing typed is everything.
+ */
+export function textsMatch(texts: readonly (string | null | undefined)[], term: string): boolean {
+  const words = queryWords(term);
+  if (words.length === 0) return true;
+  const tokens = texts.flatMap(text => searchWords(text));
+  return words.every(word => tokens.some(token => wordMatch(token, word) > 0));
+}

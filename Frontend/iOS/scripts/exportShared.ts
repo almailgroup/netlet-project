@@ -100,6 +100,7 @@ import { MAX_WARRANTY_PHOTOS, MAX_WARRANTY_PROBLEM, MAX_WARRANTY_RESPONSE, MIN_W
 import { MAX_ORDER_HELP_QUESTION, ORDER_HELP_ACTIONS, ORDER_HELP_STARTERS, ORDER_HELP_TURNS } from "../../../Shared/commerce/orderHelp.js";
 import { HELP_ISSUES, ITEM_ISSUES } from "../../../Shared/commerce/selfService.js";
 import { NOTICE_CATEGORIES } from "../../../Shared/commerce/noticeCategories.js";
+import { ACCOUNT_PLACES } from "../../../Shared/commerce/accountSearch.js";
 import {
   AD_CAPACITY, AD_RATES, AD_SLOTS, BANNER_ASPECT, BANNER_HEADLINE_MAX, BANNER_MAX_WIDTH, BANNER_MIN_WIDTH, BANNER_NOTE_MAX, MAX_AD_DAYS, MAX_AD_LEAD_DAYS,
 } from "../../../Shared/commerce/adBookings.js";
@@ -189,11 +190,12 @@ export function buildResources(): Record<string, string> {
     "dictionary.json": json({ en, ar }),
     "plurals.json": json(PLURAL_FORMS),
     "departments.json": json(
-      /* Each with its subcategories by name — the Categories tab's panel; the
-         server files the products (`Product.subcategory`), so their words stay on the web side. */
+      /* Each with its subcategories — the Categories tab's panel. The server
+         files the products (`Product.subcategory`); the words travel too, so the
+         Categories tab's own search finds a subcategory by what its products are called. */
       DEPARTMENTS.map(({ slug, name, nameAr, position, label, icon }) => ({
         slug, name, nameAr, position, label, icon,
-        subcategories: subcategoriesOf(slug).map(entry => ({ slug: entry.slug, name: entry.name, nameAr: entry.nameAr, icon: entry.icon })),
+        subcategories: subcategoriesOf(slug).map(entry => ({ slug: entry.slug, name: entry.name, nameAr: entry.nameAr, icon: entry.icon, words: entry.words })),
       })),
     ),
     /* The seasons and the occasions, with the words a store tags a product with and their windows (`Shared/commerce/occasions.ts`). */
@@ -270,6 +272,8 @@ export function buildResources(): Record<string, string> {
           preference: category.preference,
           alwaysNote: category.alwaysNote,
         })),
+        /* What the Profile tab's own search finds (`accountSearch.ts`): each place by its dictionary keys. */
+        accountPlaces: ACCOUNT_PLACES.map(({ id, label, within, words, needs }) => ({ id, label, within, words, needs })),
       },
       orders: {
         returnKinds: RETURN_KINDS,

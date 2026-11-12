@@ -67,7 +67,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useRoute } from "wouter";
+import { Link, useLocation, useRoute, useSearch } from "wouter";
+import { matchesSearch } from "@shared/commerce/search";
+import { isolate } from "@/lib/isolate";
+import { PageSearchMissed } from "@/components/layout/PageSearch";
+import { StoresSellingRow } from "@/components/store/StoresSellingRow";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
 import { NoticeDot } from "@/components/ui/CountBadge";
@@ -121,8 +125,11 @@ export default function Category() {
   // wouter's `location` is the path only, so the query string is read from the
   // browser. Keyed off `location` as well so a navigation that only changes the
   // query still re-reads it.
+  /* And off the query too: the Deals page's own search writes its words into
+     the address in place, which changes no path. */
+  const addressQuery = useSearch();
   const [queryString, setQueryString] = useState(() => window.location.search);
-  useEffect(() => { setQueryString(window.location.search); }, [location]);
+  useEffect(() => { setQueryString(window.location.search); }, [location, addressQuery]);
   /* What the URL searched for; the header field starts from it and Enter writes it back. */
   const term = searchTermFrom(queryString);
 
@@ -131,13 +138,22 @@ export default function Category() {
     [catalog],
   );
   const category = categoryFromSlug(slug, categories);
-  /* The department row marks where the shopper is; a search spans them all, so it marks none. */
-  usePageChrome({ activeDepartment: onSearchPage ? null : category === "all" ? ALL_DEPARTMENTS.query : category });
-
   const filters: BrowseFilters = useMemo(
     () => filtersFromSearch(queryString, category),
     [queryString, category],
   );
+  /*
+   * The Deals page searches itself, on the owner's word ("the search bar
+   * should only search for what's in the specific page … deals"): the header's
+   * field reads "Search deals" there and narrows the deals on the page, never
+   * the shop (`PageSearch.tsx`).
+   */
+  const onDeals = !onSearchPage && category === "all" && filters.onOffer;
+  /* The department row marks where the shopper is; a search spans them all, so it marks none. */
+  usePageChrome({
+    activeDepartment: onSearchPage ? null : category === "all" ? ALL_DEPARTMENTS.query : category,
+    pageSearch: onDeals ? { placeholder: "search.inDeals" } : null,
+  });
 
   /*
    * A search is answered by the server, over the whole catalogue
@@ -148,9 +164,11 @@ export default function Category() {
    * is the same page for anybody holding the link.
    */
   const typed = term.trim();
-  const searching = typed.length > 0;
+  /* On the Deals page the words narrow the deals here; anywhere else they search the shop. */
+  const searching = typed.length > 0 && !onDeals;
   const answer = trpc.search.products.useQuery(
-    { q: typed, department: category === "all" ? null : category, locale, limit: SEARCH_LIMIT },
+    /* With the stores that sell what matched, drawn over the products (`StoresSellingRow`). */
+    { q: typed, department: category === "all" ? null : category, locale, limit: SEARCH_LIMIT, stores: true },
     { enabled: searching, placeholderData: previous => previous, staleTime: 30_000 },
   );
   const matched = useMemo(() => (searching ? answer.data?.products ?? [] : []), [searching, answer.data]);
@@ -197,7 +215,7 @@ export default function Category() {
    * Clear all keeps it, and the facets are those of what is on offer, so a
    * brand ticked here has deals to show.
    */
-  const dealsPage = !onSearchPage && category === "all" && !searching && filters.onOffer;
+  const dealsPage = onDeals;
   const shownFilters = useMemo(() => (dealsPage ? { ...filters, onOffer: false } : filters), [dealsPage, filters]);
   const facets = useMemo(
     () => facetsFor(searching ? matched : dealsPage ? applyFilters(inPage, { ...EMPTY_FILTERS, onOffer: true }) : inPage),
@@ -222,8 +240,20 @@ export default function Category() {
       const narrowed = applyFilters(inPage, { ...filters, occasion: null });
       return curatedOccasion && filters.sort === "relevance" ? narrowed : sortProducts(narrowed, filters.sort);
     }
+    /* The Deals page narrowed by its own search: the deals whose words hold every word typed. */
+    if (dealsPage && typed) return browse(catalog, filters).filter(product => matchesSearch(product, typed));
     return browse(catalog, filters);
-  }, [searching, catalog, matched, filters, occasionSlug, inPage, curatedOccasion]);
+  }, [searching, catalog, matched, filters, occasionSlug, inPage, curatedOccasion, dealsPage, typed]);
+  /*
+   * The stores that sell it, at the top, on the owner's word: what a search
+   * found (asked with the search), or what a subcategory holds (`storesSelling`).
+   */
+  const subStores = trpc.commerce.storesSelling.useQuery(
+    { department: category, sub: filters.sub, locale },
+    { enabled: !onSearchPage && !searching && Boolean(filters.sub) && category !== "all", staleTime: 5 * 60 * 1000 },
+  );
+  const sellingStores = searching ? answer.data?.stores ?? [] : filters.sub && category !== "all" ? subStores.data ?? [] : [];
+  const storeHref = (slug: string) => `/stores/${encodeURIComponent(slug)}${searching ? `?q=${encodeURIComponent(typed)}` : `?dept=${categorySlug(category)}`}`;
   const correctedTo = searching ? answer.data?.correctedTo ?? null : null;
   const elsewhere = searching && category !== "all" && !results.length ? answer.data?.elsewhere ?? 0 : 0;
   /* More matched than one page holds: the best of them are here, and the page says how many there were. */
@@ -239,13 +269,13 @@ export default function Category() {
     ? t("browse.allProducts")
     : translatedName ? t(translatedName) : category;
   /* A search reads as what was searched for, in the department it was searched in. */
-  const searched = typed;
+  const searched = dealsPage ? "" : typed;
   /* The footer's "New arrivals" and "On offer" land here with a sort or a
      filter, and the heading read "All products" for both — the list was
      right and the page said it was something else. Named when the view is
      exactly that and nothing more. */
   /* The deals with nothing else narrowing them, which can only be empty because nothing is on offer. */
-  const dealsView = dealsPage && activeFilterCount(shownFilters) === 0;
+  const dealsView = dealsPage && !typed && activeFilterCount(shownFilters) === 0;
   const viewName = category === "all" && !searched
     ? dealsPage ? t("nav.deals")
       : filters.sort === "newest" && activeFilterCount(filters) === 0 ? t("footer.newArrivals")
@@ -428,7 +458,9 @@ export default function Category() {
           title={title}
           note={
             <span aria-live="polite">
-              {isLoading || error ? "\u00a0" : results.length === 0
+              {isLoading || error ? "\u00a0" : dealsPage && typed
+                ? t("deals.searchShown", { term: isolate(typed), count: results.length })
+                : results.length === 0
                 ? t("browse.countNone")
                 : results.length === 1
                   ? t("browse.countOne")
@@ -475,6 +507,8 @@ export default function Category() {
             })}
           </div>
         ) : null}
+
+        <StoresSellingRow stores={sellingStores} hrefFor={storeHref} />
 
         {/* The filter groups as chips, the owner's reference: each opens its
             own group, and one with something ticked says how many. */}
@@ -600,6 +634,8 @@ export default function Category() {
                 </>
                 )}
               </>
+            ) : dealsPage && typed && !activeCount ? (
+              <div className="mt-5"><PageSearchMissed term={typed} /></div>
             ) : (
               <div className="mt-5">
                 <EmptyState

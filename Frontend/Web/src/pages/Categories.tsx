@@ -15,11 +15,21 @@
  * next. Deals follows the list only while the home page draws a Deals shelf
  * (`shelvesFor`), the rule every link to it keeps.
  *
- * **Two boxes lead it, Shop by brand and Shop by stores, on the owner's
- * word** ("two options at the top of shop by category … when you tap on any
- * of them it lists the brands or stores"): each opens its own list, `/brands`
- * and `/stores`. They were two sideways rows of the first dozen of each, which
- * pushed the departments a screen down a phone.
+ * **Shop by brand leads it** (`/brands`), drawn while there is a brand to
+ * list. Shop by stores stood beside it, and **the stores are under each
+ * department now, on the owner's word** ("remove the shop by stores, instead
+ * add the stores to the sub category"): under the chosen department's
+ * subcategories, the stores that sell in it, the one selling the most first
+ * (`commerce.storesSelling`), each opening its page on that department, and
+ * "See all stores" after them.
+ *
+ * **Its search searches the page, on the owner's word** ("the search bar
+ * should only search for what's in the specific page"): the header's field
+ * reads "Search categories and stores" here, and typing puts the
+ * departments, the subcategories (by their names and the words they are
+ * called by) and the stores that answer in place of the tiles
+ * (`PageSearch.tsx`, `textsMatch`), with the shop's own search a press away
+ * when nothing does.
  *
  * **A department's subcategories are a list under a row of its pictures, on
  * the owner's word** — drawn to a picture they sent of a shop's Categories
@@ -38,7 +48,9 @@
  * the departments), and the first department with none. **The tiles are
  * large, and the chosen one grows a little on a spring, on the owner's word**
  * ("make the category images bigger, and when you select any of them it gets
- * a bit bigger"): its subcategories then rise into place one after another,
+ * a bit bigger"; then "make the category icons bigger than the
+ * subcategory": a phone's tile is 120px, 132 from 390, where a
+ * subcategory's picture is 56): its subcategories then rise into place one after another,
  * and the phone's row brings it to the middle. Transforms and opacity only
  * (`.cat-tile`, `.cat-rise`, `.cat-row` in `index.css`), none of it under
  * reduced motion. "All departments" ends the row and is a link: it has no
@@ -46,6 +58,9 @@
  * pressed card, which the owner found harder to read than a list.
  */
 import { ChevronRight, Menu, Store, Tag, Tags } from "lucide-react";
+import { PageSearchMissed, usePageTerm } from "@/components/layout/PageSearch";
+import { StoreMark, StoreRating, type StoreCardData } from "@/components/store/StoreCard";
+import { textsMatch } from "@shared/commerce/search";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { SubcategoryIcon } from "@/components/browse/SubcategoryIcon";
@@ -66,7 +81,8 @@ import { categoriesMeta } from "@shared/seo";
 export default function Categories() {
   const { t, locale } = useTranslation();
   usePageMeta(categoriesMeta(SITE_URL));
-  usePageChrome({ activeDepartment: null });
+  usePageChrome({ activeDepartment: null, pageSearch: { placeholder: "search.inCategories" } });
+  const term = usePageTerm();
   const counts = trpc.commerce.departmentCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const subCounts = trpc.commerce.subcategoryCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   /* A picture kept from the portal stands in place of the subcategory's own file. */
@@ -107,18 +123,22 @@ export default function Categories() {
   const department = `/category/${categorySlug(chosen.name)}`;
   const arabic = locale === "ar";
   const tile = "cat-tile flex aspect-square w-full items-center justify-center rounded-2xl border-2 bg-white p-2";
-  const tileWidth = "w-[6.5rem] shrink-0 snap-center min-[390px]:w-28 sm:w-auto";
+  const tileWidth = "w-[7.5rem] shrink-0 snap-center min-[390px]:w-[8.25rem] sm:w-auto";
+  /* The stores that sell in the chosen department, the one selling the most first. */
+  const storesIn = trpc.commerce.storesSelling.useQuery({ department: chosen.name, locale }, { staleTime: 5 * 60 * 1000, enabled: !term });
 
   return (
     <PageBody>
       <Breadcrumbs trail={[{ label: t("nav.categories") }]} />
       <PageHeading title={t("nav.categories")} />
-      <ul className="mb-7 grid grid-cols-2 gap-3 sm:mb-9 sm:gap-4">
-        {/* Only while there is a brand to list: a box that opens "No brands
-            yet" is a control that leads nowhere, the departments' rule. */}
-        {hasBrands ? <li className="min-w-0"><WayIn href="/brands" icon={<Tags className="size-5" />} title={t("home.shopByBrand")} note={t("categories.byBrandNote")} /></li> : null}
-        <li className={hasBrands ? "min-w-0" : "col-span-2 min-w-0"}><WayIn href="/stores" icon={<Store className="size-5" />} title={t("categories.byStore")} note={t("categories.byStoreNote")} /></li>
-      </ul>
+      {term ? <PageResults term={term} countLine={countLine} pictures={pictures.data} subCounts={subCounts.data} counts={counts.data} /> : <>
+      {/* Only while there is a brand to list: a box that opens "No brands yet"
+          is a control that leads nowhere, the departments' rule. */}
+      {hasBrands ? (
+        <div className="mb-7 sm:mb-9">
+          <WayIn href="/brands" icon={<Tags className="size-5" />} title={t("home.shopByBrand")} note={t("categories.byBrandNote")} />
+        </div>
+      ) : null}
       <h2 id="departments-title" className="mb-3 text-xl font-extrabold tracking-[-.01em] text-[#0a285a] sm:mb-4 sm:text-2xl">{t("home.shopByCategory")}</h2>
       {/* A sideways row on a phone, reaching the screen's edges so the tile cut
           off there says there is more; all six across from sm, held to a
@@ -193,6 +213,25 @@ export default function Categories() {
             />
           </li>
         </ul>
+        {/* The stores that sell here, on the owner's word: each opens its
+            page on this department. Only once somebody sells in it. */}
+        {storesIn.data?.length ? (
+          <section aria-labelledby="stores-in-title" className="mt-6 sm:mt-8">
+            <h4 id="stores-in-title" className="cat-rise mb-3 text-[16px] font-extrabold text-[#0a285a] sm:text-[17px]" style={{ "--rise": subcategoriesOf(chosen.slug).length + 2 } as CSSProperties}>
+              {t("categories.storesIn", { name })}
+            </h4>
+            <ul aria-labelledby="stores-in-title" className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+              {storesIn.data.slice(0, STORES_SHOWN).map((store, index) => (
+                <li key={store.slug} className="cat-rise min-w-0" style={{ "--rise": subcategoriesOf(chosen.slug).length + 3 + index } as CSSProperties}>
+                  <StoreRow store={store} href={`/stores/${encodeURIComponent(store.slug)}?dept=${categorySlug(chosen.name)}`} note={countLine(store.matching)} />
+                </li>
+              ))}
+              <li className="cat-rise min-w-0" style={{ "--rise": subcategoriesOf(chosen.slug).length + 3 + Math.min(STORES_SHOWN, storesIn.data.length) } as CSSProperties}>
+                <SubcategoryRow href="/stores" icon={<Store className="size-6" strokeWidth={1.75} aria-hidden />} title={t("stores.seeAll")} note={t("categories.byStoreNote")} />
+              </li>
+            </ul>
+          </section>
+        ) : null}
       </section>
 
       {dealsDrawn ? (
@@ -207,7 +246,118 @@ export default function Categories() {
           <ChevronRight aria-hidden className="size-5 shrink-0 rtl:-scale-x-100" />
         </Link>
       ) : null}
+      </>}
     </PageBody>
+  );
+}
+
+/** How many of a department's stores its section lists; "See all stores" has the rest. */
+const STORES_SHOWN = 6;
+/** Mirrors the server's `STORE_INDEX_LIMIT`: every store, for the page's own search. */
+const INDEX_LIMIT = 200;
+
+/**
+ * The page searched: the departments, the subcategories and the stores whose
+ * names — and, for a subcategory, the words it is called by — answer every
+ * word typed (`textsMatch`), in place of the tiles. A department opens the
+ * page on it; a subcategory and a store open as they do from the page.
+ */
+function PageResults({ term, countLine, pictures, subCounts, counts }: {
+  term: string;
+  countLine: (count: number) => string;
+  pictures: Parameters<typeof shownSubcategoryPicture>[0] | undefined;
+  subCounts: Record<string, Record<string, number>> | undefined;
+  counts: Record<string, number> | undefined;
+}) {
+  const { t, locale } = useTranslation();
+  const arabic = locale === "ar";
+  const stores = trpc.commerce.stores.useQuery({ locale, limit: INDEX_LIMIT }, { staleTime: 5 * 60 * 1000 });
+  const departments = DEPARTMENTS.filter(entry => textsMatch([entry.name, entry.nameAr, t(entry.label)], term));
+  const subcategories = DEPARTMENTS.flatMap(department => subcategoriesOf(department.slug)
+    .filter(entry => textsMatch([entry.name, entry.nameAr, ...entry.words], term))
+    .map(entry => ({ department, entry })));
+  /* By either of its names: an Arabic page lists "غادجت هب", and somebody types "gadget". */
+  const matchingStores = (stores.data ?? []).filter(store => textsMatch([store.name, store.otherName], term));
+  const nothing = !departments.length && !subcategories.length && !matchingStores.length;
+  const heading = "mb-3 text-[18px] font-extrabold text-[#0a285a] sm:text-xl";
+  if (nothing && stores.isPending) return <div aria-hidden className={`${CARD} h-[72px] animate-pulse`} />;
+  if (nothing) return <PageSearchMissed term={term} />;
+  return (
+    <div className="space-y-7">
+      {departments.length ? (
+        <section aria-labelledby="found-departments">
+          <h2 id="found-departments" className={heading}>{t("categories.resultsDepartments")}</h2>
+          <ul className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+            {departments.map(entry => (
+              <li key={entry.slug} className="min-w-0">
+                <SubcategoryRow
+                  href={`/categories?dept=${entry.slug}`}
+                  icon={<Menu className="size-6" strokeWidth={1.75} aria-hidden />}
+                  picture={`/departments/${entry.slug}.webp`}
+                  title={t(entry.label)}
+                  note={counts ? countLine(counts[entry.slug] ?? 0) : ""}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {subcategories.length ? (
+        <section aria-labelledby="found-subcategories">
+          <h2 id="found-subcategories" className={heading}>{t("categories.subcategories")}</h2>
+          <ul className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+            {subcategories.map(({ department, entry }) => {
+              const count = subCounts?.[department.slug]?.[entry.slug] ?? 0;
+              const where = t("search.within", { place: t(department.label) });
+              return (
+                <li key={`${department.slug}:${entry.slug}`} className="min-w-0">
+                  <SubcategoryRow
+                    href={`/category/${categorySlug(department.name)}?sub=${entry.slug}`}
+                    icon={<SubcategoryIcon icon={entry.icon} />}
+                    picture={shownSubcategoryPicture(pictures, department.slug, entry.slug)}
+                    title={subcategoryName(entry, arabic)}
+                    note={subCounts ? `${where} · ${countLine(count)}` : where}
+                    quiet={Boolean(subCounts) && count === 0}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+      {matchingStores.length ? (
+        <section aria-labelledby="found-stores">
+          <h2 id="found-stores" className={heading}>{t("stores.title")}</h2>
+          <ul className="grid gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+            {matchingStores.map(store => (
+              <li key={store.slug} className="min-w-0">
+                <StoreRow store={store} href={`/stores/${encodeURIComponent(store.slug)}`} note={countLine(store.products)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+/** A store as a row of the page: its mark, its name, what it sells here and its rating. */
+function StoreRow({ store, href, note }: { store: StoreCardData; href: string; note: string }) {
+  return (
+    <Link
+      href={href}
+      className={`${CARD} cat-row flex min-h-[4.5rem] items-center gap-3 p-3 shadow-[0_1px_2px_rgba(10,40,90,.06)] hover:border-[#d5dfeb] hover:bg-[#f0f2f5]`}
+    >
+      <StoreMark name={store.name} logoUrl={store.logoUrl} />
+      <span className="min-w-0 flex-1">
+        <bdi dir="auto" className="block truncate text-[15px] font-bold leading-tight text-[#0a285a]">{store.name}</bdi>
+        <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[13px] leading-5 ink-muted">
+          <span>{note}</span>
+          {store.rating ? <><span aria-hidden>·</span><StoreRating rating={store.rating} /></> : null}
+        </span>
+      </span>
+      <ChevronRight aria-hidden className="size-5 shrink-0 text-[#0a285a] rtl:-scale-x-100" />
+    </Link>
   );
 }
 
@@ -264,21 +414,21 @@ function SubcategoryRow({ href, icon, picture = null, title, note, quiet = false
   );
 }
 
-/** A box at the top of the page that opens a list: the brands or the stores. */
+/** The box at the top of the page that opens the brands' list — a row the width of the page now it is alone. */
 function WayIn({ href, icon, title, note }: { href: string; icon: ReactNode; title: string; note: string }) {
   return (
     <Link
       href={href}
-      className={`${CARD} flex h-full min-h-[92px] flex-col justify-between gap-3 p-3.5 shadow-[0_1px_2px_rgba(10,40,90,.06)] hover:border-[#d5dfeb] hover:bg-[#f0f2f5] sm:flex-row sm:items-center sm:p-4`}
+      className={`${CARD} flex min-h-[68px] items-center justify-between gap-3 p-3.5 shadow-[0_1px_2px_rgba(10,40,90,.06)] hover:border-[#d5dfeb] hover:bg-[#f0f2f5] sm:p-4`}
     >
       <span className="flex min-w-0 items-center gap-3">
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0a285a] text-white">{icon}</span>
         <span className="min-w-0">
           <span className="block text-[15px] font-extrabold leading-tight text-[#0a285a]">{title}</span>
-          <span className="mt-0.5 hidden text-[13px] leading-5 ink-muted sm:block">{note}</span>
+          <span className="mt-0.5 block text-[13px] leading-5 ink-muted">{note}</span>
         </span>
       </span>
-      <ChevronRight aria-hidden className="hidden size-5 shrink-0 text-[#0a285a] rtl:-scale-x-100 sm:block" />
+      <ChevronRight aria-hidden className="size-5 shrink-0 text-[#0a285a] rtl:-scale-x-100" />
     </Link>
   );
 }

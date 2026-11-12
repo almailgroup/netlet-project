@@ -184,6 +184,18 @@ enum SearchRank {
         return 0
     }
 
+    /// Whether every word of a search is somewhere in these texts — whole,
+    /// begun or a synonym, folded and stemmed as the shop's search folds them
+    /// (`textsMatch`). The rule a page's own search narrows its page by —
+    /// Categories, Deals, the account and the cart, on the owner's word.
+    /// Nothing typed is everything.
+    static func textsMatch(_ texts: [String?], _ term: String) -> Bool {
+        let wanted = queryWords(term)
+        if wanted.isEmpty { return true }
+        let tokens = texts.flatMap { words($0) }
+        return wanted.allSatisfy { word in tokens.contains { match($0, word) > 0 } }
+    }
+
     /// How well a product answers the words; nought when any word is nowhere
     /// in it, so every word must be somewhere (`scoreDoc`).
     static func score(_ doc: Doc, _ words: [QueryWord]) -> Double {

@@ -68,7 +68,9 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useProductsByIds } from "@/hooks/useCatalog";
 import { useTranslation } from "@/hooks/useTranslation";
-import { pressHaptic } from "@/lib/haptics";
+import { canBuzz, pressHaptic } from "@/lib/haptics";
+import { PageSearchField, PageSearchMissed, useHeaderDrawn, usePageTerm } from "@/components/layout/PageSearch";
+import { accountPlacesMatching, type AccountPlace } from "@shared/commerce/accountSearch";
 import { trpc } from "@/lib/trpc";
 import { usePortalDoor } from "@/hooks/usePortalDoor";
 import { portalSideFor } from "@shared/portal";
@@ -76,18 +78,34 @@ import { adminHeldBack } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   Bell,
+  Cake,
+  Camera,
   ChevronRight,
+  Coins,
+  CreditCard,
+  Gift,
+  HardDrive,
+  Heart,
   History,
+  KeyRound,
   LifeBuoy,
   LogOut,
+  Mail,
   MapPin,
   Megaphone,
   PackageSearch,
   Pencil,
+  Phone,
   Repeat,
   SlidersHorizontal,
+  Star,
   Store,
   Tag,
+  Trash2,
+  Undo2,
+  UserRound,
+  Vibrate,
+  Wallet,
 } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "wouter";
@@ -156,6 +174,11 @@ export function AccountHome({ user, has, badge, onSignOut }: {
         ? "join"
         : null;
 
+  /* The page's own search (`PageSearch.tsx`): the header's field on a wide
+     screen, a field of the page's own under its title on a phone. */
+  const term = usePageTerm();
+  const headerDrawn = useHeaderDrawn();
+
   const orderPhotos = [...new Set((orders.data?.rows ?? []).flatMap(row => row.summary?.photos ?? []))].slice(0, 4);
   const savedPhotos = saved.products.map(product => product.images[0]?.url ?? null).slice(0, 4);
   const frequentPhotos = [...new Set((frequent.data?.items ?? []).map(item => item.product?.images[0]?.url ?? null).filter(Boolean))].slice(0, 4);
@@ -179,6 +202,9 @@ export function AccountHome({ user, has, badge, onSignOut }: {
         </Link>
       </div>
 
+      {headerDrawn ? null : <PageSearchField setup={{ placeholder: "search.inAccount" }} />}
+
+      {term ? <AccountSearchResults term={term} has={has} onSignOut={onSignOut} /> : <>
       <section aria-label={t("account.yourWay")} className={`${PANEL} flex items-center gap-4 p-4 sm:p-5`}>
         {/* The photo the shopper chose, or the default avatar (`ProfileAvatar`). */}
         <ProfileAvatar size="size-16" />
@@ -312,13 +338,101 @@ export function AccountHome({ user, has, badge, onSignOut }: {
       {/* Signing out is the page's last thing, on the owner's word ("the sign
           out option should be at the last, bottom"), under the seller's and
           the affiliate cards — a card of its own, still asking first. */}
-      <div className={`${PANEL} px-5`}>
-        <button type="button" onClick={onSignOut} className="-mx-5 flex min-h-[64px] w-[calc(100%+2.5rem)] items-center gap-3.5 rounded-[inherit] px-5 text-start hover:bg-[#fdf5f3]">
-          <LogOut className="size-[22px] shrink-0 text-[#c2362a]" strokeWidth={1.75} aria-hidden />
-          <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t("header.signOut")}</span>
-          <ChevronRight className={CHEVRON} aria-hidden />
-        </button>
-      </div>
+      <SignOutCard onSignOut={onSignOut} />
+      </>}
+    </div>
+  );
+}
+
+/** Signing out, a card of its own: one red row, asking first. */
+function SignOutCard({ onSignOut }: { onSignOut: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <div className={`${PANEL} px-5`}>
+      <button type="button" onClick={onSignOut} className="-mx-5 flex min-h-[64px] w-[calc(100%+2.5rem)] items-center gap-3.5 rounded-[inherit] px-5 text-start hover:bg-[#fdf5f3]">
+        <LogOut className="size-[22px] shrink-0 text-[#c2362a]" strokeWidth={1.75} aria-hidden />
+        <span className="min-w-0 flex-1 text-[16px] font-medium text-[#1f2a44]">{t("header.signOut")}</span>
+        <ChevronRight className={CHEVRON} aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+/** Where each place on the account opens, and its icon (`ACCOUNT_PLACES`). */
+const PLACE_OPENS: Record<string, { href: string; icon: ComponentType<{ className?: string; strokeWidth?: number }> }> = {
+  orders: { href: "/account/orders", icon: PackageSearch },
+  returns: { href: "/account/orders?view=returns", icon: Undo2 },
+  reviews: { href: "/account/orders?view=reviews", icon: Star },
+  saved: { href: "/saved", icon: Heart },
+  wishlists: { href: "/saved?tab=wishlists", icon: Gift },
+  frequent: { href: "/account/frequent", icon: Repeat },
+  wallet: { href: "/account/wallet", icon: Wallet },
+  points: { href: "/account/wallet", icon: Coins },
+  cards: { href: "/account/wallet", icon: CreditCard },
+  notifications: { href: "/account/notifications", icon: Bell },
+  profile: { href: "/account/details", icon: UserRound },
+  name: { href: "/account/details", icon: UserRound },
+  email: { href: "/account/details", icon: Mail },
+  phone: { href: "/account/details", icon: Phone },
+  password: { href: "/account/details", icon: KeyRound },
+  about: { href: "/account/details", icon: Cake },
+  photo: { href: "/account/details", icon: Camera },
+  deleteAccount: { href: "/account/details", icon: Trash2 },
+  addresses: { href: "/account/addresses", icon: MapPin },
+  offers: { href: "/account/offers", icon: Tag },
+  subscriptions: { href: "/account/subscriptions", icon: Repeat },
+  preferences: { href: "/account/preferences", icon: SlidersHorizontal },
+  noticeSettings: { href: "/account/preferences", icon: Bell },
+  deliveryArea: { href: "/account/preferences", icon: MapPin },
+  storage: { href: "/account/preferences", icon: HardDrive },
+  haptics: { href: "/account/preferences", icon: Vibrate },
+  history: { href: "/account/history", icon: History },
+  help: { href: "/help", icon: LifeBuoy },
+  affiliate: { href: "/account/affiliate", icon: Megaphone },
+};
+/* Drawn as the page draws them rather than as rows: the quick settings change where they are. */
+const QUICK_PLACES = new Set(["country", "currency", "language"]);
+
+/**
+ * The account searched, on the owner's word: every place answering the words
+ * (`accountPlacesMatching`, the app's list too), each a row opening it and
+ * saying what page it is on; the quick settings, the seller's door and
+ * signing out drawn as the page draws them, since each does its work in place.
+ */
+function AccountSearchResults({ term, has, onSignOut }: { term: string; has: (id: string) => boolean; onSignOut: () => void }) {
+  const { t } = useTranslation();
+  const places = accountPlacesMatching(term, part => (part === "haptics" ? canBuzz() : has(part)));
+  const rows = places.filter((place): place is AccountPlace => Boolean(PLACE_OPENS[place.id]));
+  const quick = places.some(place => QUICK_PLACES.has(place.id));
+  const selling = places.some(place => place.id === "selling");
+  const signOut = places.some(place => place.id === "signOut");
+  if (!places.length) return <PageSearchMissed term={term} shopWide={false} />;
+  return (
+    <div className="space-y-3">
+      {rows.length ? (
+        <section aria-label={t("account.searchFound")} className={PANEL}>
+          <ul className="divide-y divide-dashed divide-[#e3e6ec] px-5">
+            {rows.map(place => {
+              const { href, icon: Icon } = PLACE_OPENS[place.id];
+              return (
+                <li key={place.id}>
+                  <Link href={href} className="-mx-5 flex min-h-[64px] items-center gap-3.5 px-5 py-2.5 hover:bg-[#f0f2f5]">
+                    <Icon className={ICON} strokeWidth={1.75} aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[16px] font-medium text-[#1f2a44]">{t(place.label)}</span>
+                      {place.within ? <span className="block text-[13px] leading-5 ink-muted">{t("search.within", { place: t(place.within) })}</span> : null}
+                    </span>
+                    <ChevronRight className={CHEVRON} aria-hidden />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
+      {quick ? <QuickSettings /> : null}
+      {selling ? <SellerEntry /> : null}
+      {signOut ? <SignOutCard onSignOut={onSignOut} /> : null}
     </div>
   );
 }

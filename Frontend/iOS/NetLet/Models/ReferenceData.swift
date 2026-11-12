@@ -21,6 +21,9 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
         /// What its row on the Categories tab shows (`SUBCATEGORY_ICONS`), a
         /// name the app turns into an SF Symbol.
         let icon: String?
+        /// What its products are called, in either language
+        /// (`subcategories.ts`), which the Categories tab's own search reads.
+        var words: [String]? = nil
 
         var id: String { slug }
         func shown(_ language: Language) -> String { language == .ar ? nameAr : name }
@@ -320,6 +323,17 @@ struct Rules: Decodable, Sendable {
             let alwaysNote: String?
         }
 
+        /// A place on the account the Profile tab's search finds
+        /// (`ACCOUNT_PLACES` in `accountSearch.ts`), by dictionary keys.
+        struct Place: Decodable, Hashable, Sendable {
+            let id: String
+            let label: String
+            let within: String?
+            let words: [String]
+            /// A part of the account that has to exist for it to be offered.
+            let needs: String?
+        }
+
         let maxAddresses: Int
         let maxAddressLabel: Int
         let maxAddressLine: Int
@@ -352,6 +366,8 @@ struct Rules: Decodable, Sendable {
         let offerWindowDays: Int
         let maxOfferNote: Int
         let subscriptionIntervals: [Int]
+        /// In the order they are listed; empty before the file is read.
+        var accountPlaces: [Place]? = nil
 
         static let fallback = Account(
             maxAddresses: 12, maxAddressLabel: 40, maxAddressLine: 300, maxAddressNotes: 300,

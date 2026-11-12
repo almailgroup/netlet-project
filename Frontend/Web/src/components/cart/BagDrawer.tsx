@@ -82,11 +82,16 @@ export function BagEmpty({ onBrowse, heading = "h3" }: { onBrowse: () => void; h
  * a line left out stays in the bag, and the totals, each store's delivery and
  * Checkout count the chosen lines alone.
  */
-export function BagLines({ layout = "drawer" }: { layout?: "drawer" | "page" }) {
+export function BagLines({ layout = "drawer", matches }: {
+  layout?: "drawer" | "page";
+  /** The cart page's own search: only the lines it holds are drawn, and a store with none of them is left out. */
+  matches?: (item: CartItem) => boolean;
+}) {
   const { cart } = useCart();
   const { t, isArabic } = useTranslation();
   if (!cart) return null;
-  const groups = bagGroups(cart);
+  const groups = bagGroups(cart)?.map(group => ({ ...group, items: matches ? group.items.filter(matches) : group.items })).filter(group => group.items.length) ?? null;
+  const lines = matches ? cart.items.filter(matches) : cart.items;
   const onPage = layout === "page";
   return (
     <div className={onPage ? "space-y-3" : "space-y-6"}>
@@ -94,7 +99,7 @@ export function BagLines({ layout = "drawer" }: { layout?: "drawer" | "page" }) 
           rather than in an email nobody can send. A count and an age, never
           a total: the bag is re-priced on every read, and quoting a figure
           that has since moved is the shop arguing with its own page. */}
-      {cart.recovery.remind ? (
+      {cart.recovery.remind && !matches ? (
         <div className="rounded-2xl border border-[#f0d3c6] bg-[#fdf3ee] px-4 py-3">
           <p className="text-[13px] font-extrabold text-[#0a285a]">{cart.recovery.itemCount === 1 ? t("cart.recoveryTitleOne") : t("cart.recoveryTitle", { count: cart.recovery.itemCount })}</p>
           <p className="mt-0.5 text-[12px] leading-5 ink-muted">{cart.recovery.hours >= 48 ? t("cart.recoveryNoteDays", { days: Math.floor(cart.recovery.hours / 24) }) : t("cart.recoveryNote", { hours: cart.recovery.hours })}</p>
@@ -114,7 +119,7 @@ export function BagLines({ layout = "drawer" }: { layout?: "drawer" | "page" }) 
         );
       }) : (
         <div className={`divide-y divide-[#eef1f5] ${onPage ? `${CARD} px-4` : ""}`}>
-          {cart.items.map(item => <BagLine key={item.lineId} item={item} />)}
+          {lines.map(item => <BagLine key={item.lineId} item={item} />)}
         </div>
       )}
     </div>

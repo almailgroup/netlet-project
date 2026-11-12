@@ -71,6 +71,10 @@ struct ShopPage<Content: View>: View {
     /// showing it, and a search reached from a chat or "Find similar" says
     /// what it searched.
     var searchTerm: String?
+    /// The page searches itself — Categories, the Deals page — so the
+    /// header's field narrows it rather than opening the shop's search
+    /// (`PageSearchField`, on the owner's word).
+    var pageSearch: PageSearch? = nil
     @ViewBuilder var content: () -> Content
 
     @Environment(AppModel.self) private var app
@@ -127,7 +131,7 @@ struct ShopPage<Content: View>: View {
                             }
                             PageFootMarker()
                         } header: {
-                            if header { SearchRow(back: logo ? nil : back, reach: logoReaches ? 0 : statusBar) }
+                            if header { SearchRow(back: logo ? nil : back, reach: logoReaches ? 0 : statusBar, pageSearch: pageSearch) }
                         }
                     }
                     .modifier(ScrollContentPlace(space: ShopPageTop.space, viewport: screen.size.height, changed: follow))
@@ -416,6 +420,8 @@ struct SearchRow: View {
     /// Reaching, its tint starts at the top's 60% rather than going on from
     /// the logo row's foot.
     var reach: CGFloat = 0
+    /// The page's own search, in place of the shop's (`PageSearchField`).
+    var pageSearch: PageSearch? = nil
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -435,7 +441,11 @@ struct SearchRow: View {
                 .accessibilityLabel(l.t("ios.back"))
                 .padding(.leading, -4)
             }
-            field
+            if let pageSearch {
+                PageSearchField(search: pageSearch)
+            } else {
+                field
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

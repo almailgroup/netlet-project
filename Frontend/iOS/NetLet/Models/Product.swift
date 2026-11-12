@@ -174,6 +174,10 @@ struct SearchResult: Decodable, Sendable {
     let products: [Product]
     let total: Int
     let correctedTo: String?
+    /// The stores that sell what matched, the one selling the most first —
+    /// drawn over the results, on the owner's word. Absent from an answer
+    /// recorded before there were any.
+    var stores: [StoreCard]? = nil
 }
 
 /// A store on the home page's row and the stores index: `StoreCard` in
@@ -187,10 +191,16 @@ struct StoreCard: Decodable, Identifiable, Hashable, Sendable {
 
     let slug: String
     let name: String
+    /// Its name in the other language, where it wrote one, so a page's own
+    /// search finds it by either.
+    var otherName: String? = nil
     let logoUrl: String?
     let products: Int
     let rating: Rating?
     let badges: [String]
+    /// How many of what a search found, or a department holds, it sells
+    /// (`commerce.storesSelling`, a search's `stores`); nil on the stores list.
+    var matching: Int? = nil
 
     var id: String { slug }
 }

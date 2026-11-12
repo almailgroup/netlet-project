@@ -211,6 +211,8 @@ export type StoreCard = {
   slug: string;
   /** In the page's language, exactly as its products name it — the Seller filter matches on this. */
   name: string;
+  /** Its name in the other language, where it wrote one — so a page's own search finds it by either. */
+  otherName: string | null;
   logoUrl: string | null;
   /** Published products on its shelf now. */
   products: number;
@@ -245,16 +247,58 @@ export async function listStoreCards(locale: LocalePick = "en", limit = STORE_RO
        the same count must not swap places between two page loads. */
     .orderBy(desc(live), asc(vendors.id))
     .limit(limit);
+  return cardsFrom(db, rows, locale);
+}
+
+/** A store card, and how many of what was searched for or browsed it sells. */
+export type SellingStore = StoreCard & { matching: number };
+
+/**
+ * The cards for these stores, in this order, each with how many of the matches
+ * it sells (`Shared/commerce/storesSelling.ts` decides the order). The same
+ * rule as `listStoreCards` — an approved store with something on sale, the
+ * measured badges and rating — so a store named beside a search is the card
+ * `/stores` draws, and a store suspended since its products were read is left
+ * out rather than named.
+ */
+export async function sellingStoreCards(tallies: readonly { vendorId: number; matching: number }[], locale: LocalePick = "en"): Promise<SellingStore[]> {
+  const db = await getDb();
+  if (!db || !tallies.length) return [];
+  const live = sql<number>`count(*)::int`;
+  const rows = await db
+    .select({ id: vendors.id, slug: vendors.slug, name: vendors.name, nameAr: vendors.nameAr, logoUrl: vendors.logoUrl, badges: vendors.badges, products: live })
+    .from(products)
+    .innerJoin(vendors, eq(products.vendorId, vendors.id))
+    .where(and(eq(products.status, "published"), eq(vendors.status, "approved"), inArray(vendors.id, tallies.map(tally => tally.vendorId))))
+    .groupBy(vendors.id);
+  const cards = new Map((await cardsFrom(db, rows, locale)).map((card, index) => [rows[index].id, card]));
+  return tallies.flatMap(tally => {
+    const card = cards.get(tally.vendorId);
+    return card ? [{ ...card, matching: tally.matching }] : [];
+  });
+}
+
+/** Rows of `vendors` with their live count, as cards: the badges and the rating measured beside them. */
+async function cardsFrom(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  rows: { id: number; slug: string; name: string; nameAr: string | null; logoUrl: string | null; badges: string[] | null; products: number }[],
+  locale: LocalePick,
+): Promise<StoreCard[]> {
   if (!rows.length) return [];
   const [badges, ratings] = await Promise.all([badgesFor(db, rows), storeRatings(db, rows.map(row => row.id))]);
-  return rows.map(row => ({
-    slug: row.slug,
-    name: pick(locale, row.name, row.nameAr),
-    logoUrl: row.logoUrl?.trim() || null,
-    products: Number(row.products),
-    rating: ratings.get(row.id) ?? null,
-    badges: badges.get(row.id) ?? [],
-  }));
+  return rows.map(row => {
+    const name = pick(locale, row.name, row.nameAr);
+    const other = locale === "ar" ? row.name : row.nameAr?.trim() || null;
+    return {
+      slug: row.slug,
+      name,
+      otherName: other && other !== name ? other : null,
+      logoUrl: row.logoUrl?.trim() || null,
+      products: Number(row.products),
+      rating: ratings.get(row.id) ?? null,
+      badges: badges.get(row.id) ?? [],
+    };
+  });
 }
 
 /**

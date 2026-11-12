@@ -26,6 +26,8 @@ struct AccountView: View {
     @State private var points: Int?
     /// The phone the driver calls, saved under Your profile — nil until asked.
     @State private var phone: String??
+    /// The page's own search (`AccountSearch`), on the owner's word.
+    @State private var term = ""
 
     struct Holdings {
         var subscriptions = false
@@ -84,6 +86,13 @@ struct AccountView: View {
         ShopPage(root: true, header: false, refresh: { await app.session.restore(); await loadPreviews() }) {
             VStack(alignment: .leading, spacing: 12) {
                 topRow
+                // The account searched, on the owner's word ("the search bar
+                // should only search for what's in the specific page"): the
+                // web's `PageSearchField`, finding a place on the account.
+                PageSearchField(search: PageSearch(text: $term, placeholder: "search.inAccount"))
+                if !SearchRank.queryWords(term).isEmpty {
+                    AccountSearchResults(term: term, has: has) { confirmingSignOut = true }
+                } else {
                 profileCard(user)
                 // Four tiles, two by two, above the quick settings, on the
                 // owner's word — every one the height of the tallest: a title
@@ -136,6 +145,7 @@ struct AccountView: View {
                 row("signout")
                     .padding(.horizontal, 20)
                     .panel()
+                }
                 // Who the shop is, under everything, on the owner's word.
                 ShopCopyright()
             }
@@ -515,6 +525,17 @@ struct AccountView: View {
         case "offers": return holdings.offers
         case "subscriptions": return holdings.subscriptions
         default: return true
+        }
+    }
+
+    /// Whether a place the search can find is this account's (`needs` in
+    /// `ACCOUNT_PLACES`): the web's `has`. Frequently bought and the haptics
+    /// switch are every account's in the app.
+    private func has(_ part: String) -> Bool {
+        switch part {
+        case "offers": return holdings.offers
+        case "frequent", "haptics": return true
+        default: return entries.contains { $0.id == part }
         }
     }
 

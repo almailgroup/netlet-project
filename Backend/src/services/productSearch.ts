@@ -41,7 +41,8 @@ import {
   type SearchDoc,
 } from "../../../Shared/commerce/search.js";
 import type { Product } from "../../../Shared/commerce/types.js";
-import { listProductsByIds } from "./catalog.js";
+import { rankStores } from "../../../Shared/commerce/storesSelling.js";
+import { listProductsByIds, sellingStoreCards, type SellingStore } from "./catalog.js";
 import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -62,9 +63,15 @@ export type SearchAnswer = {
   elsewhere: number;
   /** The candidates hit `CANDIDATE_CEILING`, so the total is a floor. */
   capped: boolean;
+  /**
+   * The stores that sell what matched, the one selling the most first — only
+   * when asked (`stores`), the header's suggestions and the results page
+   * drawing them over the products, on the owner's word.
+   */
+  stores: SellingStore[];
 };
 
-const EMPTY: SearchAnswer = { products: [], total: 0, correctedTo: null, elsewhere: 0, capped: false };
+const EMPTY: SearchAnswer = { products: [], total: 0, correctedTo: null, elsewhere: 0, capped: false, stores: [] };
 
 /** `%`, `_` and `\` are LIKE's own; a search for "50%" means the characters. */
 const likeLiteral = (text: string) => text.replace(/[\\%_]/g, character => `\\${character}`);
@@ -83,6 +90,7 @@ function shelfWhere(department: string | null) {
 
 type Row = {
   id: number;
+  vendorId: number;
   title: string;
   titleAr: string | null;
   description: string | null;
@@ -114,6 +122,7 @@ async function candidates(db: Db, words: QueryWord[], department: string | null)
   const docs = db
     .select({
       id: products.id,
+      vendorId: products.vendorId,
       title: products.title,
       titleAr: products.titleAr,
       description: products.description,
@@ -133,6 +142,7 @@ async function candidates(db: Db, words: QueryWord[], department: string | null)
   const rows = await db
     .select({
       id: docs.id,
+      vendorId: docs.vendorId,
       title: docs.title,
       titleAr: docs.titleAr,
       description: docs.description,
@@ -150,7 +160,7 @@ async function candidates(db: Db, words: QueryWord[], department: string | null)
   return rows as Row[];
 }
 
-async function ranked(db: Db, term: string, department: string | null) {
+export async function ranked(db: Db, term: string, department: string | null) {
   const words = queryWords(term);
   if (words.length === 0) return { rows: [] as Row[], capped: false };
   const found = await candidates(db, words, department);
@@ -177,7 +187,7 @@ async function vocabulary(db: Db): Promise<string[]> {
   ]);
 }
 
-export async function searchCatalogue(request: { q: string; department?: string | null; locale?: LocalePick; limit?: number }): Promise<SearchAnswer> {
+export async function searchCatalogue(request: { q: string; department?: string | null; locale?: LocalePick; limit?: number; stores?: boolean }): Promise<SearchAnswer> {
   const db = await getDb();
   const term = request.q.trim();
   if (!db || !term) return EMPTY;
@@ -208,11 +218,16 @@ export async function searchCatalogue(request: { q: string; department?: string 
   }
 
   const top = answer.rows.slice(0, limit).map(row => row.id);
+  const [found, stores] = await Promise.all([
+    listProductsByIds(top, request.locale ?? "en"),
+    request.stores ? sellingStoreCards(rankStores(answer.rows), request.locale ?? "en") : Promise.resolve([]),
+  ]);
   return {
-    products: await listProductsByIds(top, request.locale ?? "en"),
+    products: found,
     total: answer.rows.length,
     correctedTo,
     elsewhere,
     capped: answer.capped,
+    stores,
   };
 }

@@ -1,0 +1,28 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "slug": "acme",
+          "name": "Acme Electronics",
+          "otherName": null,
+          "logoUrl": null,
+          "products": 15,
+          "rating": null,
+          "badges": [],
+          "matching": 4
+        },
+        {
+          "slug": "gadget-hub",
+          "name": "Gadget Hub",
+          "otherName": "غادجت هب",
+          "logoUrl": null,
+          "products": 2,
+          "rating": null,
+          "badges": [],
+          "matching": 2
+        }
+      ]
+    }
+  }
+}

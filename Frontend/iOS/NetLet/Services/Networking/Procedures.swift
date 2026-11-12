@@ -22,6 +22,15 @@ enum API {
         var department: String?
         let locale: String
         var limit: Int?
+        /// With the stores that sell what matched (`SearchResult.stores`).
+        var stores: Bool?
+    }
+
+    /// A department, and one of its subcategories when there is one.
+    struct StoresSellingInput: Encodable, Sendable {
+        let department: String
+        var sub: String?
+        let locale: String
     }
 
     struct LocaleOnly: Encodable, Sendable {
@@ -54,6 +63,8 @@ enum API {
     static let occasionPage = Procedure<OccasionSlug, OccasionPage>(query: "occasions.bySlug")
     /// Stores with something on sale, the busiest first.
     static let stores = Procedure<StoreList, [StoreCard]>(query: "commerce.stores")
+    /// The stores that sell in a department or one of its subcategories, the one selling the most first.
+    static let storesSelling = Procedure<StoresSellingInput, [StoreCard]>(query: "commerce.storesSelling")
     /// One store's public page, or nil for an address no approved store answers to.
     static let store = Procedure<StoreSlug, StorePage?>(query: "commerce.store")
     /// The Brand rows of the live catalogue, counted.

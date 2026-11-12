@@ -16,6 +16,8 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 export type StoreCardData = {
   slug: string;
   name: string;
+  /** Its name in the other language, where it wrote one (`otherName`). */
+  otherName?: string | null;
   logoUrl: string | null;
   products: number;
   rating: { average: number; count: number } | null;
@@ -33,8 +35,8 @@ export const BADGE_LABEL: Record<string, MessageKey> = {
  * look) — one colour for every store, so a list of them is not a second
  * palette. Decorative: the store's name is always written beside it.
  */
-export function StoreMark({ name, logoUrl, size = "md" }: { name: string; logoUrl: string | null; size?: "md" | "lg" }) {
-  const box = size === "lg" ? "size-16 rounded-2xl text-[24px] sm:size-20 sm:text-[28px]" : "size-12 rounded-xl text-lg";
+export function StoreMark({ name, logoUrl, size = "md" }: { name: string; logoUrl: string | null; size?: "sm" | "md" | "lg" }) {
+  const box = size === "lg" ? "size-16 rounded-2xl text-[24px] sm:size-20 sm:text-[28px]" : size === "sm" ? "size-10 rounded-lg text-[16px]" : "size-12 rounded-xl text-lg";
   return (
     <span className={`${box} block shrink-0 overflow-hidden border border-[#e1e7ef] bg-white`}>
       <Thumb

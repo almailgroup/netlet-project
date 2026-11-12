@@ -44,6 +44,7 @@
  */
 import { ShopAssistant, useAssistantShown } from "@/components/assistant/ShopAssistant";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { HeaderDrawnContext, type PageSearchSetup } from "@/components/layout/PageSearch";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { StoreHeader } from "@/components/layout/StoreHeader";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -60,8 +61,11 @@ type Chrome = {
   /** The page's ground on a phone: white where the page is one white sheet
       to the screen's foot — the signed-out account page — pearl otherwise. */
   sheet: boolean;
+  /** The page searches itself (`PageSearch.tsx`): the header's field narrows
+      the page rather than searching the shop. */
+  pageSearch: PageSearchSetup | null;
 };
-const NO_CHROME: Chrome = { activeDepartment: null, assistantProduct: null, sheet: false };
+const NO_CHROME: Chrome = { activeDepartment: null, assistantProduct: null, sheet: false, pageSearch: null };
 /** How long a page counts as arriving, past its own entrance (180ms). */
 const ARRIVAL_MS = 220;
 
@@ -77,13 +81,14 @@ export function usePageChrome(chrome: Partial<Chrome>) {
   const activeDepartment = chrome.activeDepartment ?? null;
   const assistantProduct = chrome.assistantProduct ?? null;
   const sheet = chrome.sheet ?? false;
+  const placeholder = chrome.pageSearch?.placeholder ?? null;
   const productKey = assistantProduct?.key ?? null;
   const product = useRef(assistantProduct);
   product.current = assistantProduct;
   useLayoutEffect(() => {
-    report({ activeDepartment, assistantProduct: product.current, sheet });
+    report({ activeDepartment, assistantProduct: product.current, sheet, pageSearch: placeholder ? { placeholder } : null });
     return () => report(NO_CHROME);
-  }, [report, activeDepartment, productKey, sheet]);
+  }, [report, activeDepartment, productKey, sheet, placeholder]);
 }
 
 /* A floating bar of the page's own sits above the tab bar on these. */
@@ -133,7 +138,12 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
   const [chrome, setChrome] = useState<Chrome>(NO_CHROME);
   const report = useCallback((next: Chrome) => {
     setChrome(current => (
-      current.activeDepartment === next.activeDepartment && current.assistantProduct?.key === next.assistantProduct?.key && current.sheet === next.sheet ? current : next
+      current.activeDepartment === next.activeDepartment
+        && current.assistantProduct?.key === next.assistantProduct?.key
+        && current.sheet === next.sheet
+        && current.pageSearch?.placeholder === next.pageSearch?.placeholder
+        ? current
+        : next
     ));
   }, []);
   /*
@@ -175,7 +185,7 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
         {/* `contents`, so the bar's sticky box is the page's and not a
             wrapper's the height of the bar. */}
         <div className={printed ? "contents print:hidden" : "contents"}>
-          {bare ? null : <StoreHeader activeDepartment={chrome.activeDepartment} logoRow={!SEARCH_ONLY_ON_PHONE.test(location)} />}
+          {bare ? null : <StoreHeader activeDepartment={chrome.activeDepartment} logoRow={!SEARCH_ONLY_ON_PHONE.test(location)} pageSearch={chrome.pageSearch} />}
         </div>
         {/* With no header, the page clears the status bar itself on a phone
             that draws the page under it (`viewport-fit=cover`); with no
@@ -191,9 +201,11 @@ export function StorefrontShell({ children }: { children: ReactNode }) {
                 : clearance === "tall" ? "pb-[calc(11rem+env(safe-area-inset-bottom))]" : "pb-[calc(6rem+env(safe-area-inset-bottom))]"
           }`}
         >
-          <Suspense fallback={<PageFallback />}>
-            {held ? null : <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter}`}>{children}</div>}
-          </Suspense>
+          <HeaderDrawnContext.Provider value={!bare}>
+            <Suspense fallback={<PageFallback />}>
+              {held ? null : <div key={pageOf(location)} className={`flex flex-1 flex-col ${enter}`}>{children}</div>}
+            </Suspense>
+          </HeaderDrawnContext.Provider>
         </main>
         <div className={printed ? "contents print:hidden" : "contents"}>
           {held || !footed ? null : <SiteFooter clearance={clearance} assistant={assistant} />}

@@ -144,6 +144,289 @@
         "preference": null,
         "alwaysNote": "notify.cat.account.always"
       }
+    ],
+    "accountPlaces": [
+      {
+        "id": "orders",
+        "label": "account.myOrders",
+        "within": null,
+        "words": [
+          "account.sectionOrders",
+          "account.hint.orders",
+          "orders.viewProcessing",
+          "orders.viewOnTheWay",
+          "orders.viewDelivered",
+          "orders.viewCancelled"
+        ],
+        "needs": null
+      },
+      {
+        "id": "returns",
+        "label": "orders.viewReturns",
+        "within": "account.myOrders",
+        "words": [
+          "account.hint.returns"
+        ],
+        "needs": null
+      },
+      {
+        "id": "reviews",
+        "label": "orders.viewReviews",
+        "within": "account.myOrders",
+        "words": [
+          "account.hint.reviews"
+        ],
+        "needs": null
+      },
+      {
+        "id": "saved",
+        "label": "saved.andWishlists",
+        "within": null,
+        "words": [
+          "account.hint.saved"
+        ],
+        "needs": null
+      },
+      {
+        "id": "wishlists",
+        "label": "saved.tabWishlists",
+        "within": "saved.andWishlists",
+        "words": [
+          "account.hint.wishlists"
+        ],
+        "needs": null
+      },
+      {
+        "id": "frequent",
+        "label": "frequent.section",
+        "within": null,
+        "words": [
+          "account.hint.frequent"
+        ],
+        "needs": "frequent"
+      },
+      {
+        "id": "wallet",
+        "label": "account.wallet",
+        "within": null,
+        "words": [
+          "account.hint.wallet"
+        ],
+        "needs": null
+      },
+      {
+        "id": "points",
+        "label": "account.points",
+        "within": "account.wallet",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "cards",
+        "label": "payments.savedCards",
+        "within": "account.wallet",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "notifications",
+        "label": "notices.title",
+        "within": null,
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "profile",
+        "label": "account.sectionProfile",
+        "within": null,
+        "words": [
+          "account.hint.details"
+        ],
+        "needs": null
+      },
+      {
+        "id": "name",
+        "label": "profile.nameTitle",
+        "within": "account.sectionProfile",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "email",
+        "label": "account.emailCard",
+        "within": "account.sectionProfile",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "phone",
+        "label": "profile.phoneTitle",
+        "within": "account.sectionProfile",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "password",
+        "label": "account.password",
+        "within": "account.sectionProfile",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "about",
+        "label": "profile.aboutTitle",
+        "within": "account.sectionProfile",
+        "words": [
+          "profile.genderTitle",
+          "profile.birthdayTitle"
+        ],
+        "needs": null
+      },
+      {
+        "id": "photo",
+        "label": "profilePhoto.title",
+        "within": "account.sectionProfile",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "deleteAccount",
+        "label": "account.deleteTitle",
+        "within": "account.sectionProfile",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "addresses",
+        "label": "address.book",
+        "within": null,
+        "words": [
+          "account.hint.addresses"
+        ],
+        "needs": null
+      },
+      {
+        "id": "offers",
+        "label": "offers.mine",
+        "within": null,
+        "words": [
+          "account.hint.offers"
+        ],
+        "needs": "offers"
+      },
+      {
+        "id": "subscriptions",
+        "label": "subscriptions.section",
+        "within": null,
+        "words": [
+          "account.hint.subscriptions"
+        ],
+        "needs": "subscriptions"
+      },
+      {
+        "id": "country",
+        "label": "quick.country",
+        "within": "quick.settingsTitle",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "currency",
+        "label": "currency.title",
+        "within": "quick.settingsTitle",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "language",
+        "label": "account.language",
+        "within": "quick.settingsTitle",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "preferences",
+        "label": "account.sectionPreferences",
+        "within": null,
+        "words": [
+          "account.hint.preferences"
+        ],
+        "needs": null
+      },
+      {
+        "id": "noticeSettings",
+        "label": "notify.title",
+        "within": "account.sectionPreferences",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "deliveryArea",
+        "label": "account.deliveryArea",
+        "within": "account.sectionPreferences",
+        "words": [],
+        "needs": null
+      },
+      {
+        "id": "storage",
+        "label": "storage.title",
+        "within": "account.sectionPreferences",
+        "words": [
+          "storage.clear"
+        ],
+        "needs": null
+      },
+      {
+        "id": "haptics",
+        "label": "haptics.title",
+        "within": "account.sectionPreferences",
+        "words": [],
+        "needs": "haptics"
+      },
+      {
+        "id": "history",
+        "label": "history.title",
+        "within": null,
+        "words": [
+          "account.hint.history"
+        ],
+        "needs": null
+      },
+      {
+        "id": "help",
+        "label": "footer.helpCentre",
+        "within": null,
+        "words": [
+          "account.hint.help"
+        ],
+        "needs": null
+      },
+      {
+        "id": "selling",
+        "label": "seller.becomeTitle",
+        "within": null,
+        "words": [
+          "seller.cardTitle",
+          "seller.open"
+        ],
+        "needs": null
+      },
+      {
+        "id": "affiliate",
+        "label": "affiliate.section",
+        "within": null,
+        "words": [
+          "account.hint.affiliate"
+        ],
+        "needs": "affiliate"
+      },
+      {
+        "id": "signOut",
+        "label": "header.signOut",
+        "within": null,
+        "words": [],
+        "needs": null
+      }
     ]
   },
   "orders": {

@@ -142,7 +142,8 @@ export default function Account() {
   const [onSection, params] = useRoute("/account/:section");
   const signals = useAccountSignals();
   /* Signed out, the page is the sign-in sheet, white to the phone's foot. */
-  usePageChrome({ sheet: !loading && !isAuthenticated });
+  /* The account's home searches itself (`PageSearch.tsx`), its sections and signed-out form do not. */
+  usePageChrome({ sheet: !loading && !isAuthenticated, pageSearch: isAuthenticated && !onSection ? { placeholder: "search.inAccount" } : null });
   /* The round arrow says where it goes: the account home when that is the
      page behind (or there is none in this visit), "Back" otherwise. */
   const from = cameFrom();

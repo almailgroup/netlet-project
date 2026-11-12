@@ -393,6 +393,15 @@ private struct SearchSheet: View {
     private var results: some View {
         let words = model.trimmed
         VStack(alignment: .leading, spacing: 4) {
+            // The stores that sell what the words found lead, on the owner's
+            // word ("when you search for something it would show the stores
+            // that sell it at the top") — the server's own order, the one
+            // selling the most first, two of them, as the web's suggestions.
+            if model.answered == words {
+                ForEach((model.result.value?.stores ?? []).prefix(Self.suggestedStores)) { store in
+                    storeRow(store)
+                }
+            }
             ForEach(namedDepartments(words)) { department in
                 suggestionRow(symbol: "square.grid.2x2", title: l.t(department.label), kind: l.t("search.kindDepartment")) {
                     open(.department(slug: department.slug))
@@ -459,6 +468,33 @@ private struct SearchSheet: View {
             SkeletonRows(still: still)
                 .transition(.opacity)
         }
+    }
+
+    /// How many stores lead the suggestions (`SUGGESTED_STORES` on the web).
+    private static let suggestedStores = 2
+
+    /// A store selling what the words found: its mark, its name and how many of them it sells.
+    private func storeRow(_ store: StoreCard) -> some View {
+        Button {
+            open(.store(slug: store.slug))
+        } label: {
+            HStack(spacing: 12) {
+                StoreMark(name: store.name, logoUrl: store.logoUrl)
+                    .scaleEffect(40.0 / 48.0)
+                    .frame(width: 40, height: 40)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(store.name).font(.inter(15, .bold)).foregroundStyle(Brand.navy).lineLimit(1)
+                    Text(l.productCount(store.matching ?? store.products)).font(.inter(12)).foregroundStyle(Brand.muted).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Text(l.t("search.kindStore")).font(.inter(12)).foregroundStyle(Brand.muted)
+            }
+            .padding(8)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.85)))
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(SpringPressStyle(cornerRadius: 14))
+        .accessibilityElement(children: .combine)
     }
 
     private func namedDepartments(_ words: String) -> [Department] {

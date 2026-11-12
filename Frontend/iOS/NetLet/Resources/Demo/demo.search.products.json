@@ -118,7 +118,29 @@
         "total": 1,
         "correctedTo": null,
         "elsewhere": 0,
-        "capped": false
+        "capped": false,
+        "stores": [
+          {
+            "slug": "gadget-hub",
+            "name": "Gadget Hub",
+            "otherName": "غادجت هب",
+            "logoUrl": null,
+            "products": 2,
+            "rating": null,
+            "badges": [],
+            "matching": 1
+          },
+          {
+            "slug": "acme",
+            "name": "Acme Electronics",
+            "otherName": null,
+            "logoUrl": null,
+            "products": 15,
+            "rating": null,
+            "badges": [],
+            "matching": 1
+          }
+        ]
       },
       "meta": {
         "referentialEqualities": {

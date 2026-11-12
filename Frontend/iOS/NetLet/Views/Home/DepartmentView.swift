@@ -99,7 +99,10 @@ private struct BrowsePage: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(root: root, logo: false, refresh: { await model.load(language: l.current) }, assistant: true, assistantFolded: true, searchTerm: model.searchTerm) {
+        // The Deals page searches its own deals, on the owner's word
+        // ("the search bar should only search for what's in the specific page").
+        ShopPage(root: root, logo: false, refresh: { await model.load(language: l.current) }, assistant: true, assistantFolded: true, searchTerm: model.searchTerm,
+                 pageSearch: model.isDealsPage ? PageSearch(text: $model.pageTerm, placeholder: "search.inDeals") : nil) {
             VStack(alignment: .leading, spacing: 0) {
                 // One of NetLet's occasions with a picture opens on it, over its name.
                 if model.query == nil, let banner = model.curatedOccasion?.imageUrl {
@@ -118,6 +121,9 @@ private struct BrowsePage: View {
                     .padding(.top, 8)
                     .accessibilityAddTraits(.updatesFrequently)
                 subcategoryRow
+                // The stores that sell it, at the top, on the owner's word.
+                StoresSellingRow(stores: model.stores)
+                    .padding(.top, 16)
                 filterChips
                 chips
                     .padding(.top, 12)
@@ -146,6 +152,7 @@ private struct BrowsePage: View {
             .presentationDragIndicator(.visible)
         }
         .task(id: l.current) { await model.load(language: l.current) }
+        .task(id: "\(l.current.rawValue)|\(model.filters.sub ?? "")") { await model.loadStores(language: l.current) }
         .onAppear {
             // A screenshot's sheet (`browseSheet:` in `AppModel.openScreen`).
             guard let start = app.browseSheetStart else { return }
@@ -182,6 +189,10 @@ private struct BrowsePage: View {
 
     private var countLine: String {
         guard model.products.value != nil else { return " " }
+        let term = model.pageTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        if model.isDealsPage, !term.isEmpty {
+            return l.t("deals.searchShown", ["term": "\u{2068}\(term)\u{2069}", "count": "\(model.shown.count)"])
+        }
         return l.productCount(model.shown.count)
     }
 
@@ -462,7 +473,8 @@ private struct BrowsePage: View {
             }
             if shown.isEmpty {
                 empty
-            } else if model.isDealsPage {
+            } else if model.isDealsPage, SearchRank.queryWords(model.pageTerm).isEmpty {
+                // Searched, the deals that answer are one grid, as on the web.
                 DealShelvesView(shelves: DealShelves.of(shown, deepestFirst: model.sort == .relevance))
             } else {
                 ProductGrid(products: shown)
@@ -472,7 +484,11 @@ private struct BrowsePage: View {
 
     @ViewBuilder
     private var empty: some View {
-        if model.isDealsPage, model.shownFilters.activeCount == 0 {
+        let term = model.pageTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        if model.isDealsPage, !term.isEmpty, model.shownFilters.activeCount == 0 {
+            // The Deals page's own search found nothing on it.
+            PageSearchMissed(term: term)
+        } else if model.isDealsPage, model.shownFilters.activeCount == 0 {
             // The Deals tab with nothing on offer: not a filter the shopper set.
             EmptyStateView(systemImage: "tag", title: l.t("browse.noDeals"), note: l.t("browse.noDealsNote"), actionTitle: l.t("browse.browseEverything")) {
                 app.push(.department(slug: nil))

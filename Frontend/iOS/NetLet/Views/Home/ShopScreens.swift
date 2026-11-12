@@ -4,61 +4,84 @@ import SwiftUI
 /// tiles in a row and the chosen one's subcategories under them
 /// (`DepartmentBrowser`), and Today's deals under those only while the home
 /// page would draw them.
-/// **Two boxes lead it, Shop by brand and Shop by stores, on the owner's
-/// word**: each opens its list (`BrandsView`, `StoresView`), the web's
-/// `/categories`. They were two sideways rows that pushed the departments
-/// down the screen. Shop by brand is drawn only while the shop has a brand.
+/// **Shop by brand leads it** (`BrandsView`), drawn only while the shop has
+/// a brand. Shop by stores stood beside it, and **the stores are under each
+/// department now, on the owner's word** ("remove the shop by stores,
+/// instead add the stores to the sub category"; `DepartmentBrowser`).
+///
+/// **Its search searches the page, on the owner's word** ("the search bar
+/// should only search for what's in the specific page"): the header's field
+/// reads "Search categories and stores" here (`PageSearchField`), and typing
+/// puts the departments, the subcategories (by their names and the words they
+/// are called by) and the stores that answer in place of the tiles, with the
+/// shop's own search a press away when nothing does — the web's `/categories`.
 struct CategoriesView: View {
+    @State private var term = ""
+    /// Every store, for the page's own search, asked the first time it is used.
+    @State private var allStores: [StoreCard]?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ShopPage(root: true, logo: false, refresh: { await app.shelf.load(language: l.current, force: true) }) {
+        let words = term.trimmingCharacters(in: .whitespacesAndNewlines)
+        ShopPage(root: true, logo: false, refresh: { await app.shelf.load(language: l.current, force: true) },
+                 pageSearch: PageSearch(text: $term, placeholder: "search.inCategories")) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(l.t("nav.categories")).pageTitle()
-                HStack(spacing: 12) {
+                if !words.isEmpty {
+                    CategoriesResults(term: words, stores: allStores) { slug in
+                        // The page itself again, opened on that department.
+                        app.categoriesOpen = slug
+                        term = ""
+                    }
+                        .padding(.top, 20)
+                        .padding(.bottom, 48)
+                } else {
                     // Only while there is a brand to list: a box that opens
                     // "No brands yet" leads nowhere, the departments' rule.
                     if !app.shelf.brands.isEmpty {
                         wayIn(symbol: "tag", title: l.t("home.shopByBrand")) { app.push(.brands) }
+                            .padding(.top, 20)
                     }
-                    wayIn(symbol: "storefront", title: l.t("categories.byStore")) { app.push(.stores) }
+                    departments
+                        .padding(.top, 28)
+                        .padding(.bottom, 48)
                 }
-                .padding(.top, 20)
-                .padding(.bottom, 28)
-                departments
-                    .padding(.bottom, 48)
             }
             .padding(.horizontal, 16)
             .padding(.top, 24)
         }
+        .task(id: words.isEmpty ? "" : l.current.rawValue) {
+            guard !words.isEmpty else { return }
+            // A store list that cannot be read finds no store, rather than
+            // holding "nothing matches" back for ever.
+            allStores = (try? await app.services.api.call(API.stores, .init(locale: l.current.rawValue, limit: 200))) ?? []
+        }
     }
 
-    /// A box that opens a list: the brands or the stores.
+    /// The box that opens the brands' list — a row the width of the page.
     private func wayIn(symbol: String, title: String, open: @escaping () -> Void) -> some View {
         Button(action: open) {
-            VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
                 Image(systemName: symbol)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 40, height: 40)
                     .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.navy))
                     .accessibilityHidden(true)
-                HStack(spacing: 6) {
-                    Text(title)
-                        .font(.inter(15, .heavy))
-                        .foregroundStyle(Brand.navy)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.forward")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Brand.navy)
-                        .accessibilityHidden(true)
-                }
+                Text(title)
+                    .font(.inter(15, .heavy))
+                    .foregroundStyle(Brand.navy)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Brand.navy)
+                    .accessibilityHidden(true)
             }
             .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))

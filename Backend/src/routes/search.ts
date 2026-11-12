@@ -37,6 +37,8 @@ export const searchRouter = router({
       department: z.string().trim().max(120).nullish(),
       locale: z.enum(["en", "ar"]).optional(),
       limit: z.number().int().min(1).max(MAX_RESULTS).optional(),
+      /* The stores that sell what matched, drawn over the products (`stores` on the answer). */
+      stores: z.boolean().optional(),
     }))
     .query(({ input }) => searchCatalogue(input)),
 

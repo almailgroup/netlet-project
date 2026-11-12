@@ -20,6 +20,8 @@ import { categorySlug } from "@shared/commerce/browse";
 import { clearRecentSearches, readRecentSearches, rememberSearch } from "@/lib/recentSearches";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { Select } from "@/components/ui/Select";
+import { StoreMark } from "@/components/store/StoreCard";
+import type { SellingStoreData } from "@/components/store/StoresSellingRow";
 import { canListen } from "@/lib/speech";
 
 /*
@@ -77,9 +79,10 @@ type LiveSearchProps = {
 
 /** Whether this browser can listen at all. Firefox and the iOS app's WebView cannot. */
 
-/** One thing the dropdown offers: a recent search, a department, a brand, or a product. */
+/** One thing the dropdown offers: a recent search, a store that sells it, a department, a brand, or a product. */
 type Entry =
   | { kind: "recent"; key: string; term: string }
+  | { kind: "store"; key: string; store: SellingStoreData }
   | { kind: "department"; key: string; department: Department }
   | { kind: "brand"; key: string; brand: string }
   | { kind: "product"; key: string; product: Product };
@@ -88,6 +91,8 @@ type Entry =
 const SETTLE_MS = 120;
 /** How many products the dropdown shows; the results page has the rest. */
 const SUGGESTED_PRODUCTS = 5;
+/** How many of the stores that sell it lead the list, on the owner's word; the results page names more. */
+const SUGGESTED_STORES = 2;
 /** How long the phone's sheet takes to grow out of the header — `--sheet-ms` in index.css — and so, five times over, how long a glide that never ran is waited for. */
 const SHEET_MS = 320;
 
@@ -170,7 +175,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
     return () => window.clearTimeout(timer);
   }, [typed]);
   const answer = trpc.search.products.useQuery(
-    { q: settled, department: scoped ? scope : null, locale, limit: SUGGESTED_PRODUCTS },
+    { q: settled, department: scoped ? scope : null, locale, limit: SUGGESTED_PRODUCTS, stores: true },
     { enabled: open && settled.length > 0, placeholderData: previous => previous, staleTime: 60_000, retry: false },
   );
   const brands = trpc.commerce.brands.useQuery(undefined, { enabled: open, staleTime: 10 * 60 * 1000 });
@@ -187,7 +192,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   const utils = trpc.useUtils();
   const answered = settled === typed && answer.data && !answer.isPlaceholderData
     ? answer.data
-    : utils.search.products.getData({ q: typed, department: scoped ? scope : null, locale, limit: SUGGESTED_PRODUCTS });
+    : utils.search.products.getData({ q: typed, department: scoped ? scope : null, locale, limit: SUGGESTED_PRODUCTS, stores: true });
   const held = useMemo(() => {
     if (!open || !typed || answered) return [];
     const shelf = shelvedProducts(queryClient, locale);
@@ -199,9 +204,12 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
 
   /*
    * With nothing typed, the choices are what this device searched for lately.
-   * With something typed: a department it names (in either language, and only
-   * one with something on sale), a brand the shop sells, then the products. One
-   * list for the arrow keys either way.
+   * With something typed: the stores that sell what was found, on the owner's
+   * word ("it would show the stores that sell it at the top") — once the
+   * server has answered these words, the one selling the most first — then a
+   * department it names (in either language, and only one with something on
+   * sale), a brand the shop sells, then the products. One list for the arrow
+   * keys either way.
    */
   const emptyField = !typed;
   const entries = useMemo<Entry[]>(() => {
@@ -209,13 +217,15 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
     const departments = scoped ? [] : departmentsMatching(typed).filter(entry => inStock(entry.name)).slice(0, 2);
     const brandNames = brandsMatching(typed, (brands.data ?? []).map(brand => brand.name)).slice(0, 2);
     const products = suggested;
+    const stores = (answered?.stores ?? []).slice(0, SUGGESTED_STORES);
     return [
+      ...stores.map(store => ({ kind: "store" as const, key: `store:${store.slug}`, store })),
       ...departments.map(entry => ({ kind: "department" as const, key: `department:${entry.slug}`, department: entry })),
       ...brandNames.map(brand => ({ kind: "brand" as const, key: `brand:${brand}`, brand })),
       ...products.map(product => ({ kind: "product" as const, key: `product:${product.id}`, product })),
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emptyField, recent, typed, scoped, brands.data, suggested]);
+  }, [emptyField, recent, typed, scoped, brands.data, suggested, answered]);
   /* The server has not answered these words yet; what is drawn may change. */
   const waiting = !emptyField && !answered;
   const total = answered?.total ?? 0;
@@ -253,6 +263,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
     if (entry.kind === "recent") openRecent(entry.term);
     else if (entry.kind === "product") selectSuggestion(entry.product);
     else if (entry.kind === "department") goTo(`/category/${entry.department.slug}`);
+    /* The store narrowed to the same words, its own search showing them. */
+    else if (entry.kind === "store") goTo(`/stores/${encodeURIComponent(entry.store.slug)}?q=${encodeURIComponent(typed)}`);
     else goTo(`/category/all?brand=${encodeURIComponent(entry.brand)}`);
   };
 
@@ -740,6 +752,16 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
               {entries.length ? (
                 <div id={listboxId} role="listbox" aria-label={t("header.matchingCatalog")} aria-busy={waiting || undefined}>
                   {entries.map((entry, index) => {
+                    if (entry.kind === "store") {
+                      const sells = entry.store.matching === 1 ? t("browse.countOne") : t("browse.countMany", { count: entry.store.matching });
+                      return (
+                        <button key={entry.key} id={optionId(index)} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => activate(entry)} className={optionClass(index)}>
+                          <StoreMark name={entry.store.name} logoUrl={entry.store.logoUrl} size="sm" />
+                          <span className="min-w-0 flex-1"><bdi dir="auto" className="block truncate text-sm font-bold">{entry.store.name}</bdi><span className="type-label block truncate text-[#536b8c]">{t("search.kindStore")} · {sells}</span></span>
+                          <ArrowRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
+                        </button>
+                      );
+                    }
                     if (entry.kind === "department") {
                       return (
                         <button key={entry.key} id={optionId(index)} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => activate(entry)} className={optionClass(index)}>

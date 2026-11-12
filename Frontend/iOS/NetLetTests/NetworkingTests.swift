@@ -147,6 +147,22 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(found.total, found.products.count)
     }
 
+    /// The stores that sell what a search found, or what a department holds,
+    /// lead the page — the one selling the most first, each with how many it
+    /// sells, named in the other language too so the page's own search finds
+    /// it by either name.
+    func testTheStoresThatSellItLeadThePage() async throws {
+        let found = try await client.call(API.search, .init(q: "watch", locale: "en", stores: true))
+        let stores = try XCTUnwrap(found.stores)
+        XCTAssertFalse(stores.isEmpty)
+        XCTAssertTrue(stores.allSatisfy { ($0.matching ?? 0) > 0 })
+        let selling = try await client.call(API.storesSelling, .init(department: "Electronics", sub: nil, locale: "en"))
+        XCTAssertFalse(selling.isEmpty)
+        XCTAssertEqual(selling.compactMap(\.matching), selling.compactMap(\.matching).sorted(by: >), "the store selling the most first")
+        let all = try await client.call(API.stores, .init(locale: "en", limit: 200))
+        XCTAssertTrue(all.contains { $0.otherName != nil && SearchRank.textsMatch([$0.name, $0.otherName], "غادجت") })
+    }
+
     /// The Deals page's shelves are the web's `dealShelves`: every deal on one
     /// shelf, a kind standing alone only with two or more, the fullest shelf
     /// first, the deepest saving leading each, cut to the shelf's size.

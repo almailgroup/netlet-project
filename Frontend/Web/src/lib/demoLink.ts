@@ -10,6 +10,7 @@
  * terminates in the browser, no superjson serialization is involved — the values
  * returned here are handed straight to React Query.
  */
+import { rankStores } from "@shared/commerce/storesSelling";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { resolveIssue, type HelpIssue } from "@shared/commerce/selfService";
 import { REFERENCE_RATES, RATES_AS_OF } from "@shared/commerce/currency";
@@ -285,11 +286,20 @@ function resolve(path: string, rawInput: unknown): unknown {
       return Array.from(counts, ([name, products]) => ({
         slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         name,
+        otherName: null,
         logoUrl: null,
         products,
         rating: null,
         badges: [],
       })).sort((a, b) => b.products - a.products).slice(0, typeof input.limit === "number" ? input.limit : 10);
+    }
+    /* The invented stores selling in a department or one of its
+       subcategories, counted off the invented shelf as the server counts. */
+    case "commerce.storesSelling": {
+      const department = String(input.department ?? "");
+      const sub = typeof input.sub === "string" && input.sub ? input.sub : null;
+      const inPage = productsInCategory(demoCatalog, department).filter(product => !sub || product.subcategory === sub);
+      return demoSellingStores(inPage);
     }
     /* An invented store's page: its invented shelf, and nothing it never
        said — no description, rating, reviews or delivery terms. */
@@ -394,7 +404,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       }
       const elsewhere = !found.length && department ? rankBySearch(demoCatalog, correctedTo ?? term).length : 0;
       const limit = typeof input.limit === "number" ? input.limit : 24;
-      return { products: found.slice(0, limit), total: found.length, correctedTo, elsewhere, capped: false };
+      return { products: found.slice(0, limit), total: found.length, correctedTo, elsewhere, capped: false, stores: input.stores ? demoSellingStores(found) : [] };
     }
 
     /* The live version asks Gemini to rewrite the query against the catalog.
@@ -1264,3 +1274,23 @@ export const demoLink: TRPCLink<AppRouter> =
       }
       return () => {};
     });
+
+/** The invented stores selling these products, the one selling the most first (`rankStores`). */
+function demoSellingStores(found: { vendor?: string | null }[]) {
+  const slugOf = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const names = [...new Set(found.map(product => product.vendor).filter((name): name is string => Boolean(name)))];
+  const ids = new Map(names.map((name, index) => [name, index]));
+  return rankStores(found.map(product => ({ vendorId: product.vendor ? ids.get(product.vendor) ?? null : null }))).map(tally => {
+    const name = names[tally.vendorId];
+    return {
+      slug: slugOf(name),
+      name,
+      otherName: null,
+      logoUrl: null,
+      products: demoCatalog.filter(product => product.vendor === name).length,
+      rating: null,
+      badges: [],
+      matching: tally.matching,
+    };
+  });
+}

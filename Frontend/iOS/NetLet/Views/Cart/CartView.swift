@@ -24,6 +24,10 @@ struct CartView: View {
     @State private var continuing = false
     /// The number on "Your profile", for an address that carries none.
     @State private var accountPhone: String?
+    /// The bag's own search, on the owner's word ("the search bar should only
+    /// search for what's in the specific page … cart"): the web's, narrowing
+    /// the lines by their names, options, sets and stores.
+    @State private var term = ""
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
@@ -47,6 +51,10 @@ struct CartView: View {
                     CartSavedButton(path: $path)
                 }
                 Color.clear.frame(height: 20)
+                if let cart, !cart.isEmpty {
+                    PageSearchField(search: PageSearch(text: $term, placeholder: "search.inCart"))
+                        .padding(.bottom, 12)
+                }
                 if app.cart.settling && (cart?.isEmpty ?? true) {
                     // Never "empty" before it knows — somebody who just pressed Add would read it as a failure.
                     LoadingView().accessibilityLabel(l.t("cart.loading"))
@@ -127,11 +135,40 @@ struct CartView: View {
         path.append(Route.checkout)
     }
 
+    /// Whether a line answers the bag's search: its name in both languages,
+    /// its option, its set and its store — the web's `matches`.
+    private func matches(_ item: CartItem) -> Bool {
+        SearchRank.textsMatch([item.productTitle, item.productTitleAr, item.variantTitle, item.bundleName, item.vendor?.name, item.vendor?.nameAr], term)
+    }
+
     private func filled(_ cart: Cart) -> some View {
-        let groups = BagGroup.groups(cart)
+        let searching = !SearchRank.queryWords(term).isEmpty
+        let found = searching ? cart.items.filter(matches).count : cart.items.count
+        // While searching, each store keeps only its lines that answer, and a
+        // store with none is not drawn; its parcels are still the server's.
+        let groups = BagGroup.groups(cart).map { all in
+            searching
+                ? all.compactMap { group in
+                    let items = group.items.filter(matches)
+                    return items.isEmpty ? nil : BagGroup(store: group.store, items: items, delivery: group.delivery)
+                }
+                : all
+        }
+        let lines = searching ? cart.items.filter(matches) : cart.items
         return VStack(spacing: 12) {
             DeliveryAddressCard(accountPhone: accountPhone)
-            if let recovery = cart.recovery, recovery.remind, let count = recovery.itemCount, let hours = recovery.hours {
+            if searching {
+                Text(l.t("cart.searchShown", ["term": "\u{2068}\(term.trimmingCharacters(in: .whitespaces))\u{2069}", "count": "\(found)"]))
+                    .font(.inter(14, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+                    .accessibilityAddTraits(.updatesFrequently)
+            }
+            if found == 0 {
+                PageSearchMissed(term: term.trimmingCharacters(in: .whitespaces), shopWide: false)
+            }
+            if !searching, let recovery = cart.recovery, recovery.remind, let count = recovery.itemCount, let hours = recovery.hours {
                 // Said where it is seen rather than in an email nobody can send.
                 VStack(alignment: .leading, spacing: 2) {
                     Text(count == 1 ? l.t("cart.recoveryTitleOne") : l.t("cart.recoveryTitle", ["count": "\(count)"]))
@@ -152,11 +189,11 @@ struct CartView: View {
                 ForEach(groups) { group in
                     CartStoreCard(group: group, path: $path)
                 }
-            } else {
+            } else if !lines.isEmpty {
                 VStack(spacing: 0) {
-                    ForEach(cart.items) { item in
+                    ForEach(lines) { item in
                         CartLineRow(item: item)
-                        if item.id != cart.items.last?.id { Divider().padding(.vertical, 12) }
+                        if item.id != lines.last?.id { Divider().padding(.vertical, 12) }
                     }
                 }
                 .card()
@@ -189,7 +226,9 @@ struct CartView: View {
             // Under Checkout, on the owner's word: the bag and what it costs
             // come first, and what was put aside follows for whoever wants it
             // back.
-            SavedForLaterRow(topPadding: 12)
+            if !searching {
+                SavedForLaterRow(topPadding: 12)
+            }
         }
     }
 

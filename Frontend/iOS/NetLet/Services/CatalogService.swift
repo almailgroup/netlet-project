@@ -16,6 +16,9 @@ protocol CatalogServicing: Sendable {
     func liveOccasions(language: Language) async throws -> LiveOccasions
     /// One occasion's page, by its address.
     func occasionPage(slug: String, language: Language) async throws -> OccasionPage
+    /// The stores that sell in a department, or one of its subcategories, the
+    /// one selling the most first (`commerce.storesSelling`).
+    func storesSelling(department: String, sub: String?, language: Language) async throws -> [StoreCard]
 
     /// Today's answers to the same calls, kept on the phone (`ShelfMemory`):
     /// drawn at once while the calls are asked again. Nil when there is none.
@@ -32,6 +35,7 @@ protocol CatalogServicing: Sendable {
 extension CatalogServicing {
     func liveOccasions(language: Language) async throws -> LiveOccasions { .empty }
     func occasionPage(slug: String, language: Language) async throws -> OccasionPage { .empty }
+    func storesSelling(department: String, sub: String?, language: Language) async throws -> [StoreCard] { [] }
     func rememberedLiveOccasions(language: Language) -> LiveOccasions? { nil }
     func rememberedProducts(first: Int, department: String?, language: Language) -> [Product]? { nil }
     func rememberedBestsellers(language: Language) -> [Product]? { nil }
@@ -57,7 +61,9 @@ struct CatalogService: CatalogServicing {
     }
 
     func search(_ query: String, department: String?, limit: Int, language: Language) async throws -> SearchResult {
-        try await client.call(API.search, .init(q: query, department: department, locale: language.rawValue, limit: limit))
+        // With the stores that sell what matched: the results page and the
+        // search sheet both draw them first, on the owner's word.
+        try await client.call(API.search, .init(q: query, department: department, locale: language.rawValue, limit: limit, stores: true))
     }
 
     func bestsellers(language: Language) async throws -> [Product] {
@@ -78,6 +84,10 @@ struct CatalogService: CatalogServicing {
 
     func brands() async throws -> [BrandCount] {
         try await client.call(API.brands)
+    }
+
+    func storesSelling(department: String, sub: String?, language: Language) async throws -> [StoreCard] {
+        try await client.call(API.storesSelling, .init(department: department, sub: sub, locale: language.rawValue))
     }
 
     func contact() async throws -> ShopContact {

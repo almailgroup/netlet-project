@@ -82,7 +82,7 @@ export function prefetchRouteData(
     const term = searchTermFrom(location.search).trim();
     /* A department's own search depends on which department the slug names,
        which needs the catalogue; the results page searches them all. */
-    if (term && path.startsWith("/search")) ask(utils.search.products.prefetch({ q: term, department: null, locale, limit: SEARCH_LIMIT }));
+    if (term && path.startsWith("/search")) ask(utils.search.products.prefetch({ q: term, department: null, locale, limit: SEARCH_LIMIT, stores: true }));
     return;
   }
   /* The home page's Trending and Bestsellers are the server's own shelves. */

@@ -30,12 +30,25 @@
  * stands beside the lines rather than under them, so Checkout stays on the
  * screen down a long bag, and the two together are as wide as the account's
  * column plus the summary.
+ *
+ * **Its search searches the bag, on the owner's word** ("the search bar should
+ * only search for what's in the specific page … cart"): the header's field
+ * reads "Search your cart" on a wide screen, and a phone, which has no header
+ * here, draws the same field under the title (`PageSearch.tsx`). Typing leaves
+ * the lines whose name, option or store answer every word (`textsMatch`) and
+ * says how many; the summary is still the whole bag's, since what is chosen
+ * for checkout does not change because somebody looked for one line.
  */
 import { AllChoice, BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
 import { DeliveryAddressCard, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { SavedForLater } from "@/components/cart/SavedForLater";
 import { BUTTON_PRIMARY, CARD, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
 import { PhoneActionBar, TAB_BAR_REACH } from "@/components/layout/PhoneActionBar";
+import { PageSearchField, PageSearchMissed, useHeaderDrawn, usePageTerm } from "@/components/layout/PageSearch";
+import { usePageChrome } from "@/components/layout/StorefrontShell";
+import { textsMatch } from "@shared/commerce/search";
+import { isolate } from "@/lib/isolate";
+import type { CartItem } from "@shared/commerce/types";
 import { CountBadge } from "@/components/ui/CountBadge";
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
@@ -62,6 +75,14 @@ export default function Cart() {
   const { user, isAuthenticated } = useAuth();
   usePageMeta(privatePageMeta("Your cart"));
   const items = cart?.items.length ?? 0;
+  /* The bag searches itself while there is something in it. */
+  usePageChrome({ pageSearch: items ? { placeholder: "search.inCart" } : null });
+  const term = usePageTerm();
+  const headerDrawn = useHeaderDrawn();
+  const matches = term
+    ? (item: CartItem) => textsMatch([item.productTitle, item.productTitleAr, item.variantTitle, item.bundleName, item.vendor?.name, item.vendor?.nameAr], term)
+    : undefined;
+  const found = matches && cart ? cart.items.filter(matches).length : null;
   /* The units ticked for this checkout (`cartChoice.ts`). */
   const chosenCount = cart ? cart.chosenCount ?? cart.itemCount : 0;
   const [checkoutRef, checkoutBelow] = useBeyondScreen("bottom", TAB_BAR_REACH);
@@ -108,6 +129,7 @@ export default function Cart() {
           note={items && cart ? t("cart.itemCount", { count: cart.itemCount }) : undefined}
           actions={<SavedLink />}
         />
+        {items && !headerDrawn ? <PageSearchField setup={{ placeholder: "search.inCart" }} className="mb-3" /> : null}
         {!items && settling ? (
           <BagSettling />
         ) : !items ? (
@@ -127,13 +149,16 @@ export default function Cart() {
                 accountName={user?.name}
                 accountPhone={details.data?.phone ? formatPhone(details.data.phone) : null}
               />
-              <BagLines layout="page" />
+              {found !== null ? (
+                <p role="status" className="px-1 text-[14px] font-semibold text-[#0a285a]">{t("cart.searchShown", { term: isolate(term), count: found })}</p>
+              ) : null}
+              {found === 0 ? <PageSearchMissed term={term} shopWide={false} /> : <BagLines layout="page" matches={matches} />}
             </div>
             <aside aria-label={t("checkout.orderSummary")} className={`${CARD} p-4 sm:p-6 lg:sticky lg:top-[92px]`}><BagSummary checkoutRef={checkoutRef} heading onCheckout={goToCheckout} standIn={checkoutBelow && !wide} /></aside>
             {/* Under Checkout, on the owner's word — on a phone after the
                 summary, on a wide screen under both columns — so the bag and
                 what it costs come first. It sat directly under the lines. */}
-            <SavedForLater className="min-w-0 pt-3 lg:col-span-2" />
+            {term ? null : <SavedForLater className="min-w-0 pt-3 lg:col-span-2" />}
           </div>
         )}
       </div>

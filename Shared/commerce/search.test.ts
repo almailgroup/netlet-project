@@ -13,6 +13,7 @@ import {
   searchScore,
   searchWords,
   stemWord,
+  textsMatch,
   tokensOf,
   type SearchDoc,
 } from "./search.js";
@@ -170,5 +171,28 @@ describe("what the dropdown draws", () => {
     expect(departmentsMatching("بقالة").map(d => d.slug)).toEqual(["grocery"]);
     expect(departmentsMatching("zzz")).toEqual([]);
     expect(brandsMatching("sams", ["Samsung", "Philips"])).toEqual(["Samsung"]);
+  });
+});
+
+describe("textsMatch, a page's own search", () => {
+  it("holds when every word is somewhere in the texts, whole, begun or a synonym", () => {
+    expect(textsMatch(["Mobile phones", "الهواتف"], "phone")).toBe(true);
+    expect(textsMatch(["Mobile phones"], "mob pho")).toBe(true);
+    expect(textsMatch(["Wallet", "NetLet points"], "points wallet")).toBe(true);
+    expect(textsMatch(["Mobile phones"], "phone case")).toBe(false);
+    /* The shopper's own word: a sofa is a قنفة. */
+    expect(textsMatch(["Sofa"], "قنفة")).toBe(true);
+  });
+
+  it("folds Arabic as the shop's search folds it, either language", () => {
+    expect(textsMatch(["ساعة ذكية"], "الساعات")).toBe(true);
+    expect(textsMatch(["ساعة ذكية"], "ساعه")).toBe(true);
+    expect(textsMatch([null, "Smart watch", undefined], "watches")).toBe(true);
+    expect(textsMatch(["إلكترونيات"], "الكترونيات")).toBe(true);
+  });
+
+  it("takes nothing typed as everything, and nothing to read as no match", () => {
+    expect(textsMatch(["Anything"], "   ")).toBe(true);
+    expect(textsMatch([], "phone")).toBe(false);
   });
 });

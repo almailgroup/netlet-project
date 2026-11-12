@@ -234,9 +234,12 @@ export default function Store() {
             ) : null}
           </div>
 
-          {shelf.length > SEARCH_FROM || departments.length > 1 ? (
+          {/* The box also whenever the address carries words — a store opened
+              from a search's "Stores that sell it" — so they can be changed
+              or cleared. */}
+          {shelf.length > SEARCH_FROM || view.term || departments.length > 1 ? (
             <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-              {shelf.length > SEARCH_FROM ? (
+              {shelf.length > SEARCH_FROM || view.term ? (
                 <form role="search" className="lg:w-[320px] lg:shrink-0" onSubmit={event => event.preventDefault()}>
                   <label className="relative block">
                     <span className="sr-only">{t("stores.searchLabel", { name: store.name })}</span>

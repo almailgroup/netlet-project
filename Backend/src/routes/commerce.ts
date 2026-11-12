@@ -10,6 +10,7 @@
  * account — NetLet asks for one at checkout, not at the door.
  */
 
+import { storesSelling } from "../services/storesSelling.js";
 import { DELIVERY_CHOICES } from "../../../Shared/commerce/delivery.js";
 import { listBestsellers, listBrands, listTrending } from "../services/homeShelves.js";
 import { currencyRates } from "../services/currencyRates.js";
@@ -133,6 +134,14 @@ export const commerceRouter = router({
   stores: publicProcedure
     .input(z.object({ locale: localeSchema, limit: z.number().int().min(1).max(STORE_INDEX_LIMIT).optional() }).optional())
     .query(({ input }) => listStoreCards(input?.locale ?? "en", input?.limit)),
+  /**
+   * The stores that sell in a department, or one of its subcategories, the
+   * one selling the most first (`storesSelling`): the Categories page's
+   * stores and the row over a subcategory's products.
+   */
+  storesSelling: publicProcedure
+    .input(z.object({ department: z.string().trim().min(1).max(120), sub: z.string().trim().max(60).nullish(), locale: localeSchema }))
+    .query(({ input }) => storesSelling(input)),
   /** One store's public page — null for an address no approved store answers to. */
   store: publicProcedure
     .input(z.object({ slug: z.string().min(1).max(120), locale: localeSchema }))
