@@ -36,8 +36,6 @@ enum Route: Hashable {
     case returns
     /// What the shopper buys again and again — the web's `/account/frequent`.
     case frequent
-    /// How the shopper pays and the cards they save — the web's `/account/payments`.
-    case payments
     case profile
     case listings
     case newListing
@@ -54,7 +52,9 @@ enum Route: Hashable {
     case reviews
     case help
     case supportThread(id: Int)
-    case rewards
+    /// The points and the saved cards — the web's `/account/wallet`, which
+    /// `/account/rewards` and `/account/payments` open too.
+    case wallet
     case affiliate
     case subscriptions
     // The pages the footer leads to.
@@ -128,7 +128,6 @@ enum Route: Hashable {
                 }
             case "returns": return .returns
             case "frequent": return .frequent
-            case "payments": return .payments
             case "details": return .profile
             // Account security went into "Your profile", on the owner's word;
             // a notice sent before still links to its old address.
@@ -141,7 +140,9 @@ enum Route: Hashable {
             case "offers": return .offers
             case "reviews": return .reviews
             case "help": return .help
-            case "rewards": return .rewards
+            // NetLet points and Payment methods are the Wallet now, on the
+            // owner's word; a notice sent before still links to the old ones.
+            case "wallet", "rewards", "payments": return .wallet
             case "affiliate": return .affiliate
             case "subscriptions": return .subscriptions
             case "selling": return .portal("/admin")
@@ -692,7 +693,7 @@ final class AppModel {
     func open(_ route: Route) {
         switch route {
         case .orders, .order, .profile, .addresses, .preferences, .notifications, .wishlists, .wishlist, .offers,
-             .reviews, .help, .supportThread, .rewards, .affiliate, .subscriptions, .invoice, .frequent:
+             .reviews, .help, .supportThread, .wallet, .affiliate, .subscriptions, .invoice, .frequent:
             if session.isSignedIn { push(route) } else { openAccount(route) }
         case .listings, .newListing, .portal:
             if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }

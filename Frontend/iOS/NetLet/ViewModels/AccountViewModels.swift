@@ -8,13 +8,16 @@ import Observation
 @MainActor
 final class ProfileViewModel {
     enum Form: Hashable {
-        case name, phone, gender, birthday, password
+        /// The gender and the birthday, one row with one Save, on the owner's word.
+        case name, phone, about, password
     }
 
     var firstName = ""
     var lastName = ""
     /// The phone as typed; `+965` is drawn before the box.
     var phone = ""
+    /// The gender being chosen, "male" or "female", or nil.
+    var gender: String?
     /// The birthday being chosen, `yyyy-mm-dd`, or empty.
     var birthday = ""
     var currentPassword = ""
@@ -69,6 +72,9 @@ final class ProfileViewModel {
 
     var birthdayChanged: Bool { birthday != (details.birthday ?? "") }
 
+    /// Whether the gender-and-birthday row holds anything not yet saved.
+    var aboutChanged: Bool { gender != details.gender || birthdayChanged }
+
     private var storedPhone: String { details.phone.map(PhoneNumber.display) ?? "" }
 
     func saveName() async -> User? {
@@ -96,22 +102,23 @@ final class ProfileViewModel {
         await save(.phone, API.DetailsPatch(phone: .text(phone)))
     }
 
-    /// One press is the choice; pressing the chosen one again takes it away.
-    func choose(gender: String) async {
-        await save(.gender, API.DetailsPatch(gender: OrNull(details.gender == gender ? nil : gender)))
+    /// A gender pressed is a choice in the open row, not a save; pressing the
+    /// chosen one again takes it away.
+    func pick(gender next: String) {
+        gender = gender == next ? nil : next
     }
 
-    func saveBirthday() async {
+    /// The gender and the birthday together, sending only what changed of them.
+    func saveAbout() async {
         if !birthday.isEmpty, let problem = Validation.birthdayProblem(birthday, today: StoreRules.kuwaitDay(Date())) {
-            problems[.birthday] = problem
+            problems[.about] = problem
             return
         }
-        await save(.birthday, API.DetailsPatch(birthday: OrNull(birthday.isEmpty ? nil : birthday)))
-    }
-
-    func removeBirthday() async {
-        birthday = ""
-        await save(.birthday, API.DetailsPatch(birthday: OrNull(nil)))
+        var patch = API.DetailsPatch()
+        if gender != details.gender { patch.gender = OrNull(gender) }
+        if birthdayChanged { patch.birthday = OrNull(birthday.isEmpty ? nil : birthday) }
+        guard patch.gender != nil || patch.birthday != nil else { return }
+        await save(.about, patch)
     }
 
     private func save(_ form: Form, _ patch: API.DetailsPatch) async {
@@ -121,6 +128,7 @@ final class ProfileViewModel {
     private func adopt(_ answer: ProfileDetails) {
         details = answer
         phone = storedPhone
+        gender = answer.gender
         birthday = answer.birthday ?? ""
     }
 
@@ -157,9 +165,8 @@ final class ProfileViewModel {
         switch form {
         case .name: firstName = savedFirst; lastName = savedLast
         case .phone: phone = storedPhone
-        case .birthday: birthday = details.birthday ?? ""
+        case .about: gender = details.gender; birthday = details.birthday ?? ""
         case .password: currentPassword = ""; newPassword = ""; newPasswordAgain = ""
-        case .gender: break
         }
     }
 

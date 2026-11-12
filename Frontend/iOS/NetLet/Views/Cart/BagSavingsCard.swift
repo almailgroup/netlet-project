@@ -178,7 +178,7 @@ private struct PointsRow: View {
                 } else {
                     heading
                     Text(l.t("cart.noPoints")).font(.inter(13)).foregroundStyle(Brand.muted)
-                    Button(l.t("cart.howToEarn")) { app.push(.rewards) }
+                    Button(l.t("cart.howToEarn")) { app.push(.wallet) }
                         .font(.inter(13, .bold))
                         .foregroundStyle(Brand.navy)
                         .frame(minHeight: 36)

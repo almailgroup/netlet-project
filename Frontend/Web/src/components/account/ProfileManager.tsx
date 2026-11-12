@@ -1,11 +1,19 @@
 /**
  * "Your profile", compact on the owner's word ("make it very compact and
  * simple, it should list your details by default and you can edit them"): one
- * card listing what the account holds — the photo, the name, the sign-in
- * email, the phone, the gender, the birthday and the password — each as a row
- * with its value and an Edit (`DetailRow`). Pressing Edit opens that row's
- * own form in its place, and only one row is open at a time; Save or Cancel
- * closes it again. Deleting the account is its own card under the list.
+ * card listing what the account holds, each as a row with its value and an
+ * Edit (`DetailRow`). Pressing Edit opens that row's own form in its place,
+ * and only one row is open at a time; Save or Cancel closes it again.
+ * Deleting the account is its own card under the list.
+ *
+ * **The rows run from what the account needs to what it may add, on the
+ * owner's word** ("put the name next to the profile photo, not below it … the
+ * gender and birthday … one option that the user can expand to edit them …
+ * keep the email, phone number and password the same, just make sure their
+ * order is correct and professional; first ones will be the necessary
+ * options"): the photo with the name beside it (`ProfileIdentity`), the
+ * sign-in email, the phone the driver calls, the password, and then the
+ * gender and the birthday as one row (`AboutEditor`), both optional.
  *
  * **Account security is this page now, on the owner's word** ("remove the
  * account security, instead put all its functions in the edit profile page"):
@@ -14,8 +22,7 @@
  * not offered on the page (`auth.changeEmail` stays on the server, unused by
  * it); an account made with a phone has no email, and its row offers to add one.
  *
- * Each row is its own decision with its own Save — or, for a choice made in
- * one press (a gender), saved as it is pressed — because one Save across all
+ * Each row is its own decision with its own Save, because one Save across all
  * of them would change a password somebody only opened the page to correct a
  * spelling in.
  *
@@ -36,18 +43,18 @@ import { useAuth } from "@/hooks/useAuth";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { nameProblem, NAME_PART_MAX, splitName } from "@shared/commerce/profileDetails";
 import { formatPhone } from "@shared/commerce/wishlist";
-import { BirthdayEditor, GenderEditor, PhoneEditor, useDetailsSave } from "@/components/account/ProfileDetailCards";
+import { AboutEditor, PhoneEditor, useDetailsSave } from "@/components/account/ProfileDetailCards";
 import { DetailRow, FloatingField, NotAdded, PANEL, RowButtons, primary, secondary } from "@/components/account/profileParts";
 import { DeleteAccount } from "@/components/account/DeleteAccount";
 import { AddEmailFields } from "@/components/auth/PhoneSignIn";
 import { shownPhone } from "@shared/auth/phone";
-import { ProfilePhotoRow } from "@/components/account/ProfilePhoto";
+import { ProfileIdentity } from "@/components/account/ProfilePhoto";
 import { Check, Eye, EyeOff, KeyRound, LoaderCircle, Plus, ShieldCheck } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 type PublicUser = { id: number; email: string | null; phone?: string | null; name: string | null; role: string };
-type Row = "name" | "email" | "phone" | "gender" | "birthday" | "password";
+type Row = "name" | "email" | "phone" | "password" | "about";
 
 export function ProfileManager({ user }: { user: PublicUser }) {
   const { t } = useTranslation();
@@ -81,10 +88,9 @@ export function ProfileManager({ user }: { user: PublicUser }) {
   return (
     <div className="space-y-3">
       <section aria-label={t("profile.detailsLabel")} className={`${PANEL} divide-y divide-dashed divide-[#e3e6ec]`}>
-        <ProfilePhotoRow user={user} />
-        <DetailRow {...rowOf("name", t("profile.nameTitle"))} value={fullName ? <bdi dir="auto">{fullName}</bdi> : <NotAdded>{t("profile.notAdded")}</NotAdded>}>
+        <ProfileIdentity name={fullName} editing={editing === "name"} onEdit={() => setEditing("name")}>
           <NameEditor user={user} parts={parts} onSaved={() => { refresh(); close(); }} onCancel={close} onFail={fail} />
-        </DetailRow>
+        </ProfileIdentity>
         {user.email ? (
           <DetailRow {...rowOf("email", t("account.emailCard"))} readOnly value={<bdi dir="ltr">{user.email}</bdi>} />
         ) : (
@@ -98,12 +104,6 @@ export function ProfileManager({ user }: { user: PublicUser }) {
         )}
         <DetailRow {...rowOf("phone", t("profile.phoneTitle"))} value={phone ? <bdi dir="ltr">+965 {formatPhone(phone)}</bdi> : <NotAdded>{t("profile.notAdded")}</NotAdded>}>
           <PhoneEditor details={details.data ?? null} saving={detailsSave.pending} onSave={next => detailsSave.send({ phone: next })} onDone={close} />
-        </DetailRow>
-        <DetailRow {...rowOf("gender", t("profile.genderTitle"))} value={gender ? t(gender === "male" ? "profile.male" : "profile.female") : <NotAdded>{t("profile.notAdded")}</NotAdded>}>
-          <GenderEditor details={details.data ?? null} onChoose={next => detailsSave.send({ gender: next })} onDone={close} />
-        </DetailRow>
-        <DetailRow {...rowOf("birthday", t("profile.birthdayTitle"))} value={birthday ? formatDate(birthday) : <NotAdded>{t("profile.notAdded")}</NotAdded>}>
-          <BirthdayEditor details={details.data ?? null} saving={detailsSave.pending} onSave={next => detailsSave.send({ birthday: next })} onDone={close} />
         </DetailRow>
         {user.email ? (
           <DetailRow
@@ -121,9 +121,35 @@ export function ProfileManager({ user }: { user: PublicUser }) {
             />
           </DetailRow>
         ) : null}
+        {/* Both optional, so one row after everything the account needs. */}
+        <DetailRow
+          {...rowOf("about", t("profile.aboutTitle"))}
+          value={gender || birthday ? (
+            <span className="block space-y-0.5">
+              <AboutLine label={t("profile.genderTitle")}>
+                {gender ? t(gender === "male" ? "profile.male" : "profile.female") : <NotAdded>{t("profile.notAdded")}</NotAdded>}
+              </AboutLine>
+              <AboutLine label={t("profile.birthdayTitle")}>
+                {birthday ? formatDate(birthday) : <NotAdded>{t("profile.notAdded")}</NotAdded>}
+              </AboutLine>
+            </span>
+          ) : <NotAdded>{t("profile.notAdded")}</NotAdded>}
+        >
+          <AboutEditor details={details.data ?? null} saving={detailsSave.pending} onSave={patch => detailsSave.send(patch)} onDone={close} />
+        </DetailRow>
       </section>
       <DeleteAccount />
     </div>
+  );
+}
+
+/** One of the gender-and-birthday row's two lines: what it is, small, and what is saved. */
+function AboutLine({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2">
+      <span className="text-[13px] font-medium ink-muted">{label}</span>
+      <span>{children}</span>
+    </span>
   );
 }
 

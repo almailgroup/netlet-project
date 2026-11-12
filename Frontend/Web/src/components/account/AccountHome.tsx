@@ -17,6 +17,11 @@
  * balance. **Account security is not a row any more**: the password and
  * deleting the account are on "Your profile", under the pencil.
  *
+ * **The points tile is the Wallet, on the owner's word** ("instead of NetLet
+ * points … rename it to wallet, and store everything there"): it opens
+ * `/account/wallet`, which holds the points and the saved cards, so Payment
+ * methods is no longer a row of its own.
+ *
  * **Every row is a section the account has** (`entries`, the page's own list
  * with the hidden ones taken out), so a switched-off programme or a seller's
  * row never appears for somebody who cannot open it. What is waiting is said
@@ -72,7 +77,6 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import {
   Bell,
   ChevronRight,
-  CreditCard,
   History,
   LifeBuoy,
   LogOut,
@@ -109,7 +113,6 @@ type Row = {
 const CARDS: Row[][] = [
   [
     { id: "addresses", label: "address.book", icon: MapPin },
-    { id: "payments", label: "account.sectionPayments", icon: CreditCard },
     { id: "offers", label: "offers.mine", icon: Tag },
     { id: "subscriptions", label: "subscriptions.section", icon: Repeat },
   ],
@@ -177,8 +180,8 @@ export function AccountHome({ user, has, badge, onSignOut }: {
       </div>
 
       <section aria-label={t("account.yourWay")} className={`${PANEL} flex items-center gap-4 p-4 sm:p-5`}>
-        {/* The photo the shopper chose, or their initials (`ProfileAvatar`). */}
-        <ProfileAvatar user={user} size="size-16" textClass="text-[22px]" />
+        {/* The photo the shopper chose, or the default avatar (`ProfileAvatar`). */}
+        <ProfileAvatar size="size-16" />
         <div className="min-w-0 flex-1">
           {/* Wraps rather than truncating: cut on an Arabic page, a Latin
               name lost its first letters, and it is what somebody reads to be
@@ -236,23 +239,27 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           />
         ) : null}
         <PreviewTile
-          href="/account/rewards"
-          title={t("account.points")}
+          href="/account/wallet"
+          title={t("account.wallet")}
           photos={[]}
           loading={false}
           empty=""
           waiting={null}
-          label={rewards.data ? `${t("account.points")}, ${t("rewards.balance", { points: formatCount(rewards.data.balance, locale) })}` : undefined}
+          label={rewards.data ? `${t("account.wallet")}, ${t("rewards.balance", { points: formatCount(rewards.data.balance, locale) })}` : undefined}
           body={
-            /* The coin and the number alone: the tile's title already says
-               "NetLet points", and "1,200 points" broke onto two lines in a
-               phone's half-width tile. */
+            /* The coin, what it counts and the number: "1,200 points" on one
+               line broke onto two in a phone's half-width tile, so the words
+               are a small line over the figure. */
             <span aria-hidden className="mt-3 flex aspect-[4/1.3] items-center gap-2 overflow-hidden rounded-xl bg-[#fff6ef] px-2 min-[360px]:gap-2.5 min-[360px]:px-3">
               <PointsCoin size={28} />
-              {/* Shrinks with a narrow phone rather than being cut: "1,…" on a
-                  320px screen said nothing. */}
-              <span className="min-w-0 whitespace-nowrap text-[clamp(15px,5.2vw,22px)] font-extrabold tabular-nums text-[#0a285a]">
-                {rewards.data ? formatCount(rewards.data.balance, locale) : "—"}
+              <span className="flex min-w-0 flex-col">
+                {/* Under 360px the words do not fit beside the coin; the coin says it there. */}
+                <span className="hidden truncate text-[12px] font-semibold leading-4 text-[#7a4a2e] min-[360px]:block">{t("account.points")}</span>
+                {/* Shrinks with a narrow phone rather than being cut: "1,…" on
+                    a 320px screen said nothing. */}
+                <span className="min-w-0 whitespace-nowrap text-[clamp(15px,5.2vw,22px)] font-extrabold leading-tight tabular-nums text-[#0a285a]">
+                  {rewards.data ? formatCount(rewards.data.balance, locale) : "—"}
+                </span>
               </span>
             </span>
           }

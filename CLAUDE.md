@@ -2550,14 +2550,15 @@ underlined words.
 of Noon's profile; `AccountHome`): its name, "Your account", with the
 notifications as a bell in its end corner, the unread counted on it
 (`CountBadge`, also on the owner's word — it replaced the Notifications row);
-a card with the initials in a pale circle,
+a card with the photo or the default avatar (below, "A profile photo"),
 the name, the email and a pencil to "Your profile"; **four tiles, two by two,
 on the owner's word** ("make Frequently bought and NetLet points … like My
 orders and Saved items, so all should be in four boxes"): "My orders" and
-"Saved items", then "Frequently bought" and "NetLet points" — the first three
+"Saved items", then "Frequently bought" and "Wallet" — the first three
 showing the last four pictures (`orders.list`'s own photos, the hearts read by
-id, `frequent.list`'s products) or saying there is nothing yet, the points the
-coin and the balance on a pale orange plate. **Every tile is the height of the
+id, `frequent.list`'s products) or saying there is nothing yet, the Wallet the
+coin, "NetLet points" and the balance on a pale orange plate (the words left
+off under 360px, where they do not fit beside the coin). **Every tile is the height of the
 tallest** (`auto-rows-fr`; the app's `TileGrid`), with its picture at the
 foot, because "Frequently bought" wraps on a 320px phone and a row of its own
 height read as a broken grid; the balance shrinks with the screen rather than
@@ -2584,7 +2585,7 @@ own name for it. Preferences keeps the delivery area and the notices.
 
 **Only the rows somebody needs, on the owner's word** ("I only want the
 options that are 100 percent needed in the profile page; combine or remove
-options if necessary"). The first card is Addresses and Payment methods;
+options if necessary"). The first card is Addresses;
 Price requests and Subscribe & Save are rows only for
 somebody who has one (`offers.list`, `subscriptions.mine`), since for anybody
 else they open an empty page, and their pages stay open to a link. The
@@ -2602,14 +2603,25 @@ is — every request across their orders, newest first (`orders.myReturns`,
 `SHOPPER_RETURNS`), each with today's photo, the item as the order froze it,
 refund or exchange, the state in the opened order's words, and the order to
 open; nothing yet says how to start one. The Orders section is "Orders" now,
-its line naming tracking, cancelling and the refund. **Payment methods
-(`/account/payments`, `AccountPayments`; `PaymentMethodsView`) is the saved
-cards and a way to add one, and nothing else, on the owner's word** ("remove
-the ways to pay … only saved cards; you can only add payment methods"): it
-listed cash on delivery as the default and KNET, a card and Apple Pay as
-coming, and how an order is paid is checkout's question, not the account's.
-It says what is true today — no saved cards, "Add a payment method" drawn and
-not pressable, marked as coming, and a line that NetLet never stores a card
+its line naming tracking, cancelling and the refund. **The Wallet is
+everything the account holds that is worth money, on the owner's word**
+("instead of NetLet points … rename it to wallet, and store everything there,
+from NetLet points to anything else related to wallet"; `/account/wallet`,
+`AccountWallet`; the app's `WalletView`): the points' balance with the coin
+and converting it (`PointsWallet`), the saved cards (`SavedCards`, the app's
+`SavedCardsCard`), the two ways to earn and the points history. It was two
+pages, the points (`/account/rewards`) and Payment methods
+(`/account/payments`); both addresses open the Wallet (`MOVED` in
+`Account.tsx`, the app's `Route.from`), and Payment methods is no longer a
+row. Gift cards are not in it because the account holds none — a gift card is
+a code typed and spent at checkout, and keeping a list of them would be a
+table, a migration not shown. **The saved cards are the cards and a way to
+add one, and nothing else, on the owner's word** ("remove the ways to pay …
+only saved cards; you can only add payment methods"): they listed cash on
+delivery as the default and KNET, a card and Apple Pay as coming, and how an
+order is paid is checkout's question, not the account's. The card says what
+is true today — no saved cards, "Add a payment method" drawn and not
+pressable, marked as coming, and a line that NetLet never stores a card
 number. Saving a card needs a payment provider that keeps it as a token
 (KNET's gateway, or a card processor) — a provider account and a table of
 tokens, a schema change shown first — and until then a card form would be a
@@ -2733,11 +2745,21 @@ deletes one and checks each refusal; the privacy policy says it, and
 
 **"Your profile" is one list, compact, on the owner's word** ("make it very
 compact and simple, it should list your details by default and you can edit
-them"): one card of rows — the photo, the name, the sign-in email, the phone,
-the gender, the birthday and the password (dots, "A password is set" to a
-screen reader) — each its label small and muted, its value or "Not added"
-under it and an Edit at the row's end (`DetailRow` in `profileParts.tsx`; the
-app's `ProfileForm`). Edit opens that row's own form in its place and only one
+them"): one card of rows — each its label small and muted, its value or "Not
+added" under it and an Edit at the row's end (`DetailRow` in
+`profileParts.tsx`; the app's `ProfileForm`). **The rows run from what the
+account needs to what it may add, on the owner's word** ("put the name next
+to the profile photo, not below it … for the gender and birthday, make it into
+one option that the user can expand to edit them … keep the email, phone
+number and password the same, just make sure their order is correct and
+professional; first ones will be the necessary options"): the photo with the
+name beside it in 18px (`ProfileIdentity` in `ProfilePhoto.tsx`, the app's
+`identityRow` over `ProfilePhotoControls`), its photo presses under the name
+and the name's Edit at the row's end, opening the name's form at the row's
+foot while the circle and the name stay put; then the sign-in email, the
+phone, the password (dots, "A password is set" to a screen reader); and last
+"Gender and birthday", one row that says both and opens both
+(`AboutEditor`, the app's `aboutEditor`). Edit opens that row's own form in its place and only one
 row is open at a time; Save or Cancel closes it, and the keyboard goes back to
 the row's Edit (VoiceOver's focus too). The email is shown and not changed;
 an account made with a phone has no email, and its row's press is Add.
@@ -2751,11 +2773,12 @@ wrong — `FloatingField` on the web and in the app. The label never moves, so
 the sign-in form's rule against one that lifts as you type still holds.
 
 **And it holds what the reference holds, on the owner's word** (migration
-0070): a first and a last name side by side, a phone, a gender and a birthday,
-each its own card — the phone and the birthday with a Save, a gender saved as
-it is pressed and taken away by pressing it again, because one Save across
-them would change a password somebody opened the page to correct a spelling
-in. `Shared/commerce/profileDetails.ts` is the rule, pure (both names needed,
+0070): a first and a last name side by side, a phone, a gender and a birthday
+— the gender and the birthday one row with one Save that sends what changed of
+the two (a gender pressed is a choice there, pressing it again takes it away;
+the app's `ProfileViewModel.saveAbout`), every other detail its own, because
+one Save across them all would change a password somebody opened the page to
+correct a spelling in. `Shared/commerce/profileDetails.ts` is the rule, pure (both names needed,
 60 each; a Kuwaiti number, the wishlist's `normalisePhone`; a real date from
 1900 to today's Kuwaiti day), and `customer.details` and
 `auth.updateNameParts` refuse what it refuses. **The nationality went, on the
@@ -2790,8 +2813,13 @@ their profiles"; migration 0076, `profile_photos`; `Shared/commerce/profilePhoto
 the rule, `Backend/src/services/profilePhoto.ts` the database half). It is the
 circle wherever the account is named to its owner — the account home's card,
 the header's account control and "Your profile" (`ProfileAvatar`, the app's
-`ProfileAvatar`) — and the initials where there is none, or where it cannot be
-read. **It is shown to its owner and nobody else**, so it is never under
+`ProfileAvatar`) — and **a default avatar where there is none, or where it
+cannot be read, never the initials, on the owner's word** ("instead of
+initials being shown for default profile page, just make it a default avatar
+instead"): a head and shoulders in a muted navy on a pale circle, cut by the
+circle's edge as a phone's contacts draw somebody with no photo
+(`DefaultAvatar`, the same 64 grid on the web and in the app). The header's
+account control keeps its outline person icon where there is no photo. **It is shown to its owner and nobody else**, so it is never under
 `/media`, where every file is public under a random id and kept by the CDN for
 a day: it is a row of its own holding the bytes, read from
 `GET /api/profile/photo/<id>?v=<version>`, which answers only the account the
@@ -2799,7 +2827,7 @@ path names (anybody else gets the same 404 as an account with none), as
 `private, no-cache` with the version as its ETag — the browser keeps a copy
 but asks each time, so the cookie is checked on every use and the next person
 on a shared device never sees it. It goes with the account by the cascade.
-**Chosen on "Your profile"** (`ProfilePhotoCard`, the app's the same): the
+**Chosen on "Your profile"**, under the name (`ProfileIdentity`, the app's `ProfilePhotoControls`): the
 browser's or the phone's own picker, the largest square from the centre at
 `PROFILE_PHOTO_EDGE` (512) made on the device (`prepareProfilePhoto`,
 `ImagePreparation.squareJPEG`) and shown in the circle before anything is sent,
@@ -2808,7 +2836,7 @@ is its own decision; Remove asks first. The server reads what it is from its
 own bytes, checks the square again (`profilePhotoProblem`) and counts
 `MAX_PROFILE_PHOTOS_PER_HOUR` only once the bytes have passed. **Until 0076 is
 pasted it is closed, not broken**: `customer.photo.get` answers `ready: false`,
-the card is not drawn and the circle is the initials, and a save says
+the photo's presses are not drawn and the circle is the default avatar, and a save says
 `profilePhoto.unavailable` without spending the hour (`profilePhoto.test.ts`
 renames the table away). The app keeps the picture in memory only, never in
 the image pipeline's disk cache, and forgets it at sign-out
@@ -5507,7 +5535,7 @@ with that link they earn points; enrol from the profile page; each point is
 one Kuwaiti fils, and points convert to money".
 
 **Joining is one press and takes effect at once.** `/account/affiliate` (a row
-and a card on the account home, a card on the points page) says what the
+and a card on the account home, a card on the Wallet) says what the
 programme is in three steps, asks the name shoppers are told (the account's
 first name, ready to change — `suggestedDisplayName`) and one condition, that
 the member says their links are paid; `affiliates.join` makes them `active`
@@ -5522,7 +5550,7 @@ their code (`affiliates.code`, a light read, `useMemberCode` on the web and
 `AppModel.memberCode` in the app); anybody else's Share is a plain link,
 because a non-member's code would earn nothing. That read also answers
 `joined`, because a suspended member has no code either and was offered
-"Join" on the account home and the points page until it did; the join card
+"Join" on the account home and the Wallet until it did; the join card
 waits for the answer, so it never flashes for a member. The rest is the Referrals
 track: the line freezes the sharer, the cash collected credits a
 `product_referral` entry in the **points pot**, held until the return window
@@ -5556,7 +5584,7 @@ NetLet's N in navy — drawn rather than a picture so it is sharp from a line of
 text to the 52px on the join card, and hidden from a screen reader beside a
 figure that already says "points". `PointsWallet` is the balance on navy with
 the coin, what it is worth spent and converted, what is held and when it frees,
-and Convert — one card on the points page and the affiliate page. Counts are
+and Convert — one card on the Wallet and the affiliate page. Counts are
 grouped in Latin digits on both pages (`formatCount`, `PointsFormat.count`),
 and the plural rule reads "1,003" as the number it is.
 
@@ -9278,11 +9306,11 @@ signed in and the sign-in for a guest; and every badge is `CountBadge` or
 system's, as before.
 
 **The affiliate programme is the app's too** (see Affiliates): the Profile
-tab's points row carries the coin and the balance, a join card sits above the
+tab's Wallet tile carries the coin and the balance, a join card sits above the
 rows for somebody not yet in, `AffiliateView` is join in one press or the
 member's page (their code, how their links are doing, `PointsWallet`, the
 products whose stores pay extra each with its own Share, and the sales one by
-one), `RewardsView` leads with the wallet and the two ways to earn, and every
+one), `WalletView` leads with the balance, then the saved cards and the two ways to earn, and every
 Share of a product carries `AppModel.memberCode` (asked at sign-in and after
 joining) and nothing for anybody else. `ShareAndEarn` follows the buy buttons
 for a member, checkout names whose link a line came through, and the heart in

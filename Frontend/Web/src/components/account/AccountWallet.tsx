@@ -1,7 +1,18 @@
 /**
- * NetLet points, on the account page (3.1.14, 3.1.15): the balance with the
- * coin and converting it to money (`PointsWallet`), the two ways to earn, and
- * the history behind the number.
+ * The Wallet, on the account page, on the owner's word ("instead of NetLet
+ * points … rename it to wallet, and store everything there, from NetLet
+ * points to anything else related to wallet"): everything the account holds
+ * that is worth money, in one place. It opens on the points (3.1.14, 3.1.15)
+ * — the balance with the coin and converting it to money (`PointsWallet`) —
+ * then the saved cards (`SavedCards`, which was the Payment methods page),
+ * the two ways to earn, and the history behind the number. The points page
+ * (`/account/rewards`) and Payment methods (`/account/payments`) were two
+ * addresses; both open this page now (`MOVED` in `Account.tsx`).
+ *
+ * Gift cards are not here because the account holds none: a gift card is a
+ * code, typed at checkout and spent there, and NetLet keeps no list of the
+ * codes a shopper has. Keeping one would be a table, which waits on a
+ * migration the owner has not seen.
  *
  * **The ways to earn are two cards, and affiliate marketing leads**, on the
  * owner's word — sharing a product and earning on the sale is the one a
@@ -21,6 +32,7 @@ import { Link } from "wouter";
 import { spendValue } from "@shared/commerce/referral";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { PointsWallet } from "@/components/account/PointsWallet";
+import { SavedCards } from "@/components/account/SavedCards";
 import { PANEL } from "@/components/account/profileParts";
 import { PointsCoin } from "@/components/ui/PointsCoin";
 import { useDateFormat } from "@/hooks/useDateFormat";
@@ -45,7 +57,7 @@ const REASON_LABEL: Record<string, MessageKey> = {
   invite_commission_reversal: "rewards.reasonInviteCommissionReversal",
 };
 
-export function AccountRewards() {
+export function AccountWallet() {
   const { t, locale } = useTranslation();
   const money = useMoney();
   const formatDate = useDateFormat();
@@ -67,6 +79,7 @@ export function AccountRewards() {
         return (
           <div className="space-y-3">
             <PointsWallet view={view} />
+            <SavedCards />
 
             <section aria-labelledby="ways-to-earn" className="space-y-3">
               <h3 id="ways-to-earn" className="px-1 pt-2 text-[15px] font-bold text-[#0a285a]">{t("rewards.waysToEarn")}</h3>

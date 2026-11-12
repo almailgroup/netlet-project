@@ -39,10 +39,9 @@ import { AddressBook } from "@/components/account/AddressBook";
 import { AccountSubscriptions } from "@/components/account/AccountSubscriptions";
 import { AccountSupport } from "@/components/account/AccountSupport";
 import { AccountOffers } from "@/components/account/AccountOffers";
-import { AccountRewards } from "@/components/account/AccountRewards";
+import { AccountWallet } from "@/components/account/AccountWallet";
 import { SellerMode } from "@/components/account/SellerMode";
 import { AccountOrders } from "@/components/account/AccountOrders";
-import { AccountPayments } from "@/components/account/AccountPayments";
 import { AccountFrequent } from "@/components/account/AccountFrequent";
 import { AccountNotifications } from "@/components/account/AccountNotifications";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -83,11 +82,10 @@ const ENTRIES: Entry[] = [
   { id: "offers", label: "offers.mine", hint: "account.hint.offers" },
   { id: "notifications", label: "notices.title", hint: "notices.tile" },
   { id: "help", label: "support.section", hint: "account.hint.help" },
-  { id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards" },
+  { id: "wallet", label: "account.wallet", hint: "account.hint.wallet" },
   { id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate" },
   { id: "details", label: "account.sectionProfile", hint: "account.hint.details" },
   { id: "addresses", label: "address.book", hint: "account.hint.addresses" },
-  { id: "payments", label: "account.sectionPayments", hint: "account.hint.payments" },
   { id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences" },
   { id: "history", label: "history.title", hint: "account.hint.history" },
   { id: "selling", label: "account.sectionSelling", hint: "account.hint.selling" },
@@ -95,12 +93,19 @@ const ENTRIES: Entry[] = [
 
 /**
  * Sections that became part of another, by their old address: Account
- * security is "Your profile" now, and Returns and Reviews are tabs of Orders —
- * each on the owner's word — and a notice, an email or a bookmark sent before
- * still links to the old one.
+ * security is "Your profile" now, Returns and Reviews are tabs of Orders, and
+ * NetLet points and Payment methods are the Wallet — each on the owner's word
+ * — and a notice, an email or a bookmark sent before still links to the old one.
  */
 /* A value that starts with "/" left the account altogether: the wishlists are a tab of Saved items now. */
-const MOVED: Record<string, string> = { security: "details", returns: "orders?view=returns", reviews: "orders?view=reviews", wishlists: "/saved?tab=wishlists" };
+const MOVED: Record<string, string> = {
+  security: "details",
+  returns: "orders?view=returns",
+  reviews: "orders?view=reviews",
+  wishlists: "/saved?tab=wishlists",
+  rewards: "wallet",
+  payments: "wallet",
+};
 const movedTo = (to: string) => (to.startsWith("/") ? to : `/account/${to}`);
 
 /** The account's one column: the home's width, in the middle of the page. */
@@ -111,12 +116,11 @@ function SectionBody({ id, user }: { id: string; user: NonNullable<ReturnType<ty
   switch (id) {
     case "orders": return <AccountOrders />;
     case "frequent": return <AccountFrequent />;
-    case "payments": return <AccountPayments />;
     case "subscriptions": return <AccountSubscriptions />;
     case "offers": return <AccountOffers />;
     case "notifications": return <AccountNotifications />;
     case "help": return <AccountSupport />;
-    case "rewards": return <AccountRewards />;
+    case "wallet": return <AccountWallet />;
     case "affiliate": return <AccountAffiliate />;
     case "details": return <ProfileManager user={user} />;
     case "addresses": return <AddressBook />;

@@ -168,7 +168,7 @@ export function AccountMenu() {
           {/* The shopper's own photo when they chose one — a small circle the
               size of the icon it stands in for, so the bar does not move. */}
           {photo.data?.url && user ? (
-            <ProfileAvatar user={user} size="size-[24px] -my-0.5" textClass="text-[10px]" />
+            <ProfileAvatar size="size-[24px] -my-0.5" />
           ) : (
             <UserRound className="size-[19px]" aria-hidden />
           )}

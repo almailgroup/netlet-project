@@ -192,7 +192,7 @@ jobs:
             shot 16-notifications "$lang" section:notifications shopper
             shot 17-wishlist "$lang" wishlist:24 shopper
             shot 19-help "$lang" supportThread:1 shopper
-            shot 20-rewards "$lang" section:rewards shopper
+            shot 20-wallet "$lang" section:wallet shopper
             shot 21-affiliate "$lang" section:affiliate shopper
             shot 22-help "$lang" page:help ""
             shot 23-terms "$lang" page:terms ""
@@ -203,7 +203,6 @@ jobs:
             shot 61-order-track "$lang" track:NL-20261001-J7MWY shopper
             shot 62-order-refund "$lang" refund:NL-20261001-J7MWY shopper
             shot 63-returns "$lang" section:returns shopper
-            shot 64-payments "$lang" section:payments shopper
             shot 28-invoice "$lang" page:invoices/INV-2026-000002 shopper
             shot 29-assistant "$lang" chat ""
             shot 30-portal-products "$lang" portal:/admin/products shopper
@@ -261,7 +260,7 @@ jobs:
             shot 80-order-help-issue "$lang" helpIssue:NL-20261001-J7MWY shopper
             shot 81-help-centre "$lang" page:help shopper
             shot 82-history "$lang" section:history shopper
-            # Your profile, with its photo card first (the shop keeps photos in the recording).
+            # Your profile, the photo with the name beside it first (the shop keeps photos in the recording).
             shot 83-your-profile "$lang" profile shopper
             # An account made with a phone: the Email card where the password was.
             shot 83b-your-profile-phone "$lang" profile phone

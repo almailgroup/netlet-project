@@ -148,7 +148,7 @@ describe("drafting with the model", () => {
     expect(draft.steps[0].imageUrl).toBeNull();
     expect(asked[0].task).toBe("guideDraft");
     expect(asked[0].prompt).toBe("Topic:\n<<<how to track an order>>>");
-    expect(asked[0].system).toContain("Payment methods");
+    expect(asked[0].system).toContain("Wallet (NetLet points and the saved cards)");
     expect(await db.select().from(guides)).toEqual([]);
   });
 

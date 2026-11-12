@@ -1,34 +1,22 @@
 /**
  * The account's circle wherever it is named to its owner — the account
  * home's card, the header's account control and "Your profile": the profile
- * photo when there is one (`Shared/commerce/profilePhoto.ts`), the initials
- * otherwise, and the initials again if the photo cannot be read. The photo is
- * shown to its owner alone: its address answers only the account it names
+ * photo when there is one (`Shared/commerce/profilePhoto.ts`), and a default
+ * avatar otherwise, or if the photo cannot be read. The photo is shown to its
+ * owner alone: its address answers only the account it names
  * (`GET /api/profile/photo/:id`). Kept apart from the choosing
  * (`ProfilePhoto.tsx`) because the header carries it on every page.
+ *
+ * **No photo is a default avatar, never the initials, on the owner's word**
+ * ("instead of initials being shown for default profile page, just make it a
+ * default avatar instead"): a person drawn in the muted navy on a pale ground,
+ * the shape a phone's own contacts use, so a new account looks finished rather
+ * than labelled. It is the same drawing in the app (`DefaultAvatar`).
  */
-import { UserRound } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { appPath } from "@/lib/basePath";
-
-/**
- * Up to two initials, from whatever we actually have.
- *
- * Falls back to the email when there is no display name, because a shopper
- * who never set one still deserves something other than a blank circle.
- * Non-Latin names work unchanged — the first character of each word is right
- * in Arabic too.
- */
-export function initialsFor(user: { name: string | null; email: string | null }): string {
-  /* An account made with a phone and no name yet has no letters to show. */
-  const source = user.name?.trim() || user.email?.split("@")[0] || "";
-  const words = source.split(/[\s._-]+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  if (words.length === 1) return [...words[0]].slice(0, 2).join("").toUpperCase();
-  return (([...words[0]][0] ?? "") + ([...words[1]][0] ?? "")).toUpperCase();
-}
 
 /** The signed-in account's photo: where to read it, and whether the shop keeps one yet. */
 export function useProfilePhoto() {
@@ -37,12 +25,30 @@ export function useProfilePhoto() {
   return photo;
 }
 
-export function ProfileAvatar({ user, size, textClass, src: shown, alt = "" }: {
-  user: { name: string | null; email: string | null };
+/**
+ * A person on a pale circle: a head and shoulders cut by the circle's edge, as
+ * a phone's contacts draw somebody with no photo. On a 64 grid, so the app's
+ * `DefaultAvatar` draws it from the same numbers.
+ */
+export function DefaultAvatar({ size, label }: { size: string; label?: string }) {
+  return (
+    <span
+      role={label ? "img" : undefined}
+      aria-label={label || undefined}
+      aria-hidden={label ? undefined : true}
+      className={`block ${size} shrink-0 overflow-hidden rounded-full bg-[#e7ecf3]`}
+    >
+      <svg viewBox="0 0 64 64" className="block size-full" aria-hidden focusable="false">
+        <circle cx="32" cy="25" r="11" fill="#a2b0c5" />
+        <ellipse cx="32" cy="60" rx="21" ry="16" fill="#a2b0c5" />
+      </svg>
+    </span>
+  );
+}
+
+export function ProfileAvatar({ size, src: shown, alt = "" }: {
   /** Tailwind size of the circle, e.g. `size-16`. */
   size: string;
-  /** The initials' type, sized to the circle. */
-  textClass: string;
   /** A photo to show instead of the saved one — the one being chosen. */
   src?: string | null;
   /** Empty beside the name, which already says whose it is. */
@@ -64,11 +70,5 @@ export function ProfileAvatar({ user, size, textClass, src: shown, alt = "" }: {
       />
     );
   }
-  return (
-    <span aria-hidden={alt === "" ? true : undefined} role={alt ? "img" : undefined} aria-label={alt || undefined} className={`grid ${size} shrink-0 place-items-center rounded-full bg-[#f1f2f6] font-bold text-[#0a285a] ${textClass}`}>
-      {/* An account made with a phone and no name yet: a person, not a "?". */}
-      {initialsFor(user) === "?" ? <UserRound className="size-[55%]" aria-hidden /> : initialsFor(user)}
-    </span>
-  );
+  return <DefaultAvatar size={size} label={alt} />;
 }
-

@@ -601,16 +601,38 @@ final class ProfileViewModelTests: XCTestCase {
         XCTAssertFalse(model.nameChanged)
     }
 
-    func testEachCardSendsOnlyItsOwnField() async throws {
+    /// The gender and the birthday are one row with one Save, on the owner's
+    /// word, and it sends only what changed of the two.
+    func testTheGenderAndBirthdayRowSendsOnlyWhatChanged() async throws {
         let account = FakeAccountService()
         let model = ProfileViewModel(account: account, user: FakeAccountService.user)
         await model.load()
-        await model.choose(gender: "female")
+        model.pick(gender: "female")
+        XCTAssertTrue(account.detailPatches.isEmpty, "a gender pressed is a choice, not a save")
+        XCTAssertTrue(model.aboutChanged)
+        await model.saveAbout()
         XCTAssertEqual(try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last)), #"{"json":{"gender":"female"}}"#)
-        await model.choose(gender: "female")
-        XCTAssertEqual(try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last)), #"{"json":{"gender":null}}"#, "the chosen one pressed again takes it away")
-        await model.removeBirthday()
-        XCTAssertEqual(try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last)), #"{"json":{"birthday":null}}"#)
+        XCTAssertFalse(model.aboutChanged)
+
+        model.pick(gender: "female")
+        XCTAssertNil(model.gender, "the chosen one pressed again takes it away")
+        model.birthday = "1990-05-17"
+        await model.saveAbout()
+        let sent = try TRPCClient.encodeInput(try XCTUnwrap(account.detailPatches.last))
+        let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(sent.utf8)) as? [String: Any])
+        let json = try XCTUnwrap(body["json"] as? [String: Any])
+        XCTAssertEqual(Set(json.keys), ["gender", "birthday"])
+        XCTAssertTrue(json["gender"] is NSNull)
+        XCTAssertEqual(json["birthday"] as? String, "1990-05-17")
+
+        let before = account.detailPatches.count
+        model.birthday = "2999-01-01"
+        await model.saveAbout()
+        XCTAssertEqual(model.problems[.about], "profile.birthdayInvalid", "a day to come is said, not sent")
+        XCTAssertEqual(account.detailPatches.count, before)
+        model.cancel(.about)
+        XCTAssertNil(model.problems[.about])
+        XCTAssertEqual(model.birthday, "1990-05-17")
     }
 
     func testAPhoneThatIsNotKuwaitiIsSaidRatherThanSent() async {

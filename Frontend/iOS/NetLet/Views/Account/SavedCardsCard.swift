@@ -1,30 +1,27 @@
 import SwiftUI
 
-/// The cards a shopper has saved — the web's `AccountPayments`, on the
-/// owner's word ("add a manage card for payment methods saved", then "remove
-/// the ways to pay … only saved cards; you can only add payment methods").
+/// The cards a shopper has saved, a card of the Wallet (`WalletView`) — the
+/// web's `SavedCards`. It was the Payment methods screen, on the owner's word
+/// ("add a manage card for payment methods saved", then "remove the ways to
+/// pay … only saved cards; you can only add payment methods"), and moved into
+/// the Wallet with the points, also on the owner's word.
 ///
 /// The saved cards and one way to add one, nothing else: the ways to pay
-/// (cash on delivery, KNET, a card, Apple Pay) are checkout's question, and
-/// left this screen. There are no saved cards yet, and "Add a payment method"
-/// cannot be pressed: saving one needs a payment provider that holds it as a
-/// token, and NetLet integrates none yet. NetLet never stores a card number,
-/// and the screen says so.
-struct PaymentMethodsView: View {
+/// (cash on delivery, KNET, a card, Apple Pay) are checkout's question. There
+/// are no saved cards yet, and "Add a payment method" cannot be pressed:
+/// saving one needs a payment provider that holds it as a token, and NetLet
+/// integrates none yet. NetLet never stores a card number, and the card says so.
+struct SavedCardsCard: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ShopPage(header: false) {
-            AccountSection(title: l.t("account.sectionPayments"), hint: l.t("account.hint.payments")) {
-                cards
-            }
-        }
+        cards
     }
 
     private var cards: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(l.t("payments.savedCards"))
-                .font(.inter(16, .heavy))
+                .font(.inter(15, .bold))
                 .foregroundStyle(Brand.navy)
                 .accessibilityAddTraits(.isHeader)
             HStack(alignment: .top, spacing: 14) {

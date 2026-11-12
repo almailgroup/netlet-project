@@ -3,9 +3,9 @@ import SwiftUI
 
 /// The account's circle wherever it is named to its owner — the Profile tab's
 /// card and "Your profile": the profile photo when there is one
-/// (`ProfilePhotoModel`), the initials otherwise. The web's `ProfileAvatar`.
+/// (`ProfilePhotoModel`), the default avatar otherwise (`DefaultAvatar`), never
+/// the initials, on the owner's word. The web's `ProfileAvatar`.
 struct ProfileAvatar: View {
-    let user: User
     let size: CGFloat
     /// A photo being chosen, shown before it is saved.
     var preview: UIImage? = nil
@@ -18,11 +18,7 @@ struct ProfileAvatar: View {
                     .resizable()
                     .scaledToFill()
             } else {
-                Text(AccountName.initials(user))
-                    .font(.inter(size * 0.34, .bold))
-                    .foregroundStyle(Brand.navy)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(ProfileInk.chip)
+                DefaultAvatar(size: size)
             }
         }
         .frame(width: size, height: size)
@@ -31,78 +27,105 @@ struct ProfileAvatar: View {
     }
 }
 
-/// Choosing the profile photo, the first row of "Your profile" — the web's
-/// `ProfilePhotoRow`: the photos library's own picker, the square drawn in
-/// the circle before anything is sent, and Save is what sends it, the page's
-/// rule that each card is its own decision. Remove asks first. Not drawn
-/// until the shop keeps photos (`ready`), so nothing offers what cannot be
-/// kept.
-struct ProfilePhotoRow: View {
-    let user: User
+/// A person on a pale circle — a head and the shoulders cut by the circle's
+/// edge, as a phone's own contacts draw somebody with no photo — on the owner's
+/// word ("instead of initials … just make it a default avatar"). The web's
+/// `DefaultAvatar`, from the same 64 grid.
+struct DefaultAvatar: View {
+    let size: CGFloat
+
+    static let ground = Color(red: 231 / 255, green: 236 / 255, blue: 243 / 255)
+    static let figure = Color(red: 162 / 255, green: 176 / 255, blue: 197 / 255)
+
+    var body: some View {
+        ZStack {
+            Circle().fill(Self.ground)
+            Circle()
+                .fill(Self.figure)
+                .frame(width: size * 22 / 64, height: size * 22 / 64)
+                .position(x: size / 2, y: size * 25 / 64)
+            Ellipse()
+                .fill(Self.figure)
+                .frame(width: size * 42 / 64, height: size * 32 / 64)
+                .position(x: size / 2, y: size * 60 / 64)
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .accessibilityHidden(true)
+    }
+}
+
+/// A profile photo chosen and squared on the phone, not yet sent.
+struct ChosenProfilePhoto {
+    let data: Data
+    let image: UIImage
+}
+
+/// The photo's presses, under the name beside the circle on "Your profile"'s
+/// first row (`ProfileForm`) — the web's `ProfileIdentity`: the photos
+/// library's own picker, the square drawn in the circle before anything is
+/// sent (`chosen`, which the row's circle shows), and Save is what sends it,
+/// the page's rule that each detail is its own decision. Remove asks first.
+/// Not drawn until the shop keeps photos (`ready`), so nothing offers what
+/// cannot be kept.
+struct ProfilePhotoControls: View {
+    @Binding var chosen: ChosenProfilePhoto?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var picked: PhotosPickerItem?
-    @State private var chosen: Chosen?
     @State private var preparing = false
     @State private var confirmRemove = false
 
-    private struct Chosen {
-        let data: Data
-        let image: UIImage
-    }
-
     var body: some View {
         if app.profilePhoto.ready {
-            // The first row of "Your profile"'s one list (`ProfileForm`), the
-            // web's `ProfilePhotoRow`: the circle, what it is and the presses.
-            HStack(alignment: .center, spacing: 14) {
-                ProfileAvatar(user: user, size: 64, preview: chosen?.image)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(l.t("profilePhoto.title"))
-                        .font(.inter(13, .medium))
-                        .foregroundStyle(Brand.muted)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(l.t(chosen != nil ? "profilePhoto.preview" : "profilePhoto.note"))
+            VStack(alignment: .leading, spacing: 6) {
+                if chosen != nil {
+                    Text(l.t("profilePhoto.preview"))
                         .font(.inter(13))
                         .foregroundStyle(Brand.body)
                         .fixedSize(horizontal: false, vertical: true)
-                    FlowLayout(spacing: 8) {
-                        if chosen != nil {
-                            Button {
-                                Task { await save() }
-                            } label: {
-                                if app.profilePhoto.saving { ProgressView().tint(Brand.navy) } else { Text(l.t("profilePhoto.save")) }
-                            }
+                }
+                FlowLayout(spacing: 8) {
+                    if chosen != nil {
+                        Button {
+                            Task { await save() }
+                        } label: {
+                            if app.profilePhoto.saving { ProgressView().tint(Brand.navy) } else { Text(l.t("profilePhoto.save")) }
+                        }
+                        .buttonStyle(OrderActionStyle())
+                        .disabled(app.profilePhoto.saving)
+                        Button(l.t("common.cancel")) { chosen = nil }
                             .buttonStyle(OrderActionStyle())
                             .disabled(app.profilePhoto.saving)
-                            Button(l.t("common.cancel")) { chosen = nil }
-                                .buttonStyle(OrderActionStyle())
-                                .disabled(app.profilePhoto.saving)
-                        } else {
-                            PhotosPicker(selection: $picked, matching: .images) {
-                                Label {
-                                    Text(preparing ? l.t("profilePhoto.preparing") : l.t(app.profilePhoto.hasPhoto ? "profilePhoto.change" : "profilePhoto.add"))
-                                } icon: {
-                                    if preparing { ProgressView().tint(Brand.navy) } else { Image(systemName: "camera") }
-                                }
-                            }
-                            .buttonStyle(OrderActionStyle())
-                            .disabled(preparing)
-                            if app.profilePhoto.hasPhoto {
-                                Button {
-                                    confirmRemove = true
-                                } label: {
-                                    Label(l.t("profilePhoto.remove"), systemImage: "trash")
-                                }
-                                .buttonStyle(OrderActionStyle())
+                    } else {
+                        PhotosPicker(selection: $picked, matching: .images) {
+                            Label {
+                                Text(preparing ? l.t("profilePhoto.preparing") : l.t(app.profilePhoto.hasPhoto ? "profilePhoto.change" : "profilePhoto.add"))
+                            } icon: {
+                                if preparing { ProgressView().tint(Brand.navy) } else { Image(systemName: "camera") }
                             }
                         }
+                        .buttonStyle(OrderActionStyle())
+                        .disabled(preparing)
+                        if app.profilePhoto.hasPhoto {
+                            Button {
+                                confirmRemove = true
+                            } label: {
+                                Label(l.t("profilePhoto.remove"), systemImage: "trash")
+                            }
+                            .buttonStyle(OrderActionStyle())
+                        }
                     }
-                    .padding(.top, 4)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                if chosen == nil {
+                    Text(l.t("profilePhoto.note"))
+                        .font(.inter(12))
+                        .foregroundStyle(Brand.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .padding(.vertical, 14)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(l.t("profilePhoto.title"))
             .onChange(of: picked) { _, item in
                 guard let item else { return }
                 picked = nil
@@ -134,7 +157,7 @@ struct ProfilePhotoRow: View {
                 minEdge: rules.media.minEdge,
                 maxBytes: rules.accountRules.maxProfilePhotoBytes
             )
-            chosen = Chosen(data: square.data, image: square.image)
+            chosen = ChosenProfilePhoto(data: square.data, image: square.image)
         } catch {
             Haptics.refused()
             app.toast(l.t("media.notAnImage"))

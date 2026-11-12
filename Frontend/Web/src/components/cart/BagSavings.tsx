@@ -286,7 +286,7 @@ function PointsSwitch({ bill }: { bill: ReturnType<typeof useSavingsBill> }) {
         {heading}
         <p className="mt-1 text-[13px] leading-5 ink-muted">
           {t("cart.noPoints")}{" "}
-          <Link href="/account/rewards" className="font-bold text-[#0a285a] underline underline-offset-2">{t("cart.howToEarn")}</Link>
+          <Link href="/account/wallet" className="font-bold text-[#0a285a] underline underline-offset-2">{t("cart.howToEarn")}</Link>
         </p>
       </div>
     );

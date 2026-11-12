@@ -62,7 +62,7 @@ struct AccountView: View {
     /// deleting the account are "Your profile"'s. **Returns and Reviews went
     /// to My orders, on the owner's word**, as tabs of its own.
     private static let cards: [[String]] = [
-        ["addresses", "payments", "offers", "subscriptions"],
+        ["addresses", "offers", "subscriptions"],
         // Browsing history, less prominent than the home's own shelf, on the owner's word.
         ["preferences", "history"],
     ]
@@ -204,7 +204,7 @@ struct AccountView: View {
         savedPhotos = products.compactMap { $0.images.first?.url }
     }
 
-    /// Who is signed in: the profile photo or the initials in a pale circle,
+    /// Who is signed in: the profile photo or the default avatar,
     /// the name as typed, the email, and a pencil to change them.
     /// The page's name, and the notifications in its end corner, on the
     /// owner's word — the bell replaced the Notifications row, with what is
@@ -239,8 +239,8 @@ struct AccountView: View {
 
     private func profileCard(_ user: User) -> some View {
         HStack(spacing: 16) {
-            // The photo the shopper chose, or their initials (`ProfileAvatar`).
-            ProfileAvatar(user: user, size: 64)
+            // The photo the shopper chose, or the default avatar (`ProfileAvatar`).
+            ProfileAvatar(size: 64)
             VStack(alignment: .leading, spacing: 2) {
                 Text(AccountName.name(user, l))
                     .font(.inter(18, .bold))
@@ -355,26 +355,35 @@ struct AccountView: View {
         .accessibilityLabel(waiting.map { "\(title), \($0)" } ?? title)
     }
 
-    /// The points as a tile beside Frequently bought, on the owner's word —
-    /// the coin and the balance where the other tiles have their pictures.
+    /// The Wallet as a tile beside Frequently bought, on the owner's word
+    /// ("instead of NetLet points … rename it to wallet") — the coin, the
+    /// words "NetLet points" and the balance where the other tiles have their
+    /// pictures. It opens the Wallet, which holds the saved cards too.
     private var pointsTile: some View {
         Button {
-            app.push(.rewards)
+            app.push(.wallet)
         } label: {
             VStack(alignment: .leading, spacing: 0) {
-                TileTitle(text: l.t("account.points"))
+                TileTitle(text: l.t("account.wallet"))
                 Spacer(minLength: 12)
                 GeometryReader { box in
-                    // The coin and the number alone: the title says what they
-                    // are, and "1,200 points" broke onto two lines in a tile.
+                    // What it counts is a small line over the figure: "1,200
+                    // points" on one line broke onto two in a tile.
                     HStack(spacing: 10) {
                         PointsCoin(size: 32)
-                        Text(points.map { PointsFormat.count($0, l.current) } ?? "—")
-                            .font(.inter(22, .heavy))
-                            .foregroundStyle(Brand.navy)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(l.t("account.points"))
+                                .font(.inter(12, .semibold))
+                                .foregroundStyle(ProfileInk.pointsWords)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                            Text(points.map { PointsFormat.count($0, l.current) } ?? "—")
+                                .font(.inter(22, .heavy))
+                                .foregroundStyle(Brand.navy)
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.6)
+                        }
                     }
                     .padding(.horizontal, 12)
                     .frame(maxWidth: .infinity, minHeight: box.size.width * 0.29 * 4 / 3, alignment: .leading)
@@ -388,7 +397,7 @@ struct AccountView: View {
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(PressFillStyle(cornerRadius: 24))
-        .accessibilityLabel("\(l.t("account.points")), \(points.map { l.t("rewards.balance", ["points": PointsFormat.count($0, l.current)]) } ?? "")")
+        .accessibilityLabel("\(l.t("account.wallet")), \(points.map { l.t("rewards.balance", ["points": PointsFormat.count($0, l.current)]) } ?? "")")
     }
 
     private func affiliatePromo(_ offer: AffiliateOffer) -> some View {
@@ -525,7 +534,7 @@ struct AccountView: View {
     }
 }
 
-/// The reference's greys: a pale chip behind the initials and the switch, a
+/// The reference's greys: a pale chip behind the switch, a
 /// slate for the row icons, and the red of the way out. An enum of its own
 /// rather than statics on the view, so a default argument can name one —
 /// Swift 5 evaluates those outside the main actor.
@@ -535,6 +544,8 @@ enum ProfileInk {
     static let signOutRed = Color(red: 194 / 255, green: 54 / 255, blue: 42 / 255)
     /// The points tile's warm ground behind the coin, the web's `#fff6ef`.
     static let pointsGround = Color(red: 1, green: 246 / 255, blue: 239 / 255)
+    /// "NetLet points" over the figure on that ground, the web's `#7a4a2e`.
+    static let pointsWords = Color(red: 122 / 255, green: 74 / 255, blue: 46 / 255)
 }
 
 /// The dashed line between two rows of a card, inset as the reference draws it.
@@ -569,17 +580,9 @@ extension View {
 }
 
 /// How an account is named on its own pages: the name as typed, or a line
-/// saying there is none, and the initials the circle draws without a photo.
-/// The card that drew them under "Signed in as" with the role went from "Your
-/// profile", on the owner's word.
+/// saying there is none. The circle beside it is the photo or the default
+/// avatar (`DefaultAvatar`), never the initials, on the owner's word.
 enum AccountName {
-    static func initials(_ user: User) -> String {
-        let source = user.name?.trimmingCharacters(in: .whitespaces).isEmpty == false ? user.name! : (user.email?.split(separator: "@").first.map(String.init) ?? "")
-        let words = source.split(whereSeparator: { " ._-".contains($0) })
-        if words.count >= 2 { return (String(words[0].prefix(1)) + String(words[1].prefix(1))).uppercased() }
-        return words.first.map { String($0.prefix(2)).uppercased() } ?? "?"
-    }
-
     @MainActor static func name(_ user: User, _ l: LanguageSettings) -> String {
         user.name?.trimmingCharacters(in: .whitespaces).isEmpty == false ? user.name! : l.t("account.noName")
     }
@@ -606,11 +609,10 @@ struct AccountEntry: Identifiable, Hashable {
         AccountEntry(id: "reviews", label: "account.sectionReviews", hint: "account.hint.reviews", symbol: "star", group: "account.groupShopping"),
         AccountEntry(id: "notifications", label: "notices.title", hint: "notices.tile", symbol: "bell", group: "account.groupConversations"),
         AccountEntry(id: "help", label: "support.section", hint: "account.hint.help", symbol: "lifepreserver", group: "account.groupConversations"),
-        AccountEntry(id: "rewards", label: "account.sectionRewards", hint: "account.hint.rewards", symbol: "person.2", group: "account.groupRewards"),
+        AccountEntry(id: "wallet", label: "account.wallet", hint: "account.hint.wallet", symbol: "wallet.pass", group: "account.groupRewards"),
         AccountEntry(id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate", symbol: "megaphone", group: "account.groupRewards"),
         AccountEntry(id: "details", label: "account.sectionProfile", hint: "account.hint.details", symbol: "person.crop.circle", group: "account.groupSettings"),
         AccountEntry(id: "addresses", label: "address.book", hint: "account.hint.addresses", symbol: "mappin.and.ellipse", group: "account.groupSettings"),
-        AccountEntry(id: "payments", label: "account.sectionPayments", hint: "account.hint.payments", symbol: "creditcard", group: "account.groupSettings"),
         AccountEntry(id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences", symbol: "slider.horizontal.3", group: "account.groupSettings"),
         AccountEntry(id: "selling", label: "account.sectionSelling", hint: "account.hint.selling", symbol: "storefront", group: "account.groupSettings"),
         AccountEntry(id: "history", label: "history.title", hint: "account.hint.history", symbol: "clock.arrow.circlepath", group: "account.groupSettings"),
@@ -622,7 +624,6 @@ struct AccountEntry: Identifiable, Hashable {
         case "orders": return .orders
         case "returns": return .returns
         case "frequent": return .frequent
-        case "payments": return .payments
         case "subscriptions": return .subscriptions
         case "saved": return .saved
         case "wishlists": return .wishlists
@@ -630,7 +631,7 @@ struct AccountEntry: Identifiable, Hashable {
         case "reviews": return .reviews
         case "notifications": return .notifications
         case "help": return .help
-        case "rewards": return .rewards
+        case "wallet": return .wallet
         case "affiliate": return .affiliate
         case "details": return .profile
         case "addresses": return .addresses
@@ -723,14 +724,19 @@ struct RoundBackTitle: View {
 }
 
 /// "Your profile"'s one list, the web's `ProfileManager` row for row: the
-/// photo, then each detail with its value — or "Not added" — and an Edit at
-/// the row's end. Pressing Edit opens that row's own form in its place, and
-/// only one row is open at a time; Save or Cancel closes it again. Each row is
-/// its own decision — a gender saves as it is pressed, the rest have a Save —
-/// because one Save across them would change a password somebody only opened
-/// the page to fix a spelling in. **The new password is typed twice, on the
-/// owner's word** ("put a type password again for changing your password as a
-/// confirmation"), and the current one asked for first.
+/// photo with the name beside it, then each detail with its value — or "Not
+/// added" — and an Edit at the row's end. Pressing Edit opens that row's own
+/// form in its place, and only one row is open at a time; Save or Cancel
+/// closes it again. Each row is its own decision with its own Save, because
+/// one Save across them would change a password somebody only opened the page
+/// to fix a spelling in. **The rows run from what the account needs to what
+/// it may add, on the owner's word** ("put the name next to the profile photo
+/// … the gender and birthday … one option that the user can expand … first
+/// ones will be the necessary options"): the photo and the name, the email,
+/// the phone, the password, and then the gender and the birthday as one row.
+/// **The new password is typed twice, on the owner's word** ("put a type
+/// password again for changing your password as a confirmation"), and the
+/// current one asked for first.
 private struct ProfileForm: View {
     @Bindable var model: ProfileViewModel
     @Environment(AppModel.self) private var app
@@ -745,33 +751,33 @@ private struct ProfileForm: View {
     @State private var ways: AccountSignInWays?
     /// The one row open; nil is the list.
     @State private var editing: Row?
+    /// A profile photo chosen and not yet saved, which the circle shows.
+    @State private var chosenPhoto: ChosenProfilePhoto?
     /// VoiceOver's place: the open row's name, or the Edit it came from.
     @AccessibilityFocusState private var spoken: Row?
 
     private enum Recovery { case idle, sending, sent }
-    private enum Row: Hashable { case name, email, phone, gender, birthday, password }
+    private enum Row: Hashable { case name, email, phone, password, about }
 
     private var noPassword: Bool { ways?.password == false }
 
     var body: some View {
         VStack(spacing: 0) {
-            if let user = app.session.user, app.profilePhoto.ready {
-                ProfilePhotoRow(user: user)
-                DashedRule()
-            }
-            row(.name, label: "profile.nameTitle", value: fullName) { nameEditor }
+            identityRow
             DashedRule()
             emailRow
             DashedRule()
             row(.phone, label: "profile.phoneTitle", value: model.details.phone.map { "+965 " + PhoneNumber.display($0) }, leftToRight: true) { phoneEditor }
-            DashedRule()
-            row(.gender, label: "profile.genderTitle", value: model.details.gender.map { l.t($0 == "male" ? "profile.male" : "profile.female") }) { genderEditor }
-            DashedRule()
-            row(.birthday, label: "profile.birthdayTitle", value: model.details.birthday.map { OrderWording.day($0, language: l.current) }) { birthdayEditor }
             if app.session.user?.email != nil {
                 DashedRule()
                 passwordRow
             }
+            DashedRule()
+            // Both optional, so one row after everything the account needs.
+            row(.about, label: "profile.aboutTitle", value: nil, lines: [
+                ("profile.genderTitle", model.details.gender.map { l.t($0 == "male" ? "profile.male" : "profile.female") }),
+                ("profile.birthdayTitle", model.details.birthday.map { OrderWording.day($0, language: l.current) }),
+            ]) { aboutEditor }
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -792,7 +798,7 @@ private struct ProfileForm: View {
 
     private func close(_ which: Row) {
         if let form = form(of: which) { model.cancel(form) }
-        if which == .birthday { choosingBirthday = false }
+        if which == .about { choosingBirthday = false }
         if which == .password { recovering = .idle }
         withAnimation(.snappy(duration: 0.22)) { if editing == which { editing = nil } }
         spoken = which
@@ -802,8 +808,7 @@ private struct ProfileForm: View {
         switch row {
         case .name: return .name
         case .phone: return .phone
-        case .gender: return .gender
-        case .birthday: return .birthday
+        case .about: return .about
         case .password: return .password
         case .email: return nil
         }
@@ -828,6 +833,8 @@ private struct ProfileForm: View {
         readOnly: Bool = false,
         /// What VoiceOver says for the value, where the drawing is not words (the password's dots).
         spokenValue: String? = nil,
+        /// Two details in one row, each its name and what is saved — the gender and the birthday.
+        lines: [(label: String, value: String?)] = [],
         @ViewBuilder editor: () -> Editor
     ) -> some View {
         if editing == which {
@@ -848,7 +855,21 @@ private struct ProfileForm: View {
                         .font(.inter(13, .medium))
                         .foregroundStyle(Brand.muted)
                     Group {
-                        if let value {
+                        if lines.contains(where: { $0.value != nil }) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                ForEach(lines.indices, id: \.self) { index in
+                                    let line = lines[index]
+                                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                        Text(l.t(line.label))
+                                            .font(.inter(13, .medium))
+                                            .foregroundStyle(Brand.muted)
+                                        Text(line.value ?? l.t("profile.notAdded"))
+                                            .font(.inter(15, line.value == nil ? .medium : .semibold))
+                                            .foregroundStyle(line.value == nil ? Brand.muted : Brand.navy)
+                                    }
+                                }
+                            }
+                        } else if let value {
                             Text(verbatim: leftToRight ? "\u{2066}\(value)\u{2069}" : value)
                                 .font(.inter(15, .semibold))
                                 .foregroundStyle(Brand.navy)
@@ -953,34 +974,32 @@ private struct ProfileForm: View {
         }
     }
 
-    private var genderEditor: some View {
+    /// The gender and the birthday, chosen together and sent with one Save,
+    /// on the owner's word — the web's `AboutEditor`. A gender pressed is a
+    /// choice here, not a save; pressing it again takes it away.
+    private var aboutEditor: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Text(l.t("profile.genderTitle"))
+                .font(.inter(13, .medium))
+                .foregroundStyle(Brand.muted)
             HStack(spacing: 12) {
                 ForEach(ProfileDetails.genders, id: \.self) { gender in
                     genderTile(gender)
                 }
             }
-            if let problem = model.problems[.gender] { FieldProblem(key: problem) } else { note("profile.genderNote") }
-            buttons(.gender, saving: nil, save: nil)
-        }
-    }
-
-    private var birthdayEditor: some View {
-        VStack(alignment: .leading, spacing: 10) {
+            note("profile.genderNote")
             birthdayBox
-            if let problem = model.problems[.birthday] { FieldProblem(key: problem) } else { note("profile.birthdayNote") }
-            buttons(.birthday, saving: .birthday) {
-                guard model.birthdayChanged else { close(.birthday); return }
-                await model.saveBirthday()
-                if model.problems[.birthday] == nil { choosingBirthday = false; done(.birthday, "profile.saved") }
+                .padding(.top, 6)
+            if let problem = model.problems[.about] { FieldProblem(key: problem) } else { note("profile.birthdayNote") }
+            buttons(.about, saving: .about) {
+                guard model.aboutChanged else { close(.about); return }
+                await model.saveAbout()
+                if model.problems[.about] == nil { choosingBirthday = false; done(.about, "profile.saved") }
             }
-            if model.details.birthday != nil {
+            if !model.birthday.isEmpty {
                 Button(l.t("profile.birthdayRemove")) {
                     choosingBirthday = false
-                    Task {
-                        await model.removeBirthday()
-                        if model.problems[.birthday] == nil { done(.birthday, "profile.saved") }
-                    }
+                    model.birthday = ""
                 }
                 .buttonStyle(.tap)
                 .font(.inter(14, .bold))
@@ -989,6 +1008,61 @@ private struct ProfileForm: View {
                 .disabled(model.saving != nil)
             }
         }
+    }
+
+    /// The first row: the circle with the name beside it, on the owner's word
+    /// ("put the name next to the profile photo, not below it") — the web's
+    /// `ProfileIdentity`. The photo's presses sit under the name; the name's
+    /// Edit at the row's end, and pressed, the name's form is the row's foot
+    /// while the circle and the name stay where they were.
+    private var identityRow: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
+                ProfileAvatar(size: 64, preview: chosenPhoto?.image)
+                VStack(alignment: .leading, spacing: 8) {
+                    Group {
+                        if let fullName {
+                            Text(fullName)
+                                .font(.inter(18, .bold))
+                                .foregroundStyle(Brand.navy)
+                        } else {
+                            Text(l.t("profile.notAdded"))
+                                .font(.inter(16, .medium))
+                                .foregroundStyle(Brand.muted)
+                        }
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel("\(l.t("profile.nameTitle")), \(fullName ?? l.t("profile.notAdded"))")
+                    if editing != .name {
+                        ProfilePhotoControls(chosen: $chosenPhoto)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                if editing != .name {
+                    Button { open(.name) } label: {
+                        Label(l.t(fullName == nil ? "profile.add" : "profile.edit"), systemImage: "pencil")
+                            .font(.inter(14, .semibold))
+                            .foregroundStyle(Brand.navy)
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.tap)
+                    .accessibilityLabel(l.t("profile.editField", ["field": l.t("profile.nameTitle")]))
+                    .accessibilityFocused($spoken, equals: .name)
+                }
+            }
+            if editing == .name {
+                Text(l.t("profile.nameTitle"))
+                    .font(.inter(15, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityFocused($spoken, equals: .name)
+                nameEditor
+            }
+        }
+        .padding(.vertical, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -1073,13 +1147,9 @@ private struct ProfileForm: View {
     }
 
     private func genderTile(_ gender: String) -> some View {
-        let chosen = model.details.gender == gender
+        let chosen = model.gender == gender
         return Button {
-            Task {
-                await model.choose(gender: gender)
-                // A gender is one press: the press is the save, and it closes the row.
-                if model.problems[.gender] == nil { done(.gender, "profile.saved") }
-            }
+            model.pick(gender: gender)
         } label: {
             HStack(spacing: 12) {
                 Text(l.t(gender == "male" ? "profile.male" : "profile.female"))
@@ -1134,8 +1204,8 @@ private struct ProfileForm: View {
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(model.problems[.birthday] != nil ? Brand.danger : choosingBirthday ? Brand.navy : Brand.line,
-                                      lineWidth: model.problems[.birthday] != nil || choosingBirthday ? 1.5 : 1)
+                        .strokeBorder(model.problems[.about] != nil ? Brand.danger : choosingBirthday ? Brand.navy : Brand.line,
+                                      lineWidth: model.problems[.about] != nil || choosingBirthday ? 1.5 : 1)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }

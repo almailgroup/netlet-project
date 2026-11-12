@@ -1,17 +1,20 @@
 import SwiftUI
 
-/// NetLet points — the web's `AccountRewards`: the balance with the coin and
-/// converting it to money (`PointsWallet`), the two ways to earn — affiliate
-/// marketing first, on the owner's word, then inviting a friend — and the
-/// history behind the number.
-struct RewardsView: View {
+/// The Wallet — the web's `AccountWallet`, on the owner's word ("instead of
+/// NetLet points … rename it to wallet, and store everything there"): the
+/// points' balance with the coin and converting it to money (`PointsWallet`),
+/// the saved cards (`SavedCardsCard`, which was the Payment methods screen),
+/// the two ways to earn — affiliate marketing first, on the owner's word, then
+/// inviting a friend — and the history behind the number. The web's
+/// `/account/rewards` and `/account/payments` both open it (`Route.from`).
+struct WalletView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.rewards) } }) { rewards in
             ShopPage(header: false, refresh: { await rewards.load() }) {
-                AccountSection(title: l.t("account.sectionRewards"), hint: l.t("account.hint.rewards")) {
+                AccountSection(title: l.t("account.wallet"), hint: l.t("account.hint.wallet")) {
                     LoadStateView(state: rewards.state, retry: { await rewards.load() }) { view in
                         content(view, reload: { await rewards.load() })
                     }
@@ -24,6 +27,7 @@ struct RewardsView: View {
     private func content(_ view: Rewards, reload: @escaping () async -> Void) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             PointsWallet(view: view, reload: reload)
+            SavedCardsCard()
 
             Text(l.t("rewards.waysToEarn"))
                 .font(.inter(15, .bold))
@@ -76,7 +80,7 @@ struct RewardsView: View {
                     HStack(alignment: .top, spacing: 12) {
                         PointsCoin(size: 22).padding(.top, 1)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(l.t(RewardsView.reason(entry.reason))).font(.inter(14, .semibold)).foregroundStyle(Brand.ink)
+                            Text(l.t(WalletView.reason(entry.reason))).font(.inter(14, .semibold)).foregroundStyle(Brand.ink)
                             Text(ledgerLine(entry)).font(.inter(12)).foregroundStyle(Brand.muted)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

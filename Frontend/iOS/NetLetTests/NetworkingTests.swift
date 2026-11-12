@@ -799,6 +799,10 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(Route.from(link: "/guides/how-to-return-an-item"), .guide(slug: "how-to-return-an-item"))
         XCTAssertEqual(Route.from(link: "/gifts/abc12345"), .gift(token: "abc12345"))
         XCTAssertEqual(Route.from(link: "/account/orders?order=NL-1"), .order(reference: "NL-1"))
+        // NetLet points and Payment methods are the Wallet, and their old addresses open it.
+        XCTAssertEqual(Route.from(link: "/account/wallet"), .wallet)
+        XCTAssertEqual(Route.from(link: "/account/rewards"), .wallet)
+        XCTAssertEqual(Route.from(link: "/account/payments"), .wallet)
         // Saved items and wishlists are one page: the wishlists are its second tab.
         XCTAssertEqual(Route.from(link: "/saved"), .saved)
         XCTAssertEqual(Route.from(link: "/saved?tab=wishlists"), .wishlists)

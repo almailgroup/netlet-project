@@ -308,7 +308,6 @@ private struct RouteDestination: View {
         // Returns and Reviews are tabs of My orders, on the owner's word.
         case .returns: OrdersView(initialTab: "returns")
         case .frequent: FrequentView()
-        case .payments: PaymentMethodsView()
         case .profile: ProfileView()
         case .listings: SellerListingsView()
         case .newListing: NewListingView()
@@ -322,7 +321,7 @@ private struct RouteDestination: View {
         case .reviews: OrdersView(initialTab: "reviews")
         case .help: SupportView()
         case .supportThread(let id): SupportThreadView(conversationId: id)
-        case .rewards: RewardsView()
+        case .wallet: WalletView()
         case .affiliate: AffiliateView()
         case .subscriptions: SubscriptionsView()
         case .helpCentre: HelpCentreView()
