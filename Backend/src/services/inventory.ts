@@ -48,6 +48,7 @@ import { isValidMeasure, type SellUnit } from "../../../Shared/commerce/units.js
 import { awardedBadges, vendorHealth, type HealthInputs } from "../../../Shared/inventory/vendorHealth.js";
 import { unitsSoldLately } from "./dashboard.js";
 import { getDb } from "./db.js";
+import { ensureDepartmentRows } from "./departmentRows.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
 import { createAccount, EmailTakenError } from "../core/accounts.js";
 import { canSendReset, deleteLogin, sendReset } from "../core/passwordStore.js";
@@ -781,6 +782,7 @@ export async function bulkCreateProducts(actor: Actor, input: {
   /* One read for every category the file mentions, rather than one per row.
      A name the catalog does not carry leaves the product uncategorised rather
      than creating a department from a typo. */
+  await ensureDepartmentRows(db);
   const known = await db.select({ id: categories.id, name: categories.name }).from(categories);
   const idFor = (name: string | null) =>
     known.find(row => row.name.toLowerCase() === (name ?? "").toLowerCase())?.id ?? null;
@@ -2426,6 +2428,8 @@ async function setVendorStatusNow(actor: Actor, vendorId: number, status: "pendi
 export async function listCategories() {
   const db = await getDb();
   if (!db) return [];
+  /* A department added in code has its row before anybody is offered it. */
+  await ensureDepartmentRows(db);
   return db.select().from(categories).orderBy(asc(categories.position), asc(categories.name));
 }
 

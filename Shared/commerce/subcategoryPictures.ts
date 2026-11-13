@@ -31,6 +31,13 @@
  * picture kept from the portal stands in its place, and removing the kept one
  * brings the file back. So nothing waits on the portal, the database or a
  * model for a row to have its picture.
+ *
+ * **A department added before its pictures arrive has none, on purpose.**
+ * The eight added later (`Department.art` false) draw their subcategories'
+ * icons until the owner's files come, or one is kept from the portal — never
+ * a request for a file that is not there and a broken image after it. The
+ * drawing of one of theirs is sent another department's art as the style to
+ * match (`styleArtFor`), since the set is one style.
  */
 import { DEPARTMENTS } from "./departments.js";
 import { isMediaPath } from "./media.js";
@@ -69,9 +76,18 @@ export function subcategoryArtPath(department: string, slug: string): string {
   return `/subcategories/${department}-${slug}.webp`;
 }
 
-/** What the shop draws for a subcategory: the picture kept from the portal, else its own. */
-export function shownSubcategoryPicture(pictures: SubcategoryPictures | null | undefined, department: string, slug: string): string {
-  return pictureFor(pictures, department, slug) ?? subcategoryArtPath(department, slug);
+/** Whether a department's pictures have arrived (`Department.art`): its tile's and its subcategories' files. */
+export function departmentHasArt(department: string): boolean {
+  return DEPARTMENTS.find(entry => entry.slug === department)?.art ?? false;
+}
+
+/**
+ * What the shop draws for a subcategory: the picture kept from the portal,
+ * else its own file — or null for a department whose pictures have not
+ * arrived, where the row draws the subcategory's icon.
+ */
+export function shownSubcategoryPicture(pictures: SubcategoryPictures | null | undefined, department: string, slug: string): string | null {
+  return pictureFor(pictures, department, slug) ?? (departmentHasArt(department) ? subcategoryArtPath(department, slug) : null);
 }
 
 /** The kept rows as the map the shop reads, leaving out anything that is not a kept picture of a subcategory the shop has. */
@@ -98,8 +114,8 @@ export function everySubcategory(): { department: string; subcategory: Subcatego
   return DEPARTMENTS.flatMap(department => (SUBCATEGORIES[department.slug] ?? []).map(subcategory => ({ department: department.slug, subcategory })));
 }
 
-/** How many drawings one account may ask for in an hour: every subcategory once, and a redraw of most. */
-export const MAX_SUBCATEGORY_PICTURES_PER_HOUR = 80;
+/** How many drawings one account may ask for in an hour: every subcategory once, and a redraw of half. */
+export const MAX_SUBCATEGORY_PICTURES_PER_HOUR = 120;
 
 /** The edge a kept picture is made, square: drawn at 48 to 64 points, sharp on a 3× screen. */
 export const SUBCATEGORY_PICTURE_EDGE = 384;
@@ -129,4 +145,13 @@ export function subcategoryPicturePrompt(department: string, subcategory: Subcat
 /** Where a department's own art is, for the page that sends it as the style to match. */
 export function departmentArtPath(department: string): string {
   return `/departments/${department}.webp`;
+}
+
+/**
+ * The department whose art a drawing is sent as the style to match: its own,
+ * or — for a department whose pictures have not arrived — the first that has
+ * them, the set being one style.
+ */
+export function styleArtFor(department: string): string {
+  return departmentHasArt(department) ? department : DEPARTMENTS.find(entry => entry.art)?.slug ?? department;
 }

@@ -100,6 +100,56 @@ export const ATTRIBUTE_SCHEMA: Record<string, AttributeField[]> = {
     { key: "origin", label: "Country of origin", labelAr: "بلد المنشأ" },
     { key: "storage", label: "Storage", labelAr: "طريقة الحفظ", options: ["Ambient", "Chilled", "Frozen"] },
   ],
+  "health-and-wellness": [
+    typeField("health-and-wellness"),
+    { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
+    { key: "form", label: "Form", labelAr: "الشكل", options: ["Tablets", "Capsules", "Powder", "Liquid", "Gummies"], optionsAr: ["أقراص", "كبسولات", "بودرة", "سائل", "حلوى مضغ"] },
+    { key: "count", label: "Pack size", labelAr: "عدد الحبات" },
+  ],
+  baby: [
+    typeField("baby"),
+    { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
+    { key: "age", label: "Age range", labelAr: "العمر المناسب" },
+    { key: "size", label: "Size", labelAr: "المقاس" },
+  ],
+  "toys-and-games": [
+    typeField("toys-and-games"),
+    { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
+    { key: "age", label: "Age range", labelAr: "العمر المناسب" },
+    { key: "batteries", label: "Batteries", labelAr: "البطاريات", options: ["Not needed", "Included", "Not included"], optionsAr: ["لا تحتاج", "مرفقة", "غير مرفقة"] },
+  ],
+  "sports-and-outdoors": [
+    typeField("sports-and-outdoors"),
+    { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
+    { key: "material", label: "Material", labelAr: "الخامة" },
+    { key: "weight", label: "Weight", labelAr: "الوزن", unit: "kg" },
+  ],
+  automotive: [
+    typeField("automotive"),
+    { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
+    { key: "fits", label: "Fits", labelAr: "يناسب" },
+    { key: "volume", label: "Volume", labelAr: "الحجم", unit: "L" },
+  ],
+  "tools-and-home-improvement": [
+    typeField("tools-and-home-improvement"),
+    { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
+    { key: "power", label: "Power", labelAr: "القدرة", unit: "W" },
+    { key: "voltage", label: "Voltage", labelAr: "الجهد", unit: "V" },
+    { key: "warranty", label: "Warranty", labelAr: "الضمان" },
+  ],
+  "pet-supplies": [
+    typeField("pet-supplies"),
+    { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
+    { key: "lifestage", label: "Life stage", labelAr: "المرحلة العمرية", options: ["Young", "Adult", "Senior", "All ages"], optionsAr: ["صغير", "بالغ", "كبير السن", "جميع الأعمار"] },
+    { key: "weight", label: "Weight", labelAr: "الوزن", unit: "kg" },
+  ],
+  "books-and-stationery": [
+    typeField("books-and-stationery"),
+    { key: "author", label: "Author", labelAr: "المؤلف" },
+    { key: "language", label: "Language", labelAr: "اللغة", options: ["Arabic", "English", "Arabic and English"], optionsAr: ["العربية", "الإنجليزية", "العربية والإنجليزية"] },
+    { key: "pages", label: "Pages", labelAr: "عدد الصفحات" },
+    { key: "brand", label: "Brand", labelAr: "العلامة التجارية" },
+  ],
 };
 
 /**

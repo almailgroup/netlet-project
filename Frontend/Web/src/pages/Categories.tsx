@@ -42,6 +42,8 @@ import { textsMatch } from "@shared/commerce/search";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { SubcategoryIcon } from "@/components/browse/SubcategoryIcon";
+import { DepartmentArt } from "@/components/browse/DepartmentArt";
+import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
 import { Breadcrumbs, CARD, PageBody, PageHeading } from "@/components/layout/Page";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
@@ -272,8 +274,8 @@ function PageResults({ term, countLine, pictures }: {
               <li key={entry.slug} className="min-w-0">
                 <ListRow
                   href={`/categories?dept=${entry.slug}`}
-                  icon={<Menu className="size-6" strokeWidth={1.75} aria-hidden />}
-                  picture={`/departments/${entry.slug}.webp`}
+                  icon={<DepartmentIcon query={entry.name} className="size-6" strokeWidth={1.75} />}
+                  picture={entry.art ? `/departments/${entry.slug}.webp` : null}
                   title={t(entry.label)}
                   note={counts ? countLine(counts[entry.slug] ?? 0) : ""}
                 />
@@ -340,19 +342,9 @@ function StoreRow({ store, href, note }: { store: StoreCardData; href: string; n
   );
 }
 
-/** A department's picture in its tile, the home page's own art. */
+/** A department's picture in its tile, the home page's own art (its icon until that arrives). */
 function TileArt({ slug }: { slug: string }) {
-  return (
-    <img
-      src={appPath(`/departments/${slug}.webp`)}
-      alt=""
-      loading="eager"
-      decoding="async"
-      width={480}
-      height={360}
-      className="max-h-full w-full object-contain"
-    />
-  );
+  return <DepartmentArt slug={slug} eager className="aspect-square max-h-full w-full" />;
 }
 
 /**

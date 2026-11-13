@@ -2196,7 +2196,15 @@ INSERT INTO categories (slug, name, name_ar, position) VALUES
   ('home-and-kitchen', 'Home & Kitchen', 'المنزل والمطبخ', 2),
   ('beauty', 'Beauty', 'الجمال', 3),
   ('style', 'Style', 'الأزياء', 4),
-  ('grocery', 'Grocery', 'البقالة', 5)
+  ('grocery', 'Grocery', 'البقالة', 5),
+  ('health-and-wellness', 'Health & Wellness', 'الصحة والعافية', 6),
+  ('baby', 'Baby', 'مستلزمات الرضّع', 7),
+  ('toys-and-games', 'Toys & Games', 'ألعاب الأطفال', 8),
+  ('sports-and-outdoors', 'Sports & Outdoors', 'الرياضة والرحلات', 9),
+  ('automotive', 'Automotive', 'السيارات', 10),
+  ('tools-and-home-improvement', 'Tools & Home Improvement', 'الأدوات وتحسين المنزل', 11),
+  ('pet-supplies', 'Pet Supplies', 'مستلزمات الحيوانات الأليفة', 12),
+  ('books-and-stationery', 'Books & Stationery', 'الكتب والقرطاسية', 13)
 ON CONFLICT (slug) DO NOTHING;
 
 -- NetLet sells its own stock as well as its vendors'. Something has to own a

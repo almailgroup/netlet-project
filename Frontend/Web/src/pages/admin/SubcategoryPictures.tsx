@@ -28,14 +28,17 @@ import { buttonClass, Card, Notice, PageHeader, smallButtonClass } from "@/compo
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
+import { DepartmentArt } from "@/components/browse/DepartmentArt";
+import { SubcategoryIcon } from "@/components/browse/SubcategoryIcon";
 import { prepareSquare } from "@/lib/prepareProfilePhoto";
 import { trpc } from "@/lib/trpc";
 import { DEPARTMENTS } from "@shared/commerce/departments";
 import { MAX_UPLOAD_BYTES, type StoredType } from "@shared/commerce/media";
-import { subcategoriesOf, type Subcategory } from "@shared/commerce/subcategories";
+import { subcategoriesOf, type Subcategory, type SubcategoryIcon as SubcategoryIconName } from "@shared/commerce/subcategories";
 import {
   SUBCATEGORY_PICTURE_EDGE,
   departmentArtPath,
+  styleArtFor,
   everySubcategory,
   pictureFor,
   subcategoryArtPath,
@@ -108,7 +111,8 @@ function Desk() {
     if (references.current.has(department)) return references.current.get(department) ?? null;
     let reference: { mimeType: "image/webp"; data: string } | null = null;
     try {
-      const response = await fetch(appPath(departmentArtPath(department)));
+      /* A department whose pictures have not arrived is drawn in the style of one that has (`styleArtFor`). */
+      const response = await fetch(appPath(departmentArtPath(styleArtFor(department))));
       if (response.ok) reference = { mimeType: "image/webp", data: await blobToBase64(await response.blob()) };
     } catch {
       reference = null;
@@ -224,7 +228,7 @@ function Desk() {
             {DEPARTMENTS.map(department => (
               <Card key={department.slug} title={(
                 <span className="flex items-center gap-3">
-                  <img src={appPath(departmentArtPath(department.slug))} alt="" loading="lazy" decoding="async" className="h-9 w-12 object-contain" />
+                  <DepartmentArt slug={department.slug} className="h-9 w-12" />
                   {t(department.label)}
                 </span>
               )}>
@@ -235,7 +239,8 @@ function Desk() {
                       <PictureTile
                         key={key}
                         name={nameOf(subcategory)}
-                        original={subcategoryArtPath(department.slug, subcategory.slug)}
+                        original={department.art ? subcategoryArtPath(department.slug, subcategory.slug) : null}
+                        icon={subcategory.icon}
                         kept={pictureFor(pictures.data, department.slug, subcategory.slug)}
                         draft={drafts[key]?.url ?? null}
                         busy={busy[key] ?? null}
@@ -259,10 +264,15 @@ function Desk() {
   );
 }
 
-function PictureTile({ name, original, kept, draft, busy, canDraw, locked, onDraw, onKeep, onDiscard, onRemove, onUpload }: {
+function PictureTile({ name, original, icon, kept, draft, busy, canDraw, locked, onDraw, onKeep, onDiscard, onRemove, onUpload }: {
   name: string;
-  /** The subcategory's own picture, which the shop shows while nothing is kept here. */
-  original: string;
+  /**
+   * The subcategory's own picture, which the shop shows while nothing is kept
+   * here — or null for a department whose pictures have not arrived, where the
+   * shop shows its icon.
+   */
+  original: string | null;
+  icon: SubcategoryIconName;
   kept: string | null;
   draft: string | null;
   busy: Busy | null;
@@ -283,9 +293,11 @@ function PictureTile({ name, original, kept, draft, busy, canDraw, locked, onDra
       <div className="mt-2.5 flex flex-wrap gap-3">
         <figure className="m-0">
           <span className="grid size-24 place-items-center overflow-hidden rounded-xl border border-[#e3e8f0] bg-white">
-            <img src={appPath(kept ?? original)} alt={t("subpics.keptAlt", { name })} loading="lazy" decoding="async" className="size-full object-contain" />
+            {kept ?? original
+              ? <img src={appPath(kept ?? original ?? "")} alt={t("subpics.keptAlt", { name })} loading="lazy" decoding="async" className="size-full object-contain" />
+              : <span className="grid size-16 place-items-center rounded-xl bg-[#e2e6ed] text-[#2b3a55]"><SubcategoryIcon icon={icon} className="size-8" /></span>}
           </span>
-          <figcaption className="mt-1 text-[12px] ink-muted">{t(kept ? "subpics.onShop" : "subpics.original")}</figcaption>
+          <figcaption className="mt-1 text-[12px] ink-muted">{t(kept ? "subpics.onShop" : original ? "subpics.original" : "subpics.iconOnly")}</figcaption>
         </figure>
         {draft || busy === "drawing" ? (
           <figure className="m-0">

@@ -31,7 +31,7 @@ import { en, ar } from "../../../Shared/i18n/dictionary.js";
 import { PLURAL_FORMS } from "../../../Shared/i18n/plurals.js";
 import { COMMON_PASSWORDS, MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
-import { everySubcategory, subcategoryArtPath } from "../../../Shared/commerce/subcategoryPictures.js";
+import { departmentHasArt, everySubcategory, subcategoryArtPath } from "../../../Shared/commerce/subcategoryPictures.js";
 import { OCCASIONS } from "../../../Shared/commerce/occasions.js";
 import { subcategoriesOf } from "../../../Shared/commerce/subcategories.js";
 import { AREAS, PART_KEYS, PART_LABEL_AR, PART_LABEL_EN, PART_MAX, REQUIRED_PARTS } from "../../../Shared/commerce/kuwaitAddress.js";
@@ -153,8 +153,10 @@ export function buildAssets(): { files: Record<string, string>; manifest: { logo
     "brand-logo.png": path.join(WEB, "public/brand/netlet-logo.png"),
     "brand-logo-white.png": path.join(WEB, "public/brand/netlet-logo-white.png"),
   };
+  /* Only a department whose pictures have arrived (`Department.art`) has
+     files to copy; the app draws the others' icons until they do. */
   const departments: Record<string, string> = {};
-  for (const slug of [...DEPARTMENTS.map(department => department.slug), "all"]) {
+  for (const slug of [...DEPARTMENTS.filter(department => department.art).map(department => department.slug), "all"]) {
     const name = `department-${slug}.webp`;
     files[name] = path.join(WEB, `public/departments/${slug}.webp`);
     departments[slug] = name;
@@ -162,7 +164,7 @@ export function buildAssets(): { files: Record<string, string>; manifest: { logo
   /* Each subcategory's own picture, by `department/slug` — the key the kept
      pictures' list uses, so the app asks both the same way. */
   const subcategories: Record<string, string> = {};
-  for (const { department, subcategory } of everySubcategory()) {
+  for (const { department, subcategory } of everySubcategory().filter(({ department }) => departmentHasArt(department))) {
     const name = `subcategory-${department}-${subcategory.slug}.webp`;
     files[name] = path.join(WEB, "public", subcategoryArtPath(department, subcategory.slug));
     subcategories[`${department}/${subcategory.slug}`] = name;
@@ -193,8 +195,8 @@ export function buildResources(): Record<string, string> {
       /* Each with its subcategories — the Categories tab's panel. The server
          files the products (`Product.subcategory`); the words travel too, so the
          Categories tab's own search finds a subcategory by what its products are called. */
-      DEPARTMENTS.map(({ slug, name, nameAr, position, label, icon }) => ({
-        slug, name, nameAr, position, label, icon,
+      DEPARTMENTS.map(({ slug, name, nameAr, position, label, icon, tint, art }) => ({
+        slug, name, nameAr, position, label, icon, tint, art,
         subcategories: subcategoriesOf(slug).map(entry => ({ slug: entry.slug, name: entry.name, nameAr: entry.nameAr, icon: entry.icon, words: entry.words })),
       })),
     ),

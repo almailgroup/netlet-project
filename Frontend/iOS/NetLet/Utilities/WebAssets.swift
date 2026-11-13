@@ -103,3 +103,43 @@ struct BundledImage: View {
         }
     }
 }
+
+/// A department's picture wherever a department is drawn large — the home
+/// page's row, the Categories tiles, the search's departments and the
+/// portal's picture desk: its own art (`WebAssets.department`), or, for a
+/// department added before its pictures arrived (`Department.art`), its
+/// symbol in navy on its own tint, a rounded square in the middle of the same
+/// frame — the web's `DepartmentArt`. "all" always has its art.
+struct DepartmentArt: View {
+    let slug: String
+
+    var body: some View {
+        if let image = WebAssets.department(slug) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+        } else if let department = ReferenceData.shared.department(slug: slug) {
+            GeometryReader { box in
+                let side = min(box.size.width, box.size.height) * 0.82
+                RoundedRectangle(cornerRadius: side * 0.26, style: .continuous)
+                    .fill(Self.colour(department.tint) ?? Brand.tileField)
+                    .frame(width: side, height: side)
+                    .overlay {
+                        Image(systemName: department.symbol)
+                            .font(.system(size: side * 0.4, weight: .regular))
+                            .foregroundStyle(Brand.navy)
+                    }
+                    .frame(width: box.size.width, height: box.size.height)
+            }
+            .accessibilityHidden(true)
+        } else {
+            Color.clear
+        }
+    }
+
+    /// A `#rrggbb` tint as a colour, or nil.
+    static func colour(_ hex: String?) -> Color? {
+        guard let hex, hex.count == 7, hex.hasPrefix("#"), let value = UInt32(hex.dropFirst(), radix: 16) else { return nil }
+        return Color(red: Double((value >> 16) & 0xff) / 255, green: Double((value >> 8) & 0xff) / 255, blue: Double(value & 0xff) / 255)
+    }
+}

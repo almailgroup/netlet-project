@@ -40,7 +40,9 @@ describe("subcategoryFor", () => {
   });
 
   it("files nothing outside a department, or with no word it knows", () => {
-    expect(file("Pet supplies", "Dog bed")).toBeNull();
+    expect(file("Musical instruments", "Guitar strap")).toBeNull();
+    /* A department NetLet added later files by its own words like the rest. */
+    expect(file("Pet Supplies", "Dog bed")).toBe("dogs");
     expect(subcategoryFor({ department: null, titles: ["Phone"], tags: [] })).toBeNull();
     expect(file("Electronics", "Mystery gadget")).toBeNull();
   });

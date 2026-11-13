@@ -132,7 +132,7 @@ struct DepartmentBrowser: View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
         return Color.clear
             .aspectRatio(1, contentMode: .fit)
-            .overlay { BundledImage(image: WebAssets.department(slug)).padding(8) }
+            .overlay { DepartmentArt(slug: slug).padding(8) }
             .background(shape.fill(Brand.tileField))
             .clipShape(shape)
             .overlay(shape.strokeBorder(open ? Brand.navy : Color.clear, lineWidth: 3))

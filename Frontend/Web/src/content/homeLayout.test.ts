@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { categoryRail, dealsDrawn, departmentTabs, homeRailDefinitions, MAX_OCCASIONS, MAX_SHELF_PRODUCTS, MAX_TABBED_PRODUCTS, MEGA_DEAL_PERCENT, MIN_SHELF_PRODUCTS, shelvesFor } from "./homeLayout";
 import { en, type MessageKey } from "@shared/i18n/dictionary";
 import type { Product } from "@shared/commerce/types";
+import { DEPARTMENTS } from "@shared/commerce/departments";
 
 const money = (amount: string) => ({ amount, currencyCode: "KWD" });
 
@@ -28,8 +29,9 @@ describe("NetLet home layout content", () => {
     expect(homeRailDefinitions.map((rail) => en[rail.title])).toEqual(["Mega deals", "Deals", "Trending", "Bestsellers", "New arrivals"]);
   });
 
-  it("keeps the category section available", () => {
-    expect(categoryRail).toHaveLength(6);
+  it("keeps the category section available: All, then every department", () => {
+    expect(categoryRail).toHaveLength(DEPARTMENTS.length + 1);
+    expect(categoryRail.slice(1).map(entry => entry.query)).toEqual(DEPARTMENTS.map(department => department.name));
   });
 
   // Every string on the home page comes out of the dictionary, so a key that

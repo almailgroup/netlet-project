@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   SUBCATEGORY_PICTURE_EDGE,
   acceptableSubcategoryPicture,
+  departmentHasArt,
   everySubcategory,
   pictureFor,
   picturesFromRows,
@@ -12,8 +13,10 @@ import {
   subcategoryOfPictureKey,
   subcategoryPictureKey,
   subcategoryPicturePrompt,
+  styleArtFor,
 } from "./subcategoryPictures.js";
 import { SUBCATEGORIES } from "./subcategories.js";
+import { DEPARTMENTS } from "./departments.js";
 
 describe("subcategory pictures", () => {
   it("names every subcategory by a key that fits the settings column", () => {
@@ -47,12 +50,15 @@ describe("subcategory pictures", () => {
     expect(shownSubcategoryPicture(undefined, "home-and-kitchen", "kitchen-appliances")).toBe("/subcategories/home-and-kitchen-kitchen-appliances.webp");
   });
 
-  /* The files are the shop's pictures, so a subcategory added without one
-     would be a row with a broken image: every subcategory has its file, the
-     folder holds nothing else, and each is the square the tiles draw. */
-  it("has a picture file for every subcategory, and no other", () => {
+  /* The files are the shop's pictures, so a department marked as having them
+     with one missing would be a row with a broken image: every subcategory of
+     a department with art has its file, the folder holds nothing else, and
+     each is the square the tiles draw. */
+  it("has a picture file for every subcategory of a department with art, and no other", () => {
     const folder = path.resolve(import.meta.dirname, "../../Frontend/Web/public/subcategories");
-    const wanted = everySubcategory().map(({ department, subcategory }) => path.basename(subcategoryArtPath(department, subcategory.slug)));
+    const wanted = everySubcategory()
+      .filter(({ department }) => departmentHasArt(department))
+      .map(({ department, subcategory }) => path.basename(subcategoryArtPath(department, subcategory.slug)));
     expect(new Set(wanted).size).toBe(wanted.length);
     expect(readdirSync(folder).sort()).toEqual([...wanted].sort());
     for (const name of wanted) {
@@ -62,6 +68,25 @@ describe("subcategory pictures", () => {
       expect(webpSize(file), name).toEqual({ width: SUBCATEGORY_PICTURE_EDGE, height: SUBCATEGORY_PICTURE_EDGE });
       expect(file.length, name).toBeLessThan(40 * 1024);
     }
+  });
+
+  /* A department's tile art is there exactly when its flag says so, the
+     subcategories' rule, so a picture dropped in is drawn only once it is
+     marked, and a department marked as having art never draws a broken tile. */
+  it("has tile art for exactly the departments marked as having it, and All", () => {
+    const folder = path.resolve(import.meta.dirname, "../../Frontend/Web/public/departments");
+    const wanted = [...DEPARTMENTS.filter(department => department.art).map(department => `${department.slug}.webp`), "all.webp"];
+    expect(readdirSync(folder).sort()).toEqual(wanted.sort());
+  });
+
+  it("draws no file for a department whose pictures have not arrived, and styles its drawing on one that has", () => {
+    const waiting = DEPARTMENTS.find(department => !department.art);
+    if (!waiting) return;
+    const first = SUBCATEGORIES[waiting.slug][0];
+    expect(shownSubcategoryPicture(undefined, waiting.slug, first.slug)).toBeNull();
+    expect(shownSubcategoryPicture({ [`${waiting.slug}/${first.slug}`]: "/media/abcdefghijklmnopqrstuvwx.webp" }, waiting.slug, first.slug)).toBe("/media/abcdefghijklmnopqrstuvwx.webp");
+    expect(styleArtFor(waiting.slug)).toBe(DEPARTMENTS.find(department => department.art)?.slug);
+    expect(styleArtFor("electronics")).toBe("electronics");
   });
 
   it("keeps a picture only when it is one of NetLet's own uploads", () => {

@@ -356,7 +356,7 @@ private struct SearchSheet: View {
     private func tile(slug: String, title: String, count: Int?, press: @escaping () -> Void) -> some View {
         Button(action: press) {
             VStack(spacing: 4) {
-                BundledImage(image: WebAssets.department(slug))
+                DepartmentArt(slug: slug)
                     .aspectRatio(4.0 / 3.0, contentMode: .fit)
                 Text(title)
                     .font(.inter(12, .bold))

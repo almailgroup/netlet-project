@@ -91,7 +91,7 @@ struct PortalSubcategoryPicturesView: View {
                 ForEach(ReferenceData.shared.departments.filter { !$0.subs.isEmpty }, id: \.slug) { department in
                     PortalCard {
                         HStack(spacing: 10) {
-                            BundledImage(image: WebAssets.department(department.slug))
+                            DepartmentArt(slug: department.slug)
                                 .frame(width: 44, height: 33)
                                 .accessibilityHidden(true)
                             Text(l.t(department.label))
@@ -121,7 +121,7 @@ struct PortalSubcategoryPicturesView: View {
         return VStack(alignment: .leading, spacing: 8) {
             Text(name).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
             HStack(alignment: .top, spacing: 12) {
-                tile(caption: l.t(kept == nil ? "subpics.original" : "subpics.onShop")) {
+                tile(caption: l.t(kept != nil ? "subpics.onShop" : WebAssets.subcategory(department, subcategory.slug) != nil ? "subpics.original" : "subpics.iconOnly")) {
                     if let kept {
                         RemoteImage(reference: kept, contentMode: .fit, label: l.t("subpics.keptAlt", ["name": name]))
                     } else if let original = WebAssets.subcategory(department, subcategory.slug) {
@@ -206,7 +206,11 @@ struct PortalSubcategoryPicturesView: View {
         let key = "\(department)/\(subcategory.slug)"
         busy[key] = "drawing"
         defer { busy[key] = nil }
-        let reference = WebAssets.departmentFile(department).map { API.SubcategoryPictureDraw.Reference(mimeType: "image/webp", data: $0.base64EncodedString()) }
+        /* A department whose pictures have not arrived is drawn in the style of one that has (`styleArtFor`). */
+        let style = ReferenceData.shared.department(slug: department)?.hasArt == false
+            ? ReferenceData.shared.departments.first(where: \.hasArt)?.slug ?? department
+            : department
+        let reference = WebAssets.departmentFile(style).map { API.SubcategoryPictureDraw.Reference(mimeType: "image/webp", data: $0.base64EncodedString()) }
         do {
             let answer = try await app.services.api.call(API.drawSubcategoryPicture, .init(department: department, slug: subcategory.slug, reference: reference))
             guard let bytes = Data(base64Encoded: answer.data), let image = UIImage(data: bytes) else { throw ImagePreparation.Problem.unreadable }

@@ -140,6 +140,14 @@ export const DEPARTMENT_QUESTIONS: Record<string, readonly [MessageKey, MessageK
   "beauty": ["assistant.askUse", "assistant.askSkin"],
   "style": ["assistant.askMaterial", "assistant.askFit"],
   "grocery": ["assistant.askIngredients", "assistant.askStore"],
+  "health & wellness": ["assistant.askUse", "assistant.askIngredients"],
+  "baby": ["assistant.askAge", "assistant.askClean"],
+  "toys & games": ["assistant.askAge", "assistant.askBatteries"],
+  "sports & outdoors": ["assistant.askSize", "assistant.askMaterial"],
+  "automotive": ["assistant.askCarFit", "assistant.askUse"],
+  "tools & home improvement": ["assistant.askBox", "assistant.askUse"],
+  "pet supplies": ["assistant.askPet", "assistant.askIngredients"],
+  "books & stationery": ["assistant.askAbout", "assistant.askLanguage"],
 };
 
 /** At most this many, so the row stays one or two lines on a phone. */

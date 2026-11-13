@@ -10,6 +10,11 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
     /// The dictionary key of its name, so it reads the way the web spells it.
     let label: String
     let icon: String
+    /// The ground its symbol is drawn on while it has no picture (`Department.tint`).
+    var tint: String? = nil
+    /// Whether its pictures have arrived (`Department.art`): its tile's and its
+    /// subcategories'. Until they have, the app draws its symbol on its tint.
+    var art: Bool? = nil
     /// Its subcategories by name, in the order the Categories tab lists them
     /// (`Shared/commerce/subcategories.ts`); the server files each product.
     let subcategories: [Subcategory]?
@@ -75,6 +80,46 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
             "cookie": ["popcorn", "gift"],
             "cup": ["cup.and.saucer"],
             "meat": ["fish", "fork.knife"],
+            "pill": ["pills", "cross.case"],
+            "zap": ["bolt", "bolt.fill"],
+            "stethoscope": ["stethoscope", "cross.case"],
+            "bandage": ["bandage", "cross.case"],
+            "eye": ["eye"],
+            "leaf": ["leaf"],
+            "bottle": ["waterbottle", "drop"],
+            "stroller": ["stroller", "figure.and.child.holdinghands", "figure.child"],
+            "crib": ["bed.double", "moon.zzz"],
+            "rabbit": ["teddybear", "hare"],
+            "blocks": ["square.stack.3d.up", "cube"],
+            "dice": ["dice", "die.face.5"],
+            "bike": ["bicycle", "figure.outdoor.cycle"],
+            "rocket": ["airplane", "paperplane"],
+            "shapes": ["square.on.circle", "triangle"],
+            "biceps": ["figure.strengthtraining.traditional", "dumbbell"],
+            "tent": ["tent", "flame"],
+            "volleyball": ["volleyball", "soccerball", "sportscourt"],
+            "waves": ["water.waves", "drop"],
+            "fish": ["fish", "fish.fill"],
+            "car-front": ["car.fill", "car"],
+            "radio": ["radio", "antenna.radiowaves.left.and.right"],
+            "cog": ["gearshape", "gear"],
+            "fuel": ["fuelpump", "drop"],
+            "drill": ["wrench.and.screwdriver", "hammer"],
+            "wrench": ["wrench.adjustable", "wrench"],
+            "sprout": ["tree", "leaf"],
+            "lightbulb": ["lightbulb"],
+            "paint-roller": ["paintbrush", "paintpalette"],
+            "hard-hat": ["lock.shield", "shield"],
+            "cat": ["cat", "pawprint"],
+            "dog": ["dog", "pawprint"],
+            "bird": ["bird", "pawprint"],
+            "squirrel": ["hare", "pawprint"],
+            "book-open": ["book", "book.closed"],
+            "book-heart": ["book.pages", "books.vertical"],
+            "backpack": ["backpack", "pencil.and.ruler"],
+            "paperclip": ["paperclip"],
+            "pen": ["pencil", "square.and.pencil"],
+            "palette": ["paintpalette", "paintbrush"],
         ]
     }
 
@@ -92,9 +137,20 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
         case "flower": return "camera.macro"
         case "shirt": return "tshirt"
         case "carrot": return "carrot"
+        case "heart-pulse": return "waveform.path.ecg"
+        case "baby": return "figure.child"
+        case "toy-brick": return "puzzlepiece"
+        case "trophy": return "trophy"
+        case "car": return "car"
+        case "hammer": return "hammer"
+        case "paw": return "pawprint"
+        case "book": return "book"
         default: return "square.grid.2x2"
         }
     }
+
+    /// Whether its pictures have arrived; a list from before the flag has them.
+    var hasArt: Bool { art ?? true }
 
     /// The department's art on the site, the same file the web's tiles draw.
     var artPath: String { "/departments/\(slug).webp" }

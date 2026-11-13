@@ -20,7 +20,10 @@
  * twice. An icon that repeats its label is noise to a screen reader, and one
  * that replaces a label is a control with no name at all — this is neither.
  */
-import { Carrot, CookingPot, Flower2, LayoutGrid, Plug, Shirt, Tag, type LucideIcon } from "lucide-react";
+import {
+  Baby, Book, Car, Carrot, CookingPot, Flower2, Hammer, HeartPulse, LayoutGrid, PawPrint, Plug, Shirt, Tag, ToyBrick, Trophy,
+  type LucideIcon,
+} from "lucide-react";
 import { departmentIcon, type DepartmentIcon as IconName } from "@shared/commerce/departments";
 
 /*
@@ -33,11 +36,19 @@ const DRAWINGS: Record<IconName, LucideIcon> = {
   flower: Flower2,
   shirt: Shirt,
   carrot: Carrot,
+  "heart-pulse": HeartPulse,
+  baby: Baby,
+  "toy-brick": ToyBrick,
+  trophy: Trophy,
+  car: Car,
+  hammer: Hammer,
+  paw: PawPrint,
+  book: Book,
   grid: LayoutGrid,
   tag: Tag,
 };
 
-export function DepartmentIcon({ query, className = "size-4" }: { query: string; className?: string }) {
+export function DepartmentIcon({ query, className = "size-4", strokeWidth }: { query: string; className?: string; strokeWidth?: number }) {
   const Drawing = DRAWINGS[departmentIcon(query)];
-  return <Drawing className={className} aria-hidden />;
+  return <Drawing className={className} strokeWidth={strokeWidth} aria-hidden />;
 }

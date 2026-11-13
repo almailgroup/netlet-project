@@ -548,6 +548,367 @@
             "Frozen"
           ]
         }
+      ],
+      "health-and-wellness": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Vitamins & supplements",
+            "Sports nutrition",
+            "Medical devices",
+            "First aid",
+            "Eye care",
+            "Wellness & relaxation"
+          ],
+          "optionsAr": [
+            "الفيتامينات والمكملات",
+            "التغذية الرياضية",
+            "الأجهزة الطبية",
+            "الإسعافات الأولية",
+            "العناية بالعيون",
+            "العافية والاسترخاء"
+          ]
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "form",
+          "label": "Form",
+          "labelAr": "الشكل",
+          "options": [
+            "Tablets",
+            "Capsules",
+            "Powder",
+            "Liquid",
+            "Gummies"
+          ],
+          "optionsAr": [
+            "أقراص",
+            "كبسولات",
+            "بودرة",
+            "سائل",
+            "حلوى مضغ"
+          ]
+        },
+        {
+          "key": "count",
+          "label": "Pack size",
+          "labelAr": "عدد الحبات"
+        }
+      ],
+      "baby": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Diapers & wipes",
+            "Feeding",
+            "Strollers & car seats",
+            "Nursery",
+            "Bath & care",
+            "Baby clothing"
+          ],
+          "optionsAr": [
+            "الحفاضات والمناديل",
+            "الرضاعة والتغذية",
+            "العربات ومقاعد السيارة",
+            "غرفة الطفل",
+            "الاستحمام والعناية",
+            "ملابس الرضّع"
+          ]
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "age",
+          "label": "Age range",
+          "labelAr": "العمر المناسب"
+        },
+        {
+          "key": "size",
+          "label": "Size",
+          "labelAr": "المقاس"
+        }
+      ],
+      "toys-and-games": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Dolls & soft toys",
+            "Building sets",
+            "Board games & puzzles",
+            "Outdoor & ride-ons",
+            "Remote control",
+            "Learning toys"
+          ],
+          "optionsAr": [
+            "الدمى والألعاب المحشوة",
+            "ألعاب التركيب",
+            "ألعاب الطاولة والألغاز",
+            "الألعاب الخارجية والدراجات",
+            "ألعاب التحكم عن بعد",
+            "الألعاب التعليمية"
+          ]
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "age",
+          "label": "Age range",
+          "labelAr": "العمر المناسب"
+        },
+        {
+          "key": "batteries",
+          "label": "Batteries",
+          "labelAr": "البطاريات",
+          "options": [
+            "Not needed",
+            "Included",
+            "Not included"
+          ],
+          "optionsAr": [
+            "لا تحتاج",
+            "مرفقة",
+            "غير مرفقة"
+          ]
+        }
+      ],
+      "sports-and-outdoors": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Fitness equipment",
+            "Cycling",
+            "Camping & trips",
+            "Team sports",
+            "Water sports",
+            "Fishing"
+          ],
+          "optionsAr": [
+            "معدات اللياقة",
+            "الدراجات",
+            "التخييم والكشتات",
+            "الرياضات الجماعية",
+            "الرياضات المائية",
+            "صيد السمك"
+          ]
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "material",
+          "label": "Material",
+          "labelAr": "الخامة"
+        },
+        {
+          "key": "weight",
+          "label": "Weight",
+          "labelAr": "الوزن",
+          "unit": "kg"
+        }
+      ],
+      "automotive": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Car accessories",
+            "Car care",
+            "Car electronics",
+            "Parts & tyres",
+            "Oils & fluids"
+          ],
+          "optionsAr": [
+            "إكسسوارات السيارات",
+            "العناية بالسيارة",
+            "إلكترونيات السيارة",
+            "قطع الغيار والإطارات",
+            "الزيوت والسوائل"
+          ]
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "fits",
+          "label": "Fits",
+          "labelAr": "يناسب"
+        },
+        {
+          "key": "volume",
+          "label": "Volume",
+          "labelAr": "الحجم",
+          "unit": "L"
+        }
+      ],
+      "tools-and-home-improvement": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Power tools",
+            "Hand tools",
+            "Garden",
+            "Electrical & lighting",
+            "Paint & decorating",
+            "Safety & security"
+          ],
+          "optionsAr": [
+            "العدد الكهربائية",
+            "العدد اليدوية",
+            "الحديقة",
+            "الكهرباء والإنارة",
+            "الدهانات والديكور",
+            "السلامة والأمان"
+          ]
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "power",
+          "label": "Power",
+          "labelAr": "القدرة",
+          "unit": "W"
+        },
+        {
+          "key": "voltage",
+          "label": "Voltage",
+          "labelAr": "الجهد",
+          "unit": "V"
+        },
+        {
+          "key": "warranty",
+          "label": "Warranty",
+          "labelAr": "الضمان"
+        }
+      ],
+      "pet-supplies": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Cats",
+            "Dogs",
+            "Birds",
+            "Fish & aquariums",
+            "Small animals"
+          ],
+          "optionsAr": [
+            "القطط",
+            "الكلاب",
+            "الطيور",
+            "الأسماك والأحواض",
+            "الحيوانات الصغيرة"
+          ]
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        },
+        {
+          "key": "lifestage",
+          "label": "Life stage",
+          "labelAr": "المرحلة العمرية",
+          "options": [
+            "Young",
+            "Adult",
+            "Senior",
+            "All ages"
+          ],
+          "optionsAr": [
+            "صغير",
+            "بالغ",
+            "كبير السن",
+            "جميع الأعمار"
+          ]
+        },
+        {
+          "key": "weight",
+          "label": "Weight",
+          "labelAr": "الوزن",
+          "unit": "kg"
+        }
+      ],
+      "books-and-stationery": [
+        {
+          "key": "type",
+          "label": "Type",
+          "labelAr": "النوع",
+          "options": [
+            "Books",
+            "Children's books",
+            "School supplies",
+            "Office supplies",
+            "Pens & notebooks",
+            "Art & craft"
+          ],
+          "optionsAr": [
+            "الكتب",
+            "كتب الأطفال",
+            "المستلزمات المدرسية",
+            "مستلزمات المكتب",
+            "الأقلام والدفاتر",
+            "الفنون والأشغال اليدوية"
+          ]
+        },
+        {
+          "key": "author",
+          "label": "Author",
+          "labelAr": "المؤلف"
+        },
+        {
+          "key": "language",
+          "label": "Language",
+          "labelAr": "اللغة",
+          "options": [
+            "Arabic",
+            "English",
+            "Arabic and English"
+          ],
+          "optionsAr": [
+            "العربية",
+            "الإنجليزية",
+            "العربية والإنجليزية"
+          ]
+        },
+        {
+          "key": "pages",
+          "label": "Pages",
+          "labelAr": "عدد الصفحات"
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "labelAr": "العلامة التجارية"
+        }
       ]
     },
     "sellUnits": [
@@ -847,6 +1208,178 @@
         "ماء",
         "عصير",
         "بهار"
+      ],
+      "health-and-wellness": [
+        "vitamin",
+        "supplement",
+        "capsule",
+        "protein",
+        "whey",
+        "omega",
+        "collagen",
+        "thermometer",
+        "bandage",
+        "first aid",
+        "massager",
+        "blood pressure",
+        "فيتامين",
+        "مكمل",
+        "كبسولات",
+        "بروتين",
+        "كولاجين",
+        "ميزان حرارة",
+        "ضماد",
+        "مساج"
+      ],
+      "baby": [
+        "baby",
+        "diaper",
+        "nappy",
+        "nappies",
+        "stroller",
+        "pacifier",
+        "feeding bottle",
+        "crib",
+        "onesie",
+        "newborn",
+        "infant",
+        "حفاض",
+        "حفاضات",
+        "رضاعة",
+        "عربة اطفال",
+        "مواليد",
+        "رضع",
+        "لهاية"
+      ],
+      "toys-and-games": [
+        "toy",
+        "lego",
+        "doll",
+        "puzzle",
+        "board game",
+        "plush",
+        "teddy",
+        "remote control",
+        "playset",
+        "لعبة",
+        "ألعاب",
+        "العاب",
+        "دمية",
+        "ليغو",
+        "بزل",
+        "دبدوب"
+      ],
+      "sports-and-outdoors": [
+        "dumbbell",
+        "kettlebell",
+        "treadmill",
+        "yoga",
+        "tent",
+        "camping",
+        "football",
+        "basketball",
+        "bicycle",
+        "fishing",
+        "swimming",
+        "padel",
+        "racket",
+        "دمبل",
+        "خيمة",
+        "كشتة",
+        "كرة",
+        "دراجة",
+        "سنارة",
+        "سباحة",
+        "بادل"
+      ],
+      "automotive": [
+        "car charger",
+        "car mount",
+        "car cover",
+        "car wash",
+        "car care",
+        "car battery",
+        "tyre",
+        "tire",
+        "engine oil",
+        "motor oil",
+        "dash cam",
+        "dashcam",
+        "wiper",
+        "spark plug",
+        "سيارة",
+        "سيارات",
+        "اطار",
+        "تاير",
+        "زيت محرك",
+        "مساحات",
+        "بواجي"
+      ],
+      "tools-and-home-improvement": [
+        "drill",
+        "hammer",
+        "screwdriver",
+        "wrench",
+        "pliers",
+        "toolbox",
+        "tool kit",
+        "sander",
+        "paint roller",
+        "garden hose",
+        "lawn",
+        "led bulb",
+        "extension cord",
+        "padlock",
+        "دريل",
+        "مطرقة",
+        "شاكوش",
+        "مفك",
+        "منشار",
+        "خرطوم",
+        "لمبة",
+        "قفل"
+      ],
+      "pet-supplies": [
+        "pet food",
+        "pet bed",
+        "pet toy",
+        "pets",
+        "cat food",
+        "dog food",
+        "cat litter",
+        "puppy",
+        "kitten",
+        "leash",
+        "aquarium",
+        "bird cage",
+        "parrot",
+        "hamster",
+        "قطط",
+        "كلاب",
+        "قطة",
+        "كلب",
+        "حيوانات",
+        "طيور",
+        "حوض سمك"
+      ],
+      "books-and-stationery": [
+        "book",
+        "novel",
+        "notebook",
+        "pencil",
+        "stationery",
+        "stapler",
+        "marker",
+        "sketchbook",
+        "crayon",
+        "ballpoint",
+        "كتاب",
+        "كتب",
+        "رواية",
+        "دفتر",
+        "قلم",
+        "اقلام",
+        "قرطاسية"
       ]
     },
     "limit": 1000,

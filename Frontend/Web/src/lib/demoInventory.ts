@@ -13,6 +13,7 @@
 import { demoCatalog } from "@/lib/demoCatalog";
 import { vendorHealth } from "@shared/inventory/vendorHealth";
 import { stockState } from "@shared/commerce/dashboard";
+import { DEPARTMENTS } from "@shared/commerce/departments";
 
 const VENDOR_ID = 1;
 
@@ -65,10 +66,10 @@ export const demoInventoryActor = {
   role: "manager" as const,
 };
 
-export const demoCategories = [
-  { id: 1, slug: "electronics", name: "Electronics", nameAr: "الإلكترونيات", parentId: null, position: 0, createdAt: new Date() },
-  { id: 2, slug: "home-and-kitchen", name: "Home & Kitchen", nameAr: "المنزل والمطبخ", parentId: null, position: 1, createdAt: new Date() },
-];
+/* NetLet's departments in their order, so the demo's editor offers each; Electronics is 1 and Home & Kitchen 2, as the fixtures file them. */
+export const demoCategories = DEPARTMENTS.map((department, index) => ({
+  id: index + 1, slug: department.slug, name: department.name, nameAr: department.nameAr, parentId: null, position: index, createdAt: new Date(),
+}));
 
 /**
  * The overview counts, derived from the fixture products rather than typed.

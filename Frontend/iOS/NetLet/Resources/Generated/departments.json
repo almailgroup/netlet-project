@@ -6,6 +6,8 @@
     "position": 1,
     "label": "category.electronics",
     "icon": "plug",
+    "tint": "#dce5e9",
+    "art": true,
     "subcategories": [
       {
         "slug": "phones",
@@ -178,6 +180,8 @@
     "position": 2,
     "label": "category.homeKitchen",
     "icon": "cooking-pot",
+    "tint": "#f5e4c9",
+    "art": true,
     "subcategories": [
       {
         "slug": "kitchen-appliances",
@@ -363,6 +367,8 @@
     "position": 3,
     "label": "category.beauty",
     "icon": "flower",
+    "tint": "#f6d9d2",
+    "art": true,
     "subcategories": [
       {
         "slug": "skincare",
@@ -480,6 +486,8 @@
     "position": 4,
     "label": "category.style",
     "icon": "shirt",
+    "tint": "#e4dfd0",
+    "art": true,
     "subcategories": [
       {
         "slug": "women",
@@ -637,6 +645,8 @@
     "position": 5,
     "label": "category.grocery",
     "icon": "carrot",
+    "tint": "#dce7cf",
+    "art": true,
     "subcategories": [
       {
         "slug": "fresh",
@@ -803,6 +813,1050 @@
           "غنم",
           "سمك",
           "روبيان"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "health-and-wellness",
+    "name": "Health & Wellness",
+    "nameAr": "الصحة والعافية",
+    "position": 6,
+    "label": "category.health",
+    "icon": "heart-pulse",
+    "tint": "#d6ecea",
+    "art": false,
+    "subcategories": [
+      {
+        "slug": "vitamins",
+        "name": "Vitamins & supplements",
+        "nameAr": "الفيتامينات والمكملات",
+        "icon": "pill",
+        "words": [
+          "vitamin",
+          "multivitamin",
+          "supplement",
+          "omega",
+          "collagen",
+          "probiotic",
+          "zinc",
+          "magnesium",
+          "capsule",
+          "فيتامين",
+          "فيتامينات",
+          "مكمل",
+          "مكملات",
+          "اوميغا",
+          "كولاجين",
+          "بروبيوتيك",
+          "زنك",
+          "مغنيسيوم",
+          "كبسولات"
+        ]
+      },
+      {
+        "slug": "sports-nutrition",
+        "name": "Sports nutrition",
+        "nameAr": "التغذية الرياضية",
+        "icon": "zap",
+        "words": [
+          "protein",
+          "whey",
+          "creatine",
+          "bcaa",
+          "pre-workout",
+          "preworkout",
+          "mass gainer",
+          "electrolyte",
+          "بروتين",
+          "واي",
+          "كرياتين",
+          "الكترولايت"
+        ]
+      },
+      {
+        "slug": "medical-devices",
+        "name": "Medical devices",
+        "nameAr": "الأجهزة الطبية",
+        "icon": "stethoscope",
+        "words": [
+          "thermometer",
+          "blood pressure",
+          "glucometer",
+          "glucose",
+          "oximeter",
+          "nebuliser",
+          "nebulizer",
+          "stethoscope",
+          "ميزان حرارة",
+          "جهاز ضغط",
+          "جهاز سكر",
+          "اوكسيميتر",
+          "بخاخ",
+          "سماعة طبيب"
+        ]
+      },
+      {
+        "slug": "first-aid",
+        "name": "First aid",
+        "nameAr": "الإسعافات الأولية",
+        "icon": "bandage",
+        "words": [
+          "first aid",
+          "bandage",
+          "plaster",
+          "gauze",
+          "antiseptic",
+          "sanitiser",
+          "sanitizer",
+          "اسعافات",
+          "ضماد",
+          "لزقة",
+          "شاش",
+          "مطهر",
+          "معقم"
+        ]
+      },
+      {
+        "slug": "eye-care",
+        "name": "Eye care",
+        "nameAr": "العناية بالعيون",
+        "icon": "eye",
+        "words": [
+          "contact lens",
+          "lenses",
+          "eye drops",
+          "reading glasses",
+          "lens solution",
+          "عدسات",
+          "عدسة لاصقة",
+          "قطرة عين",
+          "نظارة قراءة"
+        ]
+      },
+      {
+        "slug": "wellness",
+        "name": "Wellness & relaxation",
+        "nameAr": "العافية والاسترخاء",
+        "icon": "leaf",
+        "words": [
+          "massager",
+          "massage",
+          "essential oil",
+          "aromatherapy",
+          "herbal",
+          "sleep aid",
+          "diffuser",
+          "مساج",
+          "مدلك",
+          "زيت عطري",
+          "اعشاب",
+          "استرخاء",
+          "فواحة"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "baby",
+    "name": "Baby",
+    "nameAr": "مستلزمات الرضّع",
+    "position": 7,
+    "label": "category.baby",
+    "icon": "baby",
+    "tint": "#f4e1ec",
+    "art": false,
+    "subcategories": [
+      {
+        "slug": "diapers",
+        "name": "Diapers & wipes",
+        "nameAr": "الحفاضات والمناديل",
+        "icon": "baby",
+        "words": [
+          "diaper",
+          "nappy",
+          "nappies",
+          "wipes",
+          "pampers",
+          "huggies",
+          "حفاضات",
+          "حفاض",
+          "بامبرز",
+          "مناديل مبللة"
+        ]
+      },
+      {
+        "slug": "feeding",
+        "name": "Feeding",
+        "nameAr": "الرضاعة والتغذية",
+        "icon": "bottle",
+        "words": [
+          "feeding bottle",
+          "baby bottle",
+          "formula",
+          "pacifier",
+          "dummy",
+          "teether",
+          "bib",
+          "breast pump",
+          "sterilizer",
+          "steriliser",
+          "رضاعة",
+          "حليب اطفال",
+          "لهاية",
+          "مصاصة",
+          "عضاضة",
+          "مريلة",
+          "شفاط",
+          "معقم رضاعات"
+        ]
+      },
+      {
+        "slug": "strollers",
+        "name": "Strollers & car seats",
+        "nameAr": "العربات ومقاعد السيارة",
+        "icon": "stroller",
+        "words": [
+          "stroller",
+          "pram",
+          "pushchair",
+          "car seat",
+          "carrier",
+          "baby walker",
+          "عربة اطفال",
+          "عربانة",
+          "كرسي سيارة",
+          "حمالة اطفال",
+          "مشاية"
+        ]
+      },
+      {
+        "slug": "nursery",
+        "name": "Nursery",
+        "nameAr": "غرفة الطفل",
+        "icon": "crib",
+        "words": [
+          "crib",
+          "cot",
+          "cradle",
+          "bassinet",
+          "playpen",
+          "baby monitor",
+          "سرير اطفال",
+          "مهد",
+          "سرير هزاز",
+          "حظيرة اطفال",
+          "جهاز مراقبة"
+        ]
+      },
+      {
+        "slug": "bath-and-care",
+        "name": "Bath & care",
+        "nameAr": "الاستحمام والعناية",
+        "icon": "bath",
+        "words": [
+          "baby shampoo",
+          "baby lotion",
+          "baby oil",
+          "baby bath",
+          "rash cream",
+          "baby powder",
+          "شامبو اطفال",
+          "لوشن اطفال",
+          "زيت اطفال",
+          "حوض استحمام",
+          "كريم تسلخات",
+          "بودرة اطفال"
+        ]
+      },
+      {
+        "slug": "baby-clothing",
+        "name": "Baby clothing",
+        "nameAr": "ملابس الرضّع",
+        "icon": "shirt",
+        "words": [
+          "onesie",
+          "bodysuit",
+          "romper",
+          "sleepsuit",
+          "swaddle",
+          "newborn",
+          "بدي",
+          "سالوبيت",
+          "قماط",
+          "لفافة",
+          "مواليد"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "toys-and-games",
+    "name": "Toys & Games",
+    "nameAr": "ألعاب الأطفال",
+    "position": 8,
+    "label": "category.toys",
+    "icon": "toy-brick",
+    "tint": "#fbe8c8",
+    "art": false,
+    "subcategories": [
+      {
+        "slug": "dolls",
+        "name": "Dolls & soft toys",
+        "nameAr": "الدمى والألعاب المحشوة",
+        "icon": "rabbit",
+        "words": [
+          "doll",
+          "barbie",
+          "plush",
+          "teddy",
+          "stuffed",
+          "soft toy",
+          "action figure",
+          "دمية",
+          "دمى",
+          "باربي",
+          "دبدوب",
+          "محشو",
+          "مجسم"
+        ]
+      },
+      {
+        "slug": "building",
+        "name": "Building sets",
+        "nameAr": "ألعاب التركيب",
+        "icon": "blocks",
+        "words": [
+          "lego",
+          "building blocks",
+          "construction",
+          "magnetic tiles",
+          "bricks",
+          "ليغو",
+          "ليجو",
+          "مكعبات",
+          "تركيب"
+        ]
+      },
+      {
+        "slug": "board-games",
+        "name": "Board games & puzzles",
+        "nameAr": "ألعاب الطاولة والألغاز",
+        "icon": "dice",
+        "words": [
+          "board game",
+          "puzzle",
+          "jigsaw",
+          "card game",
+          "monopoly",
+          "uno",
+          "chess",
+          "بزل",
+          "لغز",
+          "احجية",
+          "شطرنج",
+          "مونوبولي",
+          "اونو",
+          "كوتشينة"
+        ]
+      },
+      {
+        "slug": "outdoor-play",
+        "name": "Outdoor & ride-ons",
+        "nameAr": "الألعاب الخارجية والدراجات",
+        "icon": "bike",
+        "words": [
+          "scooter",
+          "kids bike",
+          "tricycle",
+          "trampoline",
+          "swing",
+          "slide",
+          "ride-on",
+          "water gun",
+          "سكوتر",
+          "سيكل اطفال",
+          "دراجة ثلاثية",
+          "ترامبولين",
+          "مرجيحة",
+          "زحليقة",
+          "مسدس ماء"
+        ]
+      },
+      {
+        "slug": "remote-control",
+        "name": "Remote control",
+        "nameAr": "ألعاب التحكم عن بعد",
+        "icon": "rocket",
+        "words": [
+          "remote control",
+          "rc car",
+          "rc",
+          "helicopter",
+          "racing car",
+          "ريموت",
+          "تحكم عن بعد",
+          "سيارة تحكم",
+          "هليكوبتر"
+        ]
+      },
+      {
+        "slug": "learning",
+        "name": "Learning toys",
+        "nameAr": "الألعاب التعليمية",
+        "icon": "shapes",
+        "words": [
+          "educational",
+          "learning",
+          "stem",
+          "montessori",
+          "alphabet",
+          "abacus",
+          "science kit",
+          "تعليمية",
+          "تعليمي",
+          "مونتيسوري",
+          "حروف",
+          "علوم"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "sports-and-outdoors",
+    "name": "Sports & Outdoors",
+    "nameAr": "الرياضة والرحلات",
+    "position": 9,
+    "label": "category.sports",
+    "icon": "trophy",
+    "tint": "#dbe7f5",
+    "art": false,
+    "subcategories": [
+      {
+        "slug": "fitness",
+        "name": "Fitness equipment",
+        "nameAr": "معدات اللياقة",
+        "icon": "biceps",
+        "words": [
+          "dumbbell",
+          "kettlebell",
+          "treadmill",
+          "weight bench",
+          "resistance band",
+          "yoga mat",
+          "exercise bike",
+          "weights",
+          "دمبل",
+          "دمبلز",
+          "اثقال",
+          "جهاز مشي",
+          "سير مشي",
+          "حبل مقاومة",
+          "سجادة يوغا"
+        ]
+      },
+      {
+        "slug": "cycling",
+        "name": "Cycling",
+        "nameAr": "الدراجات",
+        "icon": "bike",
+        "words": [
+          "bicycle",
+          "bike",
+          "cycling",
+          "mountain bike",
+          "bike helmet",
+          "دراجة",
+          "دراجات",
+          "سيكل",
+          "خوذة"
+        ]
+      },
+      {
+        "slug": "camping",
+        "name": "Camping & trips",
+        "nameAr": "التخييم والكشتات",
+        "icon": "tent",
+        "words": [
+          "tent",
+          "camping",
+          "sleeping bag",
+          "cooler",
+          "hiking",
+          "lantern",
+          "barbecue",
+          "bbq",
+          "خيمة",
+          "خيام",
+          "كشتة",
+          "تخييم",
+          "كيس نوم",
+          "ترمس",
+          "فانوس",
+          "منقل",
+          "شواية"
+        ]
+      },
+      {
+        "slug": "team-sports",
+        "name": "Team sports",
+        "nameAr": "الرياضات الجماعية",
+        "icon": "volleyball",
+        "words": [
+          "football",
+          "soccer",
+          "basketball",
+          "volleyball",
+          "goal",
+          "padel",
+          "tennis",
+          "racket",
+          "كرة",
+          "كرة قدم",
+          "كرة سلة",
+          "كرة طائرة",
+          "بادل",
+          "تنس",
+          "مضرب"
+        ]
+      },
+      {
+        "slug": "water-sports",
+        "name": "Water sports",
+        "nameAr": "الرياضات المائية",
+        "icon": "waves",
+        "words": [
+          "swimming",
+          "goggles",
+          "snorkel",
+          "diving",
+          "surf",
+          "paddle board",
+          "kayak",
+          "life jacket",
+          "سباحة",
+          "نظارة سباحة",
+          "غطس",
+          "سنوركل",
+          "تجديف",
+          "قارب",
+          "سترة نجاة"
+        ]
+      },
+      {
+        "slug": "fishing",
+        "name": "Fishing",
+        "nameAr": "صيد السمك",
+        "icon": "fish",
+        "words": [
+          "fishing",
+          "fishing rod",
+          "reel",
+          "hook",
+          "lure",
+          "bait",
+          "حداق",
+          "سنارة",
+          "شص",
+          "طعم",
+          "بكرة صيد"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "automotive",
+    "name": "Automotive",
+    "nameAr": "السيارات",
+    "position": 10,
+    "label": "category.automotive",
+    "icon": "car",
+    "tint": "#e2e5eb",
+    "art": false,
+    "subcategories": [
+      {
+        "slug": "car-accessories",
+        "name": "Car accessories",
+        "nameAr": "إكسسوارات السيارات",
+        "icon": "car-front",
+        "words": [
+          "seat cover",
+          "floor mat",
+          "phone holder",
+          "steering cover",
+          "sunshade",
+          "car organiser",
+          "car organizer",
+          "غطاء مقعد",
+          "دواسات",
+          "فرش سيارة",
+          "حامل جوال",
+          "غطاء سكان",
+          "مظلة سيارة"
+        ]
+      },
+      {
+        "slug": "car-care",
+        "name": "Car care",
+        "nameAr": "العناية بالسيارة",
+        "icon": "spray",
+        "words": [
+          "car wash",
+          "car shampoo",
+          "wax",
+          "polish",
+          "microfiber",
+          "tyre shine",
+          "tire shine",
+          "غسيل سيارة",
+          "شامبو سيارة",
+          "شمع",
+          "ملمع",
+          "تلميع",
+          "منشفة مايكروفايبر"
+        ]
+      },
+      {
+        "slug": "car-electronics",
+        "name": "Car electronics",
+        "nameAr": "إلكترونيات السيارة",
+        "icon": "radio",
+        "words": [
+          "dash cam",
+          "dashcam",
+          "car charger",
+          "car stereo",
+          "gps",
+          "jump starter",
+          "inverter",
+          "car speaker",
+          "كاميرا سيارة",
+          "داش كام",
+          "شاحن سيارة",
+          "مسجل سيارة",
+          "جي بي اس",
+          "اشتراك بطارية"
+        ]
+      },
+      {
+        "slug": "parts",
+        "name": "Parts & tyres",
+        "nameAr": "قطع الغيار والإطارات",
+        "icon": "cog",
+        "words": [
+          "tyre",
+          "tire",
+          "wheel",
+          "brake pads",
+          "filter",
+          "wiper",
+          "headlight",
+          "car battery",
+          "spark plug",
+          "اطار",
+          "تاير",
+          "فلتر",
+          "مساحات",
+          "سطب",
+          "بطارية سيارة",
+          "بواجي",
+          "فحمات"
+        ]
+      },
+      {
+        "slug": "oils",
+        "name": "Oils & fluids",
+        "nameAr": "الزيوت والسوائل",
+        "icon": "fuel",
+        "words": [
+          "engine oil",
+          "motor oil",
+          "coolant",
+          "brake fluid",
+          "transmission oil",
+          "additive",
+          "زيت محرك",
+          "زيت مكينة",
+          "ماء رديتر",
+          "سائل فرامل",
+          "زيت قير"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "tools-and-home-improvement",
+    "name": "Tools & Home Improvement",
+    "nameAr": "الأدوات وتحسين المنزل",
+    "position": 11,
+    "label": "category.tools",
+    "icon": "hammer",
+    "tint": "#f1e3d4",
+    "art": false,
+    "subcategories": [
+      {
+        "slug": "power-tools",
+        "name": "Power tools",
+        "nameAr": "العدد الكهربائية",
+        "icon": "drill",
+        "words": [
+          "drill",
+          "grinder",
+          "saw",
+          "sander",
+          "heat gun",
+          "impact driver",
+          "دريل",
+          "شنيور",
+          "صاروخ",
+          "منشار",
+          "صنفرة",
+          "مسدس حرارة"
+        ]
+      },
+      {
+        "slug": "hand-tools",
+        "name": "Hand tools",
+        "nameAr": "العدد اليدوية",
+        "icon": "wrench",
+        "words": [
+          "hammer",
+          "wrench",
+          "spanner",
+          "screwdriver",
+          "pliers",
+          "tape measure",
+          "toolbox",
+          "tool kit",
+          "مطرقة",
+          "شاكوش",
+          "مفتاح ربط",
+          "مفك",
+          "كماشة",
+          "زرادية",
+          "متر قياس",
+          "صندوق عدة"
+        ]
+      },
+      {
+        "slug": "garden",
+        "name": "Garden",
+        "nameAr": "الحديقة",
+        "icon": "sprout",
+        "words": [
+          "garden",
+          "hose",
+          "lawn",
+          "mower",
+          "seeds",
+          "soil",
+          "fertiliser",
+          "fertilizer",
+          "sprinkler",
+          "حديقة",
+          "زراعة",
+          "خرطوم",
+          "عشب",
+          "بذور",
+          "تربة",
+          "سماد",
+          "رشاش"
+        ]
+      },
+      {
+        "slug": "electrical",
+        "name": "Electrical & lighting",
+        "nameAr": "الكهرباء والإنارة",
+        "icon": "lightbulb",
+        "words": [
+          "bulb",
+          "led",
+          "extension",
+          "socket",
+          "switch",
+          "wire",
+          "spotlight",
+          "لمبة",
+          "ليد",
+          "توصيلة",
+          "فيش",
+          "سلك",
+          "كشاف"
+        ]
+      },
+      {
+        "slug": "paint",
+        "name": "Paint & decorating",
+        "nameAr": "الدهانات والديكور",
+        "icon": "paint-roller",
+        "words": [
+          "paint",
+          "paint roller",
+          "primer",
+          "wallpaper",
+          "masking tape",
+          "putty",
+          "صبغ",
+          "دهان",
+          "رول دهان",
+          "ورق جدران",
+          "معجون"
+        ]
+      },
+      {
+        "slug": "safety",
+        "name": "Safety & security",
+        "nameAr": "السلامة والأمان",
+        "icon": "hard-hat",
+        "words": [
+          "padlock",
+          "lock",
+          "safe box",
+          "work gloves",
+          "fire extinguisher",
+          "smoke detector",
+          "cctv",
+          "security camera",
+          "قفل",
+          "خزنة",
+          "قفازات عمل",
+          "طفاية حريق",
+          "كاشف دخان",
+          "كاميرا مراقبة"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "pet-supplies",
+    "name": "Pet Supplies",
+    "nameAr": "مستلزمات الحيوانات الأليفة",
+    "position": 12,
+    "label": "category.pets",
+    "icon": "paw",
+    "tint": "#ece5d6",
+    "art": false,
+    "subcategories": [
+      {
+        "slug": "cats",
+        "name": "Cats",
+        "nameAr": "القطط",
+        "icon": "cat",
+        "words": [
+          "cat",
+          "kitten",
+          "cat litter",
+          "scratcher",
+          "قطة",
+          "قطط",
+          "بسة",
+          "رمل قطط",
+          "مخدش"
+        ]
+      },
+      {
+        "slug": "dogs",
+        "name": "Dogs",
+        "nameAr": "الكلاب",
+        "icon": "dog",
+        "words": [
+          "dog",
+          "puppy",
+          "leash",
+          "collar",
+          "kennel",
+          "كلب",
+          "كلاب",
+          "جرو",
+          "رسن",
+          "طوق"
+        ]
+      },
+      {
+        "slug": "birds",
+        "name": "Birds",
+        "nameAr": "الطيور",
+        "icon": "bird",
+        "words": [
+          "bird",
+          "parrot",
+          "budgie",
+          "birdcage",
+          "bird seed",
+          "طير",
+          "طيور",
+          "ببغاء",
+          "بادجي",
+          "قفص طيور",
+          "حب طيور"
+        ]
+      },
+      {
+        "slug": "fish",
+        "name": "Fish & aquariums",
+        "nameAr": "الأسماك والأحواض",
+        "icon": "fish",
+        "words": [
+          "aquarium",
+          "fish tank",
+          "fish food",
+          "aquarium filter",
+          "حوض سمك",
+          "حوض اسماك",
+          "اسماك زينة",
+          "اكل سمك"
+        ]
+      },
+      {
+        "slug": "small-animals",
+        "name": "Small animals",
+        "nameAr": "الحيوانات الصغيرة",
+        "icon": "squirrel",
+        "words": [
+          "rabbit",
+          "hamster",
+          "guinea pig",
+          "turtle",
+          "tortoise",
+          "ارنب",
+          "هامستر",
+          "خنزير غينيا",
+          "سلحفاة"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "books-and-stationery",
+    "name": "Books & Stationery",
+    "nameAr": "الكتب والقرطاسية",
+    "position": 13,
+    "label": "category.books",
+    "icon": "book",
+    "tint": "#e7e1f1",
+    "art": false,
+    "subcategories": [
+      {
+        "slug": "books",
+        "name": "Books",
+        "nameAr": "الكتب",
+        "icon": "book-open",
+        "words": [
+          "book",
+          "novel",
+          "paperback",
+          "hardcover",
+          "biography",
+          "cookbook",
+          "كتاب",
+          "كتب",
+          "رواية",
+          "سيرة"
+        ]
+      },
+      {
+        "slug": "kids-books",
+        "name": "Children's books",
+        "nameAr": "كتب الأطفال",
+        "icon": "book-heart",
+        "words": [
+          "children",
+          "kids",
+          "children's book",
+          "kids book",
+          "storybook",
+          "bedtime stories",
+          "اطفال",
+          "قصص اطفال",
+          "كتب اطفال",
+          "قصة مصورة"
+        ]
+      },
+      {
+        "slug": "school",
+        "name": "School supplies",
+        "nameAr": "المستلزمات المدرسية",
+        "icon": "backpack",
+        "words": [
+          "school",
+          "school bag",
+          "pencil case",
+          "ruler",
+          "eraser",
+          "sharpener",
+          "lunch box",
+          "مدرسة",
+          "مدرسي",
+          "شنطة مدرسية",
+          "مقلمة",
+          "مسطرة",
+          "ممحاة",
+          "مبراة"
+        ]
+      },
+      {
+        "slug": "office",
+        "name": "Office supplies",
+        "nameAr": "مستلزمات المكتب",
+        "icon": "paperclip",
+        "words": [
+          "stapler",
+          "printer paper",
+          "folder",
+          "envelope",
+          "ink cartridge",
+          "toner",
+          "calculator",
+          "دباسة",
+          "ورق طباعة",
+          "ملف",
+          "ظرف",
+          "حبر",
+          "حاسبة"
+        ]
+      },
+      {
+        "slug": "pens-and-notebooks",
+        "name": "Pens & notebooks",
+        "nameAr": "الأقلام والدفاتر",
+        "icon": "pen",
+        "words": [
+          "pen",
+          "pencil",
+          "marker",
+          "highlighter",
+          "notebook",
+          "journal",
+          "diary",
+          "planner",
+          "قلم",
+          "اقلام",
+          "دفتر",
+          "دفاتر",
+          "مفكرة",
+          "اجندة",
+          "هايلايتر"
+        ]
+      },
+      {
+        "slug": "art-and-craft",
+        "name": "Art & craft",
+        "nameAr": "الفنون والأشغال اليدوية",
+        "icon": "palette",
+        "words": [
+          "canvas",
+          "sketchbook",
+          "watercolour",
+          "watercolor",
+          "acrylic",
+          "crayon",
+          "glitter",
+          "craft",
+          "رسم",
+          "لوحة رسم",
+          "الوان مائية",
+          "اكريليك",
+          "اشغال يدوية"
         ]
       }
     ]

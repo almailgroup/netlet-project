@@ -135,7 +135,7 @@ retired (kind, table_name, object_name) AS (VALUES
   ('table', '', 'conversation_messages'),
   ('table', '', 'conversations')
 ),
-departments (slug) AS (VALUES ('electronics'), ('home-and-kitchen'), ('beauty'), ('style'), ('grocery')),
+departments (slug) AS (VALUES ('electronics'), ('home-and-kitchen'), ('beauty'), ('style'), ('grocery'), ('health-and-wellness'), ('baby'), ('toys-and-games'), ('sports-and-outdoors'), ('automotive'), ('tools-and-home-improvement'), ('pet-supplies'), ('books-and-stationery')),
 
 found_tables AS (
   SELECT e.*, to_regclass(format('public.%I', e.table_name)) AS rel FROM expected_tables e

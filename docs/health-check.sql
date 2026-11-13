@@ -18,7 +18,7 @@
 -- docs/schema-audit.sql is its companion: that one says whether every migration
 -- landed, this one whether the shop works on top of them.
 --
--- 44 checks, 79 tables, 5 departments.
+-- 44 checks, 79 tables, 13 departments.
 
 -- (Not "found": inside PL/pgSQL that name is the built-in FOUND flag.)
 CREATE OR REPLACE FUNCTION pg_temp.netlet_measure(query text, OUT reading text, OUT flagged boolean, OUT problem text)
@@ -59,7 +59,7 @@ checks (position, area, name, kind, query, advice) AS (VALUES
    $q$SELECT count(*) FILTER (WHERE to_regclass(format('public.%I', t)) IS NOT NULL)::text, bool_or(to_regclass(format('public.%I', t)) IS NOT NULL) FROM unnest(string_to_array('conversation_messages,conversations', ',')) t$q$,
    'Still here means the newest bootstrap has not run. Run docs/supabase-bootstrap.sql again, in full, then docs/schema-audit.sql for the detail.'),
   (9, 'Shop', 'Departments', 'fail',
-   $q$SELECT count(*) || ' of 5', count(*) < 5 FROM categories WHERE slug IN ('electronics', 'home-and-kitchen', 'beauty', 'style', 'grocery')$q$,
+   $q$SELECT count(*) || ' of 13', count(*) < 13 FROM categories WHERE slug IN ('electronics', 'home-and-kitchen', 'beauty', 'style', 'grocery', 'health-and-wellness', 'baby', 'toys-and-games', 'sports-and-outdoors', 'automotive', 'tools-and-home-improvement', 'pet-supplies', 'books-and-stationery')$q$,
    'Run docs/supabase-bootstrap.sql again, in full, then docs/schema-audit.sql for the detail.'),
   (10, 'Shop', 'NetLet''s own store', 'fail',
    $q$SELECT coalesce(max(status::text), 'missing'), coalesce(max(status::text), '') <> 'approved' FROM vendors WHERE slug = 'netlet'$q$,

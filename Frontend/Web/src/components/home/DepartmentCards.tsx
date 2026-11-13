@@ -11,7 +11,8 @@
  *
  * **The art is a file per department**, `Frontend/Web/public/departments/<slug>.webp`,
  * so a picture is replaced by dropping a file with the same name — no code
- * change. Each is a few of the department's typical goods as soft, rounded 3D
+ * change — and a department added before its picture arrived draws its icon
+ * on its own tint until then (`DepartmentArt`). Each is a few of the department's typical goods as soft, rounded 3D
  * renders in their natural colours, on a transparent background, trimmed to
  * the objects and fitted into the same 480 × 360 frame so no card's picture
  * looks bigger than its neighbours'. About 25 KB each; they are the page's
@@ -32,16 +33,16 @@
  * off at the edge says there is more; a mouse gets the shelves' arrows
  * (`useSideScroll`, `ScrollArrows`), drawn only while something is off an end.
  *
- * **All six, always.** The header row, the phone's sheet and the footer leave
+ * **Every department, always.** The header row, the phone's sheet and the footer leave
  * out a department with nothing on sale; these cards did too for a while, and
- * the home page opened on three tiles. The owner asked for the six back: they
+ * the home page opened on three tiles. The owner asked for them all back: they
  * are the shop's shape, and a department with nothing yet still answers its
  * page with its name and an empty state.
  */
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSideScroll } from "@/hooks/useSideScroll";
 import { ScrollArrows } from "@/components/ui/ScrollArrows";
-import { appPath } from "@/lib/basePath";
+import { DepartmentArt } from "@/components/browse/DepartmentArt";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { Link } from "wouter";
@@ -75,15 +76,7 @@ export function DepartmentCards() {
               href={card.slug === "all" ? "/categories" : `/categories?dept=${card.slug}`}
               className="group flex h-full flex-col items-center rounded-2xl border border-transparent bg-white px-2 pb-3 pt-2 shadow-[0_1px_2px_rgba(10,40,90,.06)] transition-colors hover:border-[#d5dfeb] hover:bg-[#f0f2f5] sm:rounded-[1.375rem] sm:px-3 sm:pb-4 sm:pt-3"
             >
-              <img
-                src={appPath(`/departments/${card.slug}.webp`)}
-                alt=""
-                loading="eager"
-                decoding="async"
-                width={480}
-                height={360}
-                className="aspect-[4/3] w-full object-contain transition-transform duration-200 group-hover:scale-[1.04]"
-              />
+              <DepartmentArt slug={card.slug} eager className="aspect-[4/3] w-full transition-transform duration-200 group-hover:scale-[1.04]" />
               <span className="mt-1.5 line-clamp-2 text-center text-[13px] font-bold leading-tight text-[#0a285a] sm:mt-2 sm:text-[15px]">
                 {t(card.label)}
               </span>

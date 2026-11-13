@@ -11,6 +11,7 @@ import { brandsMatching, departmentsMatching, highlightParts, rankBySearch } fro
 import { useQueryClient } from "@tanstack/react-query";
 import { shelvedProducts } from "@/hooks/useCatalog";
 import { ALL_DEPARTMENTS, DEPARTMENTS, type Department } from "@shared/commerce/departments";
+import { DepartmentArt } from "@/components/browse/DepartmentArt";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { appPath } from "@/lib/basePath";
@@ -723,7 +724,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                         onClick={dismiss}
                         className="tint-on-hover flex h-full flex-col items-center rounded-2xl border border-white/80 bg-white/80 px-1.5 pb-2.5 pt-2 text-center shadow-[0_1px_2px_rgba(10,40,90,.06)]"
                       >
-                        <img src={appPath(`/departments/${tile.slug}.webp`)} alt="" loading="lazy" decoding="async" width={480} height={360} className="aspect-[4/3] w-full object-contain" />
+                        <DepartmentArt slug={tile.slug} className="aspect-[4/3] w-full" />
                         <span className="mt-1.5 line-clamp-2 text-[13px] font-bold leading-tight text-[#0a285a]">{t(tile.label)}</span>
                         {/* One line on every tile, so the row keeps one height while the counts arrive. */}
                         <span className="mt-0.5 h-4 truncate text-[12px] leading-4 ink-muted">{countLine(tile.slug, tile.counted)}</span>

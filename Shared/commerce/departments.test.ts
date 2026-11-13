@@ -56,13 +56,13 @@ describe("departments", () => {
 
   /*
    * The home rail lists NetLet's departments *and* every product type a
-   * merchant has invented. Guessing a picture for one of those is how a pet
+   * merchant has invented. Guessing a picture for one of those is how a music
    * shop ends up under a saucepan, so the answer is a label tag: it says
    * "department" and claims nothing more.
    */
   it("answers for a department NetLet has never heard of", () => {
-    expect(departmentIcon("Pet supplies")).toBe("tag");
-    expect(departmentByName("Pet supplies")).toBeNull();
+    expect(departmentIcon("Musical instruments")).toBe("tag");
+    expect(departmentByName("Musical instruments")).toBeNull();
   });
 
   it("keeps a tint and a translated label on every department", () => {

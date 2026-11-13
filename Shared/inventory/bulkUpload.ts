@@ -255,7 +255,7 @@ export function planUpload(text: string, categories: string[] = DEPARTMENTS.map(
  *
  * Keyed by slug rather than by name so a merchant department (one NetLet does
  * not know) simply has no words and is never guessed into — which is right:
- * these are NetLet's own five, and inventing keywords for somebody else's
+ * these are NetLet's own departments, and inventing keywords for somebody else's
  * category would be guessing on their behalf.
  *
  * Arabic is here because half this catalog is typed in it, and an importer
@@ -286,6 +286,43 @@ export const DEPARTMENT_WORDS: Record<string, string[]> = {
     "rice", "oil", "sugar", "flour", "tea", "coffee", "milk", "cheese", "tomato", "date", "honey",
     "water", "juice", "spice", "kg", "litre", "liter", "pack",
     "أرز", "زيت", "سكر", "طحين", "شاي", "قهوة", "حليب", "جبن", "طماطم", "تمر", "عسل", "ماء", "عصير", "بهار",
+  ],
+  "health-and-wellness": [
+    "vitamin", "supplement", "capsule", "protein", "whey", "omega", "collagen", "thermometer", "bandage",
+    "first aid", "massager", "blood pressure",
+    "فيتامين", "مكمل", "كبسولات", "بروتين", "كولاجين", "ميزان حرارة", "ضماد", "مساج",
+  ],
+  baby: [
+    "baby", "diaper", "nappy", "nappies", "stroller", "pacifier", "feeding bottle", "crib", "onesie", "newborn", "infant",
+    "حفاض", "حفاضات", "رضاعة", "عربة اطفال", "مواليد", "رضع", "لهاية",
+  ],
+  "toys-and-games": [
+    "toy", "lego", "doll", "puzzle", "board game", "plush", "teddy", "remote control", "playset",
+    "لعبة", "ألعاب", "العاب", "دمية", "ليغو", "بزل", "دبدوب",
+  ],
+  "sports-and-outdoors": [
+    "dumbbell", "kettlebell", "treadmill", "yoga", "tent", "camping", "football", "basketball", "bicycle",
+    "fishing", "swimming", "padel", "racket",
+    "دمبل", "خيمة", "كشتة", "كرة", "دراجة", "سنارة", "سباحة", "بادل",
+  ],
+  automotive: [
+    "car charger", "car mount", "car cover", "car wash", "car care", "car battery", "tyre", "tire", "engine oil",
+    "motor oil", "dash cam", "dashcam", "wiper", "spark plug",
+    "سيارة", "سيارات", "اطار", "تاير", "زيت محرك", "مساحات", "بواجي",
+  ],
+  "tools-and-home-improvement": [
+    "drill", "hammer", "screwdriver", "wrench", "pliers", "toolbox", "tool kit", "sander", "paint roller",
+    "garden hose", "lawn", "led bulb", "extension cord", "padlock",
+    "دريل", "مطرقة", "شاكوش", "مفك", "منشار", "خرطوم", "لمبة", "قفل",
+  ],
+  "pet-supplies": [
+    "pet food", "pet bed", "pet toy", "pets", "cat food", "dog food", "cat litter", "puppy", "kitten", "leash",
+    "aquarium", "bird cage", "parrot", "hamster",
+    "قطط", "كلاب", "قطة", "كلب", "حيوانات", "طيور", "حوض سمك",
+  ],
+  "books-and-stationery": [
+    "book", "novel", "notebook", "pencil", "stationery", "stapler", "marker", "sketchbook", "crayon", "ballpoint",
+    "كتاب", "كتب", "رواية", "دفتر", "قلم", "اقلام", "قرطاسية",
   ],
 };
 

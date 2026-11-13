@@ -365,7 +365,7 @@ struct DepartmentCardGrid: View {
     private func tile(slug: String, title: String, count: String?, width: CGFloat?, open: @escaping () -> Void) -> some View {
         Button(action: open) {
             VStack(spacing: 0) {
-                BundledImage(image: WebAssets.department(slug))
+                DepartmentArt(slug: slug)
                     .aspectRatio(4.0 / 3.0, contentMode: .fit)
                     .frame(maxWidth: .infinity)
                 Text(title)

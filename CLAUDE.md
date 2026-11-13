@@ -1800,8 +1800,8 @@ bytes (`hero/phone/`, and `auth/phone/` for the street), which a `<picture>`
 hands a screen up to 640px wide; a picture with no copy is sent whole, so a
 missing copy costs a phone the download and nothing else.
 
-`DepartmentCards` follows under a heading of its own — six tiles, the five
-departments and "All departments", each a link — **a department's opening the
+`DepartmentCards` follows under a heading of its own — a tile per department
+and "All departments", each a link — **a department's opening the
 Categories page with that department already open, on the owner's word**
 ("when choosing a category in the homepage, it should redirect you to the
 category page choosing that specific category"): `/categories?dept=<slug>`,
@@ -7403,8 +7403,8 @@ address, so Back left the page under it rather than the list, and nothing to
 send anybody. The owner asked for a page, and it is the home page's department
 cards made the page's subject (`pages/Categories.tsx`) — the same art, three
 to a row on a phone and six on a wide screen, "All departments" last (see
-"`/categories` is three steps" for what a press does). All six, as the cards
-keep them, rather than leaving the one page that lists them all. The function
+"`/categories` is three steps" for what a press does). Every department, as
+the cards keep them, rather than leaving the one page that lists them all. The function
 writes its head like the stores index's (`categoriesMeta`, a `vercel.json`
 rewrite) and it is in the sitemap. **`/categories` starts with `/category`**,
 so anything that reads a department page off the address asks for
@@ -7602,6 +7602,40 @@ uploads that exists, only for a subcategory the shop has, and on the trail
 (`subcategory.setPicture`). Drawing has never been run against Google's
 live model from this sandbox, which cannot reach it.
 
+**Thirteen departments, on the owner's word** ("add more categories for the
+products; currently there are only five, so make it more"). Health & wellness,
+Baby, Toys & games, Sports & outdoors, Automotive, Tools & home improvement,
+Pet supplies and Books & stationery joined the five, after the departments a
+shop like noon or Amazon keeps, each with five or six subcategories, their
+words in both languages, a "Type" and the rows a shopper compares on
+(`ATTRIBUTE_SCHEMA`: an age range and batteries for a toy, an author, a
+language and pages for a book, what a part fits for a car, a life stage for a
+pet), the importer's words (`DEPARTMENT_WORDS`) and the assistant's two
+questions (`DEPARTMENT_QUESTIONS`). The warranty rule, the perishable rule and
+the try-on stay on the departments they were set for. **They came before
+their pictures**: the owner's art is 3D renders made for each, which code
+cannot match, so `Department.art` says whose pictures have arrived, and until
+then a tile is the department's icon in navy on its own tint
+(`DepartmentArt` on the web and in the app) and a subcategory's row its icon
+— never a request for a file that is not there. A picture arrives by dropping
+`public/departments/<slug>.webp` (480 × 360, transparent) and every
+`public/subcategories/<slug>-<sub>.webp` (384 square on white) in, setting
+`art: true` and running `pnpm ios:resources`; `subcategoryPictures.test.ts`
+fails while the flag and the files disagree. Meanwhile the portal's picture
+desk draws them, sent another department's art as the style to match
+(`styleArtFor`). **A live database gains their rows by itself**
+(`ensureDepartmentRows`, `services/departmentRows.ts`): the editor lists
+categories by row, so a department added in code is written, insert-only and
+`ON CONFLICT (slug) DO NOTHING`, the first time an instance lists the
+categories or reads them for an import — nothing to paste, a renamed row kept
+as it is. **The wide header's department row scrolls sideways** once the
+departments with something on sale outgrow it, Deals and the App Store badge
+keeping their place at its end. Walked at 320, 390, 1024 and 1440 in both
+languages: fourteen tiles on the home row, thirteen on the Categories page,
+Pet supplies opening five rows and View all, a subcategory's page, each new
+department's page answering with its name, no missing picture asked for, axe
+clean, no sideways scroll.
+
 **Every subcategory has a picture of its own, a file, on the owner's word**
 ("there you go, add all these for the sub-category and push it to netlet app
 and the website"): the owner had all thirty-five made in the department
@@ -7619,9 +7653,10 @@ removing the kept one brings the file back, which the portal says
 drawn only where a picture cannot be read. **"Draw the missing ones" went
 with it**, on the web and in the app: nothing is missing, and a button nobody
 can press is a dead control; one is drawn at a time where somebody wants
-another. `subcategoryPictures.test.ts` fails on a subcategory with no file, a
-file no subcategory names, or one that is not the 384 square; the app's
-`ModelTests` on one missing from its bundle. **The files arrived cut from a
+another. `subcategoryPictures.test.ts` fails on a subcategory of a department
+with art (`Department.art`) with no file, a file no such subcategory names, or
+one that is not the 384 square; the app's `ModelTests` on one missing from its
+bundle. **The files arrived cut from a
 sheet a little off its grid lines** — the lesson the department art already
 taught — so twenty carried a strip of the picture above them and a hairline,
 twenty-two had lost their own bottom edge and seven their right. The strips
@@ -8409,8 +8444,12 @@ kilobytes — with the desk's rule, which the home page's band shares with the
 editor, so the editor's checks come with it (3 KB minified, not worth a
 second module) — then 1,038 KB (299 KB), each page's own search, the
 account's places and the stores rows, with their words in both languages —
-and is 1,042 KB (300 KB) now, the removal question (`ConfirmRemoval`, on every
+then 1,042 KB (300 KB), the removal question (`ConfirmRemoval`, on every
 page, since a card's bin and heart ask) and its words in both languages —
+and is 1,064 KB (307 KB) now, the eight departments added (see "Thirteen
+departments" under Browsing): their subcategories' words, which travel with
+the list the header and the Categories page draw, their specification rows
+and their names in both languages —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

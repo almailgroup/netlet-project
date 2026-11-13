@@ -359,6 +359,10 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
           it is on screen, so it only has to match the glass at rest. */}
       <nav aria-label={t("nav.primary")} className="glass-bar-row hidden border-b border-[#e6e9ef] lg:block">
         <div className="container flex h-12 items-center gap-1.5">
+          {/* The departments scroll sideways once there are more than the row
+              holds — thirteen do not fit at 1024 — while Deals and the app
+              badge keep their place at its end. */}
+          <div className="hide-scrollbar -my-1 flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-1">
           {categoryRail.filter(department => inStock(department.query) || activeDepartment === department.query).map(department => {
             const current = !onDeals && activeDepartment === department.query;
             const lead = department.query === ALL_DEPARTMENTS.query;
@@ -367,18 +371,19 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
                 key={department.query}
                 href={`/category/${categorySlug(department.query)}`}
                 aria-current={current ? "page" : undefined}
-                className={`pressable flex items-center gap-1.5 rounded-full px-3 py-2 text-xs transition-colors ${current ? "glass glass-navy font-bold" : `${lead ? "font-bold text-[#0a285a]" : "font-semibold text-[#536b8c]"} hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]`}`}
+                className={`pressable flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-xs transition-colors ${current ? "glass glass-navy font-bold" : `${lead ? "font-bold text-[#0a285a]" : "font-semibold text-[#536b8c]"} hover:bg-[#0a285a]/[.06] hover:text-[#0a285a]`}`}
               >
                 <DepartmentIcon query={department.query} className="size-3.5 shrink-0" />
                 {t(department.key)}
               </Link>
             );
           })}
+          </div>
           {dealsDrawn ? (
             <Link
               href="/category/all?offer=1"
               aria-current={onDeals ? "page" : undefined}
-              className={`pressable ms-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-extrabold transition-colors ${onDeals ? "glass glass-navy" : "ink-accent hover:bg-[#0a285a]/[.06]"}`}
+              className={`pressable flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-xs font-extrabold transition-colors ${onDeals ? "glass glass-navy" : "ink-accent hover:bg-[#0a285a]/[.06]"}`}
             >
               <Tag className="size-3.5 shrink-0" aria-hidden />
               {t("rail.deals.title")}
@@ -386,7 +391,7 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
           ) : null}
           {/* The app, under the cart, on the owner's word: its QR card opens
               for a pointer resting on it (`AppDownloadLink`). */}
-          <AppDownloadLink className={dealsDrawn ? "" : "ms-auto"} />
+          <AppDownloadLink className="shrink-0" />
         </div>
       </nav>
       {deliveryOpen ? <Suspense fallback={null}><DeliveryZoneDialog open onClose={() => setDeliveryOpen(false)} /></Suspense> : null}

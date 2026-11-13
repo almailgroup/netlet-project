@@ -109,8 +109,20 @@ final class ReferenceDataTests: XCTestCase {
 
     func testHasTheDepartmentsInTheirOrder() {
         XCTAssertEqual(reference.departments.first?.slug, "electronics")
-        XCTAssertEqual(reference.departments.count, 5)
+        XCTAssertEqual(reference.departments.count, 13)
         XCTAssertEqual(reference.department(named: "electronics")?.slug, "electronics")
+        XCTAssertEqual(reference.department(named: "Pet Supplies")?.slug, "pet-supplies")
+    }
+
+    /// Every department has an SF Symbol of its own this iOS draws, for the
+    /// tile of one whose pictures have not arrived, and a tint behind it.
+    func testEveryDepartmentHasASymbolAndATint() {
+        for department in reference.departments {
+            XCTAssertNotNil(UIImage(systemName: department.symbol), department.slug)
+            XCTAssertNotEqual(department.symbol, "square.grid.2x2", "\(department.slug) fell back to the grid")
+            XCTAssertNotNil(department.tint, department.slug)
+        }
+        XCTAssertEqual(Set(reference.departments.map(\.symbol)).count, reference.departments.count)
     }
 
     /// Each department carries its subcategories by name, exported from `subcategories.ts`.
@@ -144,13 +156,19 @@ final class ReferenceDataTests: XCTestCase {
         XCTAssertNotNil(UIImage(systemName: "line.3.horizontal"), "View all's picture")
     }
 
-    /// Every subcategory's own picture is in the app — the files the owner
-    /// sent, copied from the web by `pnpm ios:resources` — and the square the
-    /// web's is, so no square on the Categories tab falls back to its symbol
-    /// for want of a file.
+    /// Every subcategory of a department whose pictures have arrived has its
+    /// own picture in the app — the files the owner sent, copied from the web
+    /// by `pnpm ios:resources` — and the square the web's is; a department
+    /// added before its pictures has none, and its rows draw their symbols.
     func testEverySubcategoryHasItsOwnPictureInTheApp() {
         var count = 0
         for department in reference.departments {
+            guard department.hasArt else {
+                XCTAssertNil(WebAssets.department(department.slug), "\(department.slug) has art in the app but is not marked as having it")
+                for entry in department.subs { XCTAssertNil(WebAssets.subcategory(department.slug, entry.slug), "\(department.slug)/\(entry.slug)") }
+                continue
+            }
+            XCTAssertNotNil(WebAssets.department(department.slug), "\(department.slug) has no tile art in the app")
             for entry in department.subs {
                 let picture = WebAssets.subcategory(department.slug, entry.slug)
                 XCTAssertNotNil(picture, "\(department.slug)/\(entry.slug) has no picture in the app")
