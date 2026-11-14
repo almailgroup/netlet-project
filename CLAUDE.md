@@ -10389,7 +10389,10 @@ using it from another file. And **a figure the server gives to a decimal is
 a `Double` in Swift**: the dashboard's best sellers carry their share to one
 decimal (51.1) where the departments' are whole, and the model read both as
 `Int`, so the recording failed to decode with "Number 51.1 is not
-representable" — read the shared rule's rounding, not the field's name. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
+representable" — read the shared rule's rounding, not the field's name. And
+**an Apple class is read from its headers, not remembered**: the catalogues'
+first build asked `PDFDocument.isUnlocked`, which does not exist (it is
+`isLocked`), and lost that push's TestFlight build. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
 green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also

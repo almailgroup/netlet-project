@@ -122,7 +122,7 @@ enum CataloguePDF {
     /// file PDFKit cannot open, an encrypted one among them.
     static func shrink(_ data: Data) async -> Data? {
         await Task.detached(priority: .userInitiated) {
-            guard let document = PDFDocument(data: data), !document.isEncrypted || document.isUnlocked else { return nil }
+            guard let document = PDFDocument(data: data), !document.isLocked else { return nil }
             let options: [AnyHashable: Any] = [
                 PDFDocumentWriteOption.saveImagesAsJPEGOption: true,
                 PDFDocumentWriteOption.optimizeImagesForScreenOption: true,
