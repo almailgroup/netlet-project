@@ -774,6 +774,63 @@ describe("optional extras", () => {
     expect(line.lineTotal).toBe("29.375");
   });
 
+  /* A plan's length is part of the promise sold, frozen beside its name. */
+  it("freezes a warranty plan's length and the name a shopper read", async () => {
+    const [plan] = await db.insert(productAddons).values({
+      productId: ids.lamp, kind: "warranty", label: "2-year extended warranty", labelAr: "ضمان ممتد لمدة سنتين", price: "7.000", warrantyMonths: 24,
+    }).returning();
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const [line] = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+    await db.insert(cartItemAddons).values({ cartItemId: line.id, addonId: plan.id });
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    const [sold] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    const [frozen] = await db.select().from(orderItemAddons).where(eq(orderItemAddons.orderItemId, sold.id));
+    expect(frozen).toMatchObject({ kind: "warranty", label: "2-year extended warranty", price: "7.000", warrantyMonths: 24 });
+    expect(sold.lineTotal).toBe("31.375");
+  });
+
+  /* Two plans on one line is one promise bought twice: the first listed stands. */
+  it("charges one warranty plan on a line ticked with two", async () => {
+    const [short, long] = await db.insert(productAddons).values([
+      { productId: ids.lamp, kind: "warranty", label: "1-year extended warranty", price: "3.000", warrantyMonths: 12, position: 0 },
+      { productId: ids.lamp, kind: "warranty", label: "3-year extended warranty", price: "8.000", warrantyMonths: 36, position: 1 },
+    ]).returning();
+    const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
+    const [line] = await db.select().from(cartItems).where(eq(cartItems.cartId, cartId));
+    await db.insert(cartItemAddons).values([{ cartItemId: line.id, addonId: long.id }, { cartItemId: line.id, addonId: short.id }]);
+    const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+    const [sold] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+    const frozen = await db.select().from(orderItemAddons).where(eq(orderItemAddons.orderItemId, sold.id));
+    expect(frozen.map(addon => addon.warrantyMonths)).toEqual([12]);
+    expect(sold.lineTotal).toBe("27.375");
+  });
+
+  /* Before the owner pastes 0083 the column is not there, and Drizzle names
+     every column it knows: the order must still be placed, its extra frozen
+     with no length, and the products still read. */
+  it("places an order with an extra on a database without plan lengths", async () => {
+    const lengths = await import("./warrantyLengths.js");
+    const inventory = await import("./inventory.js");
+    const { cartId } = await basketWithAddon("5.000", 1);
+    await db.execute(sql.raw("alter table order_item_addons drop column warranty_months"));
+    await db.execute(sql.raw("alter table product_addons drop column warranty_months"));
+    lengths.forgetWarrantyLengths();
+    try {
+      const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });
+      const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
+      expect(line.lineTotal).toBe("29.375");
+      const frozen = await db.execute(sql`select label, price from order_item_addons where order_item_id = ${line.id}`);
+      expect(frozen.rows).toEqual([{ label: "Fitting at your address", price: "5.000" }]);
+      const [lamp] = await inventory.publishedCatalog({ ids: [ids.lamp] });
+      expect(lamp.addons.length).toBeGreaterThan(0);
+      expect(lamp.addons.every(addon => addon.warrantyMonths === null)).toBe(true);
+    } finally {
+      await db.execute(sql.raw("alter table product_addons add column warranty_months integer"));
+      await db.execute(sql.raw("alter table order_item_addons add column warranty_months integer"));
+      lengths.forgetWarrantyLengths();
+    }
+  });
+
   it("leaves a line with nothing ticked exactly as it was", async () => {
     const cartId = await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper);
     const placed = await ordersModule.placeOrder(cartId, { ...DETAILS, userId: ids.shopper });

@@ -38,7 +38,7 @@ import {
 } from "../../database/schema.js";
 import { assertCan, GRANTABLE, type Actor, type Capability, type VendorRole } from "../../../Shared/inventory/permissions.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
-import { ADDON_KINDS, isSellableAddon, type AddonKind } from "../../../Shared/commerce/addons.js";
+import { addonProblems, storedAddon, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { discountAllowed, isOffer } from "../../../Shared/inventory/discountLicence.js";
 import { violatesUnique } from "../core/describeError.js";
 import { recordAudit } from "./audit.js";
@@ -62,6 +62,7 @@ import { takeHourlyAllowance } from "./rateLimit.js";
 import { MAX_LISTING_SCREENS_PER_HOUR, reviewProduct as triageListing } from "../../../Shared/inventory/productReview.js";
 import { kuwaitDay } from "../../../Shared/kuwaitDay.js";
 import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
+import { productAddonFields, productAddonsBefore0083, warrantyLengthsReady, withoutLength } from "./warrantyLengths.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -283,12 +284,13 @@ export type FullProduct = Awaited<ReturnType<typeof getProduct>>;
 async function hydrate(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows: (typeof products.$inferSelect)[]) {
   if (!rows.length) return [];
   const ids = rows.map(row => row.id);
+  const lengths = await warrantyLengthsReady(db);
   const [variants, images, addons] = await Promise.all([
     db.select().from(productVariants).where(inArray(productVariants.productId, ids)).orderBy(asc(productVariants.position), asc(productVariants.id)),
     db.select().from(productImages).where(inArray(productImages.productId, ids)).orderBy(asc(productImages.position), asc(productImages.id)),
     /* The optional extras (3.1.2). One query for the page rather than one per
        product, the way the images already are. */
-    db.select().from(productAddons).where(inArray(productAddons.productId, ids)).orderBy(asc(productAddons.position), asc(productAddons.id)),
+    db.select(productAddonFields(lengths)).from(productAddons).where(inArray(productAddons.productId, ids)).orderBy(asc(productAddons.position), asc(productAddons.id)),
   ]);
   return rows.map(row => ({
     ...row,
@@ -659,8 +661,12 @@ export async function createProduct(actor: Actor, input: {
   variant?: { price: string; compareAtPrice?: string | null; sku?: string | null; stock?: number };
   /** The gallery, in order. Held to the same URL rule as `setProductImages`. */
   images?: { url: string; kind?: "image" | "video" | null; altText?: string | null }[];
+  /** Installation, warranty plans and other extras, held to `setProductAddons`' rule. */
+  addons?: AddonInput[];
 }) {
   assertCan(actor, "product.create", input.vendorId);
+  const addonDrafts = (input.addons ?? []).map(addonDraft);
+  if (addonProblems(addonDrafts).some(problems => problems.length > 0)) throw new Error("ADDON_NOT_SELLABLE");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -725,6 +731,11 @@ export async function createProduct(actor: Actor, input: {
           position,
           kind: image.kind === "video" ? ("video" as const) : ("image" as const),
         })));
+      }
+      if (addonDrafts.length) {
+        const rows = addonDrafts.map((draft, position) => ({ productId: created.id, ...storedAddon(draft), position }));
+        if (await warrantyLengthsReady(tx)) await tx.insert(productAddons).values(rows);
+        else await tx.insert(productAddonsBefore0083).values(rows.map(withoutLength));
       }
       return created;
     }));
@@ -940,15 +951,23 @@ export async function updateProduct(actor: Actor, productId: number, patch: {
  * set and a per-row endpoint turns "the seller changed their mind about the
  * order of two things" into four calls.
  *
- * **A free extra is refused here**, not hidden on the page: an extra that adds
- * nothing to the total is a feature of the product, and a check box that
- * changes no figure is the dead-control rule. The guard is beside the query
- * rather than in the router alone, for the reason every other guard here is.
+ * **What is wrong with an extra is refused here**, by the rule the form asks
+ * row by row (`addonProblems`): a free extra is a feature of the product and a
+ * check box that changes no figure is the dead-control rule; an "other" extra
+ * needs a name; a warranty plan needs its length. The guard is beside the
+ * query rather than in the router alone, for the reason every other guard
+ * here is.
+ *
+ * **An extra keeps its id across saves.** The editor sends the ids it read,
+ * and a row it sent back is updated where it stands: deleting and writing
+ * every row again — which this did — gave each a new id, and a shopper's
+ * ticked fitting in their bag (`cart_item_addons`, cascading from the extra)
+ * vanished whenever the seller saved the section, a price fixed or not.
  */
 export async function setProductAddons(
   actor: Actor,
   productId: number,
-  addons: { kind: string; label: string; labelAr?: string | null; price: string }[],
+  addons: AddonInput[],
 ) {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -956,23 +975,52 @@ export async function setProductAddons(
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.edit", row.vendorId);
 
-  const sellable = addons.filter(addon => isSellableAddon(addon));
-  if (sellable.length !== addons.length) throw new Error("ADDON_NOT_SELLABLE");
+  const drafts = addons.map(addonDraft);
+  if (addonProblems(drafts).some(problems => problems.length > 0)) throw new Error("ADDON_NOT_SELLABLE");
 
-  await db.delete(productAddons).where(eq(productAddons.productId, productId));
-  if (sellable.length) {
-    await db.insert(productAddons).values(
-      sellable.map((addon, position) => ({
-        productId,
-        kind: ADDON_KINDS.includes(addon.kind as AddonKind) ? addon.kind : "other",
-        label: addon.label.trim(),
-        labelAr: addon.labelAr?.trim() || null,
-        price: addon.price,
-        position,
-      })),
-    );
-  }
+  const lengths = await warrantyLengthsReady(db);
+  await db.transaction(async tx => {
+    const standing = await tx.select({ id: productAddons.id }).from(productAddons).where(eq(productAddons.productId, productId));
+    const ours = new Set(standing.map(addon => addon.id));
+    const kept = new Set<number>();
+    for (const [position, draft] of drafts.entries()) {
+      const values = { ...storedAddon(draft), position };
+      const id = addons[position]!.id;
+      if (id && ours.has(id) && !kept.has(id)) {
+        kept.add(id);
+        if (lengths) await tx.update(productAddons).set(values).where(and(eq(productAddons.id, id), eq(productAddons.productId, productId)));
+        else await tx.update(productAddonsBefore0083).set(withoutLength(values)).where(and(eq(productAddonsBefore0083.id, id), eq(productAddonsBefore0083.productId, productId)));
+      } else if (lengths) {
+        await tx.insert(productAddons).values({ productId, ...values });
+      } else {
+        await tx.insert(productAddonsBefore0083).values({ productId, ...withoutLength(values) });
+      }
+    }
+    const gone = [...ours].filter(id => !kept.has(id));
+    if (gone.length) await tx.delete(productAddons).where(and(eq(productAddons.productId, productId), inArray(productAddons.id, gone)));
+  });
   return getProduct(actor, productId);
+}
+
+/** One extra as the editor and the new-product form send it. */
+export type AddonInput = {
+  /** The row it came from, so a save updates rather than replaces it. */
+  id?: number | null;
+  kind: string;
+  label: string;
+  labelAr?: string | null;
+  price: string;
+  warrantyMonths?: number | null;
+};
+
+function addonDraft(addon: AddonInput) {
+  return {
+    kind: (["installation", "warranty", "other"] as const).includes(addon.kind as AddonKind) ? (addon.kind as AddonKind) : ("other" as const),
+    label: addon.label ?? "",
+    labelAr: addon.labelAr ?? "",
+    price: addon.price,
+    warrantyMonths: addon.warrantyMonths ?? null,
+  };
 }
 
 export async function setProductImages(

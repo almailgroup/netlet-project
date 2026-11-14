@@ -7,11 +7,11 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { categories, followedProducts, productImages, products, productVariants, stockMovements, users, vendorMembers, vendors } from "../../database/schema.js";
+import { cartItemAddons, cartItems, carts, categories, followedProducts, productAddons, productImages, products, productVariants, stockMovements, users, vendorMembers, vendors } from "../../database/schema.js";
 import type { Actor } from "../../../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
@@ -537,6 +537,108 @@ describe("product images", () => {
     await inv.setProductImages(ownerActor(), ids.acmeProduct, []);
     const row = await inv.getProduct(ownerActor(), ids.acmeProduct);
     expect(row.images).toEqual([]);
+  });
+});
+
+/*
+ * Warranty and installation (3.1.2), on the owner's word: installation, plans
+ * of a length and other extras, each in both languages. The names and the
+ * rules are proved pure in `Shared/commerce/addons.test.ts`; what is here is
+ * what needs the database — that a save keeps each extra's row, so a shopper's
+ * ticked fitting in their bag survives the seller fixing a price.
+ */
+describe("warranty and installation", () => {
+  it("names a blank extra in both languages and keeps a plan's length", async () => {
+    const row = await inv.setProductAddons(ownerActor(), ids.acmeProduct, [
+      { kind: "installation", label: "", price: "5.000" },
+      { kind: "warranty", label: "", price: "12.500", warrantyMonths: 24 },
+    ]);
+    expect(row.addons.map(a => [a.kind, a.label, a.labelAr, a.price, a.warrantyMonths])).toEqual([
+      ["installation", "Installation", "التركيب", "5.000", null],
+      ["warranty", "2-year extended warranty", "ضمان ممتد لمدة سنتين", "12.500", 24],
+    ]);
+  });
+
+  it("keeps each extra's row across a save, so a ticked one stays in the bag", async () => {
+    const before = await inv.setProductAddons(ownerActor(), ids.acmeProduct, [
+      { kind: "installation", label: "", price: "5.000" },
+      { kind: "warranty", label: "", price: "12.500", warrantyMonths: 24 },
+    ]);
+    const [fitting, plan] = before.addons;
+    const [cart] = await db.insert(carts).values({ id: "addon-cart" }).returning();
+    const [line] = await db.insert(cartItems).values({ cartId: cart.id, variantId: ids.acmeVariant, quantity: 1 }).returning();
+    await db.insert(cartItemAddons).values({ cartItemId: line.id, addonId: fitting.id });
+
+    const after = await inv.setProductAddons(ownerActor(), ids.acmeProduct, [
+      { id: fitting.id, kind: "installation", label: "", price: "6.000" },
+      { id: plan.id, kind: "warranty", label: "", price: "12.500", warrantyMonths: 36 },
+    ]);
+    expect(after.addons.map(a => a.id)).toEqual([fitting.id, plan.id]);
+    expect(after.addons[0].price).toBe("6.000");
+    expect(after.addons[1].label).toBe("3-year extended warranty");
+    expect(await db.select().from(cartItemAddons).where(eq(cartItemAddons.cartItemId, line.id))).toHaveLength(1);
+
+    // Taken off, its tick goes with it; another product's id is a new row, never a move.
+    const [elsewhere] = await db.insert(productAddons).values({ productId: ids.otherProduct, kind: "installation", label: "Theirs", price: "1.000" }).returning();
+    const last = await inv.setProductAddons(ownerActor(), ids.acmeProduct, [
+      { id: elsewhere.id, kind: "installation", label: "", price: "4.000" },
+    ]);
+    expect(last.addons).toHaveLength(1);
+    expect(last.addons[0].id).not.toBe(elsewhere.id);
+    expect(await db.select().from(cartItemAddons).where(eq(cartItemAddons.cartItemId, line.id))).toEqual([]);
+    const [theirs] = await db.select().from(productAddons).where(eq(productAddons.id, elsewhere.id));
+    expect(theirs).toMatchObject({ productId: ids.otherProduct, label: "Theirs", price: "1.000" });
+    await db.delete(carts).where(eq(carts.id, cart.id));
+  });
+
+  it("refuses what the form refuses", async () => {
+    await expect(inv.setProductAddons(ownerActor(), ids.acmeProduct, [{ kind: "installation", label: "", price: "0.000" }]))
+      .rejects.toThrow("ADDON_NOT_SELLABLE");
+    await expect(inv.setProductAddons(ownerActor(), ids.acmeProduct, [{ kind: "other", label: " ", price: "3.000" }]))
+      .rejects.toThrow("ADDON_NOT_SELLABLE");
+    await expect(inv.setProductAddons(ownerActor(), ids.acmeProduct, [
+      { kind: "warranty", label: "", price: "3.000", warrantyMonths: 12 },
+      { kind: "warranty", label: "", price: "4.000", warrantyMonths: 12 },
+    ])).rejects.toThrow("ADDON_NOT_SELLABLE");
+    await expect(inv.setProductAddons(staffActor(), ids.acmeProduct, [{ kind: "installation", label: "", price: "5.000" }]))
+      .rejects.toThrow("FORBIDDEN:product.edit");
+  });
+
+  /* Before 0083 is pasted a seller still saves extras, without lengths. */
+  it("saves extras on a database without plan lengths", async () => {
+    const lengths = await import("./warrantyLengths.js");
+    const before = await inv.setProductAddons(ownerActor(), ids.acmeProduct, [{ kind: "installation", label: "", price: "5.000" }]);
+    await db.execute(sql.raw("alter table product_addons drop column warranty_months"));
+    lengths.forgetWarrantyLengths();
+    try {
+      const after = await inv.setProductAddons(ownerActor(), ids.acmeProduct, [
+        { id: before.addons[0].id, kind: "installation", label: "", price: "7.000" },
+        { kind: "warranty", label: "Two extra years", price: "9.000" },
+      ]);
+      expect(after.addons.map(a => [a.id === before.addons[0].id, a.label, a.price, a.warrantyMonths])).toEqual([
+        [true, "Installation", "7.000", null],
+        [false, "Two extra years", "9.000", null],
+      ]);
+      const made = await inv.createProduct(ownerActor(), { vendorId: ids.acme, title: "Fitted before 0083", addons: [{ kind: "installation", label: "", price: "2.000" }] });
+      expect((await inv.getProduct(ownerActor(), made.id)).addons.map(a => a.label)).toEqual(["Installation"]);
+    } finally {
+      await db.execute(sql.raw("alter table product_addons add column warranty_months integer"));
+      lengths.forgetWarrantyLengths();
+    }
+  });
+
+  it("writes the extras with a new product, or nothing at all", async () => {
+    const made = await inv.createProduct(ownerActor(), {
+      vendorId: ids.acme, title: "Washer with fitting",
+      addons: [{ kind: "warranty", label: "Gold care", labelAr: "العناية الذهبية", price: "9.000", warrantyMonths: 12 }],
+    });
+    const row = await inv.getProduct(ownerActor(), made.id);
+    expect(row.addons.map(a => [a.label, a.labelAr, a.warrantyMonths])).toEqual([["Gold care", "العناية الذهبية", 12]]);
+
+    await expect(inv.createProduct(ownerActor(), {
+      vendorId: ids.acme, title: "Washer refused", addons: [{ kind: "warranty", label: "", price: "9.000" }],
+    })).rejects.toThrow("ADDON_NOT_SELLABLE");
+    expect(await db.select().from(products).where(eq(products.title, "Washer refused"))).toEqual([]);
   });
 });
 

@@ -7,7 +7,8 @@ import SwiftUI
 /// required), photos, the price, the description and rows, and how the
 /// listing reads in a search. The rules are the server's, asked early, so a
 /// message appears under the box rather than after Create; Create lands on
-/// the product's editor, where sizes, extras and the rest are.
+/// the product's editor, where sizes and the rest are. Warranty and
+/// installation are a step of their own (`AddonsEditor`, the editor's).
 struct NewListingView: View {
     var vendorId: Int?
     @Environment(AppModel.self) private var app
@@ -56,6 +57,7 @@ private struct NewListingForm: View {
                 basics
                 photos
                 price
+                extras
                 description
                 searchPreview
                 checklist
@@ -403,11 +405,22 @@ private struct NewListingForm: View {
         }
     }
 
-    // MARK: 4. Description
+    // MARK: 4. Warranty and installation
+
+    private var extras: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            stepHeading(4, "admin.addons")
+            Text(l.t("admin.addonsNote")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            AddonsEditor(rows: $model.addons, attempted: model.submitted)
+        }
+        .card()
+    }
+
+    // MARK: 5. Description
 
     private var description: some View {
         VStack(alignment: .leading, spacing: 14) {
-            stepHeading(4, "admin.newStepDescription")
+            stepHeading(5, "admin.newStepDescription")
             LabeledField(label: l.t("admin.fieldDescription"), text: bound(\.description, .description),
                          hint: "\(l.t("admin.newDescriptionHint")) \(l.t("admin.newCharacters", ["count": "\(model.draft.description.count)"]))",
                          problem: model.problem(.description), axis: .vertical)
@@ -445,7 +458,7 @@ private struct NewListingForm: View {
         }
     }
 
-    // MARK: 5. In a search
+    // MARK: 6. In a search
 
     private var searchPreview: some View {
         let fits = (title: 60, snippet: 160)
@@ -457,7 +470,7 @@ private struct NewListingForm: View {
             : SearchPreview.text(description, limit: fits.snippet)
         let host = APIConfiguration.current().baseURL.host() ?? "netlet"
         return VStack(alignment: .leading, spacing: 10) {
-            stepHeading(5, "admin.newStepSearch")
+            stepHeading(6, "admin.newStepSearch")
             Text(l.t("admin.newSearchHint")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             if title.isEmpty {
                 Text(l.t("admin.newSearchEmpty")).font(.footnote).foregroundStyle(Brand.muted)

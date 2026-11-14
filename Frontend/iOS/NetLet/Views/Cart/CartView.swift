@@ -474,7 +474,7 @@ struct CartLineRow: View {
                     Text(variant).font(.inter(12)).foregroundStyle(Brand.muted)
                 }
                 ForEach(item.addons ?? [], id: \.id) { addon in
-                    Text("+ " + addon.label).font(.inter(12)).foregroundStyle(Brand.accentInk)
+                    Text("+ " + addon.name(l.current)).font(.inter(12)).foregroundStyle(Brand.accentInk)
                 }
                 if let bundle = item.bundleName {
                     Text(bundle).font(.inter(12)).foregroundStyle(Brand.accentInk)

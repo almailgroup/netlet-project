@@ -15,6 +15,7 @@ import {
   cartItems,
   carts,
   categories,
+  productAddons,
   productImages,
   products,
   productVariants,
@@ -185,6 +186,29 @@ describe("the cart", () => {
     const after = await catalog.addCartLines(created!.id, [{ variantId: String(ids.lampSmall), quantity: 2 }]);
     expect(after?.items).toHaveLength(1);
     expect(after?.items[0].quantity).toBe(3);
+  });
+
+  /* Warranty and installation: the bag names each extra in both languages,
+     and a line carries one warranty plan — choosing another replaces it. */
+  it("names a line's extras in both languages and keeps one plan to a line", async () => {
+    const [fitting, oneYear, twoYears] = await db.insert(productAddons).values([
+      { productId: ids.lampProduct, kind: "installation", label: "Installation", labelAr: "التركيب", price: "5.000", position: 0 },
+      { productId: ids.lampProduct, kind: "warranty", label: "1-year extended warranty", labelAr: "ضمان ممتد لمدة سنة", price: "3.000", warrantyMonths: 12, position: 1 },
+      { productId: ids.lampProduct, kind: "warranty", label: "Gold care", labelAr: null, price: "6.000", warrantyMonths: 24, position: 2 },
+    ]).returning();
+    const created = await catalog.createCart([{
+      variantId: String(ids.lampSmall), quantity: 1, addonIds: [String(twoYears.id), String(fitting.id), String(oneYear.id)],
+    }]);
+    expect(created?.items[0].addons?.map(addon => [addon.label, addon.labelAr, addon.warrantyMonths])).toEqual([
+      ["Installation", "التركيب", null],
+      ["Gold care, 2 years", "Gold care، سنتان", 24],
+    ]);
+    // 24.375 + 5.000 + 6.000
+    expect(created?.subtotal.amount).toBe("35.375");
+
+    const after = await catalog.addCartLines(created!.id, [{ variantId: String(ids.lampSmall), quantity: 1, addonIds: [String(oneYear.id)] }]);
+    expect(after?.items[0].addons?.map(addon => addon.warrantyMonths)).toEqual([null, 12]);
+    await db.delete(productAddons).where(eq(productAddons.productId, ids.lampProduct));
   });
 
   /* A set id arrives from the browser like the variant does. One naming no

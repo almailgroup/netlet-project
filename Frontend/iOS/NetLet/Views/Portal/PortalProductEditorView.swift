@@ -1016,15 +1016,8 @@ private struct AddonsSection: View {
     let mayEdit: Bool
     let saved: () async -> Void
 
-    struct Item: Identifiable {
-        let id = UUID()
-        var kind: String
-        var label: String
-        var labelAr: String
-        var price: String
-    }
-
-    @State private var items: [Item] = []
+    @State private var rows: [AddonRow] = []
+    @State private var attempted = false
     @State private var saving = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -1032,56 +1025,34 @@ private struct AddonsSection: View {
     var body: some View {
         Group {
             Text(l.t("admin.addonsNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-            if items.isEmpty { Text(l.t("admin.addonsEmpty")).font(.inter(14)).foregroundStyle(Brand.muted) }
-            ForEach(items) { entry in
-                let item = edit(entry.id)
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top) {
-                        LabeledField(label: l.t("admin.addonLabel"), text: item.label)
-                        if mayEdit {
-                            Button { Task { guard await RemovalQuestion.formRow(l) else { return }; items.removeAll { $0.id == entry.id } } } label: {
-                                Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(Brand.danger).frame(width: 44, height: 44)
-                            }
-                            .buttonStyle(.tap)
-                            .accessibilityLabel(l.t("admin.addonRemove"))
-                        }
-                    }
-                    HStack(alignment: .top, spacing: 8) {
-                        ChoiceField(label: l.t("admin.addonKind"), current: entry.kind, placeholder: "",
-                                    options: ListingRules.shared.addonKinds.map { ($0, l.t(AddonWords.kind($0))) }, enabled: mayEdit) { item.wrappedValue.kind = $0 ?? "other" }
-                        LabeledField(label: l.t("admin.addonPrice"), text: item.price, keyboard: .decimalPad, leftToRight: true)
-                    }
-                }
-                Divider()
-            }
+            AddonsEditor(rows: $rows, enabled: mayEdit, attempted: attempted)
             if mayEdit {
-                HStack(spacing: 8) {
-                    Button { items.append(Item(kind: "installation", label: "", labelAr: "", price: "")) } label: { Label(l.t("admin.addonAdd"), systemImage: "plus") }
-                        .buttonStyle(PortalSmallButtonStyle())
-                    SectionSave(pending: saving) { Task { await save() } }
-                }
+                SectionSave(pending: saving) { Task { await save() } }
             }
         }
         .onAppear(perform: fill)
-    }
-
-    private func edit(_ id: UUID) -> Binding<Item> {
-        Binding(get: { items.first { $0.id == id } ?? Item(kind: "other", label: "", labelAr: "", price: "") },
-                set: { new in if let index = items.firstIndex(where: { $0.id == id }) { items[index] = new } })
+        /* The rows as stored after a save, ids and all, so the next save
+           updates them where they stand. Another section's save reads the
+           same extras back and leaves what is being typed here alone. */
+        .onChange(of: product.addons ?? []) { fill() }
     }
 
     private func fill() {
-        items = (product.addons ?? []).map { Item(kind: $0.kind, label: $0.label, labelAr: $0.labelAr ?? "", price: $0.price) }
+        rows = (product.addons ?? []).map(AddonRow.from)
+        attempted = false
     }
 
     private func save() async {
+        guard !rows.hasProblems else {
+            attempted = true
+            Haptics.refused()
+            app.toast(l.t("admin.addonsFix"))
+            return
+        }
         saving = true
         defer { saving = false }
-        let addons = items.filter { !$0.label.trimmingCharacters(in: .whitespaces).isEmpty && !$0.price.trimmingCharacters(in: .whitespaces).isEmpty }.map {
-            API.AddonInput(kind: $0.kind, label: $0.label.trimmingCharacters(in: .whitespaces), labelAr: .text($0.labelAr), price: $0.price.trimmingCharacters(in: .whitespaces))
-        }
         do {
-            _ = try await app.services.api.call(API.saveAddons, .init(id: product.id, addons: addons))
+            _ = try await app.services.api.call(API.saveAddons, .init(id: product.id, addons: rows.toSend))
             Haptics.succeeded()
             app.toast(l.t("admin.saved"))
             await saved()
@@ -1089,19 +1060,11 @@ private struct AddonsSection: View {
             let failure = APIError.from(error)
             guard failure != .cancelled else { return }
             Haptics.refused()
-            // An extra priced at nothing is refused by name: it is not sellable.
+            /* The form asks the same rule first, so this is a row the server
+               saw differently; the boxes say which. */
             let key = failure.messageKey(knownKey: Phrasebook.shared.has)
-            app.toast(l.t(failure.serverMessage == "ADDON_NOT_SELLABLE" ? "admin.addonFree" : key == "error.serverProblem" ? "admin.saveFailed" : key))
-        }
-    }
-}
-
-enum AddonWords {
-    static func kind(_ kind: String) -> String {
-        switch kind {
-        case "installation": return "product.addonInstallation"
-        case "warranty": return "product.addonWarranty"
-        default: return "product.addonOther"
+            if failure.serverMessage == "ADDON_NOT_SELLABLE" { attempted = true }
+            app.toast(l.t(failure.serverMessage == "ADDON_NOT_SELLABLE" ? "admin.addonsFix" : key == "error.serverProblem" ? "admin.saveFailed" : key))
         }
     }
 }

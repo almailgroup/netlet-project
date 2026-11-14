@@ -3,45 +3,78 @@ import SwiftUI
 // The product page's panels beyond the buy box, each the web's component of
 // the same name in `components/product/`.
 
-/// The optional extras a seller offers with the product — the web's `AddonPicker`.
+/// Warranty and installation as the shopper chooses them — the web's
+/// `AddonPicker`: an installation fee and any other extra as ticks, and the
+/// warranty plans as one choice under "Extended warranty", "No extended
+/// warranty" first and chosen until another is — a line carries one plan at
+/// most, and the server keeps one. Nothing is ever chosen by default.
 struct AddonPicker: View {
     let addons: [ProductAddon]
     @Binding var chosen: Set<String>
     @Environment(LanguageSettings.self) private var l
 
+    private var plans: [ProductAddon] { addons.filter { $0.kind == "warranty" } }
+    private var plan: String? { plans.first { chosen.contains($0.id) }?.id }
+
     var body: some View {
         if !addons.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text(l.t("product.addons")).font(.inter(14, .semibold)).foregroundStyle(Brand.muted)
-                ForEach(addons) { addon in
-                    Button {
-                        if chosen.contains(addon.id) { chosen.remove(addon.id) } else { chosen.insert(addon.id) }
-                    } label: {
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: chosen.contains(addon.id) ? "checkmark.square.fill" : "square")
-                                .font(.system(size: 20))
-                                .foregroundStyle(Brand.navy)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(addon.label).font(.inter(14, .semibold)).foregroundStyle(Brand.ink).multilineTextAlignment(.leading)
-                                Text(l.t(addon.kind == "installation" ? "product.addonInstallation" : addon.kind == "warranty" ? "product.addonWarranty" : "product.addonOther"))
-                                    .font(.inter(12))
-                                    .foregroundStyle(Brand.muted)
-                            }
-                            Spacer(minLength: 8)
-                            Text(l.t("product.addonPerUnit", ["price": l.price(addon.price)]))
-                                .font(.inter(13, .bold))
-                                .foregroundStyle(Brand.navy)
-                        }
-                        .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(chosen.contains(addon.id) ? Brand.tint : Color.white))
-                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.tap)
-                    .accessibilityAddTraits(chosen.contains(addon.id) ? .isSelected : [])
+                ForEach(addons.filter { $0.kind == "installation" }) { tick($0, symbol: "wrench.and.screwdriver") }
+                if !plans.isEmpty {
+                    Label(l.t("product.warrantyPlans"), systemImage: "checkmark.shield")
+                        .font(.inter(14, .semibold)).foregroundStyle(Brand.navy)
+                        .padding(.top, 4)
+                        .accessibilityAddTraits(.isHeader)
+                    choice(nil)
+                    ForEach(plans) { choice($0) }
                 }
+                ForEach(addons.filter { $0.kind != "installation" && $0.kind != "warranty" }) { tick($0, symbol: "gift") }
             }
         }
+    }
+
+    private func tick(_ addon: ProductAddon, symbol: String) -> some View {
+        let on = chosen.contains(addon.id)
+        return Button {
+            if on { chosen.remove(addon.id) } else { chosen.insert(addon.id) }
+        } label: {
+            row(mark: on ? "checkmark.square.fill" : "square", title: addon.label, price: addon.price, on: on, symbol: symbol)
+        }
+        .buttonStyle(.tap)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    /// One plan, or none: choosing it unchooses every other plan.
+    private func choice(_ addon: ProductAddon?) -> some View {
+        let on = plan == addon?.id
+        return Button {
+            for other in plans { chosen.remove(other.id) }
+            if let addon { chosen.insert(addon.id) }
+        } label: {
+            row(mark: on ? "largecircle.fill.circle" : "circle", title: addon?.label ?? l.t("product.noWarrantyPlan"), price: addon?.price, on: on, symbol: nil)
+        }
+        .buttonStyle(.tap)
+        .accessibilityAddTraits(on ? [.isSelected] : [])
+    }
+
+    private func row(mark: String, title: String, price: Money?, on: Bool, symbol: String?) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: mark).font(.system(size: 20)).foregroundStyle(Brand.navy).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.inter(14, .semibold)).foregroundStyle(Brand.ink).multilineTextAlignment(.leading)
+                /* Per unit, said rather than implied: two fridges need two fittings. */
+                if let price {
+                    Text(l.t("product.addonPerUnit", ["price": l.price(price)])).font(.inter(12)).foregroundStyle(Brand.muted)
+                }
+            }
+            Spacer(minLength: 8)
+            if let symbol { Image(systemName: symbol).font(.system(size: 15)).foregroundStyle(Brand.navy).accessibilityHidden(true) }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? Brand.tint : Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+        .contentShape(Rectangle())
     }
 }
 

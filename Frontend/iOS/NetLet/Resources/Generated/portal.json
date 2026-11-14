@@ -968,6 +968,16 @@
       "warranty",
       "other"
     ],
+    "warrantyMonths": [
+      6,
+      12,
+      24,
+      36,
+      48,
+      60
+    ],
+    "maxAddons": 10,
+    "addonNameMax": 160,
     "optionNameMax": 60,
     "optionValueMax": 120,
     "measures": [

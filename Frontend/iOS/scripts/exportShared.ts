@@ -96,7 +96,7 @@ import {
   AWARDED_BADGES, FAST_SHIPPING_HOURS, FAST_SHIPPING_MIN_DELIVERIES, FAST_SHIPPING_SHARE, FAST_SHIPPING_WINDOW_DAYS,
   HIGH_RATING_FLOOR, HIGH_RATING_MIN_REVIEWS,
 } from "../../../Shared/inventory/vendorHealth.js";
-import { ADDON_KINDS } from "../../../Shared/commerce/addons.js";
+import { ADDON_KINDS, ADDON_NAME_MAX, MAX_ADDONS, WARRANTY_MONTHS } from "../../../Shared/commerce/addons.js";
 import { OPTION_NAME_MAX, OPTION_VALUE_MAX } from "../../../Shared/inventory/variantOptions.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURE_BOUNDS, MEASURES } from "../../../Shared/commerce/sizeGuide.js";
 import { BULK_UPLOAD_LIMIT, COLUMNS, DEPARTMENT_WORDS, MAX_CATEGORISE_ROWS, templateCsv } from "../../../Shared/inventory/bulkUpload.js";
@@ -370,12 +370,13 @@ export function buildResources(): Record<string, string> {
       maxBankReference: MAX_BANK_REFERENCE,
       /* The product editor's vocabulary: each department's specification
          rows, how units relate, the stock reasons, the size classes and the
-         vehicle each needs, the delivery bands, the add-on kinds and the size
+         vehicle each needs, the delivery bands, the add-on kinds with the warranty
+         plans' lengths and the ceilings, and the size
          chart's measures with their bounds. */
       editor: {
         attributeSchema: ATTRIBUTE_SCHEMA, sellUnits: SELL_UNITS, basePerUnit: BASE_PER_UNIT, dimensionOf: DIMENSION_OF,
         canonical: CANONICAL, stockReasons: STOCK_REASONS, sizeClasses: SIZE_CLASSES, vehicleByClass: BY_CLASS,
-        deliverySpeeds: DELIVERY_SPEEDS, addonKinds: ADDON_KINDS, optionNameMax: OPTION_NAME_MAX, optionValueMax: OPTION_VALUE_MAX,
+        deliverySpeeds: DELIVERY_SPEEDS, addonKinds: ADDON_KINDS, warrantyMonths: WARRANTY_MONTHS, maxAddons: MAX_ADDONS, addonNameMax: ADDON_NAME_MAX, optionNameMax: OPTION_NAME_MAX, optionValueMax: OPTION_VALUE_MAX,
         measures: MEASURES, measureBounds: MEASURE_BOUNDS, maxSizes: MAX_SIZES, maxSizeLabel: MAX_SIZE_LABEL,
       },
       /* The spreadsheet import's columns, its department words and its

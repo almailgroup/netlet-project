@@ -41,6 +41,11 @@ struct ListingRules: Decodable, Sendable {
     let vehicleByClass: [String: String]
     let deliverySpeeds: [String]
     let addonKinds: [String]
+    /// Warranty and installation: the lengths a plan is sold for, in months,
+    /// and the ceilings (`WARRANTY_MONTHS`, `MAX_ADDONS`, `ADDON_NAME_MAX`).
+    let warrantyMonths: [Int]
+    let maxAddons: Int
+    let addonNameMax: Int
     let optionNameMax: Int
     let optionValueMax: Int
     let measures: [String]
@@ -57,7 +62,7 @@ struct ListingRules: Decodable, Sendable {
     static let fallback = ListingRules(
         attributeSchema: [:], sellUnits: ["each"], basePerUnit: ["each": 1], dimensionOf: ["each": "count"], canonical: ["count": "each"],
         stockReasons: ["received", "sold", "damaged", "correction", "returned"], sizeClasses: [], vehicleByClass: [:], deliverySpeeds: [],
-        addonKinds: ["other"], optionNameMax: 60, optionValueMax: 120, measures: [], measureBounds: [:], maxSizes: 20, maxSizeLabel: 20
+        addonKinds: ["other"], warrantyMonths: [6, 12, 24, 36, 48, 60], maxAddons: 10, addonNameMax: 160, optionNameMax: 60, optionValueMax: 120, measures: [], measureBounds: [:], maxSizes: 20, maxSizeLabel: 20
     )
 
     // MARK: Specification rows (`attributeSchema.ts`)

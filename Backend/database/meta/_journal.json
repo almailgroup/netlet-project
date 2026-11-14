@@ -582,6 +582,13 @@
       "when": 1794656588184,
       "tag": "0082_product_catalogues",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1794665130005,
+      "tag": "0083_warranty_lengths",
+      "breakpoints": true
     }
   ]
 }

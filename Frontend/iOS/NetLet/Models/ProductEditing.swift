@@ -11,10 +11,15 @@ struct EditableProduct: Decodable, Sendable {
     }
 
     struct Addon: Decodable, Hashable, Sendable {
+        /// Sent back with a save, so the row is updated where it stands and a
+        /// shopper's ticked fitting stays in their bag.
+        let id: Int
         let kind: String
         let label: String
         let labelAr: String?
         let price: String
+        /// A warranty plan's length in months (migration 0083).
+        var warrantyMonths: Int? = nil
     }
 
     struct Variant: Decodable, Identifiable, Hashable, Sendable {
@@ -142,10 +147,12 @@ extension API {
     }
 
     struct AddonInput: Encodable, Sendable {
+        var id: Int?
         let kind: String
         let label: String
         let labelAr: OrNull<String>
         let price: String
+        var warrantyMonths: Int?
     }
 
     struct ProductAddons: Encodable, Sendable {

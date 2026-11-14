@@ -27,6 +27,7 @@ import { discountAllowed, type DiscountLicence } from "../inventory/discountLice
 import { savingPercent } from "./subscriptions.js";
 import { resolveSpeed } from "./deliverySpeed.js";
 import { chartProblem, type SizeChart } from "./sizeGuide.js";
+import { addonTitle } from "./addons.js";
 
 /**
  * The dinar, everywhere.
@@ -99,7 +100,7 @@ export type InventoryProductRow = {
   /** The seller's size chart (3.1.20). Absent for nearly everything. */
   sizeChart?: SizeChart | null;
   /** Optional extras the seller offers (3.1.2). Absent for nearly everything. */
-  addons?: { id: number; kind: string; label: string; labelAr: string | null; price: string }[];
+  addons?: { id: number; kind: string; label: string; labelAr: string | null; price: string; warrantyMonths?: number | null }[];
 };
 
 export type ProductContext = {
@@ -317,12 +318,14 @@ export function toStorefrontProduct(
     variants,
     /* Nothing is filtered out here: a free extra is refused where a seller
        records it, so anything that reached the database is sellable. The
-       label follows the reader's language when the seller gave both. */
+       name follows the reader's language — the seller's own words or the
+       default — and a warranty plan always says how long it runs. */
     addons: (row.addons ?? []).map(addon => ({
       id: String(addon.id),
       kind: addon.kind,
-      label: pick(locale, addon.label, addon.labelAr) || addon.label,
+      label: addonTitle(addon, locale === "ar" ? "ar" : "en"),
       price: money(addon.price),
+      warrantyMonths: addon.kind === "warranty" ? addon.warrantyMonths ?? null : null,
     })),
     /* Only a chart that still passes the rules reaches a page: one written
        before a rule tightened is absent rather than recommending wrongly. */

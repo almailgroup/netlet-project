@@ -64,7 +64,7 @@ import { massGramsFor, type SellUnit } from "../../../Shared/commerce/units.js";
 import { destinationsForCart } from "./addresses.js";
 import { codAvailability, COD_DEFAULT } from "../../../Shared/commerce/payment.js";
 import { pointsSpendableOn, spendValue } from "../../../Shared/commerce/referral.js";
-import { addonsTotal, type AddonKind } from "../../../Shared/commerce/addons.js";
+import { addonTitle, addonsTotal, withOneWarranty, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { giftCardPayment, settle } from "../../../Shared/commerce/vouchers.js";
 import { bundlePricing } from "./bundles.js";
 import { judgeLineCodes, releaseLineCodes } from "./lineCodes.js";
@@ -87,6 +87,7 @@ import { alertIfRiskyOrder, alertIfRiskyReferral } from "./fraud.js";
 import { isKept, type StillOwed } from "../../../Shared/commerce/collection.js";
 import { pinProblem, storedPin, type Pin } from "../../../Shared/commerce/geo.js";
 import { returnWindowDays } from "./settings.js";
+import { orderAddonFields, orderItemAddonsBefore0083, warrantyLengthsReady, withoutLength } from "./warrantyLengths.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -304,13 +305,16 @@ async function priceableLines(
    */
   const doors = await destinationsForCart(db, cartId);
 
+  const lengths = await warrantyLengthsReady(db);
   const extras = await db
     .select({
       variantId: cartItems.variantId,
       id: productAddons.id,
       kind: productAddons.kind,
       label: productAddons.label,
+      labelAr: productAddons.labelAr,
       price: productAddons.price,
+      warrantyMonths: lengths ? productAddons.warrantyMonths : sql<number | null>`null`,
     })
     .from(cartItemAddons)
     .innerJoin(cartItems, eq(cartItems.id, cartItemAddons.cartItemId))
@@ -348,9 +352,16 @@ async function priceableLines(
     return [row.variantId, price.charged] as const;
   }));
 
-  const extrasOf = (variantId: number) => extras
-    .filter(addon => addon.variantId === variantId)
-    .map(addon => ({ id: addon.id, kind: addon.kind as AddonKind, label: addon.label, price: addon.price }));
+  const extrasOf = (variantId: number) => withOneWarranty(extras.filter(addon => addon.variantId === variantId), [])
+    /* The name frozen is the one a shopper read in English — a warranty
+       plan's length in it — and the length itself beside it. */
+    .map(addon => ({
+      id: addon.id,
+      kind: addon.kind as AddonKind,
+      label: addonTitle(addon, "en"),
+      price: addon.price,
+      warrantyMonths: addon.kind === "warranty" ? addon.warrantyMonths ?? null : null,
+    }));
   /* What each line is worth before its own code: the goods at the shopper's
      price and the extras — the value a code's percentage and minimum are of. */
   const worth = new Map(rows.map(row => [
@@ -948,9 +959,12 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
           kind: addon.kind,
           label: addon.label,
           price: addon.price,
+          warrantyMonths: addon.warrantyMonths ?? null,
         }));
       });
-      if (frozenAddons.length) await w.insert(orderItemAddons).values(frozenAddons);
+      const lengths = frozenAddons.length ? await warrantyLengthsReady(w) : false;
+      if (frozenAddons.length && lengths) await w.insert(orderItemAddons).values(frozenAddons);
+      else if (frozenAddons.length) await w.insert(orderItemAddonsBefore0083).values(frozenAddons.map(withoutLength));
 
       /* A special price is spent once. Marking it here rather than when the
          shopper adds to the bag is deliberate: a grant is not consumed by
@@ -1438,7 +1452,7 @@ export async function getOrderFor(actor: Actor, orderId: number) {
    */
   const addonRows = allLines.length
     ? await db
-        .select()
+        .select(orderAddonFields(await warrantyLengthsReady(db)))
         .from(orderItemAddons)
         .where(inArray(orderItemAddons.orderItemId, allLines.map(line => line.id)))
     : [];

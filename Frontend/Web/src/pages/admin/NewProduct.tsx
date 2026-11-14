@@ -35,6 +35,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { GenerateDraft } from "@/components/admin/GenerateDraft";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { Card, Field, PageHeader, buttonClass, fieldClass, isolate, smallButtonClass } from "@/components/admin/ui";
+import { AddonsEditor, addonsToSend, firstAddonProblem, type EditorAddon } from "@/components/admin/AddonsEditor";
 import { Thumb } from "@/components/product/Thumb";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -88,6 +89,8 @@ function NewProductForm({ actor }: { actor: Actor }) {
   /* Rows a "Generate with AI" draft filled, by the department's own keys. */
   const [specs, setSpecs] = useState<{ key: string; value: string }[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+  /* Warranty and installation (3.1.2), the editor's own section. */
+  const [addons, setAddons] = useState<EditorAddon[]>([]);
   const [photoLink, setPhotoLink] = useState("");
   const [photoLinkError, setPhotoLinkError] = useState<MessageKey | null>(null);
   const [touched, setTouched] = useState<Partial<Record<DraftField, boolean>>>({});
@@ -200,6 +203,12 @@ function NewProductForm({ actor }: { actor: Actor }) {
       if (wrong[0]) document.getElementById(idFor(wrong[0]))?.focus();
       return;
     }
+    const wrongExtra = firstAddonProblem(addons, "new-addon");
+    if (wrongExtra) {
+      toast.error(t("admin.addonsFix"));
+      document.getElementById(wrongExtra)?.focus();
+      return;
+    }
     setBusy(publish ? "publish" : "draft");
     try {
       const title = draft.title.trim();
@@ -220,6 +229,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
           stock: draft.stock.trim() ? Number(draft.stock) : 0,
         },
         images: photos.map(url => ({ url })),
+        addons: addonsToSend(addons),
       });
       void utils.inventory.products.list.invalidate();
       void utils.inventory.overview.invalidate();
@@ -247,7 +257,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
         setServerErrors(current => ({ ...current, sku: "admin.skuTaken" }));
         document.getElementById(idFor("sku"))?.focus();
       }
-      toast.error(isMessageKey(message) ? t(message) : t("admin.saveFailed"));
+      toast.error(message === "ADDON_NOT_SELLABLE" ? t("admin.addonsFix") : isMessageKey(message) ? t(message) : t("admin.saveFailed"));
       setBusy(null);
     }
   };
@@ -462,7 +472,11 @@ function NewProductForm({ actor }: { actor: Actor }) {
             ) : null}
           </Card>
 
-          <Card step={4} title={t("admin.newStepDescription")}>
+          <Card step={4} title={t("admin.addons")} description={t("admin.addonsNote")}>
+            <AddonsEditor rows={addons} onChange={setAddons} attempted={attempted} idPrefix="new-addon" />
+          </Card>
+
+          <Card step={5} title={t("admin.newStepDescription")}>
             <div className="grid gap-4">
               <Field label={t("admin.fieldDescription")} hint={`${t("admin.newDescriptionHint")} ${t("admin.newCharacters", { count: draft.description.length })}`} error={shown("description") && t(shown("description")!)}>
                 <textarea id={idFor("description")} dir="auto" value={draft.description} onChange={event => edit("description")(event.target.value)} onBlur={leave("description")} rows={6} className={`${fieldClass} h-auto min-h-36 py-2.5 leading-6`} />
@@ -512,7 +526,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
             </div>
           </Card>
 
-          <Card step={5} title={t("admin.newStepSearch")} description={t("admin.newSearchHint")}>
+          <Card step={6} title={t("admin.newStepSearch")} description={t("admin.newSearchHint")}>
             {!draft.title.trim() ? (
               <p className="rounded-xl border border-dashed border-[#cfd9e6] bg-[#fafbfd] px-4 py-6 text-center text-[13px] ink-muted">{t("admin.newSearchEmpty")}</p>
             ) : (

@@ -128,8 +128,11 @@ export type ProductAttribute = {
 export type ProductAddon = {
   id: string;
   kind: string;
+  /** The name in the reader's language — the seller's words or the default — a plan's length in it. */
   label: string;
   price: Money;
+  /** A warranty plan's length in months; null for any other kind. */
+  warrantyMonths?: number | null;
 };
 
 export type Product = {
@@ -295,7 +298,7 @@ export type CartItem = {
    * warranty. Priced from the catalog on every read, like everything else in a
    * basket: `cart_item_addons` stores which, never what they cost.
    */
-  addons?: { id: string; label: string; kind: string; price: Money }[];
+  addons?: { id: string; label: string; labelAr?: string | null; kind: string; price: Money; warrantyMonths?: number | null }[];
   /** Those extras across the whole line. Included in `lineTotal`. */
   addonsTotal?: Money | null;
   /**

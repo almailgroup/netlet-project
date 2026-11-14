@@ -6084,6 +6084,59 @@ understands the first two would quietly drop a term from the third. When the
 seller recorded nothing the panel says exactly that, the way
 `missingStoreDetails` reports what is absent rather than inventing a default.
 
+## Warranty and installation
+
+**A seller prices an installation fee and extended warranty plans of a
+length, on the owner's word** ("Add Warranty and installation fees by the
+vendor", and of the options offered, "clearer, per product"; migration 0083,
+`warranty_months` on `product_addons` and `order_item_addons`, approved as
+shown). The extras (3.1.2) were one list of a free-text name, a kind and a
+price, so "2 years" was whatever a seller typed. The section is "Warranty and
+installation" now (`AddonsEditor` on the web, the same name in the app), in
+the product editor and as a step of the new-product form, both on both
+platforms: **Installation**, one fee; **Extended warranty**, plans each with a
+length from `WARRANTY_MONTHS` (6 months to 5 years) and a price; and **Other
+extras** that need a name. Each has an English and an Arabic name box, and
+**a name left blank is stored as the default in both languages** —
+"Installation", "2-year extended warranty", "ضمان ممتد لمدة سنتين" (counted by
+the plural forms) — so every page that reads an extra's name, an order frozen
+last year and an installed app included, reads a real one; the editor shows a
+default name blank again (`draftOf`, the app's `AddonRules.draft`), so a new
+length renames the plan. A plan the seller named reads "Gold care, 2 years"
+(`addonTitle`): a price with no length is not a plan anybody can compare.
+`addonProblems` (`Shared/commerce/addons.ts`; `AddonRules` in Swift, on its
+cases) is the rule on the form, under each box after Save or Create, and on
+the server, which refuses what it refuses: a price above nothing, a name for
+an "other" extra, a length for a plan with no name of its own, one plan per
+length.
+
+**A shopper takes one plan at most.** The product page draws installation
+and other extras as ticks and the plans as radios under "Extended warranty",
+"No extended warranty" first and chosen until another is (`AddonPicker` on
+both). The server keeps one too (`withOneWarranty`): adding a line with a
+plan replaces the plan it held, and the bag and the order read one, the first
+listed, from a bag ticked twice before the rule — so the two cannot charge
+different figures. The bag names an extra in the page's language (`labelAr`
+on the cart line); the order freezes the English name and the length.
+
+**A save keeps each extra's row.** The editor sends the ids it read and
+`setProductAddons` updates a row where it stands; it deleted and wrote every
+row again, which gave each a new id, and a shopper's ticked fitting in their
+bag (`cart_item_addons`, cascading from the extra) vanished whenever the seller
+saved the section. The app's editor had no ids to send.
+
+**Closed, not broken, until 0083 is pasted** (`services/warrantyLengths.ts`).
+Drizzle names every column it knows, so code that knows `warranty_months`,
+deployed first, would fail every product read — `hydrate` reads every
+product's extras — and every insert. Until a read finds the column (asked of
+`information_schema`, again a minute later while it is missing, then for good)
+the reads leave it out and say no plan has a length, and the writes go
+through the two tables as they were before it. Inside a transaction it is
+asked on the transaction's own connection, never the pool's: the pool admits
+five at once, and five transactions each waiting for a sixth would never end.
+`orders.test.ts` and `inventory.test.ts` drop the column and place an order
+with an extra, read a product and save extras.
+
 ## Recommendations
 
 **`Shared/commerce/taste.ts` is the ranking, and it is pure.** This decides
@@ -8549,9 +8602,11 @@ departments" under Browsing): their subcategories' words, which travel with
 the list the header and the Categories page draw, their specification rows
 and their names in both languages — then 1,073 KB (309 KB), a
 product's catalogue's words in both languages (`pdf-lib`, 439 KB, is a chunk
-of its own, fetched only when a PDF over 5 MB is chosen in the editor) — and
-is 1,076 KB (310 KB) now, the crash screen's words for a stale build in both
-languages and the rule that knows one —
+of its own, fetched only when a PDF over 5 MB is chosen in the editor) — then
+1,076 KB (310 KB), the crash screen's words for a stale build in both
+languages and the rule that knows one — and is 1,079 KB (311 KB) now, the
+warranty plans' and installation's words in both languages, which the
+product page's picker shares with the editor —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

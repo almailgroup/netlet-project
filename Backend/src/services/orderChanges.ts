@@ -60,6 +60,7 @@ import { withProductAlerts } from "./notifications.js";
 import { releaseLineCodes } from "./lineCodes.js";
 import { closeIfNothingLeft, returnUnits } from "./orders.js";
 import { refundGiftCard } from "./vouchers.js";
+import { orderAddonFields, orderItemAddonsBefore0083, warrantyLengthsReady, withoutLength } from "./warrantyLengths.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -216,10 +217,11 @@ export async function applyOrderChange(userId: number, reference: string, change
         .insert(orderItems)
         .values({ ...copy, quantity: gone.quantity, lineTotal: gone.lineTotal, commissionAmount: gone.commissionAmount, vendorNet: gone.vendorNet, fulfilment: "cancelled", deliveredAt: null })
         .returning({ id: orderItems.id });
-      const extras = await w.select().from(orderItemAddons).where(eq(orderItemAddons.orderItemId, row.id));
-      if (extras.length) {
-        await w.insert(orderItemAddons).values(extras.map(({ id: _addon, ...extra }) => ({ ...extra, orderItemId: sibling.id })));
-      }
+      const lengths = await warrantyLengthsReady(w);
+      const extras = await w.select(orderAddonFields(lengths)).from(orderItemAddons).where(eq(orderItemAddons.orderItemId, row.id));
+      const copies = extras.map(({ id: _addon, ...extra }) => ({ ...extra, orderItemId: sibling.id }));
+      if (copies.length && lengths) await w.insert(orderItemAddons).values(copies);
+      else if (copies.length) await w.insert(orderItemAddonsBefore0083).values(copies.map(withoutLength));
       if (row.variantId !== null) await returnUnits(w, row.variantId, gone.quantity, pool, row.centreId);
     }
 

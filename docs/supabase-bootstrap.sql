@@ -2210,6 +2210,10 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS "product_catalogues_product_idx" ON "product_catalogues" USING btree ("product_id","position","id");
 
+-- ===== 0083_warranty_lengths.sql =====
+ALTER TABLE "order_item_addons" ADD COLUMN IF NOT EXISTS "warranty_months" integer;
+ALTER TABLE "product_addons" ADD COLUMN IF NOT EXISTS "warranty_months" integer;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2261,6 +2265,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  83 AS migrations_in_this_file,
+  84 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

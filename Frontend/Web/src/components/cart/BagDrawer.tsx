@@ -231,7 +231,7 @@ function BagLine({ item }: { item: CartItem }) {
             {/* The extras this line carries (3.1.2), named rather than folded
                 silently into the total — somebody who ticked a fitting
                 should be able to see they did. */}
-            {(item.addons ?? []).map(addon => (<p key={addon.id} dir="auto" className="mt-0.5 text-[12px] ink-accent">+ {addon.label}</p>))}
+            {(item.addons ?? []).map(addon => (<p key={addon.id} dir="auto" className="mt-0.5 text-[12px] ink-accent">+ {(isArabic && addon.labelAr) || addon.label}</p>))}
             {/* Which set made this line cheaper (3.3.11) — a lower
                 figure with no explanation is one a shopper cannot check. */}
             {item.bundleName ? <p dir="auto" className="mt-0.5 text-[12px] ink-accent">{item.bundleName}</p> : null}

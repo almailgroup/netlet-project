@@ -11,8 +11,11 @@ struct ProductAddon: Decodable, Identifiable, Hashable, Sendable {
     let id: String
     /// installation, warranty or other.
     let kind: String
+    /// The name in the shopper's language — a warranty plan's length in it.
     let label: String
     let price: Money
+    /// A warranty plan's length in months; nil for any other kind.
+    var warrantyMonths: Int? = nil
 }
 
 /// A seller's size chart (`Shared/commerce/sizeGuide.ts`): a range in

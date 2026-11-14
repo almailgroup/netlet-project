@@ -201,6 +201,11 @@ struct CartRecovery: Decodable, Hashable, Sendable {
 struct CartAddon: Decodable, Hashable, Sendable {
     let id: String
     let label: String
+    /// The same name in Arabic, so the bag reads in the page's language.
+    var labelAr: String? = nil
+    var warrantyMonths: Int? = nil
+
+    func name(_ language: Language) -> String { language == .ar ? (labelAr ?? label) : label }
 }
 
 struct CartDelivery: Decodable, Hashable, Sendable {

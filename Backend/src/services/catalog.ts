@@ -17,7 +17,7 @@
 
 import { skippedLineIds } from "../../../Shared/commerce/cartChoice.js";
 import { randomBytes } from "node:crypto";
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import {
   bundleItems,
   cartItemAddons,
@@ -47,7 +47,7 @@ import { publishedCatalog, publishedProduct } from "./inventory.js";
 import { getDb } from "./db.js";
 import { addMoney, compareMoney, multiplyMoney, subtractMoney, toFils } from "../../../Shared/money.js";
 import { codeByText, judgeLineCodes } from "./lineCodes.js";
-import { addonsTotal, type AddonKind } from "../../../Shared/commerce/addons.js";
+import { addonTitle, addonsTotal, withOneWarranty, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { bundlePricing } from "./bundles.js";
 import { effectiveChoice, groupForDelivery, offersFast, quoteDelivery, type DeliveryRule } from "../../../Shared/commerce/delivery.js";
 import type { DestinedLine } from "../../../Shared/commerce/addresses.js";
@@ -64,6 +64,7 @@ import { recentReviewsForStore, type StoreReview } from "./reviews.js";
 import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
 import { valueOf } from "../../../Shared/commerce/attributeSchema.js";
 import { featureOn } from "./features.js";
+import { warrantyLengthsReady } from "./warrantyLengths.js";
 import {
   awardedBadges,
   FAST_SHIPPING_HOURS,
@@ -709,6 +710,7 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
    * is the same rule that keeps a cart free of prices.
    */
   const lineIds = rows.map(row => row.lineId);
+  const lengths = lineIds.length ? await warrantyLengthsReady(db) : false;
   const chosenAddons = lineIds.length
     ? await db
         .select({
@@ -718,6 +720,7 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
           label: productAddons.label,
           labelAr: productAddons.labelAr,
           price: productAddons.price,
+          warrantyMonths: lengths ? productAddons.warrantyMonths : sql<number | null>`null`,
         })
         .from(cartItemAddons)
         .innerJoin(productAddons, eq(productAddons.id, cartItemAddons.addonId))
@@ -734,7 +737,9 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
   const doors = new Map(book.map(address => [address.id, address]));
 
   const priced = rows.map(row => {
-    const extras = chosenAddons.filter(addon => addon.lineId === row.lineId);
+    /* One plan to a line on the read too, so a bag ticked twice before the
+       rule — and the order placed from it — charge one, the first listed. */
+    const extras = withOneWarranty(chosenAddons.filter(addon => addon.lineId === row.lineId), []);
     const inBundle = (chosen(row.lineId) ? bundled : bundledAll).get(row.variantId);
     /* `shopperPrice` is the one rule checkout uses too, so the bag cannot
        quote a figure the order then charges differently. */
@@ -825,11 +830,15 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
     maxQuantity: Math.min(MAX_LINE_QUANTITY, maxQuantityFor({ stock: row.stock, preorderStock: row.preorderStock ?? 0, preorderReleaseAt: null })),
     vendor: { id: row.vendorId, name: row.vendorName, nameAr: row.vendorNameAr?.trim() || null, slug: row.vendorSlug },
     measure: { unit: row.unit as Measure["unit"], stepAmount: Number(row.stepAmount) },
+    /* Both names, as a line carries both titles, so the bag reads in the
+       page's language; a warranty plan says its length in each. */
     addons: row.extras.map(addon => ({
       id: String(addon.id),
       kind: addon.kind,
-      label: addon.label,
+      label: addonTitle(addon, "en"),
+      labelAr: addonTitle(addon, "ar"),
       price: money(addon.price),
+      warrantyMonths: addon.kind === "warranty" ? addon.warrantyMonths ?? null : null,
     })),
     addonsTotal: row.extras.length ? money(row.extrasTotal) : null,
     /* The extras are part of what this line costs, so they are inside the
@@ -1056,13 +1065,23 @@ async function putLines(
      * listing cannot be attached to this line — the same reason the price is
      * read here rather than taken from the caller.
      */
-    const offered = await db
-      .select({ id: productAddons.id })
+    const offered = withOneWarranty(await db
+      .select({ id: productAddons.id, kind: productAddons.kind })
       .from(productAddons)
       .innerJoin(productVariants, eq(productVariants.productId, productAddons.productId))
-      .where(and(inArray(productAddons.id, line.addonIds), eq(productVariants.id, line.variantId)));
+      .where(and(inArray(productAddons.id, line.addonIds), eq(productVariants.id, line.variantId))), line.addonIds);
 
     if (offered.length === 0) continue;
+    /* A plan chosen for a line already holding another replaces it: one
+       warranty to a line, whichever press brought the line in. */
+    const plan = offered.find(addon => addon.kind === "warranty");
+    if (plan) {
+      await db.delete(cartItemAddons).where(and(
+        eq(cartItemAddons.cartItemId, row.id),
+        ne(cartItemAddons.addonId, plan.id),
+        inArray(cartItemAddons.addonId, db.select({ id: productAddons.id }).from(productAddons).where(eq(productAddons.kind, "warranty"))),
+      ));
+    }
     /* Ticking the same extra twice is one extra: the unique index decides, so
        two tabs cannot both attach it. */
     await db

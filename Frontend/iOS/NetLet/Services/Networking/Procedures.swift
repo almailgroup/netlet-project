@@ -524,6 +524,8 @@ enum API {
         var specs: [Spec]?
         let variant: Variant
         let images: [Photo]
+        /// Warranty and installation, the editor's own section.
+        var addons: [AddonInput]?
     }
 
     struct ListingStatus: Encodable, Sendable {

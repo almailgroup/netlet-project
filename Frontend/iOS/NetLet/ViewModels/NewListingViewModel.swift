@@ -60,6 +60,8 @@ final class NewListingViewModel {
     private(set) var stores: [StoreListRow] = []
     private(set) var ownStore: OwnStore?
     private(set) var photos: [Photo] = []
+    /// Warranty and installation, the editor's own section (`AddonsEditor`).
+    var addons: [AddonRow] = []
     private(set) var submitted = false
     private(set) var creating: String?
     private(set) var refusal: String?
@@ -334,6 +336,10 @@ final class NewListingViewModel {
             return nil
         }
         guard problems.isEmpty, !uploading else { return nil }
+        guard !addons.hasProblems else {
+            refusal = "admin.addonsFix"
+            return nil
+        }
         creating = publish ? "publish" : "draft"
         defer { creating = nil }
         func trimmed(_ text: String) -> String? {
@@ -357,7 +363,8 @@ final class NewListingViewModel {
                 sku: trimmed(draft.sku),
                 stock: Int(draft.stock.trimmingCharacters(in: .whitespaces)) ?? 0
             ),
-            images: photos.compactMap(\.url).map { .init(url: $0) }
+            images: photos.compactMap(\.url).map { .init(url: $0) },
+            addons: addons.toSend
         )
         let created: CreatedListing
         do {
@@ -365,7 +372,8 @@ final class NewListingViewModel {
         } catch {
             let key = APIError.from(error).messageKey(knownKey: Phrasebook.shared.has)
             if key == "admin.skuTaken" { serverProblems[.sku] = key }
-            refusal = key == "error.serverProblem" ? "admin.saveFailed" : key
+            let failure = APIError.from(error)
+            refusal = failure.serverMessage == "ADDON_NOT_SELLABLE" ? "admin.addonsFix" : key == "error.serverProblem" ? "admin.saveFailed" : key
             return nil
         }
         let named = language.t("admin.newCreated", ["title": isolated(title)])

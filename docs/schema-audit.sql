@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 80 tables, 847 columns, 143 indexes, 183 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 80 tables, 849 columns, 143 indexes, 183 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -69,7 +69,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('notifications', 'created_at:nd,dedupe_key:n,id:pnd,kind:n,link,message_key:n,params:nd,read_at,user_id:n', 'notifications_unread_idx:w,notifications_user_created_idx,notifications_user_dedupe_idx:u', 'user_id>users:c'),
   ('occasion_products', 'occasion_id:n,position:nd,product_id:n', 'occasion_products_product_idx', 'occasion_id>occasions:c,product_id>products:c'),
   ('occasions', 'created_at:nd,created_by,ends_on,id:pnd,image_url,include_tagged:nd,slug:n,starts_on,status:nd,title:n,title_ar:n,updated_at:nd', 'occasions_slug_unique:u', 'created_by>users:n'),
-  ('order_item_addons', 'addon_id,id:pnd,kind:n,label:n,order_item_id:n,price:n', 'order_item_addons_line_idx', 'addon_id>product_addons:n,order_item_id>order_items:c'),
+  ('order_item_addons', 'addon_id,id:pnd,kind:n,label:n,order_item_id:n,price:n,warranty_months', 'order_item_addons_line_idx', 'addon_id>product_addons:n,order_item_id>order_items:c'),
   ('order_items', 'affiliate_vendor_percent,bundle_id,bundle_name,carried_by,centre_id,commission_amount:nd,commission_fixed:nd,commission_percent:nd,courier_id,created_at:nd,delivered_at,delivery_choice:nd,destination,discount_amount:nd,discount_code,discount_code_id,fulfilment:nd,id:pnd,line_total:n,order_id:n,preorder_release_at,preordered:nd,product_id,product_title:n,quantity:n,referral_rate,referrer_id,size_class,sku,unit_price:n,updated_at:nd,variant_id,variant_title,vendor_id,vendor_name,vendor_net:nd,weight_grams', 'order_items_fulfilment_idx,order_items_order_id_idx,order_items_vendor_id_idx', 'bundle_id>bundles:n,carried_by>users:n,centre_id>fulfilment_centres:r,courier_id>couriers:n,discount_code_id>discount_codes:n,order_id>orders:c,product_id>products:n,referrer_id>users:n,variant_id>product_variants:n,vendor_id>vendors:n'),
   ('order_tracking_events', 'created_at:nd,id:pnd,message,occurred_at:nd,order_reference:n,status:n,user_id:n', 'order_tracking_user_id_idx,order_tracking_user_occurred_idx', 'user_id>users:c'),
   ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total:nd,contact_name,contact_phone,currency:nd,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total:nd,delivery_waived:nd,delivery_zone_id,discount_code,discount_value:nd,email,gift_card_code,gift_card_value:nd,grand_total:n,id:pnd,items_total:n,member:nd,payment_collected_at,payment_method,placed_at:nd,points_spent:nd,points_value:nd,reference:n,status:nd,subscription_id,updated_at:nd,user_id', 'orders_placed_idx,orders_reference_unique:u,orders_status_idx,orders_user_id_idx', 'affiliate_id>affiliates:n,subscription_id>subscriptions:n,user_id>users:n'),
@@ -79,7 +79,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('platform_settings', 'key:pn,updated_at:nd,updated_by,value:n', '', 'updated_by>users:n'),
   ('point_entries', 'available_at,created_at:nd,id:pnd,note,order_id,order_item_id,points:n,pot:nd,reason:n,referral_id,settled_at,user_id:n', 'point_entries_affiliate_line_unique:uw,point_entries_affiliate_order_unique:uw,point_entries_invite_commission_unique:uw,point_entries_pot_idx,point_entries_product_referral_unique:uw,point_entries_referral_reason_unique:uw,point_entries_referral_reversal_unique:uw,point_entries_user_idx', 'order_id>orders:n,order_item_id>order_items:n,referral_id>referrals:n,user_id>users:c'),
   ('price_offers', 'answered_at,answered_by,asked_price:n,created_at:nd,expires_at,id:pnd,list_price:n,offered_price,product_id,product_title:n,quantity:nd,shopper_note,status:nd,updated_at:nd,used_on_order_id,user_id:n,variant_id:n,vendor_id,vendor_note', 'price_offers_open_unique:uw,price_offers_user_idx,price_offers_variant_idx,price_offers_vendor_idx', 'answered_by>users:n,product_id>products:n,used_on_order_id>orders:n,user_id>users:c,variant_id>product_variants:c,vendor_id>vendors:n'),
-  ('product_addons', 'created_at:nd,id:pnd,kind:nd,label:n,label_ar,position:nd,price:n,product_id:n', 'product_addons_product_idx', 'product_id>products:c'),
+  ('product_addons', 'created_at:nd,id:pnd,kind:nd,label:n,label_ar,position:nd,price:n,product_id:n,warranty_months', 'product_addons_product_idx', 'product_id>products:c'),
   ('product_catalogues', 'bytes:n,content_type:n,created_at:nd,file_name:n,id:pnd,position:nd,product_id:n,review_note,size_bytes:n,status:nd,title,title_ar,uploaded_by', 'product_catalogues_product_idx', 'product_id>products:c,uploaded_by>users:n'),
   ('product_images', 'alt_text,created_at:nd,id:pnd,kind:nd,position:nd,poster_url,product_id:n,url:n', 'product_images_product_id_idx', 'product_id>products:c'),
   ('product_variants', 'centre_id,compare_at_price,created_at:nd,id:pnd,low_stock_at,member_price,options:nd,position:nd,preorder_release_at,preorder_stock:nd,price:n,product_id:n,sku,step_amount:nd,stock:nd,title:nd,unit:nd,updated_at:nd', 'product_variants_product_id_idx,product_variants_product_sku_unique:u', 'centre_id>fulfilment_centres:r,product_id>products:c'),
@@ -267,7 +267,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 80 tables, 847 columns, 143 indexes, 183 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 80 tables, 849 columns, 143 indexes, 183 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

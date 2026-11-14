@@ -18,7 +18,7 @@ import { Thumb } from "@/components/product/Thumb";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
-import { ADDON_KINDS, type AddonKind } from "@shared/commerce/addons";
+import { AddonsEditor, addonsToSend, editorAddons, firstAddonProblem, type EditorAddon } from "@/components/admin/AddonsEditor";
 import { MAX_AFFILIATE_PERCENT, storeAffiliateRate } from "@shared/commerce/affiliate";
 import { MAX_PROPOSAL_REASON, proposalFigureProblem } from "@shared/inventory/commissionProposals";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -81,7 +81,8 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const [images, setImages] = useState<{ url: string; altText: string; kind: "image" | "video"; posterUrl: string }[]>([]);
   /* The optional extras this product offers (3.1.2), edited as a whole list
      for the reason the images are: they are read as a set. */
-  const [addons, setAddons] = useState<{ kind: AddonKind; label: string; labelAr: string; price: string }[]>([]);
+  const [addons, setAddons] = useState<EditorAddon[]>([]);
+  const [addonsAttempted, setAddonsAttempted] = useState(false);
   useEffect(() => {
     if (!product.data) return;
     setDraft({
@@ -109,12 +110,8 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
       kind: item.kind,
       posterUrl: item.posterUrl ?? "",
     })));
-    setAddons((product.data.addons ?? []).map(addon => ({
-      kind: addon.kind as AddonKind,
-      label: addon.label,
-      labelAr: addon.labelAr ?? "",
-      price: addon.price,
-    })));
+    setAddons(editorAddons(product.data.addons ?? []));
+    setAddonsAttempted(false);
   }, [product.data?.id]);
 
   const refresh = () => {
@@ -171,11 +168,27 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     onError: fail,
   });
   const saveAddons = trpc.inventory.products.setAddons.useMutation({
-    onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
-    /* The one refusal a seller can act on: a free extra is a feature of the
-       product, and the message says where to put it instead. */
-    onError: error => (error.message === "ADDON_NOT_SELLABLE" ? toast.error(t("admin.addonFree")) : fail(error)),
+    onSuccess: saved => {
+      /* The rows as stored, ids and all, so the next save updates them where
+         they stand and a shopper's ticked fitting stays in their bag. */
+      setAddons(editorAddons(saved?.addons ?? []));
+      setAddonsAttempted(false);
+      refresh();
+      toast.success(t("admin.saved"));
+    },
+    /* The form asks the same rule first, so this is a row the server saw
+       differently; the boxes say which. */
+    onError: error => (error.message === "ADDON_NOT_SELLABLE" ? (setAddonsAttempted(true), toast.error(t("admin.addonsFix"))) : fail(error)),
   });
+  const submitAddons = () => {
+    const wrong = firstAddonProblem(addons, "editor-addon");
+    if (wrong) {
+      setAddonsAttempted(true);
+      requestAnimationFrame(() => document.getElementById(wrong)?.focus());
+      return;
+    }
+    saveAddons.mutate({ id: productId, addons: addonsToSend(addons) });
+  };
   const saveVariant = trpc.inventory.variants.save.useMutation({ onSuccess: () => { refresh(); toast.success(t("admin.saved")); }, onError: fail });
   const adjust = trpc.inventory.variants.adjustStock.useMutation({
     onSuccess: count => { refresh(); toast.success(t("admin.stockUpdated", { count })); },
@@ -675,92 +688,16 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             />
           </div>
 
-          {/* Optional extras (3.1.2): a fact about the product rather than
-              about one size of it — a fitting is the same visit whichever
-              colour was picked. */}
+          {/* Warranty and installation (3.1.2): a fact about the product
+              rather than about one size of it — a fitting is the same visit
+              whichever colour was picked. */}
           <Card
             id="extras"
             title={t("admin.addons")}
             description={t("admin.addonsNote")}
-            footer={mayEdit ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setAddons([...addons, { kind: "installation" as AddonKind, label: "", labelAr: "", price: "" }])}
-                  className={`${buttonClass.secondary} me-auto`}
-                >
-                  <Plus className="size-4" aria-hidden />{t("admin.addonAdd")}
-                </button>
-                {saveButton(saveAddons.isPending, () => saveAddons.mutate({
-                  id: row.id,
-                  // A row left blank is an abandoned edit, not an extra.
-                  addons: addons
-                    .filter(addon => addon.label.trim() && addon.price.trim())
-                    .map(addon => ({
-                      kind: addon.kind,
-                      label: addon.label.trim(),
-                      labelAr: addon.labelAr.trim() || null,
-                      price: addon.price.trim(),
-                    })),
-                }))}
-              </>
-            ) : null}
+            footer={mayEdit ? saveButton(saveAddons.isPending, submitAddons) : null}
           >
-            {addons.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-[#cfd9e6] bg-[#fafbfd] px-4 py-6 text-center text-[13px] ink-muted">{t("admin.addonsEmpty")}</p>
-            ) : (
-              <ul className="space-y-3">
-                {addons.map((addon, index) => (
-                  <li key={index} className="flex items-start gap-3 rounded-xl border border-[#e1e7ef] p-3">
-                    <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[1fr_160px_130px]">
-                      <input
-                        dir="auto"
-                        value={addon.label}
-                        disabled={!mayEdit}
-                        placeholder={t("admin.addonLabel")}
-                        aria-label={t("admin.addonLabel")}
-                        onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, label: e.target.value } : entry))}
-                        className={inputClass}
-                      />
-                      <Select
-                        value={addon.kind}
-                        disabled={!mayEdit}
-                        aria-label={t("admin.addonKind")}
-                        onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, kind: e.target.value as AddonKind } : entry))}
-                        className={inputClass}
-                      >
-                        {ADDON_KINDS.map(kind => (
-                          <option key={kind} value={kind}>
-                            {t(kind === "installation" ? "product.addonInstallation" : kind === "warranty" ? "product.addonWarranty" : "product.addonOther")}
-                          </option>
-                        ))}
-                      </Select>
-                      <input
-                        dir="ltr"
-                        inputMode="decimal"
-                        value={addon.price}
-                        disabled={!mayEdit}
-                        placeholder={t("admin.addonPrice")}
-                        aria-label={t("admin.addonPrice")}
-                        onChange={e => setAddons(addons.map((entry, i) => i === index ? { ...entry, price: e.target.value } : entry))}
-                        className={inputClass}
-                      />
-                    </div>
-                    {mayEdit ? (
-                      <button
-                        type="button"
-                        onClick={() => void ask({ title: t("remove.formTitle"), body: t("remove.formBody") }).then(sure => { if (sure) setAddons(addons.filter((_, i) => i !== index)); })}
-                        aria-label={t("admin.addonRemove")}
-                        title={t("admin.addonRemove")}
-                        className="grid size-10 shrink-0 place-items-center rounded-lg text-[#536b8c] hover:bg-[#fdeceb] hover:text-[#8c2f22]"
-                      >
-                        <Trash2 className="size-4" aria-hidden />
-                      </button>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <AddonsEditor rows={addons} onChange={setAddons} disabled={!mayEdit} attempted={addonsAttempted} idPrefix="editor-addon" />
           </Card>
 
           {/* Offered to affiliates at a rate the store funds (3.7.1). */}

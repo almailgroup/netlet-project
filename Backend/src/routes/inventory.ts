@@ -79,7 +79,7 @@ import { listAudit, markAuditSeen, sellerChangesForAdmin, type AuditAction } fro
 import { AWARDED_BADGES } from "../../../Shared/inventory/vendorHealth.js";
 import { DELIVERY_SPEEDS } from "../../../Shared/commerce/deliverySpeed.js";
 import { SIZE_CLASSES } from "../../../Shared/commerce/vehicle.js";
-import { ADDON_KINDS } from "../../../Shared/commerce/addons.js";
+import { ADDON_KINDS, ADDON_NAME_MAX, MAX_ADDONS, WARRANTY_MONTHS } from "../../../Shared/commerce/addons.js";
 import { modelConcernFor, modelReviewAvailable, reviewProducts } from "../services/productReview.js";
 import {
   ApplicationError,
@@ -101,6 +101,23 @@ import { moveProductToVendor } from "../services/productMove.js";
 import { BULK_UPLOAD_LIMIT, MAX_CATEGORISE_ROWS } from "../../../Shared/inventory/bulkUpload.js";
 import { categoriseRows } from "../services/importCategories.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../../Shared/commerce/sizeGuide.js";
+
+/**
+ * One extra as the editor and the new-product form send it: installation, a
+ * warranty plan with its length, or something else. The names may be blank —
+ * the server names installation and a plan for the seller — and `id` is the
+ * row it came from, so a save updates rather than replaces it.
+ * `addonProblems` is asked beside the query, for what a shape cannot say.
+ */
+const addonInput = z.object({
+  id: rowId.nullable().optional(),
+  kind: z.enum(ADDON_KINDS),
+  label: z.string().trim().max(ADDON_NAME_MAX),
+  labelAr: z.string().trim().max(ADDON_NAME_MAX).nullable().optional(),
+  price: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
+  warrantyMonths: z.number().int().refine(months => (WARRANTY_MONTHS as readonly number[]).includes(months)).nullable().optional(),
+});
+
 
 /** One size's range for one measure, in centimetres. */
 const sizeRange = z.tuple([z.number().finite(), z.number().finite()]);
@@ -509,6 +526,7 @@ export const inventoryRouter = router({
           kind: z.enum(["image", "video"]).optional(),
           altText: z.string().trim().max(255).nullable().optional(),
         })).max(12).optional(),
+        addons: z.array(addonInput).max(MAX_ADDONS).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user, input.vendorId);
@@ -764,12 +782,7 @@ export const inventoryRouter = router({
     setAddons: protectedProcedure
       .input(z.object({
         id: rowId,
-        addons: z.array(z.object({
-          kind: z.enum(ADDON_KINDS),
-          label: z.string().trim().min(1).max(160),
-          labelAr: z.string().trim().max(160).nullable().optional(),
-          price: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
-        })).max(10),
+        addons: z.array(addonInput).max(MAX_ADDONS),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);

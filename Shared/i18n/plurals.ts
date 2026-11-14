@@ -39,6 +39,25 @@ export type PluralEntry = {
 };
 
 export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
+  /* ------------------------------------------- warranty and installation --- */
+  "addon.warrantyYearsName": {
+    param: "count",
+    ar: { one: "ضمان ممتد لمدة سنة", two: "ضمان ممتد لمدة سنتين", many: "ضمان ممتد لمدة {count} سنة", other: "ضمان ممتد لمدة {count} سنة" },
+  },
+  "addon.warrantyMonthsName": {
+    param: "count",
+    ar: { one: "ضمان ممتد لمدة شهر", two: "ضمان ممتد لمدة شهرين", many: "ضمان ممتد لمدة {count} شهراً", other: "ضمان ممتد لمدة {count} شهر" },
+  },
+  "addon.lengthYears": {
+    param: "count",
+    en: { one: "1 year" },
+    ar: { one: "سنة واحدة", two: "سنتان", many: "{count} سنة", other: "{count} سنة" },
+  },
+  "addon.lengthMonths": {
+    param: "count",
+    en: { one: "1 month" },
+    ar: { one: "شهر واحد", two: "شهران", many: "{count} شهراً", other: "{count} شهر" },
+  },
   /* ---------------------------------------------------- store documents --- */
   "storeDocs.expiresIn": {
     param: "count",

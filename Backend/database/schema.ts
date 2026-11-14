@@ -2996,6 +2996,13 @@ export const productAddons = pgTable(
     labelAr: varchar("label_ar", { length: 160 }),
     /** Per unit: two fridges need two fittings. */
     price: numeric("price", { precision: 12, scale: 3 }).notNull(),
+    /**
+     * How long an extended warranty plan runs, in months (one of
+     * `WARRANTY_MONTHS`); null for any other kind, and for a warranty written
+     * before plans had a length, whose name says it. Migration 0083, on the
+     * owner's word: "warranty plans, length such as 1 or 2 years, plus a price".
+     */
+    warrantyMonths: integer("warranty_months"),
     position: integer("position").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -3047,6 +3054,8 @@ export const orderItemAddons = pgTable(
     label: varchar("label", { length: 160 }).notNull(),
     /** Per unit, as charged. The line's own quantity says how many. */
     price: numeric("price", { precision: 12, scale: 3 }).notNull(),
+    /** A warranty plan's length as sold, frozen with the rest (migration 0083). */
+    warrantyMonths: integer("warranty_months"),
   },
   table => [index("order_item_addons_line_idx").on(table.orderItemId)]
 );
