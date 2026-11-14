@@ -44,6 +44,14 @@ some fifteen hundred imports for names that describe a different framework.
 Everything under `Frontend/Web/src/hooks/` is a hook and everything in
 `Frontend/Web/src/lib/` is not; there is no second answer to where either goes.
 
+**`ShipLee/` is a second project in this repository, not part of NetLet**, on
+the owner's word: ShipLee's parcel-tracking site for shiplee.delivery, in
+NetLet's design language in white and pine green. It has its own
+`package.json`, lockfile, TypeScript, tests, CI (`.github/workflows/shiplee.yml`),
+Vercel project (Root Directory `ShipLee`) and database, and imports nothing
+from here; NetLet's `tsconfig.json` and `vitest.config.ts` name their own
+folders, so neither reads it. `ShipLee/CLAUDE.md` is its architecture document.
+
 ## Design reference
 
 `almailgroup/netlet-old-design`, branch `claude/shiplee-tracking-website` — an

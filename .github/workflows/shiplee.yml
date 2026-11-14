@@ -1,0 +1,61 @@
+# ShipLee's checks (the parcel-tracking site in ShipLee/), on every push that
+# touches it. ShipLee is its own project: its own lockfile, TypeScript and
+# tests, which NetLet's CI does not read.
+#
+# The last step is the one the others cannot replace: the API is bundled for
+# Vercel, and `pnpm smoke` runs that bundle with no node_modules in reach and
+# asks it real questions.
+
+name: ShipLee
+
+on:
+  push:
+    branches: [main]
+    paths: ["ShipLee/**", ".github/workflows/shiplee.yml"]
+  pull_request:
+    paths: ["ShipLee/**", ".github/workflows/shiplee.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: shiplee-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: ShipLee
+
+jobs:
+  verify:
+    name: Types, tests, build, smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: ShipLee/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ShipLee/package.json
+          cache: pnpm
+          cache-dependency-path: ShipLee/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm check
+
+      - name: Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Smoke
+        run: pnpm smoke

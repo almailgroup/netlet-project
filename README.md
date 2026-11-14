@@ -70,6 +70,7 @@ Shared/                imported by both sides, and pure
   ai/                  the AI gateway's contract: tokens, requests, the stream
 api/                   the Vercel entry point — a two-line stub over the bundled function
 docs/                  setup guides and the requirements
+ShipLee/               a separate project: ShipLee's parcel-tracking site (shiplee.delivery)
 ```
 
 Configuration that spans the folders stays at the root: `package.json`, the
@@ -96,6 +97,7 @@ skips silently.
 | [`docs/SELF-HOSTING.md`](docs/SELF-HOSTING.md) | Running it on your own hardware |
 | [`Backend/gateway/README.md`](Backend/gateway/README.md) | The AI gateway — the Cloudflare Worker every Gemini call goes through |
 | [`Frontend/iOS/README.md`](Frontend/iOS/README.md) | The iOS app — running it, its demo mode, and what it copies from `Shared/` |
+| [`ShipLee/README.md`](ShipLee/README.md) | ShipLee, the parcel-tracking site that shares this repository — its own project and Vercel deploy |
 | [`docs/Netlet-Requirements.pdf`](docs/Netlet-Requirements.pdf) | What was asked for — the owner's requirements document (11 August 2026) |
 | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) | Each of those requirements against the code |
 | [`CLAUDE.md`](CLAUDE.md) | Why the code is the way it is — read this before changing it |

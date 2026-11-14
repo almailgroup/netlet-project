@@ -1,0 +1,6 @@
+node_modules
+dist
+# The Vercel function bundle, written by `pnpm build` (scripts/build-function.mjs).
+# Its types (api/handler.generated.d.ts) are committed, so `pnpm check` passes
+# on a fresh clone.
+api/handler.generated.js
