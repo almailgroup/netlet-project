@@ -117,7 +117,10 @@ struct PortalHomeView: View {
         add("devices.waitingTile", waiting["devices"], "/admin/devices")
         add("admin.applications", waiting["applications"], "/admin/applications")
         if let counts {
-            if actor.can("product.review") { add("admin.countPendingReview", counts.pendingReview, "/admin/review") }
+            if actor.can("product.review") {
+                add("admin.countPendingReview", counts.pendingReview, "/admin/review")
+                add("catalogue.waitingTile", waiting["catalogues"], "/admin/review")
+            }
             if actor.can("platform.viewAll") {
                 add("admin.countVendorsPending", counts.vendorsPending, "/admin/vendors")
                 add("admin.zeroCommissionTile", counts.zeroCommission.count, counts.zeroCommission.count == 1 ? "/admin/vendors/\(counts.zeroCommission[0].id)" : "/admin/vendors")
@@ -195,6 +198,8 @@ struct PortalHomeView: View {
             let affiliates = count("affiliate.manage") { try await api.call(API.affiliatesWaiting) }
             let proposals = count("vendor.setCommission") { try await api.call(API.proposalsWaiting) }
             let banners = count("product.review") { try await api.call(API.bannersWaiting) }
+            /* Catalogues a store put under a product, waiting on NetLet before they show. */
+            let catalogues = count("product.review") { try await api.call(API.waitingCatalogueCount) }
             let support = count("support.answer") { try await api.call(API.supportWaiting) }
             let centres = start(who.can("fulfilment.operate")) { try await api.call(API.centreWaiting) }
             let fraud = start(who.can("platform.viewAll")) { try await api.call(API.fraudUnseen) }
@@ -220,7 +225,7 @@ struct PortalHomeView: View {
                 "parcels": await parcels.value, "claims": await claims.value, "offers": await offers.value,
                 "sellerChanges": await changes.value, "applications": await applications.value, "returns": await returns.value,
                 "warranty": await warranty.value, "affiliates": await affiliates.value, "proposals": await proposals.value,
-                "banners": await banners.value, "support": await support.value,
+                "banners": await banners.value, "support": await support.value, "catalogues": await catalogues.value,
                 "toReceive": floor?.toReceive, "toPick": floor?.toPick,
                 "fraudOrders": alerts?.orders, "fraudWatch": alerts?.watch,
                 "reviewsWaiting": await heldReviews.value,

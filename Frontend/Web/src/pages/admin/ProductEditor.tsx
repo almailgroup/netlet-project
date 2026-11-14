@@ -35,6 +35,7 @@ import { ArrowLeft, ArrowLeftRight, ExternalLink, Info, LoaderCircle, Minus, Pla
 import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { toast } from "sonner";
+import { CatalogueEditor } from "@/components/admin/CatalogueEditor";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { DeleteProductDialog } from "@/components/admin/DeleteProductDialog";
 import { Card, PageHeader, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
@@ -249,6 +250,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   const sections: { id: string; label: MessageKey }[] = [
     { id: "details", label: "admin.sectionDetails" },
     { id: "photos", label: "admin.images" },
+    ...(mayEdit ? [{ id: "catalogues", label: "catalogue.heading" as MessageKey }] : []),
     { id: "variants", label: "admin.variants" },
     { id: "shipping", label: "admin.sectionShipping" },
     { id: "sizes", label: "admin.sectionSizes" },
@@ -510,6 +512,9 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               </div>
             ) : null}
           </Card>
+
+          {/* The product's catalogues: PDFs listed under it on its page. */}
+          {mayEdit ? <CatalogueEditor productId={row.id} /> : null}
 
           <Card
             id="variants"

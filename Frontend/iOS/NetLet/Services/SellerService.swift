@@ -30,6 +30,12 @@ protocol SellerServicing: Sendable {
     /// One of a store's documents, saved for Quick Look to open
     /// (`GET /api/vendors/documents/:id`).
     func downloadStoreDocument(id: Int, fileName: String) async throws -> URL
+    /// A product's catalogue, sent in parts (`POST /api/products/:id/catalogues`,
+    /// then `/api/catalogues/:id/parts`), `progress` told the share sent so far.
+    func uploadCatalogue(productId: Int, upload: CatalogueUpload, progress: @escaping @MainActor @Sendable (Double) -> Void) async throws -> CatalogueProgress
+    /// A product's catalogue saved for Quick Look to open or to hand on
+    /// (`GET /api/catalogues/:id`, in parts when it is too large to come whole).
+    func downloadCatalogue(id: Int, sizeBytes: Int, fileName: String) async throws -> URL
 }
 
 /// What goes up with a store's document: the file, and what it is.
@@ -74,6 +80,15 @@ extension SellerServicing {
 
     func downloadStoreDocument(id: Int, fileName: String) async throws -> URL {
         throw APIError.server(code: "NOT_FOUND", message: "documents.failed", status: 404)
+    }
+
+    /// A stand-in keeps no catalogues: it answers as the server does before the section is open.
+    func uploadCatalogue(productId: Int, upload: CatalogueUpload, progress: @escaping @MainActor @Sendable (Double) -> Void) async throws -> CatalogueProgress {
+        throw APIError.server(code: "BAD_REQUEST", message: "catalogue.unavailable", status: 503)
+    }
+
+    func downloadCatalogue(id: Int, sizeBytes: Int, fileName: String) async throws -> URL {
+        throw APIError.server(code: "NOT_FOUND", message: "catalogue.openFailed", status: 404)
     }
 }
 
@@ -224,6 +239,75 @@ struct SellerService: SellerServicing {
     /// 404), saved under its own name for Quick Look to open.
     func downloadStoreDocument(id: Int, fileName: String) async throws -> URL {
         try await download(path: "/api/vendors/documents/\(id)", folder: "store-documents/\(id)", fileName: fileName)
+    }
+
+    /// A catalogue goes up in parts, a server taking only so much in one
+    /// request: the first part names the whole file's size, its name and its
+    /// titles in headers (the words percent-encoded) and makes the row; each
+    /// after it names where it starts. The answer says how much the server
+    /// holds and, once it is whole, whether it went on the product page or
+    /// waits for NetLet.
+    func uploadCatalogue(productId: Int, upload: CatalogueUpload, progress: @escaping @MainActor @Sendable (Double) -> Void) async throws -> CatalogueProgress {
+        let rules = CatalogueRules.shared
+        let total = upload.data.count
+        var request = URLRequest(url: client.configuration.url(path: "/api/products/\(productId)/catalogues"))
+        request.httpMethod = "POST"
+        request.setValue("application/pdf", forHTTPHeaderField: "Content-Type")
+        request.setValue("\(total)", forHTTPHeaderField: "X-NetLet-Size")
+        request.setValue(Self.headerWords(upload.fileName) ?? "Catalogue.pdf", forHTTPHeaderField: "X-NetLet-File-Name")
+        if let title = upload.title, let words = Self.headerWords(title) { request.setValue(words, forHTTPHeaderField: "X-NetLet-Title") }
+        if let title = upload.titleAr, let words = Self.headerWords(title) { request.setValue(words, forHTTPHeaderField: "X-NetLet-Title-Ar") }
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.timeoutInterval = 120
+        request.httpBody = upload.data.prefix(rules.partBytes)
+        var answer: CatalogueProgress = try await send(request, fallback: "catalogue.failed")
+        await progress(Double(answer.received) / Double(max(total, 1)))
+        while answer.status == "uploading" {
+            let offset = answer.received
+            var next = URLRequest(url: client.configuration.url(path: "/api/catalogues/\(answer.id)/parts"))
+            next.httpMethod = "POST"
+            next.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+            next.setValue("\(offset)", forHTTPHeaderField: "X-NetLet-Offset")
+            next.setValue("application/json", forHTTPHeaderField: "Accept")
+            next.timeoutInterval = 120
+            next.httpBody = upload.data.subdata(in: offset..<min(total, offset + rules.partBytes))
+            answer = try await send(next, fallback: "catalogue.failed")
+            await progress(Double(answer.received) / Double(max(total, 1)))
+        }
+        return answer
+    }
+
+    /// A catalogue, whole when its own address can hand it over in one
+    /// answer, else read part by part and put together here, saved under its
+    /// own name in a folder of its own for Quick Look or the share sheet.
+    func downloadCatalogue(id: Int, sizeBytes: Int, fileName: String) async throws -> URL {
+        let rules = CatalogueRules.shared
+        var data = Data()
+        let paths = sizeBytes > rules.directBytes
+            ? (0..<rules.parts(sizeBytes)).map { "/api/catalogues/\(id)?part=\($0)" }
+            : ["/api/catalogues/\(id)"]
+        for path in paths {
+            var request = URLRequest(url: client.configuration.url(path: path))
+            request.httpMethod = "GET"
+            request.timeoutInterval = 120
+            let answer: (Data, HTTPURLResponse)
+            do {
+                answer = try await client.transport.send(request)
+            } catch {
+                throw APIError.from(error)
+            }
+            guard (200..<300).contains(answer.1.statusCode) else {
+                throw APIError.server(code: "NOT_FOUND", message: "catalogue.openFailed", status: answer.1.statusCode)
+            }
+            data.append(answer.0)
+        }
+        guard CataloguePDF.isPDF(data) else { throw APIError.server(code: "BAD_REQUEST", message: "catalogue.openFailed", status: 400) }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("catalogues/\(id)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let safe = fileName.replacingOccurrences(of: "/", with: "-")
+        let file = folder.appendingPathComponent(safe.isEmpty ? "Catalogue.pdf" : safe)
+        try data.write(to: file, options: .atomic)
+        return file
     }
 
     /// A paper from an application, for the administrator reviewing it

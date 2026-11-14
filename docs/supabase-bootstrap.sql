@@ -2184,6 +2184,32 @@ END $$;
 CREATE INDEX IF NOT EXISTS "occasion_products_product_idx" ON "occasion_products" USING btree ("product_id");
 CREATE UNIQUE INDEX IF NOT EXISTS "occasions_slug_unique" ON "occasions" USING btree ("slug");
 
+-- ===== 0082_product_catalogues.sql =====
+CREATE TABLE IF NOT EXISTS "product_catalogues" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"product_id" integer NOT NULL,
+	"title" varchar(120),
+	"title_ar" varchar(120),
+	"file_name" varchar(160) NOT NULL,
+	"content_type" varchar(60) NOT NULL,
+	"size_bytes" integer NOT NULL,
+	"bytes" "bytea" NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"status" varchar(16) DEFAULT 'live' NOT NULL,
+	"review_note" varchar(500),
+	"uploaded_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "product_catalogues" ADD CONSTRAINT "product_catalogues_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "product_catalogues" ADD CONSTRAINT "product_catalogues_uploaded_by_users_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "product_catalogues_product_idx" ON "product_catalogues" USING btree ("product_id","position","id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2235,6 +2261,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  82 AS migrations_in_this_file,
+  83 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -93,6 +93,10 @@ describe("dictionary completeness", () => {
       "auth.continueWithGoogle", "auth.googleRefused", "auth.googleUnavailable", "auth.googleNotThisAccount",
       "auth.googleWindowFailed", "account.deleteWithGoogle", "account.deleteGoogleNote", "account.deleteGoogleInApp",
       "account.passwordGoogleNote", "privacy.who.googleSignIn",
+      // A catalogue is a PDF, a name Arabic uses as it is, as a phone's own
+      // file picker does — "ملف PDF".
+      "catalogue.fileKind", "catalogue.editorIntro", "catalogue.fileLabel", "catalogue.fileHint", "catalogue.stillTooLarge",
+      "catalogue.chooseFirst", "catalogue.waitingIntro", "catalogue.notPdf", "catalogue.cutShort",
     ]);
     // Placeholders are Latin by design and are filled with translated values
     // at render time, so they are removed before looking for English.

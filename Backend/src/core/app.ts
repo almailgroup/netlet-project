@@ -35,6 +35,15 @@ import { MediaError, readMedia, saveReviewPhoto, saveUpload } from "../services/
 import { ProfilePhotoError, readProfilePhoto, setProfilePhoto } from "../services/profilePhoto.js";
 import { attachContract, DocumentRefused, readDocument, uploadDocument } from "../services/applicationDocuments.js";
 import { readStoreDocument, storeOfDocument, StoreDocumentRefused, uploadStoreDocument } from "../services/storeDocuments.js";
+import {
+  appendCataloguePart,
+  CatalogueRefused,
+  catalogueRefusalStatus,
+  readCatalogue,
+  startCatalogueUpload,
+  storeOfCatalogue,
+  storeOfProduct,
+} from "../services/productCatalogues.js";
 import { can } from "../../../Shared/inventory/permissions.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, type DocumentKind } from "../../../Shared/inventory/applicationDocuments.js";
 import { fetchManufacturerImage, ImportRefused } from "../services/manufacturerImages.js";
@@ -545,6 +554,109 @@ export function createApp(): Express {
       res.end(Buffer.from(found.bytes));
     } catch (error) {
       console.error(`[store documents] read failed: ${describeError(error)}`);
+      res.status(503).type("text/plain").send("Unavailable");
+    }
+  });
+
+  /**
+   * A product's catalogue (`Shared/inventory/productCatalogues.ts`), in parts:
+   * a Vercel function takes at most about 4.5 MB in a body, so the first part
+   * makes the row and names the whole file's size, its name and its titles in
+   * headers (the words URI-encoded), and each part after it names where it
+   * starts. The store documents' reasons hold — no HTML form can send these
+   * body types, the cookie is Lax, the bytes decide what the file is — and
+   * who may add to which product is the service's question.
+   */
+  const catalogueBody = express.raw({ type: ["application/pdf", "application/octet-stream"], limit: "3000kb" });
+  const catalogueParts = (req: express.Request, res: express.Response, next: express.NextFunction) => catalogueBody(req, res, error => {
+    if (error) { res.status(413).json({ error: "catalogue.tooLarge" }); return; }
+    next();
+  });
+  const catalogueRefusal = (res: express.Response, error: unknown, what: string) => {
+    if (error instanceof CatalogueRefused) { res.status(catalogueRefusalStatus(error.reason)).json({ error: error.reason }); return; }
+    console.error(`[catalogues] ${what} failed: ${describeError(error)}`);
+    res.status(500).json({ error: "catalogue.failed" });
+  };
+  app.post("/api/products/:productId/catalogues", catalogueParts, async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "catalogue.notFound" }); return; }
+      if (!/^\d{1,9}$/.test(req.params.productId)) { res.status(404).json({ error: "catalogue.notFound" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "catalogue.notPdf" }); return; }
+      const productId = Number(req.params.productId);
+      const actor = await resolveActor(user, (await storeOfProduct(productId)) ?? undefined);
+      const words = (name: string) => {
+        try { return decodeURIComponent(String(req.headers[name] ?? "")) || null; } catch { return null; }
+      };
+      const size = String(req.headers["x-netlet-size"] ?? "");
+      const progress = await startCatalogueUpload(actor, productId, {
+        sizeBytes: /^\d{1,9}$/.test(size) ? Number(size) : 0,
+        fileName: words("x-netlet-file-name"),
+        title: words("x-netlet-title"),
+        titleAr: words("x-netlet-title-ar"),
+        declaredType: req.headers["content-type"] ?? "",
+        bytes: new Uint8Array(req.body),
+      });
+      res.status(201).json(progress);
+    } catch (error) {
+      catalogueRefusal(res, error, "upload");
+    }
+  });
+  app.post("/api/catalogues/:id/parts", catalogueParts, async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "catalogue.notFound" }); return; }
+      if (!/^\d{1,9}$/.test(req.params.id)) { res.status(404).json({ error: "catalogue.notFound" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "catalogue.partMismatch" }); return; }
+      const id = Number(req.params.id);
+      const offset = String(req.headers["x-netlet-offset"] ?? "");
+      if (!/^\d{1,9}$/.test(offset)) { res.status(400).json({ error: "catalogue.partMismatch" }); return; }
+      const actor = await resolveActor(user, (await storeOfCatalogue(id)) ?? undefined);
+      res.json(await appendCataloguePart(actor, id, { offset: Number(offset), bytes: new Uint8Array(req.body) }));
+    } catch (error) {
+      catalogueRefusal(res, error, "part");
+    }
+  });
+
+  /**
+   * One catalogue: in the browser's own PDF viewer (`inline`), or to keep
+   * (`?download=1`), or one part of it (`?part=N`) for a file too large to be
+   * handed over whole. A live one on a product the shop shows is anybody's,
+   * kept five minutes by a cache; any other only the product's store's and
+   * NetLet's, never kept. The page's CSP is left off this answer, since it
+   * forbids the plugins a browser draws a PDF with; `nosniff` and the bytes
+   * being checked as a PDF on the way in are what keep it a PDF.
+   */
+  app.get("/api/catalogues/:id", async (req, res) => {
+    try {
+      if (!/^\d{1,9}$/.test(req.params.id)) { res.status(404).type("text/plain").send("Not found"); return; }
+      const id = Number(req.params.id);
+      const partText = typeof req.query.part === "string" ? req.query.part : null;
+      if (partText !== null && !/^\d{1,3}$/.test(partText)) { res.status(404).type("text/plain").send("Not found"); return; }
+      const user = await authenticateRequest(req).catch(() => null);
+      const vendorId = user ? await storeOfCatalogue(id) : null;
+      const actor = user ? await resolveActor(user, vendorId ?? undefined) : null;
+      const found = await readCatalogue(actor, id, partText === null ? null : Number(partText));
+      if (!found) { res.status(404).type("text/plain").send("Not found"); return; }
+      const ascii = found.fileName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+      res.removeHeader("Content-Security-Policy");
+      res.set({
+        "Content-Type": partText === null ? "application/pdf" : "application/octet-stream",
+        "Content-Length": String(found.bytes.length),
+        "X-Content-Type-Options": "nosniff",
+        "X-NetLet-Size": String(found.sizeBytes),
+        "Cache-Control": found.public ? "public, max-age=300, s-maxage=300" : "private, no-store",
+        ...(partText === null
+          ? { "Content-Disposition": `${req.query.download === "1" ? "attachment" : "inline"}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(found.fileName)}` }
+          : {}),
+      });
+      /* Written a megabyte at a time, so a platform that streams an answer
+         never holds the whole file at once. */
+      const bytes = Buffer.from(found.bytes);
+      for (let at = 0; at < bytes.length; at += 1024 * 1024) res.write(bytes.subarray(at, at + 1024 * 1024));
+      res.end();
+    } catch (error) {
+      console.error(`[catalogues] read failed: ${describeError(error)}`);
       res.status(503).type("text/plain").send("Unavailable");
     }
   });

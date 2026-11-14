@@ -911,6 +911,18 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "warnings.issue":
     case "warnings.withdraw":
       throw new Error("vendor.approve");
+    /* The demo's products carry no catalogues, and with no server there is
+       nowhere for an upload to go, so the editor says the section is closed. */
+    case "catalogues.forProduct":
+      return [];
+    case "catalogues.editor":
+      return { ready: false, items: [], goesLive: false, room: 0 };
+    case "catalogues.remove":
+      throw new Error("catalogue.notFound");
+    case "catalogues.waiting":
+    case "catalogues.waitingCount":
+    case "catalogues.decide":
+      throw new Error("FORBIDDEN:product.review");
     /* A store's documents are its owner's and NetLet's; the demo's manager is neither. */
     case "storeDocuments.list":
     case "storeDocuments.remove":

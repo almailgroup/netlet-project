@@ -106,6 +106,8 @@ function Overview({ actor }: { actor: Actor }) {
   const waitingProposals = trpc.commission.waiting.useQuery(undefined, { enabled: can(actor, "vendor.setCommission") });
   /* Affiliate applications waiting on NetLet (3.7). */
   const waitingAffiliates = trpc.affiliates.waiting.useQuery(undefined, { enabled: can(actor, "affiliate.manage") });
+  /* Catalogues a store put under a product, waiting on NetLet before they show. */
+  const waitingCatalogues = trpc.catalogues.waitingCount.useQuery(undefined, { enabled: can(actor, "product.review") });
   /* Home banners a store has paid for, waiting on NetLet before they can run. */
   const waitingBanners = trpc.ads.bannersWaiting.useQuery(undefined, { enabled: can(actor, "product.review") });
   /* Shoppers waiting on NetLet itself (3.5.1). */
@@ -155,6 +157,7 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "devices.waitingTile" as const, value: waitingDevices.data ?? 0, href: "/admin/devices", tone: "urgent" as const },
     { label: "admin.applications" as const, value: waitingApplications.data ?? 0, href: "/admin/applications", tone: "urgent" as const },
     ...(mayReview ? [{ label: "admin.countPendingReview" as const, value: data.pendingReview, href: "/admin/review", tone: "urgent" as const }] : []),
+    ...(mayReview ? [{ label: "catalogue.waitingTile" as const, value: waitingCatalogues.data ?? 0, href: "/admin/review#catalogues", tone: "urgent" as const }] : []),
     ...(maySeeVendors ? [{ label: "admin.countVendorsPending" as const, value: data.vendorsPending, href: "/admin/vendors", tone: "urgent" as const }] : []),
     ...(can(actor, "vendor.setCommission") ? [{ label: "commission.waitingTile" as const, value: waitingProposals.data ?? 0, href: "/admin/commission", tone: "urgent" as const }] : []),
     /* A live store charging nothing: allowed, since zero is an instruction,

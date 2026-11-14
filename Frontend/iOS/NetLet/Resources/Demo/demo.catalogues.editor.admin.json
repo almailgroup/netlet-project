@@ -1,0 +1,73 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "items": [
+          {
+            "id": 7,
+            "title": "User manual",
+            "titleAr": "دليل الاستخدام",
+            "fileName": "manual.pdf",
+            "sizeBytes": 91329,
+            "createdAt": "2026-11-14T12:04:05.482Z",
+            "status": "live",
+            "reviewNote": null,
+            "byNetlet": false
+          },
+          {
+            "id": 8,
+            "title": "Brochure 2026",
+            "titleAr": "كتيّب 2026",
+            "fileName": "brochure.pdf",
+            "sizeBytes": 634085,
+            "createdAt": "2026-11-14T12:04:06.833Z",
+            "status": "declined",
+            "reviewNote": "The brochure shows another shop's address",
+            "byNetlet": false
+          },
+          {
+            "id": 9,
+            "title": "Spec sheet",
+            "titleAr": "ورقة المواصفات",
+            "fileName": "Brass lamp spec sheet.pdf",
+            "sizeBytes": 4563754,
+            "createdAt": "2026-11-14T12:04:08.007Z",
+            "status": "live",
+            "reviewNote": null,
+            "byNetlet": false
+          },
+          {
+            "id": 10,
+            "title": "Care and cleaning",
+            "titleAr": "العناية والتنظيف",
+            "fileName": "Care guide.pdf",
+            "sizeBytes": 91329,
+            "createdAt": "2026-11-14T12:10:18.279Z",
+            "status": "pending",
+            "reviewNote": null,
+            "byNetlet": false
+          }
+        ],
+        "goesLive": true,
+        "room": 1
+      },
+      "meta": {
+        "values": {
+          "items.0.createdAt": [
+            "Date"
+          ],
+          "items.1.createdAt": [
+            "Date"
+          ],
+          "items.2.createdAt": [
+            "Date"
+          ],
+          "items.3.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

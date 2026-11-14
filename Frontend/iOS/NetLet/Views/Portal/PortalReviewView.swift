@@ -6,6 +6,7 @@ import SwiftUI
 /// Sending one back needs a note, because the seller reads it.
 struct PortalReviewView: View {
     @State private var page = 1
+    @State private var round = 0
     @State private var list: SellerProductPage?
     @State private var flags: [Int: [ReviewFlag]] = [:]
     @State private var modelAvailable = false
@@ -14,7 +15,7 @@ struct PortalReviewView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        PortalScreen(title: l.t("admin.review"), intro: l.t("admin.reviewIntro"), refresh: { await load() }) {
+        PortalScreen(title: l.t("admin.review"), intro: l.t("admin.reviewIntro"), refresh: { round += 1; await load() }) {
             if let list {
                 if list.total > 0 {
                     StatusPill(label: l.t("admin.reviewWaiting", ["count": "\(list.total)"]), tone: .preparing)
@@ -35,6 +36,8 @@ struct PortalReviewView: View {
             } else {
                 ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 120)
             }
+            /* Catalogues stores put under their products, waiting on NetLet; made afresh on a pull. */
+            CataloguesWaitingSection().id(round)
         }
         .task { await load() }
     }

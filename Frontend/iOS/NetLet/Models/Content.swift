@@ -89,6 +89,8 @@ struct SiteContent: Decodable, Sendable {
         let maxDocumentBytes: Int
         /// A store's own documents: the kinds and a name's width (`storeDocuments.ts`).
         var storeDocuments: StoreDocumentRules?
+        /// A product's catalogues: the sizes, the parts and the words' widths (`productCatalogues.ts`).
+        var catalogues: CatalogueRules?
     }
 
     let help: Help

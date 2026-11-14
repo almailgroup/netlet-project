@@ -75,6 +75,9 @@ private struct ProductPage: View {
                 ProductPhotos(product: product, index: $model.imageIndex) { photos = .photos }
                 buyBox
                     .padding(.top, 24)
+                // The product's catalogues, directly under the product: the
+                // maker's brochure, spec sheet or manual. Nothing when none.
+                ProductCataloguesSection(productId: product.id)
                 // Complements before reviews, reviews before more to consider.
                 BoughtTogetherShelf(product: product)
                 ReviewsSection(product: product)

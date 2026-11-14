@@ -1,0 +1,28 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 10,
+          "title": "Care and cleaning",
+          "titleAr": "العناية والتنظيف",
+          "fileName": "Care guide.pdf",
+          "sizeBytes": 91329,
+          "createdAt": "2026-11-14T12:10:18.279Z",
+          "productId": 2,
+          "productTitle": "Brass desk lamp",
+          "productHandle": "lamp",
+          "vendorId": 2,
+          "store": "Acme Electronics"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

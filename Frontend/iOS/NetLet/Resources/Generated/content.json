@@ -580,6 +580,14 @@
         }
       ],
       "titleMax": 120
+    },
+    "catalogues": {
+      "maxBytes": 5242880,
+      "partBytes": 3000000,
+      "directBytes": 4000000,
+      "perProduct": 5,
+      "titleMax": 120,
+      "noteMax": 500
     }
   }
 }

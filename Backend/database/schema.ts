@@ -52,6 +52,7 @@ import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../../Shared/
 import { INBOUND_STATUSES } from "../../Shared/commerce/netletFulfilment.js";
 import type { GuideAudience, GuideStatus, GuideStep } from "../../Shared/commerce/guides.js";
 import type { OccasionStatus } from "../../Shared/commerce/occasionDesk.js";
+import type { CatalogueStatus } from "../../Shared/inventory/productCatalogues.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -3533,6 +3534,37 @@ export const occasionProducts = pgTable(
     primaryKey({ columns: [table.occasionId, table.productId] }),
     index("occasion_products_product_idx").on(table.productId),
   ],
+);
+
+/* ---------------------------------------------------- product catalogues --- */
+
+/**
+ * A product's catalogues (migration 0082, `Shared/inventory/productCatalogues.ts`):
+ * PDFs a store or NetLet puts under a product — a brochure, a spec sheet, a
+ * manual — listed on its page with their name and size, to view or keep.
+ * The bytes are the file, at most 5 MB, joined from parts while `status` is
+ * `uploading`; then `live` on the page, or `pending` while NetLet has not
+ * looked at a store's that publishes under review, or `declined` with
+ * NetLet's reason. Never under `/media`, whose files are images by design.
+ */
+export const productCatalogues = pgTable(
+  "product_catalogues",
+  {
+    id: serial("id").primaryKey(),
+    productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 120 }),
+    titleAr: varchar("title_ar", { length: 120 }),
+    fileName: varchar("file_name", { length: 160 }).notNull(),
+    contentType: varchar("content_type", { length: 60 }).notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    bytes: bytea("bytes").notNull(),
+    position: integer("position").notNull().default(0),
+    status: varchar("status", { length: 16 }).$type<CatalogueStatus>().notNull().default("live"),
+    reviewNote: varchar("review_note", { length: 500 }),
+    uploadedBy: integer("uploaded_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [index("product_catalogues_product_idx").on(table.productId, table.position, table.id)],
 );
 
 /* ------------------------------------------------------------- relations --- */

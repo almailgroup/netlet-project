@@ -68,6 +68,14 @@ import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission
 import { AGREEMENT_VERSION, MAX_COMMISSION_NOTE } from "../../../Shared/inventory/sellerApplication.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, MAX_DOCUMENT_BYTES } from "../../../Shared/inventory/applicationDocuments.js";
 import { STORE_DOCUMENT_KINDS, STORE_DOCUMENT_KIND_LABEL, STORE_DOCUMENT_TITLE_MAX } from "../../../Shared/inventory/storeDocuments.js";
+import {
+  CATALOGUE_DIRECT_BYTES,
+  CATALOGUE_NOTE_MAX,
+  CATALOGUE_PART_BYTES,
+  CATALOGUE_TITLE_MAX,
+  MAX_CATALOGUES_PER_PRODUCT,
+  MAX_CATALOGUE_BYTES,
+} from "../../../Shared/inventory/productCatalogues.js";
 import { MAX_RETURN_NOTE, OPEN_RETURN_STATUSES, RETURN_KINDS, RETURN_REASONS } from "../../../Shared/commerce/returnRequests.js";
 import { DELIVERY_RATING_WINDOW_DAYS, MAX_DELIVERY_COMMENT } from "../../../Shared/commerce/deliveryRatings.js";
 import { CLAIM_WINDOW_DAYS, MAX_CLAIM_DESCRIPTION } from "../../../Shared/commerce/damageClaims.js";
@@ -444,6 +452,17 @@ export function buildContent() {
       storeDocuments: {
         kinds: STORE_DOCUMENT_KINDS.map(kind => ({ kind, label: STORE_DOCUMENT_KIND_LABEL[kind] })),
         titleMax: STORE_DOCUMENT_TITLE_MAX,
+      },
+      /* A product's catalogues (`Shared/inventory/productCatalogues.ts`): the
+         largest file, the part a file is sent and read in, the largest handed
+         over whole, how many a product carries, and the words' widths. */
+      catalogues: {
+        maxBytes: MAX_CATALOGUE_BYTES,
+        partBytes: CATALOGUE_PART_BYTES,
+        directBytes: CATALOGUE_DIRECT_BYTES,
+        perProduct: MAX_CATALOGUES_PER_PRODUCT,
+        titleMax: CATALOGUE_TITLE_MAX,
+        noteMax: CATALOGUE_NOTE_MAX,
       },
     },
   };

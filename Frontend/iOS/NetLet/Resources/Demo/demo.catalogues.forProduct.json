@@ -1,0 +1,34 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 7,
+          "title": "User manual",
+          "titleAr": "دليل الاستخدام",
+          "fileName": "manual.pdf",
+          "sizeBytes": 91329,
+          "createdAt": "2026-11-14T12:04:05.482Z"
+        },
+        {
+          "id": 9,
+          "title": "Spec sheet",
+          "titleAr": "ورقة المواصفات",
+          "fileName": "Brass lamp spec sheet.pdf",
+          "sizeBytes": 4563754,
+          "createdAt": "2026-11-14T12:04:08.007Z"
+        }
+      ],
+      "meta": {
+        "values": {
+          "0.createdAt": [
+            "Date"
+          ],
+          "1.createdAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

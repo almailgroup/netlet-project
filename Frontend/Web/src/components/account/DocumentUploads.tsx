@@ -13,6 +13,7 @@ import { LoaderCircle, Paperclip, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useFileSize } from "@/lib/fileSize";
 import { trpc } from "@/lib/trpc";
 import {
   DOCUMENT_KINDS,
@@ -55,17 +56,8 @@ export const STATUS_TONE: Record<DocumentStatus, string> = {
   rejected: "bg-[#fdeceb] text-[#8c2f22]",
 };
 
-/** "820 KB", "3.4 MB": the size a person reads, not the byte count. */
-export function useFileSize() {
-  const { t, locale } = useTranslation();
-  return (bytes: number) => {
-    const megabytes = bytes >= 1_000_000;
-    const value = megabytes ? bytes / 1_000_000 : Math.max(1, Math.round(bytes / 1000));
-    /* Latin digits on the Arabic page too, as its dates and counts are: "1 كيلوبايت" beside "11 نوفمبر 2026". */
-    const size = new Intl.NumberFormat(locale === "ar" ? "ar-KW-u-nu-latn" : "en", { maximumFractionDigits: megabytes ? 1 : 0 }).format(value);
-    return t(megabytes ? "documents.sizeMb" : "documents.sizeKb", { size });
-  };
-}
+/** "820 KB", "3.4 MB": the size a person reads, not the byte count — `lib/fileSize.ts`, which the product page reads without this file. */
+export { useFileSize };
 
 export function documentHref(id: number): string {
   return `/api/applications/documents/${id}`;

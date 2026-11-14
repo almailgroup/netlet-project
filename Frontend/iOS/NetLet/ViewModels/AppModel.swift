@@ -187,6 +187,9 @@ final class AppModel {
     var accountPath = NavigationPath()
     /// Set by `-NetLetOpen copilot`: the next portal page to appear opens the co-pilot.
     var copilotOnOpen = false
+    /// Set by `-NetLetOpen portal:/admin/products/10#catalogues`: the product
+    /// editor opens on that section rather than its details.
+    var editorSectionOnOpen: String?
     var cartPath = NavigationPath()
     var categoriesPath = NavigationPath()
     var dealsPath = NavigationPath()
@@ -588,9 +591,12 @@ final class AppModel {
             selectedTab = .account
             if session.seller?.inPortal == true { accountPath = NavigationPath([Route.portal("/admin")]) }
         case "portal":
-            // `portal:/admin/orders` — a page of the portal, over its front page.
+            // `portal:/admin/orders` — a page of the portal, over its front page;
+            // `#catalogues` after a product's editor opens that section.
             selectedTab = .account
-            let page = value ?? "/admin"
+            let address = (value ?? "/admin").split(separator: "#", maxSplits: 1).map(String.init)
+            let page = address.first ?? "/admin"
+            editorSectionOnOpen = address.count > 1 ? address[1] : nil
             accountPath = NavigationPath(page == "/admin" ? [Route.portal("/admin")] : [Route.portal("/admin"), Route.portal(page)])
         case "copilot":
             // The portal's front page with the co-pilot's sheet up.

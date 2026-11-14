@@ -12,6 +12,7 @@ import { TryOn } from "@/components/product/TryOn";
 import { SubscribePanel } from "@/components/product/SubscribePanel";
 import { PriceOfferPanel } from "@/components/product/PriceOfferPanel";
 import { ProductInfo } from "@/components/product/ProductInfo";
+import { ProductCatalogues } from "@/components/product/ProductCatalogues";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
@@ -1512,6 +1513,11 @@ export default function ProductDetail() {
 
           </div>
         </section>
+
+        {/* The product's catalogues, directly under the product: the maker's
+            brochure, spec sheet or manual, to view or keep. Nothing when it
+            has none. */}
+        <ProductCatalogues productId={product.id} />
 
         {/*
           Complements before reviews, reviews before "keep discovering".

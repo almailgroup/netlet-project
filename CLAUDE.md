@@ -5968,6 +5968,88 @@ every other, and a document opens in Quick Look. Not yet seen on a phone from
 this sandbox. `useFileSize` writes Latin digits on the Arabic page now, as
 its dates do.
 
+## Product catalogues
+
+**A product can carry its maker's or its store's PDFs, listed under it on
+its page, on the owner's word** ("add Product catalogue for products. That
+shows below the product … the admin and the vendor can add product
+catalogues"; migration 0082, `product_catalogues`, approved as shown;
+`Shared/inventory/productCatalogues.ts` the rule,
+`Backend/src/services/productCatalogues.ts` the database half, the routes in
+`app.ts`, `catalogues.*` the API). A brochure, a spec sheet, a manual: each
+named by its title in the page's language, the other's, or its file's name
+(`catalogueName`), with its size, View and Download — `ProductCatalogues`
+directly under the product's own block on the web, `ProductCataloguesSection`
+under the buy box in the app, and nothing at all for a product with none. Up
+to `MAX_CATALOGUES_PER_PRODUCT` (5) a product.
+
+**A PDF, by its own bytes, of at most 5 MB, the owner's choice.**
+`MAX_CATALOGUE_BYTES` is 5 × 1024 × 1024, as a picker counts it, so a file
+it calls "5 MB" is never refused. It starts `%PDF-` and its last kilobyte
+holds `%%EOF`, or it is thrown away as cut short. **It goes up in parts**:
+a Vercel function takes about 4.5 MB in a body, so the first part
+(`POST /api/products/:id/catalogues`, the whole size, the name and the titles
+in headers) makes the row as `uploading` — a value of the `status` column,
+not a column of its own — and each part after it
+(`POST /api/catalogues/:id/parts`, `X-NetLet-Offset`) is `bytes || part`,
+written only while the row is its uploader's, still uploading and exactly as
+long as the offset says, so a part sent twice, out of order or by somebody
+else changes nothing. An upload whose parts stopped coming an hour ago is
+thrown away the next time anybody touches that product. **It comes down in
+parts too**: a function's answer stops at the same size unless it streams, so
+a file over `CATALOGUE_DIRECT_BYTES` (4 MB) is read part by part
+(`?part=N`) and put together on the device — the website opens the tab at
+the press and hands it the browser's own copy (`lib/catalogueFile.ts`), the
+app writes it to a file for Quick Look or the share sheet — and one under it
+is a plain link, so "open in a new tab" works.
+
+**"NetLet AI compresses it" is not what happens, and the owner was told so.**
+No model can make a PDF smaller. A file over the limit has its photographs
+stored again smaller on the device — the website with `pdf-lib`, fetched only
+then (`lib/shrinkPdf.ts`: each JPEG or plain 8-bit picture drawn on a canvas
+at most 2,000, then 1,400, then 1,000 pixels on its long side and kept only
+when smaller; text, drawings, fonts and any picture it cannot read safely
+left exactly as they are), the app with PDFKit's own write options
+(`CataloguePDF.shrink`) — and the form says what it came to; one still over
+5 MB is refused with its size before a byte is sent. Walked with an 11 MB
+brochure of two 4000 × 3000 photographs: 634 KB at the first step.
+
+**Shown when the store's own products would be, the owner's choice**
+(`statusOnUpload`): NetLet's goes on the page at once, and so does a store's
+that publishes without review (`vendors.auto_publish`); any other waits
+(`pending`) for NetLet, which approves it or turns it down with a reason the
+store reads under it in the product's editor. The queue is a section of
+`/admin/review` (and of the app's review page), the overview counts it
+("Catalogues to look at"), and every decision is on the trail
+(`product.catalogue.add`, `.remove`, `.decide`; a store's add and remove are
+in `SELLER_ACTIONS`). A title is held to the contact filter.
+
+**Who may**: adding, listing in the editor and removing are `product.edit`
+on the product's own store — a manager or owner of that store, or NetLet —
+asked of the product's row; another store's product is "not found". Reading
+a file is anybody's only for a live one on a product the shop shows
+(`public, max-age=300`); a waiting, declined or unshown one is the store's
+people's (`product.view`) and NetLet's, never kept by a cache. **The answer
+leaves the page's CSP off**, since it forbids the plugins a browser draws a
+PDF with; `nosniff` and the bytes checked on the way in keep it a PDF.
+`?download=1` is an attachment. **Closed, not broken, until 0082 is
+pasted**: a missing table lists nothing and an upload says the section is
+not open yet (`productCatalogues.test.ts` renames it away).
+
+Walked on a production build against a local Postgres at 320, 390 and 1440 in
+both languages, as a store's owner and NetLet: the empty Upload and a phone
+number in a title said under their boxes, three uploads waiting (one shrunk
+from 11 MB), the guest refused a waiting file, NetLet turning one down only
+with a reason, the shop's card opening the small one by its address and the
+4.6 MB one put together from its two parts, the download whole to the byte,
+axe clean and no sideways scroll. **The Arabic size line read backwards**
+until the size was isolated: "PDF، 91 كيلوبايت" with the Latin "PDF"
+leading pulled the number into its run. The app's answers were recorded off
+that server (`demo.catalogues.*`, the `admin` variants) and
+`testAProductsCataloguesDecode` reads them; the CI photographs the editor
+open on its catalogues (`99-catalogues`, `portal:/admin/products/10#catalogues`).
+Not yet seen on a phone from this sandbox.
+
 ## Selling and shopping are one account
 
 A vendor member is a shopper with a `vendor_members` row, and for a long time
@@ -8461,10 +8543,12 @@ second module) — then 1,038 KB (299 KB), each page's own search, the
 account's places and the stores rows, with their words in both languages —
 then 1,042 KB (300 KB), the removal question (`ConfirmRemoval`, on every
 page, since a card's bin and heart ask) and its words in both languages —
-and is 1,064 KB (307 KB) now, the eight departments added (see "Thirteen
+then 1,064 KB (307 KB), the eight departments added (see "Thirteen
 departments" under Browsing): their subcategories' words, which travel with
 the list the header and the Categories page draw, their specification rows
-and their names in both languages —
+and their names in both languages — and is 1,073 KB (309 KB) now, a
+product's catalogue's words in both languages (`pdf-lib`, 439 KB, is a chunk
+of its own, fetched only when a PDF over 5 MB is chosen in the editor) —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

@@ -16,7 +16,10 @@ import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
-import { Check, ImageOff, LoaderCircle, Sparkles, Undo2 } from "lucide-react";
+import { Check, FileText, ImageOff, LoaderCircle, Sparkles, Undo2 } from "lucide-react";
+import { CatalogueActions } from "@/components/product/ProductCatalogues";
+import { useFileSize } from "@/lib/fileSize";
+import { CATALOGUE_NOTE_MAX, catalogueName } from "@shared/inventory/productCatalogues";
 import type { Flag } from "@shared/inventory/productReview";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { useState } from "react";
@@ -157,7 +160,101 @@ function Queue() {
           {products.data ? <Pager page={products.data} onPage={setPage} /> : null}
         </>
       )}
+      <CataloguesWaiting />
     </>
+  );
+}
+
+/**
+ * The catalogues stores put under their products, waiting for NetLet to look
+ * at them (`Shared/inventory/productCatalogues.ts`): each opened in the
+ * browser's PDF viewer, then approved onto the product page or turned down
+ * with a reason the store reads under it in the product's editor. Drawn only
+ * while something waits, under the products' own queue.
+ */
+function CataloguesWaiting() {
+  const { t, tError, locale } = useTranslation();
+  const formatDate = useDateFormat();
+  const size = useFileSize();
+  const utils = trpc.useUtils();
+  const [notes, setNotes] = useState<Record<number, string>>({});
+  const waiting = trpc.catalogues.waiting.useQuery(undefined, { staleTime: 15_000 });
+  const decide = trpc.catalogues.decide.useMutation({
+    onSuccess: answer => {
+      toast.success(t(answer.status === "live" ? "catalogue.approved" : "catalogue.declined"));
+      void utils.catalogues.waiting.invalidate();
+      void utils.catalogues.waitingCount.invalidate();
+    },
+    onError: error => { toast.error(tError(error.message)); void utils.catalogues.waiting.invalidate(); },
+  });
+  const rows = waiting.data ?? [];
+  if (rows.length === 0) return null;
+  const deciding = decide.isPending ? decide.variables?.id : undefined;
+  return (
+    <section id="catalogues" aria-labelledby="catalogues-waiting" className="mt-10 scroll-mt-24">
+      <h2 id="catalogues-waiting" className="text-[18px] font-bold text-[#0a285a]">{t("catalogue.waitingHeading")}</h2>
+      <p className="mt-1 text-[13px] leading-5 ink-muted">{t("catalogue.waitingIntro")}</p>
+      <ul className="mt-4 space-y-4">
+        {rows.map(row => {
+          const name = catalogueName(row, locale);
+          const note = (notes[row.id] ?? "").trim();
+          const noteId = `catalogue-note-${row.id}`;
+          return (
+            <li key={row.id} className="overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
+              <div className="flex flex-wrap gap-4 p-4 sm:p-5">
+                <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-xl bg-[#eef2f8] text-[#0a285a]">
+                  <FileText className="size-6" />
+                </span>
+                <div className="min-w-0 flex-1 basis-48">
+                  <p dir="auto" className="align-parent text-[15px] font-bold break-words text-[#0a285a]">{name}</p>
+                  <p className="mt-1 text-[13px] leading-5 break-words ink-muted">
+                    <Link href={`/admin/products/${row.productId}`} className="font-semibold text-[#3d5376] hover:underline"><bdi>{row.productTitle}</bdi></Link>
+                    {" · "}<bdi>{row.store}</bdi>
+                    {" · "}<bdi>{row.fileName}</bdi> · {size(row.sizeBytes)} · {formatDate(row.createdAt)}
+                  </p>
+                </div>
+                <div className="w-full sm:w-64">
+                  <CatalogueActions card={row} name={name} />
+                </div>
+              </div>
+              <div className="border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-4 sm:px-5">
+                <label htmlFor={noteId} className="block text-[13px] font-semibold text-[#0a285a]">{t("catalogue.noteLabel")}</label>
+                <textarea
+                  id={noteId}
+                  dir="auto"
+                  rows={2}
+                  maxLength={CATALOGUE_NOTE_MAX}
+                  value={notes[row.id] ?? ""}
+                  onChange={event => setNotes({ ...notes, [row.id]: event.target.value })}
+                  aria-describedby={`${noteId}-hint`}
+                  className={`${textareaClass} mt-1.5 min-h-16`}
+                />
+                <p id={`${noteId}-hint`} className="mt-1 text-[12px] ink-muted">{t("catalogue.declineBody")}</p>
+                <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => decide.mutate({ id: row.id, approve: false, note })}
+                    disabled={decide.isPending || note === ""}
+                    className={buttonClass.secondary}
+                  >
+                    <Undo2 className="size-4 rtl:-scale-x-100" aria-hidden />{t("catalogue.decline")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => decide.mutate({ id: row.id, approve: true })}
+                    disabled={decide.isPending}
+                    className={buttonClass.primary}
+                  >
+                    {deciding === row.id && decide.variables?.approve ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
+                    {t("catalogue.approve")}
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

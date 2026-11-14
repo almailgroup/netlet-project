@@ -1294,6 +1294,45 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(PortalPage("/admin/store-documents"), .storeDocuments)
     }
 
+    /// A product's catalogues, as a real server answered them: the product
+    /// page's live ones, the store's editor with each state (a store that
+    /// publishes under review waits for NetLet, and NetLet's own goes live),
+    /// and NetLet's queue with its count.
+    func testAProductsCataloguesDecode() async throws {
+        let shown = try await client.call(API.cataloguesForProduct, .init(productId: "2"))
+        XCTAssertEqual(shown.count, 2)
+        XCTAssertEqual(shown.first?.name(.en), "User manual")
+        XCTAssertEqual(shown.first?.name(.ar), "دليل الاستخدام")
+        XCTAssertTrue(shown.allSatisfy { $0.sizeBytes > 0 })
+
+        let editor = try await client.call(API.catalogueEditor, .init(productId: 2))
+        XCTAssertTrue(editor.ready)
+        XCTAssertFalse(editor.goesLive, "a store that publishes under review waits for NetLet")
+        XCTAssertEqual(Set(editor.items.map(\.status)), ["live", "pending", "declined"])
+        XCTAssertNotNil(editor.items.first { $0.status == "declined" }?.reviewNote)
+        XCTAssertEqual(editor.room, CatalogueRules.shared.perProduct - editor.items.count)
+
+        let admin = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "admin"))
+        let theirs = try await admin.call(API.catalogueEditor, .init(productId: 2))
+        XCTAssertTrue(theirs.goesLive, "NetLet's own goes on the page at once")
+        let waiting = try await admin.call(API.waitingCatalogues)
+        let count = try await admin.call(API.waitingCatalogueCount)
+        XCTAssertEqual(waiting.count, count)
+        XCTAssertEqual(waiting.first?.productHandle, "lamp")
+        XCTAssertFalse(waiting.first?.store.isEmpty ?? true)
+
+        // The rules came across from the shared file: 5 MB, sent in parts a server takes.
+        let rules = CatalogueRules.shared
+        XCTAssertEqual(rules.maxBytes, 5 * 1024 * 1024)
+        XCTAssertLessThan(rules.partBytes, 4_500_000)
+        XCTAssertEqual(rules.parts(rules.maxBytes), 2)
+        XCTAssertEqual(rules.parts(1), 1)
+        XCTAssertTrue(CataloguePDF.isPDF(Data("%PDF-1.7\n".utf8)))
+        XCTAssertFalse(CataloguePDF.isPDF(Data("<html>".utf8)))
+        let bare = CatalogueCard(id: 1, title: nil, titleAr: nil, fileName: "Lamp manual.PDF", sizeBytes: 1, createdAt: Date())
+        XCTAssertEqual(bare.name(.en), "Lamp manual")
+    }
+
     /// A store's documents, as a real server listed them for the store's
     /// owner and for NetLet: the owner is never sent a file kept for NetLet
     /// alone, may remove only the store's own, and NetLet may remove any.

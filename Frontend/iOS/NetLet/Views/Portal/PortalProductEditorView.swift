@@ -34,7 +34,14 @@ struct PortalProductEditorView: View {
                 ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 160)
             }
         }
-        .task { await prepare() }
+        .task {
+            /* `-NetLetOpen portal:/admin/products/10#catalogues` opens on that section. */
+            if let section = app.editorSectionOnOpen {
+                app.editorSectionOnOpen = nil
+                open = [section]
+            }
+            await prepare()
+        }
         .sheet(item: $deleting) { row in
             DeleteProductSheet(product: row) { dismiss() }
                 .languageDirection()
@@ -84,6 +91,12 @@ struct PortalProductEditorView: View {
         }
         section("photos", l.t("admin.images")) {
             GallerySection(product: product, mayEdit: mayEdit) { await reload() }
+        }
+        /* The product's catalogues: PDFs listed under it on its page. */
+        if mayEdit {
+            section("catalogues", l.t("catalogue.heading")) {
+                CatalogueEditorSection(productId: product.id)
+            }
         }
         section("variants", l.t("admin.variants")) {
             VariantsSection(product: product, mayEdit: mayEdit) { await reload() }
