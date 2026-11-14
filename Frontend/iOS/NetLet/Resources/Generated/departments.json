@@ -8,6 +8,7 @@
     "icon": "plug",
     "tint": "#dce5e9",
     "art": true,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "phones",
@@ -182,6 +183,7 @@
     "icon": "cooking-pot",
     "tint": "#f5e4c9",
     "art": true,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "kitchen-appliances",
@@ -369,6 +371,7 @@
     "icon": "flower",
     "tint": "#f6d9d2",
     "art": true,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "skincare",
@@ -488,6 +491,7 @@
     "icon": "shirt",
     "tint": "#e4dfd0",
     "art": true,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "women",
@@ -647,6 +651,7 @@
     "icon": "carrot",
     "tint": "#dce7cf",
     "art": true,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "fresh",
@@ -825,7 +830,8 @@
     "label": "category.health",
     "icon": "heart-pulse",
     "tint": "#d6ecea",
-    "art": false,
+    "art": true,
+    "subcategoryArt": false,
     "subcategories": [
       {
         "slug": "vitamins",
@@ -965,7 +971,8 @@
     "label": "category.baby",
     "icon": "baby",
     "tint": "#f4e1ec",
-    "art": false,
+    "art": true,
+    "subcategoryArt": false,
     "subcategories": [
       {
         "slug": "diapers",
@@ -1098,7 +1105,8 @@
     "label": "category.toys",
     "icon": "toy-brick",
     "tint": "#fbe8c8",
-    "art": false,
+    "art": true,
+    "subcategoryArt": false,
     "subcategories": [
       {
         "slug": "dolls",
@@ -1230,7 +1238,8 @@
     "label": "category.sports",
     "icon": "trophy",
     "tint": "#dbe7f5",
-    "art": false,
+    "art": true,
+    "subcategoryArt": false,
     "subcategories": [
       {
         "slug": "fitness",
@@ -1372,7 +1381,8 @@
     "label": "category.automotive",
     "icon": "car",
     "tint": "#e2e5eb",
-    "art": false,
+    "art": true,
+    "subcategoryArt": false,
     "subcategories": [
       {
         "slug": "car-accessories",
@@ -1492,7 +1502,8 @@
     "label": "category.tools",
     "icon": "hammer",
     "tint": "#f1e3d4",
-    "art": false,
+    "art": true,
+    "subcategoryArt": false,
     "subcategories": [
       {
         "slug": "power-tools",
@@ -1635,7 +1646,8 @@
     "label": "category.pets",
     "icon": "paw",
     "tint": "#ece5d6",
-    "art": false,
+    "art": true,
+    "subcategoryArt": false,
     "subcategories": [
       {
         "slug": "cats",
@@ -1734,7 +1746,8 @@
     "label": "category.books",
     "icon": "book",
     "tint": "#e7e1f1",
-    "art": false,
+    "art": true,
+    "subcategoryArt": false,
     "subcategories": [
       {
         "slug": "books",

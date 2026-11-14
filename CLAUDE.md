@@ -7613,17 +7613,23 @@ language and pages for a book, what a part fits for a car, a life stage for a
 pet), the importer's words (`DEPARTMENT_WORDS`) and the assistant's two
 questions (`DEPARTMENT_QUESTIONS`). The warranty rule, the perishable rule and
 the try-on stay on the departments they were set for. **They came before
-their pictures**: the owner's art is 3D renders made for each, which code
-cannot match, so `Department.art` says whose pictures have arrived, and until
-then a tile is the department's icon in navy on its own tint
-(`DepartmentArt` on the web and in the app) and a subcategory's row its icon
-— never a request for a file that is not there. A picture arrives by dropping
-`public/departments/<slug>.webp` (480 × 360, transparent) and every
+their pictures, and the pictures come in two sets**: `Department.art` says
+whose tile has its picture, `Department.subcategoryArt` whose subcategories
+all have theirs, and until then a tile is the department's icon in navy on
+its own tint (`DepartmentArt` on the web and in the app) and a subcategory's
+row its icon — never a request for a file that is not there. **The eight
+tiles arrived first, the owner's own**, made in ChatGPT to a prompt written
+for them (the earlier art's style: soft rounded 3D renders, two or three
+goods, no words or logos, a transparent 3:2 PNG) and fitted here as the
+first five were: near-clear haze dropped, near-solid alpha made solid,
+trimmed and scaled into 436 × 336 and centred on 480 × 360, WebP at about
+20 KB. Their subcategories are still their icons. A set arrives by dropping
+`public/departments/<slug>.webp` (480 × 360, transparent) or every
 `public/subcategories/<slug>-<sub>.webp` (384 square on white) in, setting
-`art: true` and running `pnpm ios:resources`; `subcategoryPictures.test.ts`
-fails while the flag and the files disagree. Meanwhile the portal's picture
-desk draws them, sent another department's art as the style to match
-(`styleArtFor`). **A live database gains their rows by itself**
+its flag and running `pnpm ios:resources`; `subcategoryPictures.test.ts`
+fails while a flag and the files disagree. Meanwhile the portal's picture
+desk draws a subcategory, sent its department's own art as the style to
+match (`styleArtFor`). **A live database gains their rows by itself**
 (`ensureDepartmentRows`, `services/departmentRows.ts`): the editor lists
 categories by row, so a department added in code is written, insert-only and
 `ON CONFLICT (slug) DO NOTHING`, the first time an instance lists the
@@ -7654,7 +7660,7 @@ drawn only where a picture cannot be read. **"Draw the missing ones" went
 with it**, on the web and in the app: nothing is missing, and a button nobody
 can press is a dead control; one is drawn at a time where somebody wants
 another. `subcategoryPictures.test.ts` fails on a subcategory of a department
-with art (`Department.art`) with no file, a file no such subcategory names, or
+marked as having them (`Department.subcategoryArt`) with no file, a file no such subcategory names, or
 one that is not the 384 square; the app's `ModelTests` on one missing from its
 bundle. **The files arrived cut from a
 sheet a little off its grid lines** — the lesson the department art already

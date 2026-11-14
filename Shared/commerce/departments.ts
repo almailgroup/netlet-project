@@ -48,35 +48,42 @@ export type Department = {
   /** The tile ground behind the icon, where a department has no picture yet. */
   tint: string;
   /**
-   * Whether the department's pictures have arrived: its tile's art
-   * (`public/departments/<slug>.webp`) and every one of its subcategories'
-   * (`public/subcategories/<slug>-<sub>.webp`). Until they have, its tile is
-   * its icon on its tint and its subcategories' rows their icons — drawn on
-   * purpose, never a broken image or a request for a file that is not there.
-   * `subcategoryPictures.test.ts` holds this to the files on disk, so a
-   * picture dropped in without the flag, or the flag set without every
-   * picture, fails.
+   * Whether the department's tile art has arrived
+   * (`public/departments/<slug>.webp`). Until it has, its tile is its icon on
+   * its tint — drawn on purpose, never a broken image or a request for a file
+   * that is not there.
    */
   art: boolean;
+  /**
+   * Whether its subcategories' pictures have arrived, every one of them
+   * (`public/subcategories/<slug>-<sub>.webp`). Until they have, each row
+   * draws its subcategory's icon. A flag of its own because the two sets
+   * come apart: the eight departments added later got their tiles first.
+   * `subcategoryPictures.test.ts` holds both flags to the files on disk, so a
+   * picture dropped in without its flag, or a flag set without every
+   * picture, fails.
+   */
+  subcategoryArt: boolean;
 };
 
 export const DEPARTMENTS: Department[] = [
-  { slug: "electronics", name: "Electronics", nameAr: "إلكترونيات", position: 1, label: "category.electronics", icon: "plug", tint: "#dce5e9", art: true },
-  { slug: "home-and-kitchen", name: "Home & Kitchen", nameAr: "المنزل والمطبخ", position: 2, label: "category.homeKitchen", icon: "cooking-pot", tint: "#f5e4c9", art: true },
-  { slug: "beauty", name: "Beauty", nameAr: "الجمال", position: 3, label: "category.beauty", icon: "flower", tint: "#f6d9d2", art: true },
-  { slug: "style", name: "Style", nameAr: "الأزياء", position: 4, label: "category.style", icon: "shirt", tint: "#e4dfd0", art: true },
-  { slug: "grocery", name: "Grocery", nameAr: "البقالة", position: 5, label: "category.grocery", icon: "carrot", tint: "#dce7cf", art: true },
+  { slug: "electronics", name: "Electronics", nameAr: "إلكترونيات", position: 1, label: "category.electronics", icon: "plug", tint: "#dce5e9", art: true, subcategoryArt: true },
+  { slug: "home-and-kitchen", name: "Home & Kitchen", nameAr: "المنزل والمطبخ", position: 2, label: "category.homeKitchen", icon: "cooking-pot", tint: "#f5e4c9", art: true, subcategoryArt: true },
+  { slug: "beauty", name: "Beauty", nameAr: "الجمال", position: 3, label: "category.beauty", icon: "flower", tint: "#f6d9d2", art: true, subcategoryArt: true },
+  { slug: "style", name: "Style", nameAr: "الأزياء", position: 4, label: "category.style", icon: "shirt", tint: "#e4dfd0", art: true, subcategoryArt: true },
+  { slug: "grocery", name: "Grocery", nameAr: "البقالة", position: 5, label: "category.grocery", icon: "carrot", tint: "#dce7cf", art: true, subcategoryArt: true },
   /* The eight added on the owner's word ("add more categories for the
      products; currently there are only five"), after the departments a
-     shop like noon or Amazon keeps. Their pictures are the owner's to send. */
-  { slug: "health-and-wellness", name: "Health & Wellness", nameAr: "الصحة والعافية", position: 6, label: "category.health", icon: "heart-pulse", tint: "#d6ecea", art: false },
-  { slug: "baby", name: "Baby", nameAr: "مستلزمات الرضّع", position: 7, label: "category.baby", icon: "baby", tint: "#f4e1ec", art: false },
-  { slug: "toys-and-games", name: "Toys & Games", nameAr: "ألعاب الأطفال", position: 8, label: "category.toys", icon: "toy-brick", tint: "#fbe8c8", art: false },
-  { slug: "sports-and-outdoors", name: "Sports & Outdoors", nameAr: "الرياضة والرحلات", position: 9, label: "category.sports", icon: "trophy", tint: "#dbe7f5", art: false },
-  { slug: "automotive", name: "Automotive", nameAr: "السيارات", position: 10, label: "category.automotive", icon: "car", tint: "#e2e5eb", art: false },
-  { slug: "tools-and-home-improvement", name: "Tools & Home Improvement", nameAr: "الأدوات وتحسين المنزل", position: 11, label: "category.tools", icon: "hammer", tint: "#f1e3d4", art: false },
-  { slug: "pet-supplies", name: "Pet Supplies", nameAr: "مستلزمات الحيوانات الأليفة", position: 12, label: "category.pets", icon: "paw", tint: "#ece5d6", art: false },
-  { slug: "books-and-stationery", name: "Books & Stationery", nameAr: "الكتب والقرطاسية", position: 13, label: "category.books", icon: "book", tint: "#e7e1f1", art: false },
+     shop like noon or Amazon keeps. Their tiles are the owner's own
+     pictures, made to the same style; their subcategories' are to come. */
+  { slug: "health-and-wellness", name: "Health & Wellness", nameAr: "الصحة والعافية", position: 6, label: "category.health", icon: "heart-pulse", tint: "#d6ecea", art: true, subcategoryArt: false },
+  { slug: "baby", name: "Baby", nameAr: "مستلزمات الرضّع", position: 7, label: "category.baby", icon: "baby", tint: "#f4e1ec", art: true, subcategoryArt: false },
+  { slug: "toys-and-games", name: "Toys & Games", nameAr: "ألعاب الأطفال", position: 8, label: "category.toys", icon: "toy-brick", tint: "#fbe8c8", art: true, subcategoryArt: false },
+  { slug: "sports-and-outdoors", name: "Sports & Outdoors", nameAr: "الرياضة والرحلات", position: 9, label: "category.sports", icon: "trophy", tint: "#dbe7f5", art: true, subcategoryArt: false },
+  { slug: "automotive", name: "Automotive", nameAr: "السيارات", position: 10, label: "category.automotive", icon: "car", tint: "#e2e5eb", art: true, subcategoryArt: false },
+  { slug: "tools-and-home-improvement", name: "Tools & Home Improvement", nameAr: "الأدوات وتحسين المنزل", position: 11, label: "category.tools", icon: "hammer", tint: "#f1e3d4", art: true, subcategoryArt: false },
+  { slug: "pet-supplies", name: "Pet Supplies", nameAr: "مستلزمات الحيوانات الأليفة", position: 12, label: "category.pets", icon: "paw", tint: "#ece5d6", art: true, subcategoryArt: false },
+  { slug: "books-and-stationery", name: "Books & Stationery", nameAr: "الكتب والقرطاسية", position: 13, label: "category.books", icon: "book", tint: "#e7e1f1", art: true, subcategoryArt: false },
 ];
 
 /**

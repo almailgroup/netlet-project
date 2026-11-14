@@ -32,12 +32,13 @@
  * brings the file back. So nothing waits on the portal, the database or a
  * model for a row to have its picture.
  *
- * **A department added before its pictures arrive has none, on purpose.**
- * The eight added later (`Department.art` false) draw their subcategories'
- * icons until the owner's files come, or one is kept from the portal — never
- * a request for a file that is not there and a broken image after it. The
- * drawing of one of theirs is sent another department's art as the style to
- * match (`styleArtFor`), since the set is one style.
+ * **A department whose subcategories' pictures have not arrived has none, on
+ * purpose.** The eight added later (`Department.subcategoryArt` false) draw
+ * their subcategories' icons until the owner's files come, or one is kept
+ * from the portal — never a request for a file that is not there and a broken
+ * image after it. Their tiles' art came first (`Department.art`), so a
+ * drawing of one of theirs is sent its own department's art as the style to
+ * match (`styleArtFor`), the set being one style.
  */
 import { DEPARTMENTS } from "./departments.js";
 import { isMediaPath } from "./media.js";
@@ -76,18 +77,23 @@ export function subcategoryArtPath(department: string, slug: string): string {
   return `/subcategories/${department}-${slug}.webp`;
 }
 
-/** Whether a department's pictures have arrived (`Department.art`): its tile's and its subcategories' files. */
+/** Whether a department's tile art has arrived (`Department.art`). */
 export function departmentHasArt(department: string): boolean {
   return DEPARTMENTS.find(entry => entry.slug === department)?.art ?? false;
 }
 
+/** Whether every one of a department's subcategories has its own file (`Department.subcategoryArt`). */
+export function subcategoryArtArrived(department: string): boolean {
+  return DEPARTMENTS.find(entry => entry.slug === department)?.subcategoryArt ?? false;
+}
+
 /**
  * What the shop draws for a subcategory: the picture kept from the portal,
- * else its own file — or null for a department whose pictures have not
- * arrived, where the row draws the subcategory's icon.
+ * else its own file — or null for a department whose subcategories' pictures
+ * have not arrived, where the row draws the subcategory's icon.
  */
 export function shownSubcategoryPicture(pictures: SubcategoryPictures | null | undefined, department: string, slug: string): string | null {
-  return pictureFor(pictures, department, slug) ?? (departmentHasArt(department) ? subcategoryArtPath(department, slug) : null);
+  return pictureFor(pictures, department, slug) ?? (subcategoryArtArrived(department) ? subcategoryArtPath(department, slug) : null);
 }
 
 /** The kept rows as the map the shop reads, leaving out anything that is not a kept picture of a subcategory the shop has. */
@@ -149,8 +155,8 @@ export function departmentArtPath(department: string): string {
 
 /**
  * The department whose art a drawing is sent as the style to match: its own,
- * or — for a department whose pictures have not arrived — the first that has
- * them, the set being one style.
+ * or — for a department whose tile art has not arrived — the first that has
+ * it, the set being one style.
  */
 export function styleArtFor(department: string): string {
   return departmentHasArt(department) ? department : DEPARTMENTS.find(entry => entry.art)?.slug ?? department;

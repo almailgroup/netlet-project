@@ -12,9 +12,12 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
     let icon: String
     /// The ground its symbol is drawn on while it has no picture (`Department.tint`).
     var tint: String? = nil
-    /// Whether its pictures have arrived (`Department.art`): its tile's and its
-    /// subcategories'. Until they have, the app draws its symbol on its tint.
+    /// Whether its tile art has arrived (`Department.art`). Until it has, the
+    /// app draws its symbol on its tint.
     var art: Bool? = nil
+    /// Whether its subcategories' pictures have arrived
+    /// (`Department.subcategoryArt`). Until they have, each row draws its symbol.
+    var subcategoryArt: Bool? = nil
     /// Its subcategories by name, in the order the Categories tab lists them
     /// (`Shared/commerce/subcategories.ts`); the server files each product.
     let subcategories: [Subcategory]?
@@ -149,8 +152,11 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
         }
     }
 
-    /// Whether its pictures have arrived; a list from before the flag has them.
+    /// Whether its tile art has arrived; a list from before the flag has it.
     var hasArt: Bool { art ?? true }
+
+    /// Whether its subcategories' pictures have arrived; a list from before the flag has them.
+    var hasSubcategoryArt: Bool { subcategoryArt ?? hasArt }
 
     /// The department's art on the site, the same file the web's tiles draw.
     var artPath: String { "/departments/\(slug).webp" }

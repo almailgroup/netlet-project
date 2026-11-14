@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   SUBCATEGORY_PICTURE_EDGE,
   acceptableSubcategoryPicture,
-  departmentHasArt,
+  subcategoryArtArrived,
   everySubcategory,
   pictureFor,
   picturesFromRows,
@@ -52,12 +52,12 @@ describe("subcategory pictures", () => {
 
   /* The files are the shop's pictures, so a department marked as having them
      with one missing would be a row with a broken image: every subcategory of
-     a department with art has its file, the folder holds nothing else, and
-     each is the square the tiles draw. */
-  it("has a picture file for every subcategory of a department with art, and no other", () => {
+     a department marked as having them has its file, the folder holds
+     nothing else, and each is the square the tiles draw. */
+  it("has a picture file for every subcategory of a department marked as having them, and no other", () => {
     const folder = path.resolve(import.meta.dirname, "../../Frontend/Web/public/subcategories");
     const wanted = everySubcategory()
-      .filter(({ department }) => departmentHasArt(department))
+      .filter(({ department }) => subcategoryArtArrived(department))
       .map(({ department, subcategory }) => path.basename(subcategoryArtPath(department, subcategory.slug)));
     expect(new Set(wanted).size).toBe(wanted.length);
     expect(readdirSync(folder).sort()).toEqual([...wanted].sort());
@@ -79,14 +79,20 @@ describe("subcategory pictures", () => {
     expect(readdirSync(folder).sort()).toEqual(wanted.sort());
   });
 
-  it("draws no file for a department whose pictures have not arrived, and styles its drawing on one that has", () => {
-    const waiting = DEPARTMENTS.find(department => !department.art);
+  it("draws no file for a subcategory whose pictures have not arrived, but a kept one", () => {
+    const waiting = DEPARTMENTS.find(department => !department.subcategoryArt);
     if (!waiting) return;
     const first = SUBCATEGORIES[waiting.slug][0];
     expect(shownSubcategoryPicture(undefined, waiting.slug, first.slug)).toBeNull();
     expect(shownSubcategoryPicture({ [`${waiting.slug}/${first.slug}`]: "/media/abcdefghijklmnopqrstuvwx.webp" }, waiting.slug, first.slug)).toBe("/media/abcdefghijklmnopqrstuvwx.webp");
-    expect(styleArtFor(waiting.slug)).toBe(DEPARTMENTS.find(department => department.art)?.slug);
-    expect(styleArtFor("electronics")).toBe("electronics");
+  });
+
+  /* A drawing is sent its own department's art as the style to match, or —
+     for a department whose tile art has not arrived — the first one's. */
+  it("styles a drawing on the department's own art, or on the first that has art", () => {
+    for (const department of DEPARTMENTS) {
+      expect(styleArtFor(department.slug)).toBe(department.art ? department.slug : DEPARTMENTS.find(entry => entry.art)?.slug);
+    }
   });
 
   it("keeps a picture only when it is one of NetLet's own uploads", () => {

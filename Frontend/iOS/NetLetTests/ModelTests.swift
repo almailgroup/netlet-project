@@ -156,19 +156,24 @@ final class ReferenceDataTests: XCTestCase {
         XCTAssertNotNil(UIImage(systemName: "line.3.horizontal"), "View all's picture")
     }
 
-    /// Every subcategory of a department whose pictures have arrived has its
-    /// own picture in the app — the files the owner sent, copied from the web
-    /// by `pnpm ios:resources` — and the square the web's is; a department
-    /// added before its pictures has none, and its rows draw their symbols.
+    /// Every subcategory of a department whose subcategories' pictures have
+    /// arrived has its own picture in the app — the files the owner sent,
+    /// copied from the web by `pnpm ios:resources` — and the square the web's
+    /// is; one whose pictures are still to come has none, and its rows draw
+    /// their symbols. A department's tile art is there exactly when it is
+    /// marked as having it.
     func testEverySubcategoryHasItsOwnPictureInTheApp() {
         var count = 0
         for department in reference.departments {
-            guard department.hasArt else {
+            if department.hasArt {
+                XCTAssertNotNil(WebAssets.department(department.slug), "\(department.slug) has no tile art in the app")
+            } else {
                 XCTAssertNil(WebAssets.department(department.slug), "\(department.slug) has art in the app but is not marked as having it")
+            }
+            guard department.hasSubcategoryArt else {
                 for entry in department.subs { XCTAssertNil(WebAssets.subcategory(department.slug, entry.slug), "\(department.slug)/\(entry.slug)") }
                 continue
             }
-            XCTAssertNotNil(WebAssets.department(department.slug), "\(department.slug) has no tile art in the app")
             for entry in department.subs {
                 let picture = WebAssets.subcategory(department.slug, entry.slug)
                 XCTAssertNotNil(picture, "\(department.slug)/\(entry.slug) has no picture in the app")

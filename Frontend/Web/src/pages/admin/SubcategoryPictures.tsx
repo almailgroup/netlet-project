@@ -239,7 +239,7 @@ function Desk() {
                       <PictureTile
                         key={key}
                         name={nameOf(subcategory)}
-                        original={department.art ? subcategoryArtPath(department.slug, subcategory.slug) : null}
+                        original={department.subcategoryArt ? subcategoryArtPath(department.slug, subcategory.slug) : null}
                         icon={subcategory.icon}
                         kept={pictureFor(pictures.data, department.slug, subcategory.slug)}
                         draft={drafts[key]?.url ?? null}

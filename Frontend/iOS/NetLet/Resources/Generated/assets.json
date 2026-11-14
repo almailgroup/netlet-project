@@ -14,6 +14,14 @@
     "beauty": "department-beauty.webp",
     "style": "department-style.webp",
     "grocery": "department-grocery.webp",
+    "health-and-wellness": "department-health-and-wellness.webp",
+    "baby": "department-baby.webp",
+    "toys-and-games": "department-toys-and-games.webp",
+    "sports-and-outdoors": "department-sports-and-outdoors.webp",
+    "automotive": "department-automotive.webp",
+    "tools-and-home-improvement": "department-tools-and-home-improvement.webp",
+    "pet-supplies": "department-pet-supplies.webp",
+    "books-and-stationery": "department-books-and-stationery.webp",
     "all": "department-all.webp"
   },
   "subcategories": {
