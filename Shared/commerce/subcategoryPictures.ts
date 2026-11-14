@@ -34,7 +34,7 @@
  *
  * **A department whose subcategories' pictures have not arrived has none, on
  * purpose.** One with `Department.subcategoryArt` false (Pet supplies, while
- * one of its five is still to come) draws its subcategories' icons until every
+ * one of its five was still to come) draws its subcategories' icons until every
  * file has come, or one is kept from the portal — never a request for a file
  * that is not there and a broken image after it. A department's tile art may
  * come first (`Department.art`), so a drawing of one of its subcategories is

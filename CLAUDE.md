@@ -7712,9 +7712,10 @@ fade unless an object runs off an edge. Twenty-six to thirty (four of
 Automotive's and Power tools) drifted into catalogue photography — hard
 reflections, a dozen objects, yellow-and-black tools — and were put in as
 sent on the owner's word; a redrawn file replaces one by its name. **Pet
-supplies waits on one**: its small-animals file arrived cut short (only the
-top 18% decodes), and the test allows a department's pictures only all
-together, so its five rows stay icons until it is sent again. A set arrives by dropping
+supplies came last**: its small-animals file arrived cut short (only the top
+18% decoded), and the test allows a department's pictures only all together,
+so its five rows were icons until the owner sent it again — a 1254 square,
+fitted as the rest. All forty-six are in now. A set arrives by dropping
 `public/departments/<slug>.webp` (480 × 360, transparent) or every
 `public/subcategories/<slug>-<sub>.webp` (384 square on white) in, setting
 its flag and running `pnpm ios:resources`; `subcategoryPictures.test.ts`

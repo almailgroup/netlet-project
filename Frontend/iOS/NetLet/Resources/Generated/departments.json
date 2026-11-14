@@ -1647,7 +1647,7 @@
     "icon": "paw",
     "tint": "#ece5d6",
     "art": true,
-    "subcategoryArt": false,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "cats",
