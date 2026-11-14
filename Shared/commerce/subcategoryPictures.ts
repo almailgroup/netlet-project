@@ -33,12 +33,13 @@
  * model for a row to have its picture.
  *
  * **A department whose subcategories' pictures have not arrived has none, on
- * purpose.** The eight added later (`Department.subcategoryArt` false) draw
- * their subcategories' icons until the owner's files come, or one is kept
- * from the portal — never a request for a file that is not there and a broken
- * image after it. Their tiles' art came first (`Department.art`), so a
- * drawing of one of theirs is sent its own department's art as the style to
- * match (`styleArtFor`), the set being one style.
+ * purpose.** One with `Department.subcategoryArt` false (Pet supplies, while
+ * one of its five is still to come) draws its subcategories' icons until every
+ * file has come, or one is kept from the portal — never a request for a file
+ * that is not there and a broken image after it. A department's tile art may
+ * come first (`Department.art`), so a drawing of one of its subcategories is
+ * sent its own department's art as the style to match (`styleArtFor`), the
+ * set being one style.
  */
 import { DEPARTMENTS } from "./departments.js";
 import { isMediaPath } from "./media.js";

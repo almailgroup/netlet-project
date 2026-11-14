@@ -75,15 +75,16 @@ export const DEPARTMENTS: Department[] = [
   /* The eight added on the owner's word ("add more categories for the
      products; currently there are only five"), after the departments a
      shop like noon or Amazon keeps. Their tiles are the owner's own
-     pictures, made to the same style; their subcategories' are to come. */
-  { slug: "health-and-wellness", name: "Health & Wellness", nameAr: "الصحة والعافية", position: 6, label: "category.health", icon: "heart-pulse", tint: "#d6ecea", art: true, subcategoryArt: false },
-  { slug: "baby", name: "Baby", nameAr: "مستلزمات الرضّع", position: 7, label: "category.baby", icon: "baby", tint: "#f4e1ec", art: true, subcategoryArt: false },
-  { slug: "toys-and-games", name: "Toys & Games", nameAr: "ألعاب الأطفال", position: 8, label: "category.toys", icon: "toy-brick", tint: "#fbe8c8", art: true, subcategoryArt: false },
-  { slug: "sports-and-outdoors", name: "Sports & Outdoors", nameAr: "الرياضة والرحلات", position: 9, label: "category.sports", icon: "trophy", tint: "#dbe7f5", art: true, subcategoryArt: false },
-  { slug: "automotive", name: "Automotive", nameAr: "السيارات", position: 10, label: "category.automotive", icon: "car", tint: "#e2e5eb", art: true, subcategoryArt: false },
-  { slug: "tools-and-home-improvement", name: "Tools & Home Improvement", nameAr: "الأدوات وتحسين المنزل", position: 11, label: "category.tools", icon: "hammer", tint: "#f1e3d4", art: true, subcategoryArt: false },
+     pictures, made to the same style, and so are their subcategories'
+     (Pet supplies is waiting on one of its five). */
+  { slug: "health-and-wellness", name: "Health & Wellness", nameAr: "الصحة والعافية", position: 6, label: "category.health", icon: "heart-pulse", tint: "#d6ecea", art: true, subcategoryArt: true },
+  { slug: "baby", name: "Baby", nameAr: "مستلزمات الرضّع", position: 7, label: "category.baby", icon: "baby", tint: "#f4e1ec", art: true, subcategoryArt: true },
+  { slug: "toys-and-games", name: "Toys & Games", nameAr: "ألعاب الأطفال", position: 8, label: "category.toys", icon: "toy-brick", tint: "#fbe8c8", art: true, subcategoryArt: true },
+  { slug: "sports-and-outdoors", name: "Sports & Outdoors", nameAr: "الرياضة والرحلات", position: 9, label: "category.sports", icon: "trophy", tint: "#dbe7f5", art: true, subcategoryArt: true },
+  { slug: "automotive", name: "Automotive", nameAr: "السيارات", position: 10, label: "category.automotive", icon: "car", tint: "#e2e5eb", art: true, subcategoryArt: true },
+  { slug: "tools-and-home-improvement", name: "Tools & Home Improvement", nameAr: "الأدوات وتحسين المنزل", position: 11, label: "category.tools", icon: "hammer", tint: "#f1e3d4", art: true, subcategoryArt: true },
   { slug: "pet-supplies", name: "Pet Supplies", nameAr: "مستلزمات الحيوانات الأليفة", position: 12, label: "category.pets", icon: "paw", tint: "#ece5d6", art: true, subcategoryArt: false },
-  { slug: "books-and-stationery", name: "Books & Stationery", nameAr: "الكتب والقرطاسية", position: 13, label: "category.books", icon: "book", tint: "#e7e1f1", art: true, subcategoryArt: false },
+  { slug: "books-and-stationery", name: "Books & Stationery", nameAr: "الكتب والقرطاسية", position: 13, label: "category.books", icon: "book", tint: "#e7e1f1", art: true, subcategoryArt: true },
 ];
 
 /**

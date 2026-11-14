@@ -831,7 +831,7 @@
     "icon": "heart-pulse",
     "tint": "#d6ecea",
     "art": true,
-    "subcategoryArt": false,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "vitamins",
@@ -972,7 +972,7 @@
     "icon": "baby",
     "tint": "#f4e1ec",
     "art": true,
-    "subcategoryArt": false,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "diapers",
@@ -1106,7 +1106,7 @@
     "icon": "toy-brick",
     "tint": "#fbe8c8",
     "art": true,
-    "subcategoryArt": false,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "dolls",
@@ -1239,7 +1239,7 @@
     "icon": "trophy",
     "tint": "#dbe7f5",
     "art": true,
-    "subcategoryArt": false,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "fitness",
@@ -1382,7 +1382,7 @@
     "icon": "car",
     "tint": "#e2e5eb",
     "art": true,
-    "subcategoryArt": false,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "car-accessories",
@@ -1503,7 +1503,7 @@
     "icon": "hammer",
     "tint": "#f1e3d4",
     "art": true,
-    "subcategoryArt": false,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "power-tools",
@@ -1747,7 +1747,7 @@
     "icon": "book",
     "tint": "#e7e1f1",
     "art": true,
-    "subcategoryArt": false,
+    "subcategoryArt": true,
     "subcategories": [
       {
         "slug": "books",

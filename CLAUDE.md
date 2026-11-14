@@ -7623,7 +7623,16 @@ for them (the earlier art's style: soft rounded 3D renders, two or three
 goods, no words or logos, a transparent 3:2 PNG) and fitted here as the
 first five were: near-clear haze dropped, near-solid alpha made solid,
 trimmed and scaled into 436 × 336 and centred on 480 × 360, WebP at about
-20 KB. Their subcategories are still their icons. A set arrives by dropping
+20 KB. **Their subcategories' pictures followed, forty-six in five batches**
+from the same ChatGPT chat, whole 1024 or 1254 squares on white rather than
+cuts from a sheet, fitted at the first thirty-five's margin (below) with no
+fade unless an object runs off an edge. Twenty-six to thirty (four of
+Automotive's and Power tools) drifted into catalogue photography — hard
+reflections, a dozen objects, yellow-and-black tools — and were put in as
+sent on the owner's word; a redrawn file replaces one by its name. **Pet
+supplies waits on one**: its small-animals file arrived cut short (only the
+top 18% decodes), and the test allows a department's pictures only all
+together, so its five rows stay icons until it is sent again. A set arrives by dropping
 `public/departments/<slug>.webp` (480 × 360, transparent) or every
 `public/subcategories/<slug>-<sub>.webp` (384 square on white) in, setting
 its flag and running `pnpm ios:resources`; `subcategoryPictures.test.ts`
