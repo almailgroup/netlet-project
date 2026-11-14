@@ -8546,9 +8546,11 @@ page, since a card's bin and heart ask) and its words in both languages —
 then 1,064 KB (307 KB), the eight departments added (see "Thirteen
 departments" under Browsing): their subcategories' words, which travel with
 the list the header and the Categories page draw, their specification rows
-and their names in both languages — and is 1,073 KB (309 KB) now, a
+and their names in both languages — then 1,073 KB (309 KB), a
 product's catalogue's words in both languages (`pdf-lib`, 439 KB, is a chunk
-of its own, fetched only when a PDF over 5 MB is chosen in the editor) —
+of its own, fetched only when a PDF over 5 MB is chosen in the editor) — and
+is 1,076 KB (310 KB) now, the crash screen's words for a stale build in both
+languages and the rule that knows one —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
@@ -8891,16 +8893,52 @@ responded with a MIME type of text/html". The server was fine on the second
 request — the browser never made one.
 
 `Frontend/Web/public/asset-recovery.js` is the other half: when a built script or
-stylesheet fails, it fetches every asset on the page again with
-`cache: "reload"` — which overwrites the bad entry, something a reload cannot
-do — and reloads once; a second failure inside a minute does nothing, so a
-file that is genuinely missing cannot loop. It also answers Vite's
-`vite:preloadError`, which is a tab left open across a deploy asking for a
-page that belongs to the old one. It is a file rather than inline because the
-server's CSP allows scripts from this origin only, and deferred so it costs
-the first paint nothing while still running before the app's module script.
-`.scratch/skew-server.mjs` reproduced the blank page with the old rule and no
-recovery, and showed it recovering with both.
+stylesheet fails, it fetches *that file* again with `cache: "reload"` — which
+overwrites the bad entry, something a reload cannot do — and reloads. It also
+answers Vite's `vite:preloadError`, which is a tab left open across a deploy
+asking for a page that belongs to the old one. It is a file rather than inline
+because the server's CSP allows scripts from this origin only, and deferred so
+it costs the first paint nothing while still running before the app's module
+script. `.scratch/skew-server.mjs` reproduced the blank page with the old rule
+and no recovery, and showed it recovering with both.
+
+**One reload was not enough, and the owner met the case** — a product page
+reading "An unexpected error occurred" over "Failed to fetch dynamically
+imported module …/ProductAssistant-CrObTaXE.js", a tab of the build before the
+catalogues asking the new deployment for its old files. A deploy takes a few
+seconds to reach every server, so the reload a failure starts can be handed
+the old page once more, and the first version allowed one reload a minute and
+then nothing: the shopper sat on the crash screen until they reloaded by hand.
+And it refetched *every* file on the page past the cache, which replaced the
+browser's good copy of the old main script with a 404, so an old page handed
+back once more could not start at all and the reload drew a blank page. Now:
+
+- **Four tries, each later than the last** (`DELAYS`: at once, then after 3,
+  10 and 30 seconds), which outlasts a switch-over; a file genuinely missing
+  from a build is still missing after the fourth and it stops, so it cannot
+  loop. A page that runs half a minute without a failure forgets the count.
+- **Only the file that failed is refetched.**
+- **The crash screen knows a stale build from a real fault**
+  (`lib/staleBuild.ts`: each browser's words for a module that would not
+  load) and says "NetLet has just been updated — Loading the newest
+  version…" while it asks the script for the reload
+  (`window.__netletRecover`), or "Reload the page to carry on" once every try
+  is spent — never a stack trace for something nobody did wrong. Both screens
+  are a `<main>` with an `h1` now, and the Reload button is navy: it was
+  white on the brand orange, 3.03:1.
+- **`vite:preloadError` is no longer `preventDefault`ed**: that made the
+  import answer `undefined`, which the page then failed on with a sentence
+  nobody could tell from a real fault.
+
+`assetRecovery.test.ts` runs the script as a browser does, in a window of its
+own over a tab's store, and fails five of six against the old file. Walked on
+two demo builds and a server swapped between them: a tab of the old build
+opening a product lands on the new one; a reload handed the old page once
+more shows the updating screen and lands 3 seconds later; a chunk missing
+from the build reloads at 0, 3, 13 and 43 seconds and then offers the reload
+by hand. Axe clean on the screen at 320, 390 and 1440 in both languages.
+Vercel keeps an edge cache per deployment, so a cached page of the old build
+is not the cause; the propagation is.
 
 ### A shared link carries the page's own head
 

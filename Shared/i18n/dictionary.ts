@@ -4839,6 +4839,9 @@ export const en = {
   // --- errors and 404 ------------------------------------------------
   "error.unexpected": "An unexpected error occurred.",
   "error.reload": "Reload page",
+  "error.updated": "NetLet has just been updated",
+  "error.updating": "Loading the newest version…",
+  "error.updatedReload": "Reload the page to carry on.",
   "notFound.title": "Page not found",
   "notFound.note": "The link may be old, or the product may have sold out and left the catalog. Everything else is still where you left it.",
   "notFound.back": "Back to the storefront",
@@ -9964,6 +9967,9 @@ export const ar: Record<MessageKey, string> = {
   // --- errors and 404 ------------------------------------------------
   "error.unexpected": "حدث خطأ غير متوقع.",
   "error.reload": "إعادة تحميل الصفحة",
+  "error.updated": "تم تحديث نت‑لت للتو",
+  "error.updating": "جارٍ تحميل أحدث نسخة…",
+  "error.updatedReload": "أعد تحميل الصفحة للمتابعة.",
   "notFound.title": "الصفحة غير موجودة",
   "notFound.note": "قد يكون الرابط قديماً، أو نفدت كمية المنتج وأُزيل من الكتالوج. كل شيء آخر ما زال في مكانه.",
   "notFound.back": "العودة إلى المتجر",
