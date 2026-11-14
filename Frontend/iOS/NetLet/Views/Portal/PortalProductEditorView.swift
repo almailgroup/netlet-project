@@ -937,7 +937,13 @@ private struct SizeChartSection: View {
                 }
                 SectionSave(pending: saving, disabled: problem != nil) { Task { await save(chart) } }
                 Button(l.t("sizeGuide.remove")) {
-                    if product.sizeChart != nil { Task { await save(nil) } } else { drafting = false }
+                    if product.sizeChart != nil {
+                        Task {
+                            // Removing a saved guide asks first; a draft never saved just closes.
+                            guard await RemovalQuestion.ask(l, title: l.t("remove.sizeChartTitle"), message: l.t("remove.sizeChartBody")) else { return }
+                            await save(nil)
+                        }
+                    } else { drafting = false }
                 }
                 .buttonStyle(PortalSmallButtonStyle(kind: .danger))
                 .disabled(saving)
@@ -1197,7 +1203,13 @@ private struct ProposeCommissionSection: View {
             if let open = mine.first(where: { $0.status == "pending" }) {
                 PortalNotice(text: [l.t("commission.waiting", ["figure": CommissionWording.figure(open.percent, open.fixed, l)]), open.reason.map { "“\($0)”" }]
                     .compactMap { $0 }.joined(separator: " "), tone: .warning)
-                Button(l.t("commission.withdraw")) { Task { await withdraw(open) } }
+                Button(l.t("commission.withdraw")) {
+                    Task {
+                        guard await RemovalQuestion.ask(l, title: l.t("remove.proposalTitle"), message: l.t("remove.proposalBody"),
+                                                        confirm: l.t("commission.withdraw")) else { return }
+                        await withdraw(open)
+                    }
+                }
                     .buttonStyle(PortalSmallButtonStyle())
                     .disabled(busy)
             } else {

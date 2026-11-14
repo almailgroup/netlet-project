@@ -27,6 +27,8 @@ export type RemovalQuestion = {
   body: string;
   /** The verb on the button; "Remove" when not given. */
   confirmLabel?: string;
+  /** The safe answer, where "Cancel" would read as the act itself ("Cancel this shipment?"). */
+  cancelLabel?: string;
 };
 
 type Ask = (question: RemovalQuestion) => Promise<boolean>;
@@ -65,6 +67,7 @@ export function ConfirmRemovalProvider({ children }: { children: ReactNode }) {
               title={question.title}
               body={question.body}
               confirmLabel={question.confirmLabel ?? t("remove.confirm")}
+              cancelLabel={question.cancelLabel}
               onConfirm={() => answer(true)}
               onClose={() => answer(false)}
             />

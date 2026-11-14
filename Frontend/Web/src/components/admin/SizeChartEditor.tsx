@@ -226,7 +226,10 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
               <button
                 type="button"
                 disabled={save.isPending}
-                onClick={() => (chart ? save.mutate({ productId, chart: null }) : setDraft(null))}
+                onClick={() => {
+                  if (!chart) return setDraft(null);
+                  void ask({ title: t("remove.sizeChartTitle"), body: t("remove.sizeChartBody") }).then(sure => { if (sure) save.mutate({ productId, chart: null }); });
+                }}
                 className="pressable inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px] font-extrabold text-[#8c2f22]"
               >
                 {t("sizeGuide.remove")}

@@ -17,6 +17,7 @@ import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
 import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
@@ -54,6 +55,7 @@ type Pending =
 
 function People({ selfId }: { selfId: number }) {
   const { t } = useTranslation();
+  const ask = useConfirmRemoval();
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const [query, setQuery] = useState("");
@@ -195,7 +197,13 @@ function People({ selfId }: { selfId: number }) {
                           type="checkbox"
                           checked={person.grants.includes("vendor.setCommission")}
                           disabled={setGrant.isPending}
-                          onChange={event => setGrant.mutate({ userId: person.id, capability: "vendor.setCommission", granted: event.target.checked })}
+                          onChange={event => {
+                            const granted = event.target.checked;
+                            /* Giving it is one press; taking it back asks first. */
+                            if (granted) return setGrant.mutate({ userId: person.id, capability: "vendor.setCommission", granted });
+                            void ask({ title: t("remove.grantTitle", { name: isolate(name) }), body: t("remove.grantBody"), confirmLabel: t("remove.grantConfirm") })
+                              .then(sure => { if (sure) setGrant.mutate({ userId: person.id, capability: "vendor.setCommission", granted: false }); });
+                          }}
                           className="mt-0.5 size-4 shrink-0 accent-[#0a285a]"
                         />
                         <span>

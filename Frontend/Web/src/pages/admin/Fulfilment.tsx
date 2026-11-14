@@ -18,6 +18,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -325,6 +326,7 @@ function PickList() {
 
 function Shipments({ operator }: { operator: boolean }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const [status, setStatus] = useState<InboundStatus | undefined>(operator ? "announced" : undefined);
@@ -363,7 +365,7 @@ function Shipments({ operator }: { operator: boolean }) {
                       ? <Receive shipment={shipment} />
                       : <ShipmentLines lines={shipment.lines} />}
                     {!operator && shipment.status === "announced" ? (
-                      <button type="button" disabled={cancel.isPending} onClick={() => cancel.mutate({ id: shipment.id })} className={`${smallButtonClass.secondary} mt-2`}>{t("fulfilment.cancelShipment")}</button>
+                      <button type="button" disabled={cancel.isPending} onClick={() => void ask({ title: t("remove.shipmentTitle"), body: t("remove.shipmentBody"), confirmLabel: t("fulfilment.cancelShipment"), cancelLabel: t("admin.keepLine") }).then(sure => { if (sure) cancel.mutate({ id: shipment.id }); })} className={`${smallButtonClass.secondary} mt-2`}>{t("fulfilment.cancelShipment")}</button>
                     ) : null}
                   </li>
                 ))}

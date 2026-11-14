@@ -867,6 +867,7 @@ function CommissionPanel({
  */
 function ProposeCommission({ vendorId, productId, mayStoreWide }: { vendorId: number; productId: number; mayStoreWide: boolean }) {
   const { t, tError } = useTranslation();
+  const ask = useConfirmRemoval();
   const money = useMoney();
   const utils = trpc.useUtils();
   const proposals = trpc.commission.list.useQuery({ vendorId });
@@ -910,7 +911,7 @@ function ProposeCommission({ vendorId, productId, mayStoreWide }: { vendorId: nu
         <div className="rounded-xl border border-[#ecd49a] bg-[#fff8e6] p-3 text-[13px] text-[#5c3f0c]">
           <p className="font-semibold">{t("commission.waiting", { figure: describe(open) })}</p>
           {open.reason ? <p dir="auto" className="mt-1">“{open.reason}”</p> : null}
-          <button type="button" onClick={() => withdraw.mutate({ proposalId: open.id })} disabled={withdraw.isPending} className={`${buttonClass.secondary} mt-3`}>
+          <button type="button" onClick={() => void ask({ title: t("remove.proposalTitle"), body: t("remove.proposalBody"), confirmLabel: t("commission.withdraw") }).then(sure => { if (sure) withdraw.mutate({ proposalId: open.id }); })} disabled={withdraw.isPending} className={`${buttonClass.secondary} mt-3`}>
             {t("commission.withdraw")}
           </button>
         </div>

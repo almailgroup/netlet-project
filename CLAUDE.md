@@ -2481,6 +2481,31 @@ out, a filled heart asking and Cancel keeping it, axe clean with the dialog
 up; `RemovalUITests` holds the app's line menu and its Cancel, and a home
 tile landing on Categories with Electronics open.
 
+**Every delete in the portal asks first too, on the owner's word** ("deleting
+anything admin/vendor requires approval", and of the ways offered — a second
+person approving, NetLet approving a store's, or a question — "just ask
+before deleting"). Nothing waits for anybody and there is no schema change:
+the person pressing is asked "Are you sure?" and the act happens on yes.
+Nearly every one already asked — a product, a store document, a team member,
+a code or a gift card, an occasion, a guide, a placement, a payout run's
+voiding, a device, a return's decline, a review hidden — and four did not,
+and do now, on the web and in the app: **removing a product's size guide**,
+**withdrawing a commission proposal**, **cancelling a shipment announced to
+NetLet's centre** (its safe answer "Keep it", `RemovalQuestion`'s
+`cancelLabel` on the web, the alert's `cancel` in the app, since the act's
+own verb is "Cancel") and **taking an employee's permission back** on People
+(giving it stays one press). `portalDeletes.test.ts` is the guard: every
+mutation in `pages/admin` and `components/admin` whose procedure's last name
+is delete, remove…, cancel…, withdraw, end or hide must be sent from behind a
+question — an `onConfirm`, an asked question's `sure`, or a `…Dialog.tsx` of
+its own — and it counts what it read (at least 17 sends), and failed on the
+shipment's cancel before the fix. Walked at 1440 in English, 390 in Arabic
+and 320 in English (`.scratch/portal-deletes-walk.mjs`): each question with
+focus on Cancel or Keep it, Escape and Keep it leaving the thing as it was,
+the confirm doing the act, axe clean with each question up, no sideways
+scroll. **`ConfirmDialog` draws the confirm button first in the document**,
+so a walk presses it by name or `first()`, never `last()`, which is Cancel.
+
 ## One frame, one template
 
 **The shop is one frame, and pages are what changes inside it.**

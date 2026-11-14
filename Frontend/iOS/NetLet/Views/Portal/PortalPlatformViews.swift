@@ -893,7 +893,14 @@ struct PortalPeopleView: View {
                    being an administrator. The trail names who granted it beside
                    every rate this person sets. */
                 Toggle(isOn: Binding(get: { (person.grants ?? []).contains("vendor.setCommission") }, set: { on in
-                    Task { await setGrant(person, on) }
+                    Task {
+                        /* Giving it is one press; taking it back asks first. */
+                        if !on {
+                            guard await RemovalQuestion.ask(l, title: l.t("remove.grantTitle", ["name": "\u{2068}\(person.shownName)\u{2069}"]),
+                                                            message: l.t("remove.grantBody"), confirm: l.t("remove.grantConfirm")) else { return }
+                        }
+                        await setGrant(person, on)
+                    }
                 })) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(l.t("grants.setCommission")).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)

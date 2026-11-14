@@ -279,6 +279,9 @@ private struct ShipmentsSection: View {
             if !isOperator && shipment.status == "announced" {
                 Button(l.t("fulfilment.cancelShipment")) {
                     Task {
+                        /* "Cancel" beside "Cancel this shipment" would read as the act itself. */
+                        guard await RemovalQuestion.ask(title: l.t("remove.shipmentTitle"), message: l.t("remove.shipmentBody"),
+                                                        confirm: l.t("fulfilment.cancelShipment"), cancel: l.t("admin.keepLine")) else { return }
                         if await app.attempt(fallback: "admin.saveFailed", { _ = try await app.services.api.call(API.cancelShipment, .init(id: shipment.id)) }) { await load() }
                     }
                 }
