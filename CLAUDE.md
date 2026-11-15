@@ -3504,6 +3504,29 @@ address is written, and the order freezes its parts from it. A store charges the
 same anywhere in Kuwait, so what the driver collects does not move, and the
 answer says so; a line sent to an address of its own keeps its own.
 
+**How an order is paid can change until a driver has it — as a mockup, on
+the owner's word** ("before the order is fully confirmed and handed over to
+shipping … switch the payment method … like credit cards and KNET", and,
+offered a gateway to build on, "just build the mockup for now, we will
+implement the payment method later"). `paymentChangeState`
+(`Shared/commerce/payment.ts`) is the cancel window — unpaid and every line
+still coming in the stores' hands — for a cash order, on `orders.get` as
+`paymentChange`. The order's ⋯ then offers "Change payment method"
+(`OrderPayment` on the web, `OrderPaymentSheet` in the app): cash on delivery
+marked current, then checkout's own KNET, card and Apple Pay rows marked
+"Coming soon"; choosing one says what switching will do ("You'd pay KWD … now
+on KNET's secure page, and the driver would collect nothing") over a "Switch
+to …" that cannot be pressed, with the reason beneath it. **Nothing is sent
+and there is no procedure**: NetLet has no payment provider, so a switch
+would be a shopper told they had paid when nothing was charged. Making it
+real is a gateway (KNET and cards through one, such as Tap Payments or
+MyFatoorah), its keys in Vercel, and a payments table shown to the owner
+first; the order then turns `paid` on the gateway's word and the driver
+collects nothing. The app's recorded orders carry the rule's answer, and the
+CI photographs the sheet (`101-order-payment`). Walked at 320, 390 and 1440 in
+both languages: offered on an order still with the stores and not on a paid
+one, the switch disabled with its note, axe clean, no sideways scroll.
+
 **Buy again puts everything still for sale back in the bag at today's price**
 (`orders.buyAgain`): the bag stores no price, so nothing old is carried over; a
 product no longer on sale or sold out is named rather than dropped in silence.

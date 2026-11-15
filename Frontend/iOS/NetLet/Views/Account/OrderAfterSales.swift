@@ -497,6 +497,140 @@ struct OrderModifySheet: View {
     }
 }
 
+// MARK: Change payment method
+
+/// "Change payment method" — how the order is paid, changed while nothing of
+/// it is with a driver (on the owner's word: "before the order is fully
+/// confirmed and handed over to shipping … switch the payment method … like
+/// credit cards and KNET"). **A mockup until a payment provider is
+/// connected, also on the owner's word** ("just build the mockup for now"):
+/// cash is the order's way and the one NetLet can take; KNET, a card and
+/// Apple Pay are checkout's own rows, marked as coming, and choosing one
+/// shows what switching will do over a Switch button that cannot be pressed
+/// and says why beneath it. The web's `OrderPayment`. Nothing is sent.
+struct OrderPaymentSheet: View {
+    let detail: OrderDetail
+    @Environment(LanguageSettings.self) private var l
+    @Environment(\.dismiss) private var dismiss
+    @State private var chosen = "cod"
+
+    private struct Way: Identifiable {
+        let id: String
+        let symbol: String?
+        let title: String
+        let note: String
+        let preview: String?
+    }
+
+    private let ways: [Way] = [
+        Way(id: "cod", symbol: "banknote", title: "checkout.payCod", note: "checkout.payCodNote", preview: nil),
+        Way(id: "knet", symbol: nil, title: "checkout.payKnet", note: "checkout.payKnetNote", preview: "orders.payPreviewKnet"),
+        Way(id: "card", symbol: "creditcard", title: "checkout.payCard", note: "checkout.payCardNote", preview: "orders.payPreviewCard"),
+        Way(id: "apple", symbol: "iphone", title: "checkout.payApple", note: "checkout.payAppleNote", preview: "orders.payPreviewApple"),
+    ]
+
+    private var amount: String { (detail.owedNow ?? detail.order.grandTotal).formatted(l.current) }
+    private var picked: Way { ways.first { $0.id == chosen } ?? ways[0] }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(l.t("orders.payNowCod", ["amount": amount]))
+                        .font(.inter(14))
+                        .foregroundStyle(Brand.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ForEach(ways) { way in choice(way) }
+                    if let preview = picked.preview {
+                        Text(l.t(preview, ["amount": amount]))
+                            .font(.inter(14))
+                            .foregroundStyle(Brand.navy)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
+                        Button(l.t("orders.paySwitch", ["method": l.t(picked.title)])) {}
+                            .buttonStyle(PrimaryButtonStyle())
+                            .disabled(true)
+                            .accessibilityHint(l.t("orders.paySoonNote"))
+                        Text(l.t("orders.paySoonNote"))
+                            .font(.inter(13))
+                            .foregroundStyle(Brand.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityHidden(true)
+                    } else {
+                        Text(l.t("orders.payWindow"))
+                            .font(.inter(13))
+                            .foregroundStyle(Brand.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(16)
+                .animation(.easeOut(duration: 0.2), value: chosen)
+            }
+            .background(Brand.ground)
+            .navigationTitle(l.t("orders.changePayment"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    BarButton(l.t("common.close")) { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func choice(_ way: Way) -> some View {
+        let on = chosen == way.id
+        let current = way.id == "cod"
+        return Button {
+            chosen = way.id
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().strokeBorder(on ? Brand.navy : Brand.line, lineWidth: on ? 2 : 1.5).frame(width: 20, height: 20)
+                    if on { Circle().fill(Brand.navy).frame(width: 10, height: 10) }
+                }
+                .accessibilityHidden(true)
+                Group {
+                    if let symbol = way.symbol {
+                        Image(systemName: symbol).font(.system(size: 18, weight: .medium))
+                    } else {
+                        Text("KNET").font(.inter(11, .heavy))
+                    }
+                }
+                .foregroundStyle(on ? Color.white : Brand.muted)
+                .frame(width: 40, height: 40)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? Brand.navy : Brand.tint))
+                .accessibilityHidden(true)
+                // The pill sits on the title's line, so a narrow phone gives the words the row's width.
+                VStack(alignment: .leading, spacing: 3) {
+                    FlowLayout(spacing: 6) {
+                        Text(l.t(way.title)).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
+                        Text(l.t(current ? "orders.payCurrent" : "checkout.paySoon"))
+                            .font(.inter(11, .bold))
+                            .foregroundStyle(current ? Brand.success : Brand.muted)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(current ? Brand.successFill : Brand.tint))
+                            .fixedSize()
+                    }
+                    Text(l.t(way.note)).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255) : Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(on ? Brand.navy : Brand.cardLine, lineWidth: on ? 2 : 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.tap)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(on ? [.isSelected] : [])
+    }
+}
+
 // MARK: Change delivery address
 
 /// "Change delivery address" — the order sent to another saved address while

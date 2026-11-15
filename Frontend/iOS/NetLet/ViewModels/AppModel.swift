@@ -579,12 +579,12 @@ final class AppModel {
             orderSheet = "help"
             presetHelpIssue = "damaged"
             accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
-        case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress":
-            // `track:`, `refund:`, `rate:`, `warranty:`, `modify:`, `help:` and
-            // `orderAddress:` open the order with that sheet up.
+        case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress", "orderPayment":
+            // `track:`, `refund:`, `rate:`, `warranty:`, `modify:`, `help:`,
+            // `orderAddress:` and `orderPayment:` open the order with that sheet up.
             guard let value else { return }
             selectedTab = .account
-            orderSheet = parts[0] == "order" ? nil : parts[0] == "orderAddress" ? "address" : parts[0]
+            orderSheet = parts[0] == "order" ? nil : parts[0] == "orderAddress" ? "address" : parts[0] == "orderPayment" ? "payment" : parts[0]
             accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
         case "profile":
             selectedTab = .account

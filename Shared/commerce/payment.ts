@@ -28,6 +28,8 @@
  * a seller who has not thought about it.
  */
 import { compareMoney, toFils } from "../money.js";
+import { shopperCancelState } from "./orderCancel.js";
+import type { FulfilmentState } from "./fulfilment.js";
 
 /** What NetLet can actually take today. The rest wait on 3.2.1. */
 export const PAYMENT_METHODS = ["cod"] as const;
@@ -106,4 +108,31 @@ export const COD_PLACES_AS = "pending_payment" as const;
 /** Whether an order taken in cash may be marked collected. */
 export function canRecordCollection(order: { status: string; paymentMethod: string | null }): boolean {
   return order.paymentMethod === "cod" && order.status === "pending_payment";
+}
+
+/**
+ * Whether the shopper may still change how an order is paid, on the owner's
+ * word ("before the order is fully confirmed and handed over to shipping …
+ * switch the payment method … like credit cards and KNET").
+ *
+ * **The window is the cancel rule's**: an unpaid order whose every line still
+ * coming is in the stores' hands (`shopperCancelState`). Once a driver has any
+ * of it, the driver is the one collecting, and paying part of an order online
+ * while a van carries the rest is a split nobody asked for.
+ *
+ * **It is a mockup until a payment provider is connected, also on the owner's
+ * word** ("just build the mockup for now"): cash is the only way NetLet can
+ * take, so the order page draws KNET, a card and Apple Pay as they will be,
+ * marked as coming, and nothing switches. Only a cash order offers it — the
+ * switch is away from cash.
+ */
+export type PaymentChangeState = { open: boolean; method: PaymentMethod | null };
+
+export function paymentChangeState(
+  order: { status: string; paymentMethod: string | null },
+  lines: { fulfilment: FulfilmentState }[],
+): PaymentChangeState {
+  const method = isPaymentMethod(order.paymentMethod) ? order.paymentMethod : null;
+  const cash = method === "cod" || order.paymentMethod === null;
+  return { open: cash && shopperCancelState(order, lines).cancellable, method };
 }

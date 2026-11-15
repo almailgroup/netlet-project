@@ -249,6 +249,8 @@ jobs:
             shot 73-order-help "$lang" help:NL-20261001-J7MWY shopper
             shot 74-order-modify "$lang" modify:NL-AS-PENDING pending
             shot 75-order-address "$lang" orderAddress:NL-AS-PENDING pending
+            # How it is paid, while nothing is with a driver: a mockup until a payment provider is connected.
+            shot 101-order-payment "$lang" orderPayment:NL-AS-PENDING pending
             shot 76-portal-warranty "$lang" portal:/admin/warranty shopper
             # Frequently bought: the list with its usual amounts and what was bought before.
             shot 77-frequent "$lang" frequent shopper

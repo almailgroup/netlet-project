@@ -98,10 +98,15 @@ struct OrderDetail: Decodable, Sendable {
     /// quantity, the address (`shopperChangeState`, `addressChangeState`).
     let change: OrderChangeState
     let changeAddress: OrderChangeState
+    /// Whether the shopper may still change how it is paid (`paymentChangeState`).
+    let paymentChange: PaymentChangeState
+    /// What the driver collects now (`owed.ts`); absent from an older server,
+    /// which leaves the order's total.
+    let owedNow: Money?
     /// Warranty claims on its lines, newest first, with where each stands.
     let warranty: [WarrantyClaim]
 
-    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, warranty }
+    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, paymentChange, owedNow, warranty }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -115,6 +120,8 @@ struct OrderDetail: Decodable, Sendable {
         steps = try container.decodeIfPresent(OrderSteps.self, forKey: .steps)
         change = try container.decodeIfPresent(OrderChangeState.self, forKey: .change) ?? .closed
         changeAddress = try container.decodeIfPresent(OrderChangeState.self, forKey: .changeAddress) ?? .closed
+        paymentChange = try container.decodeIfPresent(PaymentChangeState.self, forKey: .paymentChange) ?? .closed
+        owedNow = try container.decodeIfPresent(Money.self, forKey: .owedNow)
         warranty = try container.decodeIfPresent([WarrantyClaim].self, forKey: .warranty) ?? []
     }
 

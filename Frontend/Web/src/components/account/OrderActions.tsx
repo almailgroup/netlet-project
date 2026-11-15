@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import {
   Check,
   CircleX,
+  CreditCard,
   LifeBuoy,
   MapPin,
   MoreHorizontal,
@@ -51,6 +52,7 @@ import { TrackParcels } from "@/components/account/TrackParcels";
 import { LineReturnForm, mayRequestReturn, REASON_LABEL, type Detail } from "@/components/account/LineReturn";
 import { OrderModify } from "@/components/account/OrderModify";
 import { OrderAddress } from "@/components/account/OrderAddress";
+import { OrderPayment } from "@/components/account/OrderPayment";
 import { WarrantyClaims, WarrantyForm } from "@/components/account/OrderWarranty";
 import { OrderHelp } from "@/components/account/OrderHelp";
 import { useCart } from "@/contexts/CartContext";
@@ -74,7 +76,7 @@ const STEP_LABEL: Record<TrackStep, MessageKey> = {
 const isolate = (text: string) => `\u2068${text}\u2069`;
 
 type Line = Detail["lines"][number];
-type PanelKind = "track" | "refund" | "return" | "warranty" | "modify" | "address" | "help";
+type PanelKind = "track" | "refund" | "return" | "warranty" | "modify" | "address" | "payment" | "help";
 /** What is open, and — from an item's ⋯ — which item it is about. */
 type Panel = { kind: PanelKind; lineId?: number; remove?: boolean };
 
@@ -198,6 +200,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
   if (refundable.length > 0) actions.push({ key: "refund", icon: <RotateCcw className="size-[18px] rtl:-scale-x-100" aria-hidden />, label: t("orders.requestRefund"), run: () => controls.open({ kind: "refund" }) });
   if (claimable.length > 0) actions.push({ key: "warranty", icon: <ShieldCheck className="size-[18px]" aria-hidden />, label: t("warranty.title"), run: () => controls.open({ kind: "warranty" }) });
   if (detail.changeAddress.changeable) actions.push({ key: "address", icon: <MapPin className="size-[18px]" aria-hidden />, label: t("orders.changeAddress"), run: () => controls.open({ kind: "address" }) });
+  if (detail.paymentChange.open) actions.push({ key: "payment", icon: <CreditCard className="size-[18px]" aria-hidden />, label: t("orders.changePayment"), run: () => controls.open({ kind: "payment" }) });
   if (changeable) actions.push({ key: "modify", icon: <PencilLine className="size-[18px]" aria-hidden />, label: t("orders.modify"), run: () => controls.open({ kind: "modify" }) });
   if (rebuyable) actions.push({ key: "again", icon: <ShoppingBag className="size-[18px]" aria-hidden />, label: t("orders.buyAgainAll"), run: () => again.mutate({ reference, cartId }) });
   actions.push({ key: "help", icon: <LifeBuoy className="size-[18px]" aria-hidden />, label: t("orders.getHelp"), run: () => controls.open({ kind: "help" }) });
@@ -236,6 +239,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
         {orderPanel?.kind === "address" && detail.changeAddress.changeable ? (
           <OrderAddress reference={reference} detail={detail} onDone={controls.done} onCancel={controls.close} />
         ) : null}
+        {orderPanel?.kind === "payment" && detail.paymentChange.open ? <OrderPayment detail={detail} onCancel={controls.close} /> : null}
         {orderPanel?.kind === "help" ? <OrderHelp reference={reference} items={helpItems(detail)} onAction={(action, lineId) => act(action, lineId)} onClose={controls.close} /> : null}
       </div>
 

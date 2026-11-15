@@ -14,6 +14,17 @@ struct OrderChangeState: Decodable, Hashable, Sendable {
     static let closed = OrderChangeState(changeable: false, reason: nil)
 }
 
+/// Whether how the order is paid may still change — the server's
+/// `paymentChangeState`, the cancel window. A mockup until a payment provider
+/// is connected: cash is all NetLet can take, so the sheet draws KNET, a card
+/// and Apple Pay as coming.
+struct PaymentChangeState: Decodable, Hashable, Sendable {
+    let open: Bool
+    let method: String?
+
+    static let closed = PaymentChangeState(open: false, method: nil)
+}
+
 /// A warranty claim on one of the order's items (migration 0072), with where
 /// it stands — the one word the shopper and the store's desk both read.
 struct WarrantyClaim: Decodable, Identifiable, Hashable, Sendable {

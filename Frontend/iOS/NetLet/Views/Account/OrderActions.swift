@@ -3,7 +3,7 @@ import SwiftUI
 /// What is open over the order — a sheet, and from an item's ⋯ the item it
 /// is about (`lineId`); "Cancel this item" opens the change at none (`remove`).
 struct OrderSheet: Identifiable, Hashable {
-    enum Kind: String { case track, refund, warranty, modify, address, help }
+    enum Kind: String { case track, refund, warranty, modify, address, payment, help }
     let kind: Kind
     var lineId: Int? = nil
     var remove = false
@@ -64,6 +64,9 @@ struct OrderActionsBar: View {
                     }
                     if detail.changeAddress.changeable {
                         Button { open(.address) } label: { Label(l.t("orders.changeAddress"), systemImage: "mappin.and.ellipse") }
+                    }
+                    if detail.paymentChange.open {
+                        Button { open(.payment) } label: { Label(l.t("orders.changePayment"), systemImage: "creditcard") }
                     }
                     if detail.mayModify {
                         Button { open(.modify) } label: { Label(l.t("orders.modify"), systemImage: "square.and.pencil") }
@@ -126,6 +129,8 @@ struct OrderActionsBar: View {
             OrderModifySheet(reference: reference, detail: detail, lineId: which.lineId, remove: which.remove, done: { Task { await reload() } })
         case .address:
             OrderAddressSheet(reference: reference, detail: detail, done: { Task { await reload() } })
+        case .payment:
+            OrderPaymentSheet(detail: detail)
         case .help:
             OrderHelpSheet(
                 reference: reference,
@@ -163,6 +168,7 @@ struct OrderActionsBar: View {
         case .warranty: return !claimable.isEmpty
         case .modify: return detail.mayModify
         case .address: return detail.changeAddress.changeable
+        case .payment: return detail.paymentChange.open
         case .help: return true
         }
     }

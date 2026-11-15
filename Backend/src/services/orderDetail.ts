@@ -7,6 +7,7 @@
  */
 import { addressChangeState, lineMayChange, shopperChangeState } from "../../../Shared/commerce/orderChanges.js";
 import { shopperCancelState } from "../../../Shared/commerce/orderCancel.js";
+import { paymentChangeState } from "../../../Shared/commerce/payment.js";
 import { returnStateFor } from "../../../Shared/commerce/returns.js";
 import { documentsForShopperOrder } from "./invoices.js";
 import { getOrderForUser, lineForShopper, orderForShopper, orderStepsFor } from "./orders.js";
@@ -51,6 +52,9 @@ export async function orderDetailForShopper(userId: number, reference: string) {
        `orders.changeAddress` ask again under a lock. */
     change: shopperChangeState(found.order, found.lines),
     changeAddress: addressChangeState(found.order, found.lines),
+    /* Whether how it is paid may still change — the cancel window. A mockup
+       until a payment provider is connected: cash is all NetLet can take. */
+    paymentChange: paymentChangeState(found.order, found.lines),
     /* Each parcel as steps for "Track order", with the store's estimate. */
     steps: await orderStepsFor(found.order, found.lines),
     /* Warranty claims on its lines (migration 0072), newest first, with where each stands. */

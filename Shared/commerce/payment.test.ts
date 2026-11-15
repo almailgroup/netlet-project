@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canRecordCollection, codAvailability, COD_DEFAULT, type CodGroup } from "./payment.js";
+import { canRecordCollection, codAvailability, COD_DEFAULT, paymentChangeState, type CodGroup } from "./payment.js";
 
 const group = (over: Partial<CodGroup> = {}): CodGroup => ({
   vendorName: "Acme",
@@ -80,5 +80,26 @@ describe("cash switched off for the whole shop", () => {
     const willing = [{ vendorName: "Acme", goods: "10.000", rule: { accepts: true, ceiling: null } }];
     expect(codAvailability(willing, false)).toEqual({ available: false, because: { kind: "shop", vendorName: "" } });
     expect(codAvailability(willing)).toEqual({ available: true });
+  });
+});
+
+describe("changing how an order is paid", () => {
+  const cash = { status: "pending_payment", paymentMethod: "cod" };
+
+  it("is open while every line still coming is in the stores' hands", () => {
+    expect(paymentChangeState(cash, [{ fulfilment: "pending" }, { fulfilment: "preparing" }])).toEqual({ open: true, method: "cod" });
+    /* A line a store cancelled does not hold the rest back. */
+    expect(paymentChangeState(cash, [{ fulfilment: "cancelled" }, { fulfilment: "pending" }]).open).toBe(true);
+  });
+
+  it("closes once a driver has any of it, once it is paid, and once it is over", () => {
+    expect(paymentChangeState(cash, [{ fulfilment: "pending" }, { fulfilment: "shipped" }]).open).toBe(false);
+    expect(paymentChangeState({ ...cash, status: "paid" }, [{ fulfilment: "delivered" }]).open).toBe(false);
+    expect(paymentChangeState({ ...cash, status: "cancelled" }, [{ fulfilment: "cancelled" }]).open).toBe(false);
+    expect(paymentChangeState(cash, [{ fulfilment: "cancelled" }]).open).toBe(false);
+  });
+
+  it("reads an order placed before the method was recorded as cash", () => {
+    expect(paymentChangeState({ status: "pending_payment", paymentMethod: null }, [{ fulfilment: "pending" }])).toEqual({ open: true, method: null });
   });
 });
