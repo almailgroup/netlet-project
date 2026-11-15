@@ -49,7 +49,8 @@ the owner's word: ShipLee's parcel-tracking site for shiplee.delivery, in
 NetLet's design language in white and pine green. It has its own
 `package.json`, lockfile, TypeScript, tests, CI (`.github/workflows/shiplee.yml`),
 Vercel project (Root Directory `ShipLee`) and database, and imports nothing
-from here; NetLet's `tsconfig.json` and `vitest.config.ts` name their own
+from here — but asks NetLet's Cloudflare Worker for ShipLee AI, through a door
+and a secret of its own; NetLet's `tsconfig.json` and `vitest.config.ts` name their own
 folders, so neither reads it. `ShipLee/CLAUDE.md` is its architecture document.
 
 ## Design reference
@@ -3777,7 +3778,13 @@ netlet-ai-gateway" check on `main` went red with the commit after the move and
 stayed red for every push after, because the dashboard was still building the
 old `gateway/` folder, so the live Worker stayed the one from before the move.
 The owner set the root directory to `Backend/gateway`; that check going green
-again is how to tell the Worker is deploying. **Every model call NetLet makes is Gemini through it, and Mistral is
+again is how to tell the Worker is deploying. **It is ShipLee's door too** (`POST /api/shiplee/generate`,
+`Backend/gateway/src/shiplee.ts`): ShipLee AI, on the owner's word, through a
+secret of ShipLee's own (`SHIPLEE_GATEWAY_SECRET`, never `AI_GATEWAY_SECRET`),
+its own tasks and ceiling, in words only. `readSignedClaims` in
+`Shared/ai/gateway.ts` is the signature check both doors share; each holds its
+own claims to its own shape, and one ShipLee-signed token is checked in both
+projects' tests. `ShipLee/CLAUDE.md` is the rest. **Every model call NetLet makes is Gemini through it, and Mistral is
 gone, on the owner's word.** The shop's conversations moved first (see "The
 shop assistant"); then the six features this server called Mistral for —
 search refinement, the Picked for you order, photo search, support drafts, the

@@ -5,10 +5,14 @@
  *   GET    /api/health                       is the server up, and with what
  *   GET    /api/config                       what the pages need to know
  *   GET    /api/track/:number                one parcel, nothing personal
+ *   POST   /api/ai/ask                       a question for ShipLee AI
  *   GET    /api/staff/session                signed in, and is the desk open
  *   POST   /api/staff/session                sign in
  *   DELETE /api/staff/session                sign out
- *   GET    /api/staff/shipments?q=&page=     the list
+ *   GET    /api/staff/summary                the day at a glance
+ *   GET    /api/staff/shipments?q=&page=&group=  the list, with each group's count
+ *   GET    /api/staff/export?q=&group=&lang=     the same list as a spreadsheet
+ *   POST   /api/staff/ai/intake              an order message read into the form
  *   POST   /api/staff/shipments              a new shipment
  *   GET    /api/staff/shipments/:id          one, with the recipient's details
  *   PATCH  /api/staff/shipments/:id          its details changed
@@ -22,6 +26,11 @@ import { DuplicateNumber } from "./store.js";
 import type { StaffKey } from "./auth.js";
 import { clearedCookie, COOKIE, FAILURE_WINDOW_MS, makeSession, MAX_FAILURES, passwordMatches, readCookie, sessionCookie, sessionValid } from "./auth.js";
 import type { Contact } from "./contact.js";
+import type { Seams, ShipLeeAI } from "./gateway.js";
+import { answerQuestion, readOrderMessage } from "./ai.js";
+import { shipmentsCsv } from "./csv.js";
+import { isStatusGroup } from "../shared/status.js";
+import { kuwaitDay } from "../shared/kuwait.js";
 import { makeTrackingNumber, parseTrackingNumber } from "../shared/tracking.js";
 import { publicView, shipmentProblems, updateProblems } from "../shared/shipment.js";
 import { demoParcels } from "../shared/demo.js";
@@ -30,6 +39,10 @@ export type Context = {
   store: Store | null;
   staff: StaffKey | null;
   contact: Contact;
+  /** ShipLee AI's line to the gateway, or null when it is not set up. */
+  ai: ShipLeeAI | null;
+  /** The network and the clock ShipLee AI's calls use; the tests hand in a stand-in gateway. */
+  aiSeams?: Seams;
   now?: () => Date;
   /** One random digit, 0 to 9. The tests hand in a fixed sequence. */
   randomDigit?: () => number;
@@ -112,6 +125,8 @@ async function route(request: Request, ctx: Context): Promise<Response> {
     const demo = ctx.store?.kind === "demo";
     return json(200, {
       tracking: Boolean(ctx.store),
+      /* ShipLee AI needs somewhere to count each caller's questions, so it is offered only beside a store. */
+      ai: Boolean(ctx.ai && ctx.store),
       demo,
       samples: demo ? demoParcels(now()).map(parcel => parcel.trackingNumber) : [],
       contact: ctx.contact,
@@ -124,6 +139,16 @@ async function route(request: Request, ctx: Context): Promise<Response> {
     if (!ctx.store) return refuse(503, "notSetUp");
     const shipment = await ctx.store.byNumber(parsed.number);
     return shipment ? json(200, publicView(shipment)) : refuse(404, "notFound");
+  }
+
+  if (first === "ai" && second === "ask" && parts.length === 2) {
+    if (method !== "POST") return refuse(405, "method");
+    if (!sameSiteJson(request)) return refuse(403, "notJson");
+    if (!ctx.ai || !ctx.store) return refuse(503, "ai.off");
+    const body = await bodyOf(request);
+    if (!body) return refuse(400, "badBody");
+    const outcome = await answerQuestion(body, { ai: ctx.ai, store: ctx.store, contact: ctx.contact, address: addressOf(request), now: now(), seams: ctx.aiSeams });
+    return outcome.ok ? json(200, outcome.value) : refuse(outcome.status, outcome.error);
   }
 
   if (first === "staff") return staffRoute(request, ctx, { second, third, fourth, method, parts, url, now });
@@ -160,17 +185,50 @@ async function staffRoute(
     return json(204, null, { "set-cookie": sessionCookie(makeSession(ctx.staff, now()), secure) });
   }
 
-  if (second !== "shipments") return refuse(404, "noRoute");
+  if (second !== "shipments" && second !== "summary" && second !== "export" && second !== "ai") return refuse(404, "noRoute");
   if (!ctx.staff) return refuse(503, "staffClosed");
   if (!ctx.store) return refuse(503, "notSetUp");
   if (!signedIn) return refuse(401, "signedOut");
   const store = ctx.store;
+  const q = (url.searchParams.get("q") ?? "").slice(0, 80);
+  const groupParam = url.searchParams.get("group");
+  const group = isStatusGroup(groupParam) ? groupParam : null;
+
+  if (second === "summary" && parts.length === 2) {
+    if (method !== "GET") return refuse(405, "method");
+    return json(200, await store.summary(now()));
+  }
+
+  if (second === "export" && parts.length === 2) {
+    if (method !== "GET") return refuse(405, "method");
+    const lang = url.searchParams.get("lang") === "ar" ? "ar" : "en";
+    const csv = shipmentsCsv(await store.exportRows({ q, group }), lang);
+    return new Response(csv, {
+      status: 200,
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="shiplee-shipments-${kuwaitDay(now())}.csv"`,
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+      },
+    });
+  }
+
+  if (second === "ai") {
+    if (third !== "intake" || parts.length !== 3) return refuse(404, "noRoute");
+    if (method !== "POST") return refuse(405, "method");
+    if (!sameSiteJson(request)) return refuse(403, "notJson");
+    if (!ctx.ai) return refuse(503, "ai.off");
+    const body = await bodyOf(request);
+    if (!body) return refuse(400, "badBody");
+    const outcome = await readOrderMessage(body, { ai: ctx.ai, store, address: addressOf(request), now: now(), seams: ctx.aiSeams });
+    return outcome.ok ? json(200, outcome.value) : refuse(outcome.status, outcome.error);
+  }
 
   if (parts.length === 2) {
     if (method === "GET") {
       const page = Number(url.searchParams.get("page") ?? "1");
-      const q = (url.searchParams.get("q") ?? "").slice(0, 80);
-      return json(200, await store.list({ q, page: Number.isInteger(page) && page > 0 ? page : 1 }));
+      return json(200, await store.list({ q, page: Number.isInteger(page) && page > 0 ? page : 1, group }));
     }
     if (method !== "POST") return refuse(405, "method");
     if (!sameSiteJson(request)) return refuse(403, "notJson");

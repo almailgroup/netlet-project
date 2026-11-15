@@ -10,6 +10,7 @@ import { Field } from "./Field.js";
 import { ShipmentList } from "./ShipmentList.js";
 import { NewShipment } from "./NewShipment.js";
 import { ShipmentPage } from "./ShipmentPage.js";
+import { Labels } from "./Labels.js";
 import { NotFound } from "../pages/NotFound.js";
 
 type Session = { open: boolean; signedIn: boolean; store: "postgres" | "demo" | null; staff: boolean };
@@ -97,6 +98,7 @@ export function Staff() {
         <Switch>
           <Route path="/staff" component={ShipmentList} />
           <Route path="/staff/new" component={NewShipment} />
+          <Route path="/staff/shipments/:id/label">{params => <Labels id={params.id} />}</Route>
           <Route path="/staff/shipments/:id">{params => <ShipmentPage id={params.id} />}</Route>
           <Route component={NotFound} />
         </Switch>

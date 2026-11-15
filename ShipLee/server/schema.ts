@@ -55,9 +55,18 @@ create table if not exists staff_sign_in_failures (
 );
 create index if not exists staff_sign_in_failures_by_address on staff_sign_in_failures (address, failed_at);
 
+create table if not exists ai_requests (
+  id bigint generated always as identity primary key,
+  key text not null,
+  asked_at timestamptz not null default now()
+);
+create index if not exists ai_requests_by_key on ai_requests (key, asked_at);
+create index if not exists shipments_by_status on shipments (status);
+
 alter table shipments enable row level security;
 alter table shipment_events enable row level security;
 alter table staff_sign_in_failures enable row level security;
+alter table ai_requests enable row level security;
 `;
 
 /** Any number will do, so long as nothing else on the database takes the same lock. */

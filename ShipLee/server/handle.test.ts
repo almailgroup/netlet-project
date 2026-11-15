@@ -7,6 +7,24 @@ import { staffKey, MAX_FAILURES } from "./auth.js";
 import { testDb } from "./pglite.js";
 import { checkDigit, parseTrackingNumber } from "../shared/tracking.js";
 import { demoParcels } from "../shared/demo.js";
+import { MAX_ASKS_PER_HOUR } from "./ai.js";
+import { AI_ROUTE } from "./gateway.js";
+
+const AI = { url: "https://gateway.test", secret: "s".repeat(48) };
+
+type Asked = { url: string; authorization: string; body: Record<string, unknown> };
+
+/** NetLet's Worker, as far as ShipLee can tell: one answer per call, and a record of what it was sent. */
+function standInGateway(answer: (body: Record<string, unknown>) => unknown, status = 200) {
+  const asked: Asked[] = [];
+  const fetcher = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    asked.push({ url: String(input), authorization: new Headers(init?.headers).get("authorization") ?? "", body });
+    if (status !== 200) return Response.json({ ok: false, error: { code: "model_unavailable", message: "x" } }, { status });
+    return Response.json({ ok: true, data: { text: JSON.stringify(answer(body)) } });
+  }) as typeof fetch;
+  return { fetcher, asked };
+}
 
 const PASSWORD = "pine-green-desk-2026";
 const BASE = "https://shiplee.delivery";
@@ -55,7 +73,7 @@ describe.each<Kind>(["postgres", "demo"])("the API against the %s store", kind =
   beforeEach(async () => {
     cookie = "";
     clock = new Date("2026-11-14T09:00:00Z");
-    ctx = { store: await storeOf(kind), staff: staffKey({ STAFF_PASSWORD: PASSWORD }), contact: { phone: null, whatsapp: null, email: null }, now: () => clock };
+    ctx = { store: await storeOf(kind), staff: staffKey({ STAFF_PASSWORD: PASSWORD }), contact: { phone: null, whatsapp: null, email: null }, ai: null, now: () => clock };
   });
 
   it("tracks a parcel and shows nothing about who it is for", async () => {
@@ -171,17 +189,152 @@ describe.each<Kind>(["postgres", "demo"])("the API against the %s store", kind =
   });
 
   it("closes tracking and the desk when nothing is set up", async () => {
-    const bare: Context = { store: null, staff: null, contact: { phone: null, whatsapp: null, email: null } };
+    const bare: Context = { store: null, staff: null, contact: { phone: null, whatsapp: null, email: null }, ai: AI };
     const track = await handle(new Request(`${BASE}/api/track/${demoParcels()[0]!.trackingNumber}`), bare);
     expect(track.status).toBe(503);
     const session = await handle(new Request(`${BASE}/api/staff/session`), bare);
     expect(await session.json()).toEqual({ open: false, signedIn: false, store: null, staff: false });
+    /* ShipLee AI needs somewhere to count questions, so it is not offered without a store. */
+    expect((await (await handle(new Request(`${BASE}/api/config`), bare)).json()).ai).toBe(false);
+    const ask = await handle(new Request(`${BASE}/api/ai/ask`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ question: "Where is it?" }) }), bare);
+    expect([ask.status, (await ask.json()).error]).toEqual([503, "ai.off"]);
+  });
+
+  it("answers ShipLee AI's questions from the parcel's public facts and nothing else", async () => {
+    await signIn();
+    const { body: shipment } = await newShipment({ expectedOn: "2026-11-15" });
+    await call("POST", `/api/staff/shipments/${shipment.id}/events`, { status: "out_for_delivery", location: "Salmiya", note: "Driver is on the way.", happenedAt: "2026-11-14T08:30:00Z" });
+    cookie = "";
+    const gateway = standInGateway(() => ({ answer: "It is with a driver and expected tomorrow.", contact: false, suggestions: ["What do I pay at the door?", "Call 55123456?"] }));
+    ctx.ai = AI;
+    ctx.aiSeams = { fetcher: gateway.fetcher, now: () => clock.getTime() };
+    expect((await call("GET", "/api/config")).body.ai).toBe(true);
+
+    const asked = await call("POST", "/api/ai/ask", { question: "When will it arrive?", number: shipment.trackingNumber.toLowerCase(), lang: "en" });
+    expect(asked.status).toBe(200);
+    /* A suggestion carrying a phone number is dropped before the page sees it. */
+    expect(asked.body).toEqual({ answer: "It is with a driver and expected tomorrow.", contact: false, suggestions: ["What do I pay at the door?"], number: shipment.trackingNumber });
+    const sent = gateway.asked[0]!;
+    expect(sent.url).toBe(`https://gateway.test${AI_ROUTE}`);
+    expect(sent.authorization).toMatch(/^Bearer v1\./);
+    expect(sent.body).toMatchObject({ json: true });
+    const prompt = String(sent.body.prompt);
+    expect(prompt).toContain(shipment.trackingNumber);
+    expect(prompt).toContain("Out for delivery");
+    expect(prompt).toContain("«Driver is on the way.»");
+    expect(prompt).toContain("KWD");
+    /* The recipient's name, phone and street never leave ShipLee. */
+    expect(prompt).not.toMatch(/Fatima|55123456|5512|Block 10/);
+    expect(String(sent.body.system)).toContain("ShipLee AI");
+
+    /* A number typed into the question is found by itself. */
+    await call("POST", "/api/ai/ask", { question: `Where is ${shipment.trackingNumber.slice(0, 6)} ${shipment.trackingNumber.slice(6)}?`, lang: "ar" });
+    expect(String(gateway.asked[1]!.body.prompt)).toContain(`PARCEL ${shipment.trackingNumber}`);
+    expect(String(gateway.asked[1]!.body.system)).toContain("Arabic");
+  });
+
+  it("refuses a question carrying contact details before it costs anything, and counts the rest", async () => {
+    const gateway = standInGateway(() => ({ answer: "Fourteen days.", contact: true, suggestions: [] }));
+    ctx.ai = AI;
+    ctx.aiSeams = { fetcher: gateway.fetcher, now: () => clock.getTime() };
+    for (const question of ["Call me on 9988 7766", "my email is me@example.com", "see www.example.com", "  "]) {
+      const refused = await call("POST", "/api/ai/ask", { question });
+      expect(refused.status, question).toBe(400);
+    }
+    expect((await call("POST", "/api/ai/ask", { question: "x".repeat(401) })).body).toEqual({ error: "ai.long" });
+    expect(gateway.asked).toHaveLength(0);
+    for (let i = 0; i < MAX_ASKS_PER_HOUR; i++) expect((await call("POST", "/api/ai/ask", { question: "How do I pay?" })).status).toBe(200);
+    expect((await call("POST", "/api/ai/ask", { question: "How do I pay?" })).body).toEqual({ error: "ai.tooMany" });
+    /* Another address has its own hour, and the hour passes. */
+    expect((await call("POST", "/api/ai/ask", { question: "How do I pay?" }, { "x-real-ip": "10.0.0.2" })).status).toBe(200);
+    clock = new Date(clock.getTime() + 61 * 60 * 1000);
+    expect((await call("POST", "/api/ai/ask", { question: "How do I pay?" })).status).toBe(200);
+    expect((await call("POST", "/api/ai/ask", { question: "How do I pay?" }, { origin: "https://evil.example", host: "shiplee.delivery" })).status).toBe(403);
+  });
+
+  it("says ShipLee AI could not answer when the gateway does not", async () => {
+    ctx.ai = AI;
+    ctx.aiSeams = { fetcher: standInGateway(() => ({}), 502).fetcher, now: () => clock.getTime() };
+    expect(await call("POST", "/api/ai/ask", { question: "Where is it?" })).toMatchObject({ status: 502, body: { error: "ai.failed" } });
+    ctx.aiSeams = { fetcher: standInGateway(() => ({ answer: "" })).fetcher, now: () => clock.getTime() };
+    expect(await call("POST", "/api/ai/ask", { question: "Where is it?" })).toMatchObject({ status: 502, body: { error: "ai.failed" } });
+  });
+
+  it("reads an order message into the form for signed-in staff only, held to the form's rules", async () => {
+    const gateway = standInGateway(() => ({
+      senderName: "Dar Home", recipientName: "Noura", recipientPhone: "+965 5512 3456", governorate: "Hawalli", area: "Salmiya",
+      address: "Block 10, Street 4, House 7", pieces: "2", cod: "12.5 KD", expectedOn: "2026-11-13",
+    }));
+    ctx.ai = AI;
+    ctx.aiSeams = { fetcher: gateway.fetcher, now: () => clock.getTime() };
+    const message = "Order from Dar Home\nNoura 55123456\nSalmiya block 10 street 4 house 7\n2 boxes, collect 12.5";
+    expect((await call("POST", "/api/staff/ai/intake", { message })).status).toBe(401);
+    await signIn();
+    const read = await call("POST", "/api/staff/ai/intake", { message });
+    expect(read.status).toBe(200);
+    expect(read.body.draft).toEqual({ senderName: "Dar Home", recipientName: "Noura", recipientPhone: "55123456", governorate: "hawalli", area: "Salmiya", address: "Block 10, Street 4, House 7", pieces: "2", cod: "12.500" });
+    expect(read.body.found).not.toContain("expectedOn");
+    expect(String(gateway.asked[0]!.body.prompt)).toContain("Salmiya block 10");
+    expect((await call("POST", "/api/staff/ai/intake", { message: " " })).body).toEqual({ error: "intake.empty" });
+    ctx.aiSeams = { fetcher: standInGateway(() => ({ senderName: "", governorate: "Riyadh" })).fetcher, now: () => clock.getTime() };
+    expect((await call("POST", "/api/staff/ai/intake", { message })).body).toEqual({ error: "intake.nothing" });
+  });
+
+  it("counts the day, groups the list by status and exports what it shows", async () => {
+    await signIn();
+    const today = (hour: number) => new Date(Date.UTC(2026, 10, 14, hour)).toISOString();
+    clock = new Date(today(10));
+    /* The demo store starts with sample parcels of its own, so the day is counted from before and after. */
+    const before = (await call("GET", "/api/staff/summary")).body;
+    const groupsBefore = (await call("GET", "/api/staff/shipments")).body.counts;
+    const a = (await newShipment()).body;
+    const b = (await newShipment({ cod: "" })).body;
+    const c = (await newShipment({ senderName: "=HYPERLINK(1)" })).body;
+    clock = new Date(today(11));
+    await call("POST", `/api/staff/shipments/${a.id}/events`, { status: "out_for_delivery", happenedAt: today(10.5) });
+    await call("POST", `/api/staff/shipments/${b.id}/events`, { status: "attempted", happenedAt: today(10.5) });
+    await call("POST", `/api/staff/shipments/${c.id}/events`, { status: "delivered", happenedAt: today(10.5) });
+    const summary = (await call("GET", "/api/staff/summary")).body;
+    expect(summary.outNow - before.outNow).toBe(1);
+    expect(summary.cashOutFils - before.cashOutFils).toBe(12_500);
+    expect(summary.deliveredToday - before.deliveredToday).toBe(1);
+    expect(summary.attention - before.attention).toBe(1);
+    expect(summary.bookedToday - before.bookedToday).toBe(3);
+    /* Each of the three moved on from waiting for pickup. */
+    expect(summary.waiting).toBe(before.waiting);
+
+    const out = await call("GET", "/api/staff/shipments?group=out");
+    const outIds = out.body.rows.map((r: { id: number }) => r.id);
+    expect(outIds).toContain(a.id);
+    expect(outIds).not.toContain(b.id);
+    expect(out.body.total).toBe(groupsBefore.out + 1);
+    expect(out.body.counts).toMatchObject({ out: groupsBefore.out + 1, attention: groupsBefore.attention + 1, delivered: groupsBefore.delivered + 1, all: groupsBefore.all + 3 });
+    expect(out.body.counts.all).toBe(Object.entries(out.body.counts).filter(([key]) => key !== "all").reduce((sum, [, n]) => sum + (n as number), 0));
+    const searched = await call("GET", "/api/staff/shipments?group=nonsense&q=HYPERLINK");
+    expect(searched.body.rows.map((r: { id: number }) => r.id)).toEqual([c.id]);
+
+    const response = await handle(new Request(`${BASE}/api/staff/export?group=delivered&q=HYPERLINK&lang=ar`, { headers: { cookie } }), ctx);
+    expect(response.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(response.headers.get("content-disposition")).toContain("shiplee-shipments-2026-11-14.csv");
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    /* The byte-order mark Excel needs to read Arabic; text() would take it off. */
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    const csv = new TextDecoder().decode(bytes);
+    const lines = csv.trim().split("\r\n");
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toContain("رقم التتبّع");
+    /* A name that starts like a formula is written as text. */
+    expect(lines[1]).toContain(`"'=HYPERLINK(1)"`);
+    expect(lines[1]).toContain(c.trackingNumber);
+    cookie = "";
+    expect((await call("GET", "/api/staff/export")).status).toBe(401);
+    expect((await call("GET", "/api/staff/summary")).status).toBe(401);
   });
 });
 
 describe("the demo store", () => {
   it("answers its sample parcels, each with a real number", async () => {
-    const ctx: Context = { store: memoryStore(), staff: null, contact: { phone: null, whatsapp: null, email: null } };
+    const ctx: Context = { store: memoryStore(), staff: null, contact: { phone: null, whatsapp: null, email: null }, ai: null };
     const config = await (await handle(new Request(`${BASE}/api/config`), ctx)).json();
     expect(config.demo).toBe(true);
     for (const number of config.samples) {

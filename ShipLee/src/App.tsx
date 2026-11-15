@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Redirect, Route, Switch, useLocation } from "wouter";
 import { LanguageProvider } from "./i18n.js";
 import { Layout } from "./components/Layout.js";
@@ -6,7 +6,8 @@ import { Home } from "./pages/Home.js";
 import { Track } from "./pages/Track.js";
 import { Help } from "./pages/Help.js";
 import { NotFound } from "./pages/NotFound.js";
-import { Staff } from "./staff/Staff.js";
+/* The desk is for ShipLee's staff alone, so a customer's first visit does not download it, its labels' QR encoder included. */
+const Staff = lazy(() => import("./staff/Staff.js").then(module => ({ default: module.Staff })));
 
 /** A new page starts at its top. */
 function ScrollToTop() {
@@ -28,7 +29,11 @@ export function App() {
           <Route path="/track/:number">{params => <Track number={params.number} />}</Route>
           <Route path="/help" component={Help} />
           {/* One route for the whole desk, so moving inside it keeps its session. */}
-          <Route path="/staff/*?" component={Staff} />
+          <Route path="/staff/*?">
+            <Suspense fallback={<div className="container"><div className="page-head" aria-busy="true" /></div>}>
+              <Staff />
+            </Suspense>
+          </Route>
           <Route component={NotFound} />
         </Switch>
       </Layout>

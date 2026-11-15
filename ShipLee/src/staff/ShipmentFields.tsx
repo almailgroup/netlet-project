@@ -8,16 +8,18 @@ import { GOVERNORATES } from "../../shared/kuwait.js";
  * the edit form so the two cannot ask different things. What the tracking
  * page shows is said beside the box; what it never shows is marked staff only.
  */
-export function ShipmentFields({ draft, onChange, problems, idPrefix }: {
+export function ShipmentFields({ draft, onChange, problems, idPrefix, filled }: {
   draft: ShipmentDraft;
   onChange: (draft: ShipmentDraft) => void;
   problems: Problems<keyof ShipmentDraft>;
   idPrefix: string;
+  /** The boxes ShipLee AI filled from an order message and nobody has changed since. */
+  filled?: ReadonlySet<keyof ShipmentDraft>;
 }) {
   const { t, lang } = useLanguage();
   const set = (key: keyof ShipmentDraft) => (event: { target: { value: string } }) => onChange({ ...draft, [key]: event.target.value });
   const id = (key: string) => `${idPrefix}-${key}`;
-  const field = (key: keyof ShipmentDraft) => ({ id: id(key), problem: problems[key] });
+  const field = (key: keyof ShipmentDraft) => ({ id: id(key), problem: problems[key], filled: filled?.has(key) });
   return (
     <>
       <div className="form-section">

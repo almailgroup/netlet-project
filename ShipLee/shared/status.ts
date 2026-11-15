@@ -73,3 +73,27 @@ export function progressOf(current: Status, history: readonly Status[]): Progres
   }
   return { reached, drawn: current !== "returned" && current !== "cancelled" };
 }
+
+/**
+ * The staff desk's filters: statuses grouped the way the desk works through
+ * them — booked and waiting for pickup, moving, with a driver, needing
+ * somebody to act, delivered, and closed.
+ */
+export const STATUS_GROUPS = {
+  waiting: ["created"],
+  moving: ["picked_up", "in_transit"],
+  out: ["out_for_delivery"],
+  attention: ["attempted", "on_hold"],
+  delivered: ["delivered"],
+  closed: ["returned", "cancelled"],
+} as const satisfies Record<string, readonly Status[]>;
+export type StatusGroup = keyof typeof STATUS_GROUPS;
+export const GROUP_ORDER = Object.keys(STATUS_GROUPS) as StatusGroup[];
+
+export function isStatusGroup(value: unknown): value is StatusGroup {
+  return typeof value === "string" && (GROUP_ORDER as readonly string[]).includes(value);
+}
+
+export function groupOf(status: Status): StatusGroup {
+  return GROUP_ORDER.find(group => (STATUS_GROUPS[group] as readonly Status[]).includes(status))!;
+}

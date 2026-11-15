@@ -49,6 +49,7 @@ this folder.
    `DATABASE_URL` (unless step 1 set `POSTGRES_URL`), `STAFF_PASSWORD` (12
    characters or more), and the contact details you want on the help page:
    `SHIPLEE_PHONE`, `SHIPLEE_WHATSAPP`, `SHIPLEE_EMAIL`. Redeploy after.
+   ShipLee AI is two more, below; leave it for later if you like.
 4. **The domain.** Settings → Domains → add `shiplee.delivery`, and
    `www.shiplee.delivery` redirecting to it. Vercel then shows the DNS records
    to add where the domain was bought — an **A** record for `shiplee.delivery`
@@ -62,6 +63,30 @@ this folder.
 A push that changes nothing in `ShipLee/` does not rebuild ShipLee
 (`ignoreCommand` in `vercel.json`).
 
+## Turning on ShipLee AI
+
+ShipLee AI is Gemini, reached through NetLet's Cloudflare Worker
+(`Backend/gateway` in this repository), which already holds the Gemini key. It
+answers customers' questions on the tracking page and the Help page, and reads
+an order message into the new-shipment form on the staff desk. ShipLee has a
+door of its own on the Worker, with a secret of its own — never NetLet's.
+
+1. **Make a secret**, 32 characters or more:
+   `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
+2. **Give it to the Worker.** Cloudflare dashboard → Workers & Pages →
+   `netlet-ai-gateway` → Settings → Variables and Secrets → Add → type
+   *Secret*, name `SHIPLEE_GATEWAY_SECRET`, the value from step 1 → Deploy.
+   (Or `npx wrangler@4 secret put SHIPLEE_GATEWAY_SECRET` from `Backend/gateway`.)
+   `https://<the Worker's address>/healthz` then says `"shiplee": true`.
+3. **Give it to ShipLee.** In ShipLee's Vercel project: `SHIPLEE_AI_URL` = the
+   Worker's address (the same as NetLet's `AI_GATEWAY_URL`, no trailing slash)
+   and `SHIPLEE_AI_SECRET` = the same value as step 2. Redeploy.
+
+`https://shiplee.delivery/api/config` then says `"ai": true`, and "Ask ShipLee
+AI" appears. Unset, nothing about it is drawn. The Gemini project's spending
+cap covers ShipLee too; each customer may ask 30 questions an hour, and the
+desk read 120 messages an hour.
+
 ## Changing the colours
 
 Every colour is a token at the top of `src/styles.css` (`--brand`, `--brand-strong`,
@@ -71,8 +96,10 @@ check that text still reads at 4.5:1 on what it sits on.
 ## Layout
 
 ```
-shared/     the rules both sides use: tracking numbers, statuses, the form's checks, English and Arabic
-server/     the API (handle.ts), the database (db.ts, schema.ts, store.ts), staff sign-in (auth.ts)
+shared/     the rules both sides use: tracking numbers, statuses, the form's checks, ShipLee AI's
+            prompts and readers (assistant.ts), the label's barcode and QR code, English and Arabic
+server/     the API (handle.ts), the database (db.ts, schema.ts, store.ts), staff sign-in (auth.ts),
+            ShipLee AI (ai.ts, gateway.ts), the export (csv.ts)
 api/        the Vercel function: a two-line stub over the bundle `pnpm build` writes
 src/        the website: pages/, components/, staff/ (the desk)
 scripts/    the function bundle, the smoke test, the local server

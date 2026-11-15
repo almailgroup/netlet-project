@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useSearch } from "wouter";
-import { ArrowLeft, CircleCheckBig, ExternalLink } from "lucide-react";
+import { ArrowLeft, CircleCheckBig, ExternalLink, Printer } from "lucide-react";
 import { useLanguage } from "../i18n.js";
 import { useDesk } from "./Staff.js";
 import { Field, focusFirstProblem } from "./Field.js";
@@ -30,7 +30,7 @@ const NEXT: Record<Status, Status> = {
 };
 
 export function ShipmentPage({ id }: { id: string }) {
-  const { t, lang } = useLanguage();
+  const { t, n, lang } = useLanguage();
   const { call } = useDesk();
   const created = new URLSearchParams(useSearch()).get("created") === "1";
   const [shipment, setShipment] = useState<StaffShipment | null>(null);
@@ -68,6 +68,9 @@ export function ShipmentPage({ id }: { id: string }) {
         </div>
         <div className="staff-actions">
           <StatusPill status={shipment.status} />
+          <Link href={`/staff/shipments/${shipment.id}/label`} className="button button-secondary button-small">
+            <Printer size={16} aria-hidden="true" />{n("labels", shipment.pieces)}
+          </Link>
           <a href={`/track/${shipment.trackingNumber}`} target="_blank" rel="noopener" className="button button-secondary button-small">
             <ExternalLink size={16} aria-hidden="true" />{t("staff.openPublic")}
           </a>

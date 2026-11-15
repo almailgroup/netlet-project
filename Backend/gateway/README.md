@@ -119,6 +119,25 @@ nothing that uses the gateway is drawn — the rule every optional service here
 follows. The `ai` switch on `/admin/features` turns it off as well; tokens
 already handed out last at most five minutes.
 
+## ShipLee's door
+
+`POST /api/shiplee/generate` answers ShipLee (the parcel-tracking site in
+`ShipLee/`), which is ShipLee AI. It is a door of its own (`src/shiplee.ts`):
+ShipLee's server signs a one-minute token with **`SHIPLEE_GATEWAY_SECRET`** — a
+third secret, never `AI_GATEWAY_SECRET` — for one of its tasks (`assistant`,
+`intake`), counted by `SHIPLEE_LIMITER`, and the call is the same one-answer
+call NetLet's server makes, in words only: no photo, drawing or search.
+
+```sh
+npx wrangler@4 secret put SHIPLEE_GATEWAY_SECRET   # 32+ random characters
+```
+
+or in the dashboard: the Worker → Settings → Variables and Secrets → Add →
+*Secret*. `/healthz` then says `"shiplee": true`. ShipLee's Vercel project takes
+the same value as `SHIPLEE_AI_SECRET` and this Worker's address as
+`SHIPLEE_AI_URL` (`ShipLee/README.md`). Unset, the door answers
+`not_configured` and NetLet's routes are untouched.
+
 ## Changing things
 
 - **The prompts** are in `src/prompts.ts`. The chat's facts come from the help

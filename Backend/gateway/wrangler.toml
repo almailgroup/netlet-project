@@ -5,6 +5,10 @@
 #   AI_GATEWAY_SECRET   32+ random characters, the same value as NetLet's
 #                       own AI_GATEWAY_SECRET — it signs the tokens browsers
 #                       present here
+# and a third for ShipLee AI (the parcel-tracking site in ShipLee/), which
+# opens /api/shiplee/generate and nothing else:
+#   SHIPLEE_GATEWAY_SECRET  32+ random characters, the same value as ShipLee's
+#                           own SHIPLEE_AI_SECRET; never NetLet's secret
 name = "netlet-ai-gateway"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
@@ -53,6 +57,14 @@ simple = { limit = 40, period = 60 }
 name = "SERVER_LIMITER"
 namespace_id = "7104"
 simple = { limit = 600, period = 60 }
+
+# ShipLee's server, per task (a customer's question, the desk reading an order
+# message). A backstop like SERVER_LIMITER's: ShipLee counts each customer and
+# each desk in its own database before it calls.
+[[ratelimits]]
+name = "SHIPLEE_LIMITER"
+namespace_id = "7105"
+simple = { limit = 300, period = 60 }
 
 [observability]
 enabled = true

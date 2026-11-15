@@ -27,7 +27,7 @@ describe("the dictionary", () => {
   });
 
   it("has no Arabic entry still in English", () => {
-    const allowed = new Set<Key>(["site.name", "track.placeholder", "footer.rights", "lang.other"]);
+    const allowed = new Set<Key>(["site.name", "track.placeholder", "footer.rights", "lang.other", "ai.name"]);
     const copies = keys.filter(key => !allowed.has(key) && DICTIONARY.ar[key] === DICTIONARY.en[key]);
     expect(copies).toEqual([]);
   });
@@ -35,7 +35,7 @@ describe("the dictionary", () => {
   it("has no key the site never asks for", () => {
     const code = ["src", "server", "shared"].flatMap(dir => sources(path.join(ROOT, dir))).map(file => readFileSync(file, "utf8")).join("\n");
     /* Keys built from a status or a field name are asked for by their prefix. */
-    const built = ["status.", "say.", "step."];
+    const built = ["status.", "say.", "step.", "group."];
     const unused = keys.filter(key => !code.includes(`"${key}"`) && !built.some(prefix => key.startsWith(prefix)));
     expect(unused).toEqual([]);
   });

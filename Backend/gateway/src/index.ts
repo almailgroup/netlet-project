@@ -9,6 +9,8 @@
  *                                 "Picked for you" order, photo search, support drafts, the
  *                                 review queue's pass, the Arabic name — with a token only the
  *                                 server signs and never hands out
+ *   POST /api/shiplee/generate    one answer for ShipLee's server (ShipLee AI), with a token
+ *                                 signed by a secret of ShipLee's own — `shiplee.ts`
  *
  * Every POST passes the same gates, in order, each answered with a code from
  * `GATEWAY_ERRORS` and its own status, never Google's text:
@@ -40,6 +42,7 @@ import {
   MAX_CATALOG_BODY_BYTES,
   MAX_CHAT_BODY_BYTES,
   MAX_GENERATE_BODY_BYTES,
+  MIN_SECRET_LENGTH,
   checkCatalogRequest,
   checkChatRequest,
   checkGenerateRequest,
@@ -53,6 +56,7 @@ import { CATALOG_RESPONSE_SCHEMA, DEPARTMENT_SLUGS, draftFromModel } from "../..
 import { contactFindings } from "../../../Shared/commerce/contactFilter.js";
 import { GeminiFailure, generateJson, generateParts, streamText, type GeminiPart, type StreamPiece } from "./gemini.js";
 import { catalogContents, catalogSystem, chatContents, chatSystem } from "./prompts.js";
+import { SHIPLEE_ROUTE, verifyShipLeeToken } from "./shiplee.js";
 
 /** Cloudflare's rate-limiting binding, as much of it as this uses. */
 export type RateLimiter = { limit(options: { key: string }): Promise<{ success: boolean }> };
@@ -73,6 +77,10 @@ export interface Env {
   ADDRESS_LIMITER?: RateLimiter;
   /** NetLet's server, per feature. */
   SERVER_LIMITER?: RateLimiter;
+  /** Secret: shared with ShipLee's server, which signs ShipLee's tokens. `wrangler secret put SHIPLEE_GATEWAY_SECRET`. */
+  SHIPLEE_GATEWAY_SECRET?: string;
+  /** ShipLee's server, per task. */
+  SHIPLEE_LIMITER?: RateLimiter;
 }
 
 /** What the tests replace: the network and the clock. */
@@ -229,10 +237,13 @@ async function catalog(body: unknown, env: Env, headers: Headers, seams: Seams):
  * own rules decided what went into it on the server — so this checks sizes
  * and shape, asks once, and hands back the text for the feature to read.
  */
-async function generate(body: unknown, claims: GatewayClaims, env: Env, headers: Headers, seams: Seams): Promise<Response> {
+async function generate(body: unknown, caller: string, env: Env, headers: Headers, seams: Seams, wordsOnly = false): Promise<Response> {
   const checked = checkGenerateRequest(body);
   if (!checked.ok) return refuse("bad_request", checked.message, headers, checked.field);
   const request = checked.value;
+  if (wordsOnly && (request.image || request.images?.length || request.search || request.output === "image")) {
+    return refuse("bad_request", "This door answers in words only: no photo, drawing or search", headers);
+  }
   const parts: GeminiPart[] = [];
   for (const image of [request.image, ...(request.images ?? [])]) {
     if (image) parts.push({ inlineData: { mimeType: image.mimeType, data: image.data } });
@@ -259,9 +270,31 @@ async function generate(body: unknown, claims: GatewayClaims, env: Env, headers:
     if (draw && !image) return refuse("model_unavailable", "The model drew nothing usable", headers);
     return json(200, { ok: true, data: { text: answer.text, ...(draw ? { image } : {}), ...(request.search ? { sources: answer.sources } : {}) } }, headers);
   } catch (error) {
-    console.warn("gateway generate", claims.sub, error instanceof GeminiFailure ? error.reason : "error", String(error));
+    console.warn("gateway generate", caller, error instanceof GeminiFailure ? error.reason : "error", String(error));
     return refuse(failureCode(error), "The model could not answer", headers);
   }
+}
+
+/**
+ * ShipLee's door: its own secret, its own tasks and its own ceiling, then the
+ * same one-answer call NetLet's server makes, in words only. Its gates come in
+ * the same order as every other route's.
+ */
+async function shiplee(request: Request, env: Env, headers: Headers, seams: Seams): Promise<Response> {
+  if (request.method !== "POST") return refuse("method_not_allowed", "POST only", headers);
+  if (!env.GEMINI_API_KEY || (env.SHIPLEE_GATEWAY_SECRET ?? "").length < MIN_SECRET_LENGTH) {
+    return refuse("not_configured", "GEMINI_API_KEY and SHIPLEE_GATEWAY_SECRET must both be set", headers);
+  }
+  const bearer = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") ?? "")?.[1] ?? "";
+  const now = Math.floor((seams.now?.() ?? Date.now()) / 1000);
+  const claims = bearer ? await verifyShipLeeToken(bearer, env.SHIPLEE_GATEWAY_SECRET!, now) : null;
+  if (!claims) return refuse("unauthorised", "A live token from ShipLee is required", headers);
+  if (env.SHIPLEE_LIMITER && !(await env.SHIPLEE_LIMITER.limit({ key: `shiplee:${claims.task}` })).success) {
+    return refuse("rate_limited", "Too many requests; try again in a minute", headers);
+  }
+  const body = await readJson(request, MAX_GENERATE_BODY_BYTES);
+  if (!body.ok) return refuse(body.code, body.message, headers);
+  return generate(body.body, `shiplee:${claims.task}`, env, headers, seams, true);
 }
 
 export async function handle(request: Request, env: Env, seams: Seams = {}): Promise<Response> {
@@ -282,9 +315,12 @@ export async function handle(request: Request, env: Env, seams: Seams = {}): Pro
      and "No such route" there read as a broken deploy. */
   if (url.pathname === "/healthz" || url.pathname === "/") {
     if (request.method !== "GET") return refuse("method_not_allowed", "GET only", headers);
-    const configured = Boolean(env.GEMINI_API_KEY) && (env.AI_GATEWAY_SECRET ?? "").length >= 32;
-    return json(200, { ok: true, data: { configured, model: env.GEMINI_MODEL || GATEWAY_MODEL } }, headers);
+    const configured = Boolean(env.GEMINI_API_KEY) && (env.AI_GATEWAY_SECRET ?? "").length >= MIN_SECRET_LENGTH;
+    const shipLee = Boolean(env.GEMINI_API_KEY) && (env.SHIPLEE_GATEWAY_SECRET ?? "").length >= MIN_SECRET_LENGTH;
+    return json(200, { ok: true, data: { configured, shiplee: shipLee, model: env.GEMINI_MODEL || GATEWAY_MODEL } }, headers);
   }
+
+  if (url.pathname === SHIPLEE_ROUTE) return shiplee(request, env, headers, seams);
 
   const scope = ROUTE_SCOPE[url.pathname];
   if (!scope) return refuse("not_found", "No such route", headers);
@@ -307,7 +343,7 @@ export async function handle(request: Request, env: Env, seams: Seams = {}): Pro
 
   if (scope === "chat") return chat(body.body, claims, env, headers, seams);
   if (scope === "catalog") return catalog(body.body, env, headers, seams);
-  return generate(body.body, claims, env, headers, seams);
+  return generate(body.body, claims.sub, env, headers, seams);
 }
 
 export default {

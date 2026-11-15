@@ -27,6 +27,8 @@ export async function api<T>(method: string, path: string, body?: unknown): Prom
 
 export type Config = {
   tracking: boolean;
+  /** ShipLee AI is set up and may be offered. */
+  ai: boolean;
   demo: boolean;
   samples: string[];
   contact: { phone: string | null; whatsapp: string | null; email: string | null };
@@ -39,6 +41,6 @@ export function loadConfig(): Promise<Config> {
   return (config ??= api<Config>("GET", "/api/config").then(answer => {
     if (answer.ok) return answer.body;
     config = null;
-    return { tracking: false, demo: false, samples: [], contact: { phone: null, whatsapp: null, email: null } };
+    return { tracking: false, ai: false, demo: false, samples: [], contact: { phone: null, whatsapp: null, email: null } };
   }));
 }

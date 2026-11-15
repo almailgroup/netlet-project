@@ -323,12 +323,75 @@ describe("POST /api/ai/generate", () => {
   });
 });
 
+describe("POST /api/shiplee/generate", () => {
+  const SHIPLEE_SECRET = "s".repeat(48);
+  /*
+   * A token ShipLee's own server signed (ShipLee/server/gateway.ts, task
+   * "assistant", at NOW): its test signs the same claims with the same secret
+   * and expects these exact bytes, so the two sides cannot drift apart.
+   */
+  const SIGNED_BY_SHIPLEE = "v1.eyJ2IjoxLCJhcHAiOiJzaGlwbGVlIiwidGFzayI6ImFzc2lzdGFudCIsImV4cCI6MTgwMDAwMDA2MH0.WlZPF90kMU6F4-BMX4N4bfOhbOH8VDcs3Bp9lhOGejw";
+  const shipLeeEnv = (overrides: Partial<Env> = {}) => env({ SHIPLEE_GATEWAY_SECRET: SHIPLEE_SECRET, ...overrides });
+  const shipLeeToken = (claims: Record<string, unknown> = {}, secret = SHIPLEE_SECRET) =>
+    signGatewayToken({ v: 1, app: "shiplee", task: "intake", exp: NOW / 1000 + 60, ...claims } as unknown as GatewayClaims, secret);
+  const ask = { system: "You are ShipLee AI.", prompt: "Where is my parcel?", json: true, temperature: 0.2, maxOutputTokens: 400, timeoutMs: 9000 };
+  const codes = async (response: Response) => [response.status, (await response.json()).error.code];
+
+  it("answers ShipLee's server, with the token ShipLee's own signer makes", async () => {
+    const { fetcher, sent } = fakeGemini({ text: '{"answer":"Today."}' });
+    const response = await post("/api/shiplee/generate", ask, { token: SIGNED_BY_SHIPLEE, origin: null, fetcher, env: shipLeeEnv() });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, data: { text: '{"answer":"Today."}' } });
+    expect((sent[0].body.systemInstruction as { parts: { text: string }[] }).parts[0].text).toBe("You are ShipLee AI.");
+    expect(sent[0].body.generationConfig).toMatchObject({ responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } });
+  });
+
+  it("holds its own secret: NetLet's tokens are refused here, and ShipLee's on NetLet's routes", async () => {
+    const { fetcher, sent } = fakeGemini({ text: "{}" });
+    const options = { origin: null, fetcher, env: shipLeeEnv() };
+    expect(await codes(await post("/api/shiplee/generate", ask, { ...options, token: await token({ scope: "server", sub: "s:supportDraft" }) }))).toEqual([401, "unauthorised"]);
+    expect(await codes(await post("/api/shiplee/generate", ask, { ...options, token: await shipLeeToken({}, SECRET) }))).toEqual([401, "unauthorised"]);
+    expect(await codes(await post("/api/shiplee/generate", ask, { ...options, token: await shipLeeToken({ task: "draw" }) }))).toEqual([401, "unauthorised"]);
+    expect(await codes(await post("/api/shiplee/generate", ask, { ...options, token: await shipLeeToken({ exp: NOW / 1000 - 120 }) }))).toEqual([401, "unauthorised"]);
+    expect(await codes(await post("/api/shiplee/generate", ask, { ...options, token: await shipLeeToken({ exp: NOW / 1000 + 3600 }) }))).toEqual([401, "unauthorised"]);
+    expect(await codes(await post("/api/ai/generate", ask, { ...options, token: SIGNED_BY_SHIPLEE }))).toEqual([401, "unauthorised"]);
+    expect(await codes(await post("/api/shiplee/generate", ask, { ...options }))).toEqual([401, "unauthorised"]);
+    expect(sent).toHaveLength(0);
+  });
+
+  it("is closed until its secret is set, and a browser on another site never reaches it", async () => {
+    expect(await codes(await post("/api/shiplee/generate", ask, { token: SIGNED_BY_SHIPLEE, origin: null }))).toEqual([503, "not_configured"]);
+    expect(await codes(await post("/api/shiplee/generate", ask, { token: SIGNED_BY_SHIPLEE, origin: "https://shiplee.delivery", env: shipLeeEnv() }))).toEqual([403, "forbidden_origin"]);
+    expect((await handle(new Request("https://gateway.test/api/shiplee/generate"), shipLeeEnv())).status).toBe(405);
+  });
+
+  it("answers in words only: no photo, drawing or search", async () => {
+    const { fetcher, sent } = fakeGemini({ text: "{}" });
+    const options = { token: SIGNED_BY_SHIPLEE, origin: null, fetcher, env: shipLeeEnv() };
+    expect(await codes(await post("/api/shiplee/generate", { ...ask, image: { mimeType: "image/jpeg", data: "/9j/4AAQ" } }, options))).toEqual([400, "bad_request"]);
+    expect(await codes(await post("/api/shiplee/generate", { ...ask, json: false, search: true }, options))).toEqual([400, "bad_request"]);
+    expect(await codes(await post("/api/shiplee/generate", { ...ask, json: false, output: "image" }, options))).toEqual([400, "bad_request"]);
+    expect(sent).toHaveLength(0);
+  });
+
+  it("counts per ShipLee task, never by address", async () => {
+    const seen: string[] = [];
+    const limiter = (allow: boolean): RateLimiter => ({ limit: async ({ key }) => { seen.push(key); return { success: allow }; } });
+    const { fetcher } = fakeGemini({ text: "{}" });
+    const ok = await post("/api/shiplee/generate", ask, { token: await shipLeeToken(), origin: null, fetcher, env: shipLeeEnv({ SHIPLEE_LIMITER: limiter(true), ADDRESS_LIMITER: limiter(false), SERVER_LIMITER: limiter(false) }), headers: { "cf-connecting-ip": "76.76.21.21" } });
+    expect(ok.status).toBe(200);
+    expect(seen).toEqual(["shiplee:intake"]);
+    const refused = await post("/api/shiplee/generate", ask, { token: await shipLeeToken(), origin: null, fetcher, env: shipLeeEnv({ SHIPLEE_LIMITER: limiter(false) }) });
+    expect(refused.status).toBe(429);
+  });
+});
+
 describe("everything else", () => {
   it("reports whether it is configured, never the key", async () => {
     const response = await handle(new Request("https://gateway.test/healthz"), env());
-    expect(await response.json()).toEqual({ ok: true, data: { configured: true, model: "gemini-2.5-flash" } });
-    const root = await handle(new Request("https://gateway.test/"), env());
-    expect(await root.json()).toEqual({ ok: true, data: { configured: true, model: "gemini-2.5-flash" } });
+    expect(await response.json()).toEqual({ ok: true, data: { configured: true, shiplee: false, model: "gemini-2.5-flash" } });
+    const root = await handle(new Request("https://gateway.test/"), env({ SHIPLEE_GATEWAY_SECRET: "t".repeat(40) }));
+    expect(await root.json()).toEqual({ ok: true, data: { configured: true, shiplee: true, model: "gemini-2.5-flash" } });
     const bare = await handle(new Request("https://gateway.test/healthz"), env({ AI_GATEWAY_SECRET: "short" }));
     expect((await bare.json()).data.configured).toBe(false);
   });

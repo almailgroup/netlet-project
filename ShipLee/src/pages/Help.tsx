@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { ChevronDown, Mail, MessageCircle, Phone } from "lucide-react";
 import { useLanguage } from "../i18n.js";
 import { useConfig, usePageTitle } from "../hooks.js";
+import { ShipLeeAI } from "../components/ShipLeeAI.js";
 import type { Key } from "../../shared/i18n.js";
 
 const QUESTIONS: readonly [Key, Key][] = [
@@ -22,6 +24,12 @@ export function Help() {
   const config = useConfig();
   usePageTitle(t("title.help"));
   const contact = config?.contact;
+  /* "Ask ShipLee AI" on the home page lands here, on the box. */
+  useEffect(() => {
+    if (!config?.ai || window.location.hash !== "#ask") return;
+    document.getElementById("ask")?.scrollIntoView({ block: "start" });
+    document.querySelector<HTMLTextAreaElement>("#ask textarea")?.focus({ preventScroll: true });
+  }, [config?.ai]);
   const any = Boolean(contact && (contact.phone || contact.whatsapp || contact.email));
   return (
     <div className="container">
@@ -29,6 +37,11 @@ export function Help() {
         <h1 className="page-title">{t("help.title")}</h1>
         <p className="page-lead">{t("help.lead")}</p>
       </div>
+      {config?.ai ? (
+        <div id="ask" className="help-ask">
+          <ShipLeeAI contact={config.contact} />
+        </div>
+      ) : null}
       <div className="questions">
         <div className="faq">
           {[...QUESTIONS, ["faq.change.q", any ? "faq.change.aContact" : "faq.change.aSender"] as [Key, Key]].map(([question, answer]) => (

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "wouter";
-import { CalendarDays, Check, CircleAlert, Copy, SearchX } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, Copy, RefreshCw, SearchX, Share2 } from "lucide-react";
 import { useLanguage } from "../i18n.js";
-import { usePageTitle } from "../hooks.js";
+import { useConfig, usePageTitle } from "../hooks.js";
 import { api } from "../api.js";
 import { TrackForm } from "../components/TrackForm.js";
 import { STATUS_ICONS } from "../components/Status.js";
@@ -12,13 +12,19 @@ import { Timeline } from "../components/Timeline.js";
 import type { PublicShipment } from "../../shared/shipment.js";
 import { isFinal, progressOf, toneOf } from "../../shared/status.js";
 import { parseTrackingNumber } from "../../shared/tracking.js";
-import { dayAfter, formatDateTime, formatDay, formatMoney } from "../../shared/format.js";
+import { dayAfter, formatDateTime, formatDay, formatMoney, formatTime } from "../../shared/format.js";
 import { kuwaitDay } from "../../shared/kuwait.js";
 import { Destination } from "../components/Destination.js";
+import { ShipLeeAI } from "../components/ShipLeeAI.js";
+import { ContactActions } from "../components/ContactActions.js";
+import { rememberTracked } from "../recent.js";
+
+/** While a parcel is moving, an open page asks again this often. */
+const REFRESH_MS = 60_000;
 
 type Lookup =
   | { state: "loading" }
-  | { state: "found"; shipment: PublicShipment }
+  | { state: "found"; shipment: PublicShipment; checkedAt: Date }
   | { state: "notFound" }
   | { state: "bad" }
   | { state: "error" };
@@ -30,12 +36,17 @@ export function Track({ number: typed }: { number: string }) {
   const [lookup, setLookup] = useState<Lookup>(parsed.ok ? { state: "loading" } : { state: "bad" });
   usePageTitle(t("title.track", { number }));
 
+  const [checking, setChecking] = useState(false);
   const load = useCallback(async (quiet = false) => {
     if (!parsed.ok) return setLookup({ state: "bad" });
     if (!quiet) setLookup({ state: "loading" });
+    setChecking(true);
     const answer = await api<PublicShipment>("GET", `/api/track/${parsed.number}`);
-    if (answer.ok) setLookup({ state: "found", shipment: answer.body });
-    else if (answer.status === 404) setLookup({ state: "notFound" });
+    setChecking(false);
+    if (answer.ok) {
+      setLookup({ state: "found", shipment: answer.body, checkedAt: new Date() });
+      rememberTracked(answer.body.trackingNumber, answer.body.status);
+    } else if (answer.status === 404) setLookup({ state: "notFound" });
     else if (answer.status === 400) setLookup({ state: "bad" });
     else if (!quiet) setLookup({ state: "error" });
   }, [parsed.ok, parsed.ok ? parsed.number : ""]);
@@ -53,13 +64,23 @@ export function Track({ number: typed }: { number: string }) {
     return () => document.removeEventListener("visibilitychange", again);
   }, [load]);
 
+  /* A parcel still moving is asked about again every minute while the page is in view; one that has arrived is not. */
+  const moving = lookup.state === "found" && !isFinal(lookup.shipment.status);
+  useEffect(() => {
+    if (!moving) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load(true);
+    }, REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [moving, load]);
+
   return (
     <div className="container">
       <div className="track-search">
         <TrackForm key={number} initial={parsed.ok ? parsed.number : typed} labelHidden />
       </div>
       {lookup.state === "loading" ? <Loading /> : null}
-      {lookup.state === "found" ? <Found shipment={lookup.shipment} /> : null}
+      {lookup.state === "found" ? <Found shipment={lookup.shipment} checkedAt={lookup.checkedAt} checking={checking} onRefresh={() => void load(true)} /> : null}
       {lookup.state === "notFound" ? (
         <StateCard icon={<SearchX size={24} aria-hidden="true" />} title={t("result.notFoundTitle")} body={t("result.notFoundBody")} number={number} />
       ) : null}
@@ -107,8 +128,9 @@ function StateCard({ icon, title, body, number, action }: { icon: ReactNode; tit
   );
 }
 
-function Found({ shipment }: { shipment: PublicShipment }) {
+function Found({ shipment, checkedAt, checking, onRefresh }: { shipment: PublicShipment; checkedAt: Date; checking: boolean; onRefresh: () => void }) {
   const { t, n, lang } = useLanguage();
+  const config = useConfig();
   const tone = toneOf(shipment.status);
   const Icon = STATUS_ICONS[shipment.status];
   const progress = progressOf(shipment.status, shipment.events.map(event => event.status));
@@ -134,7 +156,10 @@ function Found({ shipment }: { shipment: PublicShipment }) {
             {t("result.number")}{" "}
             <bdi className="number" dir="ltr">{shipment.trackingNumber}</bdi>
           </span>
-          <CopyNumber number={shipment.trackingNumber} />
+          <span className="number-tools">
+            <CopyNumber number={shipment.trackingNumber} />
+            <ShareLink number={shipment.trackingNumber} />
+          </span>
         </div>
         <div className="status-head">
           <span className="status-disc"><Icon size={26} aria-hidden="true" /></span>
@@ -148,6 +173,13 @@ function Found({ shipment }: { shipment: PublicShipment }) {
         </div>
         {progress.drawn ? <Progress reached={progress.reached} /> : null}
         <Timeline events={shipment.events} />
+        <div className="checked-row">
+          <span>{t("result.checked", { time: formatTime(checkedAt, lang) })}</span>
+          <button type="button" className="button button-quiet button-small" onClick={onRefresh} disabled={checking} aria-label={t("result.refreshName")}>
+            <RefreshCw size={15} aria-hidden="true" className={checking ? "spinning" : undefined} />
+            <span aria-hidden="true">{checking ? t("result.refreshing") : t("result.refresh")}</span>
+          </button>
+        </div>
       </article>
 
       <aside className="side">
@@ -178,9 +210,14 @@ function Found({ shipment }: { shipment: PublicShipment }) {
             ) : null}
           </dl>
         </div>
-        <div className="card">
-          <h2 className="side-title">{t("result.questions")}</h2>
-          <p className="more-link"><Link href="/help">{t("result.getHelp")}</Link></p>
+        {config?.ai ? (
+          <ShipLeeAI number={shipment.trackingNumber} status={shipment.status} cod={Boolean(shipment.codFils) && !isFinal(shipment.status)} contact={config.contact} />
+        ) : null}
+        <div className="card help-card">
+          <h2 className="side-title">{t("result.helpTitle")}</h2>
+          {config && (config.contact.whatsapp || config.contact.email) ? <p className="side-lead">{t("result.helpLead")}</p> : null}
+          {config ? <ContactActions contact={config.contact} number={shipment.trackingNumber} /> : null}
+          <p className="more-link"><Link href="/help">{t("result.allHelp")}</Link></p>
         </div>
       </aside>
     </div>
@@ -208,6 +245,45 @@ function CopyNumber({ number }: { number: string }) {
       {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
       <span aria-hidden="true">{copied ? t("result.copied") : t("result.copy")}</span>
       <span className="sr-only" role="status">{copied ? t("result.copied") : ""}</span>
+    </button>
+  );
+}
+
+/**
+ * The page's own address, to send to whoever else is waiting for the parcel:
+ * the phone's share sheet where there is one, the clipboard otherwise.
+ */
+function ShareLink({ number }: { number: string }) {
+  const { t } = useLanguage();
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+  const share = async () => {
+    const url = `${window.location.origin}/track/${number}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: t("result.shareTitle", { number }), url });
+        return;
+      } catch (error) {
+        /* Closing the sheet is a choice, not a failure: nothing more to do. */
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      /* Nothing to do: the address is in the address bar. */
+    }
+  };
+  return (
+    <button type="button" className="button button-quiet button-small" onClick={() => void share()} aria-label={t("result.shareName")}>
+      {copied ? <Check size={16} aria-hidden="true" /> : <Share2 size={16} aria-hidden="true" />}
+      <span aria-hidden="true">{copied ? t("result.linkCopied") : t("result.share")}</span>
+      <span className="sr-only" role="status">{copied ? t("result.linkCopied") : ""}</span>
     </button>
   );
 }

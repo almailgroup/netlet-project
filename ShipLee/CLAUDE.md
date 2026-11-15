@@ -117,6 +117,97 @@ sent that way.
 real deployment. `SHIPLEE_DEMO=1` asks for four sample parcels in memory, and
 `pnpm dev` turns it on when no database is set.
 
+## ShipLee AI
+
+**Gemini, through NetLet's Cloudflare Worker, named ShipLee AI, on the owner's
+word** ("implement the AI that we have, Gemini, name it ShipLee AI, from the
+Cloudflare Worker"). The Worker (`Backend/gateway`, NetLet's) holds the one
+Gemini key; ShipLee's server asks it through a door of its own,
+`POST /api/shiplee/generate`, with a token it signs for each call
+(`server/gateway.ts`): NetLet's token format, `{ v: 1, app: "shiplee", task,
+exp }`, signed with `SHIPLEE_AI_SECRET`, which the Worker holds as
+`SHIPLEE_GATEWAY_SECRET`. **Never NetLet's secret**: neither project can mint
+the other's tokens, and the door answers in words only (no photo, drawing or
+search), so a leaked ShipLee secret spends no more than that. Since ShipLee
+imports nothing from NetLet, the format is written twice, and **one fixed token
+is checked on both sides** (`server/gateway.test.ts` and the Worker's
+`index.test.ts`): change either and both fail. Unset, `/api/config` says
+`ai: false` and nothing about it is drawn — and it needs a store too, because
+that is where each caller is counted.
+
+**Two jobs**, the rules pure in `shared/assistant.ts`, the routes in
+`server/ai.ts`:
+
+- **The customer's questions**, on the tracking page beside the facts and at
+  the top of Help (`ShipLeeAI`). The model is given the help page's answers
+  and, for a parcel, exactly `publicView` — never the recipient's name, phone
+  or street, which a test reads the prompt for. Everything people typed (the
+  sender's name, a staff note, a location, the question itself) is fenced in
+  «» on one line. It answers as JSON — the words, whether the customer needs
+  ShipLee's team, three follow-ups — and the page draws the team's buttons
+  itself (`ContactActions`, the WhatsApp message and email subject carrying
+  the number), so the model never writes a phone number. **A question carrying
+  a phone number, an email or a link is said back under the box and never
+  sent** (`carriesContact`, the same rule on both sides); a tracking number is
+  not one (its check digit says so, with or without SL), nor is a date or a
+  price, and a number typed into a question on Help is found and looked up.
+  Thirty questions an hour per address (`MAX_ASKS_PER_HOUR`), counted in
+  `ai_requests` before the call; a question refused for its contents is not
+  counted.
+- **The desk's order messages** ("Fill from a message", `FromMessage` on
+  `/staff/new`): an order pasted from WhatsApp or email is read into the
+  form's boxes, held to the form's own rules first (`readIntake`: a
+  governorate one of six, a Kuwaiti phone or kept as typed so the form says
+  so, pieces 1–99, an amount in dinars, a day not past). Nothing is created:
+  the filled boxes are marked "From the message" until changed, the note says
+  how many and which were not found, and Undo puts the form back. The message
+  is not kept, and the box says it goes to Google's Gemini.
+
+**Walked through the real Worker code**: `.scratch/shiplee-gateway.mts` serves
+`Backend/gateway`'s own `handle` locally with only Gemini stood in, so a walk
+exercises the token, the door and the call as deployed.
+
+## The desk's day, filters, export and labels
+
+**The day at a glance** (`summary`, Kuwait's day): waiting for pickup (and how
+many were booked today), with drivers now and the cash they carry, delivered
+today, and needing attention — each tile opening the shipments it counts.
+**Filters by where a parcel stands** (`STATUS_GROUPS`: waiting, on the way,
+with a driver, needs attention, delivered, returned or cancelled), each saying
+its count for the current search before it is pressed, in the address with the
+search. **Export** downloads what the list shows as a CSV (`server/csv.ts`): a
+byte-order mark so Excel reads the Arabic, the headings in the desk's
+language, Kuwait times, at most 5,000 rows, and a cell that starts like a
+formula given an apostrophe, so a sender typed as `=HYPERLINK(…)` stays text.
+
+**Labels**, one per piece, at `/staff/shipments/:id/label`, sized for
+100 × 150 mm label paper and printed with the browser's own Print (`@page`,
+measured: two pages of 282.96 × 425.04 pt for two pieces). Each carries the
+tracking number as a Code 128 barcode and in large digits, the recipient, the
+area and governorate, the address, the sender, the cash to collect, "Piece 1
+of 2", the expected day and a QR code to the tracking page. **Captions in both
+languages and the layout never mirrored**: a label is read by drivers and hubs
+whatever the desk's language. **The barcode is drawn here** (`shared/code128.ts`)
+because a library that writes `style` attributes is refused by the security
+policy; every one of its 107 patterns is checked against jsbarcode in the
+tests (a dev dependency only). **The QR code** is `qrcode-generator`'s
+encoding drawn as one SVG path (`shared/qr.ts`), read back by jsQR in its
+test. Label colours are their own tokens (`--label-ink`, `--label-paper`),
+black on white whatever the palette. The desk is a chunk of its own, so a
+customer's visit downloads none of it.
+
+## The customer's pages, this round
+
+**Recently tracked** (`src/recent.ts`): the last five numbers this device
+found, each with the status last seen, in the home page's card, each
+removable and Clear for all — on the device only, and only a number the server
+found is remembered. **The tracking page** says when it last checked, with
+Refresh, and asks again every minute while a parcel is moving and the page is
+in view; Share hands the page's address to the phone's share sheet or the
+clipboard; and "Need help with this parcel?" offers WhatsApp, a call and email
+with the number already in the message. **On a phone the four steps are
+rows**, the icon beside the words, rather than a card a screen tall each.
+
 ## Checks
 
 `pnpm check`, `pnpm test`, `pnpm build`, `pnpm smoke`, run by

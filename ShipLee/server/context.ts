@@ -10,6 +10,11 @@
  *                                   the password.
  *   SHIPLEE_PHONE, SHIPLEE_WHATSAPP, SHIPLEE_EMAIL
  *                                   the contact details the help page shows.
+ *   SHIPLEE_AI_URL, SHIPLEE_AI_SECRET
+ *                                   ShipLee AI: the Cloudflare Worker that holds
+ *                                   the Gemini key, and the secret it shares with
+ *                                   this server (`gateway.ts`). Unset, ShipLee AI
+ *                                   is not offered.
  *
  * Nothing here throws: an unset value turns its feature off, and the pages say
  * so in words.
@@ -20,6 +25,7 @@ import { memoryStore, sqlStore } from "./store.js";
 import type { Store } from "./store.js";
 import { staffKey } from "./auth.js";
 import { contactFromEnv } from "./contact.js";
+import { aiFromEnv } from "./gateway.js";
 
 let kept: { key: string; store: Store | null } | null = null;
 
@@ -28,5 +34,5 @@ export function contextFromEnv(env: Record<string, string | undefined> = process
   const demo = env.SHIPLEE_DEMO === "1" || env.SHIPLEE_DEMO === "true";
   const key = `${url}|${demo}`;
   if (!kept || kept.key !== key) kept = { key, store: url ? sqlStore(postgresDb(url)) : demo ? memoryStore() : null };
-  return { store: kept.store, staff: staffKey(env), contact: contactFromEnv(env) };
+  return { store: kept.store, staff: staffKey(env), contact: contactFromEnv(env), ai: aiFromEnv(env) };
 }

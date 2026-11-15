@@ -145,12 +145,14 @@ function isClaims(value: unknown): value is GatewayClaims {
 }
 
 /**
- * The claims, or null for anything that is not a live token NetLet signed:
- * a bad signature, a wrong secret, an expired one, and one that lives longer
- * than a token is ever minted for — which only a server bug or a leaked
- * secret produces, and neither should be honoured.
+ * What a `v1.<claims>.<signature>` token says, if `secret` signed it, before
+ * anybody has asked whether the claims are the right shape or still live —
+ * so null for a bad signature, a wrong secret or a body that is not JSON.
+ * NetLet's tokens are held to `isClaims` by `verifyGatewayToken`; the Worker's
+ * door for ShipLee (`Backend/gateway/src/shiplee.ts`) holds ShipLee's, signed
+ * with a secret of their own, to theirs.
  */
-export async function verifyGatewayToken(token: string, secret: string, nowSeconds: number): Promise<GatewayClaims | null> {
+export async function readSignedClaims(token: string, secret: string): Promise<unknown> {
   if (secret.length < MIN_SECRET_LENGTH || token.length > MAX_TOKEN_LENGTH) return null;
   const [version, payload, signed, ...rest] = token.split(".");
   if (version !== "v1" || payload === undefined || signed === undefined || rest.length) return null;
@@ -159,12 +161,21 @@ export async function verifyGatewayToken(token: string, secret: string, nowSecon
   if (!signature || !body) return null;
   const valid = await crypto.subtle.verify("HMAC", await hmacKey(secret, "verify"), signature, encoder.encode(`v1.${payload}`));
   if (!valid) return null;
-  let claims: unknown;
   try {
-    claims = JSON.parse(new TextDecoder().decode(body));
+    return JSON.parse(new TextDecoder().decode(body));
   } catch {
     return null;
   }
+}
+
+/**
+ * The claims, or null for anything that is not a live token NetLet signed:
+ * a bad signature, a wrong secret, an expired one, and one that lives longer
+ * than a token is ever minted for — which only a server bug or a leaked
+ * secret produces, and neither should be honoured.
+ */
+export async function verifyGatewayToken(token: string, secret: string, nowSeconds: number): Promise<GatewayClaims | null> {
+  const claims = await readSignedClaims(token, secret);
   if (!isClaims(claims)) return null;
   if (claims.exp <= nowSeconds - TOKEN_SKEW_SECONDS) return null;
   if (claims.exp > nowSeconds + TOKEN_TTL_SECONDS + TOKEN_SKEW_SECONDS) return null;
