@@ -22,6 +22,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
   { label: "admin.navCatalogue", links: [
     { href: "/admin/products", label: "admin.products", need: "product.view" },
     { href: "/admin/stock", label: "admin.stock", need: "product.view" },
+    /* How many opened each product, in the app or on the website, and what came of it (0084). */
+    { href: "/admin/views", label: "views.title", need: "product.view" },
     { href: "/admin/import", label: "admin.import", need: "product.create" },
     { href: "/admin/bundles", label: "admin.bundles", need: "product.view" },
     { href: "/admin/review", label: "admin.review", need: "product.review" },

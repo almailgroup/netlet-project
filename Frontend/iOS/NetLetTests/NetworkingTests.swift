@@ -1367,6 +1367,48 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(removed.vendorId, 2)
     }
 
+    /// Product views (migration 0084), as a real server reported a store's
+    /// two months of views to its owner and to NetLet: every channel in its
+    /// order, the shares adding up, a reading of demand per product the app has
+    /// words for, and the store's name only on NetLet's list across stores.
+    func testAProductViewsReportDecodes() async throws {
+        let mine = try await client.call(API.productViews, .init(range: 30))
+        XCTAssertTrue(mine.ready)
+        XCTAssertEqual(mine.range, 30)
+        XCTAssertEqual(mine.days.count, 30)
+        XCTAssertEqual(mine.channels.map(\.channel), ViewsWords.channels)
+        XCTAssertEqual(mine.channels.reduce(0) { $0 + $1.percent }, 100)
+        XCTAssertGreaterThan(mine.totals.views.current, 0)
+        XCTAssertEqual(mine.days.reduce(0) { $0 + $1.views }, mine.totals.views.current)
+        XCTAssertFalse(mine.products.isEmpty)
+        XCTAssertTrue(mine.products.allSatisfy { $0.vendorName == nil }, "a store's own list names no store")
+        XCTAssertTrue(mine.products.allSatisfy { Phrasebook.shared.has(ViewsWords.demand($0.demand)) && Phrasebook.shared.has(ViewsWords.explain($0.demand)) })
+        XCTAssertTrue(mine.sources.allSatisfy { Phrasebook.shared.has(ViewsWords.source($0.source)) })
+        let row = try XCTUnwrap(mine.products.first)
+        XCTAssertEqual(row.channels.app + row.channels.webPhone + row.channels.webComputer, row.views)
+
+        let admin = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "admin"))
+        let all = try await admin.call(API.productViews, .init(range: 30))
+        XCTAssertTrue(all.products.contains { $0.vendorName != nil }, "NetLet's list says whose each product is")
+        XCTAssertEqual(try TRPCClient.encodeInput(API.ViewsQuery(range: 7)), #"{"json":{"range":7}}"#, "no store, no product, nothing sent")
+    }
+
+    /// The phone's own list of products counted today: a second look is a view and not a visitor.
+    func testAPhoneCountsAProductOnceADay() {
+        let first = ViewCounting.countToday(nil, id: "12", day: "2026-11-15")
+        XCTAssertTrue(first.first)
+        XCTAssertFalse(ViewCounting.countToday(first.next, id: "12", day: "2026-11-15").first)
+        XCTAssertTrue(ViewCounting.countToday(first.next, id: "12", day: "2026-11-16").first, "a new Kuwaiti day starts afresh")
+        XCTAssertEqual(ViewCounting.kuwaitDay(Date(timeIntervalSince1970: 1_794_776_400)), "2026-11-16", "21:00 UTC is the next day in Kuwait")
+        let sources = ViewSources()
+        sources.appeared("store")
+        sources.note("search")
+        XCTAssertEqual(sources.take(), "search")
+        XCTAssertEqual(sources.take(), "store", "a hint is spent once")
+        sources.note("other", now: Date(timeIntervalSinceNow: -60))
+        XCTAssertEqual(sources.take(), "store", "a stale hint is let go")
+    }
+
     /// "Your profile"'s details, as the server answered the demo shopper.
     func testTheProfilesDetailsDecode() async throws {
         let shopper = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "shopper"))

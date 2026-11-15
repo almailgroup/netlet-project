@@ -89,6 +89,11 @@ struct PortalProductEditorView: View {
         section("details", l.t("admin.sectionDetails")) {
             DetailsSection(product: product, categories: categories, mayEdit: mayEdit) { await reload() }
         }
+        /* How many opened it, in the app or on the website, and what came of it (0084). */
+        ProductViewsCard(productId: product.id, published: product.status == "published")
+            .padding(16)
+            .portalSurface(cornerRadius: 18)
+            .id("views")
         section("photos", l.t("admin.images")) {
             GallerySection(product: product, mayEdit: mayEdit) { await reload() }
         }

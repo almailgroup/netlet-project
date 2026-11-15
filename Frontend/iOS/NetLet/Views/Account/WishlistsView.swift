@@ -348,7 +348,7 @@ struct WishlistDetailView: View {
 
     var body: some View {
         ModelHost(make: { WishlistDetailModel(listId: listId, api: app.services.api, account: app.services.account, language: l.current) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }) {
+            ShopPage(header: false, refresh: { await model.load() }, viewSource: "account") {
                 // Who can see this list, under its name: a private list read
                 // "Lists to share with family and friends", the section's line.
                 AccountSection(title: model.detail.value?.list.title ?? l.t("account.sectionWishlists"), hint: model.detail.value.map { l.t($0.list.visibility == "public" ? "wish.publicNote" : "wish.privateNote") } ?? l.t("account.hint.wishlists")) {

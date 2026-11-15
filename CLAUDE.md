@@ -7405,6 +7405,86 @@ the stock page, the rail and the drawer — axe clean on each, no sideways
 scroll, no page errors. The co-pilot's `<header>` was a second page banner
 to a screen reader until it was a plain block; found by the walk.
 
+## Product views
+
+**A store sees how many people opened each of its products' pages, in the
+app or on the website, and whether they went on to buy — on the owner's word**
+("metrics of product views … shown to the vendor … categorize it, by app
+views and website views … know if the product has demand or not"; migration
+0084, `product_views`, approved as shown; `Shared/commerce/productViews.ts`
+the rule, pure; `Backend/src/services/productViews.ts` the database half).
+
+- **One row per product, Kuwaiti day, channel and source, holding two counts
+  and nothing about who.** `views` is every opening; `visitors` the first
+  opening of that product on that device that day. The device remembers what
+  it counted today (`netlet.viewsCounted`, through `browserStore` on the web
+  and `UserDefaults` in the app, at most 400 ids, dropped when the Kuwaiti day
+  turns), so the server keeps no browsing history and no list of visitors; a
+  period's visitors are its days' summed, so somebody who looks on three days
+  is three. The channel is `app`, `web_phone` (a coarse pointer) or
+  `web_computer`. The source is where the page was opened from — home,
+  search, browse (a department, Categories, the brands, the stores, Deals),
+  store, product (a related shelf), account (Saved, the cart, orders),
+  outside (another site, a typed or shared link) and other (the assistant, a
+  guide) — read on the web from the history entry's own `netletFrom`
+  (`sourceOfPath`; the entries `inAppBack` keeps), with a search suggestion
+  and the assistant's shelf leaving a hint good for ten seconds
+  (`noteViewSource`), and in the app from the page the product was pushed
+  from (`ViewSources`: each `ShopPage`'s `viewSource`, taken as the product's
+  model is made), the search sheet and the chat leaving the same hint. A
+  reload, or Back to the page, is another view and not another visitor.
+- **Who is not counted is decided in the one statement that counts**
+  (`recordProductView`, an insert-select from the product and its store with
+  `on conflict` adding): the store's own team (a `vendor_members` row on that
+  product's store), an administrator, an employee with a grant, a product not
+  published, a store not approved — and, on the device, the demo build, an
+  automated browser that says so (`navigator.webdriver`), the app's UI tests
+  and screenshots. `commerce.recordView` is public and answers `{ counted }`;
+  the page says nothing either way. Not throttled: a count is an increment,
+  the visitor flag is the device's word, and a script can only inflate one
+  product's views, which demand reads against orders anyway.
+- **Demand is views read against what people did** (`demandOf`): no views is
+  "No views"; under `MIN_VISITORS_TO_JUDGE` (10) visitors "Too few views to
+  judge"; visitors and no orders "Viewed, not bought"; orders per hundred
+  visitors at or above the listed products' own average "Strong demand"; else
+  "Some demand". Orders are distinct orders with a line of the product in the
+  period, never a cancelled order or an exchange's zero-priced line; "In
+  carts" is bag lines made in the period — both scoped to the store in the
+  query, like everything else here.
+- **The page is `/admin/views`** (`product.view`, after Stock in the
+  catalogue group; the app's `PortalViewsView`): 7, 30 or 90 days, kept on
+  the device; views, visitors, orders and orders per hundred visitors, each
+  against the period before; views each day against the period before, a
+  table a press away; App or website, one segmented bar with each channel's
+  views, visitors and share — the app indigo, the website on a phone cyan, on
+  a computer amber, fixed per channel and never by rank; Where they came
+  from, ranked bars in one hue; and every product with its views and their
+  change, visitors, the channel split, carts, orders and demand, searched and
+  sorted by views, orders or "Viewed, not bought first". A product nobody
+  opened is one line on a phone, not four zeros. An administrator sees every
+  store's together or picks one. **Each product's editor has the same for
+  that product** (`ProductViewsCard`, `#views`, after its details), and says
+  for one not on sale that nothing is counted until it is.
+- **Closed, not broken, until 0084 is pasted**: a missing table counts
+  nothing (`counted: false`) and the page says Product views are not being
+  counted yet (`ready: false`). The privacy policy says what is kept
+  (`privacy.keep.views`) and that the device keeps the day's list, and
+  `LEGAL_UPDATED` moved.
+
+Walked on a production build against a local Postgres at 320, 390 and 1440 in
+both languages: the page and the editor's card axe clean with no sideways
+scroll, the attention sort and the search; a product opened from the home page
+on a phone counting `web_phone/home`, a reload a view and not a visitor, a
+link opened straight `outside`, a suggestion on a computer
+`web_computer/search`, and the store's signed-in owner and an automated
+browser not counted. **A note under a segmented bar's label now wraps under
+it** (`SegmentedBar`): beside the label it cut the Arabic "الموقع على
+الهاتف" short in the editor's narrow card. The app's answers were recorded
+off that server (`demo.inventory.views.json`, `.admin.json`);
+`testAProductViewsReportDecodes` and `testAPhoneCountsAProductOnceADay` hold
+them, and the CI photographs the page (`100-product-views`). Not yet seen on a
+phone from this sandbox.
+
 ## Colour and contrast
 
 **The brand orange is a fill, not an ink.** `#f2683a` on a pale surface
@@ -8678,9 +8758,11 @@ of its own, fetched only when a PDF over 5 MB is chosen in the editor) — then
 1,076 KB (310 KB), the crash screen's words for a stale build in both
 languages and the rule that knows one — then 1,079 KB (311 KB), the
 warranty plans' and installation's words in both languages, which the
-product page's picker shares with the editor — and is 1,081 KB (311 KB) now,
-the photo zoom's words for a mouse in both languages and the second-click
-hook —
+product page's picker shares with the editor — then 1,081 KB (311 KB), the
+photo zoom's words for a mouse in both languages and the second-click hook —
+and is 1,093 KB (315 KB) now, the product views' words in both languages (the
+portal's page and the editor's card share them, and the dictionary is one
+module) —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

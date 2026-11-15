@@ -25,6 +25,7 @@
  * Copy — somebody sending "what do I need for a car seat" to their partner
  * should not have to select a chat bubble on a phone.
  */
+import { noteViewSource } from "@/lib/productViews";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Check, Copy, ImageOff, Plus, Search } from "lucide-react";
@@ -121,7 +122,7 @@ function SearchShelf({ term, onNavigate }: { term: string; onNavigate?: () => vo
             <li key={product.id} className="relative w-[136px] shrink-0 snap-start">
               <Link
                 href={`/products/${product.handle}`}
-                onClick={onNavigate}
+                onClick={() => { noteViewSource("other"); onNavigate?.(); }}
                 className="block h-full overflow-hidden rounded-2xl bg-white ring-1 ring-[#0a285a]/10 transition-shadow hover:shadow-[0_6px_16px_rgba(10,40,90,.12)]"
               >
                 <span className="block aspect-square bg-[#f4f6f9]">

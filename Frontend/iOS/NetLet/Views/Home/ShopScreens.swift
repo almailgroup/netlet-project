@@ -25,7 +25,7 @@ struct CategoriesView: View {
     var body: some View {
         let words = term.trimmingCharacters(in: .whitespacesAndNewlines)
         ShopPage(root: true, logo: false, refresh: { await app.shelf.load(language: l.current, force: true) },
-                 pageSearch: PageSearch(text: $term, placeholder: "search.inCategories")) {
+                 pageSearch: PageSearch(text: $term, placeholder: "search.inCategories"), viewSource: "browse") {
             VStack(alignment: .leading, spacing: 0) {
                 Text(l.t("nav.categories")).pageTitle()
                 if !words.isEmpty {
@@ -78,7 +78,7 @@ struct SavedView: View {
         let found = (catalogue.value ?? []).filter { ids.contains($0.id) }
             .sorted { (ids.firstIndex(of: $0.id) ?? 0) < (ids.firstIndex(of: $1.id) ?? 0) }
         let missing = catalogue.value == nil ? 0 : max(0, ids.count - found.count)
-        ShopPage(refresh: { if tab == .saved { await load() } }) {
+        ShopPage(refresh: { if tab == .saved { await load() } }, viewSource: "account") {
             VStack(alignment: .leading, spacing: 0) {
                 Text(l.t("saved.andWishlists")).pageTitle()
                 TextTabs(tabs: [TextTab(id: Showing.saved, label: l.t("footer.savedItems")), TextTab(id: Showing.wishlists, label: l.t("saved.tabWishlists"))], selection: tab) { tab = $0 }
@@ -213,7 +213,7 @@ struct BrandsView: View {
 
     var body: some View {
         let brands = app.shelf.brands
-        ShopPage(refresh: { await app.shelf.load(language: l.current, force: true) }) {
+        ShopPage(refresh: { await app.shelf.load(language: l.current, force: true) }, viewSource: "browse") {
             VStack(alignment: .leading, spacing: 0) {
                 Text(l.t("brands.title")).pageTitle()
                 Text(l.t("brands.note"))
@@ -249,7 +249,7 @@ struct StoresView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ShopPage(refresh: { await load() }) {
+        ShopPage(refresh: { await load() }, viewSource: "browse") {
             VStack(alignment: .leading, spacing: 0) {
                 Text(l.t("stores.title")).pageTitle()
                 if let list = stores.value {
@@ -309,7 +309,7 @@ struct StoreView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ShopPage(refresh: { await load() }) {
+        ShopPage(refresh: { await load() }, viewSource: "store") {
             VStack(alignment: .leading, spacing: 0) {
                 switch page {
                 case .idle, .loading:

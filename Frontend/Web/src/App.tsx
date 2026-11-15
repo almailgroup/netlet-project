@@ -62,6 +62,7 @@ const AdminPeople = lazyPage(() => import("@/pages/admin/People"));
 const AdminAudit = lazyPage(() => import("@/pages/admin/Audit"));
 const AdminFraud = lazyPage(() => import("@/pages/admin/Fraud"));
 const AdminStock = lazyPage(() => import("@/pages/admin/Stock"));
+const AdminViews = lazyPage(() => import("@/pages/admin/Views"));
 const AdminOrders = lazyPage(() => import("@/pages/admin/Orders"));
 const AdminImport = lazyPage(() => import("@/pages/admin/Import"));
 const AdminPromotions = lazyPage(() => import("@/pages/admin/Promotions"));
@@ -303,6 +304,7 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/admin/products/:id", page: AdminProductEditor, frame: "admin" },
   { path: "/admin/review", page: AdminReview, frame: "admin" },
   { path: "/admin/stock", page: AdminStock, frame: "admin" },
+  { path: "/admin/views", page: AdminViews, frame: "admin" },
   { path: "/admin/orders", page: AdminOrders, frame: "admin" },
   { path: "/admin/import", page: AdminImport, frame: "admin" },
   { path: "/admin/promotions", page: AdminPromotions, frame: "admin" },

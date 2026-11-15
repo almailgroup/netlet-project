@@ -72,6 +72,8 @@ import {
 import { askCopilot, copilotBrief } from "../services/copilot.js";
 import { COPILOT_TURNS } from "../../../Shared/ai/copilot.js";
 import { dashboard, stockHealth } from "../services/dashboard.js";
+import { productViewsReport } from "../services/productViews.js";
+import { DEFAULT_VIEW_RANGE } from "../../../Shared/commerce/productViews.js";
 import { DEFAULT_DASHBOARD_RANGE } from "../../../Shared/commerce/dashboard.js";
 import { assertCan, GRANTABLE, VENDOR_ROLES, type Capability } from "../../../Shared/inventory/permissions.js";
 import { GrantRefused, setGrant } from "../services/grants.js";
@@ -992,6 +994,27 @@ export const inventoryRouter = router({
     .query(async ({ ctx, input }) => {
       const actor = await resolveActor(ctx.user);
       return guard(() => dashboard(actor, input?.range ?? DEFAULT_DASHBOARD_RANGE));
+    }),
+
+  /**
+   * How many people opened the store's product pages, by channel and source,
+   * beside what they ordered (migration 0084) — the whole report, or one
+   * product's for its editor. A store reads its own; an administrator any
+   * store's, or all of them.
+   */
+  views: protectedProcedure
+    .input(z.object({
+      range: z.union([z.literal(7), z.literal(30), z.literal(90)]).optional(),
+      vendorId: rowId.optional(),
+      productId: rowId.optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user);
+      return guard(() => productViewsReport(actor, {
+        range: input?.range ?? DEFAULT_VIEW_RANGE,
+        vendorId: input?.vendorId,
+        productId: input?.productId,
+      }));
     }),
 
   /** The shelf's health alone: what the stock page opens on, for any rank that reads the shelf. */

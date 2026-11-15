@@ -94,6 +94,29 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
     en: { one: "1 sold" },
     ar: { one: "بيعت قطعة واحدة", two: "بيعت قطعتان", many: "بيعت {count} قطعة", other: "بيعت {count} قطعة" },
   },
+  "views.visitorsOn": {
+    param: "count",
+    en: { one: "1 visitor" },
+    ar: { zero: "لا زوار", one: "زائر واحد", two: "زائران", many: "{count} زائراً", other: "{count} زائر" },
+  },
+  "views.inCartsCount": {
+    param: "count",
+    en: { one: "In 1 cart" },
+    ar: { one: "في سلة واحدة", two: "في سلتين", few: "في {count} سلال" },
+  },
+  "views.unitsOrdered": {
+    param: "count",
+    en: { one: "1 unit" },
+    ar: { one: "قطعة واحدة", two: "قطعتان", many: "{count} قطعة", other: "{count} قطعة" },
+  },
+  "views.shown": {
+    param: "count",
+    ar: {
+      two: "يظهر {shown} من منتجين، الأكثر مشاهدة أولاً.",
+      many: "يظهر {shown} من {count} منتجاً، الأكثر مشاهدة أولاً.",
+      other: "يظهر {shown} من {count} منتج، الأكثر مشاهدة أولاً.",
+    },
+  },
   "stock.daysLeft": {
     param: "count",
     en: { one: "About a day left" },

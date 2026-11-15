@@ -135,6 +135,8 @@ enum PortalPage: Hashable, Sendable {
     case product(Int)
     case orders
     case stock
+    /// How many opened each product, in the app or on the website (migration 0084).
+    case views
     case offers
     case returns
     /// Warranty claims on things that stopped working (migration 0072).
@@ -223,6 +225,7 @@ enum PortalPage: Hashable, Sendable {
             switch rest[0] {
             case "orders": self = .orders
             case "stock": self = .stock
+            case "views": self = .views
             case "offers": self = .offers
             case "returns": self = .returns
             case "warranty": self = .warranty

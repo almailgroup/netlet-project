@@ -13,7 +13,7 @@ struct WalletView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.rewards) } }) { rewards in
-            ShopPage(header: false, refresh: { await rewards.load() }) {
+            ShopPage(header: false, refresh: { await rewards.load() }, viewSource: "account") {
                 AccountSection(title: l.t("account.wallet"), hint: l.t("account.hint.wallet")) {
                     LoadStateView(state: rewards.state, retry: { await rewards.load() }) { view in
                         content(view, reload: { await rewards.load() })
@@ -282,7 +282,7 @@ struct AffiliateView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.affiliate) } }) { mine in
-            ShopPage(header: false, refresh: { await mine.load() }) {
+            ShopPage(header: false, refresh: { await mine.load() }, viewSource: "account") {
                 AccountSection(title: l.t("affiliate.section"), hint: l.t("account.hint.affiliate")) {
                     LoadStateView(state: mine.state, retry: { await mine.load() }) { view in
                         if let view {
@@ -638,7 +638,7 @@ struct SubscriptionsView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.standingOrders) } }) { mine in
-            ShopPage(header: false, refresh: { await mine.load() }) {
+            ShopPage(header: false, refresh: { await mine.load() }, viewSource: "account") {
                 AccountSection(title: l.t("subscriptions.section"), hint: l.t("account.hint.subscriptions")) {
                     LoadStateView(state: mine.state, retry: { await mine.load() }) { rows in
                         if rows.isEmpty {

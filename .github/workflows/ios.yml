@@ -290,6 +290,7 @@ jobs:
             shot 98-occasion-page "$lang" "page:category/all?occasion=white-friday" curated
             # A product's catalogues in its editor: on the page, waiting for NetLet, turned down.
             shot 99-catalogues "$lang" "portal:/admin/products/10#catalogues" shopper
+            shot 100-product-views "$lang" "portal:/admin/views" shopper
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

@@ -254,8 +254,15 @@ export function SegmentedBar({ segments, label }: { segments: Segment[]; label: 
             className={`flex items-center gap-3 rounded-lg px-2 py-1.5 text-[13px] transition-colors ${hover === segment.key ? "bg-[#f4f6fb]" : ""}`}
           >
             {segment.icon ?? <span aria-hidden className="size-2.5 shrink-0 rounded-[3px]" style={{ background: segment.color }} />}
-            <span dir="auto" className="min-w-0 flex-1 truncate text-[#0a285a]">{segment.label}</span>
-            {segment.note ? <span className="shrink-0 text-[12px] text-[#536b8c]">{segment.note}</span> : null}
+            {/* A note goes under its label, so a narrow card wraps rather than cutting a word in half. */}
+            {segment.note ? (
+              <span className="min-w-0 flex-1">
+                <span dir="auto" className="block text-[#0a285a]">{segment.label}</span>
+                <span className="block text-[12px] text-[#536b8c]">{segment.note}</span>
+              </span>
+            ) : (
+              <span dir="auto" className="min-w-0 flex-1 truncate text-[#0a285a]">{segment.label}</span>
+            )}
             <span className="shrink-0 font-semibold tabular-nums text-[#0a285a]">{segment.value}</span>
             <span className="w-11 shrink-0 text-end tabular-nums text-[#536b8c]"><bdi dir="ltr">{segment.percent}%</bdi></span>
           </li>

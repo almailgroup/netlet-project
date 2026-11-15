@@ -24,6 +24,11 @@
           "need": "product.view"
         },
         {
+          "href": "/admin/views",
+          "label": "views.title",
+          "need": "product.view"
+        },
+        {
           "href": "/admin/import",
           "label": "admin.import",
           "need": "product.create"

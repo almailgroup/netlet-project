@@ -14,6 +14,7 @@ struct PortalRouter: View {
         case .product(let id): PortalProductEditorView(productId: id)
         case .orders: PortalOrdersView()
         case .stock: PortalStockView()
+        case .views: PortalViewsView()
         case .offers: PortalOffersView()
         case .returns: PortalReturnsView()
         case .warranty: PortalWarrantyView()

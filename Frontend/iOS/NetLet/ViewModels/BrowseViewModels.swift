@@ -704,10 +704,16 @@ final class ProductDetailViewModel {
     private(set) var adding = false
 
     private let catalog: CatalogServicing
+    /// Which part of the shop this product was opened from, for its store's
+    /// view count (`ViewSources`), read as the model is made.
+    let source: String
+    /// Counted once a page, however often it loads again.
+    var counted = false
 
-    init(handle: String, catalog: CatalogServicing) {
+    init(handle: String, catalog: CatalogServicing, source: String = "other") {
         self.handle = handle
         self.catalog = catalog
+        self.source = source
     }
 
     func load(language: Language) async {

@@ -17,7 +17,7 @@ struct HomeView: View {
 
     var body: some View {
         let shelf = app.shelf
-        ShopPage(root: true, refresh: { await shelf.load(language: l.current, force: true) }) {
+        ShopPage(root: true, refresh: { await shelf.load(language: l.current, force: true) }, viewSource: "home") {
             // **One block, not a row per shelf**, and that is the home page's
             // scrolling, on the owner's word ("I can't scroll, it stops"). In
             // the frame's lazy stack every shelf was a row of its own, made as

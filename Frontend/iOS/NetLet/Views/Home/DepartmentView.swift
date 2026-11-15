@@ -102,7 +102,7 @@ private struct BrowsePage: View {
         // The Deals page searches its own deals, on the owner's word
         // ("the search bar should only search for what's in the specific page").
         ShopPage(root: root, logo: false, refresh: { await model.load(language: l.current) }, assistant: true, assistantFolded: true, searchTerm: model.searchTerm,
-                 pageSearch: model.isDealsPage ? PageSearch(text: $model.pageTerm, placeholder: "search.inDeals") : nil) {
+                 pageSearch: model.isDealsPage ? PageSearch(text: $model.pageTerm, placeholder: "search.inDeals") : nil, viewSource: model.searchTerm == nil ? "browse" : "search") {
             VStack(alignment: .leading, spacing: 0) {
                 // One of NetLet's occasions with a picture opens on it, over its name.
                 if model.query == nil, let banner = model.curatedOccasion?.imageUrl {

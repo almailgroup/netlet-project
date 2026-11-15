@@ -535,7 +535,7 @@ struct GuideView: View {
 
     var body: some View {
         ModelHost(make: { Loader { try await app.services.api.call(API.guide, .init(slug: slug)) } }) { guide in
-            ShopPage(refresh: { await guide.load() }) {
+            ShopPage(refresh: { await guide.load() }, viewSource: "other") {
                 LoadStateView(state: guide.state, retry: { await guide.load() }) { found in
                     if let found {
                         content(found)

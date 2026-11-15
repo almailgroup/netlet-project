@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { noteViewSource } from "@/lib/productViews";
 import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
 import { useFeature } from "@/hooks/useFeature";
@@ -249,6 +250,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
   const [, navigate] = useLocation();
 
   const selectSuggestion = (product: Product) => {
+    /* The product page opens over whatever page the field sits on: say it came from a search. */
+    noteViewSource("search");
     if (typed) setRecent(rememberSearch(typed));
     applySearch(product.title);
     onSelectProduct(product);

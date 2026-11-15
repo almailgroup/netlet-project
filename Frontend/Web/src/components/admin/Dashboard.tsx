@@ -82,7 +82,7 @@ function ChangeLine({ change, days }: { change: number | null; days: number }) {
   );
 }
 
-function Kpi({ label, value, change, days, series, color, icon }: {
+export function Kpi({ label, value, change, days, series, color, icon }: {
   label: string;
   value: ReactNode;
   change: number | null;

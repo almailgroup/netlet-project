@@ -7,7 +7,7 @@ struct ProductDetailView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        ModelHost(make: { ProductDetailViewModel(handle: handle, catalog: app.services.catalog) }) { model in
+        ModelHost(make: { ProductDetailViewModel(handle: handle, catalog: app.services.catalog, source: app.viewSources.take()) }) { model in
             content(model)
         }
     }
@@ -19,7 +19,7 @@ struct ProductDetailView: View {
                 ProductPage(product: product, model: model)
             } else {
                 // Waiting, failed or gone: still the shop's frame, with its way back.
-                ShopPage(logo: false, refresh: { await model.load(language: l.current) }) {
+                ShopPage(logo: false, refresh: { await model.load(language: l.current) }, viewSource: "product") {
                     LoadStateView(state: model.product, retry: { await model.load(language: l.current) }) { _ in
                         EmptyStateView(
                             systemImage: "shippingbox",
@@ -35,7 +35,14 @@ struct ProductDetailView: View {
         .task(id: l.current) {
             await model.load(language: l.current)
             // Opened, so the home page's "Previously viewed" and the picks can count it — on this phone alone.
-            if case .loaded(let found) = model.product, let found { app.viewed.remember(found.id) }
+            if case .loaded(let found) = model.product, let found {
+                app.viewed.remember(found.id)
+                // And counted for its store: a view, the app and where it was opened from — never who.
+                if !model.counted {
+                    model.counted = true
+                    app.countView(productId: found.id, source: model.source)
+                }
+            }
         }
     }
 }
@@ -70,7 +77,7 @@ private struct ProductPage: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
-        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product, assistantFolded: true) {
+        ShopPage(logo: false, refresh: { await model.load(language: l.current) }, assistant: !buttonsGone, assistantProduct: product, assistantFolded: true, viewSource: "product") {
             VStack(alignment: .leading, spacing: 0) {
                 ProductPhotos(product: product, index: $model.imageIndex) { photos = .photos }
                 buyBox

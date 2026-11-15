@@ -28,7 +28,7 @@ struct OrdersView: View {
                 reviews: { [api = app.services.api] in try await api.call(API.reviewableLines) }
             )
         }) { model in
-            ShopPage(header: false, refresh: { await model.loadAll() }) {
+            ShopPage(header: false, refresh: { await model.loadAll() }, viewSource: "account") {
                 VStack(alignment: .leading, spacing: 14) {
                     OrdersTop(model: model)
                     switch model.tab {
@@ -520,7 +520,7 @@ struct OrderDetailView: View {
 
     var body: some View {
         ModelHost(make: { OrderDetailViewModel(reference: reference, service: app.services.orders) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }) {
+            ShopPage(header: false, refresh: { await model.load() }, viewSource: "account") {
                 VStack(alignment: .leading, spacing: 16) {
                     BackLink(label: l.t("invoice.back"))
                         .padding(.bottom, -8)

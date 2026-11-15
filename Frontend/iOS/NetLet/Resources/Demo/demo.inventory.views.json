@@ -1,0 +1,852 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "range": 30,
+        "ready": true,
+        "days": [
+          {
+            "day": "2026-10-17",
+            "views": 35,
+            "visitors": 27,
+            "channels": {
+              "app": 17,
+              "web_phone": 16,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-10-18",
+            "views": 39,
+            "visitors": 29,
+            "channels": {
+              "app": 18,
+              "web_phone": 20,
+              "web_computer": 1
+            }
+          },
+          {
+            "day": "2026-10-19",
+            "views": 35,
+            "visitors": 29,
+            "channels": {
+              "app": 17,
+              "web_phone": 16,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-10-20",
+            "views": 39,
+            "visitors": 30,
+            "channels": {
+              "app": 19,
+              "web_phone": 18,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-10-21",
+            "views": 37,
+            "visitors": 29,
+            "channels": {
+              "app": 17,
+              "web_phone": 17,
+              "web_computer": 3
+            }
+          },
+          {
+            "day": "2026-10-22",
+            "views": 33,
+            "visitors": 25,
+            "channels": {
+              "app": 16,
+              "web_phone": 16,
+              "web_computer": 1
+            }
+          },
+          {
+            "day": "2026-10-23",
+            "views": 35,
+            "visitors": 29,
+            "channels": {
+              "app": 17,
+              "web_phone": 15,
+              "web_computer": 3
+            }
+          },
+          {
+            "day": "2026-10-24",
+            "views": 36,
+            "visitors": 27,
+            "channels": {
+              "app": 15,
+              "web_phone": 19,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-10-25",
+            "views": 28,
+            "visitors": 22,
+            "channels": {
+              "app": 15,
+              "web_phone": 11,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-10-26",
+            "views": 38,
+            "visitors": 27,
+            "channels": {
+              "app": 24,
+              "web_phone": 14,
+              "web_computer": 0
+            }
+          },
+          {
+            "day": "2026-10-27",
+            "views": 27,
+            "visitors": 22,
+            "channels": {
+              "app": 13,
+              "web_phone": 13,
+              "web_computer": 1
+            }
+          },
+          {
+            "day": "2026-10-28",
+            "views": 41,
+            "visitors": 34,
+            "channels": {
+              "app": 21,
+              "web_phone": 17,
+              "web_computer": 3
+            }
+          },
+          {
+            "day": "2026-10-29",
+            "views": 38,
+            "visitors": 30,
+            "channels": {
+              "app": 17,
+              "web_phone": 19,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-10-30",
+            "views": 35,
+            "visitors": 27,
+            "channels": {
+              "app": 16,
+              "web_phone": 17,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-10-31",
+            "views": 38,
+            "visitors": 31,
+            "channels": {
+              "app": 19,
+              "web_phone": 17,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-11-01",
+            "views": 42,
+            "visitors": 31,
+            "channels": {
+              "app": 21,
+              "web_phone": 19,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-11-02",
+            "views": 37,
+            "visitors": 27,
+            "channels": {
+              "app": 21,
+              "web_phone": 15,
+              "web_computer": 1
+            }
+          },
+          {
+            "day": "2026-11-03",
+            "views": 39,
+            "visitors": 29,
+            "channels": {
+              "app": 21,
+              "web_phone": 17,
+              "web_computer": 1
+            }
+          },
+          {
+            "day": "2026-11-04",
+            "views": 33,
+            "visitors": 25,
+            "channels": {
+              "app": 17,
+              "web_phone": 15,
+              "web_computer": 1
+            }
+          },
+          {
+            "day": "2026-11-05",
+            "views": 46,
+            "visitors": 34,
+            "channels": {
+              "app": 23,
+              "web_phone": 20,
+              "web_computer": 3
+            }
+          },
+          {
+            "day": "2026-11-06",
+            "views": 41,
+            "visitors": 32,
+            "channels": {
+              "app": 21,
+              "web_phone": 19,
+              "web_computer": 1
+            }
+          },
+          {
+            "day": "2026-11-07",
+            "views": 41,
+            "visitors": 31,
+            "channels": {
+              "app": 21,
+              "web_phone": 17,
+              "web_computer": 3
+            }
+          },
+          {
+            "day": "2026-11-08",
+            "views": 38,
+            "visitors": 29,
+            "channels": {
+              "app": 20,
+              "web_phone": 17,
+              "web_computer": 1
+            }
+          },
+          {
+            "day": "2026-11-09",
+            "views": 38,
+            "visitors": 30,
+            "channels": {
+              "app": 20,
+              "web_phone": 15,
+              "web_computer": 3
+            }
+          },
+          {
+            "day": "2026-11-10",
+            "views": 37,
+            "visitors": 28,
+            "channels": {
+              "app": 20,
+              "web_phone": 17,
+              "web_computer": 0
+            }
+          },
+          {
+            "day": "2026-11-11",
+            "views": 38,
+            "visitors": 29,
+            "channels": {
+              "app": 19,
+              "web_phone": 17,
+              "web_computer": 2
+            }
+          },
+          {
+            "day": "2026-11-12",
+            "views": 36,
+            "visitors": 29,
+            "channels": {
+              "app": 18,
+              "web_phone": 14,
+              "web_computer": 4
+            }
+          },
+          {
+            "day": "2026-11-13",
+            "views": 47,
+            "visitors": 33,
+            "channels": {
+              "app": 21,
+              "web_phone": 23,
+              "web_computer": 3
+            }
+          },
+          {
+            "day": "2026-11-14",
+            "views": 42,
+            "visitors": 34,
+            "channels": {
+              "app": 24,
+              "web_phone": 18,
+              "web_computer": 0
+            }
+          },
+          {
+            "day": "2026-11-15",
+            "views": 46,
+            "visitors": 33,
+            "channels": {
+              "app": 25,
+              "web_phone": 19,
+              "web_computer": 2
+            }
+          }
+        ],
+        "previousDays": [
+          {
+            "day": "2026-09-17",
+            "views": 28
+          },
+          {
+            "day": "2026-09-18",
+            "views": 28
+          },
+          {
+            "day": "2026-09-19",
+            "views": 29
+          },
+          {
+            "day": "2026-09-20",
+            "views": 32
+          },
+          {
+            "day": "2026-09-21",
+            "views": 27
+          },
+          {
+            "day": "2026-09-22",
+            "views": 27
+          },
+          {
+            "day": "2026-09-23",
+            "views": 29
+          },
+          {
+            "day": "2026-09-24",
+            "views": 29
+          },
+          {
+            "day": "2026-09-25",
+            "views": 32
+          },
+          {
+            "day": "2026-09-26",
+            "views": 31
+          },
+          {
+            "day": "2026-09-27",
+            "views": 34
+          },
+          {
+            "day": "2026-09-28",
+            "views": 24
+          },
+          {
+            "day": "2026-09-29",
+            "views": 30
+          },
+          {
+            "day": "2026-09-30",
+            "views": 34
+          },
+          {
+            "day": "2026-10-01",
+            "views": 26
+          },
+          {
+            "day": "2026-10-02",
+            "views": 33
+          },
+          {
+            "day": "2026-10-03",
+            "views": 31
+          },
+          {
+            "day": "2026-10-04",
+            "views": 30
+          },
+          {
+            "day": "2026-10-05",
+            "views": 28
+          },
+          {
+            "day": "2026-10-06",
+            "views": 33
+          },
+          {
+            "day": "2026-10-07",
+            "views": 30
+          },
+          {
+            "day": "2026-10-08",
+            "views": 29
+          },
+          {
+            "day": "2026-10-09",
+            "views": 28
+          },
+          {
+            "day": "2026-10-10",
+            "views": 32
+          },
+          {
+            "day": "2026-10-11",
+            "views": 37
+          },
+          {
+            "day": "2026-10-12",
+            "views": 29
+          },
+          {
+            "day": "2026-10-13",
+            "views": 33
+          },
+          {
+            "day": "2026-10-14",
+            "views": 41
+          },
+          {
+            "day": "2026-10-15",
+            "views": 29
+          },
+          {
+            "day": "2026-10-16",
+            "views": 29
+          }
+        ],
+        "totals": {
+          "views": {
+            "current": 1135,
+            "previous": 912,
+            "change": 24.5
+          },
+          "visitors": {
+            "current": 872,
+            "previous": 700,
+            "change": 24.6
+          },
+          "orders": {
+            "current": 4,
+            "previous": 0,
+            "change": null
+          }
+        },
+        "channels": [
+          {
+            "channel": "app",
+            "views": 573,
+            "visitors": 423,
+            "percent": 50
+          },
+          {
+            "channel": "web_phone",
+            "views": 507,
+            "visitors": 394,
+            "percent": 45
+          },
+          {
+            "channel": "web_computer",
+            "views": 55,
+            "visitors": 55,
+            "percent": 5
+          }
+        ],
+        "sources": [
+          {
+            "source": "home",
+            "views": 485,
+            "visitors": 361,
+            "percent": 43
+          },
+          {
+            "source": "search",
+            "views": 413,
+            "visitors": 309,
+            "percent": 36
+          },
+          {
+            "source": "browse",
+            "views": 199,
+            "visitors": 164,
+            "percent": 18
+          },
+          {
+            "source": "store",
+            "views": 22,
+            "visitors": 22,
+            "percent": 2
+          },
+          {
+            "source": "product",
+            "views": 16,
+            "visitors": 16,
+            "percent": 1
+          }
+        ],
+        "conversion": 0.6,
+        "products": [
+          {
+            "productId": 10,
+            "title": "Smart watch",
+            "titleAr": "ساعة ذكية",
+            "handle": "smart-watch",
+            "image": "/subcategories/electronics-wearables.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 2,
+            "orders": 2,
+            "views": 524,
+            "visitors": 376,
+            "previousViews": 433,
+            "change": 21,
+            "channels": {
+              "app": 245,
+              "web_phone": 233,
+              "web_computer": 46
+            },
+            "conversion": 0.5,
+            "demand": "some"
+          },
+          {
+            "productId": 2,
+            "title": "Brass desk lamp",
+            "titleAr": null,
+            "handle": "lamp",
+            "image": "/brand/collection-tech.svg",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 12,
+            "units": 4,
+            "orders": 3,
+            "views": 260,
+            "visitors": 183,
+            "previousViews": 218,
+            "change": 19.3,
+            "channels": {
+              "app": 139,
+              "web_phone": 112,
+              "web_computer": 9
+            },
+            "conversion": 1.6,
+            "demand": "strong"
+          },
+          {
+            "productId": 12,
+            "title": "Gaming console",
+            "titleAr": "جهاز ألعاب",
+            "handle": "gaming-console",
+            "image": "/subcategories/electronics-gaming.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 181,
+            "visitors": 147,
+            "previousViews": 146,
+            "change": 24,
+            "channels": {
+              "app": 101,
+              "web_phone": 80,
+              "web_computer": 0
+            },
+            "conversion": 0,
+            "demand": "notBuying"
+          },
+          {
+            "productId": 8,
+            "title": "Room heater",
+            "titleAr": "مدفأة غرفة",
+            "handle": "room-heater",
+            "image": "/subcategories/home-and-kitchen-home-appliances.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 117,
+            "visitors": 113,
+            "previousViews": 91,
+            "change": 28.6,
+            "channels": {
+              "app": 63,
+              "web_phone": 54,
+              "web_computer": 0
+            },
+            "conversion": 0,
+            "demand": "notBuying"
+          },
+          {
+            "productId": 11,
+            "title": "Wireless earbuds",
+            "titleAr": "سماعات لاسلكية",
+            "handle": "wireless-earbuds",
+            "image": "/subcategories/electronics-audio.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 53,
+            "visitors": 53,
+            "previousViews": 24,
+            "change": 120.8,
+            "channels": {
+              "app": 25,
+              "web_phone": 28,
+              "web_computer": 0
+            },
+            "conversion": 0,
+            "demand": "notBuying"
+          },
+          {
+            "productId": 7,
+            "title": "Wool scarf",
+            "titleAr": "وشاح صوف",
+            "handle": "wool-scarf",
+            "image": "/subcategories/style-accessories.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 12,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 9,
+            "title": "Thermal flask",
+            "titleAr": "ترمس حراري",
+            "handle": "thermal-flask",
+            "image": "/subcategories/home-and-kitchen-cookware.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 12,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 13,
+            "title": "Face cream",
+            "titleAr": "كريم للوجه",
+            "handle": "face-cream",
+            "image": "/subcategories/beauty-skincare.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 14,
+            "title": "Evening perfume",
+            "titleAr": "عطر مسائي",
+            "handle": "perfume",
+            "image": "/subcategories/beauty-fragrance.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 15,
+            "title": "Running shoes",
+            "titleAr": "حذاء للجري",
+            "handle": "running-shoes",
+            "image": "/subcategories/style-shoes.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 16,
+            "title": "Leather bag",
+            "titleAr": "حقيبة جلدية",
+            "handle": "leather-bag",
+            "image": "/subcategories/style-bags.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 17,
+            "title": "Basmati rice 5 kg",
+            "titleAr": "أرز بسمتي 5 كغ",
+            "handle": "basmati-rice",
+            "image": "/subcategories/grocery-pantry.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 18,
+            "title": "Arabic coffee",
+            "titleAr": "قهوة عربية",
+            "handle": "arabic-coffee",
+            "image": "/subcategories/grocery-beverages.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 19,
+            "title": "Desk lamp",
+            "titleAr": "مصباح مكتب",
+            "handle": "desk-lamp",
+            "image": "/subcategories/home-and-kitchen-decor.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          },
+          {
+            "productId": 20,
+            "title": "Tablet 11 inch",
+            "titleAr": "جهاز لوحي 11 بوصة",
+            "handle": "tablet",
+            "image": "/subcategories/electronics-tablets.webp",
+            "vendorName": null,
+            "published": true,
+            "inCarts": 0,
+            "units": 0,
+            "orders": 0,
+            "views": 0,
+            "visitors": 0,
+            "previousViews": 0,
+            "change": null,
+            "channels": {
+              "app": 0,
+              "web_phone": 0,
+              "web_computer": 0
+            },
+            "conversion": null,
+            "demand": "unseen"
+          }
+        ],
+        "productCount": 15
+      }
+    }
+  }
+}

@@ -16,7 +16,7 @@ struct InvoiceView: View {
 
     var body: some View {
         // An order's paper, drawn as the order is: no header, and the way back.
-        ShopPage(header: false, refresh: { await load() }) {
+        ShopPage(header: false, refresh: { await load() }, viewSource: "account") {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     BackLink(label: l.t("nav.back"))

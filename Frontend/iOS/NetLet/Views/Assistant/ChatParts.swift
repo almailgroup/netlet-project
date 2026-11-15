@@ -193,6 +193,7 @@ private struct ShelfCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Button {
+                app.viewSources.note("other")
                 follow(.product(handle: product.handle))
             } label: {
                 VStack(alignment: .leading, spacing: 4) {

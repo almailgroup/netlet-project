@@ -42,6 +42,8 @@ import { AddressError, setLineDestination } from "../services/addresses.js";
 import { TRPCError } from "@trpc/server";
 import { returnWindowDays } from "../services/settings.js";
 import { checkVoucherAllowed, recordVoucherMiss } from "../services/rateLimit.js";
+import { recordProductView } from "../services/productViews.js";
+import { VIEW_CHANNELS, VIEW_SOURCES } from "../../../Shared/commerce/productViews.js";
 
 /**
  * Which language to read merchant data in.
@@ -103,6 +105,22 @@ export const commerceRouter = router({
         return listProductsByIds(ids, input.locale ?? "en");
       }),
   }),
+  /**
+   * A product's page was opened (migration 0084): one more view, and one more
+   * visitor when the device says it has not counted this product today. Who
+   * opened it is never kept; the store's own team and NetLet's staff are not
+   * counted, and the answer is only whether this one was.
+   */
+  recordView: publicProcedure
+    .input(z.object({
+      productId: rowId,
+      channel: z.enum(VIEW_CHANNELS),
+      source: z.enum(VIEW_SOURCES),
+      firstToday: z.boolean(),
+    }))
+    .mutation(({ ctx, input }) =>
+      recordProductView(input, { userId: ctx.user?.id ?? null, admin: ctx.user?.role === "admin" }),
+    ),
   /** Products on sale per department, so the navigation can leave out an empty one. */
   departmentCounts: publicProcedure.query(() => publishedDepartmentCounts()),
   /** Each department's subcategories' counts, for the Categories page. */

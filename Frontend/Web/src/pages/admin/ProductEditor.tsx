@@ -11,6 +11,7 @@
  * is what happened; setting the box to 47 loses why it changed and races with
  * anyone else editing.
  */
+import { ProductViewsCard } from "@/components/admin/ProductViews";
 import { STOCK_REASONS, stockMoveProblem } from "@shared/inventory/stockMoves";
 import { SizeChartEditor } from "@/components/admin/SizeChartEditor";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -262,6 +263,8 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
      same array so a section cannot be added without a way to reach it. */
   const sections: { id: string; label: MessageKey }[] = [
     { id: "details", label: "admin.sectionDetails" },
+    /* How many opened it, in the app or on the website, and what came of it (0084). */
+    { id: "views", label: "views.cardTitle" },
     { id: "photos", label: "admin.images" },
     ...(mayEdit ? [{ id: "catalogues", label: "catalogue.heading" as MessageKey }] : []),
     { id: "variants", label: "admin.variants" },
@@ -403,6 +406,9 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
               </Labelled>
             </div>
           </Card>
+
+          {/* How many opened it, where, and what came of it — for every rank that reads the shelf. */}
+          <ProductViewsCard productId={row.id} published={row.status === "published"} />
 
           {/* Images are saved as a whole list, in order, so removing the third
               and adding a fourth are the same operation. Position is the array

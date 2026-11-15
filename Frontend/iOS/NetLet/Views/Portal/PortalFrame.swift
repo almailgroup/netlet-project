@@ -9,6 +9,7 @@ enum PortalIcons {
         "/admin": "speedometer",
         "/admin/products": "square.grid.2x2",
         "/admin/stock": "shippingbox",
+        "/admin/views": "eye",
         "/admin/import": "square.and.arrow.down.on.square",
         "/admin/bundles": "square.stack.3d.up",
         "/admin/review": "checklist",

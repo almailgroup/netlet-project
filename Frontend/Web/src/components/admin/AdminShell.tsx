@@ -29,7 +29,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
-import { ArrowLeft, LogOut, BadgeCheck, BookOpen, Boxes, Building2, CalendarHeart, ClipboardCheck, ClipboardList, Coins, FileText, FolderLock, Gauge, Images, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, LogOut, BadgeCheck, Eye, BookOpen, Boxes, Building2, CalendarHeart, ClipboardCheck, ClipboardList, Coins, FileText, FolderLock, Gauge, Images, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
 import { isActiveHref, JumpButton, MenuDrawer, PageJump, Sidebar, useJumpShortcut, useRail, type FrameGroup } from "@/components/admin/frame";
 import { CopilotPanel } from "@/components/admin/CopilotPanel";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
@@ -68,6 +68,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin": <Gauge className="size-4" />,
   "/admin/products": <LayoutGrid className="size-4" />,
   "/admin/stock": <PackageSearch className="size-4" />,
+  "/admin/views": <Eye className="size-4" />,
   "/admin/import": <Upload className="size-4" />,
   "/admin/bundles": <Boxes className="size-4" />,
   "/admin/review": <ClipboardCheck className="size-4" />,

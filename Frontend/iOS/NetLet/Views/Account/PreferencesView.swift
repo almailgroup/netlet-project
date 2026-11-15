@@ -13,7 +13,7 @@ struct PreferencesView: View {
 
     var body: some View {
         ModelHost(make: { PreferencesModel(api: app.services.api, account: app.services.account) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }) {
+            ShopPage(header: false, refresh: { await model.load() }, viewSource: "account") {
                 AccountSection(title: l.t("account.sectionPreferences"), hint: l.t("account.hint.preferences")) {
                     VStack(spacing: 14) {
                         panel(symbol: "mappin", title: "account.deliveryArea", note: "account.pricingUnconfigured") { area(model) }

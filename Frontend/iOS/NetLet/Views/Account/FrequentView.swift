@@ -33,7 +33,7 @@ struct FrequentView: View {
     @State private var confirmingRemove = false
 
     var body: some View {
-        ShopPage(header: false, refresh: { await load() }) {
+        ShopPage(header: false, refresh: { await load() }, viewSource: "account") {
             AccountSection(title: l.t("frequent.section"), hint: l.t("account.hint.frequent")) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(l.t("frequent.intro"))

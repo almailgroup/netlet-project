@@ -207,7 +207,7 @@ struct BrowsingHistoryView: View {
     private var allState: CartChoice.State { picked.isEmpty ? .none : picked.count == products.count ? .all : .some }
 
     var body: some View {
-        ShopPage(header: false) {
+        ShopPage(header: false, viewSource: "account") {
             AccountSection(
                 title: l.t("history.title"),
                 hint: l.t("history.intro", ["days": "\(Int(RecentlyViewed.days))"])

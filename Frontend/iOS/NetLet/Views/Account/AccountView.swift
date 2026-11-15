@@ -78,7 +78,7 @@ struct AccountView: View {
     }
 
     private func home(_ user: User) -> some View {
-        ShopPage(root: true, header: false, refresh: { await app.session.restore(); await app.warmAccount(force: true) }) {
+        ShopPage(root: true, header: false, refresh: { await app.session.restore(); await app.warmAccount(force: true) }, viewSource: "account") {
             VStack(alignment: .leading, spacing: 12) {
                 topRow
                 // The account searched, on the owner's word ("the search bar
@@ -629,7 +629,7 @@ struct ProfileView: View {
     var body: some View {
         ModelHost(make: { ProfileViewModel(account: app.services.account, user: app.session.user) }) { model in
             ScrollViewReader { proxy in
-            ShopPage(header: false) {
+            ShopPage(header: false, viewSource: "account") {
                 VStack(alignment: .leading, spacing: 16) {
                     RoundBackTitle(title: l.t("account.sectionProfile"))
                     ProfileForm(model: model)

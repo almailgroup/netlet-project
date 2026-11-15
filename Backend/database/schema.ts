@@ -53,6 +53,7 @@ import { INBOUND_STATUSES } from "../../Shared/commerce/netletFulfilment.js";
 import type { GuideAudience, GuideStatus, GuideStep } from "../../Shared/commerce/guides.js";
 import type { OccasionStatus } from "../../Shared/commerce/occasionDesk.js";
 import type { CatalogueStatus } from "../../Shared/inventory/productCatalogues.js";
+import type { ViewChannel, ViewSource } from "../../Shared/commerce/productViews.js";
 
 /* Postgres enums are named types created in the database, so they are declared
    once here rather than inline on the column as MySQL allows. */
@@ -3574,6 +3575,29 @@ export const productCatalogues = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   table => [index("product_catalogues_product_idx").on(table.productId, table.position, table.id)],
+);
+
+/**
+ * How often a product's page is opened, a Kuwaiti day, a channel and a source
+ * to a row (`Shared/commerce/productViews.ts`, migration 0084). Two counts and
+ * nothing about who: every opening, and every device opening it for the first
+ * time that day — the device remembers that, not NetLet. Deleting a product
+ * takes its counts with it.
+ */
+export const productViews = pgTable(
+  "product_views",
+  {
+    productId: integer("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    channel: varchar("channel", { length: 16 }).$type<ViewChannel>().notNull(),
+    source: varchar("source", { length: 16 }).$type<ViewSource>().notNull(),
+    views: integer("views").notNull().default(0),
+    visitors: integer("visitors").notNull().default(0),
+  },
+  table => [
+    primaryKey({ columns: [table.productId, table.day, table.channel, table.source] }),
+    index("product_views_day_idx").on(table.day),
+  ],
 );
 
 /* ------------------------------------------------------------- relations --- */

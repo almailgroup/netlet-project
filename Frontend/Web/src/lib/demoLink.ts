@@ -24,6 +24,7 @@ import type { AppRouter } from "../../../../Backend/src/routes";
 import { summarise } from "@shared/commerce/salesSummary";
 import { demoCategories, demoHealth, demoInventoryActor, demoInventoryProducts, demoLowStock, demoOverview, demoStockHealth, demoStockHistory } from "@/lib/demoInventory";
 import { buildDashboard, DEFAULT_DASHBOARD_RANGE, type DashboardRange } from "@shared/commerce/dashboard";
+import { buildViewsReport, DEFAULT_VIEW_RANGE, type ViewRange } from "@shared/commerce/productViews";
 import { briefFrom } from "@shared/ai/copilot";
 import { demoCatalog, demoProductByHandle, demoVariant } from "./demoCatalog";
 import { DEFAULT_PAGE_SIZE } from "@shared/pagination";
@@ -231,6 +232,9 @@ function resolve(path: string, rawInput: unknown): unknown {
       /* The reference table: a demo build reaches no feed. */
       return { rates: { ...REFERENCE_RATES }, asOf: RATES_AS_OF, source: "reference" };
 
+    /* Nothing is counted in the demo: its visitors are nobody's shop. */
+    case "commerce.recordView":
+      return { counted: false };
     case "commerce.departmentCounts": {
       /* Counted from the invented catalogue the same way the server counts its own. */
       const counts: Record<string, number> = {};
@@ -1180,6 +1184,35 @@ function resolve(path: string, rawInput: unknown): unknown {
       });
     case "inventory.stockHealth":
       return demoStockHealth;
+    /* Nobody has opened the invented catalogue: every product listed with
+       no views, the honest answer for a shop on its first day. */
+    case "inventory.views": {
+      const asked = input as { range?: ViewRange; productId?: number } | undefined;
+      const shelf = demoInventoryProducts.filter(product => product.status === "published" && (asked?.productId === undefined || product.id === asked.productId));
+      return buildViewsReport({
+        now: new Date(),
+        range: asked?.range ?? DEFAULT_VIEW_RANGE,
+        ready: true,
+        dayChannels: [],
+        sources: [],
+        productChannels: [],
+        productPrevious: [],
+        products: shelf.map(product => ({
+          productId: product.id,
+          title: product.title,
+          titleAr: product.titleAr,
+          handle: product.handle,
+          image: null,
+          vendorName: null,
+          published: true,
+          inCarts: 0,
+          units: 0,
+          orders: 0,
+        })),
+        orders: { current: 0, previous: 0 },
+        productCount: shelf.length,
+      });
+    }
     /* The brief is rules over the fixtures; with no model behind the demo,
        the question box is not drawn — the branch a shop with no gateway takes. */
     case "inventory.copilot.brief":

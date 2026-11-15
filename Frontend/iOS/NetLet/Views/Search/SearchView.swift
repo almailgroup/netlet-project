@@ -541,6 +541,8 @@ private struct SearchSheet: View {
     private func productRow(_ product: Product) -> some View {
         Button {
             model.remember(model.trimmed)
+            // Opened over the page under the search: counted as a search's.
+            app.viewSources.note("search")
             open(.product(handle: product.handle))
         } label: {
             HStack(spacing: 12) {

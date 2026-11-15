@@ -169,6 +169,8 @@ final class AppModel {
     let reminders: StockReminders
     /// What this phone looked at lately, for the home page's "Previously viewed" and the picks.
     let viewed: RecentlyViewed
+    /// Where the next product page was opened from, for its store's view count (`ViewSources`).
+    let viewSources = ViewSources()
     /// The home page's catalogue and shelves, shared with the header and the categories page.
     let shelf: HomeShelf
     /// Face ID's keys on this phone, which account each signs in to, and the
@@ -740,6 +742,17 @@ final class AppModel {
     func openAccount(_ route: Route?) {
         accountPath = route.map { NavigationPath([$0]) } ?? NavigationPath()
         selectedTab = .account
+    }
+
+    /// One opening of a product's page, counted for its store (migration 0084):
+    /// the app, where it was opened from, and whether this phone has counted
+    /// it today. Never in the recorded demo, a test or a screenshot run, and a
+    /// count that fails says nothing.
+    func countView(productId: String, source: String) {
+        guard !isDemo, !UITestHooks.on, UserDefaults.standard.string(forKey: "NetLetOpen") == nil, let id = Int(productId) else { return }
+        let first = ViewCounting.markCounted(productId)
+        let api = services.api
+        Task { _ = try? await api.call(API.recordView, .init(productId: id, channel: "app", source: source, firstToday: first)) }
     }
 
     /// The logo's press: home, from the top of its own stack.

@@ -48,6 +48,7 @@ import { StarRow } from "@/components/ui/StarRow";
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { rememberViewed } from "@/lib/recentlyViewed";
+import { useCountView } from "@/hooks/useCountView";
 import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
 import { Later } from "@/components/layout/Later";
@@ -1187,6 +1188,8 @@ export default function ProductDetail() {
   useEffect(() => {
     if (product?.id) rememberViewed(product.id);
   }, [product?.id]);
+  /* And counted for its store: a view, the channel and where it was opened from — never who. */
+  useCountView(product?.id);
   const { data: catalog = [] } = useCatalog(24);
   const { addItem, cart, openCart, updateQuantity, removeItem, chooseOnly } = useCart();
   const askRemove = useAskRemoveFromCart();

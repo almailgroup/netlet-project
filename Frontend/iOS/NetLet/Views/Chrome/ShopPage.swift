@@ -75,6 +75,9 @@ struct ShopPage<Content: View>: View {
     /// header's field narrows it rather than opening the shop's search
     /// (`PageSearchField`, on the owner's word).
     var pageSearch: PageSearch? = nil
+    /// Which part of the shop this page is, for a product opened from it
+    /// (`Shared/commerce/productViews.ts`' sources); nil is the tab's own.
+    var viewSource: String? = nil
     @ViewBuilder var content: () -> Content
 
     @Environment(AppModel.self) private var app
@@ -199,6 +202,8 @@ struct ShopPage<Content: View>: View {
             TabBarSlide.slide(away: false, animated: !still)
             app.tabBarRide = 0
             if header { app.searchText = searchTerm ?? "" }
+            // The page a product is opened from next (`ViewSources`).
+            app.viewSources.appeared(viewSource ?? app.selectedTab.viewSource)
             ScrollTrace.note("page appeared")
             ScrollTrace.watchMainThread()
         }
