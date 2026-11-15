@@ -23,6 +23,8 @@ import { Thumb } from "@/components/product/Thumb";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";
 import { PREVIEW_TONE } from "@/lib/purchaseStyle";
 import { useOverlay } from "@/hooks/useOverlay";
+import { useSecondClick, type OpeningClick } from "@/hooks/useSecondClick";
+import { clampPan, MAX_ZOOM, panAbout, panToPoint, TAP_ZOOM, wheelZoom, type Point, type ZoomStart } from "@/lib/zoomMath";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { breadcrumbJsonLd, privatePageMeta, productJsonLd, productMeta } from "@shared/seo";
 import { trpc } from "@/lib/trpc";
@@ -137,6 +139,8 @@ type ViewerProps = {
   onClose: () => void;
   onSelectImage: (index: number) => void;
   onChangeImage: (direction: "previous" | "next") => void;
+  /** The click that opened the photos, when one did: a second click soon after zooms into that spot. */
+  zoomFrom?: OpeningClick | null;
 };
 
 /**
@@ -163,12 +167,22 @@ function ImageLightbox(props: ViewerProps) {
  * a button that opens it full screen, and closing that comes back here with
  * the same photo in view and focus on it.
  */
-function PhotoSheet({ product, selectedImageIndex, onClose, onSelectImage }: ViewerProps) {
+function PhotoSheet({ product, selectedImageIndex, onClose, onSelectImage, zoomFrom }: ViewerProps) {
   const { t } = useTranslation();
   useOverlay(true, onClose);
   const closeButton = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const [full, setFull] = useState(false);
+  /* Double-clicked on the product page (a mouse in a narrow window): the
+     second click lands on this list, and opens the photo full screen already
+     zoomed into the spot the first one pressed, rather than picking whichever
+     photo of the list was under the pointer. */
+  const [zoomStart, setZoomStart] = useState<ZoomStart | null>(null);
+  useSecondClick(zoomFrom, (event, from) => {
+    if (galleryOf(product)[selectedImageIndex]?.kind === "video") return;
+    setZoomStart({ x: from.x, y: from.y, client: { x: event.clientX, y: event.clientY } });
+    setFull(true);
+  });
   const media = galleryOf(product);
   useEffect(() => {
     closeButton.current?.focus();
@@ -229,7 +243,7 @@ function PhotoSheet({ product, selectedImageIndex, onClose, onSelectImage }: Vie
       </div>
       {full ? (
         <Suspense fallback={null}>
-          <ZoomViewer items={media} index={selectedImageIndex} title={product.title} onIndex={onSelectImage} onClose={() => setFull(false)} />
+          <ZoomViewer items={media} index={selectedImageIndex} title={product.title} start={zoomStart} onIndex={onSelectImage} onClose={() => { setFull(false); setZoomStart(null); }} />
         </Suspense>
       ) : null}
     </div>
@@ -241,13 +255,7 @@ function PhotoSheet({ product, selectedImageIndex, onClose, onSelectImage }: Vie
  * on the right, with step zoom. This is the "inspect it properly" surface — the
  * hover lens is for a glance, this is for deciding.
  */
-function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, onChangeImage }: {
-  product: Product;
-  selectedImageIndex: number;
-  onClose: () => void;
-  onSelectImage: (index: number) => void;
-  onChangeImage: (direction: "previous" | "next") => void;
-}) {
+function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, onChangeImage, zoomFrom }: ViewerProps) {
   const { direction, t } = useTranslation();
   const closeButton = useRef<HTMLButtonElement | null>(null);
   /*
@@ -267,7 +275,6 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
    */
   useOverlay(true, onClose);
   useEffect(() => closeButton.current?.focus(), []);
-  const [scale, setScale] = useState(1);
   /* The same list the gallery indexes into, or "image 4" would mean two
      different things on the two surfaces the moment a video is in the set. */
   const media = galleryOf(product);
@@ -275,62 +282,132 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
   const isVideo = image?.kind === "video";
   const hasMultipleImages = media.length > 1;
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  /* A mouse is told what it can do (double-click, the wheel); a finger is
+     not, since neither is a finger's. */
+  const mouse = useMediaQuery("(hover: hover) and (pointer: fine)");
 
   /*
-   * Panning a zoomed picture.
+   * Zooming and panning a picture.
    *
    * `scale()` does not change an element's layout size, so the stage had
    * nothing to scroll and the magnified image simply hung off the edges with
    * no way to reach them: you could enlarge a rug and never see its corner.
-   * The comment below used to claim a drag panned it, which is the kind of
-   * note that outlives the behaviour it describes.
-   *
    * The offset is carried in the same transform as the scale, and **clamped to
-   * the overflow** — a picture can be moved exactly as far as it hangs over
-   * the stage and not one pixel further. Letting it go further is how a drag
-   * ends with an empty white square and nothing to drag back.
+   * the overflow** (`clampPan`) — a picture can be moved exactly as far as it
+   * hangs over the stage and not one pixel further, so a drag never ends with
+   * an empty white square and nothing to drag back.
+   *
+   * **A double click or the wheel zooms about the pointer**, on the owner's
+   * word ("double clicking will zoom on the image, and then you can control
+   * the zoom by the mouse scroll wheel"): the point of the picture under the
+   * pointer stays under it (`panAbout`), as the phone's pinch does, where the
+   * buttons zoom about the middle. The view is read from a ref as well as
+   * drawn from state, because a trackpad's wheel sends its next turn before
+   * React has drawn the last, and a turn read off a scale one frame old jumps.
    */
   const stageRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [view, setView] = useState<{ scale: number; pan: Point }>({ scale: 1, pan: { x: 0, y: 0 } });
+  const live = useRef(view);
+  /* How the next change moves: a button or a double click glides, the wheel
+     follows the turn closely, and a drag is not eased at all. */
+  const [motion, setMotion] = useState<"glide" | "wheel">("glide");
+  const show = (next: { scale: number; pan: Point }, how: "glide" | "wheel" = "glide") => {
+    live.current = next;
+    setView(next);
+    setMotion(how);
+  };
+  const { scale, pan } = view;
   const [dragging, setDragging] = useState(false);
-  const dragFrom = useRef<{ x: number; y: number; pan: { x: number; y: number } } | null>(null);
+  const dragFrom = useRef<{ x: number; y: number; pan: Point } | null>(null);
   /** Whether there is anything to move: a video is played, not panned. */
   const zoomable = scale > 1 && !isVideo;
+  const [zoomedOnce, setZoomedOnce] = useState(false);
+  useEffect(() => { if (scale > 1) setZoomedOnce(true); }, [scale]);
 
-  /** How far the picture may move before its edge would come inside the stage. */
-  const panLimit = (atScale: number) => {
-    const stage = stageRef.current;
-    const frame = frameRef.current;
-    if (!stage || !frame) return { x: 0, y: 0 };
-    return {
-      x: Math.max(0, (frame.offsetWidth * atScale - stage.clientWidth) / 2),
-      y: Math.max(0, (frame.offsetHeight * atScale - stage.clientHeight) / 2),
-    };
+  const sizes = () => ({
+    stage: { width: stageRef.current?.clientWidth ?? 0, height: stageRef.current?.clientHeight ?? 0 },
+    photo: { width: frameRef.current?.offsetWidth ?? 0, height: frameRef.current?.offsetHeight ?? 0 },
+  });
+  /** A point on the screen, measured from the stage's centre. */
+  const fromCentre = (x: number, y: number): Point => {
+    const box = stageRef.current?.getBoundingClientRect();
+    if (!box) return { x: 0, y: 0 };
+    return { x: x - (box.left + box.width / 2), y: y - (box.top + box.height / 2) };
   };
-
-  const clampPan = (next: { x: number; y: number }, atScale: number) => {
-    const limit = panLimit(atScale);
-    return {
-      x: Math.min(limit.x, Math.max(-limit.x, next.x)),
-      y: Math.min(limit.y, Math.max(-limit.y, next.y)),
-    };
-  };
-
   /*
-   * Zooming re-clamps, because the limits shrink with the scale: an image
+   * Every zoom re-clamps, because the limits shrink with the scale: an image
    * pushed into its corner at 3x and then zoomed back to 1.5x would otherwise
    * stay off-centre with a band of white beside it.
    */
-  const zoomTo = (next: number) => {
-    const atScale = Math.min(3, Math.max(1, +next.toFixed(1)));
-    setScale(atScale);
-    setPan(current => clampPan(current, atScale));
+  const settle = (nextScale: number, nextPan: Point, how: "glide" | "wheel" = "glide") => {
+    const bounded = Math.min(MAX_ZOOM, Math.max(1, nextScale));
+    const { stage, photo } = sizes();
+    show({ scale: bounded, pan: bounded === 1 ? { x: 0, y: 0 } : clampPan(nextPan, bounded, photo, stage) }, how);
+  };
+  const zoomAt = (to: number, at: Point = { x: 0, y: 0 }, how: "glide" | "wheel" = "glide") => {
+    const now = live.current;
+    const bounded = Math.min(MAX_ZOOM, Math.max(1, to));
+    settle(bounded, panAbout(at, now.pan, now.scale, bounded), how);
   };
 
   // A new image at 3x, or held in the corner the last one was dragged to,
   // would drop the shopper somewhere they did not ask to be.
-  useEffect(() => { setScale(1); setPan({ x: 0, y: 0 }); }, [selectedImageIndex]);
+  useEffect(() => { show({ scale: 1, pan: { x: 0, y: 0 } }); }, [selectedImageIndex]);
+
+  /*
+   * The wheel, on a listener of the stage's own: React's is passive, so it
+   * cannot keep the turn from scrolling whatever is behind. Not over a video,
+   * which is played rather than looked into.
+   */
+  const onWheel = useRef<(event: WheelEvent) => void>(() => {});
+  onWheel.current = (event: WheelEvent) => {
+    if (isVideo || (event.target as HTMLElement).closest("button, video")) return;
+    event.preventDefault();
+    const to = wheelZoom(live.current.scale, event, stageRef.current?.clientHeight ?? 800);
+    if (to === live.current.scale) return;
+    zoomAt(to, fromCentre(event.clientX, event.clientY), "wheel");
+  };
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const wheel = (event: WheelEvent) => onWheel.current(event);
+    stage.addEventListener("wheel", wheel, { passive: false });
+    return () => stage.removeEventListener("wheel", wheel);
+  }, []);
+
+  /* A double click goes to `TAP_ZOOM` at the spot, and from any zoom back to
+     the whole picture, as a double tap does on a phone. */
+  const zoomByDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isVideo || (event.target as HTMLElement).closest("button, a, input, video")) return;
+    if (live.current.scale > 1) settle(1, { x: 0, y: 0 });
+    else zoomAt(TAP_ZOOM, fromCentre(event.clientX, event.clientY));
+  };
+
+  /*
+   * Double-clicked on the product page: the first click opened this, and the
+   * second lands here. The spot clicked there, as a fraction of the photo, is
+   * put under the pointer here, or in the middle when the pointer is off the
+   * stage (over the grid of photos), and the picture is zoomed to `TAP_ZOOM`.
+   * Once the picture has a size — it is the photo the page already drew, so
+   * that is at once or a frame or two later.
+   */
+  useSecondClick(zoomFrom, (event, from) => {
+    if (isVideo) return;
+    let tries = 0;
+    const zoomIn = () => {
+      const { photo } = sizes();
+      if (!photo.width || !photo.height) {
+        if (tries++ < 30) requestAnimationFrame(zoomIn);
+        return;
+      }
+      const box = stageRef.current?.getBoundingClientRect();
+      const inside = box && event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
+      const at = inside ? fromCentre(event.clientX, event.clientY) : { x: 0, y: 0 };
+      settle(TAP_ZOOM, panToPoint(from, photo, TAP_ZOOM, at));
+    };
+    zoomIn();
+  });
 
   const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     /*
@@ -344,8 +421,8 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
     swipeStart.current = { x: event.clientX, y: event.clientY };
     // A secondary button is a context menu, not a drag.
     if (event.button !== 0 && event.pointerType === "mouse") return;
-    if (scale <= 1 || isVideo) return;
-    dragFrom.current = { x: event.clientX, y: event.clientY, pan };
+    if (live.current.scale <= 1 || isVideo) return;
+    dragFrom.current = { x: event.clientX, y: event.clientY, pan: live.current.pan };
     setDragging(true);
     /* Captured, so a drag that runs off the window still ends here rather than
        leaving the picture stuck to the cursor. */
@@ -355,10 +432,9 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
   const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     const from = dragFrom.current;
     if (!from) return;
-    setPan(clampPan(
-      { x: from.pan.x + (event.clientX - from.x), y: from.pan.y + (event.clientY - from.y) },
-      scale,
-    ));
+    const { stage, photo } = sizes();
+    const at = live.current.scale;
+    show({ scale: at, pan: clampPan({ x: from.pan.x + (event.clientX - from.x), y: from.pan.y + (event.clientY - from.y) }, at, photo, stage) });
   };
 
   const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -376,14 +452,14 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
     const start = swipeStart.current;
     swipeStart.current = null;
     // Only while un-zoomed: past 1x a drag pans the picture instead.
-    if (!start || !hasMultipleImages || scale > 1) return;
+    if (!start || !hasMultipleImages || live.current.scale > 1) return;
     const travelled = event.clientX - start.x;
     if (Math.abs(travelled) < SWIPE_THRESHOLD || Math.abs(travelled) < Math.abs(event.clientY - start.y)) return;
     onChangeImage(swipeDirection(travelled, direction));
   };
 
   /*
-   * The same pan from a keyboard.
+   * The same zoom and pan from a keyboard.
    *
    * A region a mouse can drag and a keyboard cannot reach has no way to see
    * the far side of the picture without a pointer — the argument the finance
@@ -392,12 +468,16 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
    * image underneath the shopper.
    */
   const panByKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (scale <= 1) return;
+    if (!isVideo && (event.key === "+" || event.key === "=")) { event.preventDefault(); zoomAt(live.current.scale + 0.5); return; }
+    if (!isVideo && event.key === "-") { event.preventDefault(); zoomAt(live.current.scale - 0.5); return; }
+    const now = live.current;
+    if (now.scale <= 1) return;
     const step = { ArrowLeft: [PAN_STEP, 0], ArrowRight: [-PAN_STEP, 0], ArrowUp: [0, PAN_STEP], ArrowDown: [0, -PAN_STEP] }[event.key];
     if (!step) return;
     event.preventDefault();
     event.stopPropagation();
-    setPan(current => clampPan({ x: current.x + step[0], y: current.y + step[1] }, scale));
+    const { stage, photo } = sizes();
+    show({ scale: now.scale, pan: clampPan({ x: now.pan.x + step[0], y: now.pan.y + step[1] }, now.scale, photo, stage) });
   };
 
   return (
@@ -443,10 +523,13 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
           onPointerUp={endDrag}
           onPointerCancel={(event) => { swipeStart.current = null; endDrag(event); }}
           onKeyDown={panByKey}
+          onDoubleClick={zoomByDoubleClick}
           /* `touch-none` only once there is something to pan: at 1x the browser
-             still owns the vertical scroll and the swipe between images. */
-          className={`relative order-1 flex min-h-[46vh] flex-1 items-center justify-center overflow-hidden outline-none lg:order-2 lg:min-h-[320px] ${
-            zoomable ? (dragging ? "cursor-grabbing touch-none" : "cursor-grab touch-none") : "touch-pan-y"
+             still owns the vertical scroll and the swipe between images.
+             `select-none`, or a double click selects the words over the
+             picture as well as zooming it. */
+          className={`relative order-1 flex min-h-[46vh] flex-1 select-none items-center justify-center overflow-hidden outline-none lg:order-2 lg:min-h-[320px] ${
+            zoomable ? (dragging ? "cursor-grabbing touch-none" : "cursor-grab touch-none") : isVideo ? "touch-pan-y" : "cursor-zoom-in touch-pan-y"
           }`}
         >
           {/* The frame carries the transform and is measured for the clamp:
@@ -459,8 +542,10 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
               /* No easing while a finger or a cursor is on it: a 200ms
                  transition on every pointer move is a picture that lags
-                 behind the hand moving it. */
-              transition: dragging ? "none" : "transform 200ms",
+                 behind the hand moving it. The wheel is eased a little, so a
+                 mouse's notches read as one zoom rather than steps, and
+                 little enough that a trackpad's stream keeps up. */
+              transition: dragging ? "none" : motion === "wheel" ? "transform 90ms ease-out" : "transform 200ms ease-out",
             }}
           >
             {isVideo ? (
@@ -482,14 +567,20 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
             )}
           </div>
           <div className="absolute end-2 top-2 flex flex-col gap-2">
-            <button onClick={() => zoomTo(scale + 0.5)} disabled={scale >= 3 || isVideo} aria-label={t("product.zoomIn")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
-            <button onClick={() => zoomTo(scale - 0.5)} disabled={scale <= 1 || isVideo} aria-label={t("product.zoomOut")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
+            <button onClick={() => zoomAt(scale <= 1 ? TAP_ZOOM : scale + 0.5)} disabled={scale >= MAX_ZOOM || isVideo} aria-label={t("product.zoomIn")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomIn className="size-5" /></button>
+            <button onClick={() => zoomAt(scale - 0.5)} disabled={scale <= 1 || isVideo} aria-label={t("product.zoomOut")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.16)] disabled:opacity-35"><ZoomOut className="size-5" /></button>
           </div>
-          {/* Said once, and only while it applies: a hint that is always on
-              screen is one nobody reads by the third product. */}
+          {/* Said only while it applies: a hint that is always on screen is
+              one nobody reads by the third product. A mouse is told about the
+              double click and the wheel until it has zoomed once, and how to
+              move and come back out while zoomed; a finger, how to move. */}
           {zoomable ? (
             <p className="pointer-events-none absolute start-2 top-2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[12px] font-bold text-white">
-              {t("product.dragToPan")}
+              {t(mouse ? "product.zoomDragMouse" : "product.dragToPan")}
+            </p>
+          ) : mouse && !isVideo && !zoomedOnce ? (
+            <p className="pointer-events-none absolute start-2 top-2 rounded-full bg-[#0a285a]/85 px-3 py-1 text-[12px] font-bold text-white">
+              {t("product.zoomHintMouse")}
             </p>
           ) : null}
           {hasMultipleImages ? <>
@@ -515,6 +606,23 @@ function WideImageViewer({ product, selectedImageIndex, onClose, onSelectImage, 
  */
 /** Horizontal travel, in px, that counts as a swipe rather than a tap. */
 const SWIPE_THRESHOLD = 45;
+
+/**
+ * Where a click on the product page's photo landed, as a fraction of the
+ * picture drawn — not of its box, which letterboxes it — and when, for the
+ * viewer it opens to zoom into if a second click follows. Nothing for a press
+ * with no point of its own (the keyboard's, whose `detail` is 0) or one off
+ * the picture.
+ */
+function clickOnPhoto(event: React.MouseEvent<HTMLElement>): OpeningClick | undefined {
+  if (event.detail < 1) return undefined;
+  const picture = event.currentTarget.querySelector("img")?.getBoundingClientRect();
+  if (!picture || picture.width < 1 || picture.height < 1) return undefined;
+  const x = (event.clientX - picture.left) / picture.width;
+  const y = (event.clientY - picture.top) / picture.height;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return undefined;
+  return { x, y, at: performance.now() };
+}
 
 /**
  * Which image a horizontal drag asks for.
@@ -567,7 +675,8 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   selectedImageIndex: number;
   onSelectImage: (index: number) => void;
   onChangeImage: (direction: "previous" | "next") => void;
-  onZoom: () => void;
+  /** Opens the photos; a click on the photo says where on it it landed, so a second click can zoom there. */
+  onZoom: (at?: OpeningClick) => void;
   onShare: () => void;
   onToggleSaved: () => void;
   isSaved: boolean;
@@ -728,7 +837,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
   const openFromPress = (event: React.MouseEvent<HTMLDivElement>) => {
     if (swiped.current) { swiped.current = false; return; }
     if (isVideo || (event.target as HTMLElement).closest("video")) return;
-    onZoom();
+    onZoom(clickOnPhoto(event));
   };
 
   const arrow = "pressable absolute top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-white text-[#0a285a] shadow-[0_2px_12px_rgba(10,40,90,.18)] sm:size-11";
@@ -768,7 +877,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
               </button>
             ))}
             {overflow > 0 ? (
-              <button onClick={onZoom} aria-label={t("product.viewAllImages", { count: media.length })} className="pressable grid size-[62px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da] sm:size-[68px]">
+              <button onClick={() => onZoom()} aria-label={t("product.viewAllImages", { count: media.length })} className="pressable grid size-[62px] shrink-0 place-items-center rounded-xl border-2 border-[#e2e5eb] bg-[#0a285a] text-white hover:border-[#aac0da] sm:size-[68px]">
                 <span className="text-base font-extrabold leading-none">+{overflow}</span>
                 <span className="text-[9px] font-bold leading-none">{t("home.viewAll")}</span>
               </button>
@@ -834,7 +943,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
           <div className="absolute end-3 top-3 flex flex-col gap-2">
             <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><Share2 className="size-[18px]" /></button>
             <button onClick={isSaved ? () => void askUnheart(product.id, product.title).then(sure => { if (sure) onToggleSaved(); }) : onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:bg-[#f0f2f5] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
-            <button onClick={onZoom} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><ZoomIn className="size-[18px]" /></button>
+            <button onClick={() => onZoom()} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><ZoomIn className="size-[18px]" /></button>
           </div>
 
           {/* "Find similar" (3.1.6: visual search "also from any product
@@ -1105,6 +1214,8 @@ export default function ProductDetail() {
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
+  /* Where the click that opened the photos landed, so its double click zooms there. */
+  const [zoomFrom, setZoomFrom] = useState<OpeningClick | null>(null);
   const [quantity, setQuantity] = useState(1);
   /* Nothing ticked by default (3.1.2): a pre-ticked warranty is how somebody
      pays for what they did not ask for and did not notice. */
@@ -1305,7 +1416,7 @@ export default function ProductDetail() {
 
         <section className="mt-2 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <GalleryColumn>
-            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={() => setZoomOpen(true)} onShare={() => void shareProduct(product, t, memberCode)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} onFindSimilar={() => similar.mutate({ productId: product.id, locale })} findingSimilar={similar.isPending} />
+            <ProductGallery product={product} selectedImageIndex={selectedImageIndex} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} onZoom={(at) => { setZoomFrom(at ?? null); setZoomOpen(true); }} onShare={() => void shareProduct(product, t, memberCode)} onToggleSaved={() => toggleSaved(product.id)} isSaved={isSaved} onFindSimilar={() => similar.mutate({ productId: product.id, locale })} findingSimilar={similar.isPending} />
             {/* Under the photo, where somebody looking at the thing wonders
                 about it — on a wide screen. A phone draws it after the buy
                 buttons instead (below), so it never pushes the price and Add
@@ -1557,7 +1668,7 @@ export default function ProductDetail() {
         ) : null}
       </PageBody>
       {quickProduct ? <Suspense fallback={null}><QuickView product={quickProduct} onClose={() => setQuickProduct(null)} /></Suspense> : null}
-      {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
+      {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} zoomFrom={zoomFrom} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
       <StickyBuyBar
         shown={buyPassed}
         name={t("product.buyBar", { name: product.title })}

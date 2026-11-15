@@ -8169,6 +8169,38 @@ in both languages: tap opens the list at the right photo, a photo opens full
 screen at its number, double tap, drag, pinch and swipe land where they should,
 Escape twice comes back to the page, axe clean throughout.
 
+**One click opens the photos, a double click opens them zoomed into the spot,
+and the mouse wheel zooms — on the owner's word** ("one click on product image
+will open the product images, double clicking will zoom on the image, and then
+you can control the zoom by the mouse scroll wheel"). The first click cannot
+wait to learn whether a second is coming (Windows' double-click interval is
+half a second), so it opens the photos at once and says where on the picture
+it landed (`clickOnPhoto`: a fraction of the picture drawn, not its
+letterboxed box); `useSecondClick` then listens on `window` in the capture
+phase, ahead of React's root, for a click the browser counts as the second
+(`detail` 2) within `SECOND_CLICK_MS`, swallows it and the `dblclick` after it
+— or it would pick whichever thumbnail was under the pointer, or toggle the
+stage straight back out — and zooms to `TAP_ZOOM` with that spot under the
+pointer, or in the middle when the pointer is over the grid (`panToPoint`). A
+phone's double tap does the same, the second tap counted alike: it opens the
+photo full screen already zoomed. In either viewer a double click goes to
+`TAP_ZOOM` at the spot and back, the wheel zooms about the pointer
+(`wheelZoom`: one notch about a fifth, a trackpad's stream evened by the
+exponent, its pinch — a wheel with Ctrl held — read four times as strongly,
+lines and pages turned into pixels, 1 to `MAX_ZOOM`), and + and − work from
+the keyboard; the wide viewer reads its view from a ref, the phone viewer's
+rule, so a trackpad's next turn never reads a scale one frame old. A mouse is
+told "Double-click or scroll to zoom" until it has zoomed once, and how to
+move and come back out while zoomed; a finger keeps its own words. **Closing
+the photos no longer scrolls the page**: a click on the photo, which takes no
+focus, hands it to the shell's `<main>`, and `useOverlay` focusing that on the
+way out moved the page 125px down — it restores focus with `preventScroll`
+now, the page having been locked while the overlay was open. Measured on a
+demo build at 320, 390 and 1440 in both languages and on a phone: a single
+click opens at 1×, a double click at 2.5× with the selected photo unchanged, a
+slow second click is just a click, the wheel to 4× and back to 1×, the page
+behind unmoved, axe clean at both.
+
 **The page says what is already in the bag.** "2 already in your cart" beside
 the stepper opens the bag, so Add is not pressed again to find out.
 
@@ -8644,9 +8676,11 @@ and their names in both languages — then 1,073 KB (309 KB), a
 product's catalogue's words in both languages (`pdf-lib`, 439 KB, is a chunk
 of its own, fetched only when a PDF over 5 MB is chosen in the editor) — then
 1,076 KB (310 KB), the crash screen's words for a stale build in both
-languages and the rule that knows one — and is 1,079 KB (311 KB) now, the
+languages and the rule that knows one — then 1,079 KB (311 KB), the
 warranty plans' and installation's words in both languages, which the
-product page's picker shares with the editor —
+product page's picker shares with the editor — and is 1,081 KB (311 KB) now,
+the photo zoom's words for a mouse in both languages and the second-click
+hook —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

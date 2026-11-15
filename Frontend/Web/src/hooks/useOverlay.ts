@@ -70,9 +70,14 @@ export function useOverlay(open: boolean, onClose: () => void) {
       body.style.paddingInlineEnd = previousPadding;
       // Only if focus is still inside the overlay being torn down; if the
       // shopper has already clicked something else, leave them there.
+      // Without scrolling: the page could not move while this was open, so
+      // the opener is where it was — but a click on something that takes no
+      // focus (a product's photo) hands it to the nearest focusable
+      // ancestor, the page's `<main>`, and focusing that scrolled the page
+      // 125px down as the photos closed.
       if (!opener.current) return;
       const active = document.activeElement;
-      if (!active || active === document.body || !document.contains(active)) opener.current.focus();
+      if (!active || active === document.body || !document.contains(active)) opener.current.focus({ preventScroll: true });
     };
   }, [open]);
 }

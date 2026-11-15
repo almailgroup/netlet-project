@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampPan, panAbout } from "./zoomMath";
+import { clampPan, MAX_ZOOM, panAbout, panToPoint, TAP_ZOOM, wheelZoom } from "./zoomMath";
 
 const stage = { width: 390, height: 700 };
 const photo = { width: 390, height: 390 };
@@ -43,5 +43,45 @@ describe("how far a zoomed photo moves", () => {
 
   it("does not move at all at its own size", () => {
     expect(clampPan({ x: 80, y: -80 }, 1, photo, stage)).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("the mouse wheel", () => {
+  const notch = (deltaY: number, deltaMode = 0, ctrlKey = false) => ({ deltaY, deltaMode, ctrlKey });
+
+  it("zooms in turning up and out turning down, evenly", () => {
+    const closer = wheelZoom(1, notch(-100), 800);
+    expect(closer).toBeGreaterThan(1.2);
+    expect(closer).toBeLessThan(1.3);
+    expect(wheelZoom(closer, notch(100), 800)).toBeCloseTo(1);
+  });
+
+  it("stays between the photo's own size and the closest zoom", () => {
+    expect(wheelZoom(1, notch(300), 800)).toBe(1);
+    expect(wheelZoom(MAX_ZOOM, notch(-300), 800)).toBe(MAX_ZOOM);
+  });
+
+  it("reads a turn counted in lines or pages as the pixels it is", () => {
+    expect(wheelZoom(1, notch(-3, 1), 800)).toBeCloseTo(wheelZoom(1, notch(-48), 800));
+    expect(wheelZoom(1, notch(-0.1, 2), 800)).toBeCloseTo(wheelZoom(1, notch(-80), 800));
+  });
+
+  /* A trackpad's pinch is a wheel with Ctrl held and small deltas. */
+  it("reads a trackpad's pinch more strongly", () => {
+    expect(wheelZoom(1, notch(-10, 0, true), 800)).toBeGreaterThan(wheelZoom(1, notch(-10), 800));
+  });
+});
+
+describe("zooming in where the product page was double-clicked", () => {
+  it("puts that point of the photo under the pointer", () => {
+    const at = { x: 120, y: -40 };
+    const pan = panToPoint({ x: 0.75, y: 0.25 }, photo, TAP_ZOOM, at);
+    // The photo's point (0.25 of its width right of the middle, a quarter up) ends at `at`.
+    expect(pan.x + (0.25 * photo.width) * TAP_ZOOM).toBeCloseTo(at.x);
+    expect(pan.y + (-0.25 * photo.height) * TAP_ZOOM).toBeCloseTo(at.y);
+  });
+
+  it("leaves the middle in the middle", () => {
+    expect(panToPoint({ x: 0.5, y: 0.5 }, photo, 3, { x: 0, y: 0 })).toEqual({ x: 0, y: 0 });
   });
 });

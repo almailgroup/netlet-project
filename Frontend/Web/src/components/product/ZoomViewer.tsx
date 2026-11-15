@@ -27,12 +27,10 @@ import { useOverlay } from "@/hooks/useOverlay";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { ProductMedia } from "@shared/commerce/types";
 import { ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut } from "lucide-react";
-import { clampPan, panAbout, type Point } from "@/lib/zoomMath";
+import { clampPan, MAX_ZOOM, panAbout, panToPoint, TAP_ZOOM, wheelZoom, type Point, type ZoomStart } from "@/lib/zoomMath";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useEffect, useRef, useState } from "react";
 
-export const MAX_ZOOM = 4;
-/** Where a double tap or the first press of + takes the photo. */
-export const TAP_ZOOM = 2.5;
 /** Horizontal travel, in px, that is a swipe rather than a tap. */
 const SWIPE = 45;
 /** Two taps this close in time and place are one double tap. */
@@ -40,10 +38,12 @@ const DOUBLE_TAP_MS = 300;
 const DOUBLE_TAP_PX = 30;
 const PAN_STEP = 60;
 
-export function ZoomViewer({ items, index, title, onIndex, onClose }: {
+export function ZoomViewer({ items, index, title, start, onIndex, onClose }: {
   items: ProductMedia[];
   index: number;
   title: string;
+  /** Opened by the second click of a double click on the product page: zoomed into that spot. */
+  start?: ZoomStart | null;
   onIndex: (index: number) => void;
   onClose: () => void;
 }) {
@@ -71,6 +71,32 @@ export function ZoomViewer({ items, index, title, onIndex, onClose }: {
 
   /* A new photo starts whole and centred. */
   useEffect(() => { show({ scale: 1, pan: { x: 0, y: 0 } }); }, [index]);
+  /* A mouse is told about the double click and the wheel; a finger, the pinch. */
+  const mouse = useMediaQuery("(hover: hover) and (pointer: fine)");
+
+  /* Opened by a double click on the product page: once the photo has a size,
+     the spot clicked there is put under the pointer (or in the middle, when
+     the pointer is off the stage) at `TAP_ZOOM`. Declared after the reset
+     above, so it is not undone by it. */
+  useEffect(() => {
+    if (!start) return;
+    let tries = 0;
+    let frame = 0;
+    const zoomIn = () => {
+      const { stage: box, photo } = sizes();
+      if (!photo.width || !photo.height) {
+        if (tries++ < 60) frame = requestAnimationFrame(zoomIn);
+        return;
+      }
+      const rect = stage.current?.getBoundingClientRect();
+      const inside = rect && start.client.x >= rect.left && start.client.x <= rect.right && start.client.y >= rect.top && start.client.y <= rect.bottom;
+      const at = inside ? fromCentre(start.client.x, start.client.y) : { x: 0, y: 0 };
+      show({ scale: TAP_ZOOM, pan: clampPan(panToPoint(start, photo, TAP_ZOOM, at), TAP_ZOOM, photo, box) });
+    };
+    zoomIn();
+    return () => cancelAnimationFrame(frame);
+    /* Once, as it opens. */
+  }, []);
 
   const sizes = () => {
     const box = stage.current;
@@ -206,7 +232,7 @@ export function ZoomViewer({ items, index, title, onIndex, onClose }: {
   const onWheel = useRef<(event: WheelEvent) => void>(() => {});
   onWheel.current = (event: WheelEvent) => {
     event.preventDefault();
-    zoomAt(live.current.scale * Math.exp(-event.deltaY * 0.002), fromCentre(event.clientX, event.clientY));
+    zoomAt(wheelZoom(live.current.scale, event, stage.current?.clientHeight ?? 800), fromCentre(event.clientX, event.clientY));
   };
   useEffect(() => {
     const box = stage.current;
@@ -305,7 +331,7 @@ export function ZoomViewer({ items, index, title, onIndex, onClose }: {
           <ZoomOut className="size-5" aria-hidden />
         </button>
         <p className="min-w-0 flex-1 text-center text-[13px] font-semibold ink-muted">
-          {t(scale > 1 ? "product.zoomDrag" : "product.zoomHint")}
+          {t(scale > 1 ? (mouse ? "product.zoomDragMouse" : "product.zoomDrag") : mouse ? "product.zoomHintMouse" : "product.zoomHint")}
         </p>
         <button type="button" onClick={() => zoomAt(scale <= 1 ? TAP_ZOOM : scale + 0.5)} disabled={scale >= MAX_ZOOM || item?.kind === "video"} aria-label={t("product.zoomIn")} className={disc}>
           <ZoomIn className="size-5" aria-hidden />
