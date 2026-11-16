@@ -101,20 +101,98 @@ desk read 120 messages an hour.
 
 ## Changing the colours
 
-Every colour is a token at the top of `src/styles.css` (`--brand`, `--brand-strong`,
-`--brand-tint`, …). A new palette is an edit to that block and nothing else;
-check that text still reads at 4.5:1 on what it sits on.
+Every colour, type size, space, corner, shadow and timing is a token in
+`src/styles/tokens.css`, and nothing else in the stylesheet writes a raw
+value. A new palette is an edit to that file alone; check that text still
+reads at 4.5:1 on what it sits on (the file lists each pairing as measured).
+`/styleguide` draws every part in every state with the tokens as they are.
+
+## Pages
+
+**Live** — what a customer sees on shiplee.delivery:
+
+| Page | What it is |
+|---|---|
+| `/` | Track a parcel: the box, recently tracked, what ShipLee does, the parcel's four steps, an invitation to shops, common questions |
+| `/track/SL…` | One parcel: its status, the five steps, the expected day, what to do (reschedule, change the address, report a problem), the route and the updates |
+| `/track/SL…,SL…` | Several parcels, a row each |
+| `/track` | The tracking box on its own, with recently tracked |
+| `/help` | Questions, ShipLee AI (when on), the ways to reach the team, more help, your privacy |
+| `/contact` | The ways to reach the team, what to do about a parcel, sending for a shop |
+| `/report` | Report a problem: the number, then what happened, sent on WhatsApp or by email |
+| `/scams` | What ShipLee does and never asks for, and what to do with a message you doubt |
+| anything else | Page not found, with the tracking box |
+| `/staff` | The staff desk (password) |
+
+Also on every customer page: a service notice when one is set
+(`src/content/serviceAlert.ts`) and a WhatsApp button when `SHIPLEE_WHATSAPP`
+is set.
+
+**Preview** — designed, not connected, with sample data and a Preview mark.
+Shown on a demo deployment (`SHIPLEE_DEMO=1`, or `pnpm dev` with no database),
+or on a device that turned preview on at `/preview`. Anywhere else each
+address is the page not found, and none is in the sitemap.
+
+| Page | What it is |
+|---|---|
+| `/services` | The services, with prices from the sample rate rule |
+| `/rates` | A rate calculator |
+| `/book` | Booking a delivery in four steps |
+| `/locations` | A drop-off point finder with a place for the map |
+| `/signin`, `/signup`, `/account` | Signing in, creating an account, and an account's page |
+| `/about`, `/careers`, `/couriers` | About ShipLee, openings, and signing up to deliver |
+| `/styleguide` | Every part of the design in every state |
+| on `/track/SL…` | Notifications, the driver's map, the photo at the door |
+| on `/` | Sample figures and sample quotes |
+
+## Where it connects later
+
+Each preview piece is built to be wired up without being redrawn:
+
+- **Rates and services** — `src/samples/rates.ts` is the only place prices
+  come from. A price list the server keeps (or an API that quotes a booking)
+  replaces it with the same lines.
+- **Booking** — "Book the delivery" on the last step sends the three parts to an API
+  that creates the shipment (the staff desk's create, opened to customers)
+  and answers with the tracking number; the rules are already the shipment
+  form's (`shared/shipment.ts`).
+- **Locations** — `src/samples/locations.ts` becomes a list the server keeps;
+  the place drawn for the map becomes one.
+- **Accounts** — an accounts API behind `/signin` and `/signup`, and a session
+  that `/account` reads instead of its sample parcels and addresses.
+- **Notifications** — the tracking page's sign-up sends the number and the
+  channel to an API that texts, WhatsApps or emails each update.
+- **The driver's map and the photo at the door** — the driver's app reporting
+  a position and a photo, which the tracking page then shows in the drawn
+  places.
+- **Becoming a courier and careers** — the form's answers sent to the team
+  (an API, or the WhatsApp message the requests already use).
+- **The service notice** — a notice the staff desk writes, served by
+  `/api/config`, in place of the constant.
+- **Figures and quotes** — real numbers from the shipments and real
+  customers' words, in place of the samples on the home page.
+
+Reschedule, change the address and report a problem are already live: each
+ends in a message the customer sends on WhatsApp or by email, written for
+them with the number in it. An inbox on the staff desk would be the next step.
 
 ## Layout
 
 ```
-shared/     the rules both sides use: tracking numbers, statuses, the form's checks, ShipLee AI's
-            prompts and readers (assistant.ts), the label's barcode and QR code, English and Arabic
-server/     the API (handle.ts), the database (db.ts, schema.ts, store.ts), staff sign-in (auth.ts),
-            ShipLee AI (ai.ts, gateway.ts), the export (csv.ts)
-api/        the Vercel function: a two-line stub over the bundle `pnpm build` writes
-src/        the website: pages/, components/, staff/ (the desk)
-scripts/    the function bundle, the smoke test, the local server
+shared/        the rules both sides use: tracking numbers, statuses, the form's checks, customer
+               requests (requests.ts), ShipLee AI's prompts and readers (assistant.ts), the label's
+               barcode and QR code, and the words in English and Arabic (i18n.ts, copy/)
+server/        the API (handle.ts), the database (db.ts, schema.ts, store.ts), staff sign-in (auth.ts),
+               ShipLee AI (ai.ts, gateway.ts), the export (csv.ts)
+api/           the Vercel function: a two-line stub over the bundle `pnpm build` writes
+src/           the website
+  pages/       the customer's pages; pages/preview/ the preview pages
+  components/  the frame and shared pieces; components/ui/ the design system's parts
+  staff/       the staff desk
+  styles/      the stylesheet in parts, tokens.css first
+  samples/     the preview's sample prices and drop-off points
+  content/     the service notice
+scripts/       the function bundle, the smoke test, the local server
 ```
 
 `CLAUDE.md` says why each piece is the way it is.

@@ -30,8 +30,8 @@ pine 7.9:1, the muted ink 6.1:1, a field's border 3.7:1, the attention and
 stopped inks over 6.4:1 on their fills, the preview ink 7.3:1 on its fill. A
 new palette is that file alone; measure it the same way. The stylesheet is in
 parts (`src/styles.css` imports them in order: tokens, base, the shared parts,
-the frame, the pages, ShipLee AI, the staff desk, the labels, the style
-guide), and the site keeps to four breakpoints, 420, 640, 768 and 960.
+the frame, the pages, the other pages, ShipLee AI, the staff desk, the labels,
+the style guide), and the site keeps to four breakpoints, 420, 640, 768 and 960.
 **`/styleguide` draws every part in every state**, its swatches read from the
 tokens at run time so it cannot disagree with them; it is noindex and linked
 only in preview. **No `style` attribute anywhere**: the security policy refuses
@@ -302,6 +302,11 @@ account (sample parcels, addresses, switches that forget), about, careers
 courier. Every one carries the Preview mark by its title and is noindex. Each
 says in a comment **where it connects later**. In the footer a preview link
 carries the eye alone, its word read to a screen reader.
+
+**`public/sitemap.xml` lists the live pages and nothing else**: a preview
+page is the 404 on a live deployment, and the style guide and the desk are
+nobody's search result. `README.md` lists every page, live and preview, and
+where each preview piece connects later; a page added is a row in both.
 
 ## Checks
 

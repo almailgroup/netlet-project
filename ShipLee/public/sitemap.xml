@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- The live pages alone: preview pages, the style guide and the staff desk are never listed. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://shiplee.delivery/</loc></url>
+  <url><loc>https://shiplee.delivery/track</loc></url>
   <url><loc>https://shiplee.delivery/help</loc></url>
+  <url><loc>https://shiplee.delivery/contact</loc></url>
+  <url><loc>https://shiplee.delivery/report</loc></url>
+  <url><loc>https://shiplee.delivery/scams</loc></url>
 </urlset>
