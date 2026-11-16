@@ -10,16 +10,80 @@
 @media (min-width: 960px) {
   .hero .container { padding-block: var(--space-20) 88px; }
 }
-.hero-route {
+/*
+ * The road round the words and the parcels on it (ParcelLoop). The layer sits
+ * behind the band's content; the road is worked out in the band's own pixels,
+ * so a parcel is pinned to the band's physical corner (top and left, not a
+ * logical side) and carried from there by its animation.
+ */
+.loop-art { position: absolute; inset: 0; overflow: hidden; color: var(--on-brand); pointer-events: none; }
+.loop-road { position: absolute; inset: 0; width: 100%; height: 100%; }
+.loop-road path { fill: none; stroke: var(--route-ink); stroke-width: 3; stroke-dasharray: 2 14; stroke-linecap: round; }
+.loop-parcel {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  color: var(--on-brand);
-  opacity: 0.14;
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  width: var(--loop-parcel);
+  height: var(--loop-parcel);
+  /* The road runs under the box's foot, three quarters of the way down it. */
+  translate: -50% -75%;
+  will-change: transform;
 }
-[dir="rtl"] .hero-route { transform: scaleX(-1); }
+.loop-parcel > span { position: absolute; inset: 0; }
+.loop-parcel svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.loop-shade { transform-origin: 50% 83%; }
+.loop-shade ellipse { fill: var(--hero-shade); }
+.loop-box { transform-origin: 50% 78%; }
+.loop-parcel[data-look="2"] :is(.loop-box, .loop-shade) { scale: 0.84; }
+/* A parcel sways as it rides, and its shade narrows as it lifts; each a beat apart from the next. */
+@media (prefers-reduced-motion: no-preference) {
+  .loop-box { animation: loop-sway var(--duration-sway) ease-in-out infinite alternate; }
+  .loop-shade { animation: loop-lift var(--duration-sway) ease-in-out infinite alternate; }
+  .loop-parcel[data-beat="1"] :is(.loop-box, .loop-shade) { animation-delay: calc(var(--duration-sway) * -0.5); }
+  .loop-parcel[data-beat="2"] :is(.loop-box, .loop-shade) { animation-delay: calc(var(--duration-sway) * -1); }
+  .loop-parcel[data-beat="3"] :is(.loop-box, .loop-shade) { animation-delay: calc(var(--duration-sway) * -1.5); }
+  .loop-art[data-still] :is(.loop-box, .loop-shade) { animation-play-state: paused; }
+}
+@keyframes loop-sway {
+  from { translate: 0 0; rotate: -2.5deg; }
+  to { translate: 0 calc(var(--loop-parcel) * -0.09); rotate: 2.5deg; }
+}
+@keyframes loop-lift {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0.82); }
+}
+/*
+ * Pauses the parcels, at the band's start corner, where a player's play and
+ * pause sit: the end corner is where the floating WhatsApp button rides, and
+ * scrolling past, it covered this one, focus and all.
+ */
+.loop-toggle {
+  position: absolute;
+  inset-block-end: var(--space-3);
+  inset-inline-start: var(--gutter);
+  display: grid;
+  place-items: center;
+  width: var(--control-small);
+  height: var(--control-small);
+  border: 1px solid var(--on-brand-faint);
+  border-radius: var(--radius-full);
+  background: var(--brand-strong);
+  color: var(--on-brand);
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast) var(--ease);
+}
+.loop-toggle:hover { box-shadow: inset 0 0 0 var(--control-small) var(--on-brand-faint); }
+.loop-toggle:focus-visible { outline: 2px solid var(--on-brand); outline-offset: 2px; }
+@media (pointer: coarse) {
+  .loop-toggle { width: var(--target); height: var(--target); }
+}
+@media (min-width: 960px) {
+  .loop-toggle { inset-block-end: var(--space-5); }
+}
+/* Drawn for the eye on a screen: neither on paper nor under a high-contrast theme. */
+@media print, (forced-colors: active) {
+  .loop-art, .loop-toggle { display: none; }
+}
 .hero h1 {
   max-width: 14ch;
   font-size: var(--text-5xl);

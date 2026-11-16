@@ -9,6 +9,7 @@ import { RecentlyTracked } from "../components/RecentlyTracked.js";
 import { HOME_TRACK_ID } from "../nav.js";
 import { STATUS_ICONS } from "../components/Status.js";
 import { AiMark } from "../components/ShipLeeAI.js";
+import { ParcelLoop } from "../components/ParcelLoop.js";
 import { PreviewTag, usePreview } from "../preview.js";
 import { MILESTONES } from "../../shared/status.js";
 import { GOVERNORATES } from "../../shared/kuwait.js";
@@ -35,38 +36,35 @@ export function Home() {
   return (
     <>
       <section className="hero" aria-labelledby="home-title">
-        {/* A route drawn across the band, for the eye alone. */}
-        <svg className="hero-route" viewBox="0 0 1200 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-          <path d="M-20 330 C 220 330 260 120 470 150 S 760 330 930 210 S 1120 70 1240 90" fill="none" stroke="currentColor" strokeWidth="3" strokeDasharray="2 14" strokeLinecap="round" />
-          <circle cx="930" cy="210" r="9" fill="none" stroke="currentColor" strokeWidth="3" />
-          <circle cx="470" cy="150" r="6" fill="currentColor" />
-        </svg>
-        <div className="container hero-grid">
-          <div className="hero-copy">
-            <h1 id="home-title">{t("home.title")}</h1>
-            <p className="hero-lead">{t("home.lead")}</p>
-            <div className="hero-card">
-              <TrackForm inputId={HOME_TRACK_ID} />
-              <RecentlyTracked />
-              {config?.demo && config.samples.length ? (
-                <p className="samples">
-                  <span>{t("track.samples")}</span>
-                  {config.samples.map(number => (
-                    <Link key={number} href={`/track/${number}`} className="chip">{number}</Link>
-                  ))}
+        {/* Parcels going round a road drawn about the words, for the eye alone, with a pause button. */}
+        <ParcelLoop>
+          <div className="container hero-grid">
+            <div className="hero-copy">
+              <h1 id="home-title">{t("home.title")}</h1>
+              <p className="hero-lead">{t("home.lead")}</p>
+              <div className="hero-card">
+                <TrackForm inputId={HOME_TRACK_ID} />
+                <RecentlyTracked />
+                {config?.demo && config.samples.length ? (
+                  <p className="samples">
+                    <span>{t("track.samples")}</span>
+                    {config.samples.map(number => (
+                      <Link key={number} href={`/track/${number}`} className="chip">{number}</Link>
+                    ))}
+                  </p>
+                ) : null}
+              </div>
+              {config?.ai ? (
+                <p className="hero-ask">
+                  <span className="ai-badge on-brand"><AiMark size={18} /></span>
+                  <span>{t("home.askLead")}</span>
+                  <Link href="/help#ask">{t("home.askLink")}</Link>
                 </p>
               ) : null}
             </div>
-            {config?.ai ? (
-              <p className="hero-ask">
-                <span className="ai-badge on-brand"><AiMark size={18} /></span>
-                <span>{t("home.askLead")}</span>
-                <Link href="/help#ask">{t("home.askLink")}</Link>
-              </p>
-            ) : null}
+            <HeroParcel />
           </div>
-          <HeroParcel />
-        </div>
+        </ParcelLoop>
       </section>
 
       <div className="container">
@@ -119,8 +117,9 @@ export function Home() {
 }
 
 /**
- * A parcel on the route's end, beside the tracking box on a wide screen: the
- * band's one picture, drawn in its own whites so it reads as part of it.
+ * A parcel at its destination, beside the tracking box on a wide screen: the
+ * band's one picture, drawn in its own whites so it reads as part of it, with
+ * the small parcels going round the road about it (ParcelLoop).
  */
 function HeroParcel() {
   return (

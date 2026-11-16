@@ -21,7 +21,8 @@ NetLet's rules about pushing straight to `main` hold here too.
 (Inter, with IBM Plex Sans Arabic for the Arabic page, both served from the
 site itself), white cards with a hairline on a pale ground, soft corners,
 labels above boxes, problems under them. One bold thing — the pine band on the
-home page with a dotted route drawn across it — and quiet everywhere else.
+home page, with parcels going round a dotted road about its words — and quiet
+everywhere else.
 
 **Every colour, size, space, corner, shadow and timing is a token in
 `src/styles/tokens.css` and nowhere else**, because the owner said the colours
@@ -276,6 +277,37 @@ device. Preview with none set shows a sample. **The WhatsApp button floats on
 every customer page** where `SHIPLEE_WHATSAPP` is set, never on the desk, its
 message starting with the parcel's number on a parcel's page; the footer
 leaves room under it (`:has`).
+
+**Parcels go round the band, on the owner's word** ("animate the banner …
+a smooth animation of parcels going around"; `ParcelLoop`, `src/parcelLoop.ts`).
+A dotted road loops round the headline, the lead and the tracking card — a lane
+in the strip above, a lane in the strip below, and a leg down each side, in the
+margin where a parcel fits there and past the band's edge where it does not, so
+on a phone the parcels leave at one end of a lane and come back along the
+other. Out along the bottom in the reading direction, back along the top; the
+lanes undulate a little, flat where they meet a corner. **The road is worked out
+from where the words are, every time the band changes size**, and the rule that
+matters is pure and tested: no parcel ever passes behind a word
+(`parcelLoop.test.ts`, at the five widths the site is walked at, in both
+directions, and a thousand points round each loop). It replaced a meander drawn
+in a fixed picture, which crossed under the lead at some widths.
+
+**Each parcel is moved by the browser's own animation of `transform`**, so the
+compositor runs it, and its sway is a CSS animation on a `<span>` round the
+drawing, never on the `<svg>`: browsers do not hand an SVG element's animation
+to the compositor, and measured with the sway on the SVG the page restyled
+every frame (0.16s of main-thread work in 3s); on the span, 0.02s. The set
+keeps one figure for how far it has turned, not one per parcel, because a
+redrawn road can carry one parcel more or fewer, and per-parcel places put the
+new one on top of an old one (seen as two boxes stacked on the left leg).
+
+**It never moves for somebody who asked for less motion** (the parcels stand on
+the road), **stops while the band is off the screen**, and **has a pause button**
+(WCAG 2.2.2), remembered on the device (`shiplee:motion`). The button sits at
+the band's start corner, where a player's play and pause do: at the end corner
+the floating WhatsApp button covered it as the page scrolled past, focus and
+all — found by scrolling a step at a time and measuring the overlap. Hidden in
+print and under a high-contrast theme, with the road.
 
 ## The other pages
 

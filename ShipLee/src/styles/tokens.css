@@ -25,6 +25,9 @@
   --on-brand: #ffffff;
   --on-brand-soft: #d6ebe3;
   --on-brand-faint: rgb(255 255 255 / 0.16);
+  /* The home band's road and the shade a parcel casts on it. */
+  --route-ink: rgb(255 255 255 / 0.24);
+  --hero-shade: rgb(3 28 22 / 0.34);
 
   /* Ink and surfaces */
   --ink: #13231f;
@@ -121,6 +124,8 @@
   /* The smallest thing a thumb is asked to hit. */
   --target: 44px;
   --header: 64px;
+  /* A parcel going round the home band: a little larger as the screen grows. */
+  --loop-parcel: 26px;
 
   /* Corners */
   --radius-xs: 6px;
@@ -144,6 +149,8 @@
   --duration-fast: 120ms;
   --duration: 200ms;
   --duration-slow: 320ms;
+  /* A parcel's sway as it rides the road. */
+  --duration-sway: 1800ms;
 
   /* Layers */
   --z-header: 20;
@@ -158,5 +165,8 @@
   --tracking-tight: 0;
 }
 @media (min-width: 640px) {
-  :root { --gutter: var(--space-6); }
+  :root { --gutter: var(--space-6); --loop-parcel: 28px; }
+}
+@media (min-width: 960px) {
+  :root { --loop-parcel: 32px; }
 }

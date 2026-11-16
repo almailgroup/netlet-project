@@ -113,7 +113,7 @@ reads at 4.5:1 on what it sits on (the file lists each pairing as measured).
 
 | Page | What it is |
 |---|---|
-| `/` | Track a parcel: the box, recently tracked, what ShipLee does, the parcel's four steps, an invitation to shops, common questions |
+| `/` | Track a parcel: the box, recently tracked, what ShipLee does, the parcel's four steps, an invitation to shops, common questions; parcels go round a road about the band's words, with a pause button |
 | `/track/SL…` | One parcel: its status, the five steps, the expected day, what to do (reschedule, change the address, report a problem), the route and the updates |
 | `/track/SL…,SL…` | Several parcels, a row each |
 | `/track` | The tracking box on its own, with recently tracked |

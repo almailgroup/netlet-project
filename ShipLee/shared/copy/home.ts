@@ -46,6 +46,9 @@ export const homeEn = {
   "fab.label": "Chat with ShipLee on WhatsApp",
   "fab.short": "Chat with us",
   "fab.message": "Hello ShipLee, ",
+
+  "home.motionPause": "Pause the moving parcels",
+  "home.motionPlay": "Play the moving parcels",
 };
 
 export const homeAr: Record<keyof typeof homeEn, string> = {
@@ -90,4 +93,7 @@ export const homeAr: Record<keyof typeof homeEn, string> = {
   "fab.label": "تحدّث مع ShipLee على واتساب",
   "fab.short": "تحدّث معنا",
   "fab.message": "مرحباً ShipLee، ",
+
+  "home.motionPause": "إيقاف حركة الطرود",
+  "home.motionPlay": "تشغيل حركة الطرود",
 };
