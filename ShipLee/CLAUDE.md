@@ -256,6 +256,27 @@ Preview wherever it shows — the notification sign-up, the driver's map and the
 delivery photo. A real deployment draws none of it, and a preview page's
 address is the 404 there. Preview ink on its fill is 7.3:1.
 
+## The home page
+
+**The tracking box first, then what is true.** Four facts about ShipLee
+(pickup from the sender, the six governorates named from `GOVERNORATES` and
+joined by `Intl.ListFormat`, cash on delivery, tracking at every step), the
+four steps a parcel takes, an invitation to shops that opens WhatsApp with its
+first line written or an email with its subject (drawn only where the
+deployment names one), and the common questions. **Figures and quotes are
+preview only**, under a Preview mark and a line saying they are samples:
+ShipLee has no numbers it could stand behind yet, and a quote nobody said is
+not one to show a customer. The quotes name a kind of customer and a place,
+never a person.
+
+**The service notice is a constant** (`src/content/serviceAlert.ts`, both
+languages, an id, an optional last day): a holiday's hours or a road closed,
+written there and live with the next deploy, dismissed per notice on the
+device. Preview with none set shows a sample. **The WhatsApp button floats on
+every customer page** where `SHIPLEE_WHATSAPP` is set, never on the desk, its
+message starting with the parcel's number on a parcel's page; the footer
+leaves room under it (`:has`).
+
 ## Checks
 
 `pnpm check`, `pnpm test`, `pnpm build`, `pnpm smoke`, run by

@@ -157,4 +157,15 @@
   .float-chat .label { display: none; }
 }
 /* The page leaves room at its foot so the last line is never under it. */
-.has-float .site-footer { padding-bottom: var(--space-16); }
+.site-footer:has(~ .float-chat-wrap) { padding-bottom: var(--space-16); }
+@media print { .float-chat-wrap, .service-alert { display: none; } }
+
+/* ---------- The service notice, above the header ---------- */
+
+.service-alert { border-bottom: 1px solid var(--brand-tint); background: var(--brand-wash); color: var(--ink); font-size: var(--text-sm); }
+.service-alert.tone-attention { border-bottom-color: var(--attention-line); background: var(--attention-fill); }
+.service-alert-row { display: flex; align-items: center; gap: var(--space-2-5); min-height: var(--target); padding-block: var(--space-1); }
+.service-alert-row > svg { flex: none; color: var(--brand); }
+.service-alert.tone-attention .service-alert-row > svg { color: var(--attention-ink); }
+.service-alert-row p { flex: 1; min-width: 0; padding-block: var(--space-1-5); }
+.service-alert-row .button { flex: none; margin-inline-end: calc(-1 * var(--space-2)); }

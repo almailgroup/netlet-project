@@ -9,6 +9,7 @@
  */
 import { uiAr, uiEn } from "./copy/ui.js";
 import { trackingAr, trackingEn } from "./copy/tracking.js";
+import { homeAr, homeEn } from "./copy/home.js";
 
 export type Lang = "en" | "ar";
 export const LANGS: readonly Lang[] = ["en", "ar"];
@@ -340,6 +341,7 @@ const en = {
 
   ...uiEn,
   ...trackingEn,
+  ...homeEn,
 };
 
 export type Key = keyof typeof en;
@@ -671,6 +673,7 @@ const ar: Record<Key, string> = {
 
   ...uiAr,
   ...trackingAr,
+  ...homeAr,
 };
 
 export const DICTIONARY: Record<Lang, Record<Key, string>> = { en, ar };

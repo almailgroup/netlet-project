@@ -8,6 +8,8 @@ import { Dialog } from "./ui/Dialog.js";
 import { TrackForm } from "./TrackForm.js";
 import { RecentlyTracked } from "./RecentlyTracked.js";
 import { PreviewTag, usePreview } from "../preview.js";
+import { ServiceAlertBar } from "./ServiceAlertBar.js";
+import { WhatsAppButton } from "./WhatsAppButton.js";
 import { GROUPS, HOME_TRACK_ID, isCurrent, pagesFor } from "../nav.js";
 
 /**
@@ -52,6 +54,7 @@ export function Layout({ children }: { children: ReactNode }) {
     <>
       <a className="skip-link" href="#main">{t("nav.skip")}</a>
       {preview.on ? <PreviewBar /> : null}
+      {staff ? null : <ServiceAlertBar />}
       <header className="site-header">
         <div className="container header-row">
           <Link href="/" className="logo" aria-label={t("nav.home")}>
@@ -106,6 +109,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
       <main id="main" tabIndex={-1}>{children}</main>
       <Footer preview={preview.on} />
+      <WhatsAppButton />
     </>
   );
 }
