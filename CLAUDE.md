@@ -5380,6 +5380,40 @@ an authorised device. Walked at 320, 390 and 1440 in both languages: the
 dialog open on arrival, the run squaring the heater's wide photo, the notice
 and its way back, axe clean.
 
+**The owner's first run on the live shop squared nothing — "0 photos made
+square … 72 could not be made square" — and two faults made it say so
+little.** Every way a drawing failed was one `drawing.failed` answered as a
+503, and the run took any 503 as "every photo after this one would be refused
+alike", so the first photo's failure stopped the run and the other 72 were
+counted as kept without being tried. And the reason itself was lost twice: the
+Worker turned every Gemini failure into `model_unavailable`, and `askModelFor`
+turned that into null. Text answers through the same gateway were fine (a chat
+answered from this sandbox), so it was the image model alone — most likely
+that `gemini-2.5-flash-image` has no free allowance and the Gemini key's
+project has no billing; the next press will say. Now: **the Worker sends a
+coarse `cause` on the generate route** (`GatewayCause`: quota for Google's
+429, denied, missing, refused, google, timeout, blocked, no_picture — NetLet's
+words for the kind of refusal, never Google's text, which stays in the
+Worker's log); **`askModelOutcome`** carries it (`askModelFor` is that with
+the reason dropped); **`drawingMiss` names it** — `drawing.googleQuota` ("turn
+on billing for that key's project in Google AI Studio"),
+`drawing.googleRefused`, `drawing.slow`, else `drawing.failed` — and
+**`drawingStatus` is the one status table**: 503 only for what refuses every
+photo alike (off, Google's quota or refusal), 502 for one photo's failure, 504
+for one too slow, 429 for the hour. The run stops only on those
+(`STOPS` in `squarePhotos.ts`) and says the reason in the dialog: what stopped
+it, or the last photo's own. **When NetLet AI drew none, the dialog offers
+"Square without AI"**: the same run with no drawing, each photo padded in the
+browser on its own edges' colours — the top and bottom rows' for a wide photo,
+the sides' for a tall one (`sideColours` in `preparePhoto.ts`; one colour
+averaged from every edge matched neither a pale wall above nor a beige table
+below) — never cut, every one able to be put back. Squared that way it is
+square, so a later run with AI leaves it alone: put it back first. The app's
+`PhotoFixer` still pads on one averaged colour; it pads only when a model kept
+a photo's shape. Walked against a stand-in gateway refusing as the Worker does
+for a 429, at 320, 390 and 1440 in both languages: the reason in the dialog,
+the offer, the heater's photo made 1200 × 1200 on its own grey, axe clean.
+
 ## Manufacturer images
 
 `Shared/commerce/manufacturerImages.ts` is the rule, pure; `Backend/src/services/manufacturerImages.ts`

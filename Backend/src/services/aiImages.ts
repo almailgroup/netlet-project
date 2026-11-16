@@ -41,7 +41,7 @@ import {
 import { sniffRemoteImage, MAX_REMOTE_IMAGE_BYTES } from "../../../Shared/commerce/manufacturerImages.js";
 import { can, type Actor } from "../../../Shared/inventory/permissions.js";
 import { featureOn } from "./features.js";
-import { askModelFor, modelAvailable } from "./gemini.js";
+import { askModelOutcome, modelAvailable, type ModelMiss } from "./gemini.js";
 import { guardedFetch } from "./manufacturerImages.js";
 import { readMedia } from "./media.js";
 import { takeHourlyAllowance } from "./rateLimit.js";
@@ -54,6 +54,11 @@ export type DrawingProblem =
   | "drawing.off"
   | "drawing.tooMany"
   | "drawing.failed"
+  /* Google said no for every picture alike: no allowance for the image model
+     on NetLet's Gemini project (billing), or a key or model it will not use. */
+  | "drawing.googleQuota"
+  | "drawing.googleRefused"
+  | "drawing.slow"
   | "tryOn.notFound"
   | "tryOn.notWearable"
   | "tryOn.noProductPhoto"
@@ -86,8 +91,27 @@ function drawnFrom(answer: GenerateAnswer | null): Drawn {
   return { type: type as ImageType, bytes };
 }
 
+/** What a model's failure to draw is called to the person who asked. */
+export function drawingMiss(miss: ModelMiss): DrawingProblem {
+  if (miss === "quota") return "drawing.googleQuota";
+  if (miss === "denied" || miss === "missing" || miss === "refused") return "drawing.googleRefused";
+  if (miss === "timeout") return "drawing.slow";
+  if (miss === "not_configured") return "drawing.off";
+  return "drawing.failed";
+}
+
+/** The HTTP status a drawing's refusal travels with: one that stops a run of photos only when every photo would be refused alike. */
+export function drawingStatus(reason: DrawingProblem): number {
+  if (reason === "media.notAllowed") return 403;
+  if (reason === "drawing.tooMany") return 429;
+  if (reason === "drawing.off" || reason === "drawing.googleQuota" || reason === "drawing.googleRefused") return 503;
+  if (reason === "drawing.slow") return 504;
+  if (reason === "drawing.failed") return 502;
+  return 400;
+}
+
 async function draw(task: "photoCleanup" | "tryOn" | "guideImage" | "subcategoryImage", call: { system: string; prompt: string; image: CatalogImage | null; images?: CatalogImage[]; aspectRatio?: ImageAspect }): Promise<Drawn> {
-  const answer = await askModelFor(task, {
+  const outcome = await askModelOutcome(task, {
     system: call.system,
     prompt: call.prompt,
     image: call.image,
@@ -99,7 +123,8 @@ async function draw(task: "photoCleanup" | "tryOn" | "guideImage" | "subcategory
     maxOutputTokens: 1024,
     deadlineMs: DRAWING_DEADLINE_MS,
   });
-  return drawnFrom(answer);
+  if (!outcome.ok) throw new DrawingRefused(drawingMiss(outcome.miss));
+  return drawnFrom(outcome.answer);
 }
 
 /** Whether the drawing model can be asked at all, and the feature that uses it is on. */

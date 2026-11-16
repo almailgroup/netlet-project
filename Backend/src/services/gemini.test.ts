@@ -74,6 +74,34 @@ describe("asking the model from the server", () => {
     expect(await gemini.askModel("supportDraft", call)).toBeNull();
   });
 
+  /* A drawing that fails says why: Google's kind of refusal travels from the
+     Worker in NetLet's words, never Google's text. */
+  it("says why Gemini would not draw: a quota, a refused key, a missing model, nothing drawn", async () => {
+    const draw = { ...call, output: "image" as const, aspectRatio: "1:1" as const };
+    for (const [status, miss] of [[429, "quota"], [403, "denied"], [404, "missing"], [400, "refused"], [500, "google"]] as const) {
+      throughWorker("x", { status });
+      expect(await gemini.askModelOutcome("photoCleanup", draw)).toEqual({ ok: false, miss });
+    }
+    /* Gemini answered, and drew nothing. */
+    throughWorker("I would rather not.");
+    expect(await gemini.askModelOutcome("photoCleanup", draw)).toEqual({ ok: false, miss: "no_picture" });
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new DOMException("timed out", "TimeoutError"); }));
+    expect(await gemini.askModelOutcome("photoCleanup", draw)).toEqual({ ok: false, miss: "timeout" });
+  });
+
+  it("names each refusal for the person who asked, and only a refusal of every picture stops a run", async () => {
+    const images = await import("./aiImages.js");
+    expect(images.drawingMiss("quota")).toBe("drawing.googleQuota");
+    expect(images.drawingMiss("denied")).toBe("drawing.googleRefused");
+    expect(images.drawingMiss("missing")).toBe("drawing.googleRefused");
+    expect(images.drawingMiss("timeout")).toBe("drawing.slow");
+    expect(images.drawingMiss("no_picture")).toBe("drawing.failed");
+    expect(images.drawingMiss("not_configured")).toBe("drawing.off");
+    expect(images.drawingStatus("drawing.googleQuota")).toBe(503);
+    expect(images.drawingStatus("drawing.failed")).toBe(502);
+    expect(images.drawingStatus("drawing.tooMany")).toBe(429);
+  });
+
   it("reads a JSON object and nothing else", () => {
     expect(gemini.parseObject('{"order":["1"]}')).toEqual({ order: ["1"] });
     for (const text of [null, "", "not json", "[1,2]", "42", "null"]) expect(gemini.parseObject(text)).toBeNull();

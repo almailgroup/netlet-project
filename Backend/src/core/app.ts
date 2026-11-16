@@ -22,7 +22,7 @@ import { appleMapToken } from "./maps.js";
 import { sql } from "drizzle-orm";
 import { describeError } from "./describeError.js";
 import { remindAbandonedBags, sendDueEmails } from "../services/notifications.js";
-import { DrawingRefused, cleanUpPhoto, squareProductPhoto } from "../services/aiImages.js";
+import { DrawingRefused, cleanUpPhoto, drawingStatus, squareProductPhoto } from "../services/aiImages.js";
 import { databaseRegionOf, getDb } from "../services/db.js";
 import { holdUntilConnectionsIdle } from "./connectionRelease.js";
 import { sitemapEntries } from "../services/sitemap.js";
@@ -319,8 +319,7 @@ export function createApp(): Express {
       res.end(drawn.bytes);
     } catch (error) {
       if (error instanceof DrawingRefused) {
-        const status = error.reason === "media.notAllowed" ? 403 : error.reason === "drawing.tooMany" ? 429 : error.reason === "drawing.off" || error.reason === "drawing.failed" ? 503 : 400;
-        res.status(status).json({ error: error.reason });
+        res.status(drawingStatus(error.reason)).json({ error: error.reason });
         return;
       }
       console.error(`[media] clean-up failed: ${describeError(error)}`);
@@ -441,8 +440,7 @@ export function createApp(): Express {
     } catch (error) {
       if (error instanceof PhotoCopyRefused) { res.status(photoCopyStatus(error.reason)).json({ error: error.reason }); return; }
       if (error instanceof DrawingRefused) {
-        const status = error.reason === "media.notAllowed" ? 403 : error.reason === "drawing.tooMany" ? 429 : error.reason === "drawing.off" || error.reason === "drawing.failed" ? 503 : 400;
-        res.status(status).json({ error: error.reason });
+        res.status(drawingStatus(error.reason)).json({ error: error.reason });
         return;
       }
       console.error(`[media] square draw failed: ${describeError(error)}`);

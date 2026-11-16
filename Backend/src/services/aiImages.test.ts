@@ -44,9 +44,9 @@ beforeAll(async () => {
   vi.doMock("./features", () => ({ featureOn: async (key: string) => (key === "tryOn" ? tryOnSwitch : true) }));
   vi.doMock("./gemini", () => ({
     modelAvailable: async () => modelOn,
-    askModelFor: async (task: string, call: never) => {
+    askModelOutcome: async (task: string, call: never) => {
       calls.push({ task, call });
-      return drawn ? { text: "", image: { mimeType: "image/png", data: b64(drawn) } } : null;
+      return drawn ? { ok: true, answer: { text: "", image: { mimeType: "image/png", data: b64(drawn) } } } : { ok: false, miss: "no_picture" };
     },
   }));
   mod = await import("./aiImages.js");

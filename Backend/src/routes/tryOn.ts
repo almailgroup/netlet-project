@@ -22,7 +22,7 @@ export function drawingRefusal(error: unknown): never {
         ? "TOO_MANY_REQUESTS"
         : error.reason === "tryOn.notFound"
           ? "NOT_FOUND"
-          : error.reason === "drawing.off" || error.reason === "drawing.failed"
+          : error.reason === "drawing.off" || error.reason === "drawing.failed" || error.reason === "drawing.googleQuota" || error.reason === "drawing.googleRefused" || error.reason === "drawing.slow"
             ? "PRECONDITION_FAILED"
             : "BAD_REQUEST";
     throw new TRPCError({ code, message: error.reason });

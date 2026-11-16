@@ -40,7 +40,8 @@ export type GeminiCall = {
 };
 
 export class GeminiFailure extends Error {
-  constructor(readonly reason: "http" | "timeout" | "blocked" | "malformed", detail: string) {
+  /** Google's HTTP status, when it answered with one: the kind of refusal, never its text. */
+  constructor(readonly reason: "http" | "timeout" | "blocked" | "malformed" | "no_picture", detail: string, readonly status?: number) {
     super(detail);
   }
 }
@@ -92,7 +93,7 @@ async function post(call: GeminiCall, path: string): Promise<Response> {
   if (!response.ok) {
     /* Read and dropped: Google's text names the project and its quota. */
     await response.text().catch(() => "");
-    throw new GeminiFailure("http", `Gemini answered ${response.status}`);
+    throw new GeminiFailure("http", `Gemini answered ${response.status}`, response.status);
   }
   return response;
 }
@@ -151,7 +152,7 @@ export async function generateParts(call: GeminiCall): Promise<GeminiParts> {
   const sources = (candidate?.groundingMetadata?.groundingChunks ?? [])
     .flatMap(chunk => chunk.web?.uri ? [{ uri: chunk.web.uri, title: (chunk.web.title ?? "").slice(0, 200) }] : [])
     .slice(0, 10);
-  if (call.draw && !drawn) throw new GeminiFailure("malformed", "Gemini drew nothing");
+  if (call.draw && !drawn) throw new GeminiFailure("no_picture", `Gemini drew nothing (finish: ${candidate?.finishReason ?? "none"})`);
   return {
     text: textOf(body),
     image: drawn?.inlineData ? { mimeType: drawn.inlineData.mimeType!, data: drawn.inlineData.data! } : null,

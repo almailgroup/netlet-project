@@ -23,6 +23,7 @@ import {
   GATEWAY_ROUTES,
   signGatewayToken,
   type CatalogImage,
+  type GatewayCause,
   type GatewayResponse,
   type GenerateAnswer,
   type GenerateRequest,
@@ -64,8 +65,21 @@ const SERVER_TOKEN_SECONDS = 60;
 
 /** The whole answer — words, a picture, the pages searched — or null for every way it did not come. */
 export async function askModelFor(task: ServerTask, call: ModelCall): Promise<GenerateAnswer | null> {
+  const outcome = await askModelOutcome(task, call);
+  return outcome.ok ? outcome.answer : null;
+}
+
+/**
+ * Why a call did not come: the gateway's own kind of refusal when Gemini
+ * refused (`GatewayCause` — a quota, a key, a missing model), or what went
+ * wrong between here and the gateway. A drawing says it to an administrator,
+ * who can turn billing on; every other feature reads only whether it came.
+ */
+export type ModelMiss = GatewayCause | "not_configured" | "unreachable" | "busy";
+
+export async function askModelOutcome(task: ServerTask, call: ModelCall): Promise<{ ok: true; answer: GenerateAnswer } | { ok: false; miss: ModelMiss }> {
   const origin = gatewayOrigin();
-  if (!origin || !gatewayConfigured()) return null;
+  if (!origin || !gatewayConfigured()) return { ok: false, miss: "not_configured" };
   const body: GenerateRequest = {
     system: call.system,
     prompt: call.prompt,
@@ -88,11 +102,18 @@ export async function askModelFor(task: ServerTask, call: ModelCall): Promise<Ge
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(call.deadlineMs),
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const refused = (await response.json().catch(() => null)) as GatewayResponse<GenerateAnswer> | null;
+      const error = refused && !refused.ok ? refused.error : null;
+      const miss: ModelMiss = error?.cause ?? (error?.code === "rate_limited" ? "busy" : "unreachable");
+      console.warn(`[model] ${task} refused: ${response.status} ${error?.code ?? "?"} ${miss}`);
+      return { ok: false, miss };
+    }
     const answer = (await response.json()) as GatewayResponse<GenerateAnswer>;
-    return answer.ok && typeof answer.data?.text === "string" ? answer.data : null;
-  } catch {
-    return null;
+    return answer.ok && typeof answer.data?.text === "string" ? { ok: true, answer: answer.data } : { ok: false, miss: "malformed" };
+  } catch (error) {
+    const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    return { ok: false, miss: timedOut ? "timeout" : "unreachable" };
   }
 }
 

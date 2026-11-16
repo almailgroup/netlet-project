@@ -45,9 +45,11 @@ import {
   MIN_SECRET_LENGTH,
   checkCatalogRequest,
   checkChatRequest,
+  causeOfStatus,
   checkGenerateRequest,
   sseEvent,
   verifyGatewayToken,
+  type GatewayCause,
   type GatewayClaims,
   type GatewayErrorCode,
   type GatewayScope,
@@ -116,9 +118,9 @@ function json(status: number, body: unknown, headers: Headers): Response {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
-function refuse(code: GatewayErrorCode, message: string, headers: Headers, field?: string): Response {
+function refuse(code: GatewayErrorCode, message: string, headers: Headers, field?: string, cause?: GatewayCause): Response {
   if (code === "rate_limited") headers.set("retry-after", "60");
-  return json(GATEWAY_STATUS[code], { ok: false, error: { code, message, ...(field ? { field } : {}) } }, headers);
+  return json(GATEWAY_STATUS[code], { ok: false, error: { code, message, ...(field ? { field } : {}), ...(cause ? { cause } : {}) } }, headers);
 }
 
 /** The body, if it is JSON and no larger than the route allows. */
@@ -149,6 +151,17 @@ async function underCeiling(env: Env, scope: GatewayScope, claims: GatewayClaims
 
 function failureCode(error: unknown): GatewayErrorCode {
   return error instanceof GeminiFailure && error.reason === "blocked" ? "model_refused" : "model_unavailable";
+}
+
+/**
+ * The kind of refusal, for NetLet's server alone (`GatewayCause`): a quota,
+ * a key Google will not take, a model it does not have, a timeout. Google's
+ * own text stays here, in the Worker's log.
+ */
+function failureCause(error: unknown): GatewayCause {
+  if (!(error instanceof GeminiFailure)) return "google";
+  if (error.reason === "http") return error.status ? causeOfStatus(error.status) : "google";
+  return error.reason;
 }
 
 const encoder = new TextEncoder();
@@ -268,11 +281,11 @@ async function generate(body: unknown, caller: string, env: Env, headers: Header
     /* A picture only when one was asked for, and sources only for a search:
        an answer carries what its caller can read and nothing else. */
     const image = draw && answer.image && IMAGE_TYPES.includes(answer.image.mimeType as never) ? answer.image : null;
-    if (draw && !image) return refuse("model_unavailable", "The model drew nothing usable", headers);
+    if (draw && !image) return refuse("model_unavailable", "The model drew nothing usable", headers, undefined, "no_picture");
     return json(200, { ok: true, data: { text: answer.text, ...(draw ? { image } : {}), ...(request.search ? { sources: answer.sources } : {}) } }, headers);
   } catch (error) {
     console.warn("gateway generate", caller, error instanceof GeminiFailure ? error.reason : "error", String(error));
-    return refuse(failureCode(error), "The model could not answer", headers);
+    return refuse(failureCode(error), "The model could not answer", headers, undefined, failureCause(error));
   }
 }
 

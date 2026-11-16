@@ -58,6 +58,26 @@ function edgeColour(context: CanvasRenderingContext2D, width: number, height: nu
 }
 
 /**
+ * The colours of the two edges a card's padding meets: the top and bottom
+ * rows of a wide picture, the left and right columns of a tall one. Each band
+ * takes its own side's colour, so a photo on a pale wall over a beige table
+ * gets a wall-coloured band above and a table-coloured one below, where one
+ * colour averaged from every edge matched neither.
+ */
+function sideColours(context: CanvasRenderingContext2D, width: number, height: number, wide: boolean): [[number, number, number], [number, number, number]] {
+  const mean = (data: Uint8ClampedArray): [number, number, number] => {
+    const sums = [0, 0, 0];
+    let count = 0;
+    for (let i = 0; i < data.length; i += 4) { sums[0] += data[i]; sums[1] += data[i + 1]; sums[2] += data[i + 2]; count += 1; }
+    return count ? [Math.round(sums[0] / count), Math.round(sums[1] / count), Math.round(sums[2] / count)] : [255, 255, 255];
+  };
+  const depth = Math.max(1, Math.min(2, wide ? height : width));
+  return wide
+    ? [mean(context.getImageData(0, 0, width, depth).data), mean(context.getImageData(0, height - depth, width, depth).data)]
+    : [mean(context.getImageData(0, 0, depth, height).data), mean(context.getImageData(width - depth, 0, depth, height).data)];
+}
+
+/**
  * `square` widens or heightens a picture that is not square to one, on its
  * own background or the colour round its edge, and never crops it — what a
  * picture NetLet AI drew for a card gets if the model kept the photo's shape.
@@ -90,9 +110,11 @@ export async function preparePhoto(file: Blob, fix: boolean, options: { square?:
 
   /* Squared on its own background, with a margin, when there is one. */
   let side = fix && background ? squareAround(source) : 0;
-  /* Or squared because the card needs it, padded and never cut. */
+  /* Or squared because the card needs it, padded and never cut — each band in its own side's colour. */
+  let bands: [[number, number, number], [number, number, number]] | null = null;
   if (!side && options.square && Math.abs(source.width - source.height) > Math.max(source.width, source.height) * 0.02) {
     side = Math.max(source.width, source.height);
+    if (!background) bands = sideColours(work.context, W, H, source.width > source.height);
     background = background ?? edgeColour(work.context, W, H);
   }
   const outWidth0 = side || source.width;
@@ -109,6 +131,16 @@ export async function preparePhoto(file: Blob, fix: boolean, options: { square?:
     out.context.fillRect(0, 0, outWidth, outHeight);
     const drawWidth = source.width * shrink;
     const drawHeight = source.height * shrink;
+    if (bands) {
+      /* A pixel past the picture's own edge each way, so no seam of the averaged colour shows. */
+      const wide = drawWidth > drawHeight;
+      const gap = Math.ceil(((wide ? outHeight - drawHeight : outWidth - drawWidth) / 2) + 1);
+      const [first, second] = bands;
+      out.context.fillStyle = `rgb(${first[0]}, ${first[1]}, ${first[2]})`;
+      if (wide) out.context.fillRect(0, 0, outWidth, gap); else out.context.fillRect(0, 0, gap, outHeight);
+      out.context.fillStyle = `rgb(${second[0]}, ${second[1]}, ${second[2]})`;
+      if (wide) out.context.fillRect(0, outHeight - gap, outWidth, gap); else out.context.fillRect(outWidth - gap, 0, gap, outHeight);
+    }
     out.context.drawImage(work.canvas, source.x, source.y, source.width, source.height, (outWidth - drawWidth) / 2, (outHeight - drawHeight) / 2, drawWidth, drawHeight);
     if (Math.abs(source.width - source.height) > Math.max(source.width, source.height) * 0.02) fixes.push("squared");
   } else {

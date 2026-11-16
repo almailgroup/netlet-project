@@ -206,7 +206,25 @@ export const GATEWAY_ERRORS = [
 ] as const;
 export type GatewayErrorCode = (typeof GATEWAY_ERRORS)[number];
 
-export type GatewayError = { ok: false; error: { code: GatewayErrorCode; message: string; field?: string } };
+/**
+ * Why Gemini did not answer, in NetLet's words and never Google's: Google's
+ * own text names the project and its quota, so only the kind of refusal
+ * travels — enough for an administrator to be told "Google needs billing on
+ * for pictures" rather than "that did not work". Sent to NetLet's server on
+ * the generate route; a browser's routes carry none.
+ */
+export type GatewayCause = "quota" | "denied" | "missing" | "refused" | "google" | "timeout" | "blocked" | "no_picture" | "malformed";
+
+/** The kind of refusal an HTTP status from Gemini is. */
+export function causeOfStatus(status: number): GatewayCause {
+  if (status === 429) return "quota";
+  if (status === 401 || status === 403) return "denied";
+  if (status === 404) return "missing";
+  if (status >= 400 && status < 500) return "refused";
+  return "google";
+}
+
+export type GatewayError = { ok: false; error: { code: GatewayErrorCode; message: string; field?: string; cause?: GatewayCause } };
 export type GatewayOk<T> = { ok: true; data: T };
 export type GatewayResponse<T> = GatewayOk<T> | GatewayError;
 

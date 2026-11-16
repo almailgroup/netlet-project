@@ -32,6 +32,10 @@ export type SquareRun = {
   kept: number;
   /** The ceiling's or the switch's message key, when one stopped the run. */
   stoppedBy: string | null;
+  /** Why the last photo kept as it was could not be squared: said in the dialog, so "could not" has a reason. */
+  lastProblem: string | null;
+  /** Whether NetLet AI drew them, or each was squared on its own edge colours in this browser. */
+  withAi: boolean;
 };
 
 /** The longest edge sent to the model: a card's picture, well under the gateway's photo limit. */
@@ -39,11 +43,20 @@ const DRAW_EDGE = 1024;
 
 class Stop extends Error {}
 
+/**
+ * The reasons every photo after this one would be refused alike: the hour
+ * spent, NetLet AI switched off, or Google refusing the image model itself
+ * (no allowance on the project, or a key it will not use). One photo the
+ * model could not draw is that photo's alone, and the run goes on: a 503 for
+ * "that did not work" once stopped a whole run on its first photo, and the
+ * other 72 were counted as kept without being tried.
+ */
+const STOPS = new Set(["drawing.off", "drawing.tooMany", "drawing.googleQuota", "drawing.googleRefused", "media.copyTooMany"]);
+
 async function refusal(response: Response): Promise<never> {
   const body = (await response.json().catch(() => ({}))) as { error?: string };
   const reason = body.error ?? "drawing.failed";
-  /* The hour spent, or NetLet AI switched off: every photo after this one would be refused alike. */
-  if (response.status === 429 || response.status === 503 || reason === "drawing.off") throw new Stop(reason);
+  if (response.status === 429 || STOPS.has(reason)) throw new Stop(reason);
   throw new Error(reason);
 }
 
@@ -76,20 +89,25 @@ async function forDrawing(bitmap: ImageBitmap): Promise<Blob> {
   return blob;
 }
 
-async function squareOne(target: SquareTarget): Promise<string | "already"> {
+async function squareOne(target: SquareTarget, withAi: boolean): Promise<string | "already"> {
   const original = await readPhoto(target);
   const bitmap = await createImageBitmap(original);
   try {
     if (isSquareEnough(bitmap.width, bitmap.height)) return "already";
-    const sent = await forDrawing(bitmap);
-    const drawn = await fetch(`/api/media/square/draw/${target.imageId}`, {
-      method: "POST",
-      headers: { "Content-Type": "image/jpeg" },
-      body: sent,
-      credentials: "same-origin",
-    });
-    if (!drawn.ok) await refusal(drawn);
-    const prepared = await preparePhoto(await drawn.blob(), false, { square: true });
+    /* Without NetLet AI, the photo itself padded on its own edge colours, never cut. */
+    let square: Blob = original;
+    if (withAi) {
+      const sent = await forDrawing(bitmap);
+      const drawn = await fetch(`/api/media/square/draw/${target.imageId}`, {
+        method: "POST",
+        headers: { "Content-Type": "image/jpeg" },
+        body: sent,
+        credentials: "same-origin",
+      });
+      if (!drawn.ok) await refusal(drawn);
+      square = await drawn.blob();
+    }
+    const prepared = await preparePhoto(square, false, { square: true });
     if (typeof prepared === "string") throw new Error(prepared);
     const stored = await fetch(`/api/media/square/${target.imageId}`, {
       method: "POST",
@@ -105,21 +123,23 @@ async function squareOne(target: SquareTarget): Promise<string | "already"> {
   }
 }
 
-export async function squarePhotos(targets: SquareTarget[], onProgress: (done: number, total: number) => void): Promise<SquareRun> {
+export async function squarePhotos(targets: SquareTarget[], onProgress: (done: number, total: number) => void, options: { withAi?: boolean } = {}): Promise<SquareRun> {
+  const withAi = options.withAi ?? true;
   const seen = new Set<number>();
   const queue = targets.filter(target => !seen.has(target.imageId) && seen.add(target.imageId));
   const total = queue.length;
-  const run: SquareRun = { squared: [], alreadySquare: 0, kept: 0, stoppedBy: null };
+  const run: SquareRun = { squared: [], alreadySquare: 0, kept: 0, stoppedBy: null, lastProblem: null, withAi };
   let done = 0;
   onProgress(0, total);
   const worker = async () => {
     for (let target = queue.shift(); target && !run.stoppedBy; target = queue.shift()) {
       try {
-        const after = await squareOne(target);
+        const after = await squareOne(target, withAi);
         if (after === "already") run.alreadySquare += 1;
         else run.squared.push({ ...target, after });
       } catch (error) {
         if (error instanceof Stop) run.stoppedBy = error.message;
+        else run.lastProblem = error instanceof Error ? error.message : "drawing.failed";
         run.kept += 1;
       }
       done += 1;

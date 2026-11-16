@@ -210,19 +210,23 @@ function ProductTable({ actor }: { actor: Actor }) {
   /* The photographs of what is selected, wherever they are stored: those already square are left alone by the run. */
   const toSquare: SquareTarget[] = rows.filter(row => selected.has(row.id)).flatMap(row =>
     row.images.filter(image => image.kind !== "video").map(image => ({ imageId: image.id, url: image.url, productTitle: row.title })));
-  const runSquare = async () => {
+  const runSquare = async (withAi = true) => {
     setSquareProgress({ done: 0, total: toSquare.length });
     setPutBack(new Set());
+    setSquareRun(null);
     let run: SquareRun;
     try {
-      run = await squarePhotos(toSquare, (done, total) => setSquareProgress({ done, total }));
+      run = await squarePhotos(toSquare, (done, total) => setSquareProgress({ done, total }), { withAi });
     } finally {
       setSquareProgress(null);
     }
     setSquareRun(run);
-    if (run.stoppedBy) toast.error(t(isMessageKey(run.stoppedBy) ? run.stoppedBy : "drawing.tooMany"));
     void utils.inventory.products.list.invalidate();
   };
+  /* Why photos were kept, in words: the reason that stopped the run, or the last photo's own. */
+  const squareWhy = squareRun ? squareRun.stoppedBy ?? (squareRun.kept ? squareRun.lastProblem : null) : null;
+  /* NetLet AI could not draw any of them: squaring each on its own edge colours is offered instead. */
+  const offerPlain = Boolean(squareRun?.withAi && squareRun.kept > 0 && (squareRun.squared.length === 0 || squareRun.stoppedBy));
   const closeSquare = () => {
     if (squareProgress) return;
     setSquareOpen(false);
@@ -599,7 +603,7 @@ function ProductTable({ actor }: { actor: Actor }) {
         open={squareOpen}
         title={squareRun ? t("admin.bulkSquareDone", { count: squareRun.squared.length }) : t("admin.bulkSquareTitle", { count: toSquare.length })}
         body={squareRun
-          ? [squareRun.alreadySquare ? t("admin.bulkSquareAlready", { count: squareRun.alreadySquare }) : "", squareRun.kept ? t("admin.bulkSquareKept", { count: squareRun.kept }) : ""].filter(Boolean).join(" ") || t("admin.bulkSquareReview")
+          ? [squareRun.alreadySquare ? t("admin.bulkSquareAlready", { count: squareRun.alreadySquare }) : "", squareRun.kept ? t("admin.bulkSquareKept", { count: squareRun.kept }) : "", squareWhy ? t(isMessageKey(squareWhy) ? squareWhy : "drawing.failed") : ""].filter(Boolean).join(" ") || t("admin.bulkSquareReview")
           : toSquare.length ? t("admin.bulkSquareBody") : t("admin.bulkSquareNone")}
         confirmLabel={squareRun ? t("admin.bulkSquareFinish") : t("admin.bulkSquare")}
         pending={squareProgress !== null}
@@ -648,6 +652,15 @@ function ProductTable({ actor }: { actor: Actor }) {
               );
             })}
           </ul>
+        ) : null}
+        {!squareProgress && offerPlain ? (
+          <div className="mt-3 rounded-xl border border-[#e3e8f0] bg-[#f7f9fc] p-3">
+            <p className="text-[13px] leading-5 text-[#3d5376]">{t("admin.bulkSquarePlainNote")}</p>
+            <button type="button" onClick={() => { void runSquare(false); }} className={`${smallButtonClass.secondary} mt-2`}>
+              <Crop className="size-3.5" aria-hidden />
+              {t("admin.bulkSquarePlain")}
+            </button>
+          </div>
         ) : null}
       </ConfirmDialog>
 

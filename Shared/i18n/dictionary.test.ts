@@ -53,6 +53,10 @@ describe("dictionary completeness", () => {
       // The model and the company that runs it, named as their makers name
       // them on an Arabic phone — the maps' reason.
       "search.photoConsent", "privacy.who.ai",
+      // Google's refusal to draw names the key, the company and the page in
+      // Google's own product where billing is turned on — "Google AI
+      // Studio" is what the administrator will find on that page.
+      "drawing.googleQuota", "drawing.googleRefused",
       // An example order number, in the format the confirmation prints and
       // the lookup box expects — a literal, like `https`.
       "help.lookupNote",
