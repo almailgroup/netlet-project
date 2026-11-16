@@ -497,6 +497,12 @@ export async function listProductsFor(
     noDepartment?: boolean;
     /** Only products with a photo still on another site — what "Copy photos to NetLet" is for. */
     offSitePhotos?: boolean;
+    /**
+     * Only these products: a link that names the products it is about, such
+     * as the ones whose photos need squaring. Scoped like everything else, so
+     * a seller's link to another store's product shows nothing.
+     */
+    ids?: number[];
     /** `out`: a variant at nothing; `low`: one at or under its own threshold. */
     stock?: "out" | "low";
   } = {},
@@ -531,6 +537,7 @@ export async function listProductsFor(
       : undefined,
     request.categoryId ? eq(products.categoryId, request.categoryId) : undefined,
     request.noDepartment && !request.categoryId ? isNull(products.categoryId) : undefined,
+    request.ids?.length ? inArray(products.id, request.ids) : undefined,
     /* NetLet's own photos are `/media/...` paths; a full address is somebody else's server. */
     request.offSitePhotos
       ? sql`(exists (select 1 from ${productImages} where ${productImages.productId} = ${products.id} and ${productImages.kind} = 'image' and ${productImages.url} like 'https://%'))`

@@ -5365,6 +5365,21 @@ upload came back 1024 × 1024, and put back restored the original, at 390 and
 1440 in both languages. Not yet run against Google's live image model from
 this sandbox.
 
+**Which of the live shop's photos need it was measured, not guessed**: of
+1,515 photos on 917 products, 162 are not square, and only 39 of those —
+on 36 products — have an edge that is not white, so only they show bands on
+a card (a white-edged photo fitted on the card's white looks whole already).
+`.scratch/live-photos.mjs` and `.scratch/live-edges.cjs` read the live
+catalogue's public reads and each photo's first bytes and edge colour. **A
+link names products for the list** (`/products?ids=12,40,…`, `ids` on
+`inventory.products.list`, scoped like every other filter, at most 200, a
+notice saying how many and "Show all products"), and **`&square=1` arrives
+with them chosen and "Make photos square" open**, so the owner's part is one
+press. Nobody but the owner can make that press: the portal signs in only on
+an authorised device. Walked at 320, 390 and 1440 in both languages: the
+dialog open on arrival, the run squaring the heater's wide photo, the notice
+and its way back, axe clean.
+
 ## Manufacturer images
 
 `Shared/commerce/manufacturerImages.ts` is the rule, pure; `Backend/src/services/manufacturerImages.ts`

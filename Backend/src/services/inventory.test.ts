@@ -120,6 +120,15 @@ describe("scope", () => {
     expect(rows.map(r => r.handle).sort()).toEqual(["acme-lamp", "other-kettle"]);
   });
 
+  /* A link naming products opens those alone, and never another store's for a seller. */
+  it("narrows to the products a link names, inside the asker's scope", async () => {
+    const named = await inv.listProductsFor(adminActor(), undefined, { ids: [ids.otherProduct] });
+    expect(named.rows.map(r => r.handle)).toEqual(["other-kettle"]);
+    expect(named.total).toBe(1);
+    const seller = await inv.listProductsFor(ownerActor(), undefined, { ids: [ids.otherProduct] });
+    expect(seller.rows).toEqual([]);
+  });
+
   // The one that matters: asking for a specific id belonging to someone else
   // must refuse rather than answer.
   it("refuses to fetch another vendor's product by id", async () => {

@@ -43,7 +43,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
 import { Archive, Crop, FilePen, FolderInput, ImageDown, ImageOff, PackageCheck, PackagePlus, Percent, Recycle, Search, Send, Tag, Trash2, Undo2, Upload, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Notice } from "@/components/admin/ui";
@@ -59,6 +59,13 @@ import { Select } from "@/components/ui/Select";
 export default function AdminProducts() {
   usePageMeta(privatePageMeta("Admin"));
   return <AdminShell need="product.view">{actor => <ProductTable actor={actor} />}</AdminShell>;
+}
+
+/** The product ids a link names (`?ids=12,40`), whole positive numbers, at most the list's page. */
+function idsFrom(value: string | null): number[] {
+  if (!value) return [];
+  const ids = value.split(",").map(part => Number(part.trim())).filter(id => Number.isSafeInteger(id) && id > 0 && id <= 2_147_483_647);
+  return Array.from(new Set(ids)).slice(0, 200);
 }
 
 /* The statuses `products.list` filters on, in the order a seller works them. */
@@ -120,16 +127,24 @@ function ProductTable({ actor }: { actor: Actor }) {
   const storeFilter = actor.kind === "admin" ? new URLSearchParams(address).get("vendor") ?? "" : "";
   const stores = trpc.inventory.vendors.list.useQuery({ pageSize: 200 }, { enabled: actor.kind === "admin" });
   const storeId = Number(storeFilter) || undefined;
+  /*
+   * A link that names its products (`?ids=12,40,51`) opens those alone, on one
+   * page, and with `&square=1` arrives with them chosen and "Make photos
+   * square" open — so a list of the photos that need it is one press away.
+   */
+  const linkIds = useMemo(() => idsFrom(new URLSearchParams(address).get("ids")), [address]);
+  const squareOnArrival = new URLSearchParams(address).get("square") === "1";
   const products = trpc.inventory.products.list.useQuery(
     {
       page, query: term || undefined, status: filter === "all" ? undefined : filter, vendorId: storeId,
       categoryId: Number(department) || undefined, noDepartment: department === "none" || undefined, stock: stockFilter || undefined,
       offSitePhotos: photoFilter === "offsite" || undefined,
+      ...(linkIds.length ? { ids: linkIds, pageSize: linkIds.length } : {}),
     },
     { placeholderData: previous => previous },
   );
   /* What is selected is what is on screen: a new page or filter starts again. */
-  useEffect(() => setSelected(new Set()), [page, term, filter, storeId, department, stockFilter, photoFilter]);
+  useEffect(() => setSelected(new Set()), [page, term, filter, storeId, department, stockFilter, photoFilter, linkIds]);
   const utils = trpc.useUtils();
   const runBulk = trpc.inventory.products.bulk.useMutation({
     onSuccess: (result, input) => {
@@ -154,11 +169,20 @@ function ProductTable({ actor }: { actor: Actor }) {
 
   const rows = products.data?.rows ?? [];
   /* Any filter at all: an empty list then means nothing matches, not an empty shelf. */
-  const narrowed = Boolean(term || filter !== "all" || department || stockFilter || photoFilter);
+  const narrowed = Boolean(term || filter !== "all" || department || stockFilter || photoFilter || linkIds.length);
   const ownVendor = actor.kind === "vendor" ? actor.vendorId : undefined;
   /* Always for an administrator, who reads every store's shelf; a seller's list is all theirs. */
   const showVendor = actor.kind === "admin" || new Set(rows.map(row => row.vendorId)).size > 1;
   const mayBulk = can(actor, "product.edit", ownVendor);
+  /* Once: the link's products chosen and the square dialog open, when NetLet AI can draw. */
+  const arrived = useRef(false);
+  useEffect(() => {
+    if (arrived.current || !squareOnArrival || linkIds.length === 0 || !mayBulk || !drawingOn) return;
+    if (!products.data || products.isPlaceholderData || products.data.rows.length === 0) return;
+    arrived.current = true;
+    setSelected(new Set(products.data.rows.map(row => row.id)));
+    setSquareOpen(true);
+  }, [squareOnArrival, linkIds, mayBulk, drawingOn, products.data, products.isPlaceholderData]);
   const departmentName = (name: string | null) => {
     if (!name) return "—";
     const key = categoryMessageKey(name);
@@ -354,6 +378,12 @@ function ProductTable({ actor }: { actor: Actor }) {
           <ul className="mt-1 space-y-0.5">
             {refused.map(entry => <li key={entry.id}><bdi className="font-semibold">{entry.title}</bdi>: {entry.reason}</li>)}
           </ul>
+        </Notice>
+      ) : null}
+
+      {linkIds.length ? (
+        <Notice className="mt-4" action={<Link href="/admin/products" className={smallButtonClass.secondary}>{t("admin.linkedShowAll")}</Link>}>
+          <p>{t("admin.linkedProducts", { count: products.data?.total ?? linkIds.length })}</p>
         </Notice>
       ) : null}
 

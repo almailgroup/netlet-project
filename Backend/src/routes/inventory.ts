@@ -478,6 +478,8 @@ export const inventoryRouter = router({
         categoryId: rowId.optional(),
         noDepartment: z.boolean().optional(),
         offSitePhotos: z.boolean().optional(),
+        /* Named products alone: a link that opens exactly the products it is about. */
+        ids: z.array(rowId).min(1).max(200).optional(),
         stock: z.enum(["out", "low"]).optional(),
         page: z.number().int().min(1).max(100_000).optional(),
         pageSize: z.number().int().min(1).max(200).optional(),
