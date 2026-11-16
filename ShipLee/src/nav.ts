@@ -4,13 +4,13 @@
  * preview is on (see preview.tsx) and are never linked anywhere else.
  */
 import type { LucideIcon } from "lucide-react";
-import { CircleHelp, Layers, Palette, Search } from "lucide-react";
+import { Briefcase, Building2, Calculator, Car, CircleHelp, Flag, Headset, Layers, MapPinned, PackageCheck, Palette, Search, ShieldAlert, Truck, UserRound } from "lucide-react";
 import type { Key } from "../shared/i18n.js";
 
 /** The home page's tracking box, which the header's Track button goes to rather than opening a second one. */
 export const HOME_TRACK_ID = "home-track";
 
-export type NavGroup = "tracking" | "help" | "company";
+export type NavGroup = "tracking" | "help" | "company" | "account";
 
 export type NavPage = {
   href: string;
@@ -25,14 +25,27 @@ export type NavPage = {
 export const PAGES: readonly NavPage[] = [
   { href: "/", label: "nav.trackParcel", icon: Search, group: "tracking" },
   { href: "/track", label: "nav.trackSeveral", icon: Layers, group: "tracking" },
+  { href: "/book", label: "nav.book", icon: PackageCheck, group: "tracking", preview: true },
+  { href: "/rates", label: "nav.rates", icon: Calculator, group: "tracking", preview: true, header: true },
+  { href: "/services", label: "nav.services", icon: Truck, group: "tracking", preview: true, header: true },
+  { href: "/locations", label: "nav.locations", icon: MapPinned, group: "tracking", preview: true },
   { href: "/help", label: "nav.helpCentre", icon: CircleHelp, group: "help", header: true },
+  { href: "/contact", label: "nav.contact", icon: Headset, group: "help", header: true },
+  { href: "/report", label: "nav.report", icon: Flag, group: "help" },
+  { href: "/scams", label: "nav.scams", icon: ShieldAlert, group: "help" },
+  { href: "/about", label: "nav.about", icon: Building2, group: "company", preview: true },
+  { href: "/careers", label: "nav.careers", icon: Briefcase, group: "company", preview: true },
+  { href: "/couriers", label: "nav.couriers", icon: Car, group: "company", preview: true },
   { href: "/styleguide", label: "nav.styleguide", icon: Palette, group: "company", preview: true },
+  { href: "/signin", label: "nav.signIn", icon: UserRound, group: "account", preview: true },
+  { href: "/account", label: "nav.account", icon: UserRound, group: "account", preview: true },
 ];
 
 export const GROUPS: readonly { id: NavGroup; label: Key }[] = [
   { id: "tracking", label: "nav.groupTracking" },
   { id: "help", label: "nav.groupHelp" },
   { id: "company", label: "nav.groupCompany" },
+  { id: "account", label: "nav.groupAccount" },
 ];
 
 export function pagesFor(preview: boolean): NavPage[] {

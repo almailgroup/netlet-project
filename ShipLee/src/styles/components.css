@@ -248,6 +248,7 @@ select.input {
 .badge.attention { background: var(--attention-fill); color: var(--attention-ink); }
 .badge.stopped { background: var(--stopped-fill); color: var(--stopped-ink); }
 .badge.preview { background: var(--preview-fill); color: var(--preview-ink); }
+.badge.preview.compact { padding: 3px; }
 
 /* ---------- Notices ---------- */
 
@@ -526,3 +527,26 @@ html:has(.dialog[open]) { overflow: hidden; }
 .placeholder > svg.backdrop { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--brand); }
 .placeholder > .placeholder-text { position: relative; display: grid; justify-items: center; gap: var(--space-1); padding: var(--space-4); font-size: var(--text-sm); }
 .placeholder-text strong { color: var(--ink); }
+
+/* ---------- Lists of links and of plain points ---------- */
+
+/* Rows that each go somewhere: an icon, the words, the whole row the target. */
+.link-list { display: grid; margin-top: var(--space-4); border-top: 1px solid var(--line); max-width: var(--width-reading); }
+.link-list li { border-bottom: 1px solid var(--line); }
+.link-list a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target);
+  padding-block: var(--space-3);
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+}
+.link-list a svg { flex: none; color: var(--brand); }
+.link-list a:hover { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Points of equal weight, a small pine mark before each. */
+.plain-list { display: grid; gap: var(--space-3); margin-top: var(--space-4); max-width: var(--width-reading); }
+.plain-list li { position: relative; padding-inline-start: var(--space-5); color: var(--ink); }
+.plain-list li::before { content: ""; position: absolute; inset-inline-start: 0; top: 0.6em; width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--brand); }

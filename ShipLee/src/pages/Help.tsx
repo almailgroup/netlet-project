@@ -1,8 +1,10 @@
 import { useEffect } from "react";
-import { ChevronDown, Mail, MessageCircle, Phone } from "lucide-react";
+import { Link } from "wouter";
+import { ChevronDown, Flag, Headset, ShieldAlert } from "lucide-react";
 import { useLanguage } from "../i18n.js";
 import { useConfig, usePageTitle } from "../hooks.js";
 import { ShipLeeAI } from "../components/ShipLeeAI.js";
+import { ContactWays, anyContact } from "../components/ContactWays.js";
 import type { Key } from "../../shared/i18n.js";
 
 const QUESTIONS: readonly [Key, Key][] = [
@@ -30,7 +32,7 @@ export function Help() {
     document.getElementById("ask")?.scrollIntoView({ block: "start" });
     document.querySelector<HTMLTextAreaElement>("#ask textarea")?.focus({ preventScroll: true });
   }, [config?.ai]);
-  const any = Boolean(contact && (contact.phone || contact.whatsapp || contact.email));
+  const any = anyContact(contact);
   return (
     <div className="container">
       <div className="page-head narrow-head">
@@ -61,30 +63,30 @@ export function Help() {
         {config === null ? null : any ? (
           <>
             <p className="section-lead">{t("contact.lead")}</p>
-            <div className="contact-grid">
-              {contact!.phone ? (
-                <a className="contact" href={`tel:${contact!.phone}`}>
-                  <span className="step-icon"><Phone size={20} aria-hidden="true" /></span>
-                  <span><strong>{t("contact.phone")}</strong><span>{contact!.phone}</span></span>
-                </a>
-              ) : null}
-              {contact!.whatsapp ? (
-                <a className="contact" href={`https://wa.me/${contact!.whatsapp}`} target="_blank" rel="noopener noreferrer">
-                  <span className="step-icon"><MessageCircle size={20} aria-hidden="true" /></span>
-                  <span><strong>{t("contact.whatsapp")}</strong><span>+{contact!.whatsapp}</span></span>
-                </a>
-              ) : null}
-              {contact!.email ? (
-                <a className="contact" href={`mailto:${contact!.email}`}>
-                  <span className="step-icon"><Mail size={20} aria-hidden="true" /></span>
-                  <span><strong>{t("contact.email")}</strong><span>{contact!.email}</span></span>
-                </a>
-              ) : null}
-            </div>
+            <ContactWays contact={contact!} />
           </>
         ) : (
           <p className="section-lead">{t("contact.none")}</p>
         )}
+      </section>
+
+      <section className="section" aria-labelledby="more-title">
+        <h2 id="more-title" className="section-title">{t("help.moreTitle")}</h2>
+        <ul className="link-list">
+          {any ? <li><Link href="/report"><Flag size={18} aria-hidden="true" />{t("help.more.report")}</Link></li> : null}
+          <li><Link href="/contact"><Headset size={18} aria-hidden="true" />{t("help.more.contact")}</Link></li>
+          <li><Link href="/scams"><ShieldAlert size={18} aria-hidden="true" />{t("help.more.scams")}</Link></li>
+        </ul>
+      </section>
+
+      <section className="section privacy" aria-labelledby="privacy-title">
+        <h2 id="privacy-title" className="section-title">{t("help.privacyTitle")}</h2>
+        <ul className="plain-list">
+          <li>{t("help.privacy.public")}</li>
+          <li>{t("help.privacy.device")}</li>
+          {any ? <li>{t("help.privacy.messages")}</li> : null}
+          {config?.ai ? <li>{t("help.privacy.ai")}</li> : null}
+        </ul>
       </section>
     </div>
   );

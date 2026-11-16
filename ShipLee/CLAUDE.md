@@ -277,6 +277,32 @@ every customer page** where `SHIPLEE_WHATSAPP` is set, never on the desk, its
 message starting with the parcel's number on a parcel's page; the footer
 leaves room under it (`:has`).
 
+## The other pages
+
+**Live, because each is true without a server**: `/contact` (the ways the
+deployment names, what to do about a parcel, the invitation to shops, where to
+check a message), `/report` (the number first, held to its check digit, then
+the tracking page's own problem form, ending in a WhatsApp or email message;
+`?number=` arrives filled), `/scams` (what this site does and never asks for,
+each statement true of the code: no payment, card, code, app or ID is ever
+asked for, and a number carries a check digit), and Help's More help and
+Your privacy (the recipient's details never shown, the recently tracked list
+on the device only, no cookies for customers, ShipLee AI's questions sent to
+Google only where it is on). The page not found carries the tracking box.
+
+**Preview only** (`src/pages/preview/`, each lazy and behind `PreviewOnly`, so
+a live deployment's address is the 404 and a customer downloads none of it):
+services and rates (sample prices from one rule, `src/samples/rates.ts`,
+tested), a four-step booking held to the shipment form's own rules that ends
+saying nothing was sent, a locations finder over sample points
+(`src/samples/locations.ts`) with a search folded for Arabic's spellings, sign
+in and create an account (a correct form opens the sample account), the
+account (sample parcels, addresses, switches that forget), about, careers
+(applying "opens soon", never a button that goes nowhere) and becoming a
+courier. Every one carries the Preview mark by its title and is noindex. Each
+says in a comment **where it connects later**. In the footer a preview link
+carries the eye alone, its word read to a screen reader.
+
 ## Checks
 
 `pnpm check`, `pnpm test`, `pnpm build`, `pnpm smoke`, run by

@@ -5,13 +5,15 @@
  *
  * The stylesheet is in parts, in this order: the tokens (every colour, size,
  * space, corner and shadow, and nowhere else), the base, the shared parts,
- * the frame, the pages, ShipLee AI, the staff desk and the labels.
+ * the frame, the pages (tracking and home, then the rest), ShipLee AI, the
+ * staff desk, the labels and the style guide.
  */
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/components.css";
 @import "./styles/layout.css";
 @import "./styles/pages.css";
+@import "./styles/more-pages.css";
 @import "./styles/ai.css";
 @import "./styles/staff.css";
 @import "./styles/labels.css";

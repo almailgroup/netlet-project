@@ -244,7 +244,9 @@
 .contact:hover { background: var(--brand-wash); color: var(--ink); border-color: var(--brand-tint); }
 .contact .step-icon { width: var(--control-small); height: var(--control-small); }
 .contact strong { display: block; font-size: var(--text-sm); }
-.contact span { color: var(--ink-muted); font-size: var(--text-sm); direction: ltr; unicode-bidi: isolate; }
+.contact > span:last-child { min-width: 0; }
+/* The number or address reads left to right and sits on the page's side. */
+.contact bdi { display: block; color: var(--ink-muted); font-size: var(--text-sm); text-align: start; overflow-wrap: anywhere; }
 
 /* ---------- Tracking result: the status block and its looks ---------- */
 

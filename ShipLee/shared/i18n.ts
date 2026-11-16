@@ -10,6 +10,8 @@
 import { uiAr, uiEn } from "./copy/ui.js";
 import { trackingAr, trackingEn } from "./copy/tracking.js";
 import { homeAr, homeEn } from "./copy/home.js";
+import { pagesAr, pagesEn } from "./copy/pages.js";
+import { previewPagesAr, previewPagesEn } from "./copy/previewPages.js";
 
 export type Lang = "en" | "ar";
 export const LANGS: readonly Lang[] = ["en", "ar"];
@@ -116,7 +118,6 @@ const en = {
 
   "notFound.title": "Page not found",
   "notFound.body": "The page you asked for isn't here.",
-  "notFound.home": "Go to tracking",
 
   "footer.rights": "© {year} ShipLee",
   "footer.staff": "Staff sign in",
@@ -342,6 +343,8 @@ const en = {
   ...uiEn,
   ...trackingEn,
   ...homeEn,
+  ...pagesEn,
+  ...previewPagesEn,
 };
 
 export type Key = keyof typeof en;
@@ -448,7 +451,6 @@ const ar: Record<Key, string> = {
 
   "notFound.title": "الصفحة غير موجودة",
   "notFound.body": "الصفحة التي طلبتها غير موجودة.",
-  "notFound.home": "انتقل إلى التتبّع",
 
   "footer.rights": "© {year} ShipLee",
   "footer.staff": "دخول الموظفين",
@@ -674,6 +676,8 @@ const ar: Record<Key, string> = {
   ...uiAr,
   ...trackingAr,
   ...homeAr,
+  ...pagesAr,
+  ...previewPagesAr,
 };
 
 export const DICTIONARY: Record<Lang, Record<Key, string>> = { en, ar };

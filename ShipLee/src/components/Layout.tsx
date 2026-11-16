@@ -149,7 +149,7 @@ function Footer({ preview }: { preview: boolean }) {
   const groups = GROUPS.filter(group => pages.some(page => page.group === group.id));
   return (
     <footer className="site-footer">
-      <div className={`container footer-grid${groups.length < 3 ? " three" : ""}`}>
+      <div className={`container footer-grid cols-${groups.length + 1}`}>
         <div className="footer-brand">
           <Link href="/" className="logo" aria-label={t("nav.home")}>
             <LogoMark />
@@ -165,7 +165,7 @@ function Footer({ preview }: { preview: boolean }) {
                 <li key={page.href}>
                   <Link href={page.href}>
                     {t(page.label)}
-                    {page.preview ? <PreviewTag /> : null}
+                    {page.preview ? <PreviewTag compact /> : null}
                   </Link>
                 </li>
               ))}

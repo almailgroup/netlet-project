@@ -58,12 +58,22 @@ export function PreviewOnly({ children }: { children: ReactNode }) {
 }
 
 /** The mark on anything shown as a preview. */
-export function PreviewTag({ label }: { label?: string }) {
+export function PreviewTag({ label, compact = false }: { label?: string; compact?: boolean }) {
   const { t } = useLanguage();
+  const words = label ?? t("preview.tag");
+  /* Compact, in a list of links: the eye alone, its word still read out. */
+  if (compact) {
+    return (
+      <span className="badge preview compact" title={words}>
+        <Eye size={13} aria-hidden="true" />
+        <span className="sr-only">{words}</span>
+      </span>
+    );
+  }
   return (
     <span className="badge preview">
       <Eye size={13} aria-hidden="true" />
-      {label ?? t("preview.tag")}
+      {words}
     </span>
   );
 }

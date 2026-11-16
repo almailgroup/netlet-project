@@ -121,8 +121,10 @@
   .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 960px) {
-  .footer-grid { grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr)); }
-  .footer-grid.three { grid-template-columns: 1.4fr repeat(2, minmax(0, 1fr)); }
+  /* The brand column, then one per group of pages: two on the live site, four in preview. */
+  .footer-grid.cols-3 { grid-template-columns: 1.4fr repeat(2, minmax(0, 1fr)); }
+  .footer-grid.cols-4 { grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr)); }
+  .footer-grid.cols-5 { grid-template-columns: 1.4fr repeat(4, minmax(0, 1fr)); }
 }
 
 /* ---------- Floating: the way to WhatsApp ShipLee from any page ---------- */

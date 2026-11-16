@@ -46,7 +46,7 @@ export function RequestDialog({ kind, number, contact, onClose }: { kind: Reques
 }
 
 /** A request that becomes a message: the form, then where to finish sending it. */
-function MessageRequest({ kind, number, contact, onDone }: { kind: Exclude<RequestKind, "notify">; number: string; contact: Contact; onDone: () => void }) {
+export function MessageRequest({ kind, number, contact, onDone }: { kind: Exclude<RequestKind, "notify">; number: string; contact: Contact; onDone: () => void }) {
   const { t, lang } = useLanguage();
   const form = useRef<HTMLFormElement>(null);
   const [problems, setProblems] = useState<Problems>({});
@@ -185,7 +185,7 @@ function MessageRequest({ kind, number, contact, onDone }: { kind: Exclude<Reque
 }
 
 /** A set of choices drawn as rows, one of which must be picked, its problem under the set. */
-function ChoiceGroup({ legend, name, options, value, problem, columns, onChange }: {
+export function ChoiceGroup({ legend, name, options, value, problem, columns, onChange }: {
   legend: string;
   name: string;
   options: { value: string; label: string }[];

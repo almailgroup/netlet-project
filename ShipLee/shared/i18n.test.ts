@@ -36,7 +36,7 @@ describe("the dictionary", () => {
   it("has no key the site never asks for", () => {
     const code = ["src", "server", "shared"].flatMap(dir => sources(path.join(ROOT, dir))).map(file => readFileSync(file, "utf8")).join("\n");
     /* Keys built from a status or a field name are asked for by their prefix. */
-    const built = ["status.", "say.", "step.", "group.", "req.subject.", "req.slot.", "req.problem."];
+    const built = ["status.", "say.", "step.", "group.", "req.subject.", "req.slot.", "req.problem.", "rates.size.", "rates.speed.", "book.step.", "couriers.vehicle."];
     const unused = keys.filter(key => !code.includes(`"${key}"`) && !built.some(prefix => key.startsWith(prefix)));
     expect(unused).toEqual([]);
   });
