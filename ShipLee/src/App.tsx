@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Redirect, Route, Switch, useLocation } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import { LanguageProvider } from "./i18n.js";
 import { Layout } from "./components/Layout.js";
 import { Home } from "./pages/Home.js";
-import { Track } from "./pages/Track.js";
+import { TrackEmpty, TrackRoute } from "./pages/Track.js";
 import { Help } from "./pages/Help.js";
 import { NotFound } from "./pages/NotFound.js";
 import { Preview } from "./pages/Preview.js";
@@ -32,8 +32,8 @@ export function App() {
         <Layout>
           <Switch>
             <Route path="/" component={Home} />
-            <Route path="/track"><Redirect to="/" replace /></Route>
-            <Route path="/track/:number">{params => <Track number={params.number} />}</Route>
+            <Route path="/track" component={TrackEmpty} />
+            <Route path="/track/:number">{params => <TrackRoute number={params.number} />}</Route>
             <Route path="/help" component={Help} />
             <Route path="/preview" component={Preview} />
             <Route path="/styleguide">

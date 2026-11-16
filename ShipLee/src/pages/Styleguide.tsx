@@ -290,7 +290,7 @@ export function Styleguide() {
       </Section>
 
       <Section id="statuses" title={t("sg.statuses")} lead={t("sg.statusesLead")}>
-        <div className="table-wrap">
+        <div className="table-wrap" role="region" aria-label={t("sg.statuses")} tabIndex={0}>
           <table className="table">
             <caption className="sr-only">{t("sg.statuses")}</caption>
             <thead>

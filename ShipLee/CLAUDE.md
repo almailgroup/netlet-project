@@ -229,6 +229,33 @@ clipboard; and "Need help with this parcel?" offers WhatsApp, a call and email
 with the number already in the message. **On a phone the four steps are
 rows**, the icon beside the words, rather than a card a screen tall each.
 
+## The tracking page, redrawn
+
+**Tracking is one press from every page**: the header's Track button opens the
+box in a dialog (on the home page it goes to the home page's own box instead),
+and a phone's menu leads with it. **The result is a status card coloured by
+where the parcel stands** (in transit, waiting, out, delivered, attention,
+stopped — each with its icon and words, never colour alone), the five steps
+from booked to delivered, and the expected day beside it, then what the
+customer can do, the route and the facts. **Several numbers are one search**
+(`parseTrackingList`, commas or Arabic commas, at most `MAX_PARCELS`): each
+parcel a row with its status and a link to its own page, a number that is not
+one said on its row.
+
+**Reschedule, Change address and Report a problem are real, with no server**
+(`shared/requests.ts`): each is a form held to its own rules under its boxes,
+and Send opens WhatsApp with the message written in, or an email with its
+subject, the tracking number on the first line, only where the deployment
+names `SHIPLEE_WHATSAPP` or `SHIPLEE_EMAIL`. Nothing is stored; the dialog
+says so, and that ShipLee's team confirms. With neither set, the buttons are
+not drawn.
+
+**What has nothing behind it is preview** (`src/preview.tsx`): drawn on a demo
+deployment, or on a device that turned it on at `/preview`, and marked
+Preview wherever it shows — the notification sign-up, the driver's map and the
+delivery photo. A real deployment draws none of it, and a preview page's
+address is the 404 there. Preview ink on its fill is 7.3:1.
+
 ## Checks
 
 `pnpm check`, `pnpm test`, `pnpm build`, `pnpm smoke`, run by

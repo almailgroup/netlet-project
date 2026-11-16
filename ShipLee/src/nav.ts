@@ -4,7 +4,7 @@
  * preview is on (see preview.tsx) and are never linked anywhere else.
  */
 import type { LucideIcon } from "lucide-react";
-import { CircleHelp, Palette, Search } from "lucide-react";
+import { CircleHelp, Layers, Palette, Search } from "lucide-react";
 import type { Key } from "../shared/i18n.js";
 
 /** The home page's tracking box, which the header's Track button goes to rather than opening a second one. */
@@ -24,6 +24,7 @@ export type NavPage = {
 
 export const PAGES: readonly NavPage[] = [
   { href: "/", label: "nav.trackParcel", icon: Search, group: "tracking" },
+  { href: "/track", label: "nav.trackSeveral", icon: Layers, group: "tracking" },
   { href: "/help", label: "nav.helpCentre", icon: CircleHelp, group: "help", header: true },
   { href: "/styleguide", label: "nav.styleguide", icon: Palette, group: "company", preview: true },
 ];
@@ -40,5 +41,7 @@ export function pagesFor(preview: boolean): NavPage[] {
 
 /** Whether a link is to the page showing, or one under it. */
 export function isCurrent(href: string, location: string): boolean {
-  return href === "/" ? location === "/" : location === href || location.startsWith(`${href}/`);
+  /* The home page and the several-parcels page are not "under" the tracking pages they lead to. */
+  if (href === "/" || href === "/track") return location === href;
+  return location === href || location.startsWith(`${href}/`);
 }

@@ -69,7 +69,7 @@
 .button svg { flex: none; }
 /* A thumb gets 44px whatever a button is drawn as; a mouse keeps the compact size. */
 @media (pointer: coarse) {
-  .button-small, .chip { min-height: var(--target); }
+  .button-small { min-height: var(--target); }
   .button-icon.button-small { width: var(--target); }
 }
 .button-row { display: flex; flex-wrap: wrap; gap: var(--space-2-5); }
@@ -296,6 +296,8 @@ select.input {
 .chip:hover { background: var(--brand-wash); border-color: var(--brand-tint); }
 .chip[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* After the chip's own height, or that wins: a thumb's target on a touch screen. */
+@media (pointer: coarse) { .chip { min-height: var(--target); } }
 
 /* ---------- Tabs ---------- */
 
@@ -458,7 +460,10 @@ html:has(.dialog[open]) { overflow: hidden; }
 .progress .now .dot::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--brand); }
 .progress .done,
 .progress .now { color: var(--ink); font-weight: var(--weight-semibold); }
-.progress .label { max-width: 11ch; line-height: var(--leading-snug); }
+.progress .label { max-width: min(11ch, 100%); padding-inline: 2px; line-height: var(--leading-snug); overflow-wrap: anywhere; }
+@media (max-width: 639.98px) {
+  .progress li { font-size: var(--text-2xs); }
+}
 /* On a needs-attention parcel the step it stopped at is drawn in the attention ink. */
 .progress.tone-attention .now .dot { border-color: var(--attention-ink); box-shadow: 0 0 0 5px var(--attention-fill); }
 .progress.tone-attention .now .dot::after { background: var(--attention-ink); }
@@ -482,7 +487,6 @@ html:has(.dialog[open]) { overflow: hidden; }
 .event .rail::before { content: ""; width: 12px; height: 12px; margin-top: 6px; border-radius: 50%; background: var(--surface); border: 2px solid var(--field-line); z-index: 1; }
 .event .rail::after { content: ""; position: absolute; top: 18px; bottom: -20px; width: 2px; background: var(--line); }
 .event:last-child .rail::after { display: none; }
-.day:not(:last-child) .event:last-child .rail::after { display: block; bottom: -44px; }
 .event.latest .rail::before { background: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-tint); }
 .event.latest.tone-attention .rail::before { background: var(--attention-ink); border-color: var(--attention-ink); box-shadow: 0 0 0 4px var(--attention-fill); }
 .event.latest.tone-stopped .rail::before { background: var(--stopped-ink); border-color: var(--stopped-ink); box-shadow: 0 0 0 4px var(--stopped-fill); }

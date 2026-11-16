@@ -1,5 +1,5 @@
 import { useLanguage } from "../i18n.js";
-import { Field } from "./Field.js";
+import { Field } from "../components/ui/Field.js";
 import type { Problems, ShipmentDraft } from "../../shared/shipment.js";
 import { GOVERNORATES } from "../../shared/kuwait.js";
 

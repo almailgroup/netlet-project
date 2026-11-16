@@ -1,19 +1,20 @@
 import type { ReactNode } from "react";
 import { CircleAlert } from "lucide-react";
-import { useLanguage } from "../i18n.js";
-import type { Key } from "../../shared/i18n.js";
+import { useLanguage } from "../../i18n.js";
+import type { Key, Params } from "../../../shared/i18n.js";
 
 /**
  * One box with its label above it, a hint under the label, and its problem
  * under the box. The problem arrives with Save and leaves with the fix; it is
  * part of what a screen reader says on entering the box.
  */
-export function Field({ id, label, hint, optional, problem, wide, filled, children }: {
+export function Field({ id, label, hint, optional, problem, problemParams, wide, filled, children }: {
   id: string;
   label: string;
   hint?: string;
   optional?: boolean;
   problem?: string;
+  problemParams?: Params;
   wide?: boolean;
   /** Filled by ShipLee AI from an order message, until somebody changes it. */
   filled?: boolean;
@@ -33,7 +34,7 @@ export function Field({ id, label, hint, optional, problem, wide, filled, childr
       {problem ? (
         <p id={`${id}-problem`} className="field-error">
           <CircleAlert size={15} aria-hidden="true" />
-          {t(problem as Key)}
+          {t(problem as Key, problemParams)}
         </p>
       ) : null}
     </div>

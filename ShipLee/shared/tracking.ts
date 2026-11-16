@@ -57,3 +57,42 @@ export function makeTrackingNumber(randomDigit: () => number): string {
   if (body.startsWith("0")) body = String((randomDigit() % 9) + 1) + body.slice(1);
   return PREFIX + body + String(checkDigit(body));
 }
+
+/** At most this many parcels are tracked together on one page. */
+export const MAX_PARCELS = 10;
+
+export type ParsedList = {
+  /** Each number once, in the order typed. */
+  numbers: string[];
+  /** What was typed that is not a ShipLee number, as typed. */
+  problems: string[];
+};
+
+/**
+ * Several numbers typed or pasted into the one box: separated by commas or
+ * semicolons (either language's) or new lines, or by spaces when each piece
+ * is a whole number on its own — a single number typed with spaces in it,
+ * "SL 4820 6193 79", is still one number.
+ */
+export function parseTrackingList(input: string): ParsedList {
+  const numbers: string[] = [];
+  const problems: string[] = [];
+  const add = (number: string) => {
+    if (!numbers.includes(number)) numbers.push(number);
+  };
+  for (const chunk of foldDigits(input).split(/[,;،؛\n\r]+/).map(part => part.trim()).filter(Boolean)) {
+    const whole = parseTrackingNumber(chunk);
+    if (whole.ok) {
+      add(whole.number);
+      continue;
+    }
+    const pieces = chunk.split(/\s+/).filter(Boolean);
+    const parsed = pieces.map(parseTrackingNumber);
+    if (pieces.length > 1 && parsed.every(part => part.ok)) {
+      for (const part of parsed) if (part.ok) add(part.number);
+      continue;
+    }
+    problems.push(chunk);
+  }
+  return { numbers, problems };
+}

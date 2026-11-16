@@ -4,7 +4,7 @@ import { Link, useSearch } from "wouter";
 import { ArrowLeft, CircleCheckBig, ExternalLink, Printer } from "lucide-react";
 import { useLanguage } from "../i18n.js";
 import { useDesk } from "./Staff.js";
-import { Field, focusFirstProblem } from "./Field.js";
+import { Field, focusFirstProblem } from "../components/ui/Field.js";
 import { ShipmentFields } from "./ShipmentFields.js";
 import { StatusPill } from "../components/Status.js";
 import { Timeline } from "../components/Timeline.js";

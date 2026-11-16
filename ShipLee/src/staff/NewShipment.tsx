@@ -5,7 +5,7 @@ import { ArrowLeft, CircleCheckBig } from "lucide-react";
 import { useLanguage } from "../i18n.js";
 import { useDesk } from "./Staff.js";
 import { EMPTY_DRAFT, ShipmentFields } from "./ShipmentFields.js";
-import { focusFirstProblem } from "./Field.js";
+import { focusFirstProblem } from "../components/ui/Field.js";
 import { FromMessage } from "./FromMessage.js";
 import { useConfig } from "../hooks.js";
 import type { IntakeField, IntakeResult } from "../../shared/assistant.js";

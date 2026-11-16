@@ -8,6 +8,7 @@
  * key would write "3 قطعة".
  */
 import { uiAr, uiEn } from "./copy/ui.js";
+import { trackingAr, trackingEn } from "./copy/tracking.js";
 
 export type Lang = "en" | "ar";
 export const LANGS: readonly Lang[] = ["en", "ar"];
@@ -338,6 +339,7 @@ const en = {
   "intake.nothing": "ShipLee AI couldn't find shipment details in that message.",
 
   ...uiEn,
+  ...trackingEn,
 };
 
 export type Key = keyof typeof en;
@@ -668,6 +670,7 @@ const ar: Record<Key, string> = {
   "intake.nothing": "لم يجد ShipLee AI تفاصيل شحنة في هذه الرسالة.",
 
   ...uiAr,
+  ...trackingAr,
 };
 
 export const DICTIONARY: Record<Lang, Record<Key, string>> = { en, ar };
@@ -690,6 +693,10 @@ export const PLURALS = {
   labels: {
     en: { one: "Print label", other: "Print {count} labels" },
     ar: { one: "طباعة الملصق", two: "طباعة الملصقين", few: "طباعة {count} ملصقات", many: "طباعة {count} ملصقاً", other: "طباعة {count} ملصق" },
+  },
+  parcels: {
+    en: { one: "{count} parcel", other: "{count} parcels" },
+    ar: { one: "شحنة واحدة", two: "شحنتان", few: "{count} شحنات", many: "{count} شحنة", other: "{count} شحنة" },
   },
   shipments: {
     en: { one: "{count} shipment", other: "{count} shipments" },

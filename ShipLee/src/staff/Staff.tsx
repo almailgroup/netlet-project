@@ -6,7 +6,7 @@ import { useLanguage } from "../i18n.js";
 import { usePageTitle } from "../hooks.js";
 import { api } from "../api.js";
 import type { Answer } from "../api.js";
-import { Field } from "./Field.js";
+import { Field } from "../components/ui/Field.js";
 import { ShipmentList } from "./ShipmentList.js";
 import { NewShipment } from "./NewShipment.js";
 import { ShipmentPage } from "./ShipmentPage.js";
