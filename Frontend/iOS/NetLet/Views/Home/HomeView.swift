@@ -106,6 +106,13 @@ struct HomeView: View {
             if !shelves.bestsellers.isEmpty {
                 TabbedShelf(title: l.t("rail.bestsellers.title"), products: shelves.bestsellers, ranked: true)
             }
+            // The refurbished section's own shelf, never mixed into the new
+            // shop's, from the shelves' floor up — the web's `RefurbishedShelf`.
+            if shelf.refurbished.count >= HomeShelf.floor {
+                TabbedShelf(title: l.t("refurbished.title"), products: shelf.refurbished, note: l.t("refurbished.shelfNote")) {
+                    app.push(.refurbished())
+                }
+            }
             RecentlyViewedRail()
             if !shelves.newest.isEmpty {
                 TabbedShelf(title: l.t("rail.newest.title"), products: shelves.newest) { app.push(.newest) }

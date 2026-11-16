@@ -86,7 +86,7 @@ export function ConfirmOrderDialog({
             <span aria-hidden className="flex shrink-0 -space-x-2 rtl:space-x-reverse">
               {shown.map(item => (
                 <span key={item.lineId} className="size-11 overflow-hidden rounded-xl border-2 border-white bg-[#f4f6f9] shadow-[0_1px_3px_rgba(10,40,90,.12)]">
-                  <Thumb src={item.image?.url} alt="" className="size-full object-cover" icon={<ShoppingBag className="size-4" />} />
+                  <Thumb src={item.image?.url} alt="" className="size-full bg-white object-contain" icon={<ShoppingBag className="size-4" />} />
                 </span>
               ))}
               {more > 0 ? (

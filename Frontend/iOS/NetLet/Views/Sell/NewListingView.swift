@@ -256,6 +256,9 @@ private struct NewListingForm: View {
                         options: [("", l.t("admin.fieldNoCategory"))] + (model.categories.value ?? []).map { ("\($0.id)", $0.displayName(l.current)) }) {
                 model.categoryId = $0.flatMap(Int.init)
             }
+            // New or refurbished, on the owner's word: the refurbished section
+            // is a shop of its own, and this is the door into it.
+            ConditionChoice(refurbished: $model.refurbished)
             if model.needsWarranty || !model.draft.warranty.isEmpty {
                 LabeledField(label: l.t("admin.newWarranty"), text: bound(\.warranty, .warranty), placeholder: l.t("admin.newWarrantyPlaceholder"),
                              hint: l.t("admin.newWarrantyHint"), problem: model.problem(.warranty))

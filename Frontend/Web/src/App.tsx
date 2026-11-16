@@ -289,6 +289,9 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/sell", page: Sell, frame: "shop" },
   { path: "/categories", page: Categories, frame: "shop" },
   { path: "/category/:slug", page: Category, frame: "shop" },
+  /* The refurbished section: the department layout over the refurbished shelf alone, on the owner's word. */
+  { path: "/refurbished", page: Category, frame: "shop" },
+  { path: "/refurbished/:slug", page: Category, frame: "shop" },
   /* Search results are the department layout over the whole catalog. */
   { path: "/search", page: Category, frame: "shop" },
   { path: "/products/:handle", page: ProductDetail, frame: "shop" },

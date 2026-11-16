@@ -202,7 +202,7 @@ export function LinePopover({ item, photo, title, label, short, trigger, actions
                 mistaken for the one under it. */}
             <div className="mb-2 flex items-center gap-3 border-b border-[#eef1f5] px-2 pb-3">
               <span className="size-12 shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9]">
-                <Thumb src={photo ?? item?.image?.url ?? null} alt="" className="size-full object-cover" icon={<ShoppingBag className="size-4" />} />
+                <Thumb src={photo ?? item?.image?.url ?? null} alt="" className="size-full bg-white object-contain" icon={<ShoppingBag className="size-4" />} />
               </span>
               <span className="min-w-0">
                 <span dir="auto" className="line-clamp-2 text-[14px] font-extrabold leading-5 text-[#0a285a]">{title}</span>

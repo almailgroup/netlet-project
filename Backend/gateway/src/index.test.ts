@@ -314,6 +314,17 @@ describe("POST /api/ai/generate", () => {
     ]);
   });
 
+  it("draws a square picture when asked for one, and refuses a shape for words", async () => {
+    const { fetcher, sent } = answering({ content: { parts: [{ inlineData: { mimeType: "image/png", data: "iVBORw0K" } }] }, finishReason: "STOP" });
+    const square = await post("/api/ai/generate", { ...ask, json: false, output: "image", aspectRatio: "1:1" }, { token: await serverToken("photoCleanup"), origin: null, fetcher });
+    expect(square.status).toBe(200);
+    expect(sent[0].body.generationConfig).toEqual({ temperature: 0, responseModalities: ["IMAGE", "TEXT"], imageConfig: { aspectRatio: "1:1" } });
+    const words = await post("/api/ai/generate", { ...ask, json: false, aspectRatio: "1:1" }, { token: await serverToken("photoCleanup"), origin: null, fetcher });
+    expect((await words.json()).error.field).toBe("aspectRatio");
+    const odd = await post("/api/ai/generate", { ...ask, json: false, output: "image", aspectRatio: "7:3" }, { token: await serverToken("photoCleanup"), origin: null, fetcher });
+    expect((await odd.json()).error.field).toBe("aspectRatio");
+  });
+
   it("refuses a drawing that came back without a picture, and a search asked for as JSON", async () => {
     const { fetcher } = answering({ content: { parts: [{ text: "I cannot." }] }, finishReason: "STOP" });
     const nothing = await post("/api/ai/generate", { ...ask, json: false, output: "image" }, { token: await serverToken("photoCleanup"), origin: null, fetcher });

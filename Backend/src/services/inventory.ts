@@ -16,6 +16,8 @@ import { merchantWarranty } from "../../../Shared/commerce/productDetail.js";
 import { stockMoveProblem, type StockReason } from "../../../Shared/inventory/stockMoves.js";
 import { optionPairs, optionPairsProblem, optionsRecord } from "../../../Shared/inventory/variantOptions.js";
 import { brandProblem, percentProblem, scalePrice, withBrand } from "../../../Shared/inventory/productBulk.js";
+import { conditionOf, withCondition, type CatalogueCondition, type ProductCondition } from "../../../Shared/commerce/condition.js";
+import { conditionWhere, newOnly, refurbishedOnly } from "./productCondition.js";
 import { normaliseIban } from "../../../Shared/inventory/storeProfile.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
@@ -175,10 +177,64 @@ export async function setProductAttributes(
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
-  const [row] = await db.select({ vendorId: products.vendorId }).from(products).where(eq(products.id, productId)).limit(1);
+  const [row] = await db.select({ vendorId: products.vendorId, attributes: products.attributes }).from(products).where(eq(products.id, productId)).limit(1);
   if (!row) throw new Error("NOT_FOUND");
   assertCan(actor, "product.edit", row.vendorId);
-  await db.update(products).set({ attributes }).where(eq(products.id, productId));
+  /* The condition is its own control's (`setProductCondition`): whatever a
+     specification save sends, the stored one stands, so an editor — or an app
+     build — that knows nothing of conditions cannot turn a refurbished product
+     back into a new one by saving its rows. */
+  await db.update(products).set({ attributes: withCondition(attributes, conditionOf(row.attributes)) }).where(eq(products.id, productId));
+}
+
+/**
+ * Whether the product is sold new or refurbished, on the owner's word — which
+ * shop it is on (`Shared/commerce/condition.ts`). `product.edit`, beside the
+ * query, against the product's own store; on the trail, because moving a
+ * product between the two shops changes what every shopper is told it is.
+ */
+export async function setProductCondition(actor: Actor, productId: number, condition: ProductCondition): Promise<ProductCondition> {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [row] = await db
+    .select({ vendorId: products.vendorId, attributes: products.attributes, title: products.title })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1);
+  if (!row) throw new Error("NOT_FOUND");
+  assertCan(actor, "product.edit", row.vendorId);
+  const before = conditionOf(row.attributes);
+  if (before === condition) return condition;
+  await db.update(products).set({ attributes: withCondition(row.attributes ?? [], condition) }).where(eq(products.id, productId));
+  await recordAudit(await auditActor(actor), {
+    action: "product.setCondition",
+    subjectType: "product",
+    subjectId: productId,
+    subjectLabel: row.title,
+    vendorId: row.vendorId,
+    before: { condition: before },
+    after: { condition },
+  });
+  return condition;
+}
+
+/**
+ * How many refurbished products are on sale, in all and per department —
+ * what decides whether the shop draws a way into the refurbished section, and
+ * the section's department chips. The `publishedCatalog` rule, narrowed.
+ */
+export async function publishedRefurbishedSummary(): Promise<{ total: number; departments: Record<string, number> }> {
+  const db = await getDb();
+  if (!db) return { total: 0, departments: {} };
+  const [[counted], departments] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(products)
+      .innerJoin(vendors, eq(products.vendorId, vendors.id))
+      .where(and(eq(products.status, "published"), eq(vendors.status, "approved"), refurbishedOnly())),
+    publishedDepartmentCounts("refurbished"),
+  ]);
+  return { total: Number(counted?.count ?? 0), departments };
 }
 
 /**
@@ -307,7 +363,7 @@ async function hydrate(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows:
  * from the storefront without anyone editing the product, which is what makes
  * suspension a real lever.
  */
-export async function publishedCatalog(options: { limit?: number; categoryId?: number; ids?: number[]; vendorId?: number } = {}) {
+export async function publishedCatalog(options: { limit?: number; categoryId?: number; ids?: number[]; vendorId?: number; condition?: CatalogueCondition } = {}) {
   const db = await getDb();
   if (!db) return [];
   const rows = await db
@@ -318,6 +374,10 @@ export async function publishedCatalog(options: { limit?: number; categoryId?: n
       and(
         eq(products.status, "published"),
         eq(vendors.status, "approved"),
+        /* The shop's new products unless a read asks otherwise: refurbished
+           products are a section of their own, on the owner's word, and a
+           read that forgets to say which shop it is for is one of the new. */
+        conditionWhere(options.condition ?? "new"),
         options.categoryId ? eq(products.categoryId, options.categoryId) : undefined,
         /* One store's shelf, for its public page — the same rules, narrowed. */
         options.vendorId ? eq(products.vendorId, options.vendorId) : undefined,
@@ -347,7 +407,7 @@ export async function publishedCatalog(options: { limit?: number; categoryId?: n
  * published product of an approved store — counted per department, so a link
  * appears exactly when the page behind it has something to show.
  */
-export async function publishedDepartmentCounts(): Promise<Record<string, number>> {
+export async function publishedDepartmentCounts(condition: Exclude<CatalogueCondition, "any"> = "new"): Promise<Record<string, number>> {
   const db = await getDb();
   if (!db) return {};
   const rows = await db
@@ -355,7 +415,7 @@ export async function publishedDepartmentCounts(): Promise<Record<string, number
     .from(products)
     .innerJoin(vendors, eq(products.vendorId, vendors.id))
     .innerJoin(categories, eq(products.categoryId, categories.id))
-    .where(and(eq(products.status, "published"), eq(vendors.status, "approved")))
+    .where(and(eq(products.status, "published"), eq(vendors.status, "approved"), conditionWhere(condition)))
     .groupBy(categories.slug);
   return Object.fromEntries(rows.map(row => [row.slug, Number(row.count)]));
 }
@@ -385,7 +445,7 @@ export async function publishedSubcategoryCounts(): Promise<Record<string, Recor
     .from(products)
     .innerJoin(vendors, eq(products.vendorId, vendors.id))
     .innerJoin(categories, eq(products.categoryId, categories.id))
-    .where(and(eq(products.status, "published"), eq(vendors.status, "approved")))
+    .where(and(eq(products.status, "published"), eq(vendors.status, "approved"), newOnly()))
     .limit(SUBCATEGORY_COUNT_CEILING);
   const counts: Record<string, Record<string, number>> = {};
   for (const row of rows) {
@@ -652,6 +712,8 @@ export async function createProduct(actor: Actor, input: {
   warranty?: string | null;
   /** Specification rows by the department's own keys — a "Generate with AI" draft's (`openingSpecs`). */
   specs?: { key: string; value: string }[];
+  /** New, or refurbished: the shop it goes on (`Shared/commerce/condition.ts`). New when absent. */
+  condition?: ProductCondition;
   /**
    * The first variant's terms. Absent, the product starts with a "Default" at
    * 0.000, as it always did — the editor's own "New product" path. The guided
@@ -678,7 +740,7 @@ export async function createProduct(actor: Actor, input: {
   const [category] = input.categoryId
     ? await db.select({ slug: categories.slug }).from(categories).where(eq(categories.id, input.categoryId)).limit(1)
     : [];
-  const attributes = openingSpecs(category?.slug ?? null, input.specs, input.warranty);
+  const attributes = withCondition(openingSpecs(category?.slug ?? null, input.specs, input.warranty), input.condition ?? "new");
 
   /*
    * One transaction, so the form's one press is one outcome. Three writes in a

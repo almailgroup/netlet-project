@@ -37,7 +37,7 @@ import {
 import { publicProcedure, router } from "../core/trpc.js";
 import { MAX_LINE_QUANTITY, MAX_PRODUCTS_BY_ID } from "../../../Shared/commerce/types.js";
 import { bundlesForVariant } from "../services/bundles.js";
-import { publishedDepartmentCounts, publishedSubcategoryCounts } from "../services/inventory.js";
+import { publishedDepartmentCounts, publishedRefurbishedSummary, publishedSubcategoryCounts } from "../services/inventory.js";
 import { AddressError, setLineDestination } from "../services/addresses.js";
 import { TRPCError } from "@trpc/server";
 import { returnWindowDays } from "../services/settings.js";
@@ -79,6 +79,8 @@ export const commerceRouter = router({
             first: z.number().int().min(1).max(100).optional(),
             collectionHandle: z.string().min(1).optional(),
             locale: localeSchema,
+            /* The refurbished section's own shelf; the new shop's when absent. */
+            condition: z.enum(["new", "refurbished"]).optional(),
           })
           .optional()
       )
@@ -125,6 +127,12 @@ export const commerceRouter = router({
   departmentCounts: publicProcedure.query(() => publishedDepartmentCounts()),
   /** Each department's subcategories' counts, for the Categories page. */
   subcategoryCounts: publicProcedure.query(() => publishedSubcategoryCounts()),
+  /**
+   * How many refurbished products are on sale, in all and per department —
+   * whether the shop draws its ways into the refurbished section, and the
+   * section's department chips.
+   */
+  refurbishedSummary: publicProcedure.query(() => publishedRefurbishedSummary()),
   /**
    * The day's rates for the display currency (`Shared/commerce/currency.ts`):
    * one figure for everybody, the reference table whenever the feed is not

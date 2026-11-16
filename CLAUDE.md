@@ -1561,14 +1561,20 @@ sort, and the structured data, so none of them can disagree; the app's
 `Product.rating` and `StarRow` are the same, `StarFill.row` tested on
 `starFills`' cases.
 
-**A card's photo runs to its edges and is taller than it is wide (4:5)**, on
-the owner's word: inset in a square it was a third of a phone card, the rest
-being words and buttons, and it is half the card now — 171 × 214 at 390 where
-it was 155 × 155, 264 × 330 at 1440 where it was 248 × 248. It is cropped to
-fill (`object-cover`), which takes about a tenth off each side of a square
-photo; that is the trade for the size. The Deals band's feature card spans two
-columns and the gap, so its photo is 33:20 and contained, which lands within a
-couple of pixels of the 4:5 photos beside it.
+**A card's photo is square, runs to the card's edges and is never cut, on
+the owner's word** ("make sure that their image doesn't get cropped in a bad
+way … all images should be square for the product cards"). It was 4:5 and
+cropped to fill (`object-cover`), which took about a tenth off each side of a
+square photo and the ends off a wide one; it is a square frame now, the
+photo fitted whole on white (`object-contain`, the app's `.fit` on
+`Color.white`) — 171 × 171 at 390 and 264 × 264 at 1440, where it was
+171 × 214 and 264 × 330. A photo NetLet AI made square fills the frame
+exactly (see "Square photos" under Uploaded photos). The Deals band's
+feature card spans two columns and the gap, so its photo is 33:16 and
+contained, which lands within a couple of pixels of the squares beside it.
+Every small product picture beside a name — the bag, Saved for later, the
+line menus, checkout, the search suggestions, the assistant's shelf, the
+wishlists — is fitted on white the same way.
 
 **A hovered card rises three pixels**, its shadow deepens, its edge darkens
 and the photograph eases 5% closer inside its frame. Transform only, so nothing
@@ -3751,6 +3757,62 @@ card, Quick View — so they cannot give different answers about the same
 variant. The buy button says which act it is: "Add to cart" on something that
 has not been made yet asks the shopper to find out later.
 
+## Refurbished products
+
+**Used products, checked and restored, are a shop of their own, on the
+owner's word** ("a section for used products, but this should be completely
+separate from the new products … add that option for the admin and the
+vendor"). `Shared/commerce/condition.ts` is the rule, pure;
+`Backend/src/services/productCondition.ts` the SQL. **No migration**: the
+condition is a specification row, `{ namespace: "spec", key: "condition",
+value: "refurbished" }`, in `products.attributes`, and a new product carries
+none — `conditionOf` reads exactly "refurbished" and anything else is new.
+**Its own control writes it, never the specification form**: `freeFormRows`
+and `specifications()` leave it out, `mergeAttributes` and
+`setProductAttributes` keep the stored one whatever a save sends (an older app
+or editor cannot drop it or add it), and `setProductCondition`
+(`inventory.products.setCondition`, `product.edit`, on the trail as
+`product.setCondition`, in `SELLER_ACTIONS`) and the create's `condition` are
+the only doors.
+
+**Every read of the new shop leaves it out**, in the query
+(`attributes @> …` and its `not`): `publishedCatalog` and `listProducts`
+default to `"new"`, and so do the department and subcategory counts, search
+(`searchCatalogue`'s `condition`, its correction's vocabulary too), the
+stores selling a department, Bestsellers, Trending and an occasion's tagged
+shelf. **What somebody already has is found whichever it is** (`"any"`): a
+product page by its handle, products read by id (Saved, the bag, a wishlist,
+Previously viewed), a store's own page and the sitemap.
+
+**The section** is `/refurbished` and `/refurbished/<department>`, the
+department page in its own mode (`Category.tsx`; the app's
+`ShelfView.refurbished`, `Route.refurbished`): its own shelf
+(`commerce.products.list` with `condition: "refurbished"`), a green note
+saying what refurbished means, chips of its departments from
+`commerce.refurbishedSummary` (`{ total, departments }`), its own search
+("Search refurbished", the Deals page's rule), the filters and sort, no
+sponsored strip and no "Shop by store". With nothing refurbished it says so
+and offers the new shop. **It is reached only while it holds something**
+(`refurbishedSummary.total`): a link in the wide header's department row, a
+card under the departments on `/categories` (`RefurbishedEntry`), a shelf on
+the home page after Bestsellers from four (`RefurbishedShelf`, the app's from
+`HomeShelf.refurbished`), and a store's page toggles New | Refurbished
+(`?condition=`). **A refurbished product says so** — a green "Refurbished"
+badge on its card (`RefurbishedBadge` in the app) and a note in its buy box —
+and its related products are refurbished ones. The portal offers New or
+Refurbished on the new-product form and saves it as it changes in the editor
+(`ConditionChoice` on both platforms), and the products list marks a
+refurbished one. Walked on a production build against a local Postgres with
+four products refurbished, at 320, 390 and 1440 in both languages: the
+section, a department of it, its search, the new shop's department leaving
+them out, a refurbished product's page, the store's toggle, the ways in, the
+portal's form and the editor's card saving each way; axe clean, no sideways
+scroll. The app's answers were recorded off that server
+(`demo.commerce.refurbishedSummary.json`,
+`demo.commerce.products.list.refurbished.json` — `DemoTransport` answers a
+`condition: "refurbished"` read from its own recording or not at all), and
+the CI photographs the section (`102-refurbished`).
+
 ## Selling by weight
 
 A supermarket has two kinds of shelf: most of it is counted, and some of it is
@@ -4821,7 +4883,7 @@ bytes checked, re-encoded, shrunk — and is uploaded only when a person picks
 it; a try-on is shown and kept nowhere. What comes back is a picture **by its
 own bytes** or `drawing.failed`, so an SVG wearing a PNG's name is refused.
 Each use is counted per account per hour in `auth_attempts` *before* the call
-(`takeHourlyAllowance`: `photoClean`, `tryOn`, `guideDraw`, `guideDraft`, `subcatDraw`), and
+(`takeHourlyAllowance`: `photoClean`, `photoSquare`, `tryOn`, `guideDraw`, `guideDraft`, `subcatDraw`), and
 all of it is behind `ai` like every model call. The try-on also has its own
 switch, `tryOn`, off by default; only something in the Style department
 (`TRY_ON_DEPARTMENTS`), only a published product of an approved store, only
@@ -5262,6 +5324,46 @@ with a size ceiling.
 browser's year): it sent `max-age` alone, which the CDN does not read, so
 every new visitor's photos were read out of Postgres by the function. A day
 rather than a year, so a photo taken back stops being served within one.
+
+**Square photos, by NetLet AI, on the owner's word** ("use NetLet's AI to
+make the image appropriately without any cuts for the products and when
+adding new products"). A card is square and fitted (see "A card's photo is
+square"), so a wide photo leaves white bands; NetLet AI fills them.
+**On upload it is asked at once**: when a model can be asked
+(`media.aiAvailable`), the photo picker (`PhotoUpload` on the web,
+`PhotoChoiceSheet` in the app) asks for NetLet AI's version the moment a
+photo is chosen and chooses it when it comes — the seller can still pick the
+photo as taken or with the fixes. **The model is asked for a square**:
+`GenerateRequest.aspectRatio` (`IMAGE_ASPECTS`, only with `output: "image"`)
+goes to Gemini as `generationConfig.imageConfig.aspectRatio`, and
+`CLEANUP_PROMPT` asks for the whole product on white, nothing cut.
+**What comes back is padded, never cut**: `preparePhoto(…, { square: true })`
+(`PhotoFixer.prepare(square:)`) widens a picture that is not square on its own
+background or the colour round its edge, so a model that kept the photo's
+shape still gives a square. **The photos already on the shop are squared from
+the products list** ("Make photos square", in the bulk bar beside "Copy photos
+to NetLet" while a model can be asked; `lib/squarePhotos.ts`,
+`squareProductPhoto` and `replaceGalleryPhoto` in
+`services/photoCopies.ts`): each chosen product's gallery photos are read — a
+`/media` one directly, another site's through `/api/media/copy/fetch` — a
+photo already square (`isSquareEnough`, within 2%) is left as it is, the rest
+are sent to `POST /api/media/square/draw/:imageId` at most 1024px
+(`SQUARE_PROMPT`: extend the background, change nothing, never invent a part
+of the product; the `photoCleanup` task, so a Worker that does not know a new
+task is not refused), padded, and stored in the photo's place by
+`POST /api/media/square/:imageId` with the address it replaced in
+`X-NetLet-Was` — the row is changed only while it still holds that address,
+and the old one is kept as the file's `source_url`. **Every one can be put
+back**: the dialog shows each before and after with "Put the original back"
+(`inventory.products.photoPutBack`, `putPhotoBack`), which restores
+`source_url`. Two at a time, never stopping on one photo, the hour's
+allowance its own (`MAX_PHOTO_SQUARES_PER_HOUR`, 300, `photoSquare` in
+`auth_attempts`), only for somebody who may edit the product. Web only, like
+copying photos — a batch an administrator runs at a desk. Walked through a
+stand-in gateway that answered with the photo it was sent: a 1600 × 900
+upload came back 1024 × 1024, and put back restored the original, at 390 and
+1440 in both languages. Not yet run against Google's live image model from
+this sandbox.
 
 ## Manufacturer images
 
@@ -8785,9 +8887,10 @@ languages and the rule that knows one — then 1,079 KB (311 KB), the
 warranty plans' and installation's words in both languages, which the
 product page's picker shares with the editor — then 1,081 KB (311 KB), the
 photo zoom's words for a mouse in both languages and the second-click hook —
-and is 1,093 KB (315 KB) now, the product views' words in both languages (the
+then 1,093 KB (315 KB), the product views' words in both languages (the
 portal's page and the editor's card share them, and the dictionary is one
-module) —
+module) — and is 1,107 KB (319 KB) now, the refurbished section's and the
+photo squaring's words in both languages —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

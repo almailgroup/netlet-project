@@ -24,8 +24,17 @@ struct DemoTransport: HTTPTransport {
         let url = request.url ?? URL(string: "https://demo.invalid")!
         let path = url.path
         let procedure = path.hasPrefix("/api/trpc/") ? String(path.dropFirst("/api/trpc/".count)) : path
-        let specific = variant.map { bundle.resource("demo.\(procedure).\($0)", "json") } ?? Data()
-        let data = specific.isEmpty ? bundle.resource("demo.\(procedure)", "json") : specific
+        // The refurbished section asks the same procedures as the new shop
+        // with `condition: "refurbished"`; it is answered from its own
+        // recording or not at all, never from the new shop's.
+        let input = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "input" }?.value ?? ""
+        let data: Data
+        if input.contains(#""condition":"refurbished""#) {
+            data = bundle.resource("demo.\(procedure).refurbished", "json")
+        } else {
+            let specific = variant.map { bundle.resource("demo.\(procedure).\($0)", "json") } ?? Data()
+            data = specific.isEmpty ? bundle.resource("demo.\(procedure)", "json") : specific
+        }
         let status = data.isEmpty ? 404 : 200
         let body = data.isEmpty
             ? Data(#"{"error":{"json":{"message":"ios.error.notFound","code":-32004,"data":{"code":"NOT_FOUND","httpStatus":404}}}}"#.utf8)

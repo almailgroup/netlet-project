@@ -10,6 +10,8 @@ enum API {
         var first: Int?
         var collectionHandle: String?
         var locale: String?
+        /// "refurbished" for the refurbished section; absent is the new shop.
+        var condition: String?
     }
 
     struct ProductHandle: Encodable, Sendable {
@@ -24,6 +26,8 @@ enum API {
         var limit: Int?
         /// With the stores that sell what matched (`SearchResult.stores`).
         var stores: Bool?
+        /// "refurbished" searches the refurbished section; absent is the new shop.
+        var condition: String?
     }
 
     /// A department, and one of its subcategories when there is one.
@@ -73,6 +77,9 @@ enum API {
     static let contact = Procedure<NoInput, ShopContact>(query: "support.channels")
     static let product = Procedure<ProductHandle, Product?>(query: "commerce.products.byHandle")
     static let departmentCounts = Procedure<NoInput, [String: Int]>(query: "commerce.departmentCounts")
+    /// How many refurbished products are on sale, and in each department — the
+    /// section is drawn only while there are some.
+    static let refurbishedSummary = Procedure<NoInput, RefurbishedSummary>(query: "commerce.refurbishedSummary")
     /// Each department's subcategories' counts, by the department's slug and then the subcategory's.
     static let subcategoryCounts = Procedure<NoInput, [String: [String: Int]]>(query: "commerce.subcategoryCounts")
     /// The pictures an administrator kept for the subcategories, `department/slug` → `/media` path.
@@ -526,6 +533,8 @@ enum API {
         let images: [Photo]
         /// Warranty and installation, the editor's own section.
         var addons: [AddonInput]?
+        /// "refurbished" puts it in the refurbished section; absent is new.
+        var condition: String?
     }
 
     struct ListingStatus: Encodable, Sendable {

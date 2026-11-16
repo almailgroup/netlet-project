@@ -74,6 +74,9 @@ private struct ProductPage: View {
     /// Add to cart has just worked: the button says so for a moment.
     @State private var added = false
     @State private var addedReset: Task<Void, Never>?
+    /// A refurbished product's own shop, which its related products come from —
+    /// the new shop's catalogue holds none of them.
+    @State private var refurbishedShelf: [Product] = []
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
@@ -113,6 +116,10 @@ private struct ProductPage: View {
             PhotoSheet(product: product, index: $model.imageIndex, startFull: start == .zoom) { photos = nil }
                 .environment(\.layoutDirection, l.layoutDirection)
                 .buttonStyle(HapticDefaultStyle())
+        }
+        .task(id: product.isRefurbished ? "\(product.id)|\(l.current.rawValue)" : "") {
+            guard product.isRefurbished else { return }
+            refurbishedShelf = (try? await app.services.catalog.refurbished(first: 24, department: nil, language: l.current)) ?? []
         }
         .task(id: app.session.isSignedIn) {
             guard app.session.isSignedIn else {
@@ -194,6 +201,11 @@ private struct ProductPage: View {
                 .accessibilityLabel(rating.count.map { l.t("product.ratingAriaCount", ["value": "\(rating.value)", "max": "\(Int(rating.scaleMax))", "count": "\($0)"]) }
                     ?? l.t("product.ratingAria", ["value": "\(rating.value)", "max": "\(Int(rating.scaleMax))"]))
                 .padding(.top, 12)
+            }
+            if product.isRefurbished {
+                // A shop of its own: said plainly beside the name, the web's note.
+                RefurbishedNote(text: l.t("refurbished.productNote"))
+                    .padding(.top, 14)
             }
             if product.isExpress {
                 HStack(spacing: 6) {
@@ -730,7 +742,9 @@ private struct ProductPage: View {
     /// seller only breaks a tie, and nothing scoring nothing fills a place.
     private var relatedProducts: [Product] {
         let tags = Set(product.tags.map { $0.lowercased() })
-        let scored: [(product: Product, score: Int, offset: Int)] = (app.shelf.catalogue.value ?? []).enumerated().compactMap { offset, other in
+        /* A refurbished product's are refurbished too: the two shops never mix. */
+        let pool = product.isRefurbished ? refurbishedShelf : (app.shelf.catalogue.value ?? [])
+        let scored: [(product: Product, score: Int, offset: Int)] = pool.enumerated().compactMap { offset, other in
             guard other.id != product.id else { return nil }
             var score = 0
             if let type = product.productType, !type.isEmpty, other.productType == type { score += 3 }

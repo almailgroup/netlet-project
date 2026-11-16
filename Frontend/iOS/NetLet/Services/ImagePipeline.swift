@@ -98,7 +98,8 @@ actor ImagePipeline {
 
     /// The size a product card's photo is decoded at, for fetching ahead of one.
     static func cardPixels(scale: CGFloat) -> Int {
-        pixels(for: CGSize(width: 180, height: 225), scale: max(scale, 2))
+        // A card's photo is square now, fitted whole on white.
+        pixels(for: CGSize(width: 180, height: 180), scale: max(scale, 2))
     }
 
     /// The picture at that size, if one has been decoded already — what a view

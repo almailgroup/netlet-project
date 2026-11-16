@@ -76,14 +76,16 @@ struct ListingRules: Decodable, Sendable {
     /// schema that deletes merchant data on first save is one nobody uses twice.
     func freeFormRows(_ attributes: [ProductAttribute], departmentSlug: String?) -> [ProductAttribute] {
         let known = Set(fields(departmentSlug).map(\.key))
-        return attributes.filter { $0.namespace != "reviews" && !($0.namespace == "spec" && known.contains($0.key)) }
+        return attributes.filter { $0.namespace != "reviews" && !$0.isConditionRow && !($0.namespace == "spec" && known.contains($0.key)) }
     }
 
     /// The schema values written back, everything else exactly as it was; a
     /// blank clears its row rather than storing "".
     func mergeAttributes(_ attributes: [ProductAttribute], departmentSlug: String?, values: [String: String]) -> [ProductAttribute] {
         let rest = freeFormRows(attributes, departmentSlug: departmentSlug)
-        let reviews = attributes.filter { $0.namespace == "reviews" }
+        /* The review score and the condition are kept as they were: neither is
+           the specification form's to write (the condition has its own control). */
+        let reviews = attributes.filter { $0.namespace == "reviews" || $0.isConditionRow }
         let filled = fields(departmentSlug).compactMap { field -> ProductAttribute? in
             let value = (values[field.key] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return value.isEmpty ? nil : ProductAttribute(namespace: "spec", key: field.key, label: field.label, value: value)

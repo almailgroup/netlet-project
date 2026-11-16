@@ -3,6 +3,10 @@ import Foundation
 /// The shop's shelves: products, one product, what each department holds, and search.
 protocol CatalogServicing: Sendable {
     func products(first: Int, department: String?, language: Language) async throws -> [Product]
+    /// The refurbished section's shelf (`condition: "refurbished"`), apart from the new shop.
+    func refurbished(first: Int, department: String?, language: Language) async throws -> [Product]
+    /// How many refurbished products there are, and in each department.
+    func refurbishedSummary() async throws -> RefurbishedSummary
     func product(handle: String, language: Language) async throws -> Product?
     func departmentCounts() async throws -> [String: Int]
     func search(_ query: String, department: String?, limit: Int, language: Language) async throws -> SearchResult
@@ -31,8 +35,10 @@ protocol CatalogServicing: Sendable {
     func rememberedLiveOccasions(language: Language) -> LiveOccasions?
 }
 
-/// A stand-in remembers nothing, and has curated no occasion.
+/// A stand-in remembers nothing, has curated no occasion and sells nothing refurbished.
 extension CatalogServicing {
+    func refurbished(first: Int, department: String?, language: Language) async throws -> [Product] { [] }
+    func refurbishedSummary() async throws -> RefurbishedSummary { .none }
     func liveOccasions(language: Language) async throws -> LiveOccasions { .empty }
     func occasionPage(slug: String, language: Language) async throws -> OccasionPage { .empty }
     func storesSelling(department: String, sub: String?, language: Language) async throws -> [StoreCard] { [] }
@@ -50,6 +56,14 @@ struct CatalogService: CatalogServicing {
 
     func products(first: Int, department: String?, language: Language) async throws -> [Product] {
         try await client.call(API.products, .init(first: first, collectionHandle: department, locale: language.rawValue))
+    }
+
+    func refurbished(first: Int, department: String?, language: Language) async throws -> [Product] {
+        try await client.call(API.products, .init(first: first, collectionHandle: department, locale: language.rawValue, condition: "refurbished"))
+    }
+
+    func refurbishedSummary() async throws -> RefurbishedSummary {
+        try await client.call(API.refurbishedSummary)
     }
 
     func product(handle: String, language: Language) async throws -> Product? {

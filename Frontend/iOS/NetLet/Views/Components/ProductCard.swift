@@ -34,6 +34,93 @@ struct PriceView: View {
 }
 
 /// The saving, navy on the orange: white on `#f2683a` is 3.08:1, navy is 4.65:1.
+/// What a refurbished product wears on its photo and beside its name
+/// (`refurbished.badge`): the section's green, with the recycling mark.
+struct RefurbishedBadge: View {
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "arrow.3.trianglepath").font(.system(size: 9, weight: .bold))
+            Text(l.t("refurbished.badge"))
+        }
+        .font(.inter(11, .bold))
+        .foregroundStyle(Brand.renewed)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Brand.renewedFill))
+    }
+}
+
+/// The refurbished section's note — on its page, and on a refurbished
+/// product's own — in the section's green, the web's note box.
+struct RefurbishedNote: View {
+    let text: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "arrow.3.trianglepath")
+                .font(.system(size: 15, weight: .semibold))
+                .padding(.top, 1)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.inter(14))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .foregroundStyle(Brand.renewed)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.renewedWash))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.renewedFill, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// New or refurbished, for the person adding or editing a product — the
+/// web's `ConditionChoice`: two choices, each saying where it is shown.
+struct ConditionChoice: View {
+    @Binding var refurbished: Bool
+    var disabled = false
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(l.t("refurbished.conditionLabel")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
+            option(false, title: "refurbished.conditionNew", hint: "refurbished.conditionNewHint")
+            option(true, title: "refurbished.conditionRefurbished", hint: "refurbished.conditionRefurbishedHint")
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func option(_ value: Bool, title: String, hint: String) -> some View {
+        let chosen = refurbished == value
+        return Button {
+            guard !chosen else { return }
+            refurbished = value
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: chosen ? "largecircle.fill.circle" : "circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(chosen ? Brand.navy : Brand.muted)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l.t(title)).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
+                    Text(l.t(hint)).font(.caption).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(chosen ? Brand.tint : Color.white))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 1.5 : 1))
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.tap)
+        .disabled(disabled)
+        .accessibilityAddTraits(chosen ? [.isSelected] : [])
+    }
+}
+
 struct SavingBadge: View {
     let percent: Int
     var large = false
@@ -303,6 +390,9 @@ struct ProductCard: View {
             if variant?.preorder != nil {
                 tag(l.t("product.preorder"), fill: Brand.navy)
             }
+            if product.isRefurbished {
+                RefurbishedBadge()
+            }
             if product.isExpress {
                 HStack(spacing: 4) {
                     Image(systemName: "bolt.fill").font(.system(size: 9))
@@ -482,7 +572,12 @@ struct CardGallery: View {
 
     var body: some View {
         let photos = Array(product.images.prefix(Self.most))
-        let ratio: CGFloat = feature ? 33.0 / 20.0 : 4.0 / 5.0
+        // Square, on the owner's word ("all images should be square for the
+        // product cards … doesn't get cropped in a bad way"): it was 4:5 and
+        // filled, which cut the ends off a wide photo. Fitted on white, no
+        // photo is cut, and one NetLet AI made square fills it exactly. The
+        // feature card's is two columns and the gap wide at a square's height.
+        let ratio: CGFloat = feature ? 33.0 / 16.0 : 1
         // The card's width decides the frame and the photos fill it — never
         // the other way round: a scroller sized by its content made every
         // card in a grid as wide as its photos and pushed the grid off screen.
@@ -538,10 +633,10 @@ struct CardGallery: View {
     }
 
     private func picture(_ photo: ProductImage?) -> some View {
-        (feature ? Color.white : Brand.photo)
+        Color.white
             .overlay {
                 if let photo {
-                    RemoteImage(reference: photo.url, contentMode: feature ? .fit : .fill, label: photo.altText ?? product.title)
+                    RemoteImage(reference: photo.url, contentMode: .fit, label: photo.altText ?? product.title)
                 }
             }
             .clipped()

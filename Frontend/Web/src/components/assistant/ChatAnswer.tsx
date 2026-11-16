@@ -129,7 +129,7 @@ function SearchShelf({ term, onNavigate }: { term: string; onNavigate?: () => vo
                   <Thumb
                     src={product.images[0]?.url}
                     alt={product.images[0]?.altText || product.title}
-                    className="size-full object-cover"
+                    className="size-full bg-white object-contain"
                     icon={<ImageOff className="size-5 text-[#536b8c]" />}
                   />
                 </span>

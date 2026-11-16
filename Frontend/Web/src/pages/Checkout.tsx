@@ -571,7 +571,7 @@ function ItemRow({ item }: { item: CartItem }) {
     <div id={`line-code-${item.lineId}`} className="scroll-mt-24 py-3">
       <div className="flex gap-3">
         <div className="size-14 shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9]">
-          <Thumb src={item.image?.url} alt={item.image?.altText ?? title} className="size-full object-cover" icon={<ShoppingBag className="size-4" />} />
+          <Thumb src={item.image?.url} alt={item.image?.altText ?? title} className="size-full bg-white object-contain" icon={<ShoppingBag className="size-4" />} />
         </div>
         <div className="min-w-0 flex-1">
           <p dir="auto" className="line-clamp-2 text-[14px] font-bold leading-5">{title}</p>

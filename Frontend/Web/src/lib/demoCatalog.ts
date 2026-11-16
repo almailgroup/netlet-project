@@ -112,6 +112,8 @@ type Seed = {
   rating?: [score: number, count: number];
   /** How many gallery views to generate. Defaults to 2. */
   views?: number;
+  /** Sold refurbished, so the demo build has a refurbished section to open (`Shared/commerce/condition.ts`). */
+  refurbished?: boolean;
   palette: [string, string];
 };
 
@@ -275,6 +277,7 @@ const SEEDS: Seed[] = [
   },
   {
     handle: "meridian-mechanical-keyboard",
+    refurbished: true,
     title: "Meridian Mechanical Keyboard",
     description:
       "A 75% layout with hot-swappable switches, a machined aluminium case, and per-key backlighting. Connects over USB-C or Bluetooth.",
@@ -351,6 +354,7 @@ const SEEDS: Seed[] = [
   },
   {
     handle: "atlas-travel-backpack",
+    refurbished: true,
     title: "Atlas Travel Backpack",
     description:
       "A 28-litre carry-on backpack in recycled ripstop, with a padded laptop sleeve and a clamshell opening that lies flat.",
@@ -476,6 +480,7 @@ function toProduct(seed: Seed, index: number): Product {
     /* Filed by the server's own rule, from the invented title and tags. */
     subcategory: subcategoryFor({ department: seed.productType, titles: [seed.title], tags: seed.tags }),
     attributes: [
+      ...(seed.refurbished ? [{ namespace: "spec", key: "condition", label: "Condition", value: "refurbished" }] : []),
       {
         namespace: "demo",
         key: "origin",

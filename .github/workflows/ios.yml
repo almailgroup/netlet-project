@@ -241,6 +241,8 @@ jobs:
             shot 68-browse-sort "$lang" browseSheet:all/sort ""
             shot 69-browse-price "$lang" browseSheet:all/price ""
             shot 70-deals "$lang" deals ""
+            # The refurbished section: used products, checked and restored, a shop of its own.
+            shot 102-refurbished "$lang" refurbished ""
             shot 71-order-rate "$lang" rate:NL-20261001-J7MWY shopper
             # The after-sales centre: a claim on what arrived, help with the
             # order, and — on the recorded pending order — modifying it and

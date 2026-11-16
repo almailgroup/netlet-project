@@ -1,0 +1,13 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "total": 4,
+        "departments": {
+          "electronics": 3,
+          "style": 1
+        }
+      }
+    }
+  }
+}

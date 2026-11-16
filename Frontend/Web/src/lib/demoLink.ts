@@ -10,6 +10,7 @@
  * terminates in the browser, no superjson serialization is involved — the values
  * returned here are handed straight to React Query.
  */
+import { isRefurbished } from "@shared/commerce/condition";
 import { rankStores } from "@shared/commerce/storesSelling";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { resolveIssue, type HelpIssue } from "@shared/commerce/selfService";
@@ -215,7 +216,18 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "commerce.products.list": {
       const first =
         typeof input.first === "number" ? input.first : demoCatalog.length;
-      return demoCatalog.slice(0, first);
+      /* Two shops, the server's rule: the refurbished section's shelf, or the new one's. */
+      const refurbishedShelf = input.condition === "refurbished";
+      return demoCatalog.filter(product => isRefurbished(product) === refurbishedShelf).slice(0, first);
+    }
+    case "commerce.refurbishedSummary": {
+      const departments: Record<string, number> = {};
+      const refurbishedOnes = demoCatalog.filter(isRefurbished);
+      for (const product of refurbishedOnes) {
+        const department = DEPARTMENTS.find(entry => entry.name === product.productType);
+        if (department) departments[department.slug] = (departments[department.slug] ?? 0) + 1;
+      }
+      return { total: refurbishedOnes.length, departments };
     }
     case "commerce.products.byHandle":
       return demoProductByHandle(String(input.handle ?? ""));
@@ -238,7 +250,7 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "commerce.departmentCounts": {
       /* Counted from the invented catalogue the same way the server counts its own. */
       const counts: Record<string, number> = {};
-      for (const product of demoCatalog) {
+      for (const product of demoCatalog.filter(entry => !isRefurbished(entry))) {
         const department = DEPARTMENTS.find(entry => entry.name === product.productType);
         if (department) counts[department.slug] = (counts[department.slug] ?? 0) + 1;
       }
@@ -398,15 +410,17 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "search.products": {
       const term = String(input.q ?? "").trim();
       const department = typeof input.department === "string" && input.department ? input.department : null;
-      const shelf = department ? productsInCategory(demoCatalog, department) : demoCatalog;
+      /* The shop searched is the new one unless the refurbished section asks. */
+      const shop = demoCatalog.filter(product => isRefurbished(product) === (input.condition === "refurbished"));
+      const shelf = department ? productsInCategory(shop, department) : shop;
       let found = rankBySearch(shelf, term);
       let correctedTo: string | null = null;
       if (!found.length) {
-        const correction = correctionFor(term, demoCatalog);
+        const correction = correctionFor(term, shop);
         const corrected = correction ? rankBySearch(shelf, correction) : [];
         if (corrected.length) { found = corrected; correctedTo = correction; }
       }
-      const elsewhere = !found.length && department ? rankBySearch(demoCatalog, correctedTo ?? term).length : 0;
+      const elsewhere = !found.length && department ? rankBySearch(shop, correctedTo ?? term).length : 0;
       const limit = typeof input.limit === "number" ? input.limit : 24;
       return { products: found.slice(0, limit), total: found.length, correctedTo, elsewhere, capped: false, stores: input.stores ? demoSellingStores(found) : [] };
     }
@@ -621,6 +635,10 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "inventory.products.delete":
     case "inventory.products.move":
     case "inventory.vendors.setAutoPublish":
+    /* New or refurbished, and a photo put back from its square copy, are
+       writes the demo has nowhere to keep, like every other write here. */
+    case "inventory.products.setCondition":
+    case "inventory.products.photoPutBack":
       throw new Error("admin.saveFailed");
 
     /* The demo's fixtures hold no bundles, and inventing one would put a set

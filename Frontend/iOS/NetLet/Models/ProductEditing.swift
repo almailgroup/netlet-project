@@ -65,6 +65,9 @@ struct EditableProduct: Decodable, Sendable {
     let images: [Image]
     let addons: [Addon]?
     let variants: [Variant]
+
+    /// Whether it is in the refurbished section (`conditionOf`).
+    var isRefurbished: Bool { (attributes ?? []).contains { $0.isConditionRow && $0.value == "refurbished" } }
 }
 
 /// What moving a product to another store answers.
@@ -210,6 +213,16 @@ extension API {
         let chart: OrNull<ChartInput>
     }
 
+    /// New or refurbished, its own act on the trail (`product.setCondition`).
+    struct ProductCondition: Encodable, Sendable {
+        let productId: Int
+        let condition: String
+    }
+
+    struct ConditionSaved: Decodable, Sendable {
+        let condition: String
+    }
+
     static let editableProduct = Procedure<RowId, EditableProduct?>(query: "inventory.products.get")
     static let saveProductDetails = Procedure<ProductDetails, Acknowledged>(mutation: "inventory.products.update")
     static let saveProductAttributes = Procedure<ProductAttributes, Acknowledged>(mutation: "inventory.products.setAttributes")
@@ -224,4 +237,5 @@ extension API {
     static let moveProduct = Procedure<ProductStore, ProductMoved>(mutation: "inventory.products.move")
     static let saveProductCommission = Procedure<ProductCommission, Acknowledged>(mutation: "inventory.products.setCommission")
     static let saveSizeChart = Procedure<ProductChart, Acknowledged>(mutation: "inventory.products.setSizeChart")
+    static let saveProductCondition = Procedure<ProductCondition, ConditionSaved>(mutation: "inventory.products.setCondition")
 }

@@ -39,7 +39,13 @@ struct CategoriesView: View {
                 } else {
                     DepartmentBrowser()
                         .padding(.top, 20)
-                        .padding(.bottom, 48)
+                    // The refurbished section, a shop of its own, under the
+                    // departments — drawn only while it holds something.
+                    if app.shelf.refurbishedSummary.total > 0 {
+                        RefurbishedEntry()
+                            .padding(.top, 24)
+                    }
+                    Color.clear.frame(height: 48)
                 }
             }
             .padding(.horizontal, 16)
@@ -51,6 +57,45 @@ struct CategoriesView: View {
             // holding "nothing matches" back for ever.
             allStores = (try? await app.services.api.call(API.stores, .init(locale: l.current.rawValue, limit: 200))) ?? []
         }
+    }
+}
+
+/// The way into the refurbished section, the web's `RefurbishedEntry`: a card
+/// the width of the page saying what the section is, in its own green.
+struct RefurbishedEntry: View {
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        Button {
+            app.push(.refurbished())
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "arrow.3.trianglepath")
+                    .font(.system(size: 22, weight: .semibold))
+                    .frame(width: 48, height: 48)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l.t("refurbished.title")).font(.inter(16, .heavy))
+                    Text(l.t("refurbished.entryNote"))
+                        .font(.inter(14))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 14, weight: .bold))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(Brand.renewed)
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Brand.renewedWash))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Brand.renewedFill, lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(SpringPressStyle(cornerRadius: 18))
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
     }
 }
 

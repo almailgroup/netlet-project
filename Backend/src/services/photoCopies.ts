@@ -30,7 +30,7 @@
 import { randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { mediaFiles, productImages, products } from "../../database/schema.js";
-import { MAX_PHOTO_COPIES_PER_HOUR, isOffSite, mediaPath, sniffImage, uploadProblem } from "../../../Shared/commerce/media.js";
+import { MAX_PHOTO_COPIES_PER_HOUR, acceptableImageUrl, isMediaPath, isOffSite, mediaIdOf, mediaPath, sniffImage, uploadProblem } from "../../../Shared/commerce/media.js";
 import { MAX_REMOTE_IMAGE_BYTES, sniffRemoteImage, urlProblem } from "../../../Shared/commerce/manufacturerImages.js";
 import { can, type Actor } from "../../../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
@@ -109,4 +109,99 @@ export async function copyPhoto(actor: Actor, imageId: number, bytes: Uint8Array
     if (moved.length === 0) throw new PhotoCopyRefused("media.copyGone");
   });
   return { url, width: info.width, height: info.height };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Squaring a photo already in the gallery, with NetLet AI                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A gallery photograph this actor may edit, wherever it is stored — the
+ * products list's "Make photos square" (on the owner's word: "fix the product
+ * images that are already added … all images should be square … use NetLet's
+ * AI … without any cuts"). The browser reads the photo (NetLet's own straight
+ * from `/media`, another site's through the copy fetch above), shrinks it,
+ * and sends it here to be drawn square (`squareProductPhoto`); the square
+ * picture comes back to the browser, is prepared like any upload and stored
+ * in the photo's place. A video is never squared.
+ */
+async function editablePhoto(actor: Actor, imageId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  const [row] = await db
+    .select({ url: productImages.url, kind: productImages.kind, vendorId: products.vendorId })
+    .from(productImages)
+    .innerJoin(products, eq(products.id, productImages.productId))
+    .where(eq(productImages.id, imageId))
+    .limit(1);
+  if (!row || row.kind !== "image") throw new PhotoCopyRefused("media.copyGone");
+  if (!can(actor, "product.edit", row.vendorId)) throw new PhotoCopyRefused("media.notAllowed");
+  return { db, ...row };
+}
+
+/** Whether this actor may have this gallery photo squared — asked before the model is. */
+export async function assertSquarable(actor: Actor, imageId: number): Promise<void> {
+  await editablePhoto(actor, imageId);
+}
+
+/**
+ * The squared picture stored and put in the gallery in the photo's place, in
+ * one transaction, with the address the browser squared in the predicate
+ * (`was`): a photo the seller changed meanwhile keeps their change. The old
+ * address is the new file's `source_url`, which is how it can be put back.
+ */
+export async function replaceGalleryPhoto(actor: Actor, imageId: number, bytes: Uint8Array, declared: string, was: string): Promise<{ url: string; width: number; height: number }> {
+  const photo = await editablePhoto(actor, imageId);
+  if (photo.url !== was) throw new PhotoCopyRefused("media.copyGone");
+  const problem = uploadProblem(bytes, declared);
+  if (problem) throw new PhotoCopyRefused(problem);
+  const info = sniffImage(bytes)!;
+  const id = randomBytes(18).toString("base64url");
+  const url = mediaPath(id, info.type);
+  await photo.db.transaction(async tx => {
+    await tx.insert(mediaFiles).values({
+      id,
+      vendorId: photo.vendorId,
+      uploadedBy: actor.userId,
+      contentType: info.type,
+      bytes,
+      width: info.width,
+      height: info.height,
+      byteSize: bytes.length,
+      sourceUrl: photo.url,
+    });
+    const moved = await tx
+      .update(productImages)
+      .set({ url })
+      .where(and(eq(productImages.id, imageId), eq(productImages.url, photo.url)))
+      .returning({ id: productImages.id });
+    if (moved.length === 0) throw new PhotoCopyRefused("media.copyGone");
+  });
+  return { url, width: info.width, height: info.height };
+}
+
+/**
+ * The photo as it was before NetLet stored a copy in its place — squared by
+ * NetLet AI, or copied from another site — put back in the gallery. Only a
+ * photo NetLet stored with a record of where it came from can be put back,
+ * and only to that address; the copy itself is left where it is, since
+ * another product may show it.
+ */
+export async function putPhotoBack(actor: Actor, imageId: number): Promise<{ url: string }> {
+  const photo = await editablePhoto(actor, imageId);
+  if (!isMediaPath(photo.url)) throw new PhotoCopyRefused("media.nothingToPutBack");
+  const [file] = await photo.db
+    .select({ sourceUrl: mediaFiles.sourceUrl })
+    .from(mediaFiles)
+    .where(eq(mediaFiles.id, mediaIdOf(photo.url)))
+    .limit(1);
+  const original = file?.sourceUrl?.trim();
+  if (!original || !acceptableImageUrl(original)) throw new PhotoCopyRefused("media.nothingToPutBack");
+  const moved = await photo.db
+    .update(productImages)
+    .set({ url: original })
+    .where(and(eq(productImages.id, imageId), eq(productImages.url, photo.url)))
+    .returning({ id: productImages.id });
+  if (moved.length === 0) throw new PhotoCopyRefused("media.copyGone");
+  return { url: original };
 }

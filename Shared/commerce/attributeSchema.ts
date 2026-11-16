@@ -30,6 +30,7 @@
  * the value, so both record `16`.
  */
 
+import { isConditionRow } from "./condition.js";
 import { typeOptions } from "./subcategories.js";
 
 /** One row a department expects. */
@@ -189,7 +190,7 @@ export function valueOf(attributes: Attribute[], key: string): string {
 export function freeFormRows(attributes: Attribute[], departmentSlug: string | null | undefined): Attribute[] {
   const known = new Set(fieldsFor(departmentSlug).map(field => field.key));
   return attributes.filter(row =>
-    row.namespace !== "reviews" && !(row.namespace === SPEC_NAMESPACE && known.has(row.key)));
+    row.namespace !== "reviews" && !isConditionRow(row) && !(row.namespace === SPEC_NAMESPACE && known.has(row.key)));
 }
 
 /**
@@ -206,7 +207,9 @@ export function mergeAttributes(
 ): Attribute[] {
   const fields = fieldsFor(departmentSlug);
   const rest = freeFormRows(attributes, departmentSlug);
-  const reviews = attributes.filter(row => row.namespace === "reviews");
+  /* The score and the condition are kept as they were: neither is a row the
+     specification form draws, and the condition has a control of its own. */
+  const reviews = attributes.filter(row => row.namespace === "reviews" || isConditionRow(row));
 
   const filled = fields
     .filter(field => (values[field.key] ?? "").trim() !== "")

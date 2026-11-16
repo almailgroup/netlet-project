@@ -978,6 +978,13 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(merged.contains { $0.key == "brand" && $0.value == "Acme" })
         XCTAssertFalse(merged.contains { $0.key == "ram" }, "a blank clears its row rather than storing nothing")
         XCTAssertTrue(merged.contains { $0.key == "colourway" }, "a row the schema does not know is kept")
+        // The condition is its own control's (`Shared/commerce/condition.ts`):
+        // a spec save keeps it, the free-form rows never list it, and no
+        // shopper reads it as a specification.
+        let refurbished = existing + [ProductAttribute.refurbished]
+        XCTAssertFalse(rules.freeFormRows(refurbished, departmentSlug: "electronics").contains(where: \.isConditionRow))
+        let kept = rules.mergeAttributes(refurbished, departmentSlug: "electronics", values: ["brand": "Acme"])
+        XCTAssertEqual(kept.filter(\.isConditionRow).count, 1, "a spec save keeps the condition, once")
 
         XCTAssertEqual(rules.optionProblem([.init(name: "Size", value: "")]), "admin.optionHalf")
         XCTAssertEqual(rules.optionProblem([.init(name: "Colour", value: "Red"), .init(name: "colour", value: "Blue")]), "admin.optionDuplicate")
@@ -1394,6 +1401,21 @@ final class FixtureDecodingTests: XCTestCase {
         let all = try await admin.call(API.productViews, .init(range: 30))
         XCTAssertTrue(all.products.contains { $0.vendorName != nil }, "NetLet's list says whose each product is")
         XCTAssertEqual(try TRPCClient.encodeInput(API.ViewsQuery(range: 7)), #"{"json":{"range":7}}"#, "no store, no product, nothing sent")
+    }
+
+    /// The refurbished section, recorded off a server with four products
+    /// refurbished: its own shelf, every one of them refurbished, and its
+    /// departments counted — and the new shop's list holds none of them.
+    func testTheRefurbishedSectionIsAShopOfItsOwn() async throws {
+        let summary = try await client.call(API.refurbishedSummary)
+        XCTAssertEqual(summary.total, 4)
+        XCTAssertEqual(summary.departments["electronics"], 3)
+        let shelf = try await client.call(API.products, .init(first: 24, locale: "en", condition: "refurbished"))
+        XCTAssertEqual(shelf.count, summary.total)
+        XCTAssertTrue(shelf.allSatisfy(\.isRefurbished), "the section's shelf is refurbished products alone")
+        XCTAssertTrue(shelf.allSatisfy { !$0.specifications.contains(where: \.isConditionRow) }, "the condition is never a specification row")
+        let fresh = try await client.call(API.products, .init(first: 24, locale: "en"))
+        XCTAssertFalse(fresh.contains(where: \.isRefurbished), "the new shop's shelf holds nothing refurbished")
     }
 
     /// The phone's own list of products counted today: a second look is a view and not a visitor.

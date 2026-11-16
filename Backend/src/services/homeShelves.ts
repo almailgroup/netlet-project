@@ -67,7 +67,8 @@ export async function listBestsellers(locale: LocalePick = "en", now = new Date(
     .orderBy(desc(units), asc(orderItems.productId))
     /* Room for some to have left the shelf since they sold. */
     .limit(HOME_SHELF_LIMIT * 2);
-  const products = await listProductsByIds(rows.map(row => row.productId!), locale);
+  /* The new shop's shelf: a refurbished bestseller is the refurbished section's. */
+  const products = await listProductsByIds(rows.map(row => row.productId!), locale, "new");
   return products.slice(0, HOME_SHELF_LIMIT);
 }
 
@@ -139,7 +140,7 @@ export async function listTrending(locale: LocalePick = "en", now = new Date()):
     .sort((left, right) => right[1] - left[1] || left[0] - right[0])
     .slice(0, HOME_SHELF_LIMIT * 2)
     .map(([id]) => id);
-  const products = await listProductsByIds(ranked, locale);
+  const products = await listProductsByIds(ranked, locale, "new");
   return products.slice(0, HOME_SHELF_LIMIT);
 }
 

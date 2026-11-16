@@ -20,6 +20,7 @@
  * missing table reads as "nothing curated" — the home page is the calendar's
  * as it was — and the desk says it is not open yet.
  */
+import { newOnly } from "./productCondition.js";
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { mediaFiles, occasionProducts, occasions, productImages, products, vendors } from "../../database/schema.js";
 import { translate } from "../../../Shared/i18n/dictionary.js";
@@ -224,7 +225,7 @@ async function taggedShelf(db: Db): Promise<{ id: number; tags: Set<string> }[]>
     .select({ id: products.id, tags: products.tags })
     .from(products)
     .innerJoin(vendors, eq(products.vendorId, vendors.id))
-    .where(and(eq(products.status, "published"), eq(vendors.status, "approved"), sql`cardinality(${products.tags}) > 0`));
+    .where(and(eq(products.status, "published"), eq(vendors.status, "approved"), newOnly(), sql`cardinality(${products.tags}) > 0`));
   return rows.map(row => ({ id: row.id, tags: new Set(row.tags.map(foldTag)) }));
 }
 

@@ -32,6 +32,8 @@ export type GeminiCall = {
   search?: boolean;
   /** Asks the drawing model for a picture: no thinking, no token cap, an image back. */
   draw?: boolean;
+  /** The picture's shape, a drawing's only: Gemini's `imageConfig.aspectRatio`. */
+  aspectRatio?: string;
   timeoutMs: number;
   /** The fetch to use; the tests hand in their own. */
   fetcher?: typeof fetch;
@@ -58,7 +60,7 @@ function requestBody(call: GeminiCall): string {
   /* The drawing model takes no thinking budget and no word cap: a picture is
      counted in its own tokens, and a cap on words would cut it off. */
   const generationConfig = call.draw
-    ? { temperature: call.temperature, responseModalities: ["IMAGE", "TEXT"] }
+    ? { temperature: call.temperature, responseModalities: ["IMAGE", "TEXT"], ...(call.aspectRatio ? { imageConfig: { aspectRatio: call.aspectRatio } } : {}) }
     : {
         temperature: call.temperature,
         maxOutputTokens: call.maxOutputTokens,

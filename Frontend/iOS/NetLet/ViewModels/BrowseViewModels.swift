@@ -7,6 +7,10 @@ import Observation
 enum ShelfView: Hashable {
     case all, deals, newest
     case brand(String)
+    /// The refurbished section, on the owner's word ("completely separate
+    /// from the new products") — the web's `/refurbished`, its own shelf
+    /// from the server (`condition: "refurbished"`).
+    case refurbished
 }
 
 /// How a shelf's products are ordered — the web's sort options, done on the
@@ -415,6 +419,8 @@ final class BrowseModel {
                 sort = .newest
             case .brand(let name):
                 filters.brands = [name]
+            case .refurbished:
+                break
             }
         }
     }
@@ -440,7 +446,7 @@ final class BrowseModel {
         // behind. Not an occasion's page: NetLet may have curated it, taken
         // one of the calendar's over or switched it off, so it waits for the
         // server rather than drawing the calendar's own for a moment.
-        if products.value == nil, case .shelf = source, occasionSlug == nil,
+        if products.value == nil, case .shelf = source, occasionSlug == nil, !isRefurbished,
            let kept = catalog.rememberedProducts(first: Self.pageSize, department: department?.slug, language: language) {
             products = .loaded(kept)
         }
@@ -448,7 +454,13 @@ final class BrowseModel {
         do {
             switch source {
             case .shelf:
-                if let occasionSlug {
+                if isRefurbished {
+                    // Its own shelf, and its departments counted, from the server.
+                    async let counted = try? catalog.refurbishedSummary()
+                    let shelf = try await catalog.refurbished(first: Self.pageSize, department: department?.slug, language: language)
+                    refurbishedSummary = await counted ?? refurbishedSummary
+                    products = .loaded(shelf)
+                } else if let occasionSlug {
                     // With no answer the calendar's own rule decides, as it did before there was a desk.
                     async let asked = try? catalog.occasionPage(slug: occasionSlug, language: language)
                     let all = try await catalog.products(first: Self.pageSize, department: department?.slug, language: language)
@@ -499,7 +511,7 @@ final class BrowseModel {
     var shown: [Product] {
         let narrowed = sort.apply(to: pool.filter(poolFilters.admits))
         let words = SearchRank.queryWords(pageTerm)
-        guard isDealsPage, !words.isEmpty else { return narrowed }
+        guard isDealsPage || isRefurbished, !words.isEmpty else { return narrowed }
         return narrowed.filter { SearchRank.score(SearchRank.doc($0), words) > 0 }
     }
 
@@ -519,6 +531,17 @@ final class BrowseModel {
         if case .shelf(.none, .deals) = source, query == nil { return filters.onOffer }
         return false
     }
+
+    /// The refurbished section, or one department of it: a shop of its own,
+    /// which searches itself (`pageTerm`) as the Deals page does.
+    var isRefurbished: Bool {
+        if case .shelf(_, .refurbished) = source { return true }
+        return false
+    }
+
+    /// How many refurbished products there are in each department — the
+    /// section's department chips, read with its shelf.
+    private(set) var refurbishedSummary = RefurbishedSummary.none
 
     /// The filters as the page shows and counts them: on the Deals page,
     /// without the "On offer" the page itself is — the web's `shownFilters`.

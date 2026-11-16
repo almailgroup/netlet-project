@@ -45,7 +45,9 @@ import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
 import { lineCeiling, roomFor } from "@shared/commerce/typedQuantity";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { StarRow } from "@/components/ui/StarRow";
-import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, Recycle, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { isRefurbished } from "@shared/commerce/condition";
+import { REFURBISHED_PATH } from "@/lib/refurbished";
 import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { rememberViewed } from "@/lib/recentlyViewed";
 import { useCountView } from "@/hooks/useCountView";
@@ -1191,6 +1193,8 @@ export default function ProductDetail() {
   /* And counted for its store: a view, the channel and where it was opened from — never who. */
   useCountView(product?.id);
   const { data: catalog = [] } = useCatalog(24);
+  /* A refurbished product's related shelf is the refurbished section's, never the new shop's. */
+  const { data: refurbishedShelf = [] } = useCatalog(24, { refurbished: true, enabled: Boolean(product && isRefurbished(product)) });
   const { addItem, cart, openCart, updateQuantity, removeItem, chooseOnly } = useCart();
   const askRemove = useAskRemoveFromCart();
   const { heartedIds, toggleSaved, deliveryZone } = useCustomer();
@@ -1304,7 +1308,7 @@ export default function ProductDetail() {
     if (next <= 0) void askRemove(product?.title ?? plainLine.productTitle).then(sure => (sure ? removeItem(plainLine.lineId) : undefined)).catch(failed);
     else if (next !== plainLine.quantity) void updateQuantity(plainLine.lineId, next).catch(failed);
   };
-  const related = useMemo(() => product ? relatedProducts(product, catalog) : [], [catalog, product]);
+  const related = useMemo(() => product ? relatedProducts(product, isRefurbished(product) ? refurbishedShelf : catalog) : [], [catalog, refurbishedShelf, product]);
   const isSaved = product ? heartedIds.includes(product.id) : false;
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
   /* Before any early return, like every hook. */
@@ -1458,6 +1462,19 @@ export default function ProductDetail() {
             <h1 dir="auto" className="mt-2 text-[26px] leading-[1.3] font-extrabold tracking-[-.02em] text-[#1f2229]">{product.title}</h1>
 
             {rating ? <StarRating value={rating.value} scaleMax={rating.scaleMax} count={rating.count} /> : null}
+
+            {/* Sold refurbished: said where the product is named, with what it
+                means and the way to the rest of the section. The seller's own
+                description says this one's condition. */}
+            {isRefurbished(product) ? (
+              <div className="mt-4 rounded-2xl border border-[#d7e7df] bg-[#f1f8f4] px-4 py-3 text-[#1f4d36]">
+                <p className="inline-flex items-center gap-1.5 text-[13px] font-extrabold">
+                  <Recycle className="size-4" aria-hidden />{t("refurbished.badge")}
+                </p>
+                <p className="mt-1 text-[14px] leading-6">{t("refurbished.productNote")}</p>
+                <Link href={REFURBISHED_PATH} className="mt-1 inline-block text-[13px] font-bold underline underline-offset-4">{t("refurbished.seeAll")}</Link>
+              </div>
+            ) : null}
 
             {express ? <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#f2683a] px-3 py-1 text-xs font-bold text-[#0a285a]"><Zap className="size-3.5 fill-current" />{t("product.expressTitle")}</p> : null}
 

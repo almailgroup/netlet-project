@@ -150,7 +150,7 @@ export function SavedCard({ product, onMove, onRemove, onWish, grid = false, cho
     <li className={grid ? "flex min-w-0 flex-col rounded-2xl border border-[#e6e9ef] bg-white p-2 sm:p-3" : "flex w-[152px] shrink-0 snap-start flex-col rounded-2xl border border-[#e6e9ef] bg-white p-2 sm:w-[168px]"}>
       <div className="relative">
         <Link href={href} tabIndex={-1} aria-hidden className="block aspect-square overflow-hidden rounded-xl bg-[#f4f6f9]">
-          <Thumb src={product.images[0]?.url} alt={product.images[0]?.altText ?? product.title} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} />
+          <Thumb src={product.images[0]?.url} alt={product.images[0]?.altText ?? product.title} className="size-full bg-white object-contain" icon={<ShoppingBag className="size-5" />} />
         </Link>
         {choice ? (
           <ChoiceCircle

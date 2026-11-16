@@ -49,6 +49,9 @@ final class NewListingViewModel {
 
     var draft = Validation.ListingDraft()
     var categoryId: Int?
+    /// Sold before, checked and restored: it goes in the refurbished section,
+    /// a shop of its own, never with the new products.
+    var refurbished = false
     var descriptionAr = ""
     var tags = ""
     var specs: [Spec] = []
@@ -364,7 +367,8 @@ final class NewListingViewModel {
                 stock: Int(draft.stock.trimmingCharacters(in: .whitespaces)) ?? 0
             ),
             images: photos.compactMap(\.url).map { .init(url: $0) },
-            addons: addons.toSend
+            addons: addons.toSend,
+            condition: refurbished ? "refurbished" : nil
         )
         let created: CreatedListing
         do {

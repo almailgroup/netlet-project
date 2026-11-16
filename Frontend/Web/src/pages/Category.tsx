@@ -16,7 +16,8 @@
  * filters, sort, the empty state — rather than on a model's answer.
  */
 import { toastHeart } from "@/lib/heartToast";
-import { useCatalog } from "@/hooks/useCatalog";
+import { useCatalog, useRefurbishedSummary } from "@/hooks/useCatalog";
+import { REFURBISHED_PATH, refurbishedPath } from "@/lib/refurbished";
 import { DEPARTMENT_SHELF, SEARCH_LIMIT } from "@/lib/routeData";
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { FilterSidebar } from "@/components/browse/FilterSidebar";
@@ -56,14 +57,14 @@ import {
 import type { Product } from "@shared/commerce/types";
 import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
-import { departmentMeta, privatePageMeta } from "@shared/seo";
+import { departmentMeta, privatePageMeta, refurbishedMeta } from "@shared/seo";
 import { findSubcategory, subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
 import { occasionFromSlug, productsForOccasion } from "@shared/commerce/occasions";
 import { curatedProducts, occasionName } from "@shared/commerce/occasionDesk";
 import { OccasionBanner } from "@/components/home/ProductShelf";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import {
-  ArrowUpDown, BadgePercent, Banknote, Check, ChevronDown, LayoutGrid, ListFilter, PackageOpen, SlidersHorizontal, Star, Store, Tag, Truck, X,
+  ArrowUpDown, BadgePercent, Banknote, Check, ChevronDown, LayoutGrid, ListFilter, PackageOpen, Recycle, SlidersHorizontal, Star, Store, Tag, Truck, X,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -105,10 +106,22 @@ type Sheet = { kind: "filters"; group: FilterGroupKey | null } | { kind: "sort" 
 export default function Category() {
   const [, params] = useRoute("/category/:slug");
   const [onSearchPage] = useRoute("/search");
+  /*
+   * The refurbished section, on the owner's word ("a section for used
+   * products, completely separate from the new products"): this page over the
+   * refurbished shelf alone, at its own addresses, with its own search — the
+   * new shop's shelf never holds a refurbished product, and this one holds
+   * nothing else (`Shared/commerce/condition.ts`).
+   */
+  const [onRefurbishedAll] = useRoute(REFURBISHED_PATH);
+  const [, refurbishedParams] = useRoute(`${REFURBISHED_PATH}/:slug`);
+  const refurbished = onRefurbishedAll || Boolean(refurbishedParams);
   const [location, navigate] = useLocation();
   const { t, locale } = useTranslation();
   const { heartedIds, toggleSaved } = useCustomer();
-  const shelf = useCatalog(DEPARTMENT_SHELF);
+  const shelf = useCatalog(DEPARTMENT_SHELF, { refurbished });
+  /* The departments the section holds, for its chips, counted by the server. */
+  const refurbishedCounts = useRefurbishedSummary();
   const catalog = shelf.data ?? [];
 
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -119,8 +132,8 @@ export default function Category() {
   const sheetClose = useRef<HTMLButtonElement>(null);
   useEffect(() => { if (sheet) sheetClose.current?.focus(); }, [sheet]);
 
-  const slug = onSearchPage ? "all" : params?.slug ?? "all";
-  const basePath = onSearchPage ? "/search" : `/category/${slug}`;
+  const slug = onSearchPage ? "all" : refurbished ? refurbishedParams?.slug ?? "all" : params?.slug ?? "all";
+  const basePath = onSearchPage ? "/search" : refurbished ? refurbishedPath(slug) : `/category/${slug}`;
 
   // wouter's `location` is the path only, so the query string is read from the
   // browser. Keyed off `location` as well so a navigation that only changes the
@@ -148,11 +161,12 @@ export default function Category() {
    * field reads "Search deals" there and narrows the deals on the page, never
    * the shop (`PageSearch.tsx`).
    */
-  const onDeals = !onSearchPage && category === "all" && filters.onOffer;
+  const onDeals = !onSearchPage && !refurbished && category === "all" && filters.onOffer;
   /* The department row marks where the shopper is; a search spans them all, so it marks none. */
   usePageChrome({
-    activeDepartment: onSearchPage ? null : category === "all" ? ALL_DEPARTMENTS.query : category,
-    pageSearch: onDeals ? { placeholder: "search.inDeals" } : null,
+    activeDepartment: onSearchPage || refurbished ? null : category === "all" ? ALL_DEPARTMENTS.query : category,
+    /* The section searches itself, as the Deals page does: the header's field narrows what is here. */
+    pageSearch: onDeals ? { placeholder: "search.inDeals" } : refurbished ? { placeholder: "search.inRefurbished" } : null,
   });
 
   /*
@@ -165,7 +179,7 @@ export default function Category() {
    */
   const typed = term.trim();
   /* On the Deals page the words narrow the deals here; anywhere else they search the shop. */
-  const searching = typed.length > 0 && !onDeals;
+  const searching = typed.length > 0 && !onDeals && !refurbished;
   const answer = trpc.search.products.useQuery(
     /* With the stores that sell what matched, drawn over the products (`StoresSellingRow`). */
     { q: typed, department: category === "all" ? null : category, locale, limit: SEARCH_LIMIT, stores: true },
@@ -241,16 +255,16 @@ export default function Category() {
       return curatedOccasion && filters.sort === "relevance" ? narrowed : sortProducts(narrowed, filters.sort);
     }
     /* The Deals page narrowed by its own search: the deals whose words hold every word typed. */
-    if (dealsPage && typed) return browse(catalog, filters).filter(product => matchesSearch(product, typed));
+    if ((dealsPage || refurbished) && typed) return browse(catalog, filters).filter(product => matchesSearch(product, typed));
     return browse(catalog, filters);
-  }, [searching, catalog, matched, filters, occasionSlug, inPage, curatedOccasion, dealsPage, typed]);
+  }, [searching, catalog, matched, filters, occasionSlug, inPage, curatedOccasion, dealsPage, refurbished, typed]);
   /*
    * The stores that sell it, over the products, on the owner's word: what a
    * search found (asked with the search), or what a subcategory or a whole
    * department holds (`storesSelling`) — not the Deals page or an occasion,
    * which are shelves of their own.
    */
-  const asksStores = !onSearchPage && !searching && category !== "all" && !dealsPage && !occasionSlug;
+  const asksStores = !onSearchPage && !searching && category !== "all" && !dealsPage && !occasionSlug && !refurbished;
   const subStores = trpc.commerce.storesSelling.useQuery(
     { department: category, sub: filters.sub, locale },
     { enabled: asksStores, staleTime: 5 * 60 * 1000 },
@@ -272,19 +286,23 @@ export default function Category() {
     ? t("browse.allProducts")
     : translatedName ? t(translatedName) : category;
   /* A search reads as what was searched for, in the department it was searched in. */
-  const searched = dealsPage ? "" : typed;
+  const searched = dealsPage || refurbished ? "" : typed;
   /* The footer's "New arrivals" and "On offer" land here with a sort or a
      filter, and the heading read "All products" for both — the list was
      right and the page said it was something else. Named when the view is
      exactly that and nothing more. */
   /* The deals with nothing else narrowing them, which can only be empty because nothing is on offer. */
   const dealsView = dealsPage && !typed && activeFilterCount(shownFilters) === 0;
+  /* The section, or one of its departments, with nothing in it: never "no products match" over a filter nobody set. */
+  const refurbishedView = refurbished && !typed && activeFilterCount(filters) === 0 && !filters.sub;
   const viewName = category === "all" && !searched
     ? dealsPage ? t("nav.deals")
       : filters.sort === "newest" && activeFilterCount(filters) === 0 ? t("footer.newArrivals")
       : null
     : null;
-  const title = searched
+  const title = refurbished && !activeSub
+    ? category === "all" ? t("refurbished.title") : t("refurbished.inDepartment", { name: departmentName })
+    : searched
     ? category === "all" ? t("browse.searchTitle", { query: searched }) : t("browse.searchInTitle", { query: searched, name: departmentName })
     : viewName ?? (curatedOccasion
       ? occasionName(curatedOccasion, locale === "ar")
@@ -292,7 +310,11 @@ export default function Category() {
 
   /* A department page is a page to be found; a search or a filtered view is not. */
   usePageMeta(
-    !onSearchPage && !searched && !activeFilterCount(filters) && !filters.sub && !filters.occasion && knownDepartment
+    refurbished
+      ? !typed && !activeFilterCount(filters) && !filters.sub && (slug === "all" || knownDepartment)
+        ? refurbishedMeta(SITE_URL, knownDepartment ? { name: knownDepartment.name, slug: knownDepartment.slug } : undefined)
+        : privatePageMeta(title)
+      : !onSearchPage && !searched && !activeFilterCount(filters) && !filters.sub && !filters.occasion && knownDepartment
       ? departmentMeta(knownDepartment.name, knownDepartment.slug, SITE_URL)
       : privatePageMeta(title),
   );
@@ -308,6 +330,11 @@ export default function Category() {
     ? subcategoriesOf(knownDepartment.slug).filter(entry => (subCounts.get(entry.slug) ?? 0) > 0 || entry.slug === filters.sub)
     : [];
   const currency = catalog[0]?.priceRange.min.currencyCode ?? "KWD";
+  /* The departments of the refurbished section with something in them, in the departments' own order. */
+  const refurbishedDepartments = useMemo(() => {
+    const counts = refurbishedCounts.data?.departments ?? {};
+    return DEPARTMENTS.flatMap(department => ((counts[department.slug] ?? 0) > 0 ? [{ department, count: counts[department.slug] ?? 0 }] : []));
+  }, [refurbishedCounts.data]);
 
   /** Writes the filters into the URL, which is the only place they live. */
   const setFilters = (patch: Partial<BrowseFilters>) => {
@@ -325,7 +352,7 @@ export default function Category() {
     const target = nextCategory === "all" ? "all" : categorySlug(nextCategory);
     /* The search term survives a change of department; the facets do not. */
     const query = searchWithTerm({ ...EMPTY_FILTERS, sort: filters.sort }, term);
-    navigate(`/category/${target}${query}`);
+    navigate(`${refurbished ? refurbishedPath(target) : `/category/${target}`}${query}`);
     setQueryString(query);
   };
 
@@ -445,6 +472,12 @@ export default function Category() {
         <Breadcrumbs
           trail={onSearchPage
             ? [{ label: t("browse.searchCrumb") }]
+            : refurbished
+              ? category === "all"
+                ? [{ label: t("refurbished.title") }]
+                : activeSub
+                ? [{ label: t("refurbished.title"), href: REFURBISHED_PATH }, { label: departmentName, href: basePath }, { label: subcategoryName(activeSub, locale === "ar") }]
+                : [{ label: t("refurbished.title"), href: REFURBISHED_PATH }, { label: departmentName }]
             : dealsPage
               ? [{ label: t("nav.deals") }]
               : activeSub
@@ -463,6 +496,8 @@ export default function Category() {
             <span aria-live="polite">
               {isLoading || error ? "\u00a0" : dealsPage && typed
                 ? t("deals.searchShown", { term: isolate(typed), count: results.length })
+                : refurbished && typed
+                ? t("refurbished.searchShown", { term: isolate(typed), count: results.length })
                 : results.length === 0
                 ? t("browse.countNone")
                 : results.length === 1
@@ -480,6 +515,36 @@ export default function Category() {
             </label>
           ) : undefined}
         />
+
+        {/* What refurbished means here, said once at the top of the section: the
+            seller's own words say each product's condition, and the returns
+            are the shop's own rules, the same as for anything new. */}
+        {refurbished ? (
+          <p className="-mt-2 mb-4 flex items-start gap-2.5 rounded-2xl border border-[#d7e7df] bg-[#f1f8f4] px-4 py-3 text-[14px] leading-6 text-[#1f4d36]">
+            <Recycle className="mt-1 size-4 shrink-0" aria-hidden />
+            <span>{t("refurbished.note")}</span>
+          </p>
+        ) : null}
+
+        {/* The section's departments, each with how many it holds: a press
+            opens that department of the refurbished section, never the new one's. */}
+        {refurbished && category === "all" && refurbishedDepartments.length > 1 ? (
+          <nav
+            aria-label={t("refurbished.departments")}
+            className="-mx-4 -mt-1 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+          >
+            {refurbishedDepartments.map(({ department, count }) => (
+              <Link
+                key={department.slug}
+                href={refurbishedPath(department.slug)}
+                className="flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#d5dfeb] bg-white px-4 text-[14px] font-semibold text-[#0a285a] hover:bg-[#f0f2f5]"
+              >
+                {t(department.label)}
+                <span className="ink-muted">{count}</span>
+              </Link>
+            ))}
+          </nav>
+        ) : null}
 
         {/* The department's subcategories, on the owner's word: the ones with
             something on this shelf, and the one the address names — a press
@@ -579,7 +644,7 @@ export default function Category() {
 
             {/* Paid placements for this department (3.3.15): a strip of their
                 own above the grid, so the grid stays the order the shopper chose. */}
-            {slug !== "all" && !searched ? (
+            {slug !== "all" && !searched && !refurbished ? (
               <SponsoredShelf
                 slot="department"
                 departmentSlug={slug}
@@ -639,8 +704,20 @@ export default function Category() {
                 </>
                 )}
               </>
-            ) : dealsPage && typed && !activeCount ? (
+            ) : (dealsPage || refurbished) && typed && !activeCount ? (
               <div className="mt-5"><PageSearchMissed term={typed} /></div>
+            ) : refurbishedView ? (
+              <div className="mt-5">
+                <EmptyState
+                  icon={<Recycle className="size-6" />}
+                  title={category === "all" ? t("refurbished.empty") : t("refurbished.emptyIn", { name: departmentName })}
+                  note={t("refurbished.emptyNote")}
+                >
+                  <Link href={category === "all" ? "/category/all" : REFURBISHED_PATH} className={BUTTON_PRIMARY}>
+                    {t(category === "all" ? "refurbished.shopNew" : "refurbished.seeAll")}
+                  </Link>
+                </EmptyState>
+              </div>
             ) : (
               <div className="mt-5">
                 <EmptyState

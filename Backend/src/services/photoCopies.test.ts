@@ -151,3 +151,39 @@ describe("copying a gallery photo onto NetLet", () => {
     expect(requested).toEqual([]);
   });
 });
+
+describe("squaring a gallery photo with NetLet AI", () => {
+  it("stores the square picture in the photo's place, wherever it was, keeping where it came from", async () => {
+    for (const was of [ORIGINAL, "/media/abcdefghijklmnopqrstuvwx.jpg"]) {
+      const id = await photo(was);
+      await copies.assertSquarable(manager(), id);
+      const saved = await copies.replaceGalleryPhoto(manager(), id, JPEG, "image/jpeg", was);
+      const [row] = await db.select().from(productImages).where(eq(productImages.id, id));
+      expect(row.url).toBe(saved.url);
+      const [file] = await db.select().from(mediaFiles).where(eq(mediaFiles.id, saved.url.slice("/media/".length, -".jpg".length)));
+      expect(file.sourceUrl).toBe(was);
+    }
+  });
+
+  it("leaves a photo changed meanwhile, another store's, a shopper's ask and a video", async () => {
+    const id = await photo();
+    await expect(copies.replaceGalleryPhoto(manager(), id, JPEG, "image/jpeg", "https://shop.example/older.jpg")).rejects.toMatchObject({ reason: "media.copyGone" });
+    expect(await db.select().from(mediaFiles)).toHaveLength(0);
+    const theirs = await photo(ORIGINAL, ids.rivalProduct);
+    await expect(copies.assertSquarable(manager(), theirs)).rejects.toMatchObject({ reason: "media.notAllowed" });
+    await expect(copies.assertSquarable(shopper(), id)).rejects.toMatchObject({ reason: "media.notAllowed" });
+    const video = await photo("https://shop.example/ring.mp4", ids.product, "video");
+    await expect(copies.assertSquarable(manager(), video)).rejects.toMatchObject({ reason: "media.copyGone" });
+  });
+
+  it("puts the original back, and only where NetLet kept a record of it", async () => {
+    const id = await photo();
+    await copies.replaceGalleryPhoto(manager(), id, JPEG, "image/jpeg", ORIGINAL);
+    await expect(copies.putPhotoBack(otherStore(), id)).rejects.toMatchObject({ reason: "media.notAllowed" });
+    expect(await copies.putPhotoBack(manager(), id)).toEqual({ url: ORIGINAL });
+    const [row] = await db.select().from(productImages).where(eq(productImages.id, id));
+    expect(row.url).toBe(ORIGINAL);
+    /* Back to another site's address: nothing NetLet stored to put back now. */
+    await expect(copies.putPhotoBack(manager(), id)).rejects.toMatchObject({ reason: "media.nothingToPutBack" });
+  });
+});

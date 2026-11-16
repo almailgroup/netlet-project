@@ -28,12 +28,13 @@
  * (`products.bulk`). The selection is the page in view, cleared when the page
  * or a filter changes, so nothing is acted on that is not on screen.
  */
+import { conditionOf } from "@shared/commerce/condition";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { DeleteProductDialog } from "@/components/admin/DeleteProductDialog";
 import { Pager } from "@/components/admin/Pager";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
-import { PageHeader, SkeletonRows, buttonClass, fieldClass } from "@/components/admin/ui";
+import { PageHeader, SkeletonRows, buttonClass, fieldClass, smallButtonClass } from "@/components/admin/ui";
 import { Thumb } from "@/components/product/Thumb";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -41,7 +42,7 @@ import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
-import { Archive, FilePen, FolderInput, ImageDown, ImageOff, PackageCheck, PackagePlus, Percent, Search, Send, Tag, Trash2, Upload, X } from "lucide-react";
+import { Archive, Crop, FilePen, FolderInput, ImageDown, ImageOff, PackageCheck, PackagePlus, Percent, Recycle, Search, Send, Tag, Trash2, Undo2, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -51,6 +52,7 @@ import { isMessageKey } from "@shared/i18n/dictionary";
 import { BRAND_MAX, brandProblem, percentProblem, restockProblem, scalePrice, type BulkAction } from "@shared/inventory/productBulk";
 import { isOffSite } from "@shared/commerce/media";
 import { copyPhotosToNetlet, type CopyRun } from "@/lib/copyPhotos";
+import { squarePhotos, type SquareRun, type SquareTarget } from "@/lib/squarePhotos";
 import { Link, useLocation, useSearch } from "wouter";
 import { Select } from "@/components/ui/Select";
 
@@ -64,7 +66,7 @@ const FILTERS = ["all", "draft", "pending_review", "published", "archived"] as c
 type Filter = (typeof FILTERS)[number];
 
 function ProductTable({ actor }: { actor: Actor }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const money = useMoney();
   const [, navigate] = useLocation();
   const [search, setSearch] = useState("");
@@ -87,6 +89,20 @@ function ProductTable({ actor }: { actor: Actor }) {
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyProgress, setCopyProgress] = useState<{ done: number; total: number } | null>(null);
   const [refused, setRefused] = useState<{ id: number; title: string; reason: string }[]>([]);
+  /* "Make photos square": open, how far a run has got, and what it squared — offered back one by one. */
+  const [squareOpen, setSquareOpen] = useState(false);
+  const [squareProgress, setSquareProgress] = useState<{ done: number; total: number } | null>(null);
+  const [squareRun, setSquareRun] = useState<SquareRun | null>(null);
+  const [putBack, setPutBack] = useState<Set<number>>(new Set());
+  /* NetLet AI draws the square picture; without it the button is not drawn. */
+  const drawingOn = trpc.media.aiAvailable.useQuery(undefined, { staleTime: 300_000 }).data === true;
+  const restore = trpc.inventory.products.photoPutBack.useMutation({
+    onSuccess: (_answer, input) => {
+      setPutBack(current => new Set(current).add(input.imageId));
+      void utils.inventory.products.list.invalidate();
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
   const categories = trpc.inventory.categories.useQuery();
 
   /*
@@ -166,6 +182,28 @@ function ProductTable({ actor }: { actor: Actor }) {
     const [only] = stores;
     setBrand(stores.size === 1 && only ? only.slice(0, BRAND_MAX) : "");
     setBulk("brand");
+  };
+  /* The photographs of what is selected, wherever they are stored: those already square are left alone by the run. */
+  const toSquare: SquareTarget[] = rows.filter(row => selected.has(row.id)).flatMap(row =>
+    row.images.filter(image => image.kind !== "video").map(image => ({ imageId: image.id, url: image.url, productTitle: row.title })));
+  const runSquare = async () => {
+    setSquareProgress({ done: 0, total: toSquare.length });
+    setPutBack(new Set());
+    let run: SquareRun;
+    try {
+      run = await squarePhotos(toSquare, (done, total) => setSquareProgress({ done, total }));
+    } finally {
+      setSquareProgress(null);
+    }
+    setSquareRun(run);
+    if (run.stoppedBy) toast.error(t(isMessageKey(run.stoppedBy) ? run.stoppedBy : "drawing.tooMany"));
+    void utils.inventory.products.list.invalidate();
+  };
+  const closeSquare = () => {
+    if (squareProgress) return;
+    setSquareOpen(false);
+    if (squareRun) setSelected(new Set());
+    setSquareRun(null);
   };
   const runCopy = async () => {
     setCopyProgress({ done: 0, total: offSite.length });
@@ -300,6 +338,9 @@ function ProductTable({ actor }: { actor: Actor }) {
           <button type="button" onClick={() => setBulk("department")} className={buttonClass.secondary}><FolderInput className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.bulkDepartment")}</button>
           <button type="button" onClick={openBrand} className={buttonClass.secondary}><Tag className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.bulkBrand")}</button>
           <button type="button" onClick={() => setCopyOpen(true)} className={buttonClass.secondary}><ImageDown className="size-4" aria-hidden />{t("admin.bulkPhotos")}</button>
+          {drawingOn ? (
+            <button type="button" onClick={() => setSquareOpen(true)} className={buttonClass.secondary}><Crop className="size-4" aria-hidden />{t("admin.bulkSquare")}</button>
+          ) : null}
           {can(actor, "stock.adjust", ownVendor) ? (
             <button type="button" onClick={() => setBulk("restock")} className={buttonClass.secondary}><PackageCheck className="size-4" aria-hidden />{t("admin.bulkRestock")}</button>
           ) : null}
@@ -353,6 +394,7 @@ function ProductTable({ actor }: { actor: Actor }) {
                       </Link>
                       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
                         <StatusPill status={row.status} />
+                        {conditionOf(row.attributes) === "refurbished" ? <RefurbishedPill /> : null}
                         <span className="font-semibold text-[#0a285a]">{cheapest ? money({ amount: cheapest, currencyCode: "KWD" }) : "—"}</span>
                         <span className={stock === 0 ? "font-semibold text-[#b3261e]" : "ink-muted"}>
                           {stock === 0 ? t("admin.outOfStock") : `${t("admin.columnStock")}: ${stock}`}
@@ -422,6 +464,7 @@ function ProductTable({ actor }: { actor: Actor }) {
                                 {row.title}
                               </Link>
                               <p className="mt-0.5 text-[12px] ink-muted">
+                                {conditionOf(row.attributes) === "refurbished" ? <><RefurbishedPill /> </> : null}
                                 {row.variants.length === 1 ? t("admin.variantOne") : t("admin.variantCount", { count: row.variants.length })}
                                 {row.variants[0]?.sku ? <> · <bdi>{row.variants[0].sku}</bdi></> : null}
                               </p>
@@ -519,6 +562,65 @@ function ProductTable({ actor }: { actor: Actor }) {
         ) : null}
       </ConfirmDialog>
 
+      {/* NetLet AI making the selected photos square, the copy's shape: a run
+          in this browser that says how far it has got, then what it squared,
+          each beside the photo it replaced with a way to put that one back. */}
+      <ConfirmDialog
+        open={squareOpen}
+        title={squareRun ? t("admin.bulkSquareDone", { count: squareRun.squared.length }) : t("admin.bulkSquareTitle", { count: toSquare.length })}
+        body={squareRun
+          ? [squareRun.alreadySquare ? t("admin.bulkSquareAlready", { count: squareRun.alreadySquare }) : "", squareRun.kept ? t("admin.bulkSquareKept", { count: squareRun.kept }) : ""].filter(Boolean).join(" ") || t("admin.bulkSquareReview")
+          : toSquare.length ? t("admin.bulkSquareBody") : t("admin.bulkSquareNone")}
+        confirmLabel={squareRun ? t("admin.bulkSquareFinish") : t("admin.bulkSquare")}
+        pending={squareProgress !== null}
+        confirmDisabled={!squareRun && toSquare.length === 0}
+        onClose={closeSquare}
+        onConfirm={() => { if (squareRun) closeSquare(); else void runSquare(); }}
+      >
+        {squareProgress ? (
+          <div>
+            <p role="status" className="text-[13px] font-semibold text-[#0a285a]">{t("admin.bulkSquareProgress", { done: squareProgress.done, total: squareProgress.total })}</p>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#e6e9ef]" aria-hidden>
+              <div className="h-full rounded-full bg-[#0a285a] transition-[width]" style={{ width: `${squareProgress.total ? Math.round((squareProgress.done / squareProgress.total) * 100) : 0}%` }} />
+            </div>
+          </div>
+        ) : squareRun?.squared.length ? (
+          <ul className="max-h-[50vh] space-y-3 overflow-y-auto">
+            {squareRun.squared.map(item => {
+              const back = putBack.has(item.imageId);
+              return (
+                <li key={item.imageId} className="rounded-xl border border-[#e3e8f0] p-3">
+                  <p dir="auto" className="line-clamp-1 text-[13px] font-bold text-[#0a285a]">{item.productTitle}</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <figure>
+                      <Thumb src={item.url} alt={t("admin.bulkSquareBefore")} className="aspect-square w-full rounded-lg border border-[#e3e8f0] bg-white object-contain" icon={<ImageOff className="size-4 text-[#536b8c]" />} />
+                      <figcaption className="mt-1 text-[12px] ink-muted">{t("admin.bulkSquareBefore")}</figcaption>
+                    </figure>
+                    <figure>
+                      <Thumb src={item.after} alt={t("admin.bulkSquareAfter")} className="aspect-square w-full rounded-lg border border-[#e3e8f0] bg-white object-contain" icon={<ImageOff className="size-4 text-[#536b8c]" />} />
+                      <figcaption className="mt-1 text-[12px] ink-muted">{t("admin.bulkSquareAfter")}</figcaption>
+                    </figure>
+                  </div>
+                  {back ? (
+                    <p role="status" className="mt-2 text-[12px] font-semibold text-[#0a285a]">{t("admin.bulkSquarePutBackDone")}</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => restore.mutate({ imageId: item.imageId })}
+                      disabled={restore.isPending}
+                      className={`${smallButtonClass.secondary} mt-2`}
+                    >
+                      <Undo2 className="size-3.5 rtl:-scale-x-100" aria-hidden />
+                      {t("admin.bulkSquarePutBack")}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+      </ConfirmDialog>
+
       {/* Its own dialog, because it is a run in this browser rather than one
           request: it says how far it has got and cannot be put down mid-run. */}
       <ConfirmDialog
@@ -567,5 +669,15 @@ function DeleteButton({ title, onClick }: { title: string; onClick: () => void }
     >
       <Trash2 className="size-4" aria-hidden />
     </button>
+  );
+}
+
+/** A refurbished product, said in words beside its icon on its row: it is on the refurbished section's shelf, not the new shop's. */
+function RefurbishedPill() {
+  const { t } = useTranslation();
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-[#e3f1e8] px-2 py-0.5 text-[11px] font-bold text-[#1f4d36]">
+      <Recycle className="size-3" aria-hidden />{t("refurbished.badge")}
+    </span>
   );
 }

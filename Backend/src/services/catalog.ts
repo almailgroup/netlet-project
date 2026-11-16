@@ -15,6 +15,7 @@
  *   schema for why.
  */
 
+import type { CatalogueCondition } from "../../../Shared/commerce/condition.js";
 import { skippedLineIds } from "../../../Shared/commerce/cartChoice.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
@@ -401,7 +402,8 @@ export async function getStorePage(slug: string, locale: LocalePick = "en"): Pro
   if (!row) return null;
 
   const [shelf, [counted], badges, ratings, recent] = await Promise.all([
-    publishedCatalog({ vendorId: row.id, limit: STORE_PAGE_PRODUCTS }),
+    /* The whole shelf, both shops: the page draws the refurbished apart. */
+    publishedCatalog({ vendorId: row.id, limit: STORE_PAGE_PRODUCTS, condition: "any" }),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(products)
@@ -490,7 +492,7 @@ function shape(
  * client, and for the same reason: an empty page reads as a broken site.
  */
 export async function listProducts(
-  options: { first?: number; collectionHandle?: string; locale?: LocalePick } = {},
+  options: { first?: number; collectionHandle?: string; locale?: LocalePick; condition?: Exclude<CatalogueCondition, "any"> } = {},
 ): Promise<Product[]> {
   const db = await getDb();
   if (!db) return [];
@@ -505,7 +507,7 @@ export async function listProducts(
     categoryId = row?.id;
   }
 
-  const rows = await publishedCatalog({ limit: options.first, categoryId });
+  const rows = await publishedCatalog({ limit: options.first, categoryId, condition: options.condition ?? "new" });
   const { vendorById, categoryById, scoreById } = await contextFor(db, rows);
   return rows.map(row => shape(row, vendorById, categoryById, options.locale ?? "en", scoreById));
 }
@@ -514,10 +516,12 @@ export async function listProducts(
  * Named products, in the order named, dropping any the shelf would not show —
  * a draft, a suspended store's. What a sponsored placement draws (3.3.15).
  */
-export async function listProductsByIds(ids: number[], locale: LocalePick = "en"): Promise<Product[]> {
+export async function listProductsByIds(ids: number[], locale: LocalePick = "en", condition: CatalogueCondition = "any"): Promise<Product[]> {
   const db = await getDb();
   if (!db || ids.length === 0) return [];
-  const rows = await publishedCatalog({ ids, limit: ids.length });
+  /* Both shops by default: what somebody saved, bagged or bought is found
+     whichever it was sold as. A shelf of the new shop says so. */
+  const rows = await publishedCatalog({ ids, limit: ids.length, condition });
   const { vendorById, categoryById, scoreById } = await contextFor(db, rows);
   const byId = new Map(rows.map(row => [row.id, row]));
   return ids.flatMap(id => {

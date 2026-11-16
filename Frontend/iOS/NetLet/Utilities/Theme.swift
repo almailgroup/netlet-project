@@ -22,6 +22,11 @@ enum Brand {
     static let accentOnDark = Color(red: 255 / 255, green: 171 / 255, blue: 133 / 255)
     static let success = Color(red: 47 / 255, green: 93 / 255, blue: 51 / 255)
     static let successFill = Color(red: 227 / 255, green: 239 / 255, blue: 228 / 255)
+    /// The refurbished section's green — its badge, its note — the web's
+    /// `#1f4d36` on `#e3f1e8` (9.6:1) and `#f1f8f4` for a note's ground.
+    static let renewed = Color(red: 31 / 255, green: 77 / 255, blue: 54 / 255)
+    static let renewedFill = Color(red: 227 / 255, green: 241 / 255, blue: 232 / 255)
+    static let renewedWash = Color(red: 241 / 255, green: 248 / 255, blue: 244 / 255)
     static let danger = Color(red: 140 / 255, green: 47 / 255, blue: 34 / 255)
     /// A field's or a panel's rim (#d5dfeb).
     static let line = Color(red: 213 / 255, green: 223 / 255, blue: 235 / 255)

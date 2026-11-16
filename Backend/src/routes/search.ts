@@ -39,6 +39,8 @@ export const searchRouter = router({
       limit: z.number().int().min(1).max(MAX_RESULTS).optional(),
       /* The stores that sell what matched, drawn over the products (`stores` on the answer). */
       stores: z.boolean().optional(),
+      /* Which shop: the new products, or the refurbished section's own search. */
+      condition: z.enum(["new", "refurbished"]).optional(),
     }))
     .query(({ input }) => searchCatalogue(input)),
 

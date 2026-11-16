@@ -8,6 +8,7 @@
  * Every helper degrades to "absent" so a sparsely configured product renders
  * without holes.
  */
+import { isConditionRow } from "./condition.js";
 import { DEPARTMENTS } from "./departments.js";
 import { fieldFor, shownOption } from "./attributeSchema.js";
 import type { Money, Product, ProductAttribute } from "./types.js";
@@ -161,7 +162,8 @@ export function specifications(
   const department = DEPARTMENTS.find(entry => entry.name === product.productType)?.slug ?? null;
   return {
     rows: product.attributes
-      .filter((attribute) => attribute.namespace !== REVIEW_NAMESPACE)
+      /* The condition is said by its own badge and note, never as a row. */
+      .filter((attribute) => attribute.namespace !== REVIEW_NAMESPACE && !isConditionRow(attribute))
       .map((attribute) => {
         /* A row the department's schema knows takes the schema's label in the
            page's language and the field's own unit: "Memory: 12" was the

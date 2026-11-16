@@ -89,6 +89,11 @@ struct PortalProductEditorView: View {
         section("details", l.t("admin.sectionDetails")) {
             DetailsSection(product: product, categories: categories, mayEdit: mayEdit) { await reload() }
         }
+        /* New or refurbished, saved as it changes: the refurbished section is a shop of its own. */
+        ConditionSection(product: product, mayEdit: mayEdit) { await reload() }
+            .padding(16)
+            .portalSurface(cornerRadius: 18)
+            .id("condition")
         /* How many opened it, in the app or on the website, and what came of it (0084). */
         ProductViewsCard(productId: product.id, published: product.status == "published")
             .padding(16)
@@ -725,6 +730,46 @@ enum UnitWords {
         case "ml": return "unit.ml"
         case "l": return "unit.l"
         default: return "unit.each"
+        }
+    }
+}
+
+// MARK: - New or refurbished
+
+/// The product's condition, the web editor's card: a choice that saves the
+/// moment it changes (`inventory.products.setCondition`, on the trail), and
+/// says where the product now shows.
+private struct ConditionSection: View {
+    let product: EditableProduct
+    let mayEdit: Bool
+    let saved: () async -> Void
+    @State private var refurbished = false
+    @State private var saving = false
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ConditionChoice(refurbished: Binding(get: { refurbished }, set: { choose($0) }), disabled: !mayEdit || saving)
+            Text(l.t("refurbished.conditionNote")).font(.caption).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear { refurbished = product.isRefurbished }
+        .onChange(of: product.isRefurbished) { refurbished = product.isRefurbished }
+    }
+
+    private func choose(_ value: Bool) {
+        guard value != refurbished else { return }
+        let before = refurbished
+        refurbished = value
+        Task {
+            saving = true
+            defer { saving = false }
+            let api = app.services.api
+            let done = value ? "refurbished.movedToRefurbished" : "refurbished.movedToNew"
+            let ok = await app.attempt(done: done, fallback: "admin.saveFailed") {
+                _ = try await api.call(API.saveProductCondition, .init(productId: product.id, condition: value ? "refurbished" : "new"))
+            }
+            if ok { await saved() } else { refurbished = before }
         }
     }
 }

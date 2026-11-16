@@ -221,7 +221,7 @@ function BagLine({ item }: { item: CartItem }) {
       {/* The photo is the same place as the name, so it is hidden from the
           keyboard and a screen reader rather than read as a second link. */}
       <Link href={href} onClick={closeCart} tabIndex={-1} aria-hidden className="size-[72px] shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9] min-[360px]:size-[84px]">
-        <Thumb src={item.image?.url} alt={item.image?.altText ?? title} className="size-full object-cover" icon={<ShoppingBag className="size-5" />} />
+        <Thumb src={item.image?.url} alt={item.image?.altText ?? title} className="size-full bg-white object-contain" icon={<ShoppingBag className="size-5" />} />
       </Link>
       <div className="min-w-0 flex-1">
         <div className="flex justify-between gap-2">

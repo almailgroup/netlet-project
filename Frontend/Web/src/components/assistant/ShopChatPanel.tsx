@@ -532,7 +532,7 @@ function ProductChip({ brief, image }: { brief: ProductBrief; image: string | nu
   return (
     <p className="flex items-center gap-2.5 rounded-2xl bg-white/90 p-2 pe-3 ring-1 ring-white">
       <span className="size-10 shrink-0 overflow-hidden rounded-xl bg-[#f4f6f9]">
-        <Thumb src={image} alt="" className="size-full object-cover" icon={<Package className="size-4 text-[#536b8c]" />} />
+        <Thumb src={image} alt="" className="size-full bg-white object-contain" icon={<Package className="size-4 text-[#536b8c]" />} />
       </span>
       <span className="min-w-0 text-[12px] leading-4">
         <span className="block font-semibold ink-muted">{t("shopChat.aboutProduct")}</span>

@@ -38,7 +38,8 @@ export async function sitemapEntries(): Promise<SitemapEntry[]> {
   // A catalog this cannot reach (no database configured, or it is down) yields
   // the home page and the departments rather than an error: those paths are
   // true regardless, and a 500 here teaches a crawler the URL is broken.
-  const products = await publishedCatalog({ limit: MAX_PRODUCTS }).catch(() => []);
+  /* Both shops: a refurbished product has a page somebody may search for. */
+  const products = await publishedCatalog({ limit: MAX_PRODUCTS, condition: "any" }).catch(() => []);
   for (const product of products) {
     entries.push({ path: `/products/${product.handle}`, lastModified: product.updatedAt, priority: 0.6 });
   }

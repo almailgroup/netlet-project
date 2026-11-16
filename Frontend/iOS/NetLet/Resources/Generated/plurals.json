@@ -667,6 +667,54 @@
       "other": "تعذّرت قراءة {count} صورة فبقيت في مكانها."
     }
   },
+  "admin.bulkSquareTitle": {
+    "param": "count",
+    "en": {
+      "one": "Make 1 photo square"
+    },
+    "ar": {
+      "one": "جعل صورة واحدة مربعة",
+      "two": "جعل صورتين مربعتين",
+      "many": "جعل {count} صورة مربعة",
+      "other": "جعل {count} صورة مربعة"
+    }
+  },
+  "admin.bulkSquareDone": {
+    "param": "count",
+    "en": {
+      "one": "1 photo made square"
+    },
+    "ar": {
+      "one": "أصبحت صورة واحدة مربعة",
+      "two": "أصبحت صورتان مربعتين",
+      "many": "أصبحت {count} صورة مربعة",
+      "other": "أصبحت {count} صورة مربعة"
+    }
+  },
+  "admin.bulkSquareAlready": {
+    "param": "count",
+    "en": {
+      "one": "1 photo was already square."
+    },
+    "ar": {
+      "one": "كانت صورة واحدة مربعة أصلًا.",
+      "two": "كانت صورتان مربعتين أصلًا.",
+      "many": "كانت {count} صورة مربعة أصلًا.",
+      "other": "كانت {count} صورة مربعة أصلًا."
+    }
+  },
+  "admin.bulkSquareKept": {
+    "param": "count",
+    "en": {
+      "one": "1 photo could not be made square and stays as it was."
+    },
+    "ar": {
+      "one": "تعذّر جعل صورة واحدة مربعة فبقيت كما كانت.",
+      "two": "تعذّر جعل صورتين مربعتين فبقيتا كما كانتا.",
+      "many": "تعذّر جعل {count} صورة مربعة فبقيت كما كانت.",
+      "other": "تعذّر جعل {count} صورة مربعة فبقيت كما كانت."
+    }
+  },
   "admin.bulkDepartmentTitle": {
     "param": "count",
     "en": {

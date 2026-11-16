@@ -65,10 +65,16 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     /// — a size has to be chosen before a number means anything.
     var needsChoice: Bool { variants.count > 1 }
 
+    /// Whether it is refurbished — sold before and sold again — which is a
+    /// shop of its own (`Shared/commerce/condition.ts`): a specification row
+    /// `condition` reading exactly "refurbished", and nothing for new.
+    var isRefurbished: Bool { attributes.contains { $0.isConditionRow && $0.value == "refurbished" } }
+
     /// The specification rows a shopper reads: the `spec` namespace, as the web
-    /// draws them, with any row left blank dropped.
+    /// draws them, with any row left blank dropped — and never the condition,
+    /// which the page says in its own words rather than as a row.
     var specifications: [ProductAttribute] {
-        attributes.filter { $0.namespace == "spec" && !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+        attributes.filter { $0.namespace == "spec" && !$0.isConditionRow && !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 
     /// The specification rows as a page reads them — `specifications()` on the
@@ -125,6 +131,13 @@ struct ProductAttribute: Codable, Hashable, Sendable {
     let key: String
     let label: String
     let value: String
+
+    /// The row that says a product is refurbished (`isConditionRow`): it is
+    /// written by its own control, never as a specification.
+    var isConditionRow: Bool { namespace == "spec" && key == "condition" }
+
+    /// What a refurbished product carries, the web's `REFURBISHED_ROW`.
+    static let refurbished = ProductAttribute(namespace: "spec", key: "condition", label: "Condition", value: "refurbished")
 }
 
 struct Measure: Decodable, Hashable, Sendable {
@@ -170,6 +183,15 @@ struct ProductVariant: Decodable, Identifiable, Hashable, Sendable {
 
 /// What `search.products` answers: the products, how many there were, and the
 /// spelling it searched for instead when nothing matched what was typed.
+/// The refurbished section in numbers (`commerce.refurbishedSummary`): how
+/// many are on sale, and how many in each department by its slug.
+struct RefurbishedSummary: Decodable, Hashable, Sendable {
+    let total: Int
+    let departments: [String: Int]
+
+    static let none = RefurbishedSummary(total: 0, departments: [:])
+}
+
 struct SearchResult: Decodable, Sendable {
     let products: [Product]
     let total: Int

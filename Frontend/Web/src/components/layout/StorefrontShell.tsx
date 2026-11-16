@@ -92,7 +92,7 @@ export function usePageChrome(chrome: Partial<Chrome>) {
 }
 
 /* A floating bar of the page's own sits above the tab bar on these. */
-const TALL_FOOT = /^\/(category\/|search|products\/)/;
+const TALL_FOOT = /^\/(category\/|search|products\/|refurbished(\/|$))/;
 /*
  * Which page an address is, for the entrance: a new page fades in, a new
  * section of the same page does not. The account's sections share its menu,
@@ -103,7 +103,7 @@ const pageOf = (path: string) => (path.startsWith("/account/") ? "/account" : pa
 const BARE_ON_PHONE = /^\/(account|cart)(\/|$)/;
 /* A product, a department and the departments: on a phone the header is its
    search row alone — no logo, no delivery, no heart — on the owner's word. */
-const SEARCH_ONLY_ON_PHONE = /^\/(products\/|category\/|categories(\/|$))/;
+const SEARCH_ONLY_ON_PHONE = /^\/(products\/|category\/|categories(\/|$)|refurbished(\/|$))/;
 /* A document: the chrome is not printed with it. */
 const PRINTED = /^\/invoices\/(?!verify\/)/;
 
@@ -241,7 +241,7 @@ export function PageFallback() {
       )
     : /^\/(signin|signup|login|register)$/.test(location)
       ? <div className={`mx-auto h-[560px] max-w-[1120px] ${block}`} />
-    : location.startsWith("/category/") || location.startsWith("/search") || location === "/saved"
+    : location.startsWith("/category/") || location.startsWith("/search") || location.startsWith("/refurbished") || location === "/saved"
       ? (
           <>
             <div className={`h-8 w-56 ${block}`} />

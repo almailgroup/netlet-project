@@ -35,6 +35,8 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { GenerateDraft } from "@/components/admin/GenerateDraft";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { Card, Field, PageHeader, buttonClass, fieldClass, isolate, smallButtonClass } from "@/components/admin/ui";
+import { ConditionChoice } from "@/components/admin/ConditionChoice";
+import type { ProductCondition } from "@shared/commerce/condition";
 import { AddonsEditor, addonsToSend, firstAddonProblem, type EditorAddon } from "@/components/admin/AddonsEditor";
 import { Thumb } from "@/components/product/Thumb";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -84,6 +86,8 @@ function NewProductForm({ actor }: { actor: Actor }) {
 
   const [draft, setDraft] = useState<ProductDraft>(EMPTY);
   const [categoryId, setCategoryId] = useState("");
+  /* New unless the seller says otherwise: which shop it goes on (`ConditionChoice`). */
+  const [condition, setCondition] = useState<ProductCondition>("new");
   const [tags, setTags] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
   /* Rows a "Generate with AI" draft filled, by the department's own keys. */
@@ -138,7 +142,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
   const shown = (field: DraftField): MessageKey | undefined =>
     touched[field] || attempted || serverErrors[field] ? problems[field] : undefined;
 
-  const dirty = JSON.stringify(draft) !== JSON.stringify(EMPTY) || photos.length > 0 || tags.trim() !== "" || categoryId !== ""
+  const dirty = JSON.stringify(draft) !== JSON.stringify(EMPTY) || photos.length > 0 || tags.trim() !== "" || categoryId !== "" || condition !== "new"
     || descriptionAr.trim() !== "" || specs.length > 0;
   /* Leaving with a half-filled form loses it, and nothing has been written —
      so the browser asks first. Only the browser's own prompt: an in-app one
@@ -220,6 +224,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
         description: draft.description.trim() || null,
         descriptionAr: descriptionAr.trim() || null,
         categoryId: categoryId ? Number(categoryId) : null,
+        condition,
         tags: tags.split(",").map(tag => tag.trim()).filter(Boolean),
         specs: shownSpecs.filter(row => row.value.trim()),
         variant: {
@@ -379,6 +384,9 @@ function NewProductForm({ actor }: { actor: Actor }) {
                   <p className="mt-1.5 text-[12px] ink-muted">{t("admin.arabicDraftNote")}</p>
                 </div>
               ) : null}
+              <div className="sm:col-span-2">
+                <ConditionChoice value={condition} onChange={setCondition} name="new-product-condition" />
+              </div>
               <Field label={t("admin.fieldCategory")}>
                 <Select value={categoryId} onChange={event => setCategoryId(event.target.value)} className={fieldClass}>
                   <option value="">{t("admin.fieldNoCategory")}</option>

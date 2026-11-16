@@ -30,6 +30,7 @@
  * `useMediaQuery` because it changes what is drawn rather than how.
  */
 import { isExpressEligible, productStars, savingsPercent } from "@shared/commerce/productDetail";
+import { isRefurbished } from "@shared/commerce/condition";
 import { appPath } from "@/lib/basePath";
 import { cardCeiling } from "@shared/commerce/typedQuantity";
 import { CardGallery } from "@/components/product/CardGallery";
@@ -40,7 +41,7 @@ import { UnitPrice } from "@/components/product/UnitPrice";
 import { PreorderBadge } from "@/components/product/Availability";
 import { StockReminder } from "@/components/product/StockReminder";
 import type { Product } from "@shared/commerce/types";
-import { Eye, Heart, Minus, Plus, ShoppingBag, Trash2, Zap } from "lucide-react";
+import { Eye, Heart, Minus, Plus, Recycle, ShoppingBag, Trash2, Zap } from "lucide-react";
 import { StarRow } from "@/components/ui/StarRow";
 import { formatCount } from "@/lib/format";
 import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
@@ -329,7 +330,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
   compact?: boolean;
   /**
    * The one card a shelf leads with — the home page's deepest deal. Two
-   * columns wide, so its photo is drawn wider (the height of a 4:5 photo
+   * columns wide, so its photo is drawn wider (the height of a square photo
    * beside it) and contained rather than cropped, on white, since a product photo's own
    * ground is usually white; the words and the price are larger. Everything
    * else — the buttons, the badges, the heart — is the ordinary card's.
@@ -369,18 +370,20 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           long to get through. The photo is a row of the product's photographs
           a shopper can swipe or step through (`CardGallery`).
 
-          It runs to the card's edges and is taller than it is wide (4:5), on
-          the owner's word: inset in a square it was a third of a phone card,
-          the rest being words and buttons. The feature card spans two columns
-          and the gap between them, so its photo is 33:20 — the height of a
-          4:5 photo beside it, to a couple of pixels, on the Deals band.
+          It runs to the card's edges and is square, on the owner's word ("all
+          images should be square for the product cards … doesn't get cropped
+          in a bad way"): it was 4:5 and cropped to fill, which took the ends
+          off a wide photo. Contained on white, a photo is never cut, and one
+          NetLet AI made square fills the frame exactly. The feature card spans
+          two columns and the gap between them, so its photo is 33:16 — the
+          height of a square photo beside it, to a few pixels, on the Deals band.
         */}
         <CardGallery
           images={product.images}
           href={href}
           title={product.title}
-          frameClassName="rounded-t-[15px] bg-[#f4f6f9]"
-          photoClassName={feature ? "aspect-[33/20] bg-white object-contain" : "aspect-[4/5] object-cover"}
+          frameClassName="rounded-t-[15px] bg-white"
+          photoClassName={feature ? "aspect-[33/16] bg-white object-contain" : "aspect-square bg-white object-contain"}
           onLongPress={onQuickView}
           dotsAtStart={onPhoto}
         />
@@ -391,6 +394,13 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
             <span dir="ltr" className={`rounded-md bg-[#f2683a] font-bold text-[#0a285a] ${feature ? "px-2.5 py-1 text-[15px]" : "px-1.5 py-0.5 text-[12px]"}`}>−{savings}%</span>
           ) : null}
           <PreorderBadge variant={variant} />
+          {/* Used, checked and restored by the seller: said on the photo as the
+              other facts about what is being sold are, in words beside its icon. */}
+          {isRefurbished(product) ? (
+            <span className="inline-flex items-center gap-1 rounded-md bg-[#e3f1e8] px-1.5 py-0.5 text-[11px] font-bold text-[#1f4d36]">
+              <Recycle className="size-2.5" aria-hidden />{t("refurbished.badge")}
+            </span>
+          ) : null}
           {express ? (
             <span className="inline-flex items-center gap-1 rounded-md bg-[#0a285a] px-1.5 py-0.5 text-[11px] font-bold text-white">
               <Zap className="size-2.5 fill-current" aria-hidden />{t("product.express")}

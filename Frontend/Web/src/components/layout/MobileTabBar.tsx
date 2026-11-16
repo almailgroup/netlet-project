@@ -45,6 +45,7 @@
  * motion). It is an attribute on `<html>`, written by the listener directly,
  * so a scroll never re-renders the bar; what floats over it follows it down.
  */
+import { inRefurbished } from "@/lib/refurbished";
 import { CountBadge } from "@/components/ui/CountBadge";
 import { useCart } from "@/contexts/CartContext";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
@@ -173,7 +174,7 @@ export function MobileTabBar() {
       label: t("nav.categories"),
       icon: active => <TabIcon name="categories" filled={active} />,
       /* The page of departments, and every department page it leads to. */
-      active: !onDeals && (location === "/categories" || location.startsWith("/category/")),
+      active: !onDeals && (location === "/categories" || location.startsWith("/category/") || inRefurbished(location)),
       href: "/categories",
     },
     {

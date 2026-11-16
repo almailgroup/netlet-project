@@ -19,6 +19,9 @@ enum Route: Hashable {
     case newest
     /// Everything of one brand, from the home page's brand tiles.
     case brand(name: String)
+    /// The refurbished section, or one department of it — a shop of its own,
+    /// apart from the new products, the web's `/refurbished` and `/refurbished/<slug>`.
+    case refurbished(department: String? = nil)
     /// A search over the whole catalogue, or within one department — the web's
     /// `/search?q=` and `/category/<slug>?q=`.
     case search(query: String, department: String? = nil)
@@ -94,6 +97,8 @@ enum Route: Hashable {
             if let slug, let sub = query["sub"], !sub.isEmpty { return .subcategory(department: slug, sub: sub) }
             if slug == nil, let occasion = query["occasion"], !occasion.isEmpty { return .occasion(slug: occasion) }
             return .department(slug: slug)
+        case ("refurbished"?, 1): return .refurbished()
+        case ("refurbished"?, 2): return .refurbished(department: segments[1])
         case ("stores"?, 1): return .stores
         case ("brands"?, 1): return .brands
         case ("stores"?, 2): return .store(slug: segments[1])
@@ -476,6 +481,10 @@ final class AppModel {
             selectedTab = .categories
             browseSheetStart = pieces[1]
             categoriesPath = NavigationPath([Route.department(slug: pieces[0] == "all" ? nil : pieces[0])])
+        case "refurbished":
+            // `refurbished`, or `refurbished:electronics` for one department of it.
+            selectedTab = .categories
+            categoriesPath = NavigationPath([Route.refurbished(department: value)])
         case "deals":
             // The Deals tab, its shelves drawn.
             selectedTab = .deals

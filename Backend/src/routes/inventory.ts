@@ -9,6 +9,8 @@
  * admin and a vendor calling `products.list` get different rows from the same
  * code path.
  */
+import { PhotoCopyRefused, putPhotoBack } from "../services/photoCopies.js";
+import { PRODUCT_CONDITIONS } from "../../../Shared/commerce/condition.js";
 import { arabicTitleAvailable, draftArabicTitle } from "../services/arabicTitle.js";
 import { salesSummary } from "../services/salesSummary.js";
 import { BRAND_MAX, BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, brandProblem, percentProblem, restockProblem } from "../../../Shared/inventory/productBulk.js";
@@ -67,8 +69,7 @@ import {
   setProductSizeChart,
   setProductSizeClass,
   updateProduct,
-  vendorHealthFor,
-} from "../services/inventory.js";
+  vendorHealthFor, setProductCondition } from "../services/inventory.js";
 import { askCopilot, copilotBrief } from "../services/copilot.js";
 import { COPILOT_TURNS } from "../../../Shared/ai/copilot.js";
 import { dashboard, stockHealth } from "../services/dashboard.js";
@@ -515,6 +516,8 @@ export const inventoryRouter = router({
         warranty: z.string().trim().max(200).nullable().optional(),
         /* Rows by the department's own keys; one it does not ask for is dropped. */
         specs: z.array(z.object({ key: z.string().trim().max(60), value: z.string().trim().max(500) })).max(20).optional(),
+        /* New, or refurbished: which shop it goes on. New when absent. */
+        condition: z.enum(PRODUCT_CONDITIONS).optional(),
         /* The guided form's first variant and pictures. The editor's blank
            draft sends neither and gets the "Default" at 0.000 it always did. */
         variant: z.object({
@@ -671,6 +674,38 @@ export const inventoryRouter = router({
           await setProductAttributes(actor, input.id, input.attributes);
           return { ok: true } as const;
         });
+      }),
+
+    /**
+     * New or refurbished — which shop the product is on, on the owner's word
+     * (`Shared/commerce/condition.ts`). Its own procedure, saving on its own,
+     * like the delivery speed: moving a product between the two shops is one
+     * decision, on the trail.
+     */
+    setCondition: protectedProcedure
+      .input(z.object({ productId: rowId, condition: z.enum(PRODUCT_CONDITIONS) }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(async () => ({ condition: await setProductCondition(actor, input.productId, input.condition) }));
+      }),
+
+    /**
+     * A gallery photo NetLet stored in place of another — squared by NetLet AI,
+     * or copied from the site it was on — put back as it was
+     * (`putPhotoBack`), for a square picture the seller would rather not keep.
+     */
+    photoPutBack: protectedProcedure
+      .input(z.object({ imageId: rowId }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        try {
+          return await putPhotoBack(actor, input.imageId);
+        } catch (error) {
+          if (error instanceof PhotoCopyRefused) {
+            throw new TRPCError({ code: error.reason === "media.notAllowed" ? "FORBIDDEN" : "CONFLICT", message: error.reason });
+          }
+          throw error;
+        }
       }),
 
     /** The seller's size chart, or null to remove it (3.1.20). */

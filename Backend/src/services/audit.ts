@@ -39,6 +39,8 @@ export const AUDIT_ACTIONS = [
      the shelf without a person (3.3.6) — on the trail so a person can take it down. */
   "product.autoApprove",
   "product.setStatus",
+  /* A product moved between the new shop and the refurbished section. */
+  "product.setCondition",
   "product.priceChange",
   /* The level a shelf counts as running low at: which shelves somebody is told to refill. */
   "stock.setReorderPoint",
@@ -323,6 +325,7 @@ const SELLER_ACTIONS: AuditAction[] = [
   "product.delete",
   "product.priceChange",
   "product.setStatus",
+  "product.setCondition",
   "product.setAffiliate",
   "commission.propose",
   /* A store's owner adding a paper to the store's documents, or removing one:

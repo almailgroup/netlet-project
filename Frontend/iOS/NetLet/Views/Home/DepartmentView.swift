@@ -102,7 +102,7 @@ private struct BrowsePage: View {
         // The Deals page searches its own deals, on the owner's word
         // ("the search bar should only search for what's in the specific page").
         ShopPage(root: root, logo: false, refresh: { await model.load(language: l.current) }, assistant: true, assistantFolded: true, searchTerm: model.searchTerm,
-                 pageSearch: model.isDealsPage ? PageSearch(text: $model.pageTerm, placeholder: "search.inDeals") : nil, viewSource: model.searchTerm == nil ? "browse" : "search") {
+                 pageSearch: pageSearch, viewSource: model.searchTerm == nil ? "browse" : "search") {
             VStack(alignment: .leading, spacing: 0) {
                 // One of NetLet's occasions with a picture opens on it, over its name.
                 if model.query == nil, let banner = model.curatedOccasion?.imageUrl {
@@ -120,6 +120,11 @@ private struct BrowsePage: View {
                     .foregroundStyle(Brand.body)
                     .padding(.top, 8)
                     .accessibilityAddTraits(.updatesFrequently)
+                if model.isRefurbished {
+                    RefurbishedNote(text: l.t("refurbished.note"))
+                        .padding(.top, 14)
+                    refurbishedDepartments
+                }
                 subcategoryRow
                 filterChips
                 // The stores that sell it, over the products, on the owner's word.
@@ -172,8 +177,19 @@ private struct BrowsePage: View {
         model.query == nil ? model.department?.sub(model.filters.sub) : nil
     }
 
+    /// The Deals page and the refurbished section each search themselves.
+    private var pageSearch: PageSearch? {
+        if model.isDealsPage { return PageSearch(text: $model.pageTerm, placeholder: "search.inDeals") }
+        if model.isRefurbished { return PageSearch(text: $model.pageTerm, placeholder: "search.inRefurbished") }
+        return nil
+    }
+
     private var title: String {
         if let query = model.query { return l.t("browse.searchTitle", ["query": query]) }
+        if model.isRefurbished {
+            if let activeSub { return l.t("refurbished.inDepartment", ["name": activeSub.shown(l.current)]) }
+            return model.department.map { l.t("refurbished.inDepartment", ["name": l.t($0.label)]) } ?? l.t("refurbished.title")
+        }
         if model.query == nil, let curated = model.curatedOccasion { return curated.name(l.current) }
         if let occasion = model.activeOccasion { return l.t(occasion.label) }
         if let activeSub { return activeSub.shown(l.current) }
@@ -192,6 +208,9 @@ private struct BrowsePage: View {
         let term = model.pageTerm.trimmingCharacters(in: .whitespacesAndNewlines)
         if model.isDealsPage, !term.isEmpty {
             return l.t("deals.searchShown", ["term": "\u{2068}\(term)\u{2069}", "count": "\(model.shown.count)"])
+        }
+        if model.isRefurbished, !term.isEmpty {
+            return l.t("refurbished.searchShown", ["term": "\u{2068}\(term)\u{2069}", "count": "\(model.shown.count)"])
         }
         return l.productCount(model.shown.count)
     }
@@ -371,6 +390,53 @@ private struct BrowsePage: View {
         return l.t("browse.priceUpTo", ["max": high ?? "0"])
     }
 
+    /// The refurbished section's departments, each opening that department of
+    /// it — chips from the server's own count, "All" first, like the web's.
+    @ViewBuilder
+    private var refurbishedDepartments: some View {
+        let counts = model.refurbishedSummary.departments
+        let departments = ReferenceData.shared.departments.filter { (counts[$0.slug] ?? 0) > 0 || $0.slug == model.department?.slug }
+        if !departments.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                GlassGroup {
+                    HStack(spacing: 8) {
+                        refurbishedChip(title: l.t("categories.allSub"), count: model.refurbishedSummary.total, slug: nil)
+                        ForEach(departments, id: \.slug) { department in
+                            refurbishedChip(title: l.t(department.label), count: counts[department.slug] ?? 0, slug: department.slug)
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 2)
+            }
+            .glassRow()
+            .padding(.horizontal, -16)
+            .padding(.top, 14)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(l.t("refurbished.departments"))
+        }
+    }
+
+    private func refurbishedChip(title: String, count: Int, slug: String?) -> some View {
+        let here = model.department?.slug == slug
+        return Button {
+            guard !here else { return }
+            app.push(.refurbished(department: slug))
+        } label: {
+            HStack(spacing: 6) {
+                Text(title).lineLimit(1)
+                Text("\(count)").foregroundStyle(here ? Color.white.opacity(0.8) : Brand.muted)
+            }
+            .font(.inter(14, .semibold))
+            .foregroundStyle(here ? Color.white : Brand.navy)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 40)
+            .glassChip(chosen: here)
+        }
+        .buttonStyle(.tap)
+        .accessibilityAddTraits(here ? .isSelected : [])
+    }
+
     /// The department's subcategories, on the owner's word — the web's chips
     /// under the title: those with something on this shelf and the one the
     /// page is narrowed to; a press narrows it and "All" widens it again.
@@ -485,7 +551,16 @@ private struct BrowsePage: View {
     @ViewBuilder
     private var empty: some View {
         let term = model.pageTerm.trimmingCharacters(in: .whitespacesAndNewlines)
-        if model.isDealsPage, !term.isEmpty, model.shownFilters.activeCount == 0 {
+        if model.isRefurbished, !term.isEmpty, model.shownFilters.activeCount == 0 {
+            PageSearchMissed(term: term)
+        } else if model.isRefurbished, model.shownFilters.activeCount == 0 {
+            // Nothing refurbished yet: the section is not a filter the shopper set.
+            EmptyStateView(systemImage: "arrow.3.trianglepath",
+                           title: model.department.map { l.t("refurbished.emptyIn", ["name": l.t($0.label)]) } ?? l.t("refurbished.empty"),
+                           note: l.t("refurbished.emptyNote"), actionTitle: l.t("refurbished.shopNew")) {
+                app.push(.department(slug: model.department?.slug))
+            }
+        } else if model.isDealsPage, !term.isEmpty, model.shownFilters.activeCount == 0 {
             // The Deals page's own search found nothing on it.
             PageSearchMissed(term: term)
         } else if model.isDealsPage, model.shownFilters.activeCount == 0 {

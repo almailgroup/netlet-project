@@ -126,6 +126,23 @@ export function categoriesMeta(siteUrl: string): PageMeta {
   };
 }
 
+/**
+ * The refurbished section, or one department of it — a page to be found, like
+ * a department of the new shop, at its own address.
+ */
+export function refurbishedMeta(siteUrl: string, department?: { name: string; slug: string }): PageMeta {
+  const path = department ? `/refurbished/${encodeURIComponent(department.slug)}` : "/refurbished";
+  return {
+    title: department ? `Refurbished ${department.name.toLowerCase()} — ${SITE_NAME}` : `Refurbished — ${SITE_NAME}`,
+    description: department
+      ? `Used ${department.name.toLowerCase()}, checked and restored by their sellers, on NetLet in Kuwait — each listing says its condition.`
+      : "Used products, checked and restored by their sellers, on NetLet in Kuwait — each listing says its condition, with delivery across all six governorates.",
+    canonical: absoluteUrl(siteUrl, path),
+    image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
+    type: "website",
+  };
+}
+
 /** The terms of use or the privacy policy — public and indexable, as a shop's are. */
 export function legalMeta(page: "terms" | "privacy" | "sellers", siteUrl: string): PageMeta {
   if (page === "sellers") {

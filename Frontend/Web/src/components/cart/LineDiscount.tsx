@@ -94,7 +94,7 @@ export function LineDiscount({ item, title }: { item: CartItem; title: string })
             <span aria-hidden className="mx-auto mb-3 block h-1 w-10 rounded-full bg-[#d5dfeb] sm:hidden" />
             <div className="flex items-start gap-3 border-b border-[#eef1f5] pb-3">
               <span className="size-12 shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9]">
-                <Thumb src={item.image?.url} alt="" className="size-full object-cover" icon={<ShoppingBag className="size-4" />} />
+                <Thumb src={item.image?.url} alt="" className="size-full bg-white object-contain" icon={<ShoppingBag className="size-4" />} />
               </span>
               <span className="min-w-0 flex-1">
                 <span id={headingId} data-sheet-heading tabIndex={-1} className="block text-[15px] font-extrabold text-[#0a285a] outline-none">{t("offers.heading")}</span>

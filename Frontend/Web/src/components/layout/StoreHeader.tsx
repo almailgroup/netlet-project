@@ -52,7 +52,8 @@
  * to press it on — never while somebody is typing somewhere else, and never
  * past an open dialog.
  */
-import { useCatalog } from "@/hooks/useCatalog";
+import { REFURBISHED_PATH, inRefurbished } from "@/lib/refurbished";
+import { useCatalog, useRefurbishedSummary } from "@/hooks/useCatalog";
 import { HEADER_SHELF } from "@/lib/routeData";
 import { AccountMenu } from "@/components/layout/AccountMenu";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
@@ -69,7 +70,7 @@ import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
-import { Bell, ChevronDown, Heart, MapPin, ShoppingBag, Tag } from "lucide-react";
+import { Bell, ChevronDown, Heart, MapPin, Recycle, ShoppingBag, Tag } from "lucide-react";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { pressHaptic } from "@/lib/haptics";
 import { Suspense, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -129,6 +130,8 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
   const shelf = useCatalog(HEADER_SHELF, { staleTime: 5 * 60 * 1000 });
   const dealsDrawn = useMemo(() => drawsDeals(shelvesFor(shelf.data ?? [])), [shelf.data]);
   const onDeals = location === "/category/all" && new URLSearchParams(query).get("offer") === "1";
+  const onRefurbished = inRefurbished(location);
+  const refurbishedOnSale = (useRefurbishedSummary().data?.total ?? 0) > 0 || onRefurbished;
 
   /*
    * The field keeps its own words. It is drawn once for the whole shop now
@@ -387,6 +390,18 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
             >
               <Tag className="size-3.5 shrink-0" aria-hidden />
               {t("rail.deals.title")}
+            </Link>
+          ) : null}
+          {/* The refurbished section, a shop of its own beside the new one —
+              drawn only while something refurbished is on sale. */}
+          {refurbishedOnSale ? (
+            <Link
+              href={REFURBISHED_PATH}
+              aria-current={onRefurbished ? "page" : undefined}
+              className={`pressable flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-xs font-extrabold transition-colors ${onRefurbished ? "glass glass-navy" : "text-[#1f4d36] hover:bg-[#0a285a]/[.06]"}`}
+            >
+              <Recycle className="size-3.5 shrink-0" aria-hidden />
+              {t("refurbished.title")}
             </Link>
           ) : null}
           {/* The app, under the cart, on the owner's word: its QR card opens

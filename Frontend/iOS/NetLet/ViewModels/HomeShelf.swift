@@ -31,6 +31,11 @@ final class HomeShelf {
     private(set) var curated: LiveOccasions?
     /// Products on sale per department; nil until the server has answered.
     private(set) var counts: [String: Int]?
+    /// The refurbished section's first products, for its own shelf here — a
+    /// shop apart, never mixed into the new one's shelves — and how many it
+    /// holds, which decides whether its way in is drawn at all.
+    private(set) var refurbished: [Product] = []
+    private(set) var refurbishedSummary = RefurbishedSummary.none
     /// How to reach a person at NetLet, for the footer: the shop's defaults
     /// until the server's settings arrive.
     private(set) var contact: ShopContact = .fallback
@@ -138,6 +143,8 @@ final class HomeShelf {
         async let brandRows = try? catalog.brands()
         async let channels = try? catalog.contact()
         async let occasions = try? catalog.liveOccasions(language: language)
+        async let used = try? catalog.refurbished(first: Self.tabbed, department: nil, language: language)
+        async let usedSummary = try? catalog.refurbishedSummary()
         do {
             let products = try await catalog.products(first: Self.size, department: nil, language: language)
             warm(products)
@@ -158,6 +165,8 @@ final class HomeShelf {
         contact = await channels ?? contact
         // Answered or not, the page may draw its occasions now: with no answer
         // it keeps the one it had, or is the calendar's own.
+        refurbished = await used ?? refurbished
+        refurbishedSummary = await usedSummary ?? refurbishedSummary
         let answered = await occasions
         curated = answered ?? curated ?? LiveOccasions.empty
         warm(curated?.occasions.flatMap(\.products) ?? [])

@@ -15,7 +15,7 @@
  */
 import { and, asc, eq } from "drizzle-orm";
 import { categories, productImages, products, vendors } from "../../database/schema.js";
-import { IMAGE_TYPES, MAX_IMAGE_BASE64, type CatalogImage, type ImageType, type GenerateAnswer } from "../../../Shared/ai/gateway.js";
+import { IMAGE_TYPES, MAX_IMAGE_BASE64, type CatalogImage, type ImageAspect, type ImageType, type GenerateAnswer } from "../../../Shared/ai/gateway.js";
 import {
   CLEANUP_PROMPT,
   CLEANUP_SYSTEM,
@@ -23,6 +23,9 @@ import {
   GUIDE_PICTURE_SYSTEM,
   MAX_GUIDE_PICTURES_PER_HOUR,
   MAX_PHOTO_CLEANUPS_PER_HOUR,
+  MAX_PHOTO_SQUARES_PER_HOUR,
+  SQUARE_PROMPT,
+  SQUARE_SYSTEM,
   MAX_TRY_ONS_PER_HOUR,
   TRY_ON_PROMPT,
   TRY_ON_SYSTEM,
@@ -83,7 +86,7 @@ function drawnFrom(answer: GenerateAnswer | null): Drawn {
   return { type: type as ImageType, bytes };
 }
 
-async function draw(task: "photoCleanup" | "tryOn" | "guideImage" | "subcategoryImage", call: { system: string; prompt: string; image: CatalogImage | null; images?: CatalogImage[] }): Promise<Drawn> {
+async function draw(task: "photoCleanup" | "tryOn" | "guideImage" | "subcategoryImage", call: { system: string; prompt: string; image: CatalogImage | null; images?: CatalogImage[]; aspectRatio?: ImageAspect }): Promise<Drawn> {
   const answer = await askModelFor(task, {
     system: call.system,
     prompt: call.prompt,
@@ -91,6 +94,7 @@ async function draw(task: "photoCleanup" | "tryOn" | "guideImage" | "subcategory
     images: call.images,
     json: false,
     output: "image",
+    ...(call.aspectRatio ? { aspectRatio: call.aspectRatio } : {}),
     temperature: 0.2,
     maxOutputTokens: 1024,
     deadlineMs: DRAWING_DEADLINE_MS,
@@ -115,7 +119,24 @@ export async function cleanUpPhoto(actor: Actor, bytes: Uint8Array): Promise<Dra
   const photo = asImage(bytes);
   if (!(await drawingAvailable())) throw new DrawingRefused("drawing.off");
   if (!(await takeHourlyAllowance(actor.userId, "photoClean", MAX_PHOTO_CLEANUPS_PER_HOUR))) throw new DrawingRefused("drawing.tooMany");
-  return draw("photoCleanup", { system: CLEANUP_SYSTEM, prompt: CLEANUP_PROMPT, image: photo });
+  /* Square, for the cards, on the owner's word: the whole product, nothing cut. */
+  return draw("photoCleanup", { system: CLEANUP_SYSTEM, prompt: CLEANUP_PROMPT, image: photo, aspectRatio: "1:1" });
+}
+
+/**
+ * A photo already in the shop, made square by the drawing model with nothing
+ * cut off (`SQUARE_SYSTEM`) — the products list's "Make photos square". The
+ * photo is the gallery row's own (`photoCopies.ts` reads it by its id and asks
+ * who may edit it); counted per account an hour before the call. The same
+ * gateway task as the clean-up: it is the same kind of edit to the same kind
+ * of photo, and a task of its own would be refused by a Worker deployed
+ * before it.
+ */
+export async function squareProductPhoto(actor: Actor, bytes: Uint8Array): Promise<Drawn> {
+  const photo = asImage(bytes);
+  if (!(await drawingAvailable())) throw new DrawingRefused("drawing.off");
+  if (!(await takeHourlyAllowance(actor.userId, "photoSquare", MAX_PHOTO_SQUARES_PER_HOUR))) throw new DrawingRefused("drawing.tooMany");
+  return draw("photoCleanup", { system: SQUARE_SYSTEM, prompt: SQUARE_PROMPT, image: photo, aspectRatio: "1:1" });
 }
 
 /* -------------------------------------------------------- 3.1.8 ---------- */

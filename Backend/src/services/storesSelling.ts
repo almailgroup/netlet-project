@@ -12,6 +12,7 @@
  * the department page's `?sub=` both make, so a store named here sells what
  * that page shows. The order is `rankStores`: the store selling the most first.
  */
+import { newOnly } from "./productCondition.js";
 import { and, asc, eq, or, sql } from "drizzle-orm";
 import { categories, products, vendors } from "../../database/schema.js";
 import type { LocalePick } from "../../../Shared/commerce/fromInventory.js";
@@ -43,6 +44,8 @@ export async function storesSelling(request: { department: string; sub?: string 
     .where(and(
       eq(products.status, "published"),
       eq(vendors.status, "approved"),
+      /* The new shop's department: refurbished products are a section apart. */
+      newOnly(),
       or(eq(categories.name, department), sql`${department} = any(${products.tags})`),
     ))
     /* Ends on the id, so a tie between two stores goes the same way on every read. */

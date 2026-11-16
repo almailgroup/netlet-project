@@ -43,7 +43,26 @@ function encode(canvas: HTMLCanvasElement, type: string, quality: number): Promi
   return new Promise(resolve => canvas.toBlob(resolve, type, quality));
 }
 
-export async function preparePhoto(file: Blob, fix: boolean): Promise<PreparedPhoto | PrepareProblem> {
+/** The average colour round a picture's edge, to widen it with when it has no one background colour. */
+function edgeColour(context: CanvasRenderingContext2D, width: number, height: number): [number, number, number] {
+  const sums = [0, 0, 0];
+  let count = 0;
+  const add = (data: Uint8ClampedArray) => {
+    for (let i = 0; i < data.length; i += 4) { sums[0] += data[i]; sums[1] += data[i + 1]; sums[2] += data[i + 2]; count += 1; }
+  };
+  add(context.getImageData(0, 0, width, 1).data);
+  add(context.getImageData(0, height - 1, width, 1).data);
+  add(context.getImageData(0, 0, 1, height).data);
+  add(context.getImageData(width - 1, 0, 1, height).data);
+  return count ? [Math.round(sums[0] / count), Math.round(sums[1] / count), Math.round(sums[2] / count)] : [255, 255, 255];
+}
+
+/**
+ * `square` widens or heightens a picture that is not square to one, on its
+ * own background or the colour round its edge, and never crops it — what a
+ * picture NetLet AI drew for a card gets if the model kept the photo's shape.
+ */
+export async function preparePhoto(file: Blob, fix: boolean, options: { square?: boolean } = {}): Promise<PreparedPhoto | PrepareProblem> {
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file);
@@ -70,7 +89,12 @@ export async function preparePhoto(file: Blob, fix: boolean): Promise<PreparedPh
   }
 
   /* Squared on its own background, with a margin, when there is one. */
-  const side = fix && background ? squareAround(source) : 0;
+  let side = fix && background ? squareAround(source) : 0;
+  /* Or squared because the card needs it, padded and never cut. */
+  if (!side && options.square && Math.abs(source.width - source.height) > Math.max(source.width, source.height) * 0.02) {
+    side = Math.max(source.width, source.height);
+    background = background ?? edgeColour(work.context, W, H);
+  }
   const outWidth0 = side || source.width;
   const outHeight0 = side || source.height;
   const shrink = Math.min(1, MAX_EDGE / Math.max(outWidth0, outHeight0));

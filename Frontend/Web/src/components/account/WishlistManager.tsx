@@ -554,7 +554,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                           <Thumb
                             src={product.images[0]?.url}
                             alt={product.images[0]?.altText ?? product.title}
-                            className="size-full object-cover"
+                            className="size-full bg-white object-contain"
                             icon={<ShoppingBag className="size-4" />}
                           />
                         </div>
@@ -619,7 +619,7 @@ function ItemPhoto({ product, href, waiting }: { product: Product | null; href: 
       <Thumb
         src={product.images[0]?.url}
         alt={product.images[0]?.altText ?? product.title}
-        className="size-full object-cover"
+        className="size-full bg-white object-contain"
         icon={<ShoppingBag className="size-4" />}
       />
     </Link>

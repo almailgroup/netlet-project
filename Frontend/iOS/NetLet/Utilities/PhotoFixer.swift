@@ -76,6 +76,22 @@ enum PhotoFixer {
 
     /// The background colour, when the four corners agree on one; nil for a
     /// photo with no uniform border, which is then neither trimmed nor padded.
+    /// The average colour round a picture's edge, to widen it with when it
+    /// has no one background colour (`edgeColour` on the web).
+    static func edgeColour(_ data: [UInt8], width: Int, height: Int) -> Rgb {
+        guard width > 0, height > 0, data.count >= width * height * 4 else { return Rgb(r: 255, g: 255, b: 255) }
+        var sums = (0, 0, 0)
+        var count = 0
+        func add(_ x: Int, _ y: Int) {
+            let i = (y * width + x) * 4
+            sums.0 += Int(data[i]); sums.1 += Int(data[i + 1]); sums.2 += Int(data[i + 2])
+            count += 1
+        }
+        for x in 0..<width { add(x, 0); add(x, height - 1) }
+        for y in 0..<height { add(0, y); add(width - 1, y) }
+        return Rgb(r: sums.0 / count, g: sums.1 / count, b: sums.2 / count)
+    }
+
     static func uniformBackground(_ data: [UInt8], width: Int, height: Int) -> Rgb? {
         guard width > 2, height > 2, data.count >= width * height * 4 else { return nil }
         let inset = max(1, Int(Double(min(width, height)) * 0.01))
@@ -220,7 +236,11 @@ enum PhotoFixer {
     /// The photo made ready to store. With `fix` false only the shrink and the
     /// re-encode happen: the seller's framing, kept as they took it, still has
     /// to be a size and a type NetLet stores.
-    static func prepare(_ image: UIImage, fix: Bool, minEdge: Int, maxEdge: Int, maxBytes: Int) throws -> PreparedPhoto {
+    /// `square` widens or heightens a picture that is not square to one, on
+    /// its own background or the colour round its edge, and never crops it —
+    /// what a picture NetLet AI drew for a card gets if the model kept the
+    /// photo's shape (`preparePhoto`'s `square` on the web).
+    static func prepare(_ image: UIImage, fix: Bool, square: Bool = false, minEdge: Int, maxEdge: Int, maxBytes: Int) throws -> PreparedPhoto {
         let fullWidth = image.size.width * image.scale
         let fullHeight = image.size.height * image.scale
         guard fullWidth >= 1, fullHeight >= 1 else { throw ImagePreparation.Problem.unreadable }
@@ -249,7 +269,12 @@ enum PhotoFixer {
         }
 
         // Squared on its own background, with a margin, when there is one.
-        let side = fix && background != nil ? squareAround(source) : 0
+        var side = fix && background != nil ? squareAround(source) : 0
+        // Or squared because the card needs it, padded and never cut.
+        if side == 0, square, Double(abs(source.width - source.height)) > Double(max(source.width, source.height)) * 0.02 {
+            side = max(source.width, source.height)
+            if background == nil { background = rgba(of: workImage).map { edgeColour($0, width: workWidth, height: workHeight) } ?? Rgb(r: 255, g: 255, b: 255) }
+        }
         let wantedWidth = side > 0 ? side : source.width
         let wantedHeight = side > 0 ? side : source.height
         let shrink = min(1, Double(maxEdge) / Double(max(wantedWidth, wantedHeight)))

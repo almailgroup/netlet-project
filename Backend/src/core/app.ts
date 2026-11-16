@@ -22,7 +22,7 @@ import { appleMapToken } from "./maps.js";
 import { sql } from "drizzle-orm";
 import { describeError } from "./describeError.js";
 import { remindAbandonedBags, sendDueEmails } from "../services/notifications.js";
-import { DrawingRefused, cleanUpPhoto } from "../services/aiImages.js";
+import { DrawingRefused, cleanUpPhoto, squareProductPhoto } from "../services/aiImages.js";
 import { databaseRegionOf, getDb } from "../services/db.js";
 import { holdUntilConnectionsIdle } from "./connectionRelease.js";
 import { sitemapEntries } from "../services/sitemap.js";
@@ -47,7 +47,7 @@ import {
 import { can } from "../../../Shared/inventory/permissions.js";
 import { DOCUMENT_KINDS, DOCUMENT_TYPES, type DocumentKind } from "../../../Shared/inventory/applicationDocuments.js";
 import { fetchManufacturerImage, ImportRefused } from "../services/manufacturerImages.js";
-import { copyPhoto, fetchPhotoToCopy, PhotoCopyRefused } from "../services/photoCopies.js";
+import { copyPhoto, fetchPhotoToCopy, PhotoCopyRefused, assertSquarable, replaceGalleryPhoto } from "../services/photoCopies.js";
 import { authenticateRequest } from "./auth.js";
 import { resolveActor } from "../services/inventory.js";
 
@@ -407,6 +407,62 @@ export function createApp(): Express {
     } catch (error) {
       if (error instanceof PhotoCopyRefused) { res.status(photoCopyStatus(error.reason)).json({ error: error.reason }); return; }
       console.error(`[media] photo copy failed: ${describeError(error)}`);
+      res.status(500).json({ error: "media.failed" });
+    }
+  });
+
+  /**
+   * A gallery photo made square by NetLet AI with nothing cut off, on the
+   * owner's word (`photoCopies.ts`, `squareProductPhoto`): the first takes
+   * the photo as the browser read and shrank it and answers with the square
+   * picture, the second stores the prepared square picture in the photo's
+   * place, naming the address it squared (`X-NetLet-Was`, URI-encoded) so a
+   * photo changed meanwhile is left alone. Both name the gallery photo by its
+   * id, take an image body no form on another site can send, and ask whether
+   * the actor may edit that product before anything is counted or drawn.
+   */
+  app.post("/api/media/square/draw/:imageId", express.raw({ type: ["image/webp", "image/jpeg"], limit: "1100kb" }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
+      if (!/^\d{1,9}$/.test(req.params.imageId)) { res.status(400).json({ error: "media.copyGone" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "media.notAnImage" }); return; }
+      const actor = await resolveActor(user);
+      await assertSquarable(actor, Number(req.params.imageId));
+      const drawn = await squareProductPhoto(actor, new Uint8Array(req.body));
+      res.set({
+        "Content-Type": drawn.type,
+        "Content-Length": String(drawn.bytes.length),
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+      });
+      res.end(drawn.bytes);
+    } catch (error) {
+      if (error instanceof PhotoCopyRefused) { res.status(photoCopyStatus(error.reason)).json({ error: error.reason }); return; }
+      if (error instanceof DrawingRefused) {
+        const status = error.reason === "media.notAllowed" ? 403 : error.reason === "drawing.tooMany" ? 429 : error.reason === "drawing.off" || error.reason === "drawing.failed" ? 503 : 400;
+        res.status(status).json({ error: error.reason });
+        return;
+      }
+      console.error(`[media] square draw failed: ${describeError(error)}`);
+      res.status(500).json({ error: "drawing.failed" });
+    }
+  });
+  app.post("/api/media/square/:imageId", express.raw({ type: ["image/webp", "image/jpeg"], limit: "1600kb" }), async (req, res) => {
+    try {
+      const user = await authenticateRequest(req).catch(() => null);
+      if (!user) { res.status(401).json({ error: "media.notAllowed" }); return; }
+      if (!/^\d{1,9}$/.test(req.params.imageId)) { res.status(400).json({ error: "media.copyGone" }); return; }
+      if (!Buffer.isBuffer(req.body)) { res.status(415).json({ error: "media.notAnImage" }); return; }
+      let was = "";
+      try { was = decodeURIComponent(String(req.headers["x-netlet-was"] ?? "")); } catch { was = ""; }
+      if (!was) { res.status(400).json({ error: "media.copyGone" }); return; }
+      const saved = await replaceGalleryPhoto(await resolveActor(user), Number(req.params.imageId), new Uint8Array(req.body), req.headers["content-type"] ?? "", was);
+      res.status(201).json(saved);
+    } catch (error) {
+      if (error instanceof PhotoCopyRefused) { res.status(photoCopyStatus(error.reason)).json({ error: error.reason }); return; }
+      console.error(`[media] square store failed: ${describeError(error)}`);
       res.status(500).json({ error: "media.failed" });
     }
   });

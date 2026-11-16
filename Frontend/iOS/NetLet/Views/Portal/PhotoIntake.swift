@@ -233,10 +233,10 @@ struct PhotoChoiceSheet: View {
     // MARK: Doing it
 
     /// Off the main thread: it reads every pixel of the working copy.
-    private static func ready(_ data: Data, fix: Bool, rules: Rules.Media) async throws -> PreparedPhoto {
+    private static func ready(_ data: Data, fix: Bool, square: Bool = false, rules: Rules.Media) async throws -> PreparedPhoto {
         let minEdge = rules.minEdge, maxEdge = rules.maxEdge, maxBytes = rules.maxUploadBytes
         return try await Task.detached(priority: .userInitiated) {
-            try PhotoFixer.prepare(try PhotoFixer.image(from: data), fix: fix, minEdge: minEdge, maxEdge: maxEdge, maxBytes: maxBytes)
+            try PhotoFixer.prepare(try PhotoFixer.image(from: data), fix: fix, square: square, minEdge: minEdge, maxEdge: maxEdge, maxBytes: maxBytes)
         }.value
     }
 
@@ -255,6 +255,11 @@ struct PhotoChoiceSheet: View {
         }
         preparing = false
         aiOn = (try? await app.services.api.call(API.mediaAIAvailable)) ?? false
+        // NetLet AI's square copy is asked for at once and chosen when it comes,
+        // on the owner's word ("use NetLet's AI to make the image appropriately,
+        // without any cuts … when adding new products"); the seller can still
+        // pick the photo as taken.
+        if aiOn, taken != nil { await clean() }
     }
 
     private func clean() async {
@@ -266,7 +271,8 @@ struct PhotoChoiceSheet: View {
             // The route takes a little over a megabyte; a heavier photo goes lighter.
             let small = taken.jpeg.count <= 1_000_000 ? taken.jpeg : (UIImage(data: taken.jpeg)?.jpegData(compressionQuality: 0.6) ?? taken.jpeg)
             let drawn = try await app.services.seller.cleanUpPhoto(jpeg: small)
-            cleaned = try await Self.ready(drawn, fix: false, rules: ReferenceData.shared.rules.media)
+            // Square for a card, padded and never cut, if the model kept the photo's shape.
+            cleaned = try await Self.ready(drawn, fix: false, square: true, rules: ReferenceData.shared.rules.media)
             chosen = .cleaned
         } catch {
             let key = APIError.from(error).messageKey(knownKey: Phrasebook.shared.has)

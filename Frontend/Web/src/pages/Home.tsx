@@ -26,6 +26,7 @@ import { HomeHero } from "@/components/home/HomeHero";
 import { GuideShelf } from "@/components/home/GuideShelf";
 import { DEALS_PATH, DealsBand, OccasionBand, TabbedShelf } from "@/components/home/ProductShelf";
 import { RecentlyViewedRail } from "@/components/home/RecentlyViewedRail";
+import { RefurbishedShelf } from "@/components/browse/RefurbishedEntry";
 import { Later } from "@/components/layout/Later";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { useLocation } from "wouter";
@@ -138,6 +139,8 @@ export default function Home() {
       {ready && !occasions.isLoading ? shelves.occasions.map(entry => <OccasionBand key={entry.slug} shelf={entry} {...cards} />) : null}
       {shelf("trending")}
       {shelf("bestsellers")}
+      {/* The refurbished section's own shelf, under its own name: never mixed into the new shop's shelves. */}
+      <RefurbishedShelf {...cards} />
       <RecentlyViewedRail {...cards} />
       {shelf("newest")}
       {articlesOn ? <GuideShelf /> : null}

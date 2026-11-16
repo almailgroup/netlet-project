@@ -43,12 +43,44 @@ export function tryOnFits(department: string | null | undefined): boolean {
 export const CLEANUP_SYSTEM = [
   "You retouch product photos for an online shop.",
   "Edit the photo you are given: replace the background with plain pure white, even out the lighting, and centre the product with a small margin.",
+  "The result is square (1:1), and the whole product is inside it: nothing of the product is cut off at any edge.",
   "Keep the product itself exactly as photographed: the same shape, proportions, colours, materials, text, labels and logos. Do not add, remove, straighten or redraw any part of it.",
   "Add nothing else: no props, no text, no watermark, no reflection. A soft natural shadow under the product is allowed.",
   "Return only the edited photo.",
 ].join(" ");
 
-export const CLEANUP_PROMPT = "Clean up this product photo for the shop's white background.";
+export const CLEANUP_PROMPT = "Clean up this product photo for the shop's white background, as a square picture with the whole product in it.";
+
+/**
+ * A product photo already in the shop, made square for the cards without
+ * cutting anything off, on the owner's word ("all images should be square
+ * for the product cards … use NetLet's AI … without any cuts"). Unlike the
+ * clean-up it keeps the photo as it is — the same background, the same
+ * light — and only widens or heightens the picture to a square, so a photo a
+ * seller chose stays theirs.
+ */
+export const SQUARE_SYSTEM = [
+  "You prepare product photos for the square cards of an online shop.",
+  "Make the photo you are given square (1:1) by extending its background on the short sides, so the whole product is in the picture with a small margin and nothing of it is cut off.",
+  "Keep everything already in the photo exactly as it is: the product's shape, proportions, colours, materials, text, labels and logos, and the background's colour, light and texture. Do not crop, zoom in, straighten, recolour or redraw anything.",
+  "Where the photo already cuts the product off at an edge, leave it cut off: never invent a part of the product.",
+  "Add nothing else: no props, no text, no watermark.",
+  "Return only the edited photo.",
+].join(" ");
+
+export const SQUARE_PROMPT = "Make this product photo square by extending its background, keeping the whole product and changing nothing in it.";
+
+/** How many photos one account may have NetLet AI square in an hour: a shop's gallery, a page at a time. */
+export const MAX_PHOTO_SQUARES_PER_HOUR = 300;
+
+/**
+ * Whether a picture is square enough for a card already — within 2% — so a
+ * photo that is would not be sent to the model to be drawn again.
+ */
+export function isSquareEnough(width: number, height: number): boolean {
+  if (!(width > 0 && height > 0)) return false;
+  return Math.abs(width - height) <= Math.max(width, height) * 0.02;
+}
 
 export const TRY_ON_SYSTEM = [
   "You show a shopper how a piece of clothing, footwear, an accessory or jewellery from an online shop would look on them.",

@@ -26,6 +26,7 @@ import {
   type GatewayResponse,
   type GenerateAnswer,
   type GenerateRequest,
+  type ImageAspect,
   type ServerTask,
 } from "../../../Shared/ai/gateway.js";
 
@@ -46,6 +47,8 @@ export type ModelCall = {
   search?: boolean;
   /** A picture back from the drawing model instead of words. */
   output?: "text" | "image";
+  /** The drawn picture's shape: a card's photo is square. */
+  aspectRatio?: ImageAspect;
   temperature: number;
   maxOutputTokens: number;
   /**
@@ -71,6 +74,7 @@ export async function askModelFor(task: ServerTask, call: ModelCall): Promise<Ge
     json: call.json,
     search: call.search ?? false,
     output: call.output ?? "text",
+    ...(call.aspectRatio ? { aspectRatio: call.aspectRatio } : {}),
     temperature: call.temperature,
     maxOutputTokens: call.maxOutputTokens,
     timeoutMs: Math.max(500, call.deadlineMs - 300),

@@ -27,6 +27,8 @@
  * answer says so when it hit the ceiling rather than under-reporting in
  * silence — the finance panel's rule.
  */
+import type { CatalogueCondition } from "../../../Shared/commerce/condition.js";
+import { conditionWhere } from "./productCondition.js";
 import { and, desc, eq, or, sql, type SQL } from "drizzle-orm";
 import { categories, products, productVariants, vendors } from "../../database/schema.js";
 import type { LocalePick } from "../../../Shared/commerce/fromInventory.js";
@@ -80,10 +82,12 @@ const likeLiteral = (text: string) => text.replace(/[\\%_]/g, character => `\\${
 const fold = (text: SQL) => sql`regexp_replace(translate(lower(${text}), ${FOLD_FROM}, ${FOLD_TO}), ${FOLD_MARKS}, '', 'g')`;
 
 /** A published product of an approved store, in a department when one is named — `productsInCategory`'s rule. */
-function shelfWhere(department: string | null) {
+function shelfWhere(department: string | null, condition: Exclude<CatalogueCondition, "any">) {
   return and(
     eq(products.status, "published"),
     eq(vendors.status, "approved"),
+    /* Two shops: the header's search is the new one's, the refurbished section searches its own. */
+    conditionWhere(condition),
     department ? or(eq(categories.name, department), sql`${department} = any(${products.tags})`) : undefined,
   );
 }
@@ -116,7 +120,7 @@ function docFromRow(row: Row): SearchDoc {
 }
 
 /** The products whose text holds every word somewhere, newest first, up to the ceiling. */
-async function candidates(db: Db, words: QueryWord[], department: string | null): Promise<Row[]> {
+async function candidates(db: Db, words: QueryWord[], department: string | null, condition: Exclude<CatalogueCondition, "any">): Promise<Row[]> {
   const variants = sql<string | null>`(select string_agg(concat_ws(' ', ${productVariants.title}, ${productVariants.options}::text), ' ') from ${productVariants} where ${productVariants.productId} = ${products.id})`;
   const haystack = fold(sql`concat_ws(' ', ${products.title}, ${products.titleAr}, ${products.description}, ${products.descriptionAr}, array_to_string(${products.tags}, ' '), ${products.attributes}::text, ${categories.name}, ${categories.nameAr}, ${variants})`);
   const docs = db
@@ -137,7 +141,7 @@ async function candidates(db: Db, words: QueryWord[], department: string | null)
     .from(products)
     .innerJoin(vendors, eq(products.vendorId, vendors.id))
     .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(shelfWhere(department))
+    .where(shelfWhere(department, condition))
     .as("docs");
   const rows = await db
     .select({
@@ -160,21 +164,21 @@ async function candidates(db: Db, words: QueryWord[], department: string | null)
   return rows as Row[];
 }
 
-export async function ranked(db: Db, term: string, department: string | null) {
+export async function ranked(db: Db, term: string, department: string | null, condition: Exclude<CatalogueCondition, "any"> = "new") {
   const words = queryWords(term);
   if (words.length === 0) return { rows: [] as Row[], capped: false };
-  const found = await candidates(db, words, department);
+  const found = await candidates(db, words, department, condition);
   return { rows: rankDocs(found, docFromRow, term), capped: found.length >= CANDIDATE_CEILING };
 }
 
 /** What people search for across the shop — titles, brands, departments, tags — for the misspelling. */
-async function vocabulary(db: Db): Promise<string[]> {
+async function vocabulary(db: Db, condition: Exclude<CatalogueCondition, "any">): Promise<string[]> {
   const rows = await db
     .select({ title: products.title, titleAr: products.titleAr, tags: products.tags, attributes: products.attributes, department: categories.name, departmentAr: categories.nameAr })
     .from(products)
     .innerJoin(vendors, eq(products.vendorId, vendors.id))
     .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(shelfWhere(null))
+    .where(shelfWhere(null, condition))
     .orderBy(desc(products.updatedAt), desc(products.id))
     .limit(5 * CANDIDATE_CEILING);
   return rows.flatMap(row => [
@@ -187,19 +191,20 @@ async function vocabulary(db: Db): Promise<string[]> {
   ]);
 }
 
-export async function searchCatalogue(request: { q: string; department?: string | null; locale?: LocalePick; limit?: number; stores?: boolean }): Promise<SearchAnswer> {
+export async function searchCatalogue(request: { q: string; department?: string | null; locale?: LocalePick; limit?: number; stores?: boolean; condition?: Exclude<CatalogueCondition, "any"> }): Promise<SearchAnswer> {
   const db = await getDb();
   const term = request.q.trim();
   if (!db || !term) return EMPTY;
   const department = request.department?.trim() || null;
   const limit = Math.min(Math.max(1, request.limit ?? 24), MAX_RESULTS);
+  const condition = request.condition ?? "new";
 
-  let answer = await ranked(db, term, department);
+  let answer = await ranked(db, term, department, condition);
   let correctedTo: string | null = null;
   if (answer.rows.length === 0) {
-    const correction = correctionFromTexts(term, await vocabulary(db));
+    const correction = correctionFromTexts(term, await vocabulary(db, condition));
     if (correction) {
-      const corrected = await ranked(db, correction, department);
+      const corrected = await ranked(db, correction, department, condition);
       if (corrected.rows.length) {
         answer = corrected;
         correctedTo = correction;
@@ -210,10 +215,10 @@ export async function searchCatalogue(request: { q: string; department?: string 
   /* A department search that found nothing has not found that NetLet sells none. */
   let elsewhere = 0;
   if (answer.rows.length === 0 && department) {
-    elsewhere = (await ranked(db, correctedTo ?? term, null)).rows.length;
+    elsewhere = (await ranked(db, correctedTo ?? term, null, condition)).rows.length;
     if (!elsewhere) {
-      const correction = correctionFromTexts(term, await vocabulary(db));
-      if (correction) elsewhere = (await ranked(db, correction, null)).rows.length;
+      const correction = correctionFromTexts(term, await vocabulary(db, condition));
+      if (correction) elsewhere = (await ranked(db, correction, null, condition)).rows.length;
     }
   }
 

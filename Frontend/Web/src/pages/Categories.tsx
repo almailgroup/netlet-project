@@ -35,6 +35,7 @@
  * when nothing does. A department found opens the page on it; a subcategory
  * found opens its products.
  */
+import { RefurbishedEntry } from "@/components/browse/RefurbishedEntry";
 import { ChevronRight, Menu } from "lucide-react";
 import { PageSearchMissed, usePageTerm } from "@/components/layout/PageSearch";
 import { StoreMark, StoreRating, type StoreCardData } from "@/components/store/StoreCard";
@@ -143,6 +144,8 @@ export default function Categories() {
           })}
         </ul>
       )}
+      {/* The refurbished section, a shop of its own, after the new shop's departments. */}
+      {term ? null : <RefurbishedEntry className="mt-8" />}
     </PageBody>
   );
 }

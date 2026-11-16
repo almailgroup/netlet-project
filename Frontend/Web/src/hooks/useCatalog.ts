@@ -24,6 +24,8 @@ import type { LocaleCode } from "@shared/i18n/dictionary";
  * would be a wasted request.
  */
 export const catalogInput = (first: number, locale: LocaleCode) => ({ first, locale });
+/** The refurbished section's own shelf (`Shared/commerce/condition.ts`): a list of its own, never mixed into the new shop's. */
+export const refurbishedInput = (first: number, locale: LocaleCode) => ({ first, locale, condition: "refurbished" as const });
 export const productInput = (handle: string, locale: LocaleCode) => ({ handle, locale });
 
 /*
@@ -33,9 +35,20 @@ export const productInput = (handle: string, locale: LocaleCode) => ({ handle, l
  */
 const FRESH_MS = 30_000;
 
-export function useCatalog(first: number, options: { enabled?: boolean; staleTime?: number } = {}) {
+export function useCatalog(first: number, options: { enabled?: boolean; staleTime?: number; refurbished?: boolean } = {}) {
   const { locale } = useTranslation();
-  const query = trpc.commerce.products.list.useQuery(catalogInput(first, locale), { staleTime: FRESH_MS, ...options });
+  const { refurbished = false, ...rest } = options;
+  const query = trpc.commerce.products.list.useQuery(refurbished ? refurbishedInput(first, locale) : catalogInput(first, locale), { staleTime: FRESH_MS, ...rest });
+  return query;
+}
+
+/**
+ * How many refurbished products are on sale, in all and per department — the
+ * header's, the Categories page's and the home page's way into the section is
+ * drawn only while there is something behind it.
+ */
+export function useRefurbishedSummary() {
+  const query = trpc.commerce.refurbishedSummary.useQuery(undefined, { staleTime: 5 * 60_000 });
   return query;
 }
 

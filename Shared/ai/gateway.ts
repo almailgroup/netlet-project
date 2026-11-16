@@ -450,10 +450,20 @@ export type GenerateRequest = {
   search?: boolean;
   /** `image` asks the drawing model for a picture back instead of words. */
   output?: "text" | "image";
+  /**
+   * The shape of the picture asked for, a drawing's only (`IMAGE_ASPECTS`):
+   * a product photo for a card is drawn square. Absent, the model keeps the
+   * shape of the photo it was given.
+   */
+  aspectRatio?: ImageAspect;
   temperature: number;
   maxOutputTokens: number;
   timeoutMs: number;
 };
+
+/** The picture shapes the drawing model draws to. */
+export const IMAGE_ASPECTS = ["1:1", "3:4", "4:3", "4:5", "5:4", "2:3", "3:2", "9:16", "16:9", "21:9"] as const;
+export type ImageAspect = (typeof IMAGE_ASPECTS)[number];
 
 /** A page a grounded answer read, as Google's search returned it. */
 export type GroundingSource = { uri: string; title: string };
@@ -490,6 +500,10 @@ export function checkGenerateRequest(body: unknown): Checked<GenerateRequest> {
   if (output !== "text" && output !== "image") return fail("output", "text or image");
   if (search && (request.json || output === "image")) return fail("search", "a search answers in plain text");
   if (output === "image" && request.json) return fail("output", "a picture is not JSON");
+  const aspectRatio = request.aspectRatio ?? null;
+  if (aspectRatio !== null && (output !== "image" || !IMAGE_ASPECTS.includes(aspectRatio as ImageAspect))) {
+    return fail("aspectRatio", `a drawing's shape: ${IMAGE_ASPECTS.join(", ")}`);
+  }
   const { temperature, maxOutputTokens, timeoutMs } = request;
   if (typeof temperature !== "number" || !(temperature >= 0 && temperature <= 1)) return fail("temperature", "0 to 1");
   if (!Number.isInteger(maxOutputTokens) || (maxOutputTokens as number) < 1 || (maxOutputTokens as number) > MAX_GENERATE_OUTPUT) {
@@ -506,6 +520,7 @@ export function checkGenerateRequest(body: unknown): Checked<GenerateRequest> {
       json: request.json,
       search,
       output,
+      ...(aspectRatio ? { aspectRatio: aspectRatio as ImageAspect } : {}),
       temperature,
       maxOutputTokens: maxOutputTokens as number,
       timeoutMs: timeoutMs as number,

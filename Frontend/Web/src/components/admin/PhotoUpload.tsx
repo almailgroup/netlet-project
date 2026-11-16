@@ -76,6 +76,21 @@ export function PhotoUpload({ onUploaded, addedNote = "media.uploaded", productN
     }
   }, [choice]);
 
+  /*
+   * NetLet AI is asked by itself as soon as a photo is chosen, on the owner's
+   * word ("use NetLet's AI to make the image … when adding new products"):
+   * every card is square, and the square picture is offered first, chosen,
+   * beside the photo as taken and the rule-fixed one — still the seller's
+   * choice, and only sent once they press Add. Once per photo.
+   */
+  const asked = useRef<Choice | null>(null);
+  useEffect(() => {
+    if (!choice || choice.ai || asked.current === choice || !modelOn.data || cleaning) return;
+    asked.current = choice;
+    void cleanUp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- asked once per chosen photo
+  }, [choice, modelOn.data]);
+
   if (DEMO_MODE) return null;
 
   const chosen = async (file: Blob | undefined, source: string | null = null) => {
@@ -102,7 +117,8 @@ export function PhotoUpload({ onUploaded, addedNote = "media.uploaded", productN
         const body = (await response.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? "drawing.failed");
       }
-      const prepared = await preparePhoto(await response.blob(), false);
+      /* Square for the cards whatever the model drew: padded, never cut. */
+      const prepared = await preparePhoto(await response.blob(), false, { square: true });
       if (typeof prepared === "string") throw new Error(prepared);
       const url = URL.createObjectURL(prepared.blob);
       setChoice(current => current && { ...current, ai: prepared, urls: { ...current.urls, ai: url } });

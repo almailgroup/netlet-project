@@ -21,8 +21,9 @@
  * on the shop answers by. The reviews are the newest, whatever their stars: a
  * store page that picked its best ones would be an advert.
  */
+import { isRefurbished } from "@shared/commerce/condition";
 import { toastHeart } from "@/lib/heartToast";
-import { MapPin, PackageOpen, Search, SlidersHorizontal, Store as StoreIcon, Truck, Wallet, Zap } from "lucide-react";
+import { MapPin, PackageOpen, Recycle, Search, SlidersHorizontal, Store as StoreIcon, Truck, Wallet, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
@@ -81,6 +82,8 @@ export default function Store() {
     const sort = read.get("sort");
     return {
       department: read.get("dept") ?? "",
+      /* New or refurbished: the two shops apart on the store's own page too. */
+      condition: read.get("condition") === "refurbished" ? "refurbished" as const : read.get("condition") === "new" ? "new" as const : null,
       term: read.get("q") ?? "",
       sort: (BROWSE_SORTS as string[]).includes(sort ?? "") ? sort as BrowseSort : "relevance" as BrowseSort,
     };
@@ -89,6 +92,7 @@ export default function Store() {
     const next = { ...view, ...patch };
     const write = new URLSearchParams();
     if (next.department) write.set("dept", next.department);
+    if (next.condition) write.set("condition", next.condition);
     if (next.term.trim()) write.set("q", next.term);
     if (next.sort !== "relevance") write.set("sort", next.sort);
     const search = write.toString();
@@ -98,9 +102,19 @@ export default function Store() {
   /* The departments this store sells in, each with how many — the chips over
      the grid. A merchant's own product type is a department of its own here,
      named as they typed it, the department page's rule. */
+  /*
+   * A store selling refurbished products as well as new shows them apart, on
+   * the owner's word ("completely separate from the new products"): the new
+   * first, the refurbished one press away, each with how many. A store selling
+   * only refurbished products opens on them.
+   */
+  const refurbishedCount = useMemo(() => shelf.filter(isRefurbished).length, [shelf]);
+  const newCount = shelf.length - refurbishedCount;
+  const condition = view.condition ?? (newCount > 0 ? "new" : "refurbished");
+  const inCondition = useMemo(() => shelf.filter(product => isRefurbished(product) === (condition === "refurbished")), [shelf, condition]);
   const departments = useMemo(() => {
     const counts = new Map<string, { name: string; count: number }>();
-    for (const product of shelf) {
+    for (const product of inCondition) {
       if (!product.productType) continue;
       const key = categorySlug(product.productType);
       const entry = counts.get(key) ?? { name: product.productType, count: 0 };
@@ -108,21 +122,21 @@ export default function Store() {
       counts.set(key, entry);
     }
     return [...counts.entries()].map(([key, entry]) => ({ key, ...entry })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-  }, [shelf]);
+  }, [inCondition]);
   const departmentLabel = (name: string) => {
     const key = categoryMessageKey(name);
     return key ? t(key) : name;
   };
 
   const shown = useMemo(() => {
-    const inDepartment = view.department ? shelf.filter(product => product.productType && categorySlug(product.productType) === view.department) : shelf;
+    const inDepartment = view.department ? inCondition.filter(product => product.productType && categorySlug(product.productType) === view.department) : inCondition;
     const term = view.term.trim();
     if (term) {
       const ranked = rankBySearch(inDepartment, term);
       return view.sort === "relevance" ? ranked : sortProducts(ranked, view.sort);
     }
     return sortProducts(inDepartment, view.sort);
-  }, [shelf, view]);
+  }, [inCondition, view]);
 
   const onSave = (product: Product) => toastHeart(toggleSaved(product.id), product.title, t);
 
@@ -234,6 +248,25 @@ export default function Store() {
             ) : null}
           </div>
 
+          {/* New and refurbished, two shops apart, when the store sells both. */}
+          {refurbishedCount > 0 && newCount > 0 ? (
+            <div role="group" aria-label={t("refurbished.storeChoice")} className="mt-4 inline-flex rounded-full border border-[#d5dfeb] bg-white p-1">
+              {(["new", "refurbished"] as const).map(which => (
+                <button
+                  key={which}
+                  type="button"
+                  aria-pressed={condition === which}
+                  onClick={() => setView({ condition: which, department: "" })}
+                  className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-bold transition-colors ${condition === which ? "bg-[#0a285a] text-white hover:bg-[#0d3372]" : "text-[#0a285a] hover:bg-[#f0f2f5]"}`}
+                >
+                  {which === "refurbished" ? <Recycle className="size-3.5" aria-hidden /> : null}
+                  {t(which === "new" ? "refurbished.newProducts" : "refurbished.title")}
+                  <span className={`tabular-nums ${condition === which ? "text-white/75" : "ink-muted"}`}>{which === "new" ? newCount : refurbishedCount}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           {/* The box also whenever the address carries words — a store opened
               from a search's "Stores that sell it" — so they can be changed
               or cleared. */}
@@ -256,7 +289,7 @@ export default function Store() {
               ) : null}
               {departments.length > 1 ? (
                 <div role="group" aria-label={t("stores.departments")} className="hide-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1">
-                  {[{ key: "", name: "", count: shelf.length }, ...departments].map(entry => (
+                  {[{ key: "", name: "", count: inCondition.length }, ...departments].map(entry => (
                     <button
                       key={entry.key || "all"}
                       type="button"

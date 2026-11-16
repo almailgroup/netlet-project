@@ -25,7 +25,7 @@ import { searchTermFrom } from "@shared/commerce/browse";
 import { PORTAL_SIDE } from "@/lib/portalHost";
 import { internalPath } from "@shared/portal";
 import { BASE_PATH } from "@/lib/basePath";
-import { catalogInput, productInput } from "@/hooks/useCatalog";
+import { catalogInput, productInput, refurbishedInput } from "@/hooks/useCatalog";
 import type { LocaleCode } from "@shared/i18n/dictionary";
 
 /** What the header asks for on every shopping page: the shelf it suggests from. */
@@ -75,6 +75,11 @@ export function prefetchRouteData(
   const product = /^\/products\/([^/?#]+)\/?$/.exec(path);
   if (product) {
     ask(utils.commerce.products.byHandle.prefetch(productInput(decodeURIComponent(product[1]), locale)));
+    return;
+  }
+  if (/^\/refurbished(\/[^/?#]+)?\/?$/.test(path)) {
+    ask(utils.commerce.products.list.prefetch(refurbishedInput(DEPARTMENT_SHELF, locale)));
+    ask(utils.commerce.refurbishedSummary.prefetch());
     return;
   }
   if (/^\/category\/[^/?#]+\/?$/.test(path) || /^\/search\/?$/.test(path)) {

@@ -40,6 +40,8 @@ import { CatalogueEditor } from "@/components/admin/CatalogueEditor";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { DeleteProductDialog } from "@/components/admin/DeleteProductDialog";
 import { Card, PageHeader, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
+import { ConditionChoice } from "@/components/admin/ConditionChoice";
+import { conditionOf } from "@shared/commerce/condition";
 import { StoreAvatar } from "@/components/admin/StoreAvatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
@@ -140,6 +142,14 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
   });
   const setSize = trpc.inventory.products.setSizeClass.useMutation({
     onSuccess: () => { refresh(); toast.success(t("admin.saved")); },
+    onError: fail,
+  });
+  /* New or refurbished: which shop it is on, saved as it changes (`ConditionChoice`). */
+  const setCondition = trpc.inventory.products.setCondition.useMutation({
+    onSuccess: answer => {
+      refresh();
+      toast.success(t(answer.condition === "refurbished" ? "refurbished.movedToRefurbished" : "refurbished.movedToNew"));
+    },
     onError: fail,
   });
   const setSpeed = trpc.inventory.products.setDeliverySpeed.useMutation({
@@ -263,6 +273,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
      same array so a section cannot be added without a way to reach it. */
   const sections: { id: string; label: MessageKey }[] = [
     { id: "details", label: "admin.sectionDetails" },
+    { id: "condition", label: "refurbished.conditionLabel" },
     /* How many opened it, in the app or on the website, and what came of it (0084). */
     { id: "views", label: "views.cardTitle" },
     { id: "photos", label: "admin.images" },
@@ -405,6 +416,17 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
                 <input dir="auto" value={draft.tags} disabled={!mayEdit} onChange={e => setDraft({ ...draft, tags: e.target.value })} className={inputClass} />
               </Labelled>
             </div>
+          </Card>
+
+          {/* New or refurbished: the refurbished section is a shop of its own. */}
+          <Card id="condition" title={t("refurbished.conditionLabel")} description={t("refurbished.conditionNote")}>
+            <ConditionChoice
+              value={setCondition.isPending && setCondition.variables ? setCondition.variables.condition : conditionOf(row.attributes)}
+              onChange={next => setCondition.mutate({ productId: row.id, condition: next })}
+              disabled={!mayEdit || setCondition.isPending}
+              name="editor-condition"
+              hideLegend
+            />
           </Card>
 
           {/* How many opened it, where, and what came of it — for every rank that reads the shelf. */}

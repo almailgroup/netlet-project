@@ -796,7 +796,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                     const department = departmentLabel(product);
                     return (
                       <button key={entry.key} id={optionId(index)} type="button" role="option" aria-selected={activeIndex === index} tabIndex={-1} onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setActiveIndex(index)} onClick={() => activate(entry)} className={optionClass(index)}>
-                        <Thumb src={product.images[0]?.url} alt="" className="size-9 rounded-sg object-cover" icon={<Search className="size-4" />} />
+                        <Thumb src={product.images[0]?.url} alt="" className="size-9 rounded-sg bg-white object-contain" icon={<Search className="size-4" />} />
                         <span className="min-w-0 flex-1">
                           {/* The words searched for in bold, matched as the search matches them. */}
                           {/* Not `.type-product`: its 18px bold, forced, left nothing for the match to be bolder than. */}

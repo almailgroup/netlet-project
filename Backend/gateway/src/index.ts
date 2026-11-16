@@ -261,6 +261,7 @@ async function generate(body: unknown, caller: string, env: Env, headers: Header
       json: request.json,
       search: request.search,
       draw,
+      aspectRatio: draw ? request.aspectRatio : undefined,
       timeoutMs: request.timeoutMs,
       fetcher: seams.fetcher,
     });
