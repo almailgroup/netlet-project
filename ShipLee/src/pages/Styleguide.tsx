@@ -290,9 +290,9 @@ export function Styleguide() {
       </Section>
 
       <Section id="statuses" title={t("sg.statuses")} lead={t("sg.statusesLead")}>
-        <div className="table-wrap" role="region" aria-label={t("sg.statuses")} tabIndex={0}>
+        <div className="table-wrap" role="region" aria-labelledby="status-table-caption" tabIndex={0}>
           <table className="table">
-            <caption className="sr-only">{t("sg.statuses")}</caption>
+            <caption id="status-table-caption" className="sr-only">{t("sg.statusTable")}</caption>
             <thead>
               <tr><th scope="col">{t("sg.colStage")}</th><th scope="col">{t("sg.colBadge")}</th><th scope="col">{t("sg.colFamily")}</th></tr>
             </thead>
