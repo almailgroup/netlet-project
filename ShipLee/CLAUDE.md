@@ -23,11 +23,19 @@ site itself), white cards with a hairline on a pale ground, soft corners,
 labels above boxes, problems under them. One bold thing — the pine band on the
 home page with a dotted route drawn across it — and quiet everywhere else.
 
-**Every colour is a token at the top of `src/styles.css` and nowhere else**,
-because the owner said the colours may change. Each pairing was measured:
-pine `#0d5c4a` on white and white on pine 7.9:1, the muted ink 6.1:1, a field's
-border 3.7:1, the warning and refusal inks over 7:1 on their fills. A new
-palette is that block alone; measure it the same way.
+**Every colour, size, space, corner, shadow and timing is a token in
+`src/styles/tokens.css` and nowhere else**, because the owner said the colours
+may change. Each pairing was measured: pine `#0d5c4a` on white and white on
+pine 7.9:1, the muted ink 6.1:1, a field's border 3.7:1, the attention and
+stopped inks over 6.4:1 on their fills, the preview ink 7.3:1 on its fill. A
+new palette is that file alone; measure it the same way. The stylesheet is in
+parts (`src/styles.css` imports them in order: tokens, base, the shared parts,
+the frame, the pages, ShipLee AI, the staff desk, the labels, the style
+guide), and the site keeps to four breakpoints, 420, 640, 768 and 960.
+**`/styleguide` draws every part in every state**, its swatches read from the
+tokens at run time so it cannot disagree with them; it is noindex and linked
+only in preview. **No `style` attribute anywhere**: the security policy refuses
+inline styles, so a size that varies is a `data-` attribute and a rule.
 
 **A status is never colour alone**: every status carries its icon and its
 name, and the progress line says to a screen reader whether each step is done,

@@ -171,7 +171,7 @@ function Found({ shipment, checkedAt, checking, onRefresh }: { shipment: PublicS
             ) : null}
           </div>
         </div>
-        {progress.drawn ? <Progress reached={progress.reached} /> : null}
+        {progress.drawn ? <Progress reached={progress.reached} attention={tone === "attention"} /> : null}
         <Timeline events={shipment.events} />
         <div className="checked-row">
           <span>{t("result.checked", { time: formatTime(checkedAt, lang) })}</span>

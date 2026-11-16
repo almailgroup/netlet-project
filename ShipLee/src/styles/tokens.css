@@ -1,0 +1,162 @@
+/*
+ * ShipLee's design tokens: every colour, size, space, corner, shadow and
+ * timing the site is drawn with. Nothing else in the stylesheet writes a raw
+ * colour or a one-off size, so a new palette or a new rhythm is a change to
+ * this file alone.
+ *
+ * Each colour pairing was measured (WCAG relative luminance):
+ *   pine on white 7.9:1, white on pine 7.9:1, white on deep pine 11.0:1,
+ *   the soft white on pine 6.4:1, the muted ink 6.1:1 on white and 5.3:1 on
+ *   the pine tint, a field's border 3.7:1, pine on its tint 6.9:1,
+ *   the attention ink 6.6:1 and the stopped ink 6.4:1 on their fills,
+ *   the preview ink 7.3:1 on its fill.
+ *
+ * Breakpoints cannot be tokens (a media query reads no custom property), so
+ * the site keeps to four, written the same way everywhere:
+ *   420px  a narrow phone       640px  sm: a large phone or small tablet
+ *   768px  md: a tablet         960px  lg: a laptop and up
+ */
+:root {
+  /* Brand */
+  --brand: #0d5c4a;
+  --brand-strong: #094536;
+  --brand-tint: #e6f1ed;
+  --brand-wash: #f2f8f5;
+  --on-brand: #ffffff;
+  --on-brand-soft: #d6ebe3;
+  --on-brand-faint: rgb(255 255 255 / 0.16);
+
+  /* Ink and surfaces */
+  --ink: #13231f;
+  --ink-muted: #4f6762;
+  --ground: #f5f8f7;
+  --surface: #ffffff;
+  --line: #dbe5e1;
+  --field-line: #728b84;
+  --scrim: rgb(9 30 25 / 0.48);
+
+  /* States */
+  --attention-ink: #7a4b00;
+  --attention-fill: #fdf1dc;
+  --attention-line: #f0d9a8;
+  --stopped-ink: #9b2c2c;
+  --stopped-fill: #fbe9e9;
+  --stopped-line: #f0c7c7;
+  /* Marks what is a preview of something not live yet: never a status. */
+  --preview-ink: #4a3aa8;
+  --preview-fill: #efecfb;
+
+  /* Where a parcel is: five families, each with its icon and its name beside it. */
+  --tone-waiting-ink: var(--ink-muted);
+  --tone-waiting-fill: var(--ground);
+  --tone-waiting-line: var(--line);
+  --tone-moving-ink: var(--brand);
+  --tone-moving-fill: var(--brand-tint);
+  --tone-done-ink: var(--on-brand);
+  --tone-done-fill: var(--brand);
+  --tone-attention-ink: var(--attention-ink);
+  --tone-attention-fill: var(--attention-fill);
+  --tone-stopped-ink: var(--stopped-ink);
+  --tone-stopped-fill: var(--stopped-fill);
+
+  /* A printed label is black on white whatever the site's palette, for every scanner. */
+  --label-ink: #000000;
+  --label-paper: #ffffff;
+
+  /* Interaction */
+  --hover-tint: rgb(13 92 74 / 0.07);
+  --press-tint: rgb(13 92 74 / 0.12);
+  --focus: #0d5c4a;
+  --ring: 0 0 0 3px rgb(13 92 74 / 0.2);
+  --ring-stopped: 0 0 0 3px rgb(155 44 44 / 0.16);
+
+  /* Type: one family per language, one scale. */
+  --font: "Inter Variable", "Inter", "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-2xs: 12px;
+  --text-xs: 13px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 28px;
+  --text-4xl: 34px;
+  --text-5xl: 40px;
+  --text-6xl: 52px;
+  --leading-tight: 1.15;
+  --leading-snug: 1.3;
+  --leading-normal: 1.55;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --tracking-tight: -0.02em;
+  --tracking-number: 0.03em;
+
+  /* Space: a 4px rhythm. */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --gutter: var(--space-4);
+  --width: 1120px;
+  --width-reading: 760px;
+
+  /* Sizes */
+  --control: 48px;
+  --control-small: 40px;
+  /* The smallest thing a thumb is asked to hit. */
+  --target: 44px;
+  --header: 64px;
+
+  /* Corners */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 18px;
+  --radius-full: 999px;
+  --radius-card: var(--radius-xl);
+  --radius-control: var(--radius-md);
+
+  /* Depth */
+  --shadow-xs: 0 1px 2px rgb(19 35 31 / 0.05);
+  --shadow-card: 0 1px 2px rgb(19 35 31 / 0.04), 0 6px 20px rgb(19 35 31 / 0.05);
+  --shadow-raised: 0 2px 6px rgb(19 35 31 / 0.06), 0 14px 32px rgb(19 35 31 / 0.1);
+  --shadow-hero: 0 10px 40px rgb(5 30 24 / 0.25);
+  --shadow-overlay: 0 20px 60px rgb(5 30 24 / 0.28);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-fast: 120ms;
+  --duration: 200ms;
+  --duration-slow: 320ms;
+
+  /* Layers */
+  --z-header: 20;
+  --z-float: 30;
+  --z-overlay: 50;
+
+  color-scheme: light;
+}
+:root:lang(ar) {
+  --font: "IBM Plex Sans Arabic", "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Arabic letters carry no tracking. */
+  --tracking-tight: 0;
+}
+@media (min-width: 640px) {
+  :root { --gutter: var(--space-6); }
+}

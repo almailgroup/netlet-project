@@ -1,0 +1,68 @@
+/*
+ * ---------- Shipping labels ----------
+ *
+ * Drawn at their printed size in millimetres (100 × 150 mm label paper), so
+ * these sizes are the paper's and not the screen's type scale.
+ */
+
+.label-tools .staff-bar { padding-block: var(--space-2) var(--space-5); }
+.ship-labels { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-6); }
+.ship-label {
+  display: flex;
+  flex-direction: column;
+  width: 100mm;
+  height: 150mm;
+  padding: 5mm;
+  border: 1px solid var(--line);
+  border-radius: 3mm;
+  background: var(--label-paper);
+  color: var(--label-ink);
+  box-shadow: var(--shadow-card);
+  font-family: "Inter Variable", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  font-size: 3.3mm;
+  line-height: 1.35;
+  overflow: hidden;
+}
+/* A label is drawn at its printed size; a phone sees it a little smaller rather than cut off. */
+@media (max-width: 439.98px) {
+  .ship-label { zoom: 0.74; }
+}
+.ship-label h2 { margin: 0; font-size: 2.6mm; font-weight: var(--weight-semibold); }
+.both { display: flex; justify-content: space-between; gap: 2mm; }
+.both [lang="ar"] { font-family: "IBM Plex Sans Arabic", sans-serif; }
+.label-top { display: flex; align-items: center; justify-content: space-between; padding-bottom: 3mm; border-bottom: 0.4mm solid var(--label-ink); }
+.label-brand { display: inline-flex; align-items: center; gap: 2mm; font-size: 4.6mm; font-weight: var(--weight-bold); }
+.label-site { font-size: 3mm; font-weight: var(--weight-medium); }
+.label-code { padding-block: 3mm; border-bottom: 0.4mm solid var(--label-ink); text-align: center; }
+.barcode { width: 100%; height: 18mm; color: var(--label-ink); }
+.label-number { margin-top: 1.5mm; font-size: 5.6mm; font-weight: var(--weight-bold); letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.label-block { padding-block: 2.5mm; border-bottom: 0.25mm solid var(--label-ink); }
+.label-block p { overflow-wrap: anywhere; }
+.label-to { flex: 1; }
+.label-name { margin-top: 1mm; font-size: 5mm; font-weight: var(--weight-bold); line-height: 1.2; }
+.label-phone { font-size: 4.2mm; font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; }
+.label-place { margin-top: 0.5mm; font-size: 3.8mm; font-weight: var(--weight-semibold); }
+.label-address { font-size: 3.4mm; }
+.label-from p { margin-top: 0.5mm; font-weight: var(--weight-semibold); }
+.label-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 3mm; padding-top: 2.5mm; }
+.label-facts { flex: 1; display: grid; gap: 1.5mm; }
+.label-cod { display: grid; gap: 0.5mm; padding: 2mm; border: 0.3mm solid var(--label-ink); border-radius: 1.5mm; font-size: 2.8mm; font-weight: var(--weight-semibold); }
+.label-cod strong { font-size: 5mm; }
+.label-cod.collect { border-width: 0.6mm; }
+.label-piece, .label-expected { font-size: 3mm; font-weight: var(--weight-semibold); }
+.label-expected { display: flex; gap: 2mm; flex-wrap: wrap; }
+.label-expected .both { gap: 2mm; }
+.label-qr { display: grid; justify-items: center; gap: 1mm; width: 26mm; font-size: 2.4mm; font-weight: var(--weight-semibold); text-align: center; }
+.label-qr .both { flex-direction: column; align-items: center; gap: 0; }
+.qr { width: 24mm; height: 24mm; color: var(--label-ink); }
+.qr .paper { fill: var(--label-paper); }
+
+@media print {
+  @page { size: 100mm 150mm; margin: 0; }
+  body { background: var(--label-paper); }
+  .site-header, .site-footer, .skip-link, .label-tools, .demo-note, .preview-bar, .service-alert, .float-chat { display: none !important; }
+  main .container { max-width: none; padding: 0; }
+  .ship-labels { display: block; gap: 0; }
+  .ship-label { zoom: 1; border: 0; border-radius: 0; box-shadow: none; break-after: page; }
+  .ship-label:last-child { break-after: auto; }
+}

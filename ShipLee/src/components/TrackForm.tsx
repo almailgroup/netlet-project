@@ -11,12 +11,13 @@ import { parseTrackingNumber } from "../../shared/tracking.js";
  * answered with "not found". The error comes with Track and goes as the
  * number is corrected.
  */
-export function TrackForm({ initial = "", autoFocus = false, labelHidden = false }: { initial?: string; autoFocus?: boolean; labelHidden?: boolean }) {
+export function TrackForm({ initial = "", autoFocus = false, labelHidden = false, inputId }: { initial?: string; autoFocus?: boolean; labelHidden?: boolean; inputId?: string }) {
   const { t } = useLanguage();
   const [, navigate] = useLocation();
   const [value, setValue] = useState(initial);
   const [attempted, setAttempted] = useState(false);
-  const id = useId();
+  const generated = useId();
+  const id = inputId ?? generated;
   const parsed = parseTrackingNumber(value);
   const problem = attempted && !parsed.ok ? (parsed.reason === "empty" ? "track.empty" : parsed.reason === "shape" ? "track.shape" : "track.check") : null;
 
@@ -24,16 +25,17 @@ export function TrackForm({ initial = "", autoFocus = false, labelHidden = false
     event.preventDefault();
     setAttempted(true);
     if (parsed.ok) navigate(`/track/${parsed.number}`);
-    else document.getElementById(`${id}-input`)?.focus();
+    else document.getElementById(inputId ?? `${id}-input`)?.focus();
   };
 
   return (
     <form className="track-form" onSubmit={submit} noValidate role="search">
       <div className="field">
-        <label htmlFor={`${id}-input`} className={labelHidden ? "sr-only" : "field-label"}>{t("track.label")}</label>
+        <label htmlFor={inputId ?? `${id}-input`} className={labelHidden ? "sr-only" : "field-label"}>{t("track.label")}</label>
         <div className="row">
           <input
-            id={`${id}-input`}
+            id={inputId ?? `${id}-input`}
+            data-autofocus={autoFocus ? "" : undefined}
             className="input ltr-input"
             value={value}
             onChange={event => setValue(event.target.value)}

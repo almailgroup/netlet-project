@@ -21,3 +21,14 @@ export function useConfig(): Config | null {
   }, []);
   return config;
 }
+
+/** Tells search engines to leave this page alone, for as long as it is showing. */
+export function useNoIndex(): void {
+  useEffect(() => {
+    const robots = document.createElement("meta");
+    robots.name = "robots";
+    robots.content = "noindex";
+    document.head.append(robots);
+    return () => robots.remove();
+  }, []);
+}

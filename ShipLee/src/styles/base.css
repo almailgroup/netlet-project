@@ -1,0 +1,98 @@
+/* ---------- Base: the page, its type and what every element starts as ---------- */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header) + var(--space-4));
+}
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+/* The footer sits at the foot of the screen on a short page, never above a strip of ground. */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
+}
+main { flex: 1 0 auto; }
+main:focus { outline: none; }
+
+h1, h2, h3, h4, p, ol, ul, dl, dd, figure, blockquote { margin: 0; }
+ol, ul { padding: 0; list-style: none; }
+img, svg { display: block; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--brand); text-underline-offset: 3px; }
+a:hover { color: var(--brand-strong); }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  top: -60px;
+  z-index: var(--z-overlay);
+  padding: var(--space-2-5) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--brand);
+  color: var(--on-brand);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+.skip-link:focus { top: var(--space-3); color: var(--on-brand); }
+
+.container {
+  width: 100%;
+  max-width: calc(var(--width) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+.narrow { max-width: calc(var(--width-reading) + 2 * var(--gutter)); }
+
+/* Words a person typed keep their own direction (an English area on the
+   Arabic page) but line up with the page around them. Chromium and Safari
+   know the value only by its prefixed name. */
+[dir="auto"] {
+  text-align: -webkit-match-parent;
+  text-align: match-parent;
+}
+/* Arrows that mean "on" or "back" turn round on the Arabic page. */
+[dir="rtl"] .flip { transform: scaleX(-1); }
+
+/* These only hide; what each element is otherwise drawn as stays its own. */
+@media (max-width: 767.98px) {
+  .only-wide { display: none !important; }
+}
+@media (min-width: 768px) {
+  .only-narrow { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

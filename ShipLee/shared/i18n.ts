@@ -7,6 +7,8 @@
  * needs (`PLURALS`): Arabic has a dual and two plural bands, and one string per
  * key would write "3 قطعة".
  */
+import { uiAr, uiEn } from "./copy/ui.js";
+
 export type Lang = "en" | "ar";
 export const LANGS: readonly Lang[] = ["en", "ar"];
 
@@ -14,7 +16,6 @@ const en = {
   "site.name": "ShipLee",
   "nav.skip": "Skip to content",
   "nav.home": "ShipLee, tracking home",
-  "nav.track": "Track",
   "nav.help": "Help",
   "nav.main": "Main",
   "nav.footer": "More from ShipLee",
@@ -335,6 +336,8 @@ const en = {
   "intake.empty": "Paste the order message first.",
   "intake.long": "That message is too long. Paste the order on its own.",
   "intake.nothing": "ShipLee AI couldn't find shipment details in that message.",
+
+  ...uiEn,
 };
 
 export type Key = keyof typeof en;
@@ -343,7 +346,6 @@ const ar: Record<Key, string> = {
   "site.name": "ShipLee",
   "nav.skip": "تخطَّ إلى المحتوى",
   "nav.home": "ShipLee، صفحة التتبّع",
-  "nav.track": "تتبّع",
   "nav.help": "المساعدة",
   "nav.main": "القائمة الرئيسية",
   "nav.footer": "المزيد من ShipLee",
@@ -664,6 +666,8 @@ const ar: Record<Key, string> = {
   "intake.empty": "الصق رسالة الطلب أولاً.",
   "intake.long": "الرسالة طويلة جداً. الصق الطلب وحده.",
   "intake.nothing": "لم يجد ShipLee AI تفاصيل شحنة في هذه الرسالة.",
+
+  ...uiAr,
 };
 
 export const DICTIONARY: Record<Lang, Record<Key, string>> = { en, ar };

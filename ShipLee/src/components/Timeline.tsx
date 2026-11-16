@@ -2,6 +2,7 @@ import { useLanguage } from "../i18n.js";
 import type { TrackingEvent } from "../../shared/shipment.js";
 import { dayBefore, dayOf, formatDate, formatTime } from "../../shared/format.js";
 import { kuwaitDay } from "../../shared/kuwait.js";
+import { toneOf } from "../../shared/status.js";
 
 /**
  * A parcel's updates, newest first, under a heading for each Kuwaiti day —
@@ -30,7 +31,7 @@ export function Timeline({ events, headingLevel = 2 }: { events: TrackingEvent[]
           <DayHeading>{dayName(day, dayEvents[0]!.happenedAt)}</DayHeading>
           <ol className="events">
             {dayEvents.map((event, index) => (
-              <li key={`${event.happenedAt}-${index}`} className={`event${dayIndex === 0 && index === 0 ? " latest" : ""}`}>
+              <li key={`${event.happenedAt}-${index}`} className={`event${dayIndex === 0 && index === 0 ? ` latest tone-${toneOf(event.status)}` : ""}`}>
                 <time dateTime={event.happenedAt}>{formatTime(event.happenedAt, lang)}</time>
                 <span className="rail" aria-hidden="true" />
                 <div>

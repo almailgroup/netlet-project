@@ -1,13 +1,12 @@
-import { useState } from "react";
 import { Link } from "wouter";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useLanguage } from "../i18n.js";
 import { useConfig, usePageTitle } from "../hooks.js";
 import { TrackForm } from "../components/TrackForm.js";
-import { STATUS_ICONS, StatusPill } from "../components/Status.js";
+import { RecentlyTracked } from "../components/RecentlyTracked.js";
+import { HOME_TRACK_ID } from "../nav.js";
+import { STATUS_ICONS } from "../components/Status.js";
 import { AiMark } from "../components/ShipLeeAI.js";
-import { forgetAllTracked, forgetTracked, readRecent } from "../recent.js";
-import type { Recent } from "../recent.js";
 import { MILESTONES } from "../../shared/status.js";
 import type { Key } from "../../shared/i18n.js";
 
@@ -35,13 +34,13 @@ export function Home() {
           <h1 id="home-title">{t("home.title")}</h1>
           <p className="hero-lead">{t("home.lead")}</p>
           <div className="hero-card">
-            <TrackForm autoFocus={false} />
+            <TrackForm inputId={HOME_TRACK_ID} />
             <RecentlyTracked />
             {config?.demo && config.samples.length ? (
               <p className="samples">
                 <span>{t("track.samples")}</span>
                 {config.samples.map(number => (
-                  <Link key={number} href={`/track/${number}`}>{number}</Link>
+                  <Link key={number} href={`/track/${number}`} className="chip">{number}</Link>
                 ))}
               </p>
             ) : null}
@@ -94,40 +93,5 @@ export function Home() {
         </section>
       </div>
     </>
-  );
-}
-
-/**
- * The numbers this device tracked lately, each with the status it had when
- * last seen, so a second look is one press. Kept on the device alone, and
- * each can be taken off, or all of them.
- */
-function RecentlyTracked() {
-  const { t } = useLanguage();
-  const [recent, setRecent] = useState<Recent[]>(readRecent);
-  if (!recent.length) return null;
-  return (
-    <section className="recent" aria-labelledby="recent-title">
-      <div className="recent-head">
-        <h2 id="recent-title">{t("recent.title")}</h2>
-        <button type="button" className="button button-quiet button-small" onClick={() => setRecent(forgetAllTracked())} aria-label={t("recent.clearName")}>
-          <span aria-hidden="true">{t("recent.clear")}</span>
-        </button>
-      </div>
-      <ul className="recent-list">
-        {recent.map(item => (
-          <li key={item.number}>
-            <Link href={`/track/${item.number}`} className="recent-link">
-              <bdi className="number" dir="ltr">{item.number}</bdi>
-              <StatusPill status={item.status} />
-            </Link>
-            <button type="button" className="recent-remove" onClick={() => setRecent(forgetTracked(item.number))} aria-label={t("recent.remove", { number: item.number })}>
-              <X size={16} aria-hidden="true" />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <p className="recent-note">{t("recent.note")}</p>
-    </section>
   );
 }
