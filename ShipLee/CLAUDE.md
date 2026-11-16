@@ -108,6 +108,19 @@ not race), so setting ShipLee up is connecting a database. A later change to a
 table is an `alter` added there. Row-level security is on with no policies,
 which closes the tables to Supabase's public keys.
 
+**It may live inside NetLet's Supabase project, walled off, on the owner's
+word** (`shared-database.sql`): a `shiplee` schema and a `shiplee_app` login
+with usage and create there and nothing else, `search_path = shiplee` so the
+unqualified tables land there, at most 10 connections and 30 seconds a
+statement. **Never NetLet's `postgres` login**, which would put NetLet's
+customers and orders in ShipLee's Vercel settings. So keep every table name
+unqualified and every statement inside what the login can do: no extension,
+no `public.`, nothing a non-owner cannot run. Tried against Postgres 16 set up
+as Supabase is (a non-superuser `postgres`, `anon` and `authenticated`):
+ShipLee's own store made its four tables there as `shiplee_app`, and that login
+was refused every NetLet table, reading and writing, and creating in `public`;
+`anon` and `authenticated` were refused the `shiplee` schema.
+
 **At most two connections per instance, and never more queries at once than
 connections** (`db.ts`'s gate) — NetLet's lesson: postgres.js pipelines a query
 onto a busy connection, and Supabase's transaction pooler never answers one

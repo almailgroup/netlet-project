@@ -41,6 +41,18 @@ this folder.
    *Storage → Create Database* and pick a Postgres provider, which sets
    `DATABASE_URL` or `POSTGRES_URL` for you.
    There is nothing to paste: the tables are made on the first request.
+
+   **Or share NetLet's Supabase project, walled off.** In NetLet's project,
+   SQL Editor → New query, paste `shared-database.sql` with a password of
+   your own on its `shiplee_password` line (20 or more letters and numbers),
+   and run it. It makes a `shiplee` section of the database and a
+   `shiplee_app` login that can use that section and nothing else: every
+   NetLet table refuses it, and it may hold at most 10 connections and run
+   a query for at most 30 seconds. `DATABASE_URL` is then NetLet's
+   *Transaction pooler* string with the user `postgres.<ref>` changed to
+   `shiplee_app.<ref>` and that password. Never give ShipLee NetLet's own
+   `postgres` login: ShipLee's Vercel project would then hold the key to
+   NetLet's customers and orders.
 2. **A Vercel project.** *Add New → Project*, import this repository, and set
    **Root Directory** to `ShipLee`. Vercel reads `ShipLee/vercel.json` for the
    rest — install, build, output, the function and the headers. Leave

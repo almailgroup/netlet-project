@@ -48,7 +48,9 @@ Everything under `Frontend/Web/src/hooks/` is a hook and everything in
 the owner's word: ShipLee's parcel-tracking site for shiplee.delivery, in
 NetLet's design language in white and pine green. It has its own
 `package.json`, lockfile, TypeScript, tests, CI (`.github/workflows/shiplee.yml`),
-Vercel project (Root Directory `ShipLee`) and database, and imports nothing
+Vercel project (Root Directory `ShipLee`) and database (its own project, or a
+walled-off `shiplee` schema and login in NetLet's, `ShipLee/shared-database.sql`
+— never NetLet's own login), and imports nothing
 from here — but asks NetLet's Cloudflare Worker for ShipLee AI, through a door
 and a secret of its own; NetLet's `tsconfig.json` and `vitest.config.ts` name their own
 folders, so neither reads it. `ShipLee/CLAUDE.md` is its architecture document.
