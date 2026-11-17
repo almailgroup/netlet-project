@@ -150,6 +150,7 @@ struct SponsoredShelf: View {
     let slot: String
     var departmentSlug: String?
     @State private var products: [Product] = []
+    @State private var rowHeight = RowHeight()
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -171,15 +172,17 @@ struct SponsoredShelf: View {
                             disclosure
                         }
                         .padding(.horizontal, 16)
+                        // Every card the row's height, the row its tallest card's (`RowHeight`).
                         ScrollView(.horizontal, showsIndicators: false) {
                             LazyHStack(alignment: .top, spacing: 12) {
                                 ForEach(products) { product in
                                     ProductCard(product: product, note: note(product)).frame(width: 164)
+                                        .evenCell($rowHeight, row: products.map(\.id))
                                 }
                             }
                             .padding(.horizontal, 16)
                         }
-                        .heldHeight(for: products.map(\.id) + ["\(app.cart.cart?.items.count ?? 0)"])
+                        .evenRow($rowHeight, row: products.map(\.id))
                     }
                     .padding(.vertical, 24)
                 } else {

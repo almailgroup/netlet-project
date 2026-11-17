@@ -566,6 +566,7 @@ struct SavedForLaterRow: View {
     /// the row holds its place with outlines, or it arrived a moment after
     /// the bag and pushed the summary down the screen.
     @State private var loadedFor: String?
+    @State private var rowHeight = RowHeight()
     @Environment(\.accessibilityReduceMotion) private var still
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -582,6 +583,8 @@ struct SavedForLaterRow: View {
         let key = ids.joined(separator: ",") + "|" + l.current.rawValue
         let shown = ids.compactMap { id in products.first { $0.id == id } }
         let waiting = shown.isEmpty && !ids.isEmpty && loadedFor != key
+        // The cards the row's height was measured for (`RowHeight`).
+        let rowKey = shown.map(\.id) + (waiting ? ["waiting"] : [])
         VStack(alignment: .leading, spacing: 12) {
             if !shown.isEmpty || waiting {
                 HStack(spacing: 12) {
@@ -611,6 +614,7 @@ struct SavedForLaterRow: View {
                         } else {
                             ForEach(shown) { product in
                                 SavedProductCard(product: product)
+                                    .evenCell($rowHeight, row: rowKey)
                             }
                         }
                     }
@@ -618,8 +622,8 @@ struct SavedForLaterRow: View {
                     .scrollTargetLayout()
                 }
                 .scrollTargetBehavior(.viewAligned)
-                // The row keeps its height while it holds the same cards (`HeldHeight`).
-                .heldHeight(for: shown.map(\.id) + ["\(waiting)"])
+                // Every card the row's height, the row its tallest card's (`RowHeight`).
+                .evenRow($rowHeight, row: rowKey)
                 .padding(.horizontal, -16)
             }
         }
@@ -783,7 +787,8 @@ struct SavedProductCard: View {
         }
         .padding(grid ? 10 : 8)
         .frame(width: grid ? nil : 152)
-        .frame(maxWidth: grid ? .infinity : nil, maxHeight: grid ? .infinity : nil, alignment: .top)
+        // As tall as what it is offered: the grid's row, or the sideways row's tallest card (`RowHeight`).
+        .frame(maxWidth: grid ? .infinity : nil, maxHeight: .infinity, alignment: .top)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }

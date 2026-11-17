@@ -66,85 +66,155 @@ struct ProductStrip: View {
     var ranked = false
     /// A card's line in the store's place, where a shelf has one to say.
     var note: ((Product) -> String?)? = nil
-    @Environment(AppModel.self) private var app
+    @State private var height = RowHeight()
 
     var body: some View {
         let shown = products.prefix(HomeShelf.most).map(\.id)
+        if UITestHooks.oldStrip {
+            oldRow
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 12) {
+                    ForEach(Array(products.prefix(HomeShelf.most).enumerated()), id: \.element.id) { index, product in
+                        cell(index: index, product: product)
+                            .evenCell($height, row: shown)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+            .evenRow($height, row: shown)
+            .accessibilityIdentifier("product-strip")
+        }
+    }
+
+    @ViewBuilder
+    private func cell(index: Int, product: Product) -> some View {
+        if ranked {
+            HStack(alignment: .bottom, spacing: -8) {
+                RankFigure(place: index + 1)
+                ProductCard(product: product)
+            }
+            .frame(width: 200)
+        } else {
+            ProductCard(product: product, note: note?(product))
+                .frame(width: 164)
+        }
+    }
+
+    /// The row as it was before `RowHeight`, drawn only under the diagnosis
+    /// switch (`UITestHooks.oldStrip`): bottom-aligned and sized by the cards
+    /// it had made so far.
+    private var oldRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(alignment: .bottom, spacing: 12) {
                 ForEach(Array(products.prefix(HomeShelf.most).enumerated()), id: \.element.id) { index, product in
-                    if ranked {
-                        HStack(alignment: .bottom, spacing: -8) {
-                            RankFigure(place: index + 1)
-                            ProductCard(product: product)
-                        }
-                        .frame(width: 200)
-                    } else {
-                        ProductCard(product: product, note: note?(product))
-                            .frame(width: 164)
-                    }
+                    cell(index: index, product: product)
                 }
             }
             .padding(.horizontal, 16)
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.viewAligned)
-        // A card grows by its Buy now when its product goes in the bag, so
-        // the bag is part of what decides the row's height.
-        .heldHeight(for: shown + ["\(app.cart.cart?.items.count ?? 0)"])
+        .accessibilityIdentifier("product-strip")
     }
 }
 
-/// **A lazy row keeps the height it has measured**, for as long as what it
-/// holds is the same. A `LazyHStack` in a sideways scroll is as tall as the
-/// cards it has made, and it lets them go once the row is off the screen —
-/// so its height fell to nothing and came back as the page moved, and the
-/// page's own height went with it. The scroll trace of the home page's
-/// stand-still shows exactly that (#136): the content's height flipping
-/// between 2,587 and about 4,390 points every frame or two — the home page's
-/// lazy rows together are about 1,800 — until the page stood still and was
-/// put back at its top. Held, a row's height can only grow while its
-/// contents are the same, so nothing a lazy row forgets can move the page.
-/// A change of `key` — other products, a product in or out of the bag — lets
-/// it settle again.
-struct HeldHeight<Key: Equatable>: ViewModifier {
-    let key: Key
-    @State private var held: CGFloat = 0
-    /// The last height measured, kept where writing it draws nothing again.
-    @State private var last = HeldHeightBox()
-
-    func body(content: Content) -> some View {
-        content
-            .background {
-                GeometryReader { proxy in
-                    Color.clear
-                        .onChange(of: proxy.size.height.rounded(), initial: true) { _, height in
-                            last.height = height
-                            if height > held { held = height }
-                        }
-                }
-            }
-            .frame(minHeight: held, alignment: .top)
-            .onChange(of: key) { _, _ in
-                // It may be shorter now: let go, and take what it settles at.
-                held = 0
-                Task { @MainActor in
-                    if last.height > held { held = last.height }
-                }
-            }
-    }
-}
-
-/// `HeldHeight`'s last measurement: a box, so a new one is not a new state.
-final class HeldHeightBox {
+/// **Every card in a sideways row is as tall as the tallest card the row has
+/// made, and the row is that tall, on the owner's report** ("fix incomplete
+/// or cropped product images in New Arrivals … the disappearing Sold Out
+/// label").
+///
+/// A `LazyHStack` in a sideways scroll is as tall as the cards it has made,
+/// and a card made later — scrolled to — can be taller: a sold-out card
+/// carries Notify me, a card whose product is in the bag carries Buy now,
+/// some carry stars. New arrivals mixes them most (the newest products, many
+/// sold out). The row did not grow for that card, and it was bottom-aligned,
+/// so the card stood out of the row's top and the row cut it off there — the
+/// top of its photo and the "Sold out" tag drawn on it. Top-aligned, it would
+/// have lost its Notify me at the foot instead.
+///
+/// So each cell is laid out at the larger of its own height and the row's
+/// (`EvenCell`), every card stretching to the row like the web's grid; each
+/// cell reports the height it was laid out at; and the row's height is set
+/// from the largest report, so a taller card made later grows the whole row
+/// on the next frame rather than being cut. The cells are top-aligned, so in
+/// that one frame anything that does not fit is at a card's foot, never its
+/// photo.
+///
+/// **The height only grows while the row holds the same products**, which is
+/// what kept the home page still (#136): a lazy row lets its cards go once
+/// they are off the screen, and a row sized by what it holds fell to nothing
+/// and came back as the page moved — the scroll trace showed the content's
+/// height flipping between 2,587 and about 4,390 points every frame or two.
+/// Another set of products (a department tab, a fresh answer, a card moved
+/// to the bag) is measured from nothing: every cell reports again with it,
+/// and the row keeps its place in the scroll.
+struct RowHeight: Equatable {
+    /// The products the height was measured for.
+    var row: [String] = []
     var height: CGFloat = 0
+
+    /// The height to lay this row out at: nothing yet for another set of products.
+    func held(for row: [String]) -> CGFloat { self.row == row ? height : 0 }
+
+    /// A cell laid out at `measured` in `row`: the row grows to it, or starts over.
+    mutating func cell(_ measured: CGFloat, in row: [String]) {
+        if self.row != row {
+            self = RowHeight(row: row, height: measured)
+        } else if measured > height {
+            height = measured
+        }
+    }
+}
+
+/// One cell of a sideways row (`RowHeight`): laid out at the larger of its own
+/// height and the row's, with the card offered the whole of it, so a card's
+/// own `.frame(maxHeight: .infinity)` stretches it and its white ground to the
+/// row like its neighbours.
+struct EvenCell: Layout {
+    let height: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let card = subviews.first else { return .zero }
+        let own = card.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        return CGSize(width: own.width, height: max(own.height, height))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading,
+                              proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
+    }
 }
 
 extension View {
-    /// Keeps a lazy row from getting shorter while `key` is the same.
-    func heldHeight<Key: Equatable>(for key: Key) -> some View {
-        modifier(HeldHeight(key: key))
+    /// A cell of a sideways row whose cards are all one height (`RowHeight`).
+    func evenCell(_ height: Binding<RowHeight>, row: [String]) -> some View {
+        EvenCell(height: height.wrappedValue.held(for: row)) { self }
+            .background {
+                GeometryReader { proxy in
+                    // With the row's products, so every cell reports again when
+                    // they change — the tallest one too, whose size need not.
+                    Color.clear
+                        .onChange(of: RowCellMeasure(height: proxy.size.height.rounded(.up), row: row), initial: true) { _, measure in
+                            height.wrappedValue.cell(measure.height, in: measure.row)
+                        }
+                }
+            }
     }
+
+    /// The sideways scroll holding those cells: as tall as its tallest card.
+    func evenRow(_ height: Binding<RowHeight>, row: [String]) -> some View {
+        let held = height.wrappedValue.held(for: row)
+        return frame(height: held > 0 ? held : nil, alignment: .top)
+    }
+}
+
+/// What a cell of a sideways row reports: its height, in which row.
+private struct RowCellMeasure: Equatable {
+    let height: CGFloat
+    let row: [String]
 }
 
 /// An occasion's banner, 3:1 as it was cropped when it was uploaded
@@ -331,7 +401,7 @@ struct DepartmentCardGrid: View {
         if row {
             ScrollView(.horizontal, showsIndicators: false) {
                 // Six tiles: made at once, so the row's height is never a
-                // lazy stack's guess (see `HeldHeight`).
+                // lazy stack's guess (see `RowHeight`).
                 HStack(alignment: .top, spacing: 10) {
                     tiles(width: 112)
                 }

@@ -10501,7 +10501,7 @@ passed in the same run. So the grid was not the whole of it. That test said
 only how far the page moved; it keeps a screenshot, what was under the flick
 and the page's own trace now, as the drags' test does.
 **What is left on the page that guesses its size is its lazy rows, and their
-heights are held now** (`HeldHeight`, `heldHeight(for:)` in `Shelves.swift`).
+heights are held now** (`HeldHeight` then; `RowHeight`, below, now).
 A `LazyHStack` in a sideways scroll is as tall as the cards it has made and
 lets them go once the row is off the screen, and the home page's lazy rows
 together — the departments, the sponsored shelf, the product rows — are about
@@ -10540,6 +10540,36 @@ held still, and only further runs without a stand-still can settle the
 question. **A small row after a large one in a lazy
 stack is the shape to avoid**: it is guessed at the large one's size until
 it is reached.
+
+**A sideways row is as tall as its tallest card, and every card is that
+tall, on the owner's report** ("fix incomplete or cropped product images in
+New Arrivals … the disappearing Sold Out label"; `RowHeight`, `EvenCell`,
+`evenCell` and `evenRow` in `Shelves.swift`). The row held only its own
+measured height, and a `LazyHStack` measures only the cards it has made. A
+card made later — scrolled to — could be taller: a sold-out card carries
+Notify me (since da9bc83), a card whose product is in the bag Buy now, some
+carry stars. The row did not grow for it, and being bottom-aligned it stood
+the card out of its top, where the scroll cut it off: the top of the photo and
+the "Sold out" tag drawn on it. New arrivals mixes them most, the newest
+products being the jewellery store's, half of them sold out. Now each cell is
+laid out at the larger of its own height and the row's, the card stretched to
+it as the web's grid stretches its cards; each cell reports the height it was
+laid out at; the row's height is set from the largest, so a taller card grows
+the row on the next frame; and the cells are top-aligned, so in that one
+frame anything that does not fit is at a card's foot, never its photo. The
+height still only grows while the row holds the same products (the #136
+rule); another set of products — a department tab, a fresh answer, a card
+moved to the bag — is measured from nothing, every cell reporting again with
+the row's products, and the row keeps its place in the scroll (rebuilding it
+with `.id` sent Saved for later back to its start on every Move to cart). The
+sponsored shelf and
+the cart's Saved for later are the same rows. `ShelfUITests` opens the demo's
+`soldout` answers (`demo.commerce.products.list.soldout.json`: basmati rice,
+New arrivals' last card and in the demo bag, sold out), swipes the row to it
+in both languages, and fails if its tag sits outside the row or the cards'
+hearts are not level. The website's New arrivals is a grid, and on the live
+shop at 390 and 1440 every photo there was whole and square and every
+sold-out card wore its tag — measured, and left as it was.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the
