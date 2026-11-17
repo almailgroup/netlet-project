@@ -2120,7 +2120,8 @@ final class OnlinePaymentTests: XCTestCase {
     /// The payable order offers NetLet's test page, the figure sent is the one
     /// shown, and the page's answers decode.
     func testACashOrderPaysOnlineAtTheFigureShown() async throws {
-        let order = try XCTUnwrap(try await recorded("payable").call(API.order, .init(reference: "NL-20261112-FQ3FX")))
+        let read = try await recorded("payable").call(API.order, .init(reference: "NL-20261112-FQ3FX"))
+        let order = try XCTUnwrap(read)
         XCTAssertTrue(order.paymentChange.open, "nothing has been handed over")
         XCTAssertTrue(order.paymentChange.live, "the test page is switched on")
         XCTAssertEqual(order.paymentChange.method, "cod")
@@ -2130,7 +2131,8 @@ final class OnlinePaymentTests: XCTestCase {
         let started = try await client.call(API.paymentStart, .init(reference: order.order.reference, method: "knet", expectOwed: owed.amount))
         XCTAssertEqual(started.amount, owed)
         XCTAssertEqual(started.reference, order.order.reference)
-        let page = try XCTUnwrap(try await client.call(API.paymentGet, .init(paymentId: started.paymentId)))
+        let pageRead = try await client.call(API.paymentGet, .init(paymentId: started.paymentId))
+        let page = try XCTUnwrap(pageRead)
         XCTAssertEqual(page.status, "started")
         XCTAssertTrue(page.test, "the page says it takes no money")
         let paid = try await client.call(API.paymentTest, .init(paymentId: started.paymentId, outcome: "paid"))
@@ -2142,7 +2144,8 @@ final class OnlinePaymentTests: XCTestCase {
     /// portal's scan address, and both come back to the same token.
     @MainActor
     func testAnOrderOnItsWayCarriesTheCodeTheDriverScans() async throws {
-        let order = try XCTUnwrap(try await recorded("ontheway").call(API.order, .init(reference: "NL-20261104-HMGQQ")))
+        let read = try await recorded("ontheway").call(API.order, .init(reference: "NL-20261104-HMGQQ"))
+        let order = try XCTUnwrap(read)
         let paid = try XCTUnwrap(order.paymentChange.paidOnline)
         XCTAssertEqual(paid.method, "knet")
         XCTAssertTrue(paid.test)
