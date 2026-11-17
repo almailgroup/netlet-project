@@ -9255,6 +9255,15 @@ the page had drawn. Three things said something false:
   when its read fails, and `queryState.test.ts` fails on a shop `QueryGate`
   without the shopper's audience.
 
+- **The admin portal says it could not reach NetLet, never that the device
+  is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
+  when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s
+  `unknown`): a failed device check was drawn as "This device isn't authorised
+  for NetLet Admin", and a failed session check sent a signed-in administrator
+  to the sign-in page, which then said the same. It still opens nothing — a
+  gate that cannot be checked stays shut — and Try again asks again; only a
+  real answer of `known: false` is the refusal.
+
 Walked with the API refusing (`.scratch/api-down.mjs`, `signedin-down.mjs`,
 `bag-lost.mjs`, `flaky-refetch2.mjs`): every page names what failed and offers
 Try again, a refocused product stays, the bag keeps its id and comes back on

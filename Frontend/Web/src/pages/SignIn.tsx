@@ -38,6 +38,7 @@ import { PORTAL_SIDE, shopHref } from "@/lib/portalHost";
 import { dropPortalPass, peekPortalPass } from "@/lib/portalPass";
 import { trpc } from "@/lib/trpc";
 import { CircleAlert, ShieldX } from "lucide-react";
+import { failedToLoad } from "@/lib/queryState";
 
 export default function SignIn() {
   const { t } = useTranslation();
@@ -94,9 +95,11 @@ export default function SignIn() {
      again: it is about this browser signed out, which is what this page is. */
   const deviceCheck = trpc.devices.access.useQuery(undefined, { enabled: PORTAL_SIDE === "admin" && !DEMO_MODE && !handingOff, staleTime: 60_000 });
   const [askToSignIn, setAskToSignIn] = useState(false);
-  /* A check that could not be answered refuses too: the card's own button is
-     the way to the form, so nobody is shut out, and nobody is let past by an error. */
-  const refused = PORTAL_SIDE === "admin" && !askToSignIn && (deviceCheck.isError || (deviceCheck.data && !deviceCheck.data.signedIn && deviceCheck.data.rule && !deviceCheck.data.known));
+  /* A check that could not be answered lets nobody past either, but says
+     what happened: "this device isn't authorised" during an outage read to an
+     administrator as their device having been refused. */
+  const unreachable = PORTAL_SIDE === "admin" && !DEMO_MODE && !handingOff && failedToLoad(deviceCheck);
+  const refused = PORTAL_SIDE === "admin" && !askToSignIn && Boolean(deviceCheck.data && !deviceCheck.data.signedIn && deviceCheck.data.rule && !deviceCheck.data.known);
   const checkingDevice = PORTAL_SIDE === "admin" && !DEMO_MODE && !handingOff && deviceCheck.isLoading;
 
   /* Nothing to sign into twice. */
@@ -140,6 +143,8 @@ export default function SignIn() {
             ) : null}
             {checkingDevice ? (
               <p role="status" className="mx-auto max-w-[400px] py-16 text-center text-[15px] ink-muted">{t("admin.loading")}</p>
+            ) : unreachable ? (
+              <PortalUnreachable onRetry={() => void deviceCheck.refetch()} />
             ) : refused ? (
               <DeviceRefusal onSignIn={() => setAskToSignIn(true)} />
             ) : (
@@ -157,6 +162,23 @@ export default function SignIn() {
       </main>
 
     </div>
+  );
+}
+
+/**
+ * The portal's server could not be asked: said as that, with another try,
+ * and no way past — a gate that cannot be checked stays shut.
+ */
+export function PortalUnreachable({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <section aria-labelledby="portal-unreachable" className="mx-auto w-full max-w-md rounded-3xl border border-[#e1e7ef] bg-white px-6 py-8 shadow-[0_18px_50px_-30px_rgba(10,40,90,.45)] sm:px-8">
+      <h1 id="portal-unreachable" className="text-[22px] leading-8 font-extrabold text-[#0a285a]">{t("admin.unreachable")}</h1>
+      <p className="mt-2 text-[15px] leading-6 text-[#3d5170]">{t("common.loadFailedNote")}</p>
+      <button type="button" onClick={onRetry} className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl bg-[#0a285a] px-5 text-[15px] font-semibold text-white hover:bg-[#0d3372]">
+        {t("home.refreshCatalog")}
+      </button>
+    </section>
   );
 }
 

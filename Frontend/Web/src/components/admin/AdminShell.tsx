@@ -40,6 +40,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PORTAL_SIDE, portalHref } from "@/lib/portalHost";
 import { portalSideFor, type PortalSide } from "@shared/portal";
 import { DeviceGate } from "@/components/admin/DeviceGate";
+import { PortalUnreachable } from "@/pages/SignIn";
 
 const ROLE_LABEL: Record<string, MessageKey> = {
   admin: "admin.roleAdmin",
@@ -178,7 +179,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   useJumpShortcut(() => {
     if (framed.current) setJumpOpen(true);
   });
-  const { isAuthenticated, loading: authLoading, user, logout } = useAuth();
+  const { isAuthenticated, loading: authLoading, user, logout, unknown, refresh } = useAuth();
   const search = useSearch();
   /* On a portal's own address the portal keeps its own sign-in, so it has
      its own way out, asked first like the shop's. */
@@ -244,6 +245,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     // mid-load otherwise lands on a page that says nothing at all.
     return <Frame><p role="status" className="text-[14px] ink-muted">{t("admin.loading")}</p></Frame>;
   }
+
+  /* Who is signed in could not be read: not signed out, so no sign-in page —
+     which on the admin portal went on to say the device was not authorised. */
+  if (!DEMO_MODE && unknown) return <Frame><PortalUnreachable onRetry={() => void refresh()} /></Frame>;
 
   if (!reachable) {
     /* Straight to the sign-in page of the address this is — on a portal's
