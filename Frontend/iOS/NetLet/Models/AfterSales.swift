@@ -14,15 +14,73 @@ struct OrderChangeState: Decodable, Hashable, Sendable {
     static let closed = OrderChangeState(changeable: false, reason: nil)
 }
 
-/// Whether how the order is paid may still change — the server's
-/// `paymentChangeState`, the cancel window. A mockup until a payment provider
-/// is connected: cash is all NetLet can take, so the sheet draws KNET, a card
-/// and Apple Pay as coming.
+/// Whether the order may still be paid online instead of in cash — the
+/// server's `paymentChangeState`, until it is delivered (0086, on the owner's
+/// word). `live` says pressing Pay opens NetLet's test page (the
+/// `testPayments` switch, with the table pasted); otherwise it is the mockup
+/// that draws KNET, a card and Apple Pay as coming. `paidOnline` is what was
+/// paid, so the page says the driver collects nothing.
 struct PaymentChangeState: Decodable, Hashable, Sendable {
     let open: Bool
     let method: String?
+    let live: Bool
+    let paidOnline: PaidOnline?
 
-    static let closed = PaymentChangeState(open: false, method: nil)
+    static let closed = PaymentChangeState(open: false, method: nil, live: false, paidOnline: nil)
+
+    init(open: Bool, method: String?, live: Bool, paidOnline: PaidOnline?) {
+        self.open = open
+        self.method = method
+        self.live = live
+        self.paidOnline = paidOnline
+    }
+
+    private enum CodingKeys: String, CodingKey { case open, method, live, paidOnline }
+
+    /// `live` and `paidOnline` are absent from a server older than 0086.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        open = try container.decode(Bool.self, forKey: .open)
+        method = try container.decodeIfPresent(String.self, forKey: .method)
+        live = try container.decodeIfPresent(Bool.self, forKey: .live) ?? false
+        paidOnline = try container.decodeIfPresent(PaidOnline.self, forKey: .paidOnline)
+    }
+}
+
+/// A payment that went through online (0086): the method, the amount, and
+/// whether it was NetLet's test page, which took no money.
+struct PaidOnline: Decodable, Hashable, Sendable {
+    let method: String
+    let amount: Money
+    let test: Bool
+}
+
+/// The QR the driver scans at the door, and the code under it — sent only
+/// while a parcel is on its way (`handover`). `url` is the vendor portal's
+/// scan page, so a driver's own camera opens it; nil on a server that cannot
+/// say where that is, when the token itself is the QR.
+struct OrderHandover: Decodable, Hashable, Sendable {
+    let token: String
+    let code: String
+    let url: String?
+
+    /// "ABCD EFGH", as it is drawn and read aloud (`formatHandoverCode`).
+    var spacedCode: String {
+        code.count == 8 ? "\(code.prefix(4)) \(code.suffix(4))" : code
+    }
+}
+
+/// What each online way is called (the web's `METHOD_NAME`).
+enum OnlineMethodWords {
+    static func title(_ method: String) -> String {
+        switch method {
+        case "knet": return "checkout.payKnet"
+        case "apple_pay": return "checkout.payApple"
+        default: return "checkout.payCard"
+        }
+    }
+
+    static let online: Set<String> = ["knet", "card", "apple_pay"]
 }
 
 /// A warranty claim on one of the order's items (migration 0072), with where
@@ -209,4 +267,23 @@ extension OrderDetail {
     var warrantyClaimable: [OrderLine] { lines.filter { $0.warrantyEligibility?.allowed == true } }
     /// Whether anything on the order can be bought again.
     var mayBuyAgain: Bool { lines.contains { $0.variantId != nil } }
+}
+
+/// A payment started on NetLet's test page (`orders.paymentStart`).
+struct StartedPayment: Decodable, Hashable, Sendable {
+    let paymentId: Int
+    let reference: String
+    let method: String
+    let amount: Money
+}
+
+/// One of the shopper's own payments, as the test page draws it.
+struct TestPayment: Decodable, Hashable, Sendable {
+    let paymentId: Int
+    let reference: String
+    let method: String
+    let amount: Money
+    /// started, paid, failed or refunded.
+    let status: String
+    let test: Bool
 }

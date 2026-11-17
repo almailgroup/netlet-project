@@ -323,6 +323,8 @@ final class AppModel {
     /// `-NetLetOpen helpIssue:<reference>` (Debug, for the screenshots): the
     /// order's help sheet with an issue already chosen.
     var presetHelpIssue: String?
+    /// The way to pay `payOnline:` opens the payment sheet on (screenshots only).
+    var presetPayMethod: String?
     /// `-NetLetOpen confirmOrder` (Debug, for the screenshots): checkout with
     /// "Confirm your order" up, once the bag and the address are read.
     var confirmOrderOnOpen = false
@@ -593,6 +595,13 @@ final class AppModel {
             selectedTab = .account
             orderSheet = "help"
             presetHelpIssue = "damaged"
+            accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
+        case "payOnline":
+            // The payment sheet with KNET chosen: the test page's note and Pay.
+            guard let value else { return }
+            selectedTab = .account
+            orderSheet = "payment"
+            presetPayMethod = "knet"
             accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
         case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress", "orderPayment":
             // `track:`, `refund:`, `rate:`, `warranty:`, `modify:`, `help:`,

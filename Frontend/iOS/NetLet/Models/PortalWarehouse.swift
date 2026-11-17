@@ -267,6 +267,9 @@ struct BoardParcel: Decodable, Identifiable, Hashable, Sendable {
     var fast: Bool? = nil
     /// The store carries this parcel itself (3.3.13): not NetLet's to give out.
     var selfDelivered: Bool? = nil
+    /// Paid online instead (0086): nothing to collect. The board asks again
+    /// while it is open, so a shopper paying on the driver's way shows here.
+    var paidOnline: BoardPaidOnline? = nil
 
     var id: String { "\(orderId)-\(key)" }
 
@@ -637,6 +640,7 @@ extension API {
     static let deliveryCompanies = Procedure<NoInput, [DeliveryCompany]>(query: "dispatch.couriers.list")
     static let deliveryScores = Procedure<NoInput, DeliveryScores>(query: "dispatch.scores")
     static let moveParcel = Procedure<ParcelMove, Acknowledged>(mutation: "dispatch.move")
+    static let handOver = Procedure<HandoverAsk, HandoverAnswer>(mutation: "dispatch.handover")
     static let assignParcel = Procedure<ParcelAssign, Acknowledged>(mutation: "dispatch.assign")
     static let mySharing = Procedure<NoInput, SharingState>(query: "dispatch.mySharing")
     static let sharePosition = Procedure<Position, Acknowledged>(mutation: "dispatch.sharePosition")
@@ -776,4 +780,96 @@ extension API {
     static let bookAd = Procedure<AdBook, AdBooked>(mutation: "ads.book")
     static let cancelAd = Procedure<RowId, Acknowledged>(mutation: "ads.cancel")
     static let reviewBanner = Procedure<BannerDecision, BannerReviewed>(mutation: "ads.reviewBanner")
+}
+
+// MARK: - The driver's check at the door (0086)
+
+/// How a parcel on the board was paid online.
+struct BoardPaidOnline: Decodable, Hashable, Sendable {
+    let method: String
+    let test: Bool
+}
+
+/// A scanned QR (its token) or a typed code against an order; `cashReceived`
+/// hands a cash order over once the money is in hand.
+struct HandoverAsk: Encodable, Sendable {
+    var token: String? = nil
+    var orderId: Int? = nil
+    var code: String? = nil
+    var cashReceived: Bool? = nil
+
+    private enum CodingKeys: String, CodingKey { case token, orderId, code, cashReceived }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(token, forKey: .token)
+        try container.encodeIfPresent(orderId, forKey: .orderId)
+        try container.encodeIfPresent(code, forKey: .code)
+        try container.encodeIfPresent(cashReceived, forKey: .cashReceived)
+    }
+}
+
+/// What the scan answered (`handOver` on the server).
+struct HandoverAnswer: Decodable, Hashable, Sendable {
+    struct Payment: Decodable, Hashable, Sendable {
+        /// online, cash or settled.
+        let kind: String
+        let method: String?
+        let test: Bool?
+        let collect: Money?
+    }
+
+    struct ParcelRef: Decodable, Hashable, Sendable {
+        let key: String
+        let vendorName: String?
+        let items: Int
+    }
+
+    let orderId: Int
+    let reference: String
+    let contactName: String?
+    let payment: Payment
+    let parcels: [ParcelRef]
+    /// Handed over by this call; false for cash until the driver says it is in hand.
+    let done: Bool
+}
+
+/// The rule for what a driver typed, and for a scanned address — the
+/// TypeScript's `normaliseHandoverCode` and `tokenFromScan`, on its cases.
+enum HandoverRules {
+    static let codeLength = 8
+    static let alphabet = Set("ABCDEFGHJKMNPQRTUVWXYZ2346789")
+
+    static func normalise(_ typed: String) -> String? {
+        var folded = ""
+        for scalar in typed.unicodeScalars {
+            switch scalar.value {
+            case 0x0660...0x0669: folded.append(Character(String(scalar.value - 0x0660)))
+            case 0x06F0...0x06F9: folded.append(Character(String(scalar.value - 0x06F0)))
+            default: folded.unicodeScalars.append(scalar)
+            }
+        }
+        folded = folded.uppercased().filter { !" \t\n-–—.".contains($0) }
+        guard folded.count == codeLength, folded.allSatisfy({ alphabet.contains($0) }) else { return nil }
+        return folded
+    }
+
+    /// `parseHandoverToken`: h1, an order id a Postgres integer holds, a signature.
+    static func isToken(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.range(of: #"^h1\.\d{1,10}\.[A-Za-z0-9_-]{16,64}$"#, options: .regularExpression) != nil else { return false }
+        let parts = trimmed.split(separator: ".")
+        guard parts.count == 3, let id = Int(parts[1]) else { return false }
+        return id >= 1 && id <= 2_147_483_647
+    }
+
+    static func token(fromScan scanned: String) -> String? {
+        let text = scanned.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let range = text.range(of: "#h=") {
+            let rest = text[range.upperBound...].prefix { !"& ".contains($0) }
+            let candidate = String(rest).removingPercentEncoding ?? String(rest)
+            return isToken(candidate) ? candidate : nil
+        }
+        return isToken(text) ? text : nil
+    }
 }

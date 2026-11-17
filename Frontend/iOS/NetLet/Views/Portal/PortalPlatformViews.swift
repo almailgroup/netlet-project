@@ -710,7 +710,7 @@ enum FeatureWords {
     static func group(_ key: String) -> String {
         switch key {
         case "ai", "assistant", "recommendations", "boughtTogether", "voiceSearch", "photoSearch": return "search"
-        case "priceOffers", "wishlists", "giftCards", "subscriptions", "membership", "tryOn", "cashOnDelivery": return "shopping"
+        case "priceOffers", "wishlists", "giftCards", "subscriptions", "membership", "tryOn", "cashOnDelivery", "testPayments": return "shopping"
         case "returns", "deliveryRatings", "damageClaims": return "afterSale"
         case "ads", "affiliates", "fulfilment": return "selling"
         default: return "content"
@@ -732,6 +732,7 @@ enum FeatureWords {
         case "affiliates": return "features.affiliates"
         case "ads": return "features.ads"
         case "subscriptions": return "features.subscriptions"
+        case "testPayments": return "features.testPayments"
         case "fulfilment": return "features.fulfilment"
         case "membership": return "features.membership"
         case "voiceSearch": return "features.voiceSearch"
@@ -758,6 +759,7 @@ enum FeatureWords {
         case "affiliates": return "features.affiliatesOff"
         case "ads": return "features.adsOff"
         case "subscriptions": return "features.subscriptionsOff"
+        case "testPayments": return "features.testPaymentsOff"
         case "fulfilment": return "features.fulfilmentOff"
         case "membership": return "features.membershipOff"
         case "voiceSearch": return "features.voiceSearchOff"

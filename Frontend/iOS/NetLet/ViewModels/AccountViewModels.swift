@@ -379,12 +379,14 @@ enum OrderWording {
         }
     }
 
-    /// How it is paid: cash on the door until a driver has collected it.
-    static func payment(status: String, language: LanguageSettings) -> String {
+    /// How it is paid: cash on the door until a driver has collected it, or
+    /// paid online instead (0086), when the driver collects nothing.
+    static func payment(status: String, method: String? = nil, language: LanguageSettings) -> String {
         switch status {
         case "paid": return language.t("orders.statusPaid")
         case "refunded": return language.t("orders.statusRefunded")
         case "cancelled": return language.t("orders.statusCancelled")
+        case "pending_payment" where method.map(OnlineMethodWords.online.contains) == true: return language.t("orders.paidOnline")
         default: return language.t("orders.payOnDelivery")
         }
     }

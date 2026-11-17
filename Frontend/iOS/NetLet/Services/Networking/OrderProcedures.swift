@@ -97,6 +97,31 @@ extension API {
     static let changeOrderAddress = Procedure<MoveAddress, AddressMoved>(mutation: "orders.changeAddress")
     static let buyAgain = Procedure<BuyAgain, BuyAgainAnswer>(mutation: "orders.buyAgain")
 
+    // MARK: Paying online (migration 0086)
+
+    /// Pay a cash order online instead, at the figure the sheet showed —
+    /// refused with `orders.payMoved` if the order now owes another.
+    struct PayStart: Encodable, Sendable {
+        let reference: String
+        /// `knet`, `card` or `apple_pay`.
+        let method: String
+        let expectOwed: String
+    }
+
+    struct PaymentId: Encodable, Sendable {
+        let paymentId: Int
+    }
+
+    /// NetLet's test page's answer: `paid`, or `cancelled` when the shopper backs out.
+    struct PayFinish: Encodable, Sendable {
+        let paymentId: Int
+        let outcome: String
+    }
+
+    static let paymentStart = Procedure<PayStart, StartedPayment>(mutation: "orders.paymentStart")
+    static let paymentGet = Procedure<PaymentId, TestPayment?>(query: "orders.paymentGet")
+    static let paymentTest = Procedure<PayFinish, TestPayment>(mutation: "orders.paymentTest")
+
     // MARK: Warranty (migration 0072)
 
     struct FileWarranty: Encodable, Sendable {

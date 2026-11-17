@@ -254,6 +254,10 @@ jobs:
             shot 75-order-address "$lang" orderAddress:NL-AS-PENDING pending
             # How it is paid, while nothing is with a driver: a mockup until a payment provider is connected.
             shot 101-order-payment "$lang" orderPayment:NL-AS-PENDING pending
+            # Paying online instead, on NetLet's test page (0086): KNET chosen,
+            # then an order on its way with the QR its driver scans at the door.
+            shot 104-pay-online "$lang" payOnline:NL-20261112-FQ3FX payable
+            shot 105-order-handover "$lang" order:NL-20261104-HMGQQ ontheway
             shot 76-portal-warranty "$lang" portal:/admin/warranty shopper
             # Frequently bought: the list with its usual amounts and what was bought before.
             shot 77-frequent "$lang" frequent shopper
@@ -298,6 +302,8 @@ jobs:
             shot 100-product-views "$lang" "portal:/admin/views" shopper
             # Each store's delivery beside its truck, and its sheet: type, address, day, time.
             shot 103-store-delivery "$lang" storeDelivery:4 shopper
+            # The driver's board: one parcel paid online, one in cash, each with the scan at the door.
+            shot 106-portal-board "$lang" portal:/admin/dispatch admin
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

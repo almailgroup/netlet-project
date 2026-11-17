@@ -108,8 +108,11 @@ struct OrderDetail: Decodable, Sendable {
     /// The day and time the shopper asked of each store (migration 0085),
     /// frozen with the order; empty from an older server or an order with none.
     let deliverySlots: [OrderDeliverySlot]
+    /// The QR and code for the driver while a parcel is on its way (0086);
+    /// nil otherwise, and from a server older than 0086.
+    let handover: OrderHandover?
 
-    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, paymentChange, owedNow, warranty, deliverySlots }
+    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, paymentChange, owedNow, warranty, deliverySlots, handover }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -127,6 +130,7 @@ struct OrderDetail: Decodable, Sendable {
         owedNow = try container.decodeIfPresent(Money.self, forKey: .owedNow)
         warranty = try container.decodeIfPresent([WarrantyClaim].self, forKey: .warranty) ?? []
         deliverySlots = try container.decodeIfPresent([OrderDeliverySlot].self, forKey: .deliverySlots) ?? []
+        handover = try container.decodeIfPresent(OrderHandover.self, forKey: .handover)
     }
 
     /// The lines that may be sent back for a refund now.

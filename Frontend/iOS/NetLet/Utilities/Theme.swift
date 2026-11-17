@@ -28,6 +28,11 @@ enum Brand {
     static let renewedFill = Color(red: 227 / 255, green: 241 / 255, blue: 232 / 255)
     static let renewedWash = Color(red: 241 / 255, green: 248 / 255, blue: 244 / 255)
     static let danger = Color(red: 140 / 255, green: 47 / 255, blue: 34 / 255)
+    /// NetLet's test payment page (0086): its note's words, ground and dashed rim
+    /// (#6b4a12 on #fff8eb, 8.3:1; #e4b363).
+    static let testInk = Color(red: 107 / 255, green: 74 / 255, blue: 18 / 255)
+    static let testWash = Color(red: 255 / 255, green: 248 / 255, blue: 235 / 255)
+    static let testRim = Color(red: 228 / 255, green: 179 / 255, blue: 99 / 255)
     /// A field's or a panel's rim (#d5dfeb).
     static let line = Color(red: 213 / 255, green: 223 / 255, blue: 235 / 255)
     /// A card's rim, `CARD` (#e6e9ef).

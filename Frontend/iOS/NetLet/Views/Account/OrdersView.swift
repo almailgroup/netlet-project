@@ -448,7 +448,7 @@ struct OrderRow: View {
                     Text(order.shownTotal.formatted(l.current)).font(.subheadline.weight(.semibold))
                     if let how = payment {
                         Text("·").foregroundStyle(Brand.muted)
-                        Text(how).font(.footnote).foregroundStyle(order.status == "paid" ? Brand.success : Brand.muted)
+                        Text(how).font(.footnote).foregroundStyle(order.status == "paid" || paidOnline ? Brand.success : Brand.muted)
                     }
                 }
                 if !order.isOver, order.owed?.reduced == true {
@@ -471,10 +471,15 @@ struct OrderRow: View {
     }
 
     /// How it is paid, said only where it tells somebody something (`OrderTotal`).
+    /// Paid online instead (0086): the order is still unpaid on the books, and
+    /// the driver collects nothing.
+    private var paidOnline: Bool { order.status == "pending_payment" && OnlineMethodWords.online.contains(order.paymentMethod) }
+
     private var payment: String? {
         switch order.status {
         case "paid": return l.t("orders.statusPaid")
         case "refunded": return l.t("orders.statusRefunded")
+        case "pending_payment" where paidOnline: return l.t("orders.paidOnline")
         case "pending_payment" where order.shownTotal.fils > 0: return l.t("orders.payOnDelivery")
         default: return nil
         }
@@ -685,7 +690,7 @@ struct OrderDetailView: View {
             HStack {
                 Text(l.t("checkout.paymentMethod")).font(.footnote).foregroundStyle(Brand.muted)
                 Spacer()
-                Text(OrderWording.payment(status: order.status, language: l)).font(.footnote.weight(.semibold))
+                Text(OrderWording.payment(status: order.status, method: order.paymentMethod, language: l)).font(.footnote.weight(.semibold))
             }
         }
         .card()

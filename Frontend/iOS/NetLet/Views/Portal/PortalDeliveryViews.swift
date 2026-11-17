@@ -13,12 +13,19 @@ struct PortalDispatchView: View {
     @State private var companies: [DeliveryCompany] = []
     @State private var scores: DeliveryScores?
     @State private var busy: String?
+    /// The scan at the door, opened on one order (0086).
+    @State private var scanning: ScanFor?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.openURL) private var openURL
 
     private var actor: SellerIdentity? { app.session.seller }
     private var mayAssign: Bool { actor?.can("delivery.assign") == true }
+    private var mayMove: Bool { actor?.can("delivery.move") == true }
+
+    private struct ScanFor: Identifiable {
+        let id: Int
+    }
 
     var body: some View {
         PortalScreen(title: l.t("admin.dispatch"), intro: l.t("admin.dispatchNote"), refresh: { await load() }) {
@@ -41,6 +48,19 @@ struct PortalDispatchView: View {
         }
         .task { await load() }
         .onChange(of: tab) { Task { await load() } }
+        // The board asks again while it is open, so a shopper paying online on
+        // the driver's way shows here without anybody pulling (the web's 20s).
+        .task(id: tab) {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(20))
+                guard !Task.isCancelled, busy == nil else { continue }
+                await load()
+            }
+        }
+        .sheet(item: $scanning) { scan in
+            HandoverScanSheet(orderId: scan.id) { Task { await load() } }
+                .languageDirection()
+        }
     }
 
     private func parcelCard(_ parcel: BoardParcel) -> some View {
@@ -79,7 +99,10 @@ struct PortalDispatchView: View {
             FlowLayout(spacing: 6) {
                 StatusPill(label: parcel.vehicle.map { l.t("dispatch.vehicle", ["vehicle": l.t(ShippingWords.vehicle($0))]) } ?? l.t("dispatch.vehicleUnknown"),
                            tone: parcel.vehicle == nil ? .preparing : .shipped, systemImage: "truck.box")
-                if parcel.paymentMethod == "cod" {
+                // Paid online instead (0086): nothing to collect, said in green.
+                if let paid = parcel.paidOnline {
+                    StatusPill(label: l.t("dispatch.paidOnline", ["method": l.t(OnlineMethodWords.title(paid.method))]), tone: .done, systemImage: "checkmark.seal")
+                } else if parcel.paymentMethod == "cod" {
                     StatusPill(label: parcel.paymentCollectedAt != nil ? l.t("dispatch.cashPaid") : l.t("dispatch.collectCash", ["amount": parcel.orderTotal.formatted(l.current)]),
                                tone: parcel.paymentCollectedAt != nil ? .done : .preparing)
                 }
@@ -108,6 +131,13 @@ struct PortalDispatchView: View {
                         }
                         .accessibilityLabel(l.t("dispatch.assign", ["parcel": parcel.reference]))
                         .disabled(busy == parcel.id)
+                    }
+                    // On the way: the shopper's code at the door (0086).
+                    if parcel.state == "shipped" && mayMove {
+                        Button { scanning = ScanFor(id: parcel.orderId) } label: {
+                            Label(l.t("dispatch.scanAtDoor"), systemImage: "qrcode.viewfinder")
+                        }
+                        .buttonStyle(PortalSmallButtonStyle())
                     }
                     ForEach(parcel.courierMoves, id: \.self) { state in
                         Button { Task { await move(parcel, state) } } label: {

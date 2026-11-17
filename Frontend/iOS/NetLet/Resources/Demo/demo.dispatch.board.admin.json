@@ -1,0 +1,156 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "parcels": [
+          {
+            "key": "v2|dorder",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "destination": null,
+            "lines": [
+              {
+                "lineId": 5,
+                "orderId": 3,
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "productTitle": "Brass desk lamp",
+                "variantTitle": "Default",
+                "quantity": 2,
+                "fulfilment": "shipped",
+                "sizeClass": null,
+                "weightGrams": null,
+                "destination": null,
+                "courierId": 2,
+                "centreId": null,
+                "deliveryChoice": "regular"
+              },
+              {
+                "lineId": 6,
+                "orderId": 3,
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "productTitle": "Smart watch",
+                "variantTitle": "Default",
+                "quantity": 1,
+                "fulfilment": "shipped",
+                "sizeClass": null,
+                "weightGrams": null,
+                "destination": null,
+                "courierId": 2,
+                "centreId": null,
+                "deliveryChoice": "regular"
+              }
+            ],
+            "state": "shipped",
+            "vehicle": null,
+            "courierId": 2,
+            "items": 3,
+            "centreId": null,
+            "fast": false,
+            "orderId": 3,
+            "reference": "NL-20261112-FQ3FX",
+            "placedAt": "2026-11-12T08:49:54.309Z",
+            "paymentMethod": "cod",
+            "paymentCollectedAt": null,
+            "orderTotal": "66.250",
+            "paidOnline": null,
+            "courierName": "Swift Delivery",
+            "collectFrom": null,
+            "member": true,
+            "preferredSlot": null,
+            "selfDelivered": false,
+            "orderAddress": {
+              "contactName": "Noura",
+              "contactPhone": "+96550001122",
+              "governorate": "hawalli",
+              "addressLine": "Salmiya, Block 5, Street 12, House 7",
+              "addressNotes": null,
+              "pin": null
+            }
+          },
+          {
+            "key": "v2|dorder",
+            "vendorId": 2,
+            "vendorName": "Acme Electronics",
+            "destination": null,
+            "lines": [
+              {
+                "lineId": 3,
+                "orderId": 2,
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "productTitle": "USB-C charger 65W",
+                "variantTitle": "Default",
+                "quantity": 1,
+                "fulfilment": "shipped",
+                "sizeClass": null,
+                "weightGrams": null,
+                "destination": null,
+                "courierId": 2,
+                "centreId": null,
+                "deliveryChoice": "regular"
+              },
+              {
+                "lineId": 4,
+                "orderId": 2,
+                "vendorId": 2,
+                "vendorName": "Acme Electronics",
+                "productTitle": "Brass desk lamp",
+                "variantTitle": "Default",
+                "quantity": 1,
+                "fulfilment": "shipped",
+                "sizeClass": null,
+                "weightGrams": null,
+                "destination": null,
+                "courierId": 2,
+                "centreId": null,
+                "deliveryChoice": "regular"
+              }
+            ],
+            "state": "shipped",
+            "vehicle": null,
+            "courierId": 2,
+            "items": 2,
+            "centreId": null,
+            "fast": false,
+            "orderId": 2,
+            "reference": "NL-20261104-HMGQQ",
+            "placedAt": "2026-11-03T23:19:32.008Z",
+            "paymentMethod": "knet",
+            "paymentCollectedAt": null,
+            "orderTotal": "33.875",
+            "paidOnline": {
+              "method": "knet",
+              "test": true
+            },
+            "courierName": "Swift Delivery",
+            "collectFrom": null,
+            "member": false,
+            "preferredSlot": null,
+            "selfDelivered": false,
+            "orderAddress": {
+              "contactName": "Noura",
+              "contactPhone": "+96550000000",
+              "governorate": "hawalli",
+              "addressLine": "Block 4, Street 2, House 7",
+              "addressNotes": null,
+              "pin": null
+            }
+          }
+        ],
+        "truncated": false
+      },
+      "meta": {
+        "values": {
+          "parcels.0.placedAt": [
+            "Date"
+          ],
+          "parcels.1.placedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

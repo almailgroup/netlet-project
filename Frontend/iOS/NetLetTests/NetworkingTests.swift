@@ -2108,3 +2108,85 @@ final class StoreDeliveryTests: XCTestCase {
         XCTAssertTrue(line.contains("4 – 9pm"), line)
     }
 }
+
+/// Paying a cash order online instead, and the code at the door (0086).
+final class OnlinePaymentTests: XCTestCase {
+    let client = Fixtures.client
+
+    private func recorded(_ variant: String) -> TRPCClient {
+        TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: variant))
+    }
+
+    /// The payable order offers NetLet's test page, the figure sent is the one
+    /// shown, and the page's answers decode.
+    func testACashOrderPaysOnlineAtTheFigureShown() async throws {
+        let order = try XCTUnwrap(try await recorded("payable").call(API.order, .init(reference: "NL-20261112-FQ3FX")))
+        XCTAssertTrue(order.paymentChange.open, "nothing has been handed over")
+        XCTAssertTrue(order.paymentChange.live, "the test page is switched on")
+        XCTAssertEqual(order.paymentChange.method, "cod")
+        XCTAssertNil(order.paymentChange.paidOnline)
+        XCTAssertNil(order.handover, "nothing is on its way, so there is nothing to scan")
+        let owed = order.owedNow ?? order.order.grandTotal
+        let started = try await client.call(API.paymentStart, .init(reference: order.order.reference, method: "knet", expectOwed: owed.amount))
+        XCTAssertEqual(started.amount, owed)
+        XCTAssertEqual(started.reference, order.order.reference)
+        let page = try XCTUnwrap(try await client.call(API.paymentGet, .init(paymentId: started.paymentId)))
+        XCTAssertEqual(page.status, "started")
+        XCTAssertTrue(page.test, "the page says it takes no money")
+        let paid = try await client.call(API.paymentTest, .init(paymentId: started.paymentId, outcome: "paid"))
+        XCTAssertEqual(paid.status, "paid")
+        XCTAssertEqual(OnlineMethodWords.title(paid.method), "checkout.payKnet")
+    }
+
+    /// On its way, the order carries the QR and the code; the QR is the
+    /// portal's scan address, and both come back to the same token.
+    @MainActor
+    func testAnOrderOnItsWayCarriesTheCodeTheDriverScans() async throws {
+        let order = try XCTUnwrap(try await recorded("ontheway").call(API.order, .init(reference: "NL-20261104-HMGQQ")))
+        let paid = try XCTUnwrap(order.paymentChange.paidOnline)
+        XCTAssertEqual(paid.method, "knet")
+        XCTAssertTrue(paid.test)
+        XCTAssertFalse(order.paymentChange.open, "paid once is paid")
+        let handover = try XCTUnwrap(order.handover)
+        XCTAssertEqual(handover.code.count, HandoverRules.codeLength)
+        XCTAssertEqual(HandoverRules.normalise(handover.spacedCode.lowercased()), handover.code, "read out with a space, typed in lower case")
+        XCTAssertEqual(HandoverRules.token(fromScan: try XCTUnwrap(handover.url)), handover.token)
+        XCTAssertEqual(HandoverRules.token(fromScan: handover.token), handover.token)
+        XCTAssertNotNil(HandoverCard.qr(try XCTUnwrap(handover.url)), "the QR draws")
+        let english = LanguageSettings(defaults: UserDefaults(suiteName: "OnlinePaymentTests-en")!)
+        english.set(.en)
+        XCTAssertEqual(OrderWording.payment(status: order.order.status, method: order.order.paymentMethod, language: english), "Paid online")
+        XCTAssertEqual(OrderWording.payment(status: "pending_payment", method: "cod", language: english), "Pay on delivery")
+    }
+
+    /// The board says which parcels were paid online, and the scan hands one over.
+    func testTheBoardAndTheScanSayPaidOnline() async throws {
+        let board = try await recorded("admin").call(API.dispatchBoard, .init(state: "transit"))
+        let online = try XCTUnwrap(board.parcels.first { $0.paidOnline != nil })
+        XCTAssertEqual(online.paidOnline?.method, "knet")
+        XCTAssertTrue(board.parcels.contains { $0.paidOnline == nil && $0.paymentMethod == "cod" }, "a cash parcel beside it")
+        let answer = try await client.call(API.handOver, HandoverAsk(token: "h1.2.T99SFSGNpkzWt8ByPk6yn6CF"))
+        XCTAssertEqual(answer.payment.kind, "online")
+        XCTAssertTrue(answer.done, "paid online is one step")
+        XCTAssertFalse(answer.parcels.isEmpty)
+    }
+
+    /// `normaliseHandoverCode` and `tokenFromScan`, on the TypeScript's cases.
+    func testTheCodeAndTheTokenFollowTheSharedRule() {
+        XCTAssertEqual(HandoverRules.normalise(" abcd-efgh "), "ABCDEFGH")
+        XCTAssertEqual(HandoverRules.normalise("ab cd ٢٣٤٦"), "ABCD2346")
+        XCTAssertNil(HandoverRules.normalise("ABCDEFG0"), "a letter the alphabet left out is not guessed at")
+        XCTAssertNil(HandoverRules.normalise("ABCDEFG"))
+        let signature = "AbCdEfGhIjKlMnOpQrStUvWx"
+        let token = "h1.42.\(signature)"
+        XCTAssertTrue(HandoverRules.isToken(token))
+        XCTAssertFalse(HandoverRules.isToken("h1.0.\(signature)"))
+        XCTAssertFalse(HandoverRules.isToken("h1.99999999999.\(signature)"))
+        XCTAssertFalse(HandoverRules.isToken("h1.9999999999.\(signature)"), "past what a Postgres integer holds")
+        XCTAssertFalse(HandoverRules.isToken("h1.42.short"))
+        XCTAssertFalse(HandoverRules.isToken("h2.42.\(signature)"))
+        XCTAssertEqual(HandoverRules.token(fromScan: "https://vendor.netlet.net/dispatch/scan#h=\(token)"), token)
+        XCTAssertEqual(HandoverRules.token(fromScan: token), token)
+        XCTAssertNil(HandoverRules.token(fromScan: "https://example.com/"))
+    }
+}

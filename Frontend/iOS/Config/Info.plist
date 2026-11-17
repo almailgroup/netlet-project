@@ -24,7 +24,7 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>Sign in to NetLet with Face ID instead of a password or a code. Your face never leaves your iPhone.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Take a photo of a product to search for it on NetLet. It is sent only when you press search.</string>
+	<string>Take a photo of a product to search for it on NetLet (sent only when you press search), or, when you deliver for NetLet, scan a shopper's code at the door.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

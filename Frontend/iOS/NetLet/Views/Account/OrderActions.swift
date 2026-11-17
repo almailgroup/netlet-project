@@ -93,6 +93,11 @@ struct OrderActionsBar: View {
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // Paid online (0086), and the code the driver scans at the door.
+            if let paid = detail.paymentChange.paidOnline { PaidOnlineNote(paid: paid) }
+            if let handover = detail.handover {
+                HandoverCard(handover: handover, paidOnline: detail.paymentChange.paidOnline != nil, owed: detail.owedNow ?? detail.order.grandTotal)
+            }
             WarrantyClaimsList(detail: detail, reload: reload)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -130,7 +135,7 @@ struct OrderActionsBar: View {
         case .address:
             OrderAddressSheet(reference: reference, detail: detail, done: { Task { await reload() } })
         case .payment:
-            OrderPaymentSheet(detail: detail)
+            OrderPaymentSheet(reference: reference, detail: detail, done: { Task { await reload() } })
         case .help:
             OrderHelpSheet(
                 reference: reference,
