@@ -2334,6 +2334,23 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS "order_item_taxes_order_idx" ON "order_item_taxes" USING btree ("order_id");
 
+-- ===== 0088_customer_defaults.sql =====
+CREATE TABLE IF NOT EXISTS "customer_defaults" (
+	"user_id" integer PRIMARY KEY NOT NULL,
+	"address_id" integer,
+	"payment_method" varchar(16) DEFAULT 'cod' NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "customer_defaults_payment_check" CHECK ("customer_defaults"."payment_method" in ('cod', 'knet', 'card', 'apple_pay'))
+);
+DO $$ BEGIN
+  ALTER TABLE "customer_defaults" ADD CONSTRAINT "customer_defaults_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "customer_defaults" ADD CONSTRAINT "customer_defaults_address_id_customer_addresses_id_fk" FOREIGN KEY ("address_id") REFERENCES "public"."customer_addresses"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2385,6 +2402,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  88 AS migrations_in_this_file,
+  89 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

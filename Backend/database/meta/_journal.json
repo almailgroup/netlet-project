@@ -617,6 +617,13 @@
       "when": 1794937536639,
       "tag": "0087_tax",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1794948639085,
+      "tag": "0088_customer_defaults",
+      "breakpoints": true
     }
   ]
 }

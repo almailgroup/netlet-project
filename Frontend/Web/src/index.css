@@ -731,6 +731,29 @@
  * it rather than jumping, and the same in reverse. Its inside clips while it
  * moves (`min-h-0 overflow-hidden` on the child).
  */
+/*
+ * A folded section's height easing open and shut (`components/ui/Unfold.tsx`),
+ * the Categories list's own curve, by a grid row so what is below moves with
+ * it. Opacity on the content alone, never on anything wearing the glass.
+ */
+.unfold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 280ms var(--ease-out),
+    opacity 200ms var(--ease-out);
+}
+.unfold[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .unfold {
+    transition: none;
+  }
+}
+
 .cat-unfold {
   display: grid;
   grid-template-rows: 0fr;

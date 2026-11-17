@@ -114,7 +114,7 @@ private struct CheckoutForm: View {
                 if model.asksPhone(for: address) { phoneCard }
                 if let cart, !cart.isEmpty {
                     CheckoutItems(cart: cart, leftOut: (app.cart.cart?.items.count ?? 0) > cart.items.count) { editCart() }
-                    // The code right before the ways to pay, open.
+                    // The code right before the ways to pay, each folded until pressed.
                     BagSavingsCard(cart: cart)
                 }
                 PaymentMethods(cart: cart, model: model)
@@ -501,41 +501,90 @@ private struct CheckoutItemRow: View {
 /// How it is paid. Cash on delivery is the one that works and is chosen; the
 /// rest are drawn as they will be, each marked as coming and none choosable
 /// (3.2.1 waits on a card service).
+///
+/// **It opens on the default, with Change, on the owner's word** — the web's
+/// `PaymentMethods`: the account's own way to pay (Quick settings, 0088) shown
+/// as the one the order goes with, so Place order goes straight on; Change
+/// opens the list. A refusal of cash opens it, since the sentence saying why
+/// is in it.
 private struct PaymentMethods: View {
     let cart: Cart?
     let model: CheckoutViewModel
     @Environment(LanguageSettings.self) private var l
+    @Environment(AppModel.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var opened = false
 
     var body: some View {
         let refused = cart.flatMap { model.codRefusal(for: $0, language: l) }
+        let open = opened || refused != nil
         VStack(alignment: .leading, spacing: 8) {
-            Text(l.t("checkout.paymentMethod"))
-                .font(.inter(15, .heavy))
-                .foregroundStyle(Brand.navy)
-                .accessibilityAddTraits(.isHeader)
-                .padding(.bottom, 4)
-            option(icon: AnyView(Image(systemName: "banknote").font(.system(size: 18, weight: .medium))),
-                   title: l.t("checkout.payCod"), note: l.t("checkout.payCodNote"), chosen: refused == nil)
-            if let refused {
-                Text(refused)
-                    .font(.inter(13))
-                    .foregroundStyle(Brand.danger)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(12)
+            HStack(spacing: 10) {
+                Text(l.t("checkout.paymentMethod"))
+                    .font(.inter(15, .heavy))
+                    .foregroundStyle(Brand.navy)
+                    .accessibilityAddTraits(.isHeader)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DeliveryAddressCard.pale))
+                if refused == nil {
+                    Button {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.9)) { opened.toggle() }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(open ? l.t("checkout.payDone") : l.t("checkout.payChange"))
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .bold))
+                                .rotationEffect(.degrees(open ? 180 : 0))
+                        }
+                        .font(.inter(13, .bold))
+                        .foregroundStyle(Brand.navy)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 36)
+                        .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.18)))
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.tap)
+                    .accessibilityLabel(open ? l.t("checkout.payDone") : l.t("checkout.payChange"))
+                    .accessibilityHint(l.t("checkout.payChangeName"))
+                }
             }
-            option(icon: AnyView(Text("KNET").font(.inter(11, .heavy))), title: l.t("checkout.payKnet"), note: l.t("checkout.payKnetNote"), soon: true)
-            option(icon: AnyView(Image(systemName: "creditcard").font(.system(size: 18, weight: .medium))),
-                   title: l.t("checkout.payCard"), note: l.t("checkout.payCardNote"), soon: true)
-            option(icon: AnyView(Image(systemName: "iphone").font(.system(size: 18, weight: .medium))),
-                   title: l.t("checkout.payApple"), note: l.t("checkout.payAppleNote"), soon: true)
+            .padding(.bottom, 4)
+            if open {
+                option(icon: AnyView(Image(systemName: "banknote").font(.system(size: 18, weight: .medium))),
+                       title: l.t("checkout.payCod"), note: l.t("checkout.payCodNote"), chosen: refused == nil)
+                if let refused {
+                    Text(refused)
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DeliveryAddressCard.pale))
+                }
+                Group {
+                    option(icon: AnyView(Text("KNET").font(.inter(11, .heavy))), title: l.t("checkout.payKnet"), note: l.t("checkout.payKnetNote"), soon: true)
+                    option(icon: AnyView(Image(systemName: "creditcard").font(.system(size: 18, weight: .medium))),
+                           title: l.t("checkout.payCard"), note: l.t("checkout.payCardNote"), soon: true)
+                    option(icon: AnyView(Image(systemName: "iphone").font(.system(size: 18, weight: .medium))),
+                           title: l.t("checkout.payApple"), note: l.t("checkout.payAppleNote"), soon: true)
+                    if app.session.isSignedIn {
+                        Text(l.t("checkout.payMakeDefault"))
+                            .font(.inter(12))
+                            .foregroundStyle(Brand.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            } else {
+                option(icon: AnyView(Image(systemName: "banknote").font(.system(size: 18, weight: .medium))),
+                       title: l.t("checkout.payCod"), note: l.t("checkout.payCodNote"), chosen: true,
+                       badge: app.session.isSignedIn && app.delivery.payment == "cod" ? l.t("checkout.payYourDefault") : nil)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
     }
 
-    private func option(icon: AnyView, title: String, note: String, chosen: Bool = false, soon: Bool = false) -> some View {
+    private func option(icon: AnyView, title: String, note: String, chosen: Bool = false, soon: Bool = false, badge: String? = nil) -> some View {
         HStack(spacing: 12) {
             ZStack {
                 Circle().strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 2 : 1.5).frame(width: 20, height: 20)
@@ -548,7 +597,17 @@ private struct PaymentMethods: View {
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(chosen ? Brand.navy : Brand.tint))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.inter(14, .bold)).foregroundStyle(chosen ? Brand.navy : Brand.body)
+                HStack(spacing: 6) {
+                    Text(title).font(.inter(14, .bold)).foregroundStyle(chosen ? Brand.navy : Brand.body)
+                    if let badge {
+                        Text(badge)
+                            .font(.inter(11, .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Brand.navy))
+                    }
+                }
                 Text(note).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

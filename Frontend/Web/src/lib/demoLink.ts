@@ -1112,6 +1112,13 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "customer.details.get":
     case "customer.details.save":
       return { firstName: null, lastName: null, phone: null, gender: null, birthday: null };
+    /* No account, so no default to keep: cash on delivery, the one way the
+       shop takes, and the device's own address key carries the rest. */
+    case "customer.defaults.get":
+      return { ready: false, addressId: null, governorate: null, payment: "cod", choosable: ["cod"] };
+    case "customer.defaults.setAddress":
+    case "customer.defaults.setPayment":
+      return { saved: false };
     // Nowhere to keep a photo in the demo, so none is offered.
     case "customer.photo.get":
     case "customer.photo.remove":

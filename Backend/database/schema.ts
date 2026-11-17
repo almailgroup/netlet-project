@@ -20,6 +20,7 @@
 import type { AddressParts } from "../../Shared/commerce/kuwaitAddress.js";
 import type { DeliveryWindow } from "../../Shared/commerce/deliverySlots.js";
 import type { OnlineMethod, PaymentAttemptState, PaymentProvider } from "../../Shared/commerce/onlinePayment.js";
+import type { PaymentMethod } from "../../Shared/commerce/customerDefaults.js";
 import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
@@ -1902,6 +1903,33 @@ export const frequentItems = pgTable(
     uniqueIndex("frequent_items_user_product_variant_unique").on(table.userId, table.productId, table.variantId),
     index("frequent_items_user_idx").on(table.userId),
     check("frequent_items_quantity_range", sql`${table.quantity} between 1 and 99`),
+  ]
+);
+
+/**
+ * What an account starts every order from (0088, on the owner's word): the
+ * default delivery address and the default way to pay, chosen in Settings.
+ * `Shared/commerce/customerDefaults.ts` is the rule.
+ *
+ * A table of its own rather than columns on `customer_preferences`, for the
+ * minutes between a deploy and the paste: Drizzle names every column it knows,
+ * so one missing column would fail every read of the preferences, and the
+ * language, the area and the bag ride on those. A missing table reads as "no
+ * default" instead. The address is `set null`, so deleting it leaves the
+ * account with none rather than a dangling id.
+ */
+export const customerDefaults = pgTable(
+  "customer_defaults",
+  {
+    userId: integer("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    addressId: integer("address_id").references(() => customerAddresses.id, { onDelete: "set null" }),
+    paymentMethod: varchar("payment_method", { length: 16 }).$type<PaymentMethod>().notNull().default("cod"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    check("customer_defaults_payment_check", sql`${table.paymentMethod} in ('cod', 'knet', 'card', 'apple_pay')`),
   ]
 );
 

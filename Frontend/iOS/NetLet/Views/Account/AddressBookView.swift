@@ -3,6 +3,11 @@ import SwiftUI
 /// The address book — the web's `AddressBook`: every saved address with what
 /// is still missing from it, changed with its pencil, taken out after asking,
 /// and a new one added in the same form checkout fills from.
+///
+/// **The default is marked, and any other can be made it** (0088, on the
+/// owner's word): the default is the address in use (`DeliveryModel.inUse`),
+/// so "Set as default" is the header sheet's own choice, kept on the account;
+/// an address with no governorate cannot price a delivery and is not offered it.
 struct AddressBookView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -76,7 +81,8 @@ struct AddressBookView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .card()
             } else {
-                ForEach(rows) { row in card(row) }
+                let chosen = DeliveryModel.addressInUse(rows, lastUsed: app.delivery.lastAddressId, zone: app.delivery.zoneId)?.id
+                ForEach(rows) { row in card(row, isDefault: row.id == chosen) }
             }
             Button {
                 editing = Editing(address: nil)
@@ -92,16 +98,26 @@ struct AddressBookView: View {
         }
     }
 
-    private func card(_ row: SavedAddress) -> some View {
+    private func card(_ row: SavedAddress, isDefault: Bool) -> some View {
         let zone = ReferenceData.shared.governorate(id: row.governorate)?.name(l.current)
         let facts = [zone, row.contactName, row.contactPhone].compactMap { $0?.isEmpty == false ? $0 : nil }
         return VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: "mappin.and.ellipse").foregroundStyle(Brand.navy).accessibilityHidden(true)
-                Text(row.label)
-                    .font(.inter(15, .bold))
-                    .foregroundStyle(Brand.navy)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 6) {
+                    Text(row.label)
+                        .font(.inter(15, .bold))
+                        .foregroundStyle(Brand.navy)
+                    if isDefault {
+                        Text(l.t("address.default"))
+                            .font(.inter(11, .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Brand.navy))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 IconButton(symbol: "pencil", label: "\(l.t("address.editTitle")) — \(row.label)") { editing = Editing(address: row) }
                 IconButton(symbol: "trash", label: "\(l.t("address.remove")) — \(row.label)") { removing = row }
             }
@@ -124,9 +140,35 @@ struct AddressBookView: View {
                     .font(.inter(12))
                     .foregroundStyle(Brand.accentInk)
             }
+            if !isDefault, let governorate = row.governorate, !governorate.isEmpty {
+                Button {
+                    Task {
+                        await app.delivery.choose(row)
+                        Haptics.succeeded()
+                        app.toast(l.t("defaults.addressSaved", ["label": "\u{2068}\(row.label)\u{2069}"]))
+                    }
+                } label: {
+                    Text(l.t("address.makeDefault"))
+                        .font(.inter(13, .bold))
+                        .foregroundStyle(Brand.navy)
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 36)
+                        .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.18)))
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.tap)
+                .accessibilityLabel("\(l.t("address.makeDefault")) — \(row.label)")
+                .padding(.top, 4)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Brand.navy, lineWidth: isDefault ? 1.5 : 0)
+                .allowsHitTesting(false)
+        )
+        .animation(.easeOut(duration: 0.2), value: isDefault)
     }
 }
 

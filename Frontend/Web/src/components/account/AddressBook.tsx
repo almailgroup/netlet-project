@@ -11,6 +11,12 @@
  * card instead, the direction `missingStoreDetails` and the return window both
  * err in: a governorate nobody filled in is a gap in our form, not a reason to
  * throw away what somebody typed.
+ *
+ * **The default is marked, and any other can be made it** (0088, on the
+ * owner's word: "set or change their default delivery address in Settings").
+ * The default is the address in use — the header's, the cart's, checkout's —
+ * so "Set as default" is the header's own choice, kept on the account; an
+ * address with no governorate cannot price a delivery and is not offered it.
  */
 import { useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -24,11 +30,25 @@ import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { DiscButton } from "@/components/ui/DiscButton";
 import { AddressForm } from "@/components/account/AddressForm";
+import { useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
+import { useCustomer } from "@/contexts/CustomerContext";
+import { pressHaptic } from "@/lib/haptics";
+import { isolate } from "@/lib/isolate";
+import { rememberAddress } from "@/lib/lastAddress";
 
 export function AddressBook() {
   const { t, isArabic } = useTranslation();
   const addresses = trpc.customer.addresses.list.useQuery();
   const utils = trpc.useUtils();
+  const { address: inUse } = useDeliveryAddress();
+  const { setDeliveryZoneId } = useCustomer();
+  const makeDefault = (row: { id: number; label: string; governorate?: string | null }) => {
+    if (!row.governorate) return;
+    pressHaptic();
+    setDeliveryZoneId(row.governorate);
+    rememberAddress(row.id);
+    toast.success(t("defaults.addressSaved", { label: isolate(row.label) }));
+  };
 
   /* `null` is closed, `0` is the new-address form, anything else is that row. */
   const [editing, setEditing] = useState<number | null>(null);
@@ -68,12 +88,16 @@ export function AddressBook() {
           {rows.map(row => {
             const zone = kuwaitDeliveryZones.find(area => area.id === row.governorate);
             const gaps = missingFromAddress(row);
+            const isDefault = row.id === inUse?.id;
             return (
-              <li key={row.id} className="rounded-2xl border border-[#e6e9ef] bg-white p-4">
+              <li key={row.id} className={`rounded-2xl border bg-white p-4 transition-[border-color,box-shadow] duration-200 ${isDefault ? "border-[#0a285a] shadow-[inset_0_0_0_1px_#0a285a]" : "border-[#e6e9ef]"}`}>
                 <div className="flex items-start justify-between gap-2">
-                  <p className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#0a285a]">
+                  <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-[13px] font-extrabold text-[#0a285a]">
                     <MapPin className="size-3.5 ink-accent" aria-hidden />
                     <span dir="auto">{row.label}</span>
+                    {isDefault ? (
+                      <span className="rounded-full bg-[#0a285a] px-2 py-0.5 text-[11px] font-bold text-white">{t("address.default")}</span>
+                    ) : null}
                   </p>
                   <div className="flex items-center gap-3">
                     {/* Twelve pixels apart, so the two 44px targets meet rather
@@ -113,6 +137,16 @@ export function AddressBook() {
                 ) : null}
                 {gaps.length > 0 ? (
                   <p className="mt-2 text-[12px] ink-muted">{gaps.map(key => t(key)).join(" · ")}</p>
+                ) : null}
+                {!isDefault && row.governorate ? (
+                  <button
+                    type="button"
+                    onClick={() => makeDefault(row)}
+                    aria-label={`${t("address.makeDefault")} — ${row.label}`}
+                    className="mt-3 inline-flex min-h-9 items-center rounded-full border border-[#d6dfeb] px-3.5 text-[12px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]"
+                  >
+                    {t("address.makeDefault")}
+                  </button>
                 ) : null}
               </li>
             );

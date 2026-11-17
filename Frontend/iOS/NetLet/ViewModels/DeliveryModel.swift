@@ -10,6 +10,14 @@ import Observation
 /// own key (`CheckoutViewModel.lastAddressKey`), so picking an address here is
 /// the one checkout starts from. Signed out there is no book, and the area a
 /// guest picks is kept on the device to say what delivery costs.
+///
+/// **The address in use is the account's default delivery address (0088)**,
+/// the web's `CustomerContext` rule: signing in reads the account's default
+/// into the phone's key, with its governorate as the area, so a new phone
+/// delivers where the account does, and every choice here is written back.
+/// The default way to pay rides the same answer (`accountDefaults`). Before
+/// 0088 is pasted the answer is `ready: false` and the phone's key is the
+/// whole of it, as it always was.
 @Observable
 @MainActor
 final class DeliveryModel {
@@ -17,6 +25,8 @@ final class DeliveryModel {
     private(set) var addresses: [SavedAddress] = []
     private(set) var lastAddressId: Int?
     private(set) var loaded = false
+    /// The account's defaults, as `customer.defaults.get` last answered.
+    private(set) var accountDefaults: CustomerDefaults?
 
     private let api: APICalling
     private let account: AccountServicing
@@ -58,8 +68,10 @@ final class DeliveryModel {
         }
         async let profile = try? account.profile()
         async let book = try? account.addresses()
+        async let kept = try? api.call(API.customerDefaults)
         if let stored = await profile?.deliveryZoneId { zoneId = stored }
         if let book = await book { addresses = book }
+        if let kept = await kept { await adopt(kept) }
         // An account that never chose an area still delivers somewhere: the
         // governorate of the address checkout would pick. A guess never
         // overwrites a choice, so it is not written up.
@@ -69,13 +81,65 @@ final class DeliveryModel {
         loaded = true
     }
 
-    /// Deliver to this address: checkout starts from it, and its governorate
-    /// prices each seller's delivery.
+    /// The account's default address, read into the phone — or, for an account
+    /// with none yet, the one this phone was using, written up. The server
+    /// refuses an id that is not this account's.
+    private func adopt(_ kept: CustomerDefaults) async {
+        accountDefaults = kept
+        guard kept.ready else { return }
+        if let id = kept.addressId, addresses.contains(where: { $0.id == id }) {
+            if lastAddressId != id {
+                lastAddressId = id
+                defaults.set(id, forKey: CheckoutViewModel.lastAddressKey)
+            }
+            if let governorate = kept.governorate, !governorate.isEmpty, governorate != zoneId {
+                await setZone(governorate, signedIn: true)
+            }
+        } else if kept.addressId == nil, let last = lastAddressId, addresses.contains(where: { $0.id == last }) {
+            await sendDefault(last)
+        }
+    }
+
+    private func sendDefault(_ id: Int) async {
+        guard let answer = try? await api.call(API.setDefaultAddress, .init(addressId: id)), answer.saved,
+              let kept = accountDefaults else { return }
+        let governorate = addresses.first { $0.id == id }?.governorate
+        accountDefaults = CustomerDefaults(ready: true, addressId: id, governorate: governorate, payment: kept.payment, choosable: kept.choosable)
+    }
+
+    /// Deliver to this address: checkout starts from it, its governorate
+    /// prices each seller's delivery, and it is the account's default.
     func choose(_ address: SavedAddress) async {
         lastAddressId = address.id
         defaults.set(address.id, forKey: CheckoutViewModel.lastAddressKey)
         guard let governorate = address.governorate, !governorate.isEmpty else { return }
         await setZone(governorate, signedIn: true)
+        if accountDefaults?.ready == true, accountDefaults?.addressId != address.id {
+            await sendDefault(address.id)
+        }
+    }
+
+    /// The way to pay every order starts from, as the account keeps it.
+    var payment: String {
+        accountDefaults.flatMap { CustomerDefaults.startingPayment($0.payment, choosable: $0.choosable) } ?? "cod"
+    }
+
+    /// What can be chosen as the default way to pay now.
+    var choosablePayments: [String] { accountDefaults?.choosable ?? ["cod"] }
+
+    /// Keeps `method` as the account's way to pay; false when it was refused.
+    @discardableResult
+    func setPayment(_ method: String) async -> Bool {
+        guard choosablePayments.contains(method) else { return false }
+        do {
+            _ = try await api.call(API.setDefaultPayment, .init(method: method))
+            if let kept = accountDefaults {
+                accountDefaults = CustomerDefaults(ready: kept.ready, addressId: kept.addressId, governorate: kept.governorate, payment: method, choosable: kept.choosable)
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// A governorate alone — a guest's, or an account's with no address there.
@@ -88,6 +152,7 @@ final class DeliveryModel {
 
     func signedOut() {
         addresses = []
+        accountDefaults = nil
         zoneId = defaults.string(forKey: Self.guestZoneKey)
         loaded = true
     }

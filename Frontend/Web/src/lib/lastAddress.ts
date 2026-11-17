@@ -1,5 +1,7 @@
 /**
- * The saved address this device used last.
+ * The saved address this device used last — and, signed in, the account's
+ * default delivery address (0088), which `CustomerContext` reads into this key
+ * on sign-in and writes back whenever it changes here.
  *
  * Checkout chose it already — the address picked last is the one picked next —
  * and the delivery area now starts from the same choice, so a signed-in
@@ -24,6 +26,13 @@ const listeners = new Set<() => void>();
 
 export function rememberAddress(id: number): void {
   writeStored(KEY, String(id));
+  listeners.forEach(listener => listener());
+}
+
+/** Signing out: the next person on this device starts from their own default, not this one's address. */
+export function forgetLastAddress(): void {
+  if (readLastAddressId() === null) return;
+  writeStored(KEY, "");
   listeners.forEach(listener => listener());
 }
 

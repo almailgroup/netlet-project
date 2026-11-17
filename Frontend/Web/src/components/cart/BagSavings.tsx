@@ -23,6 +23,16 @@
  * **Points are a switch, shown for a balance that has some.** A guest is told
  * to sign in, and an account with none is told where they come from — a line,
  * never a switch that can only be turned on to no effect.
+ *
+ * **Each of the three is folded until it is pressed, on the owner's word**
+ * ("keep these sections collapsed by default and expand them when clicked …
+ * keep the checkout page clean, simple, and easy to use"). They were open,
+ * also on the owner's word ("so users can enter their code right away"), and
+ * three boxes over the ways to pay were most of a phone's screen for the few
+ * orders that carry a code. Folded, each row says what it holds — a code and
+ * what it takes off, "Not applied" in red for one refused, the points it
+ * would use — so nothing chosen is hidden; pressed, it opens by its height
+ * (`Unfold`) and puts the keyboard in its box.
  */
 import { PointsCoin } from "@/components/ui/PointsCoin";
 import { useCart } from "@/contexts/CartContext";
@@ -36,8 +46,9 @@ import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
 import { giftCardPayment, normaliseCode, settle } from "@shared/commerce/vouchers";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { subtractMoney } from "@shared/money";
-import { Check, Gift, LoaderCircle, Ticket, X } from "lucide-react";
-import { Suspense, lazy, useEffect, useId, useState } from "react";
+import { Check, ChevronDown, Gift, LoaderCircle, Ticket, X } from "lucide-react";
+import { Suspense, lazy, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Unfold } from "@/components/ui/Unfold";
 import { createPortal } from "react-dom";
 import { Link } from "wouter";
 import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
@@ -115,18 +126,91 @@ export function useSavingsBill({ withBalance = false }: { withBalance?: boolean 
 }
 
 export function BagSavings() {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const money = useMoney();
+  const { cart } = useCart();
   const headingId = useId();
   const bill = useSavingsBill({ withBalance: true });
+  const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
+
+  /* What a folded row says about itself. */
+  const codeSummary = (kind: "discount" | "gift"): Summary => {
+    const held = kind === "discount" ? bill.chosen.code : bill.chosen.giftCard;
+    const quote = kind === "discount" ? bill.codeQuote : bill.giftQuote;
+    if (!held) return { text: t("cart.savingsOpen"), tone: "muted" };
+    if (quote.data && !quote.data.ok) return { text: t("cart.savingsNotApplied"), tone: "bad" };
+    if (!quote.data) return { text: normaliseCode(held) || held, tone: "muted", code: true };
+    const off = kind === "discount" ? bill.discountOff : bill.giftOff;
+    return { text: `${normaliseCode(held) || held} · −${amount(off)}`, tone: "good", code: true };
+  };
+  const offer = pointsSpendableOn(bill.balance, cart?.total.amount ?? "0.000");
+  const pointsSummary: Summary | null = bill.chosen.usePoints && bill.pointsApplied > 0
+    ? { text: t("cart.pointsUsing", { value: amount(bill.pointsOff) }), tone: "good" }
+    : bill.balance > 0 && offer > 0
+      ? { text: t("rewards.balance", { points: formatCount(bill.balance, locale) }), tone: "muted" }
+      : null;
+
   return (
     <section aria-labelledby={headingId}>
       <h3 id={headingId} className="sr-only">{t("cart.savingsHeading")}</h3>
       <div className="divide-y divide-[#eef1f5]">
-        <CodeBox kind="discount" bill={bill} />
-        <CodeBox kind="gift" bill={bill} />
-        <PointsSwitch bill={bill} />
+        <SavingsRow icon={<Ticket className="size-[18px]" />} title={t("cart.discountCode")} summary={codeSummary("discount")}>
+          <CodeBox kind="discount" bill={bill} />
+        </SavingsRow>
+        <SavingsRow icon={<Gift className="size-[18px]" />} title={t("cart.giftCard")} summary={codeSummary("gift")}>
+          <CodeBox kind="gift" bill={bill} />
+        </SavingsRow>
+        <SavingsRow icon={<PointsCoin size={18} />} title={t("account.points")} summary={pointsSummary}>
+          <PointsSwitch bill={bill} />
+        </SavingsRow>
       </div>
     </section>
+  );
+}
+
+type Summary = { text: string; tone: "muted" | "good" | "bad"; code?: boolean };
+
+/**
+ * One folded row: its name and what it holds on a button, and what changes it
+ * under that, opened by its height. Opening puts the keyboard in its box, or
+ * on the points switch.
+ */
+function SavingsRow({ icon, title, summary, children }: { icon: ReactNode; title: string; summary: Summary | null; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  const focusNext = useRef(false);
+  useEffect(() => {
+    if (!open || !focusNext.current) return;
+    focusNext.current = false;
+    panel.current?.querySelector<HTMLElement>("input:not([type=hidden]), [role=switch]")?.focus({ preventScroll: true });
+  }, [open]);
+  return (
+    <div>
+      <h4>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => { pressHaptic(); focusNext.current = !open; setOpen(!open); }}
+          className="-mx-2 flex min-h-[52px] w-[calc(100%+1rem)] items-center gap-2 rounded-xl px-2 py-3 text-start hover:bg-[#0a285a]/[.06]"
+        >
+          <span aria-hidden className="grid size-[18px] shrink-0 place-items-center text-[#536b8c]">{icon}</span>
+          <span className="min-w-0 shrink-0 text-[14px] font-bold text-[#0a285a]">{title}</span>
+          {summary ? (
+            <span
+              className={`ms-auto min-w-0 truncate text-[13px] font-semibold ${summary.tone === "good" ? "text-[#2f5d33]" : summary.tone === "bad" ? "text-[#8c2f22]" : "ink-muted"}`}
+            >
+              {summary.code ? <bdi dir="ltr">{summary.text}</bdi> : summary.text}
+            </span>
+          ) : <span className="ms-auto" />}
+          <ChevronDown aria-hidden className={`size-4 shrink-0 text-[#536b8c] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </button>
+      </h4>
+      <Unfold open={open} id={panelId}>
+        <div ref={panel} className="pb-2">{children}</div>
+      </Unfold>
+    </div>
   );
 }
 
@@ -191,15 +275,12 @@ function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<t
   const refused = held && quote.data && !quote.data.ok ? quote.data.reason : null;
   const label = t(kind === "discount" ? "cart.discountCode" : "cart.giftCard");
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
-  const Icon = kind === "discount" ? Ticket : Gift;
 
   return (
-    <div className="py-3">
-      <label htmlFor={fieldId} className="flex items-center gap-2 text-[14px] font-bold text-[#0a285a]">
-        <Icon className="size-[18px] shrink-0 text-[#536b8c]" aria-hidden />{label}
-      </label>
+    <div>
+      <label htmlFor={fieldId} className="sr-only">{label}</label>
       {held ? (
-        <div className={`mt-2 flex items-center gap-3 rounded-xl border px-3 py-2 ${refused ? "border-[#f0c8c2] bg-[#fdf1ef]" : "border-[#cfe3cf] bg-[#f1f8f1]"}`}>
+        <div className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${refused ? "border-[#f0c8c2] bg-[#fdf1ef]" : "border-[#cfe3cf] bg-[#f1f8f1]"}`}>
           {quote.isFetching && !good ? <LoaderCircle className="size-4 shrink-0 animate-spin text-[#536b8c]" aria-hidden />
             : refused ? <X className="size-4 shrink-0 text-[#8c2f22]" aria-hidden />
             : <Check className="size-4 shrink-0 text-[#2f5d33]" aria-hidden />}
@@ -224,7 +305,7 @@ function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<t
         </div>
       ) : (
         <form
-          className="mt-2 flex gap-2"
+          className="flex gap-2"
           onSubmit={event => { event.preventDefault(); void apply(); }}
         >
           <input
@@ -269,17 +350,14 @@ function PointsSwitch({ bill }: { bill: ReturnType<typeof useSavingsBill> }) {
   const labelId = useId();
   const offer = pointsSpendableOn(bill.balance, cart?.total.amount ?? "0.000");
   const on = bill.chosen.usePoints && bill.balance > 0;
-  const heading = (
-    <span id={labelId} className="flex items-center gap-2 text-[14px] font-bold text-[#0a285a]">
-      <PointsCoin size={18} />{t("account.points")}
-    </span>
-  );
+  /* The row above says it; this names the switch to a screen reader. */
+  const heading = <span id={labelId} className="sr-only">{t("account.points")}</span>;
 
   if (!isAuthenticated) {
     return (
-      <div className="py-3">
+      <div>
         {heading}
-        <p className="mt-1 text-[13px] leading-5 ink-muted">
+        <p className="text-[13px] leading-5 ink-muted">
           {t("cart.pointsSignIn")}{" "}
           <button type="button" onClick={() => setSigningIn(true)} className="font-bold text-[#0a285a] underline underline-offset-2">{t("header.signIn")}</button>
         </p>
@@ -288,13 +366,13 @@ function PointsSwitch({ bill }: { bill: ReturnType<typeof useSavingsBill> }) {
     );
   }
   if (!bill.balanceKnown) {
-    return <div className="py-3">{heading}<span aria-hidden className="mt-2 block h-4 w-40 animate-pulse rounded bg-[#e7edf5]" /></div>;
+    return <div>{heading}<span aria-hidden className="block h-4 w-40 animate-pulse rounded bg-[#e7edf5]" /></div>;
   }
   if (bill.balance <= 0 || offer <= 0) {
     return (
-      <div className="py-3">
+      <div>
         {heading}
-        <p className="mt-1 text-[13px] leading-5 ink-muted">
+        <p className="text-[13px] leading-5 ink-muted">
           {t("cart.noPoints")}{" "}
           <Link href="/account/wallet" className="font-bold text-[#0a285a] underline underline-offset-2">{t("cart.howToEarn")}</Link>
         </p>
@@ -302,10 +380,10 @@ function PointsSwitch({ bill }: { bill: ReturnType<typeof useSavingsBill> }) {
     );
   }
   return (
-    <div className="flex items-center gap-3 py-3">
+    <div className="flex items-center gap-3">
       <span className="min-w-0 flex-1">
         {heading}
-        <span className="mt-0.5 block text-[13px] leading-5 ink-muted">
+        <span className="block text-[13px] leading-5 ink-muted">
           {t("checkout.usePoints", { points: formatCount(offer, locale), value: money({ amount: spendValue(offer), currencyCode: "KWD" }) })}
         </span>
       </span>

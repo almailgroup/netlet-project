@@ -28,6 +28,8 @@ import { GENDERS } from "../../../Shared/commerce/profileDetails.js";
 import { photoFor, removeProfilePhoto } from "../services/profilePhoto.js";
 import { emailConfigured } from "../core/email.js";
 import { emailPreference } from "../services/notifications.js";
+import { defaultsFor, DefaultsRefused, setDefaultAddress, setDefaultPayment } from "../services/customerDefaults.js";
+import { PAYMENT_METHODS } from "../../../Shared/commerce/customerDefaults.js";
 
 const zoneIdSchema = z.string().refine(value => kuwaitDeliveryZones.some(zone => zone.id === value), "Unknown delivery zone");
 const notificationKindSchema = z.enum(notificationKinds);
@@ -186,6 +188,21 @@ export const customerRouter = router({
       .input(z.object({ id: rowId }))
       .mutation(({ ctx, input }) => refusable(() => removeAddress(ctx.user.id, input.id))),
   }),
+  /*
+   * What every order starts from (0088): the default delivery address and the
+   * default way to pay, chosen in Settings. `ready` is false until the table
+   * is pasted, and a write then answers `saved: false`, the device keeping the
+   * address in use meanwhile (`Backend/src/services/customerDefaults.ts`).
+   */
+  defaults: router({
+    get: protectedProcedure.query(({ ctx }) => defaultsFor(ctx.user.id)),
+    setAddress: protectedProcedure
+      .input(z.object({ addressId: rowId.nullable() }))
+      .mutation(({ ctx, input }) => refusable(() => setDefaultAddress(ctx.user.id, input.addressId))),
+    setPayment: protectedProcedure
+      .input(z.object({ method: z.enum(PAYMENT_METHODS) }))
+      .mutation(({ ctx, input }) => refusable(() => setDefaultPayment(ctx.user.id, input.method))),
+  }),
 });
 
 
@@ -200,7 +217,7 @@ async function refusable<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
   } catch (error) {
-    if (error instanceof AddressError) {
+    if (error instanceof AddressError || error instanceof DefaultsRefused) {
       throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
     }
     throw error;

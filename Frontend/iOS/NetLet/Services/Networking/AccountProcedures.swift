@@ -42,6 +42,25 @@ extension API {
     static let updateAddress = Procedure<AddressInput, SavedAddress>(mutation: "customer.addresses.update")
     static let removeAddress = Procedure<RowId, Acknowledged>(mutation: "customer.addresses.remove")
 
+    // MARK: What every order starts from (0088)
+
+    struct DefaultAddress: Encodable, Sendable {
+        let addressId: Int
+    }
+
+    struct DefaultPayment: Encodable, Sendable {
+        let method: String
+    }
+
+    /// `saved` is false until migration 0088 is pasted; the phone keeps the address meanwhile.
+    struct DefaultSaved: Decodable, Sendable {
+        let saved: Bool
+    }
+
+    static let customerDefaults = Procedure<NoInput, CustomerDefaults>(query: "customer.defaults.get")
+    static let setDefaultAddress = Procedure<DefaultAddress, DefaultSaved>(mutation: "customer.defaults.setAddress")
+    static let setDefaultPayment = Procedure<DefaultPayment, DefaultSaved>(mutation: "customer.defaults.setPayment")
+
     // MARK: Preferences
 
     struct NoticeSwitch: Encodable, Sendable {

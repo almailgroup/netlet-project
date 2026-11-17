@@ -54,7 +54,7 @@ import { formatPhone, normalisePhone } from "@shared/commerce/wishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { sharerIdFromCode } from "@shared/commerce/affiliate";
 import { trpc } from "@/lib/trpc";
-import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useDisplayCurrency } from "@/hooks/useDisplayCurrency";
 import { formatMoney } from "@/lib/format";
 import { convertFromDinars } from "@shared/commerce/currency";
@@ -75,7 +75,8 @@ import { storeDeliveryOf } from "@/components/cart/StoreDelivery";
 import { useSlotWords } from "@/hooks/useSlotWords";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
-import { Banknote, CreditCard, Info, LoaderCircle, PackageCheck, RotateCcw, ShoppingBag, Smartphone, Store, Truck, Wallet } from "lucide-react";
+import { Banknote, Check, ChevronDown, CreditCard, Info, LoaderCircle, PackageCheck, RotateCcw, ShoppingBag, Smartphone, Store, Truck, Wallet } from "lucide-react";
+import { Unfold } from "@/components/ui/Unfold";
 import { useReturnWindow } from "@/hooks/useReturnWindow";
 import { cleanParts, hasParts, missingParts, partsProblems } from "@shared/commerce/kuwaitAddress";
 import { addressLineIn, addressLineOf } from "@shared/commerce/addresses";
@@ -220,8 +221,8 @@ export default function Checkout() {
 
   /*
    * A discount code, a gift card and points (3.2.3, 3.1.15), each its own
-   * row (`BagSavings`) — here and not in the cart, on the owner's word. **Open,
-   * right before the ways to pay.** `useSavingsBill` is the arithmetic, the
+   * row (`BagSavings`) — here and not in the cart, on the owner's word. **Right
+   * before the ways to pay, each folded until pressed.** `useSavingsBill` is the arithmetic, the
    * order writer's own `settle`.
    */
   const bill = useSavingsBill();
@@ -325,7 +326,7 @@ export default function Checkout() {
               ) : null}
               <OrderItems />
               {/* A code, a gift card and points — right before the ways to
-                  pay, open. */}
+                  pay, each folded until pressed. */}
               {/* BagSavings names itself as a region; a second label here was
                   two landmarks with one name. */}
               <div className={`${CARD} px-4 sm:px-5`}>
@@ -614,16 +615,29 @@ function ItemRow({ item }: { item: CartItem }) {
  * rest are drawn as they will be, each marked as coming and none choosable,
  * so the page shows what paying will look like without a press leading to an
  * order nobody can pay for (3.2.1 waits on a card service).
+ *
+ * **It opens on the default, with Change, on the owner's word** ("display
+ * the default payment method with the option to proceed directly or expand
+ * the section to select another method"): the account's own way to pay
+ * (Quick settings, 0088) when it can be chosen, else the first that can, so
+ * Place order goes straight on; Change opens the list by its height. A
+ * refusal of cash opens it, since the sentence saying why is in it.
  */
 function PaymentMethods() {
   const { cart } = useCart();
   const { t } = useTranslation();
   const money = useMoney();
+  const { isAuthenticated } = useAuth();
+  const defaults = trpc.customer.defaults.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 60_000, retry: false });
   const codRefused = cart?.cod.available === false ? cart.cod.because : null;
+  const [opened, setOpened] = useState(false);
+  const open = opened || Boolean(codRefused);
+  const listId = useId();
+  const preferred = defaults.data?.payment ?? "cod";
   const option = (key: string, icon: ReactNode, title: string, note: string, state: "chosen" | "soon" | "refused") => (
     <label
       key={key}
-      className={`flex items-center gap-3 rounded-xl border p-3 ${state === "chosen" ? "border-[#0a285a] bg-[#f6f8fb] shadow-[inset_0_0_0_1px_#0a285a]" : "border-[#e6e9ef] bg-white"} ${state === "chosen" ? "cursor-pointer" : "cursor-not-allowed"}`}
+      className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${state === "chosen" ? "border-[#0a285a] bg-[#f6f8fb] shadow-[inset_0_0_0_1px_#0a285a]" : "border-[#e6e9ef] bg-white"} ${state === "chosen" ? "cursor-pointer" : "cursor-not-allowed"}`}
     >
       <input
         type="radio"
@@ -644,22 +658,57 @@ function PaymentMethods() {
     </label>
   );
   return (
-    <fieldset className={`${CARD} p-4 sm:p-5`}>
-      <legend className="sr-only">{t("checkout.paymentMethod")}</legend>
-      <p aria-hidden className="mb-3 text-[15px] font-extrabold">{t("checkout.paymentMethod")}</p>
-      <div className="space-y-2">
-        {option("cod", <Banknote className="size-5" />, t("checkout.payCod"), t("checkout.payCodNote"), codRefused ? "refused" : "chosen")}
-        {codRefused ? (
-          <p className="rounded-xl border border-[#f0d3c6] bg-[#fdf3ee] p-3 text-[13px] leading-5 text-[#8c2f22]">
-            {codRefused.kind === "shop" ? t("checkout.codUnavailableShop")
-              : codRefused.kind === "seller" ? t("checkout.codUnavailableSeller", { name: codRefused.vendorName })
-              : t("checkout.codUnavailableCeiling", { name: codRefused.vendorName, amount: money({ amount: codRefused.ceiling, currencyCode: "KWD" }) })}
-          </p>
-        ) : null}
-        {option("knet", <span className="text-[11px] font-extrabold tracking-tight">KNET</span>, t("checkout.payKnet"), t("checkout.payKnetNote"), "soon")}
-        {option("card", <CreditCard className="size-5" />, t("checkout.payCard"), t("checkout.payCardNote"), "soon")}
-        {option("apple", <Smartphone className="size-5" />, t("checkout.payApple"), t("checkout.payAppleNote"), "soon")}
+    <section aria-labelledby="pay-heading" className={`${CARD} p-4 sm:p-5`}>
+      <div className="flex items-center gap-3">
+        <h2 id="pay-heading" className="min-w-0 flex-1 text-[15px] font-extrabold">{t("checkout.paymentMethod")}</h2>
+        {codRefused ? null : (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={listId}
+            onClick={() => { pressHaptic(); setOpened(!opened); }}
+            className="tap-target inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-[#d6dfeb] px-3.5 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]"
+          >
+            {open ? t("checkout.payDone") : t("checkout.payChange")}
+            <ChevronDown aria-hidden className={`size-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          </button>
+        )}
       </div>
-    </fieldset>
+      {/* The default, as the order will be paid: folded away while the list is open. */}
+      <Unfold open={!open}>
+        <div className="mt-2 flex items-center gap-3 rounded-xl border border-[#0a285a] bg-[#f6f8fb] p-3 shadow-[inset_0_0_0_1px_#0a285a]">
+          <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0a285a] text-white"><Banknote className="size-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span className="text-[14px] font-bold text-[#0a285a]">{t("checkout.payCod")}</span>
+              {isAuthenticated && preferred === "cod" ? (
+                <span className="rounded-full bg-[#0a285a] px-2 py-0.5 text-[11px] font-bold text-white">{t("checkout.payYourDefault")}</span>
+              ) : null}
+            </span>
+            <span className="block text-[12px] leading-4 ink-muted">{t("checkout.payCodNote")}</span>
+          </span>
+          <Check aria-hidden className="size-5 shrink-0 text-[#0a285a]" />
+        </div>
+      </Unfold>
+      <Unfold open={open} id={listId}>
+        <fieldset className="mt-2">
+          <legend className="sr-only">{t("checkout.paymentMethod")}</legend>
+          <div className="space-y-2">
+            {option("cod", <Banknote className="size-5" />, t("checkout.payCod"), t("checkout.payCodNote"), codRefused ? "refused" : "chosen")}
+            {codRefused ? (
+              <p className="rounded-xl border border-[#f0d3c6] bg-[#fdf3ee] p-3 text-[13px] leading-5 text-[#8c2f22]">
+                {codRefused.kind === "shop" ? t("checkout.codUnavailableShop")
+                  : codRefused.kind === "seller" ? t("checkout.codUnavailableSeller", { name: codRefused.vendorName })
+                  : t("checkout.codUnavailableCeiling", { name: codRefused.vendorName, amount: money({ amount: codRefused.ceiling, currencyCode: "KWD" }) })}
+              </p>
+            ) : null}
+            {option("knet", <span className="text-[11px] font-extrabold tracking-tight">KNET</span>, t("checkout.payKnet"), t("checkout.payKnetNote"), "soon")}
+            {option("card", <CreditCard className="size-5" />, t("checkout.payCard"), t("checkout.payCardNote"), "soon")}
+            {option("apple", <Smartphone className="size-5" />, t("checkout.payApple"), t("checkout.payAppleNote"), "soon")}
+          </div>
+          {isAuthenticated ? <p className="mt-2 text-[12px] leading-5 ink-muted">{t("checkout.payMakeDefault")}</p> : null}
+        </fieldset>
+      </Unfold>
+    </section>
   );
 }

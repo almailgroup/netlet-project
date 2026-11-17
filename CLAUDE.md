@@ -2280,7 +2280,8 @@ sideways scroll.
 **Codes, gift cards and points are checkout's alone, on the owner's word**
 ("display three distinct options: a discount code input, a gift card input, a
 NetLet points redemption toggle", then "only in the checkout page, not cart"):
-`BagSavings` is a card at checkout, before the ways to pay, and the cart, its
+`BagSavings` is a card at checkout, before the ways to pay, each of its three
+folded until pressed (see "Checkout confirms; it does not ask"), and the cart, its
 drawer and its floating bar show the bag's own total with a line saying codes,
 gift cards and points are taken at checkout (`cart.checkoutNote`). What was
 chosen is kept for the tab and the bag (`lib/bagSavings.ts`, the session
@@ -2690,6 +2691,40 @@ the Gulf is named as coming** (`Shared/commerce/country.ts`, exported to the
 app), none of them choosable — a country somebody could pick and be delivered
 nothing in would be a control that lies; each is the browser's or the phone's
 own name for it. Preferences keeps the delivery area and the notices.
+
+**Quick settings also hold what every order starts from: the default delivery
+address and the default way to pay, on the owner's word** ("allow customers to
+set or change their default delivery address in Settings" and "their default
+payment method"; migration 0088, `customer_defaults`;
+`Shared/commerce/customerDefaults.ts` the rule,
+`Backend/src/services/customerDefaults.ts` the database half,
+`customer.defaults.*`). **The default address is the address in use** — the
+header's, the cart's, checkout's (`addressInUse`) — because an account with a
+"default" in one place and an "in use" in another is one somebody has to keep
+in step by hand: choosing an address anywhere (the header's book, Quick
+settings' Delivery address, the address book's "Set as default", checkout's
+own fallback) writes the device's key (`lib/lastAddress`, the app's
+`CheckoutViewModel.lastAddressKey`), and `CustomerContext` (the app's
+`DeliveryModel`) sends it to the account and, on sign-in, reads the account's
+back with its governorate as the area, so a new device delivers where the
+account does. The server refuses an address that is not the account's
+(`defaults.noSuchAddress`, asked in the `where`), and deleting the address
+leaves no default (`set null`). The address book marks the default with a
+navy rim and "Default", and offers "Set as default" on the rest (not on one
+with no governorate, which cannot price a delivery). **The way to pay** is
+cash on delivery, choosable while the shop takes it (`choosablePayments`, the
+`cashOnDelivery` switch); KNET, a card and Apple Pay are in the list as coming
+and cannot be chosen until a card service is wired (`defaults.paymentNotOffered`),
+and a stored way the shop no longer offers reads as the first it does. **A
+table of its own, closed not broken until 0088 is pasted**: a missing table
+reads as `ready: false` and a write answers `saved: false` rather than
+failing, so the device's key carries the address in use as it always did
+(`customerDefaults.test.ts` renames the table away). Walked on a production
+build against a local Postgres at 320, 390 and 1440 in both languages: Quick
+settings choosing Office and the address book saying so, "Set as default"
+putting Home back on the account, checkout's three rows folded and the code's
+box focused on opening, the payment's default with Change opening the four;
+axe clean and no sideways scroll.
 
 **Only the rows somebody needs, on the owner's word** ("I only want the
 options that are 100 percent needed in the profile page; combine or remove
@@ -5253,11 +5288,26 @@ card and each line's own is its delivery button (`LineDestination`, under "The
 bag is drawn by store"), so checkout is one column of cards with neither — the
 lines by store with each store's delivery and when it arrives (the seller's
 band, `deliverySpeed` on each bag line, `arrivalFor`, nothing where the seller
-stated none), **the code, the gift card and the points, open and right before
-the ways to pay** (on the owner's word: "so users can enter their code right
-away") — `BagSavings`, see "Codes, gift cards and points are checkout's
-alone" — the payment list, and the summary with
-Place order. The order is placed from the address in use's own parts, name and
+stated none), **the code, the gift card and the points, right before the
+ways to pay** — `BagSavings`, see "Codes, gift cards and points are
+checkout's alone" — the way to pay, and the summary with
+Place order. **The three are folded until pressed, on the owner's word** ("keep
+these sections collapsed by default and expand them when clicked … keep the
+checkout page clean, simple, and easy to use"), a reversal: they were open,
+also on the owner's word ("so users can enter their code right away"), and
+three boxes over the ways to pay were most of a phone's screen for the few
+orders that carry a code. Folded, each row says what it holds — the code and
+what it takes off, "Not applied" in red for one refused, the points it would
+use, "Add" for nothing — so nothing chosen is hidden; pressed, it opens by its
+height (`Unfold`, `.unfold`; the app's `FoldRow`, a spring) and puts the
+keyboard in its box. **The way to pay opens on the default, with Change, on
+the owner's word** ("display the default payment method with the option to
+proceed directly or expand the section to select another method"): the
+account's own (Quick settings, below) when it can be chosen, else the first
+that can — today cash on delivery, marked "Your default" — so Place order goes
+straight on; Change opens the list (cash, and KNET, a card and Apple Pay drawn
+as coming), and a refusal of cash opens it by itself, since the sentence
+saying why is in it. The order is placed from the address in use's own parts, name and
 number; a saved address with no number on an account with none asks for it in
 one box, and an order with nowhere to go — Buy now arrives without passing the
 cart — says so under Place order, where the press opens the address book. A

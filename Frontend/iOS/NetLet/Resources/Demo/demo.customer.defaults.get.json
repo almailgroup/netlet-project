@@ -1,0 +1,15 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "addressId": 8,
+        "governorate": "hawalli",
+        "payment": "cod",
+        "choosable": [
+          "cod"
+        ]
+      }
+    }
+  }
+}

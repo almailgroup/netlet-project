@@ -1,4 +1,4 @@
-import { readLastAddressId, zoneFromAddressBook } from "@/lib/lastAddress";
+import { forgetLastAddress, onLastAddressChange, readLastAddressId, rememberAddress, zoneFromAddressBook } from "@/lib/lastAddress";
 import { readStored, readStoredList, removeStored, writeStored } from "@/lib/browserStore";
 import { switchLanguage } from "@/lib/languageSwitch";
 import { useQueryClient } from "@tanstack/react-query";
@@ -280,6 +280,62 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     const zone = zoneFromAddressBook(book.data, readLastAddressId());
     if (zone) setDeliveryZoneId(zone);
   }, [book.data, needsArea, setDeliveryZoneId]);
+
+  /*
+   * The default delivery address (0088) is the address in use, kept on the
+   * account (`Shared/commerce/customerDefaults.ts`). Signing in reads it into
+   * this device's key, with its governorate as the area, so a new device
+   * delivers where the account does; and every choice made here — the
+   * header's book, the address book's "Set as default", Quick settings,
+   * checkout's own fallback — writes that one key, so one listener sends each
+   * of them back. Before 0088 is pasted the answer is `ready: false` and the
+   * device's key is the whole of it, as it always was.
+   */
+  const trpcUtils = trpc.useUtils();
+  const defaults = trpc.customer.defaults.get.useQuery(undefined, { enabled: isAuthenticated && !PORTAL_SIDE, staleTime: 60_000, retry: false });
+  const sendDefault = trpc.customer.defaults.setAddress.useMutation({
+    onError: () => void trpcUtils.customer.defaults.get.invalidate(),
+  });
+  const adoptedDefault = useRef(false);
+  const wasSignedIn = useRef(false);
+  useEffect(() => {
+    if (isAuthenticated) {
+      wasSignedIn.current = true;
+      return;
+    }
+    adoptedDefault.current = false;
+    if (wasSignedIn.current) {
+      wasSignedIn.current = false;
+      forgetLastAddress();
+    }
+  }, [isAuthenticated]);
+  useEffect(() => {
+    const kept = defaults.data;
+    if (!isAuthenticated || !kept?.ready || adoptedDefault.current) return;
+    adoptedDefault.current = true;
+    const here = readLastAddressId();
+    if (kept.addressId !== null) {
+      if (kept.governorate && kept.governorate !== deliveryZoneId) setDeliveryZoneId(kept.governorate);
+      if (here !== kept.addressId) rememberAddress(kept.addressId);
+    } else if (here !== null) {
+      /* An account with no default yet takes the one this device was using;
+         the server refuses an id that is not this account's. */
+      trpcUtils.customer.defaults.get.setData(undefined, { ...kept, addressId: here });
+      sendDefault.mutate({ addressId: here });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaults.data, isAuthenticated]);
+  useEffect(() => {
+    if (!isAuthenticated || PORTAL_SIDE) return;
+    return onLastAddressChange(() => {
+      const id = readLastAddressId();
+      const kept = trpcUtils.customer.defaults.get.getData();
+      if (id === null || !kept?.ready || kept.addressId === id) return;
+      trpcUtils.customer.defaults.get.setData(undefined, { ...kept, addressId: id });
+      sendDefault.mutate({ addressId: id });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const value = useMemo<CustomerContextValue>(() => ({
     locale,
