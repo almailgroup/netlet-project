@@ -2256,6 +2256,27 @@ languages: one line left out turning its store's circle empty and All's to a
 minus, the subtotal and Checkout counting the rest, checkout showing only the
 chosen lines with the note, axe clean, no sideways scroll.
 
+**Unticking moves a line to Saved for later, on the owner's word**
+("automatically move products to Save for Later when unchecked in the cart").
+A line's circle, a store's or All unticked takes those lines out of the bag
+and into Saved — the hearts, listed under Checkout as "Saved for later" with
+Move to cart — rather than leaving them in the bag left out; a line under the
+summary's All says so ("Untick an item to move it to Saved for later.").
+`untickPlan` in `cartChoice.ts` is the rule (the app's `CartChoice.untick`, on
+the same cases): a set moves whole; Undo is offered only when every line moved
+can be added again as it was — no extras, not a set's, the line menu's own
+rule — and puts the products back out of Saved; a line whose product the bag
+does not say is left out of checkout as before, a set holding one kept
+together. It is a move, so nothing is asked first. **The skip list stays, for
+Buy now**: the lines it leaves out are drawn unticked, and ticking one chooses
+it. One line's toast names it; more say how many (`cart.movedToSaved`, counted
+by the plural forms). `useUntickToSaved` on the web, `UntickToSaved` in the
+app. Walked on a production build at 320, 390 and 1440 in both languages
+(`.scratch/untick-walk.mjs`): a line under Saved for later with Undo and back
+again, a store's three lines moved with a counted toast, All emptying the bag
+into Saved for later, Buy now's leftover ticked back in, axe clean and no
+sideways scroll.
+
 **Codes, gift cards and points are checkout's alone, on the owner's word**
 ("display three distinct options: a discount code input, a gift card input, a
 NetLet points redemption toggle", then "only in the checkout page, not cart"):
@@ -9130,10 +9151,11 @@ portal's page and the editor's card share them, and the dictionary is one
 module) — then 1,107 KB (319 KB), the refurbished section's and the
 photo squaring's words in both languages — then 1,109 KB (319 KB), the
 product page's total for the quantity and its words — then 1,114 KB
-(320 KB), each store's delivery row and sheet and their words — and is
+(320 KB), each store's delivery row and sheet and their words — then
 1,126 KB (323 KB), paying online, the test page and the door check's
-words in both languages — and is 1,132 KB (324 KB) now, the tax words in
-both languages —
+words in both languages — then 1,132 KB (324 KB), the tax words in
+both languages — and is 1,133 KB (324 KB) now, the untick note and its toast
+in both languages —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

@@ -3,7 +3,8 @@
  * should be able to choose what products you want the price for and only
  * checkout for those products"): a circle beside every line and every store,
  * All at the foot, and the totals, the delivery and Checkout counting the
- * chosen lines alone; the rest stay in the bag for another day.
+ * chosen lines alone. **A line unticked moves to Saved for later**
+ * (`untickPlan`, below); the skip list is what Buy now leaves out.
  *
  * **The device keeps what is *not* chosen, and the server is told.** A skip
  * list rather than a chosen list, so a line added later — on this device or
@@ -74,6 +75,57 @@ export function chooseOnly(lines: readonly ChoosableLine[], lineIds: readonly st
   const sets = new Set(lines.filter(line => lineIds.includes(line.lineId) && line.bundleId).map(line => line.bundleId!));
   const kept = new Set(lines.filter(line => lineIds.includes(line.lineId) || (line.bundleId && sets.has(line.bundleId))).map(line => line.lineId));
   return lines.filter(line => !kept.has(line.lineId)).map(line => line.lineId);
+}
+
+/** A line as moving it to Saved for later needs it: its product, and whether it carries extras or a set. */
+export type SavableLine = ChoosableLine & {
+  productId?: string | null;
+  addons?: readonly unknown[] | null;
+  bundleName?: string | null;
+};
+
+/** What unticking some lines does (`untickPlan`). */
+export type UntickPlan = {
+  /** The lines that leave the bag for Saved for later, a set whole. */
+  move: string[];
+  /** Their products, once each, in the bag's order: what Saved gains. */
+  productIds: string[];
+  /** Lines whose product the bag does not say — left out of this checkout instead, as before. */
+  leave: string[];
+  /**
+   * Whether Undo can put every line moved back as it was. A line with extras
+   * or priced as part of a set cannot be added again as the same line, so a
+   * press that moved one offers no Undo — the line menu's own rule.
+   */
+  undoable: boolean;
+};
+
+/**
+ * **Unticking a line moves it to Saved for later, on the owner's word**
+ * ("automatically move products to Save for Later when unchecked in the
+ * cart"). A line, a store or All unticked leaves the bag for Saved — the
+ * hearts, which the cart lists under Checkout as "Saved for later" with a way
+ * back — rather than staying in the bag left out. A set moves whole, since its
+ * lines are priced as a set only together. A line whose product the bag does
+ * not say (a bag read before it was sent) cannot be saved, so it is left out
+ * of this checkout as unticking did before; a set holding one is left out
+ * whole, never split. Ticking stays the skip list's: the lines Buy now leaves
+ * out are drawn unticked, and ticking one chooses it.
+ */
+export function untickPlan(lines: readonly SavableLine[], lineIds: readonly string[]): UntickPlan {
+  const pressed = new Set(lineIds);
+  const sets = new Set(lines.filter(line => pressed.has(line.lineId) && line.bundleId).map(line => line.bundleId!));
+  const touched = lines.filter(line => pressed.has(line.lineId) || (line.bundleId && sets.has(line.bundleId)));
+  /* A set with a line that cannot be saved stays together in the bag. */
+  const stuckSets = new Set(touched.filter(line => !line.productId && line.bundleId).map(line => line.bundleId!));
+  const moves = (line: SavableLine) => Boolean(line.productId) && !(line.bundleId && stuckSets.has(line.bundleId));
+  const move = touched.filter(moves);
+  return {
+    move: move.map(line => line.lineId),
+    productIds: Array.from(new Set(move.map(line => line.productId!))),
+    leave: touched.filter(line => !moves(line)).map(line => line.lineId),
+    undoable: move.length > 0 && move.every(line => !line.addons?.length && !line.bundleId && !line.bundleName),
+  };
 }
 
 /** All, none or some of these lines chosen — the state of a store's circle or of All. */

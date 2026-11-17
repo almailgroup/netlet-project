@@ -37,6 +37,7 @@ import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 import { choiceOf } from "@shared/commerce/cartChoice";
 import { rateLabel } from "@shared/commerce/tax";
 import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
+import { useUntickToSaved } from "@/hooks/useUntickToSaved";
 
 /** While a stored bag loads or the first item is being added: never "empty" before it knows. */
 export function BagSettling() {
@@ -82,8 +83,10 @@ export function BagEmpty({ onBrowse, heading = "h3" }: { onBrowse: () => void; h
  *
  * **Each line and each store has a circle, and only what is ticked is checked
  * out**, on the owner's word (`ChoiceCircle`, `Shared/commerce/cartChoice.ts`):
- * a line left out stays in the bag, and the totals, each store's delivery and
- * Checkout count the chosen lines alone.
+ * the totals, each store's delivery and Checkout count the chosen lines alone,
+ * and **a line unticked moves to Saved for later**, also on the owner's word
+ * (`useUntickToSaved`) — out of the bag and into the row under Checkout. Only
+ * a line Buy now left out is drawn unticked, and ticking it chooses it.
  */
 export function BagLines({ layout = "drawer", matches }: {
   layout?: "drawer" | "page";
@@ -138,6 +141,7 @@ export function BagLines({ layout = "drawer", matches }: {
  */
 function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; padded: boolean }) {
   const { cart, skip, choose, syncing, closeCart } = useCart();
+  const untick = useUntickToSaved();
   const { t } = useTranslation();
   const money = useMoney();
   const ids = group.items.map(item => item.lineId);
@@ -147,11 +151,11 @@ function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; 
   return (
     <div className={padded ? "border-b border-[#eef1f5] px-4 pb-3 pt-3" : "border-b border-[#d5dfeb] pb-3"}>
       <div className="flex items-center gap-1">
-        {/* Every line of this store in or out together. */}
+        {/* Every line of this store in together, or to Saved for later together. */}
         <ChoiceCircle
           state={choiceOf(cart?.items ?? [], skip, ids)}
           label={t("cart.chooseStore", { name })}
-          onToggle={chosen => choose(ids, chosen)}
+          onToggle={chosen => (chosen ? choose(ids, true) : untick(ids))}
           className="-ms-2.5 pointer-fine:-ms-1.5"
         />
         <Link
@@ -199,6 +203,7 @@ function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; 
  */
 function BagLine({ item }: { item: CartItem }) {
   const { cart, choose, updateQuantity, removeItem, closeCart } = useCart();
+  const untick = useUntickToSaved();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
   const title = lineTitle(item, isArabic);
@@ -216,11 +221,11 @@ function BagLine({ item }: { item: CartItem }) {
   const chosen = item.chosen !== false;
   return (
     <div className="flex gap-2 py-4 min-[360px]:gap-3">
-      {/* In this checkout or left in the bag for later. */}
+      {/* In this checkout, or unticked to Saved for later. */}
       <ChoiceCircle
         state={chosen ? "all" : "none"}
         label={t("cart.chooseLine", { name: title })}
-        onToggle={next => choose([item.lineId], next)}
+        onToggle={next => (next ? choose([item.lineId], true) : untick([item.lineId]))}
         className="-ms-2.5 self-center pointer-fine:-ms-1.5"
       />
       {/* The photo is the same place as the name, so it is hidden from the
@@ -434,8 +439,10 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
   return (
     <div aria-busy={syncing}>
       {heading ? <h2 className="mb-3 text-[17px] font-extrabold text-[#0a285a]">{t("checkout.orderSummary")}</h2> : null}
-      {/* Everything in or out at once; partly while some lines are left out. */}
-      <AllChoice className="mb-2" />
+      {/* Everything in at once, or everything to Saved for later; and what
+          unticking does, said once where the circles are explained. */}
+      <AllChoice />
+      <p className="mb-2 text-[12px] leading-5 ink-muted">{t("cart.untickNote")}</p>
       {/* Delivery per seller (3.2.4), each named. A basket from three shops
           is three parcels, and one blended figure hides which seller is
           expensive. Sellers who charge nothing are left out entirely —
@@ -480,17 +487,19 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
 }
 
 /**
- * All, the foot of the reference's cart: every line in or out at once, partly
- * while some are left out. In the summary and in the phone's floating bar.
+ * All, the foot of the reference's cart: every line ticked at once, or every
+ * line to Saved for later; partly while Buy now left some out. In the summary
+ * and in the phone's floating bar.
  */
 export function AllChoice({ className = "", compact = false }: { className?: string; compact?: boolean }) {
   const { cart, skip, choose } = useCart();
+  const untick = useUntickToSaved();
   const { t } = useTranslation();
   if (!cart?.items.length) return null;
   const ids = cart.items.map(item => item.lineId);
   return (
     <div className={`flex items-center ${className}`}>
-      <ChoiceCircle state={choiceOf(cart.items, skip, ids)} label={t("cart.chooseAllName")} onToggle={chosen => choose(ids, chosen)} className="-ms-2.5 pointer-fine:-ms-1.5" />
+      <ChoiceCircle state={choiceOf(cart.items, skip, ids)} label={t("cart.chooseAllName")} onToggle={chosen => (chosen ? choose(ids, true) : untick(ids))} className="-ms-2.5 pointer-fine:-ms-1.5" />
       {/* The word is the eye's; the circle's name says it whole. */}
       <span aria-hidden className={`font-bold text-[#0a285a] ${compact ? "text-[13px]" : "text-[14px]"}`}>{t("cart.chooseAll")}</span>
     </div>
