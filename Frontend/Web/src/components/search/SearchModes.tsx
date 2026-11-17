@@ -95,6 +95,12 @@ function SearchModeSheet({ open, onClose, id, eyebrow, title, note, children, fo
 }) {
   const { t } = useTranslation();
   useOverlay(open, onClose);
+  /* Into the sheet as it opens, after `useOverlay` has recorded the opener:
+     it stayed on the microphone or the camera under the dim. */
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (open) closeRef.current?.focus({ preventScroll: true });
+  }, [open]);
   if (!open) return null;
 
   return createPortal(
@@ -117,6 +123,7 @@ function SearchModeSheet({ open, onClose, id, eyebrow, title, note, children, fo
           </div>
           <button
             type="button"
+            ref={closeRef}
             onClick={onClose}
             aria-label={t("search.close")}
             title={t("search.close")}

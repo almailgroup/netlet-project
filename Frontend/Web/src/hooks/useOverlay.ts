@@ -23,6 +23,42 @@ import { useEffect, useRef } from "react";
  */
 const openOverlays: symbol[] = [];
 
+/*
+ * Tab stays inside the modal dialog that holds focus, going round from its
+ * last stop to its first and back. A modal says the page behind is not there
+ * (`aria-modal`), yet Tab walked out of the bag drawer into the header under
+ * the dim — the keyboard on a link nobody could see — and on to the end of
+ * the page. Only the ends are caught; between them the browser moves focus
+ * as it always does, so a dialog's own order is untouched.
+ */
+const TAB_STOPS = "a[href], button, input, select, textarea, summary, iframe, [tabindex], [contenteditable='true']";
+
+function tabStops(dialog: HTMLElement): HTMLElement[] {
+  return Array.from(dialog.querySelectorAll<HTMLElement>(TAB_STOPS)).filter(element =>
+    element.tabIndex >= 0 &&
+    !(element as HTMLButtonElement).disabled &&
+    !element.closest("[inert]") &&
+    element.getClientRects().length > 0,
+  );
+}
+
+function keepTabInside(event: KeyboardEvent) {
+  const active = document.activeElement as HTMLElement | null;
+  const dialog = active?.closest<HTMLElement>('[aria-modal="true"]');
+  if (!active || !dialog) return;
+  const stops = tabStops(dialog);
+  if (!stops.length) return;
+  const first = stops[0];
+  const last = stops[stops.length - 1];
+  if (event.shiftKey && (active === first || active === dialog)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 export function useOverlay(open: boolean, onClose: () => void) {
   const opener = useRef<HTMLElement | null>(null);
 
@@ -47,9 +83,12 @@ export function useOverlay(open: boolean, onClose: () => void) {
     openOverlays.push(self);
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && openOverlays[openOverlays.length - 1] === self) {
+      if (openOverlays[openOverlays.length - 1] !== self) return;
+      if (event.key === "Escape") {
         event.stopPropagation();
         close.current();
+      } else if (event.key === "Tab") {
+        keepTabInside(event);
       }
     };
     window.addEventListener("keydown", onKeyDown);

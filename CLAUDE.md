@@ -2402,7 +2402,13 @@ this page where the order goes is part of what it costs.
 `useOverlay` is what a drawer, dialog or sheet owes whoever opened it —
 Escape closes, focus returns to the opener, the page behind stops scrolling.
 Use it for anything modal rather than re-deriving two of the three. Opened over
-one another, Escape closes only the top one (a stack in the hook).
+one another, Escape closes only the top one (a stack in the hook). **And Tab stays
+inside the modal that holds focus** (`keepTabInside`: only the two ends are
+caught, so a dialog's own order is the browser's): Tab walked out of the bag
+drawer into the header under the dim. **Moving focus in is the overlay's own**,
+by an effect declared after `useOverlay` so the opener is recorded first —
+the bag drawer and the voice and photo sheets never did, so the keyboard stayed
+on the button under the dim; they focus their Close now, as Quick view does.
 
 **A page's own way back goes back, on the owner's word** (`lib/inAppBack.ts`).
 The account sections' round arrow was a link to `/account`, so it pushed the
