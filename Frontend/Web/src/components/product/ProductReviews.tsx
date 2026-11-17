@@ -112,7 +112,7 @@ export function ProductReviews({ productId }: { productId: string; productTitle?
     <section id="reviews" aria-labelledby="reviews-heading" className="scroll-mt-24 border-t border-[#d5dfeb] pt-8">
       <h2 id="reviews-heading" className="font-extrabold text-2xl text-[#0a285a] sm:text-3xl">{t("review.heading")}</h2>
 
-      <QueryGate queries={[query]}>
+      <QueryGate audience="shopper" queries={[query]}>
         {() => {
           const data = query.data;
           if (!data?.summary) {

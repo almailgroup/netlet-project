@@ -60,3 +60,24 @@ describe("pages keep what they drew when a refresh fails", () => {
     expect(found).toEqual([]);
   });
 });
+
+/*
+ * QueryGate shows staff the server's own sentence — "column x does not exist"
+ * is what tells an administrator to run the migration — and a shopper a line
+ * of ours. Left at its default on a shop page, it showed a shopper "Unexpected
+ * token 'd', "down" is not valid JSON" under their saved items.
+ */
+describe("a shop page never shows a shopper the server's own words", () => {
+  const root = join(__dirname, "..");
+  const shop = [...sources(join(root, "pages")), ...sources(join(root, "components"))]
+    .filter(file => !/[/\\](admin)[/\\]/.test(file));
+
+  it("gives every QueryGate outside the portal the shopper's audience", () => {
+    const found = shop.flatMap(file =>
+      readFileSync(file, "utf8").split("\n").flatMap((line, index) =>
+        /<QueryGate\b/.test(line) && !/audience="shopper"/.test(line) ? [`${file.slice(root.length + 1)}:${index + 1}`] : [],
+      ),
+    );
+    expect(found).toEqual([]);
+  });
+});

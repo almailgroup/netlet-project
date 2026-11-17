@@ -79,7 +79,7 @@ export default function Invoice() {
           ) : missing ? (
             <PageHeading title={t("invoice.title")} note={t("invoice.notFound")} />
           ) : (
-            <QueryGate queries={[query]}>
+            <QueryGate audience="shopper" queries={[query]}>
               {() => (query.data ? <Document document={query.data.document} credits={query.data.credits} verifyCode={query.data.verifyCode} /> : null)}
             </QueryGate>
           )}

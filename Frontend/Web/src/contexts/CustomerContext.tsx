@@ -11,6 +11,7 @@ import { useFeature } from "@/hooks/useFeature";
 import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
 import { createContext, type ReactNode, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { failedToLoad } from "@/lib/queryState";
 
 /* One empty list, so a guest's `wishedIds` is the same array every render. */
 const NONE: string[] = [];
@@ -50,6 +51,13 @@ type CustomerContextValue = {
   toggleLocale: () => void;
   /** Saved — the products kept to come back to — and nothing on a wishlist. */
   savedIds: string[];
+  /**
+   * The account's Saved could not be read, so `savedIds` is not its list:
+   * Saved says it could not be loaded rather than "nothing saved yet", and
+   * `readSavedAgain` asks again.
+   */
+  savedUnread: boolean;
+  readSavedAgain: () => void;
   /**
    * What fills a heart: Saved and every product on the shopper's wishlists,
    * which are two things now (`wishlists.wishedIds`).
@@ -93,7 +101,7 @@ export type SaveOutcome = "asked" | "saved" | "removed" | "unwished";
 const CustomerContext = createContext<CustomerContextValue | null>(null);
 
 export function CustomerProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, unknown: sessionUnknown, refresh: refreshSession } = useAuth();
   const [guestSavedIds, setGuestSavedIds] = useState(() => readStoredList(SAVED_STORAGE_KEY));
   const [guestDeliveryZoneId, setGuestDeliveryZoneId] = useState(() => readStored(DELIVERY_STORAGE_KEY));
   const [locale, setLocaleState] = useState<LocaleCode>(storedLocale);
@@ -173,6 +181,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   }, [guestSavedIds, isAuthenticated, saved.data, updateSaved]);
 
   const savedIds = isAuthenticated ? saved.data ?? guestSavedIds : guestSavedIds;
+  const savedUnread = isAuthenticated ? failedToLoad(saved) : sessionUnknown;
+  const readSavedAgain = useCallback(() => {
+    if (isAuthenticated) void saved.refetch();
+    else void refreshSession();
+  }, [isAuthenticated, saved, refreshSession]);
   const wishedIds = isAuthenticated ? wished.data : undefined;
   const heartedIds = useMemo(
     () => (wishedIds?.length ? Array.from(new Set([...savedIds, ...wishedIds])) : savedIds),
@@ -344,6 +357,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     setLocale,
     toggleLocale,
     savedIds,
+    savedUnread,
+    readSavedAgain,
     heartedIds,
     wishedIds: wishedIds ?? NONE,
     toggleSaved,
@@ -354,7 +369,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     deliveryZone,
     setDeliveryZoneId,
     isSignedIn: isAuthenticated,
-  }), [chooseWishlist, deliveryZone, deliveryZoneId, heartedIds, isAuthenticated, locale, saveForLater, savedIds, setDeliveryZoneId, setLocale, toggleLocale, toggleSaved, unsave, wishedIds]);
+  }), [chooseWishlist, deliveryZone, deliveryZoneId, heartedIds, isAuthenticated, locale, saveForLater, savedIds, savedUnread, readSavedAgain, setDeliveryZoneId, setLocale, toggleLocale, toggleSaved, unsave, wishedIds]);
 
   return (
     <CustomerContext.Provider value={value}>

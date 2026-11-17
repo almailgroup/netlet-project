@@ -63,6 +63,7 @@ import type { TasteReason } from "@shared/commerce/taste";
 import { Sparkles } from "lucide-react";
 import { MIN_SHELF_PRODUCTS } from "@/content/homeLayout";
 import { viewedIds } from "@/lib/recentlyViewed";
+import { failedToLoad } from "@/lib/queryState";
 
 export function RecommendedRail({ saved, onSave, onQuickView, quiet = false, deals = false }: {
   saved: string[];
@@ -93,8 +94,11 @@ export function RecommendedRail({ saved, onSave, onQuickView, quiet = false, dea
   );
 
   if (quiet && !query.data) return null;
+  /* An optional rail that could not be read is simply not drawn: an error
+     card where a shelf of suggestions might have been is noise. */
+  if (failedToLoad(query)) return null;
   return (
-    <QueryGate queries={[query]}>
+    <QueryGate audience="shopper" queries={[query]}>
       {() => {
         const data = query.data;
         if (!data || !data.personalised || data.items.length === 0) return null;

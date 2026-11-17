@@ -60,7 +60,7 @@ const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
 type SavedTab = "saved" | "wishlists";
 
 function SavedItems() {
-  const { savedIds, saveForLater } = useCustomer();
+  const { savedIds, saveForLater, savedUnread, readSavedAgain } = useCustomer();
   /* The products chosen for Move to cart or Remove. */
   const [chosen, setChosen] = useState<Set<string>>(() => new Set());
   const { t } = useTranslation();
@@ -111,7 +111,7 @@ function SavedItems() {
     <>
         {/* A line held while the list loads, so the grid does not drop when it lands. */}
         <p className="mb-5 text-[14px] leading-6 ink-muted">
-          {isLoading ? "\u00a0" : savedProducts.length === 0
+          {isLoading || (savedUnread && savedProducts.length === 0) ? "\u00a0" : savedProducts.length === 0
             ? t("saved.emptyPrompt")
             : savedProducts.length === 1
               ? t("saved.countOne")
@@ -129,6 +129,11 @@ function SavedItems() {
               <div key={i} className="h-[330px] animate-pulse rounded-2xl border border-[#d5dfeb] bg-white/60" />
             ))}
           </div>
+        ) : savedUnread && !savedProducts.length ? (
+          /* The account's list could not be read: never "nothing saved yet". */
+          <EmptyState icon={<Heart className="size-6" />} title={t("saved.loadFailed")} note={t("common.loadFailedNote")}>
+            <button type="button" onClick={readSavedAgain} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
+          </EmptyState>
         ) : savedProducts.length ? (
           <>
           {/* The cards are h3s under the page's h1: the department grid's rung. */}
@@ -229,9 +234,17 @@ export default function Saved() {
  */
 function Wishlists() {
   const { t } = useTranslation();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, unknown, refresh } = useAuth();
   const [authOpen, setAuthOpen] = useState(false);
   if (loading) return <div className="h-40 animate-pulse rounded-2xl border border-[#d5dfeb] bg-white/60" />;
+  /* Who is signed in could not be read: not a guest, so no "Sign in". */
+  if (unknown) {
+    return (
+      <EmptyState icon={<Gift className="size-6" />} title={t("account.loadFailed")} note={t("common.loadFailedNote")}>
+        <button type="button" onClick={() => void refresh()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
+      </EmptyState>
+    );
+  }
   /* The cards inside are h3s; the tab's own heading is their h2, for a screen reader. */
   if (isAuthenticated) return <><h2 className="sr-only">{t("saved.tabWishlists")}</h2><WishlistManager /></>;
   return (
