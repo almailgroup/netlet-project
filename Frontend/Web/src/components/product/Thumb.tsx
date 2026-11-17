@@ -83,9 +83,27 @@ export function Thumb({
       decoding="async"
       draggable={draggable}
       style={style}
+      /* A photo that arrives fades in rather than popping into a grid
+         (`img[data-arriving]` in `index.css`); one already here is drawn at
+         once, and the page's own picture is never held back, being its
+         largest paint. Written on the element, not in state: nothing needs
+         drawing again for it. */
+      data-arriving={priority ? undefined : ""}
+      ref={priority ? undefined : arrivedAlready}
       onError={() => setFailedSrc(src)}
-      onLoad={onLoad}
+      onLoad={event => {
+        const img = event.currentTarget;
+        if (!img.dataset.arrived) img.dataset.arrived = "now";
+        onLoad?.();
+      }}
       className={className}
     />
   );
+}
+
+/* In the memory cache, a picture is complete before React hands over the
+   element: it is shown as it is, with no fade, and its load event (which
+   still fires) finds it arrived. */
+function arrivedAlready(img: HTMLImageElement | null) {
+  if (img && img.complete && img.naturalWidth > 0 && !img.dataset.arrived) img.dataset.arrived = "cached";
 }

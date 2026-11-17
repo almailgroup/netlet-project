@@ -28,6 +28,7 @@ import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
+import { usePresence } from "@/hooks/usePresence";
 import { logoImage } from "@/lib/brandAssets";
 import { DiscButton } from "@/components/ui/DiscButton";
 import { AuthForm, type AuthMode } from "./AuthForm";
@@ -48,18 +49,19 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }: {
   }, [open, initialMode]);
 
   useOverlay(open, onClose);
+  const { mounted, closing } = usePresence(open);
 
-  if (!open) return null;
+  if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] overflow-y-auto bg-[#061b3b]/60" onClick={onClose}>
+    <div className="overlay-scrim fixed inset-0 z-[80] overflow-y-auto bg-[#061b3b]/60" data-closing={closing ? "" : undefined} inert={closing} onClick={onClose}>
       <div className="flex min-h-full sm:items-center sm:justify-center sm:p-6">
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
           onClick={event => event.stopPropagation()}
-          className="flex min-h-[100dvh] w-full flex-col bg-white sm:min-h-0 sm:max-w-[460px] sm:overflow-hidden sm:rounded-[28px] sm:shadow-[0_32px_80px_rgba(6,27,59,.35)]"
+          className="overlay-sheet flex min-h-[100dvh] w-full flex-col bg-white sm:min-h-0 sm:max-w-[460px] sm:overflow-hidden sm:rounded-[28px] sm:shadow-[0_32px_80px_rgba(6,27,59,.35)]"
         >
           <div className="flex items-center justify-between gap-3 px-5 pt-4 sm:px-9 sm:pt-7">
             <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-9 w-auto max-w-[120px] object-contain" />

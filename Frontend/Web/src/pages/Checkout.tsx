@@ -47,6 +47,7 @@ import { BUTTON_PRIMARY, CARD, EmptyState, PAGE_SPACE, PageHeading } from "@/com
 import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
 import { DeliveryZoneDialog, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { useBeyondScreen } from "@/hooks/useBeyondScreen";
+import { useEverOpened } from "@/hooks/usePresence";
 import { SHOP_TIME_ZONE } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
@@ -104,6 +105,7 @@ export default function Checkout() {
   const [, navigate] = useLocation();
   const [authOpen, setAuthOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
+  const addressUsed = useEverOpened(addressOpen);
 
   /* The address in use — the cart's, the header's — and the number on "Your
      profile" for a saved address that carries none. */
@@ -314,7 +316,7 @@ export default function Checkout() {
                   asked to sign in, and an order with nowhere to go says so
                   under Place order, whose press opens the address book. */}
               {isAuthenticated || sessionLoading ? null : <SignInCard onSignIn={() => setAuthOpen(true)} />}
-              {addressOpen ? <Suspense fallback={null}><DeliveryZoneDialog open onClose={() => setAddressOpen(false)} /></Suspense> : null}
+              {addressUsed ? <Suspense fallback={null}><DeliveryZoneDialog open={addressOpen} onClose={() => setAddressOpen(false)} /></Suspense> : null}
               {/* A saved address with no number, on an account with none: the
                   driver has to be able to ring the door. */}
               {askPhone ? (

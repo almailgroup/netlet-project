@@ -39,12 +39,15 @@ const AskContext = createContext<Ask>(async () => true);
 export function ConfirmRemovalProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [question, setQuestion] = useState<RemovalQuestion | null>(null);
+  /* The last question asked, so the dialog stays drawn to play its way out. */
+  const [last, setLast] = useState<RemovalQuestion | null>(null);
   const waiting = useRef<((sure: boolean) => void) | null>(null);
 
   const ask = useCallback<Ask>(next => new Promise<boolean>(resolve => {
     waiting.current?.(false);
     waiting.current = resolve;
     setQuestion(next);
+    setLast(next);
   }), []);
 
   const answer = (sure: boolean) => {
@@ -57,17 +60,17 @@ export function ConfirmRemovalProvider({ children }: { children: ReactNode }) {
   return (
     <AskContext.Provider value={ask}>
       {children}
-      {question && typeof document !== "undefined"
+      {last && typeof document !== "undefined"
         ? createPortal(
           <div className="relative z-[100]">
             <ConfirmDialog
-              open
+              open={question !== null}
               tone="danger"
               icon={<Trash2 className="size-5" aria-hidden />}
-              title={question.title}
-              body={question.body}
-              confirmLabel={question.confirmLabel ?? t("remove.confirm")}
-              cancelLabel={question.cancelLabel}
+              title={(question ?? last).title}
+              body={(question ?? last).body}
+              confirmLabel={(question ?? last).confirmLabel ?? t("remove.confirm")}
+              cancelLabel={(question ?? last).cancelLabel}
               onConfirm={() => answer(true)}
               onClose={() => answer(false)}
             />

@@ -75,7 +75,7 @@ export function ConfirmOrderDialog({
         aria-labelledby={titleId}
         aria-describedby={noteId}
         onClick={event => event.stopPropagation()}
-        className="sheet-rise w-full max-w-[440px] rounded-t-3xl bg-[#fffdf9] px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 text-[#0a285a] shadow-[0_24px_60px_rgba(10,40,90,.28)] sm:rounded-3xl sm:p-6"
+        className="overlay-sheet w-full max-w-[440px] rounded-t-3xl bg-[#fffdf9] px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 text-[#0a285a] shadow-[0_24px_60px_rgba(10,40,90,.28)] sm:rounded-3xl sm:p-6"
       >
         <span aria-hidden className="mx-auto mb-3 block h-1 w-10 rounded-full bg-[#d5dfeb] sm:hidden" />
         <h2 id={titleId} className="text-[20px] font-extrabold leading-7">{t("checkout.confirmTitle")}</h2>

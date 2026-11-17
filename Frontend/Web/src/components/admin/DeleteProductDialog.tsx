@@ -82,14 +82,14 @@ export function DeleteProductDialog({ product, onClose, onDeleted }: {
   /* Portalled, for the reason every overlay opened from inside a sticky or
      transformed ancestor is: `position: fixed` resolves against that ancestor. */
   return createPortal(
-    <div className="fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-[#061b3b]/50 p-4" onClick={() => { if (!remove.isPending) onClose(); }}>
+    <div className="overlay-scrim fixed inset-0 z-[90] grid place-items-center overflow-y-auto bg-[#061b3b]/50 p-4" onClick={() => { if (!remove.isPending) onClose(); }}>
       <div
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={bodyId}
         onClick={event => event.stopPropagation()}
-        className="w-full max-w-[460px] rounded-2xl bg-white p-6 shadow-[0_24px_60px_rgba(10,40,90,.28)]"
+        className="overlay-pop w-full max-w-[460px] rounded-2xl bg-white p-6 shadow-[0_24px_60px_rgba(10,40,90,.28)]"
       >
         <div className="grid size-11 place-items-center rounded-xl bg-[#fdeceb] text-[#8c2f22]">
           <Trash2 className="size-5" aria-hidden />

@@ -29,6 +29,7 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useLastAddressId } from "@/hooks/useLastAddressId";
 import { useOverlay } from "@/hooks/useOverlay";
+import { EXIT_MS, usePresence } from "@/hooks/usePresence";
 import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { addressInUse, rememberAddress } from "@/lib/lastAddress";
@@ -58,9 +59,12 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
 
   useOverlay(open && !authOpen, onClose);
 
-  /* Every opening starts from the list. */
+  /* Every opening starts from the list — put back once the dialog has left,
+     so a form does not turn into the list while it is leaving. */
   useEffect(() => {
-    if (!open) setForm(null);
+    if (open) return;
+    const timer = window.setTimeout(() => setForm(null), EXIT_MS);
+    return () => window.clearTimeout(timer);
   }, [open]);
 
   const rows: Row[] = isAuthenticated ? book.data ?? [] : [];
@@ -85,7 +89,8 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
     target?.focus();
   }, [open, authOpen, loaded, showingForm, form]);
 
-  if (!open) return null;
+  const { mounted, closing } = usePresence(open);
+  if (!mounted) return null;
   if (authOpen) {
     return createPortal(
       <Suspense fallback={null}>
@@ -131,14 +136,14 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
   const editing = form ? rows.find(row => row.id === form) : undefined;
 
   return createPortal(
-    <div className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 sm:items-center sm:justify-center" onClick={onClose}>
+    <div className="overlay-scrim fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 sm:items-center sm:justify-center" data-closing={closing ? "" : undefined} inert={closing} onClick={onClose}>
       <section
         ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby="delivery-title"
         aria-describedby="delivery-note"
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[1.5rem] bg-background p-5 shadow-2xl sm:p-7"
+        className="overlay-sheet max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[1.5rem] bg-background p-5 shadow-2xl sm:p-7"
         onClick={event => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">

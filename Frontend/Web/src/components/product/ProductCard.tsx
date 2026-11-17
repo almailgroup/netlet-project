@@ -411,7 +411,7 @@ export function ProductCard({ product, saved, onSave, onQuickView, compact = fal
           ) : null}
         </div>
 
-        <DiscButton onClick={saved ? () => void askUnheart(product.id, product.title).then(sure => { if (sure) onSave(); }) : onSave} aria-pressed={saved} aria-label={t(saved ? "product.removeSaved" : "product.save", { name: product.title })} className="absolute end-0 top-0" discClassName={`size-8 ${saved ? "!text-[#e61c38]" : ""}`}>
+        <DiscButton onClick={event => { event.currentTarget.dataset.pop = ""; if (saved) void askUnheart(product.id, product.title).then(sure => { if (sure) onSave(); }); else onSave(); }} aria-pressed={saved} aria-label={t(saved ? "product.removeSaved" : "product.save", { name: product.title })} className="absolute end-0 top-0" discClassName={`size-8 ${saved ? "!text-[#e61c38]" : ""}`}>
           <Heart className={`size-4 ${saved ? "fill-current" : ""}`} />
         </DiscButton>
 

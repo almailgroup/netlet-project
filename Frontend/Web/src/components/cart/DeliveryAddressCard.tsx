@@ -20,6 +20,7 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useLastAddressId } from "@/hooks/useLastAddressId";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useEverOpened } from "@/hooks/usePresence";
 import { pressHaptic } from "@/lib/haptics";
 import { addressInUse } from "@/lib/lastAddress";
 import { lazyPage } from "@/lib/lazyPage";
@@ -58,6 +59,7 @@ export function DeliveryAddressCard({ open, onOpen, onClose, accountName, accoun
 }) {
   const { t, isArabic } = useTranslation();
   const { address, loaded, isAuthenticated, zone } = useDeliveryAddress();
+  const used = useEverOpened(open);
   const zoneName = zone ? (isArabic ? zone.labelAr : zone.label) : null;
   const line = address ? addressLineIn(address, isArabic) : "";
   const name = address?.contactName?.trim() || accountName?.trim() || "";
@@ -112,7 +114,7 @@ export function DeliveryAddressCard({ open, onOpen, onClose, accountName, accoun
           {address ? t("cart.change") : t("cart.choose")}
         </button>
       </div>
-      {open ? <Suspense fallback={null}><DeliveryZoneDialog open onClose={onClose} /></Suspense> : null}
+      {used ? <Suspense fallback={null}><DeliveryZoneDialog open={open} onClose={onClose} /></Suspense> : null}
     </section>
   );
 }

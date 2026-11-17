@@ -1133,6 +1133,186 @@
 }
 
 /*
+ * Overlays arrive and leave rather than cutting in and out — on a wide
+ * screen, where a dialog or the bag drawer is a large part of the window, the
+ * cut was most of what made the shop feel abrupt. The dim fades; a dialog
+ * settles a few pixels up into place; a sheet from a phone's foot rises; the
+ * bag drawer slides in from the page's end edge; a menu drops from its button.
+ *
+ * Leaving is `[data-closing]` on the dim (`usePresence`, which keeps the
+ * overlay drawn and inert for the exit's length — `EXIT_MS` and its two
+ * neighbours are these durations): quicker than arriving, because somebody who
+ * closed a thing has moved on. Exits fill forwards so the last frame holds
+ * until the overlay is unmounted; entrances fill nothing, so no transform
+ * outlives the animation and makes the panel the containing block for a list
+ * portalled into it. Opacity and transforms only — never on anything carrying
+ * a backdrop filter, which an opacity would drain to white.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .overlay-scrim {
+    animation: sheet-scrim-in 200ms ease;
+  }
+  .overlay-scrim[data-closing] {
+    animation: overlay-scrim-out 160ms ease forwards;
+    pointer-events: none;
+  }
+  .overlay-pop {
+    animation: overlay-pop-in 200ms var(--ease-out);
+  }
+  [data-closing] .overlay-pop {
+    animation: overlay-pop-out 160ms ease-in forwards;
+  }
+  /* A dialog that is a sheet on a phone and a card from `sm`. */
+  .overlay-sheet {
+    animation: chat-sheet-rise 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  [data-closing] .overlay-sheet {
+    animation: overlay-sheet-out 160ms ease-in forwards;
+  }
+  @media (min-width: 640px) {
+    .overlay-sheet {
+      animation: overlay-pop-in 200ms var(--ease-out);
+    }
+    [data-closing] .overlay-sheet {
+      animation: overlay-pop-out 160ms ease-in forwards;
+    }
+  }
+  .overlay-drawer {
+    animation: overlay-drawer-in 280ms var(--ease-out);
+  }
+  [dir="rtl"] .overlay-drawer {
+    animation-name: overlay-drawer-in-rtl;
+  }
+  [data-closing] .overlay-drawer {
+    animation: overlay-drawer-out 220ms cubic-bezier(0.4, 0, 1, 1) forwards;
+  }
+  [dir="rtl"] [data-closing] .overlay-drawer {
+    animation-name: overlay-drawer-out-rtl;
+  }
+  .overlay-menu {
+    transform-origin: top right;
+    animation: overlay-menu-in 140ms var(--ease-out);
+  }
+  [dir="rtl"] .overlay-menu {
+    transform-origin: top left;
+  }
+  .overlay-menu[data-closing] {
+    animation: overlay-menu-out 110ms ease-in forwards;
+    pointer-events: none;
+  }
+}
+@keyframes overlay-scrim-out {
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes overlay-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+@keyframes overlay-pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@keyframes overlay-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes overlay-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes overlay-drawer-in-rtl {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes overlay-drawer-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes overlay-drawer-out-rtl {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes overlay-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+@keyframes overlay-menu-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/*
+ * A product photo that arrives after the page fades in over a moment rather
+ * than popping into the grid (`Thumb`). Hidden only until its load event —
+ * which also fires for a lazy photo when it is finally fetched — and only
+ * where motion is welcome: anybody who asked for less sees each photo the
+ * moment the browser has it, as before. One already in the cache is marked
+ * `cached` before it is drawn and never hidden.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  img[data-arriving]:not([data-arrived]) {
+    opacity: 0;
+  }
+  img[data-arrived="now"] {
+    animation: img-arrive 320ms var(--ease-out);
+  }
+}
+@keyframes img-arrive {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A panel shown by a tab or a disclosure settles in, opacity alone, each time
+   it is shown — `hidden` takes it out of the layout, which restarts an
+   animation on the way back. */
+@media (prefers-reduced-motion: no-preference) {
+  .panel-in {
+    animation: panel-in 220ms var(--ease-out);
+  }
+}
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* A heart filled by a press gives a small beat (`data-pop`, set by the press
+   itself, so the hearts a page loads already filled hold still). */
+@media (prefers-reduced-motion: no-preference) {
+  [data-pop][aria-pressed="true"] svg {
+    animation: heart-pop 380ms cubic-bezier(0.2, 0.9, 0.3, 1.4);
+  }
+}
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.32);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/*
  * Switching language (`lib/languageSwitch`): the page as it was fades out
  * while the page in the other language fades in, over the same time on the
  * same curve. The browser adds the two pictures rather than laying one over

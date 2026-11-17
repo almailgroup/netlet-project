@@ -66,6 +66,7 @@ import { dealsDrawn as drawsDeals, categoryRail, shelvesFor } from "@/content/ho
 import { useCart } from "@/contexts/CartContext";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useEverOpened } from "@/hooks/usePresence";
 import { logoImage } from "@/lib/brandAssets";
 import { ALL_DEPARTMENTS } from "@shared/commerce/departments";
 import { categorySlug, searchTermFrom } from "@shared/commerce/browse";
@@ -123,6 +124,7 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
     window.scrollTo({ top: 0, behavior: "auto" });
   };
   const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const deliveryUsed = useEverOpened(deliveryOpen);
   /* Both bars draw the delivery button, so the book is fetched once the page is idle. */
   useEffect(() => whenIdle(() => void DeliveryZoneDialog.preload()), []);
   const inStock = useDepartmentsInStock();
@@ -409,7 +411,7 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
           <AppDownloadLink className="shrink-0" />
         </div>
       </nav>
-      {deliveryOpen ? <Suspense fallback={null}><DeliveryZoneDialog open onClose={() => setDeliveryOpen(false)} /></Suspense> : null}
+      {deliveryUsed ? <Suspense fallback={null}><DeliveryZoneDialog open={deliveryOpen} onClose={() => setDeliveryOpen(false)} /></Suspense> : null}
     </>
   );
 }

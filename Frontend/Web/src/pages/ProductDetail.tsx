@@ -947,7 +947,7 @@ function ProductGallery({ product, selectedImageIndex, onSelectImage, onChangeIm
 
           <div className="absolute end-3 top-3 flex flex-col gap-2">
             <button onClick={onShare} aria-label={t("product.share", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><Share2 className="size-[18px]" /></button>
-            <button onClick={isSaved ? () => void askUnheart(product.id, product.title).then(sure => { if (sure) onToggleSaved(); }) : onToggleSaved} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:bg-[#f0f2f5] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
+            <button onClick={event => { event.currentTarget.dataset.pop = ""; if (isSaved) void askUnheart(product.id, product.title).then(sure => { if (sure) onToggleSaved(); }); else onToggleSaved(); }} aria-pressed={isSaved} aria-label={t(isSaved ? "product.removeSaved" : "product.save", { name: product.title })} className="pressable grid size-10 place-items-center rounded-full bg-white shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:bg-[#f0f2f5] hover:text-[#e61c38]"><Heart className={`size-[18px] ${isSaved ? "fill-[#e61c38] text-[#e61c38]" : "text-[#0a285a]"}`} /></button>
             <button onClick={() => onZoom()} aria-label={t("product.openViewer")} className="pressable grid size-10 place-items-center rounded-full bg-white text-[#0a285a] hover:bg-[#f0f2f5] shadow-[0_2px_10px_rgba(10,40,90,.14)] hover:text-[#a44a2b]"><ZoomIn className="size-[18px]" /></button>
           </div>
 
@@ -1313,6 +1313,9 @@ export default function ProductDetail() {
   const related = useMemo(() => product ? relatedProducts(product, isRefurbished(product) ? refurbishedShelf : catalog) : [], [catalog, refurbishedShelf, product]);
   const isSaved = product ? heartedIds.includes(product.id) : false;
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
+  /* Kept mounted once used, so the preview can play its way out (`usePresence`). */
+  const [quickUsed, setQuickUsed] = useState(false);
+  if (quickProduct && !quickUsed) setQuickUsed(true);
   /* Before any early return, like every hook. */
   const { member } = useMembership();
   const galleryImageCount = product ? galleryOf(product).length : 0;
@@ -1696,7 +1699,7 @@ export default function ProductDetail() {
           </section>
         ) : null}
       </PageBody>
-      {quickProduct ? <Suspense fallback={null}><QuickView product={quickProduct} onClose={() => setQuickProduct(null)} /></Suspense> : null}
+      {quickUsed ? <Suspense fallback={null}><QuickView product={quickProduct} onClose={() => setQuickProduct(null)} /></Suspense> : null}
       {zoomOpen ? <ImageLightbox product={product} selectedImageIndex={selectedImageIndex} zoomFrom={zoomFrom} onClose={() => setZoomOpen(false)} onSelectImage={setSelectedImageIndex} onChangeImage={changeImage} /> : null}
       <StickyBuyBar
         shown={buyPassed}

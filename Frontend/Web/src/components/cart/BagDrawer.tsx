@@ -20,6 +20,7 @@ import { LineDiscount } from "@/components/cart/LineDiscount";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { useDinars, useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
+import { DRAWER_EXIT_MS, usePresence } from "@/hooks/usePresence";
 import { useStockLimit } from "@/hooks/useStockLimit";
 import { StoreDeliveryRow, storeDeliveryOf } from "@/components/cart/StoreDelivery";
 import { ArrowRight, Check, ChevronRight, Minus, Plus, ShoppingBag, Store, Trash2, Truck, X } from "lucide-react";
@@ -510,10 +511,12 @@ export function BagDrawer() {
   const { cart, isOpen, closeCart, settling } = useCart();
   const { t } = useTranslation();
   useOverlay(isOpen, closeCart);
-  if (!isOpen) return null;
+  /* It slides out the way it came, the page behind answering at once. */
+  const { mounted, closing } = usePresence(isOpen, DRAWER_EXIT_MS);
+  if (!mounted) return null;
   return (
-    <div className="fixed inset-0 z-[70] bg-[#061b3b]/35" onClick={closeCart}>
-      <div role="dialog" aria-modal="true" aria-label={t("cart.title")} className="type-body ms-auto flex h-full w-full max-w-md flex-col bg-background shadow-2xl" onClick={event => event.stopPropagation()}>
+    <div className="overlay-scrim fixed inset-0 z-[70] bg-[#061b3b]/35" data-closing={closing ? "" : undefined} inert={closing} onClick={closeCart}>
+      <div role="dialog" aria-modal="true" aria-label={t("cart.title")} className="overlay-drawer type-body ms-auto flex h-full w-full max-w-md flex-col bg-background shadow-2xl" onClick={event => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-[#d5dfeb] px-6 py-5">
           <h2 className="text-xl font-extrabold text-[#0a285a]">{t("cart.title")}</h2>
           <button onClick={closeCart} aria-label={t("cart.close")} className="glass pressable grid size-10 shrink-0 place-items-center rounded-full"><X className="size-5" /></button>

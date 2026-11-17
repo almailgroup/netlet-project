@@ -77,7 +77,9 @@ export function useOverlay(open: boolean, onClose: () => void) {
       // 125px down as the photos closed.
       if (!opener.current) return;
       const active = document.activeElement;
-      if (!active || active === document.body || !document.contains(active)) opener.current.focus({ preventScroll: true });
+      // An overlay playing its way out (`usePresence`) is still drawn, inert:
+      // focus left inside it has left, as it would have had it unmounted.
+      if (!active || active === document.body || !document.contains(active) || active.closest("[inert]")) opener.current.focus({ preventScroll: true });
     };
   }, [open]);
 }

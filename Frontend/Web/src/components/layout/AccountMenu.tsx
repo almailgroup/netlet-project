@@ -25,6 +25,7 @@
  */
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { useAuth } from "@/hooks/useAuth";
+import { MENU_EXIT_MS, useEverOpened, usePresence } from "@/hooks/usePresence";
 import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
@@ -59,11 +60,14 @@ export function AccountMenu() {
   const photo = useProfilePhoto();
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const authUsed = useEverOpened(authOpen);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  /* It drops from the button and lifts back into it (`.overlay-menu`). */
+  const { mounted: menuDrawn, closing: menuClosing } = usePresence(open, MENU_EXIT_MS);
 
   /* Cached hard and asked only when signed in: the same read the account page's Selling section makes. */
   const me = trpc.inventory.me.useQuery(undefined, { enabled: isAuthenticated, staleTime: 10 * 60 * 1000, retry: false });
@@ -110,7 +114,7 @@ export function AccountMenu() {
         </button>
         {/* To `<body>`: the header's `backdrop-filter` would otherwise be the
             containing block for the dialog's `position: fixed`. */}
-        {authOpen ? createPortal(<Suspense fallback={null}><AuthDialog open onClose={() => setAuthOpen(false)} /></Suspense>, document.body) : null}
+        {authUsed ? createPortal(<Suspense fallback={null}><AuthDialog open={authOpen} onClose={() => setAuthOpen(false)} /></Suspense>, document.body) : null}
       </>
     );
   }
@@ -180,14 +184,16 @@ export function AccountMenu() {
         {unread ? <span className="sr-only">, {t("header.unreadCount", { count: unread })}</span> : null}
         <ChevronDown className={`size-3.5 shrink-0 text-[#536b8c] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
-      {open ? (
+      {menuDrawn ? (
         <div
           ref={menu}
           id={menuId}
           role="menu"
           aria-label={t("header.accountMenu")}
           onKeyDown={onMenuKey}
-          className="absolute end-0 top-full z-50 mt-2 w-72 rounded-2xl border border-[#d5dfeb] bg-white p-1.5 shadow-[0_18px_40px_rgba(10,40,90,.16)]"
+          data-closing={menuClosing ? "" : undefined}
+          inert={menuClosing}
+          className="overlay-menu absolute end-0 top-full z-50 mt-2 w-72 rounded-2xl border border-[#d5dfeb] bg-white p-1.5 shadow-[0_18px_40px_rgba(10,40,90,.16)]"
         >
           {entry("/account/orders", <Package className="size-4" />, "account.sectionOrders", signals.onTheWay ? t("header.onTheWay", { count: signals.onTheWay }) : null)}
           {entry("/account/notifications", <Bell className="size-4" />, "notices.menu", signals.unreadNotices ? t("header.unreadCount", { count: signals.unreadNotices }) : null)}

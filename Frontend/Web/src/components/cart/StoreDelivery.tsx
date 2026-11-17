@@ -210,14 +210,14 @@ function StoreDeliverySheet({ group, name, store, onClose }: { group: BagGroup; 
   );
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-[#061b3b]/40 sm:items-center sm:p-6" onClick={onClose}>
+    <div className="overlay-scrim fixed inset-0 z-[90] flex items-end justify-center bg-[#061b3b]/40 sm:items-center sm:p-6" onClick={onClose}>
       <div
         ref={sheet}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={event => event.stopPropagation()}
-        className="sheet-rise flex max-h-[92svh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(10,40,90,.18)] sm:max-w-md sm:rounded-3xl"
+        className="overlay-sheet flex max-h-[92svh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-[0_-12px_40px_rgba(10,40,90,.18)] sm:max-w-md sm:rounded-3xl"
       >
         <div className="flex items-start gap-3 border-b border-[#eef1f5] px-4 pb-3 pt-4">
           <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-[#eef3fa] text-[#0a285a]">

@@ -106,13 +106,13 @@ function Dialog({ productId, chart, availableSizes, onChooseSize, onClose }: {
   const canChoose = answer && (answer.kind === "fits" || answer.kind === "closest") && availableSizes.some(size => size.toLowerCase() === answer.size.toLowerCase());
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-[#061b3b]/50 p-4" onClick={onClose}>
+    <div className="overlay-scrim fixed inset-0 z-[90] grid place-items-center bg-[#061b3b]/50 p-4" onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={event => event.stopPropagation()}
-        className="max-h-[90dvh] w-full max-w-[520px] overflow-y-auto rounded-3xl bg-[#fffdf9] p-6 shadow-[0_24px_60px_rgba(10,40,90,.28)]"
+        className="overlay-pop max-h-[90dvh] w-full max-w-[520px] overflow-y-auto rounded-3xl bg-[#fffdf9] p-6 shadow-[0_24px_60px_rgba(10,40,90,.28)]"
       >
         <div className="flex items-start justify-between gap-4">
           <h2 id={titleId} className="text-lg font-extrabold text-[#0a285a]">{t("sizeGuide.title")}</h2>

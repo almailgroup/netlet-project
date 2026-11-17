@@ -47,6 +47,9 @@ export default function Home() {
   // One dialog for the whole page: every shelf and the deals band open the
   // same overlay, the way the drawer is mounted once in `App`.
   const [quickProduct, setQuickProduct] = useState<Product | null>(null);
+  /* Kept mounted once used, so the preview can play its way out (`usePresence`). */
+  const [quickUsed, setQuickUsed] = useState(false);
+  if (quickProduct && !quickUsed) setQuickUsed(true);
   const [, navigate] = useLocation();
   usePageMeta(homeMeta(SITE_URL));
   const { t, locale } = useTranslation();
@@ -149,6 +152,6 @@ export default function Home() {
     {/* Switched off until there is an app to download (2.3). */}
     {appBannerOn ? <section className="container pb-10"><div className="relative overflow-hidden rounded-[1.5rem] bg-[#fffdf9] p-7 sm:min-h-[255px] sm:p-9"><div className="absolute -bottom-16 end-5 size-56 rounded-t-[3rem] bg-[#0a285a]" /><div className="absolute bottom-0 end-12 h-[215px] w-[116px] rounded-t-[1.5rem] border-[7px] border-[#0a285a] bg-white shadow-[0_18px_35px_rgba(10,40,90,.18)]"><img src={logoImage} alt="NetLet" loading="lazy" decoding="async" className="absolute left-1/2 top-[45%] w-16 -translate-x-1/2" /></div><div className="relative z-10 max-w-[55%]"><p className="text-[12px] font-semibold text-[#a44a2b]">{t("home.application")}</p><h2 className="font-extrabold mt-3 text-2xl text-[#0a285a]">{t("home.appTitle")}</h2><p className="mt-4 text-sm leading-6 text-[#536b8c]">{t("home.appNote")}</p><button onClick={() => toast(t("home.appSoon"))} className="glass glass-navy pressable mt-6 rounded-full px-4 py-3 text-[12px] font-semibold">{t("home.appUpdates")}</button></div></div></section> : null}
 
-    {quickProduct ? <Suspense fallback={null}><QuickView product={quickProduct} onClose={() => setQuickProduct(null)} /></Suspense> : null}
+    {quickUsed ? <Suspense fallback={null}><QuickView product={quickProduct} onClose={() => setQuickProduct(null)} /></Suspense> : null}
   </>;
 }

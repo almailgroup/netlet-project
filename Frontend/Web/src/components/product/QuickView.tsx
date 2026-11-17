@@ -25,6 +25,7 @@ import { Thumb } from "@/components/product/Thumb";
 import { appPath } from "@/lib/basePath";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
+import { useHeldWhileOpen, usePresence } from "@/hooks/usePresence";
 import { isExpressEligible, productStars, savingsPercent } from "@shared/commerce/productDetail";
 import { AvailabilityLine } from "@/components/product/Availability";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
@@ -42,7 +43,7 @@ import { PREVIEW_TONE } from "@/lib/purchaseStyle";
 import { Select } from "@/components/ui/Select";
 import { useAskRemoveFromCart } from "@/components/ui/ConfirmRemoval";
 
-export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
+export function QuickView({ product: incoming, onClose }: { product: Product | null; onClose: () => void }) {
   const { t } = useTranslation();
   const money = useMoney();
   const { addItem, cart, openCart, updateQuantity, removeItem, proceedToCheckout, chooseOnly } = useCart();
@@ -57,24 +58,27 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   const bandId = useId();
   const titleId = useId();
 
-  useOverlay(Boolean(product), onClose);
+  useOverlay(Boolean(incoming), onClose);
+  /* It leaves the way it came, still showing the product it was opened on. */
+  const { mounted, closing } = usePresence(Boolean(incoming));
+  const product = useHeldWhileOpen(Boolean(incoming), incoming);
   /* Into the preview as it opens, by an effect declared after `useOverlay` so
      the hook has already recorded the opener to hand focus back to. Left on
      the card's eye, the keyboard was behind a modal it could not see. */
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (product) closeRef.current?.focus();
-  }, [product?.id]);
+    if (incoming) closeRef.current?.focus();
+  }, [incoming?.id]);
 
   // A fresh product starts fresh: carrying quantity 3 over from the last one
   // is a way to sell somebody three of something they wanted one of.
   useEffect(() => {
     setQuantity(1);
-    setVariantId(product?.variants[0]?.id ?? "");
+    setVariantId(incoming?.variants[0]?.id ?? "");
     setImageIndex(0);
-  }, [product?.id]);
+  }, [incoming?.id]);
 
-  if (!product) return null;
+  if (!mounted || !product) return null;
 
   const variant = product.variants.find(entry => entry.id === variantId) ?? product.variants[0];
   const price = variant?.price ?? product.priceRange.min;
@@ -129,13 +133,13 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
   };
 
   return (
-    <div className="fixed inset-0 z-[75] grid place-items-end bg-[#061b3b]/50 sm:place-items-center sm:p-6" onClick={onClose}>
+    <div className="overlay-scrim fixed inset-0 z-[75] grid place-items-end bg-[#061b3b]/50 sm:place-items-center sm:p-6" data-closing={closing ? "" : undefined} inert={closing} onClick={onClose}>
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${bandId} ${titleId}`}
         onClick={event => event.stopPropagation()}
-        className="flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-[1.75rem] bg-white shadow-2xl sm:max-h-[90vh] sm:max-w-3xl sm:rounded-[1.75rem] lg:max-w-5xl"
+        className="overlay-sheet flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-[1.75rem] bg-white shadow-2xl sm:max-h-[90vh] sm:max-w-3xl sm:rounded-[1.75rem] lg:max-w-5xl"
       >
         {/* The brand's navy across the top, on the owner's word: the preview
             is the shop speaking over the page, and says so in its colour. */}

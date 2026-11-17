@@ -130,13 +130,13 @@ export function ReviewDialog({ target, onClose, onDone }: {
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-end bg-[#061b3b]/50 sm:items-center sm:justify-center sm:p-4" onClick={() => { if (!pending) onClose(); }}>
+    <div className="overlay-scrim fixed inset-0 z-[90] flex items-end bg-[#061b3b]/50 sm:items-center sm:justify-center sm:p-4" onClick={() => { if (!pending) onClose(); }}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={event => event.stopPropagation()}
-        className="max-h-[92svh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(10,40,90,.22)] sm:max-w-[520px] sm:rounded-3xl sm:pb-5 sm:shadow-[0_24px_60px_rgba(10,40,90,.28)]"
+        className="overlay-sheet max-h-[92svh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgba(10,40,90,.22)] sm:max-w-[520px] sm:rounded-3xl sm:pb-5 sm:shadow-[0_24px_60px_rgba(10,40,90,.28)]"
       >
         <div aria-hidden className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-[#d5dfeb] sm:hidden" />
         <div className="flex items-start gap-3">

@@ -61,7 +61,7 @@ export function ProductInfo({ sections, label, resetKey }: { sections: InfoSecti
                   <ChevronDown className={`size-5 shrink-0 ink-muted transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden />
                 </button>
               </h2>
-              <div id={`panel-${section.id}`} role="region" aria-labelledby={`tab-${section.id}`} hidden={!expanded} className="pb-5 pt-1">
+              <div id={`panel-${section.id}`} role="region" aria-labelledby={`tab-${section.id}`} hidden={!expanded} className="panel-in pb-5 pt-1">
                 {section.panel}
               </div>
             </section>
@@ -93,7 +93,7 @@ export function ProductInfo({ sections, label, resetKey }: { sections: InfoSecti
       </div>
       <div className="mt-5 min-h-[120px]">
         {sections.map(section => (
-          <div key={section.id} role="tabpanel" id={`panel-${section.id}`} aria-labelledby={`tab-${section.id}`} hidden={tab !== section.id}>
+          <div key={section.id} role="tabpanel" id={`panel-${section.id}`} aria-labelledby={`tab-${section.id}`} hidden={tab !== section.id} className="panel-in">
             {section.panel}
           </div>
         ))}

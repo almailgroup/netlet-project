@@ -2624,6 +2624,57 @@ what a shopper gets):
 grey tap flash is off — on a slow connection a tap that drew nothing until the
 next page arrived read as a tap that did not take.
 
+**Overlays arrive and leave, on the owner's word** ("make the website smooth
+on desktop … smooth animations to make the feeling smooth and fast"). Every
+drawer, dialog and menu was `if (!open) return null`, so it cut in and out in
+one frame — on a wide screen, where the bag drawer is a third of the window,
+most of what made the shop feel abrupt. Now (`index.css`, "Overlays arrive
+and leave rather than cutting in and out"): the dim fades (`.overlay-scrim`);
+a dialog settles a few pixels up into place (`.overlay-pop`); a dialog that is
+a sheet on a phone rises there and settles from `sm` (`.overlay-sheet`, which
+replaced `.sheet-rise` on three cards that rose a whole card-height on a wide
+screen); the bag drawer slides in from the page's end edge, the left on the
+Arabic page (`.overlay-drawer`); a menu drops from its button
+(`.overlay-menu`). Opacity and transforms only. Entrances fill nothing, so no
+transform outlives them and makes a panel the containing block for a list
+portalled into it.
+
+**Six of them also play their way out**: the bag drawer, `ConfirmDialog` (and
+with it the removal question), the account menu, Quick view, the sign-in
+dialog and the address book. `usePresence` (`hooks/usePresence.ts`) keeps one
+drawn for `EXIT_MS` (160, the drawer 220, a menu 110) after `open` turns
+false, with `[data-closing]` on its dim and `inert` on it, so the page behind
+answers at once. **`useOverlay` hands focus back when the focused element is
+inside an inert subtree** — it did so only when focus had fallen to `<body>`,
+which an overlay still drawn never lets happen. A dialog that clears its words
+as it closes keeps the last ones (`useHeldWhileOpen`: the removal question,
+Quick view's product), and a caller that drew it only while open
+(`{open ? <Dialog open /> : null}`) keeps it once used (`useEverOpened`), lazy
+until then. The address book goes back to its list only after it has left.
+Somebody who asked for less motion gets the cut, as before. The rest — the
+review, size guide, try-on, wish chooser, store delivery, a line's code and
+menu, the voice and photo sheets — have the entrance alone.
+
+**And the small things**: a product photo that arrives fades in rather than
+popping into a grid (`img[data-arriving]`, `Thumb`) — hidden only until its
+load event, never the page's own picture (its largest paint), and one already
+in the cache is marked `cached` as it is attached and never hidden; a panel a
+tab or a disclosure shows settles in (`.panel-in`, the product page's
+information); `TextTabs`' line slides to the tab chosen rather than one line
+per tab fading (measured from the chosen tab, in the row's own coordinates, so
+it scrolls with the row and is right on the Arabic page); a heart filled by a
+press beats once (`[data-pop]`, set by the press, so hearts a page loads
+filled hold still). Walked on a production build at 1440, 390 and 320 in both
+languages (`.scratch/motion-walk.mjs`): each overlay's animation named, the
+exit playing and the overlay gone after it, focus back on the opener, the
+removal question and Quick view keeping their words while leaving, no photo
+loaded and left hidden, the tab line under the chosen tab before and after
+sliding, axe clean with every overlay open, nothing waiting to leave under
+reduced motion. Measured at 1440 with the CPU slowed fourfold
+(`.scratch/inp-probe.mjs`, the browser's own event timing): every press
+answers inside 170ms — a shelf's department tab 56, a filter tick 168, Quick
+view 104, Add to cart opening the drawer 152.
+
 ## The account
 
 **`/account` is a home and one page per section, not one page of everything.**

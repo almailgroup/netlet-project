@@ -56,7 +56,7 @@ export function AddressConfirm({ open, address, pending, onConfirm, onEdit }: {
   const notes = address.addressNotes?.trim();
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] flex items-end bg-[#061b3b]/50 sm:items-center sm:justify-center sm:p-4" onClick={() => { if (!pending) onEdit(); }}>
+    <div className="overlay-scrim fixed inset-0 z-[90] flex items-end bg-[#061b3b]/50 sm:items-center sm:justify-center sm:p-4" onClick={() => { if (!pending) onEdit(); }}>
       <div
         role="dialog"
         aria-modal="true"

@@ -99,14 +99,14 @@ function SearchModeSheet({ open, onClose, id, eyebrow, title, note, children, fo
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 sm:items-center sm:justify-center"
+      className="overlay-scrim fixed inset-0 z-[75] flex items-end bg-[#061b3b]/35 p-3 sm:items-center sm:justify-center"
       onClick={onClose}
     >
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}
-        className="w-full max-w-md rounded-[1.5rem] bg-background p-5 shadow-2xl sm:p-7"
+        className="overlay-sheet w-full max-w-md rounded-[1.5rem] bg-background p-5 shadow-2xl sm:p-7"
         onClick={event => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">

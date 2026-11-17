@@ -176,7 +176,7 @@ export function LinePopover({ item, photo, title, label, short, trigger, actions
           aria-label={label}
           onKeyDown={onMenuKey}
           style={{ top: place.top, bottom: place.bottom, insetInlineEnd: place.end }}
-          className="fixed z-[80] w-64 rounded-2xl border border-[#d5dfeb] bg-white p-1.5 shadow-[0_18px_40px_rgba(10,40,90,.16)]"
+          className="overlay-menu fixed z-[80] w-64 rounded-2xl border border-[#d5dfeb] bg-white p-1.5 shadow-[0_18px_40px_rgba(10,40,90,.16)]"
         >
           {intro ? <p className="px-3 pb-1.5 pt-2 text-[12px] leading-4 ink-muted">{intro}</p> : null}
           {actions.map((action, index) => (
@@ -189,7 +189,7 @@ export function LinePopover({ item, photo, title, label, short, trigger, actions
         host,
       ) : null}
       {open && !wide ? createPortal(
-        <div className="fixed inset-0 z-[80] flex items-end bg-[#061b3b]/40" onClick={() => setOpen(false)}>
+        <div className="overlay-scrim fixed inset-0 z-[80] flex items-end bg-[#061b3b]/40" onClick={() => setOpen(false)}>
           <div
             role="dialog"
             aria-modal="true"

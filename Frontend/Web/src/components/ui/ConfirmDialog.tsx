@@ -12,6 +12,7 @@
  */
 import { useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
+import { useHeldWhileOpen, usePresence } from "@/hooks/usePresence";
 import { LoaderCircle } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
@@ -63,11 +64,17 @@ export function ConfirmDialog({
     if (open) window.setTimeout(() => cancelRef.current?.focus(), 40);
   }, [open]);
 
-  if (!open) return null;
+  /* It plays its way out, with the words it was opened with — the removal
+     question clears its own as it closes. */
+  const { mounted, closing } = usePresence(open);
+  const shown = useHeldWhileOpen(open, { title, body, confirmLabel, cancelLabel, tone, icon, children, confirmHidden });
+  if (!mounted) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[90] grid place-items-center bg-[#061b3b]/50 p-4"
+      className="overlay-scrim fixed inset-0 z-[90] grid place-items-center bg-[#061b3b]/50 p-4"
+      data-closing={closing ? "" : undefined}
+      inert={closing}
       onClick={onClose}
     >
       <div
@@ -75,33 +82,33 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={event => event.stopPropagation()}
-        className="w-full max-w-[400px] rounded-3xl bg-[#fffdf9] p-6 shadow-[0_24px_60px_rgba(10,40,90,.28)]"
+        className="overlay-pop w-full max-w-[400px] rounded-3xl bg-[#fffdf9] p-6 shadow-[0_24px_60px_rgba(10,40,90,.28)]"
       >
-        {icon ? (
+        {shown.icon ? (
           <div
             className={`grid size-11 place-items-center rounded-2xl ${
-              tone === "danger" ? "bg-[#fdeceb] text-[#8c2f22]" : "bg-[#e7edf5] text-[#0a285a]"
+              shown.tone === "danger" ? "bg-[#fdeceb] text-[#8c2f22]" : "bg-[#e7edf5] text-[#0a285a]"
             }`}
           >
-            {icon}
+            {shown.icon}
           </div>
         ) : null}
 
-        <h2 id={titleId} className="mt-4 text-lg font-extrabold text-[#0a285a]">{title}</h2>
-        <p className="type-body mt-2 text-sm leading-6 text-[#536b8c]">{body}</p>
-        {children ? <div className="mt-4">{children}</div> : null}
+        <h2 id={titleId} className="mt-4 text-lg font-extrabold text-[#0a285a]">{shown.title}</h2>
+        <p className="type-body mt-2 text-sm leading-6 text-[#536b8c]">{shown.body}</p>
+        {shown.children ? <div className="mt-4">{shown.children}</div> : null}
 
         <div className="mt-6 flex flex-wrap gap-2.5">
-          {confirmHidden ? null : <button
+          {shown.confirmHidden ? null : <button
             type="button"
             onClick={onConfirm}
             disabled={pending || confirmDisabled}
             className={`pressable inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white transition disabled:opacity-60 ${
-              tone === "danger" ? "bg-[#8c2f22] hover:bg-[#7a2a1e]" : "bg-[#0a285a] hover:bg-[#0d3372]"
+              shown.tone === "danger" ? "bg-[#8c2f22] hover:bg-[#7a2a1e]" : "bg-[#0a285a] hover:bg-[#0d3372]"
             }`}
           >
             {pending ? <LoaderCircle className="size-4 animate-spin" /> : null}
-            {confirmLabel}
+            {shown.confirmLabel}
           </button>}
           <button
             type="button"
@@ -110,7 +117,7 @@ export function ConfirmDialog({
             disabled={pending}
             className="glass pressable inline-flex h-11 flex-1 items-center justify-center rounded-xl border border-[#d5dfeb] text-sm font-extrabold text-[#0a285a] disabled:opacity-60"
           >
-            {cancelLabel ?? t("common.cancel")}
+            {shown.cancelLabel ?? t("common.cancel")}
           </button>
         </div>
       </div>
