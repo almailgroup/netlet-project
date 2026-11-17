@@ -1,0 +1,80 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "document": {
+          "tax": "2.069",
+          "kind": "invoice",
+          "buyer": {
+            "name": "Noura",
+            "email": "noura@walk.test",
+            "phone": "99887766",
+            "address": "Salmiya, Block 5, Street 52, House 6A"
+          },
+          "goods": "41.375",
+          "total": "43.444",
+          "issuer": {
+            "name": "NetLet",
+            "nameAr": null,
+            "address": null,
+            "licence": null
+          },
+          "number": "INV-2026-000002",
+          "credits": null,
+          "sellers": [
+            {
+              "name": "Acme Electronics",
+              "lines": [
+                {
+                  "sku": "LAMP",
+                  "tax": {
+                    "rate": "5.00",
+                    "amount": "1.219"
+                  },
+                  "title": "Brass desk lamp",
+                  "titleAr": null,
+                  "quantity": 1,
+                  "lineTotal": "24.375",
+                  "unitPrice": "24.375",
+                  "variantTitle": "Default"
+                },
+                {
+                  "sku": null,
+                  "tax": {
+                    "rate": "5.00",
+                    "amount": "0.850"
+                  },
+                  "title": "Wool scarf",
+                  "titleAr": "وشاح صوف",
+                  "quantity": 2,
+                  "lineTotal": "17.000",
+                  "unitPrice": "8.500",
+                  "variantTitle": "Default"
+                }
+              ],
+              "nameAr": null,
+              "licence": null,
+              "delivery": "0.000",
+              "vendorId": 2,
+              "underPlatformLicence": false
+            }
+          ],
+          "version": 1,
+          "currency": "KWD",
+          "delivery": "0.000",
+          "discount": "0.000",
+          "issuedAt": "2026-11-17T18:13:01.835Z",
+          "paidWith": {
+            "cash": "43.444",
+            "points": "0.000",
+            "giftCard": "0.000"
+          },
+          "paymentMethod": "cod",
+          "orderReference": "NL-20261117-EJQNE"
+        },
+        "credits": [],
+        "verifyCode": "42XQ8RFNAD"
+      }
+    }
+  }
+}

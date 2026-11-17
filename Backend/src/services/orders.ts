@@ -82,6 +82,7 @@ import { issueInvoice, issueQuietly } from "./invoices.js";
 import { affiliateQuietly, creditAffiliate } from "./affiliates.js";
 import { withAffiliateShares } from "../../../Shared/commerce/affiliate.js";
 import { featureOn } from "./features.js";
+import { freezeLineTaxes, taxForLines } from "./tax.js";
 import { markClaimsBought } from "./wishlists.js";
 import type { HeldClaim } from "../../../Shared/commerce/wishlist.js";
 import { tellLineCancelled, tellOrderMoved, tellOrderPlaced, withProductAlerts } from "./notifications.js";
@@ -685,6 +686,11 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
         .map(row => [row.id, row.percent as string]))
     : new Map<number, string>();
   const draft = withAffiliateShares(priced, optedIn);
+  /* Tax, added at checkout (0087): each line's own on what it costs, by the
+     reader the bag asks — so the order freezes the Tax line the shopper saw.
+     It is before the code, points and card, `settle`'s order. */
+  const taxed = await taxForLines(db, draft.lines.map(line => ({ productId: line.productId, lineTotal: line.lineTotal })));
+  const owedWithTax = addMoney(draft.totals.grandTotal, taxed.total);
   /* Who carries each store's parcels (3.3.13): a store using its own company,
      when that company is on NetLet and active, has its parcels go straight to
      that company's board. Anything else waits for NetLet to assign, or for the
@@ -766,7 +772,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const typedGift = details.giftCardCode?.trim() ?? "";
   const context = {
     goods: draft.totals.itemsTotal,
-    owed: draft.totals.grandTotal,
+    owed: owedWithTax,
     userId: details.userId ?? null,
   };
   const quotedCode = typed ? await quoteVoucher(db, typed, context) : null;
@@ -815,7 +821,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   }
 
   const discountValue = claimId !== null && discountQuote ? discountQuote.amount : "0.000";
-  const afterDiscount = subtractMoney(draft.totals.grandTotal, discountValue);
+  const afterDiscount = subtractMoney(owedWithTax, discountValue);
 
   const wantedPoints = details.usePoints && details.userId
     ? pointsSpendableOn(await balanceFor(db, details.userId), afterDiscount)
@@ -852,6 +858,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
   const settled = settle({
     goods: draft.totals.itemsTotal,
     delivery: draft.totals.deliveryTotal,
+    tax: taxed.total,
     discount: discountValue,
     points: pointsValue,
     giftCard: giftCardValue,
@@ -951,6 +958,12 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
           discountAmount: line.discountAmount,
         })),
       ).returning({ id: orderItems.id, variantId: orderItems.variantId });
+
+      /* Each line's tax beside it (0087), at the rate charged. A multi-row
+         insert returns its rows in the order it was given them. */
+      if (toFils(taxed.total) > 0n) {
+        await freezeLineTaxes(w, order.id, writtenLines.map((row, index) => ({ orderItemId: row.id, amount: taxed.amounts[index] ?? "0.000" })), taxed.rules.ratePercent);
+      }
 
       /*
        * The extras, copied beside the price. Everything is frozen and the
@@ -1065,9 +1078,10 @@ export async function quoteVoucherForCart(cartId: string, code: string, userId: 
   /* Of the lines chosen for this checkout, as the order will be. */
   const { lines, delivery } = await priceableLines(db, cartId, userId, undefined, skip);
   const draft = draftOrder(lines, delivery.total);
+  const taxed = await taxForLines(db, draft.lines.map(line => ({ productId: line.productId, lineTotal: line.lineTotal })));
   return quoteVoucher(db, code, {
     goods: draft.totals.itemsTotal,
-    owed: draft.totals.grandTotal,
+    owed: addMoney(draft.totals.grandTotal, taxed.total),
     userId,
   });
 }

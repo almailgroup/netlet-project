@@ -139,7 +139,8 @@ export function giftCardRefusal(
 }
 
 /**
- * The whole till, in order: goods, then the code, then points, then the card.
+ * The whole till, in order: goods, delivery and tax, then the code, then
+ * points, then the card.
  *
  * One function so the checkout summary and the order writer cannot disagree
  * about what is owed — the same reason the password floor is one function on
@@ -148,11 +149,13 @@ export function giftCardRefusal(
 export function settle(input: {
   goods: string;
   delivery: string;
+  /** Tax added at checkout on the taxed goods (0087): before the code, points and card. */
+  tax?: string;
   discount?: string;
   points?: string;
   giftCard?: string;
 }): { discount: string; points: string; giftCard: string; payable: string } {
-  const total = addMoney(input.goods, input.delivery);
+  const total = addMoney(input.goods, input.delivery, input.tax ?? "0.000");
 
   /* Each in turn, and each capped at what is still owed: three reductions that
      could each cover the basket must not add up to a negative bill. */

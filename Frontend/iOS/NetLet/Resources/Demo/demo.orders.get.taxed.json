@@ -1,0 +1,270 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "order": {
+          "id": 10,
+          "reference": "NL-20261117-EJQNE",
+          "userId": 1,
+          "email": "noura@walk.test",
+          "status": "paid",
+          "currency": "KWD",
+          "itemsTotal": "41.375",
+          "deliveryTotal": "0.000",
+          "grandTotal": "43.444",
+          "pointsSpent": 0,
+          "pointsValue": "0.000",
+          "discountCode": null,
+          "discountValue": "0.000",
+          "giftCardCode": null,
+          "giftCardValue": "0.000",
+          "subscriptionId": null,
+          "member": true,
+          "deliveryWaived": "1.500",
+          "paymentMethod": "cod",
+          "paymentCollectedAt": "2026-11-17T18:13:01.826Z",
+          "deliveryBreakdown": [
+            {
+              "fee": "0.000",
+              "waived": "1.500",
+              "vendorId": 2,
+              "vendorName": "Acme Electronics",
+              "destinationLabel": null
+            }
+          ],
+          "contactName": "Noura",
+          "contactPhone": "99887766",
+          "deliveryZoneId": "hawalli",
+          "addressLine": "Salmiya, Block 5, Street 52, House 6A",
+          "addressNotes": null,
+          "deliveryPin": null,
+          "deliveryAddressParts": {
+            "area": "Salmiya",
+            "block": "5",
+            "street": "52",
+            "building": "6A"
+          },
+          "placedAt": "2026-11-17T18:13:01.741Z",
+          "updatedAt": "2026-11-17T18:13:01.826Z"
+        },
+        "tax": {
+          "amount": "2.069",
+          "rate": "5.00"
+        },
+        "owedNow": "43.444",
+        "windowDays": 14,
+        "parcels": [
+          {
+            "key": "v2|dorder",
+            "vendorName": "Acme Electronics",
+            "destinationLabel": null,
+            "state": "pending",
+            "arrivedAt": null,
+            "lines": [
+              {
+                "lineId": 19,
+                "productTitle": "Brass desk lamp",
+                "lineTotal": "24.375"
+              },
+              {
+                "lineId": 20,
+                "productTitle": "Wool scarf",
+                "lineTotal": "17.000"
+              }
+            ],
+            "rating": null,
+            "ratingState": {
+              "allowed": false,
+              "reason": "delivery.notArrived"
+            },
+            "claim": null,
+            "claimRefusal": "claims.noCourier"
+          }
+        ],
+        "returns": [],
+        "documents": [
+          {
+            "number": "INV-2026-000002",
+            "kind": "invoice",
+            "total": "43.444",
+            "issuedAt": "2026-11-17T18:13:01.835Z"
+          }
+        ],
+        "cancel": {
+          "cancellable": false,
+          "reason": "orders.cancelPaid"
+        },
+        "change": {
+          "changeable": false,
+          "reason": "orders.changePaid"
+        },
+        "changeAddress": {
+          "changeable": false,
+          "reason": "orders.changePaid"
+        },
+        "paymentChange": {
+          "open": false,
+          "method": "cod",
+          "live": true,
+          "paidOnline": null
+        },
+        "handover": null,
+        "steps": {
+          "placedAt": "2026-11-17T18:13:01.741Z",
+          "cancelled": false,
+          "parcels": [
+            {
+              "key": "v2|dorder",
+              "vendorName": "Acme Electronics",
+              "destinationLabel": null,
+              "fast": false,
+              "lineIds": [
+                19,
+                20
+              ],
+              "items": 3,
+              "step": "placed",
+              "deliveredAt": null,
+              "promise": {
+                "kind": "window",
+                "from": "2026-11-18T00:00:00.000Z",
+                "to": "2026-11-18T00:00:00.000Z",
+                "late": false
+              }
+            }
+          ]
+        },
+        "deliverySlots": [],
+        "warranty": [],
+        "lines": [
+          {
+            "id": 19,
+            "orderId": 10,
+            "vendorId": 2,
+            "productId": 2,
+            "variantId": 2,
+            "vendorName": "Acme Electronics",
+            "productTitle": "Brass desk lamp",
+            "variantTitle": "Default",
+            "sku": "LAMP",
+            "unitPrice": "24.375",
+            "quantity": 1,
+            "lineTotal": "24.375",
+            "preordered": false,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "bundleId": null,
+            "bundleName": null,
+            "destination": null,
+            "referrerId": null,
+            "referralRate": null,
+            "affiliateVendorPercent": null,
+            "deliveryChoice": "regular",
+            "discountCodeId": null,
+            "discountCode": null,
+            "discountAmount": "0.000",
+            "sizeClass": null,
+            "weightGrams": null,
+            "fulfilment": "pending",
+            "deliveredAt": null,
+            "createdAt": "2026-11-17T18:13:01.741Z",
+            "updatedAt": "2026-11-17T18:13:01.741Z",
+            "photo": "/brand/collection-tech.svg",
+            "returnState": {
+              "returnable": false,
+              "reason": "returns.blockedNotDelivered"
+            },
+            "review": null,
+            "reviewEligibility": {
+              "allowed": false,
+              "reason": "notDelivered"
+            },
+            "warrantyEligibility": {
+              "allowed": false,
+              "reason": "warranty.notDelivered"
+            },
+            "warrantyTerms": null,
+            "changeable": false
+          },
+          {
+            "id": 20,
+            "orderId": 10,
+            "vendorId": 2,
+            "productId": 7,
+            "variantId": 10,
+            "vendorName": "Acme Electronics",
+            "productTitle": "Wool scarf",
+            "variantTitle": "Default",
+            "sku": null,
+            "unitPrice": "8.500",
+            "quantity": 2,
+            "lineTotal": "17.000",
+            "preordered": false,
+            "preorderReleaseAt": null,
+            "centreId": null,
+            "bundleId": null,
+            "bundleName": null,
+            "destination": null,
+            "referrerId": null,
+            "referralRate": null,
+            "affiliateVendorPercent": null,
+            "deliveryChoice": "regular",
+            "discountCodeId": null,
+            "discountCode": null,
+            "discountAmount": "0.000",
+            "sizeClass": null,
+            "weightGrams": null,
+            "fulfilment": "pending",
+            "deliveredAt": null,
+            "createdAt": "2026-11-17T18:13:01.741Z",
+            "updatedAt": "2026-11-17T18:13:01.741Z",
+            "photo": "/subcategories/style-accessories.webp",
+            "returnState": {
+              "returnable": false,
+              "reason": "returns.blockedNotDelivered"
+            },
+            "review": null,
+            "reviewEligibility": {
+              "allowed": false,
+              "reason": "notDelivered"
+            },
+            "warrantyEligibility": {
+              "allowed": false,
+              "reason": "warranty.notDelivered"
+            },
+            "warrantyTerms": null,
+            "changeable": false
+          }
+        ]
+      },
+      "meta": {
+        "values": {
+          "order.paymentCollectedAt": [
+            "Date"
+          ],
+          "order.placedAt": [
+            "Date"
+          ],
+          "order.updatedAt": [
+            "Date"
+          ],
+          "documents.0.issuedAt": [
+            "Date"
+          ],
+          "lines.0.createdAt": [
+            "Date"
+          ],
+          "lines.0.updatedAt": [
+            "Date"
+          ],
+          "lines.1.createdAt": [
+            "Date"
+          ],
+          "lines.1.updatedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

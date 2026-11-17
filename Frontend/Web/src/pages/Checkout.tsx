@@ -68,6 +68,7 @@ import { productLinks } from "@/lib/referral";
 import { BagSavings, useSavingsBill } from "@/components/cart/BagSavings";
 import { LineCode } from "@/components/checkout/LineCode";
 import { subtractMoney } from "@shared/money";
+import { rateLabel } from "@shared/commerce/tax";
 import { pressHaptic, refusedHaptic, successHaptic } from "@/lib/haptics";
 import { bagGroups, type BagGroup } from "@/lib/bagGroups";
 import { storeDeliveryOf } from "@/components/cart/StoreDelivery";
@@ -348,6 +349,8 @@ export default function Checkout() {
                     faint={syncing}
                   />
                 ))}
+                {/* Tax (0087): on the goods, after each product's own code. */}
+                {cart?.tax ? <Row label={t("summary.tax", { rate: rateLabel(cart.tax.ratePercent) })} value={money(cart.tax.amount)} faint={syncing} /> : null}
                 {Number(bill.discountOff) > 0 ? <Row label={t("checkout.discountRow")} value={`−${money({ amount: bill.discountOff, currencyCode: "KWD" })}`} good /> : null}
                 {Number(bill.pointsOff) > 0 ? <Row label={t("checkout.pointsRow")} value={`−${money({ amount: bill.pointsOff, currencyCode: "KWD" })}`} good /> : null}
                 {Number(bill.giftOff) > 0 ? <Row label={t("checkout.giftCardRow")} value={`−${money({ amount: bill.giftOff, currencyCode: "KWD" })}`} good /> : null}

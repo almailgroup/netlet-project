@@ -632,6 +632,10 @@ private struct CheckoutSummary: View {
             ForEach(cart.items.filter { $0.code != nil }) { item in
                 codeRow(item)
             }
+            // Tax (0087): on the goods, after each product's own code.
+            if let tax = cart.tax, !tax.amount.isZero {
+                row(l.t("summary.tax", ["rate": TaxWording.rateLabel(tax.ratePercent)]), tax.amount.formatted(l.current), faint: app.cart.syncing)
+            }
             if !bill.discount.isZero { row(l.t("checkout.discountRow"), "−" + bill.discount.formatted(l.current), good: true) }
             if !bill.points.isZero { row(l.t("checkout.pointsRow"), "−" + bill.points.formatted(l.current), good: true) }
             if !bill.giftCard.isZero { row(l.t("checkout.giftCardRow"), "−" + bill.giftCard.formatted(l.current), good: true) }

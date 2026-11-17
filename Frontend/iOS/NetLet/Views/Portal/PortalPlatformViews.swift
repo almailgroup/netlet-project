@@ -520,6 +520,9 @@ struct PortalFeaturesView: View {
     @State private var rows: [FeatureSwitch]?
     @State private var failed: APIError?
     @State private var confirming: String?
+    /// Turning tax on changes what every order costs, so it asks first, saying the rate (0087).
+    @State private var confirmingTax = false
+    @State private var taxRate = "5.00"
     @State private var busy = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -537,7 +540,7 @@ struct PortalFeaturesView: View {
                             ForEach(members) { row in
                                 Divider()
                                 FeatureRow(row: row, busy: busy) { on in
-                                    if on { Task { await set(row.key, true) } } else { confirming = row.key }
+                                    if !on { confirming = row.key } else if row.key == "tax" { confirmingTax = true } else { Task { await set(row.key, true) } }
                                 }
                             }
                         }
@@ -545,6 +548,7 @@ struct PortalFeaturesView: View {
                 }
                 // The return window (on the owner's word, "controlled by super admin, like
                 // 14 days") and the referral programme's two rates — the web's two cards.
+                SettingsCard(title: "tax.settingsTitle", intro: "tax.settingsIntro", keys: ["tax.ratePercent"])
                 SettingsCard(title: "returns.settingsTitle", intro: "returns.settingsIntro", keys: ["returns.windowDays"])
                 SettingsCard(title: "settings.title", intro: "settings.intro", keys: ["referral.productPercent", "referral.invitePercent"])
             } else if let failed {
@@ -564,12 +568,19 @@ struct PortalFeaturesView: View {
         } message: {
             if let key = confirming { Text(l.t(FeatureWords.whenOff(key))) }
         }
+        .alert(l.t("features.taxConfirmOnTitle"), isPresented: $confirmingTax) {
+            Button(l.t("features.turnOn")) { Task { await set("tax", true) } }
+            Button(l.t("common.cancel"), role: .cancel) {}
+        } message: {
+            Text(l.t("features.taxConfirmOnBody", ["rate": TaxWording.rateLabel(taxRate)]))
+        }
     }
 
     private func load() async {
         do {
             rows = try await app.services.api.call(API.featureSwitches)
             failed = nil
+            if let rate = (try? await app.services.api.call(API.platformSettings))?.first(where: { $0.key == "tax.ratePercent" }) { taxRate = rate.value }
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, rows == nil { failed = failure }
@@ -651,6 +662,7 @@ enum SettingWords {
     static func label(_ key: String) -> String {
         switch key {
         case "returns.windowDays": return "returns.windowDaysLabel"
+        case "tax.ratePercent": return "tax.rateLabel"
         case "referral.invitePercent": return "settings.invitePercent"
         default: return "settings.productPercent"
         }
@@ -659,6 +671,7 @@ enum SettingWords {
     static func hint(_ key: String) -> String {
         switch key {
         case "returns.windowDays": return "returns.windowDaysHint"
+        case "tax.ratePercent": return "tax.rateHint"
         case "referral.invitePercent": return "settings.invitePercentHint"
         default: return "settings.productPercentHint"
         }
@@ -702,6 +715,7 @@ enum FeatureWords {
     static let groups: [(key: String, title: String)] = [
         ("search", "features.groupSearch"),
         ("shopping", "features.groupShopping"),
+        ("tax", "features.groupTax"),
         ("afterSale", "features.groupAfterSale"),
         ("selling", "features.groupSelling"),
         ("content", "features.groupContent"),
@@ -711,6 +725,7 @@ enum FeatureWords {
         switch key {
         case "ai", "assistant", "recommendations", "boughtTogether", "voiceSearch", "photoSearch": return "search"
         case "priceOffers", "wishlists", "giftCards", "subscriptions", "membership", "tryOn", "cashOnDelivery", "testPayments": return "shopping"
+        case "tax", "taxAllProducts": return "tax"
         case "returns", "deliveryRatings", "damageClaims": return "afterSale"
         case "ads", "affiliates", "fulfilment": return "selling"
         default: return "content"
@@ -733,6 +748,8 @@ enum FeatureWords {
         case "ads": return "features.ads"
         case "subscriptions": return "features.subscriptions"
         case "testPayments": return "features.testPayments"
+        case "tax": return "features.tax"
+        case "taxAllProducts": return "features.taxAllProducts"
         case "fulfilment": return "features.fulfilment"
         case "membership": return "features.membership"
         case "voiceSearch": return "features.voiceSearch"
@@ -760,6 +777,8 @@ enum FeatureWords {
         case "ads": return "features.adsOff"
         case "subscriptions": return "features.subscriptionsOff"
         case "testPayments": return "features.testPaymentsOff"
+        case "tax": return "features.taxOff"
+        case "taxAllProducts": return "features.taxAllProductsOff"
         case "fulfilment": return "features.fulfilmentOff"
         case "membership": return "features.membershipOff"
         case "voiceSearch": return "features.voiceSearchOff"

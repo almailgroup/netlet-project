@@ -277,7 +277,8 @@
       "reprice",
       "restock",
       "department",
-      "brand"
+      "brand",
+      "tax"
     ],
     "limit": 100,
     "minPercent": -90,

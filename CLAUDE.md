@@ -4432,6 +4432,59 @@ order freezing each with the right commission and one use per code, the
 order box sending a product's code to its line, the store's page listing its
 own codes only; axe clean and no sideways scroll.
 
+## Tax at checkout
+
+**A Tax line under the subtotal and delivery, off until NetLet turns it on,
+on every product or only chosen ones — on the owner's word** ("a Tax field
+below the pricing summary, configurable for future activation on specific
+products or all products"; migration 0087, approved as shown).
+`Shared/commerce/tax.ts` is the rule, pure; `Backend/src/services/tax.ts` the
+database half. The owner's four answers shape it:
+
+- **Added at checkout, never inside a price.** A seller's price is what the
+  shelf says; the tax is a line of its own and the total goes up by it. It
+  never touches a line's total, so commission plus the seller's share still
+  equals the line, and finance and payouts read what they read before.
+- **On the goods, never on delivery**, each line on what it costs the shopper
+  — units and extras, less its own code — rounded to the fil half up
+  (`taxOn`), and `settle` adds it before the order's code, the points and the
+  card, so a refunded item hands back exactly its own tax.
+- **One shop rate** (`tax.ratePercent`, 5% unless changed, at most
+  `MAX_TAX_PERCENT` 30), an administrator's setting on `/admin/features`.
+- **NetLet alone decides which products**: `tax` (off by default) and
+  `taxAllProducts` (on) are two switches in their own group, and a product
+  marked taxed or not taxed (`product_tax`: no row follows the shop, a rate of
+  nothing is not taxed, null is taxed) wins over the default. Marking is
+  `inventory.products.setTax` and the products list's "Set tax"
+  (`platform.configure`, on the trail as `product.setTax`); a store's editor
+  shows the product's tax and says NetLet decides it.
+
+**The bag says it and the order freezes it.** `getCart` answers `tax` (the
+amount and the rate) and a `total` that carries it, through `taxForLines`,
+the one reader the order also asks, so the cart's figure is the one frozen:
+`order_item_taxes`, a row per taxed line with its rate and amount, in the
+order's own transaction, and `grand_total` includes it. Every later figure
+reads the frozen rows: the driver's (`stillOwed` drops a cancelled line's
+tax), a lowered quantity (`splitTax` gives the kept part its own tax and the
+gone part the rest, to the fil), a refund (`refundFor` adds the line's tax),
+the invoice (each line's tax and rate, the document's `tax` before the
+discount) and the credit note (goods and tax apart). The cart, its drawer,
+checkout, the opened order ("Includes tax"), the invoice and the app's same
+screens draw it; the bag's instant guess keeps the last tax in the total, as
+it keeps the last delivery. **Turning tax on asks first**, saying the rate.
+
+**Closed, not broken, until 0087 is pasted**: the rules answer "no tax" while
+either table is missing (`taxTablesReady`, asked before reading because the
+frozen rows are read inside transactions), the features page says it waits,
+and marking a product refuses with `tax.unavailable`. `tax.test.ts` (both
+halves) holds the arithmetic and a real Postgres: off by default, the cart
+and the order agreeing to the fil, NetLet-only marks, a cancelled line, a
+split, the invoice and the tables renamed away. Walked on a production build
+against a local Postgres; the app's answers were recorded off that server
+(`demo.commerce.cart.get.taxed`, `demo.orders.get.taxed`,
+`demo.invoices.get.taxed`, `demo.inventory.products.tax`) and `TaxTests`
+decodes them.
+
 ## Asking for a price
 
 A shopper may ask a seller for a special price, and the seller answers. The
@@ -9078,8 +9131,9 @@ module) — then 1,107 KB (319 KB), the refurbished section's and the
 photo squaring's words in both languages — then 1,109 KB (319 KB), the
 product page's total for the quantity and its words — then 1,114 KB
 (320 KB), each store's delivery row and sheet and their words — and is
-1,126 KB (323 KB) now, paying online, the test page and the door check's
-words in both languages —
+1,126 KB (323 KB), paying online, the test page and the door check's
+words in both languages — and is 1,132 KB (324 KB) now, the tax words in
+both languages —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

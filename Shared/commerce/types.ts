@@ -440,6 +440,12 @@ export type Cart = {
    * `subtotal` is the lines before them, and `total` is after them.
    */
   codeDiscount?: Money | null;
+  /**
+   * Tax, added at checkout on the taxed goods (migration 0087): what it comes
+   * to and the shop's rate. Null while tax is off, on a bag with nothing
+   * taxed, and absent from a server before it. Inside `total`.
+   */
+  tax?: { amount: Money; ratePercent: string } | null;
   total: Money;
   /**
    * Each store's delivery as the shopper chose it (migration 0085): Standard

@@ -65,6 +65,7 @@ import { recentReviewsForStore, type StoreReview } from "./reviews.js";
 import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
 import { valueOf } from "../../../Shared/commerce/attributeSchema.js";
 import { featureOn } from "./features.js";
+import { taxForLines } from "./tax.js";
 import { warrantyLengthsReady } from "./warrantyLengths.js";
 import { storeSlotsFor, type StoreSlots } from "./deliverySlots.js";
 import {
@@ -874,6 +875,13 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
   const memberFree = member && (minimum === null || compareMoney(subtractMoney(subtotal, codeDiscount), minimum) >= 0);
   /* Each store's day and time (0085), by the one reader the order asks too. */
   const slots = await storeSlotsFor(db, cartId, skip);
+  /* Tax, added at checkout (0087): each chosen line's own, on what it costs
+     less its own code — the reader the order asks, so the Tax line here is
+     the figure the order freezes. Off, and before 0087, it is nothing. */
+  const taxed = await taxForLines(db, going.map(row => ({
+    productId: row.productId,
+    lineTotal: subtractMoney(addMoney(sumMinor([{ amount: row.charged, quantity: row.quantity }]), row.extrasTotal), codeTaken(row.lineId)),
+  })));
   /* One row per seller, so the COD rules line up with the delivery groups. */
   const rules = new Map(going.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
 
@@ -926,7 +934,9 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
       memberFree,
     },
     codeDiscount: toFils(codeDiscount) > 0n ? money(codeDiscount) : null,
-    total: money(addMoney(subtractMoney(subtotal, codeDiscount), quote.total)),
+    /* Below the subtotal and delivery, and in the total (0087). */
+    tax: toFils(taxed.total) > 0n ? { amount: money(taxed.total), ratePercent: taxed.rules.ratePercent } : null,
+    total: money(addMoney(subtractMoney(subtotal, codeDiscount), quote.total, taxed.total)),
     stores: storeDeliveries(items, slots, new Map(rows.map(row => [row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver }]))),
     slotsReady: slots.ready,
   };

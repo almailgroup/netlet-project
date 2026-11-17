@@ -154,12 +154,14 @@ export function sellerProposal(request: { status: string; declineReason: string 
 
 /**
  * What is owed back for a returned line: its frozen total, add-ons included
- * (`freezeLine` folds them into `line_total`). Never re-priced against today's
+ * (`freezeLine` folds them into `line_total`), and its tax. Never re-priced against today's
  * catalogue — a refund that comes out at a different figure from the payment is
  * the failure every frozen number on an order exists to prevent.
  */
-export function refundFor(line: { lineTotal: string }): string {
-  return fromFils(toFils(line.lineTotal));
+export function refundFor(line: { lineTotal: string; tax?: string | null }): string {
+  /* And the tax added on it at checkout (0087), as frozen: the shopper paid
+     it on this item, so it goes back with the item. */
+  return fromFils(toFils(line.lineTotal) + toFils(line.tax ?? "0.000"));
 }
 
 /** Longest a shopper's note on a return may be. */

@@ -81,6 +81,12 @@ struct OrderProgress: Decodable, Hashable, Sendable {
 
 /// One order opened (`orders.get`): its lines, and what can be done about
 /// it now — each line's return, each parcel's rating and claim, the invoice.
+/// An order's tax as frozen (0087): what it came to and the rate charged.
+struct OrderTax: Decodable, Hashable, Sendable {
+    let amount: Money
+    let rate: String
+}
+
 struct OrderDetail: Decodable, Sendable {
     let order: OrderRecord
     let lines: [OrderLine]
@@ -111,8 +117,11 @@ struct OrderDetail: Decodable, Sendable {
     /// The QR and code for the driver while a parcel is on its way (0086);
     /// nil otherwise, and from a server older than 0086.
     let handover: OrderHandover?
+    /// The tax added at checkout (0087), the sum of the lines' frozen tax, and
+    /// its rate; nil untaxed, and from a server older than 0087.
+    let tax: OrderTax?
 
-    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, paymentChange, owedNow, warranty, deliverySlots, handover }
+    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, paymentChange, owedNow, warranty, deliverySlots, handover, tax }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -131,6 +140,7 @@ struct OrderDetail: Decodable, Sendable {
         warranty = try container.decodeIfPresent([WarrantyClaim].self, forKey: .warranty) ?? []
         deliverySlots = try container.decodeIfPresent([OrderDeliverySlot].self, forKey: .deliverySlots) ?? []
         handover = try container.decodeIfPresent(OrderHandover.self, forKey: .handover)
+        tax = try container.decodeIfPresent(OrderTax.self, forKey: .tax)
     }
 
     /// The lines that may be sent back for a refund now.

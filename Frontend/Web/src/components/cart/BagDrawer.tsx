@@ -35,6 +35,7 @@ import { isDeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { lineCeiling, quantityDraft, shortLines, typedQuantity } from "@shared/commerce/typedQuantity";
 import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
 import { choiceOf } from "@shared/commerce/cartChoice";
+import { rateLabel } from "@shared/commerce/tax";
 import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
 
 /** While a stored bag loads or the first item is being added: never "empty" before it knows. */
@@ -461,6 +462,8 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
       <div className="flex items-center justify-between gap-3 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")} <span className="font-normal">({t("cart.itemCount", { count: chosenCount })})</span></span><span className="shrink-0 font-bold text-[#0a285a]">{money(cart.subtotal)}</span></div>
       {cart.codeDiscount ? <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("checkout.lineCodesTitle")}</span><span className={`font-bold text-[#2f5d33] transition-opacity ${updating}`}>−{money(cart.codeDiscount)}</span></div> : null}
       <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.delivery")}</span><span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.delivery.total)}</span></div>
+      {/* Tax (0087), added on the goods while NetLet charges it. */}
+      {cart.tax ? <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("summary.tax", { rate: rateLabel(cart.tax.ratePercent) })}</span><span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.tax.amount)}</span></div> : null}
       {/* A member's free delivery (4.1), said with what it saved. */}
       {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
       <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className={`text-lg font-extrabold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.total)}</span></div>

@@ -547,7 +547,7 @@ struct OrderDetailView: View {
                                 OrderDocumentsList(documents: detail.documents)
                                 if detail.hasShipped { TrackingPanel(reference: reference) }
                                 ParcelCareSection(reference: reference, detail: detail, reload: { await model.load() })
-                                totals(detail.order)
+                                totals(detail.order, tax: detail.tax)
                                 delivery(detail.order)
                             }
                         }
@@ -674,10 +674,11 @@ struct OrderDetailView: View {
         }
     }
 
-    private func totals(_ order: OrderRecord) -> some View {
+    private func totals(_ order: OrderRecord, tax: OrderTax?) -> some View {
         VStack(spacing: 8) {
             row(l.t("cart.subtotal"), order.itemsTotal)
             row(l.t("cart.delivery"), order.deliveryTotal)
+            if let tax, !tax.amount.isZero { row(l.t("summary.tax", ["rate": TaxWording.rateLabel(tax.rate)]), tax.amount) }
             if !order.discountValue.isZero { row(l.t("checkout.discountRow"), Money(fils: -order.discountValue.fils)) }
             if !order.pointsValue.isZero { row(l.t("checkout.pointsRow"), Money(fils: -order.pointsValue.fils)) }
             if !order.giftCardValue.isZero { row(l.t("checkout.giftCardRow"), Money(fils: -order.giftCardValue.fils)) }

@@ -41,6 +41,11 @@ export type OwedLine = {
   destinationLabel: string | null;
   /** As frozen: the units and their add-ons together. */
   lineTotal: string;
+  /**
+   * The tax added on it at checkout (0087), as frozen; absent or nothing for
+   * an untaxed line. A line no longer coming takes its tax with it.
+   */
+  tax?: string | null;
   fulfilment: FulfilmentState | string;
   /**
    * The trip it rides (3.2.5). A fast parcel is a door of its own with a fee
@@ -53,7 +58,7 @@ export type OwedLine = {
 export type StillOwed = {
   /** What the shopper owes now. */
   owed: string;
-  /** The goods no longer coming, add-ons included. */
+  /** The goods no longer coming, add-ons and their tax included. */
   droppedGoods: string;
   /** The delivery fees of sellers with nothing left to send to a door. */
   droppedDelivery: string;
@@ -77,7 +82,7 @@ export function stillOwed(
       door.kept += 1;
     } else {
       door.gone += 1;
-      droppedGoods += toFils(line.lineTotal);
+      droppedGoods += toFils(line.lineTotal) + toFils(line.tax ?? "0.000");
     }
     doors.set(key, door);
   }

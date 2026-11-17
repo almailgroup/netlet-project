@@ -20,6 +20,7 @@ import { slotsForOrders } from "./deliverySlots.js";
 import { getDb } from "./db.js";
 import { featureOn } from "./features.js";
 import { onlinePaymentsReady, paidOnlineFor } from "./onlinePayments.js";
+import { orderTaxes } from "./tax.js";
 import { handoverFor } from "../core/handover.js";
 
 async function orderDb() {
@@ -42,6 +43,9 @@ export async function orderDetailForShopper(userId: number, reference: string) {
   const warrantyFor = await warrantyStateForLines(found.lines);
   return {
     order: orderForShopper(found.order),
+    /* The tax added at checkout (0087), the sum of the lines' frozen tax with
+       the rate — the order's summary draws it under delivery. Null untaxed. */
+    tax: (await orderTaxes(await orderDb(), [found.order.id])).get(found.order.id) ?? null,
     /* What the driver collects now — the figure every page quotes (`owed.ts`). */
     owedNow: found.owed?.owed ?? found.order.grandTotal,
     windowDays,

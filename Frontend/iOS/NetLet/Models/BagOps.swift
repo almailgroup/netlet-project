@@ -103,8 +103,8 @@ enum BagOps {
         next.itemCount = counted(items) + unexplained
         next.chosenCount = counted(going) + unexplained
         next.subtotal = Money(fils: subtotal, currencyCode: cart.subtotal.currencyCode)
-        // The lines' own codes (0074) stay the server's last, like the delivery.
-        next.total = Money(fils: subtotal + cart.delivery.total.fils - (cart.codeDiscount?.fils ?? 0), currencyCode: cart.total.currencyCode)
+        // The lines' own codes (0074) and the tax (0087) stay the server's last, like the delivery.
+        next.total = Money(fils: subtotal + cart.delivery.total.fils + (cart.tax?.amount.fils ?? 0) - (cart.codeDiscount?.fils ?? 0), currencyCode: cart.total.currencyCode)
         return next
     }
 

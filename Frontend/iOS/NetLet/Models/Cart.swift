@@ -22,6 +22,9 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
     /// What the lines' own codes take off together (0074); nil when none does.
     /// `subtotal` is before them and `total` after them.
     var codeDiscount: Money? = nil
+    /// The tax added on the goods at checkout (0087), and its rate; nil while
+    /// NetLet charges none. `total` already carries it.
+    var tax: CartTax? = nil
     /// Each store's delivery as the shopper chose it (migration 0085); nil
     /// from a bag read before it existed, which draws each parcel as before.
     var stores: [CartStoreDelivery]? = nil
@@ -52,6 +55,12 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
     func plainLine(for variantId: String) -> CartItem? {
         items.first { $0.variantId == variantId && ($0.addons ?? []).isEmpty && $0.bundleName == nil }
     }
+}
+
+/// The bag's tax (0087): what it comes to and the shop's one rate ("5.00").
+struct CartTax: Decodable, Hashable, Sendable {
+    let amount: Money
+    let ratePercent: String
 }
 
 struct CartItem: Decodable, Identifiable, Hashable, Sendable {

@@ -61,6 +61,7 @@ import { releaseLineCodes } from "./lineCodes.js";
 import { closeIfNothingLeft, returnUnits } from "./orders.js";
 import { refundGiftCard } from "./vouchers.js";
 import { orderAddonFields, orderItemAddonsBefore0083, warrantyLengthsReady, withoutLength } from "./warrantyLengths.js";
+import { frozenLineTaxes, lineTaxOf, moveLineTax } from "./tax.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -99,6 +100,8 @@ async function load(db: Db, userId: number, reference: string, lock: boolean) {
   const perUnit = new Map<number, bigint>();
   for (const addon of addons) perUnit.set(addon.orderItemId, (perUnit.get(addon.orderItemId) ?? 0n) + toFils(addon.price));
 
+  /* Each line's tax (0087), so a lowered line's is split with its total. */
+  const taxes = await frozenLineTaxes(db, [order.id]);
   const lines: ChangeLine[] = rows.map(row => ({
     id: row.id,
     fulfilment: row.fulfilment,
@@ -117,6 +120,8 @@ async function load(db: Db, userId: number, reference: string, lock: boolean) {
     bundleId: row.bundleId,
     deliveryChoice: row.deliveryChoice,
     destinationLabel: (row.destination as { label?: string } | null)?.label ?? null,
+    tax: lineTaxOf(taxes, row.id),
+    taxRate: taxes.get(row.id)?.rate ?? null,
   }));
 
   const vendorIds = [...new Set(rows.map(row => row.vendorId).filter((id): id is number => id !== null))];
@@ -224,6 +229,11 @@ export async function applyOrderChange(userId: number, reference: string, change
       if (copies.length && lengths) await w.insert(orderItemAddons).values(copies);
       else if (copies.length) await w.insert(orderItemAddonsBefore0083).values(copies.map(withoutLength));
       if (row.variantId !== null) await returnUnits(w, row.variantId, gone.quantity, pool, row.centreId);
+      /* The tax goes with the units: the kept part keeps its share, the
+         cancelled sibling carries the rest, as `splitLine` worked them out. */
+      if (kept.taxRate && toFils(kept.tax ?? "0") + toFils(gone.tax ?? "0") > 0n) {
+        await moveLineTax(w, row.id, sibling.id, order.id, kept.taxRate, kept.tax ?? "0.000", gone.tax ?? "0.000");
+      }
     }
 
     /* The order's figures, restated so every page reads the new total. */
@@ -315,10 +325,11 @@ export async function changeOrderAddress(userId: number, reference: string, addr
       .for("update");
     if (!order) throw new OrderChangeRefused("orders.detailMissing");
     const lines = await w
-      .select({ fulfilment: orderItems.fulfilment, destination: orderItems.destination, vendorId: orderItems.vendorId, lineTotal: orderItems.lineTotal, deliveryChoice: orderItems.deliveryChoice })
+      .select({ id: orderItems.id, fulfilment: orderItems.fulfilment, destination: orderItems.destination, vendorId: orderItems.vendorId, lineTotal: orderItems.lineTotal, deliveryChoice: orderItems.deliveryChoice })
       .from(orderItems)
       .where(eq(orderItems.orderId, order.id))
       .for("update");
+    const taxes = await frozenLineTaxes(w, [order.id]);
     const state = addressChangeState(order, lines);
     if (!state.changeable) throw new OrderChangeRefused(state.reason);
 
@@ -358,7 +369,7 @@ export async function changeOrderAddress(userId: number, reference: string, addr
 
     const owed = stillOwed(
       { grandTotal: order.grandTotal, deliveryBreakdown: (order.deliveryBreakdown as FrozenDelivery | null) ?? null },
-      lines.map(line => ({ vendorId: line.vendorId, destinationLabel: (line.destination as { label?: string } | null)?.label ?? null, lineTotal: line.lineTotal, fulfilment: line.fulfilment, choice: line.deliveryChoice })),
+      lines.map(line => ({ vendorId: line.vendorId, destinationLabel: (line.destination as { label?: string } | null)?.label ?? null, lineTotal: line.lineTotal, tax: lineTaxOf(taxes, line.id), fulfilment: line.fulfilment, choice: line.deliveryChoice })),
     ).owed;
 
     return {

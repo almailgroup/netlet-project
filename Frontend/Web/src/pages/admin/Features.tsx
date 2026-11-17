@@ -27,6 +27,7 @@ import type { FeatureKey } from "@shared/features";
 import { normaliseSetting, SETTINGS, type SettingKey } from "@shared/settings";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
+import { rateLabel } from "@shared/commerce/tax";
 
 const NAME: Record<FeatureKey, MessageKey> = {
   ai: "features.ai",
@@ -51,6 +52,8 @@ const NAME: Record<FeatureKey, MessageKey> = {
   tryOn: "features.tryOn",
   cashOnDelivery: "features.cashOnDelivery",
   testPayments: "features.testPayments",
+  tax: "features.tax",
+  taxAllProducts: "features.taxAllProducts",
 };
 
 const WHEN_OFF: Record<FeatureKey, MessageKey> = {
@@ -76,12 +79,14 @@ const WHEN_OFF: Record<FeatureKey, MessageKey> = {
   tryOn: "features.tryOnOff",
   cashOnDelivery: "features.cashOnDeliveryOff",
   testPayments: "features.testPaymentsOff",
+  tax: "features.taxOff",
+  taxAllProducts: "features.taxAllProductsOff",
 };
 
 /* Twenty switches in one column read as a wall; grouped by what a shopper or
    a seller would notice them as. `Record` so a feature added to the list and
    not to a group is a compile error rather than a switch nobody can find. */
-type Group = "search" | "shopping" | "afterSale" | "selling" | "content";
+type Group = "search" | "shopping" | "tax" | "afterSale" | "selling" | "content";
 const GROUP_OF: Record<FeatureKey, Group> = {
   ai: "search",
   assistant: "search",
@@ -105,10 +110,13 @@ const GROUP_OF: Record<FeatureKey, Group> = {
   tryOn: "shopping",
   cashOnDelivery: "shopping",
   testPayments: "shopping",
+  tax: "tax",
+  taxAllProducts: "tax",
 };
 const GROUPS: { key: Group; title: MessageKey }[] = [
   { key: "search", title: "features.groupSearch" },
   { key: "shopping", title: "features.groupShopping" },
+  { key: "tax", title: "features.groupTax" },
   { key: "afterSale", title: "features.groupAfterSale" },
   { key: "selling", title: "features.groupSelling" },
   { key: "content", title: "features.groupContent" },
@@ -125,10 +133,14 @@ function Features() {
   const utils = trpc.useUtils();
   const list = trpc.features.list.useQuery();
   const [confirming, setConfirming] = useState<FeatureKey | null>(null);
+  /* Turning tax on changes what every order costs, so it asks first, saying the rate. */
+  const [confirmingTax, setConfirmingTax] = useState(false);
+  const taxRate = trpc.features.settings.useQuery(undefined, { enabled: confirmingTax });
 
   const set = trpc.features.set.useMutation({
     onSuccess: (_reply, input) => {
       setConfirming(null);
+      setConfirmingTax(false);
       toast.success(t(input.enabled ? "features.turnedOn" : "features.turnedOff", { name: t(NAME[input.key]) }));
       void utils.features.list.invalidate();
       void utils.features.states.invalidate();
@@ -186,7 +198,7 @@ function Features() {
                               aria-checked={row.enabled}
                               aria-labelledby={labelId}
                               disabled={set.isPending}
-                              onClick={() => (row.enabled ? setConfirming(key) : set.mutate({ key, enabled: true }))}
+                              onClick={() => (row.enabled ? setConfirming(key) : key === "tax" ? setConfirmingTax(true) : set.mutate({ key, enabled: true }))}
                               className="inline-flex shrink-0 items-center gap-2.5 rounded-full py-1 text-[13px] font-semibold text-[#0a285a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0a285a] disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               <span className={row.enabled ? "" : "text-[#536b8c]"}>{t(row.enabled ? "features.stateOn" : "features.stateOff")}</span>
@@ -206,6 +218,7 @@ function Features() {
         </QueryGate>
       )}
 
+      <SettingsCard title="tax.settingsTitle" intro="tax.settingsIntro" keys={["tax.ratePercent"]} />
       <SettingsCard title="returns.settingsTitle" intro="returns.settingsIntro" keys={["returns.windowDays"]} />
       <SettingsCard title="settings.title" intro="settings.intro" keys={["referral.productPercent", "referral.invitePercent"]} />
 
@@ -219,6 +232,15 @@ function Features() {
         onClose={() => setConfirming(null)}
         onConfirm={() => confirming && set.mutate({ key: confirming, enabled: false })}
       />
+      <ConfirmDialog
+        open={confirmingTax}
+        title={t("features.taxConfirmOnTitle")}
+        body={t("features.taxConfirmOnBody", { rate: rateLabel(taxRate.data?.find(row => row.key === "tax.ratePercent")?.value ?? "5.00") })}
+        confirmLabel={t("features.turnOn")}
+        pending={set.isPending}
+        onClose={() => setConfirmingTax(false)}
+        onConfirm={() => set.mutate({ key: "tax", enabled: true })}
+      />
     </>
   );
 }
@@ -227,6 +249,7 @@ const SETTING_LABEL: Record<SettingKey, { label: MessageKey; hint: MessageKey }>
   "referral.productPercent": { label: "settings.productPercent", hint: "settings.productPercentHint" },
   "referral.invitePercent": { label: "settings.invitePercent", hint: "settings.invitePercentHint" },
   "returns.windowDays": { label: "returns.windowDaysLabel", hint: "returns.windowDaysHint" },
+  "tax.ratePercent": { label: "tax.rateLabel", hint: "tax.rateHint" },
 };
 
 /**

@@ -12,6 +12,7 @@
  * dashboard costs a referral its custom figure, never a checkout.
  */
 import { RETURN_WINDOW_DAYS } from "./commerce/returns.js";
+import { MAX_TAX_PERCENT } from "./commerce/tax.js";
 
 export type SettingSpec = {
   /** What it is when nobody has set it. */
@@ -40,6 +41,13 @@ export const SETTINGS = {
    * at most ninety, past which an order's points would be held for a season.
    */
   "returns.windowDays": { defaultValue: String(RETURN_WINDOW_DAYS), min: 1, max: 90, unit: "days" },
+  /**
+   * The shop's one tax rate (migration 0087), charged only while the `tax`
+   * switch is on, on the products `taxAllProducts` and each product's own
+   * choice say (`Shared/commerce/tax.ts`). Five, the GCC's standard rate,
+   * until somebody decides otherwise; thirty at most.
+   */
+  "tax.ratePercent": { defaultValue: "5.00", min: 0, max: MAX_TAX_PERCENT, unit: "percent" },
 } as const satisfies Record<string, SettingSpec>;
 
 export type SettingKey = keyof typeof SETTINGS;

@@ -1180,6 +1180,11 @@ function resolve(path: string, rawInput: unknown): unknown {
         !(input as { status?: string })?.status || row.status === (input as { status?: string }).status));
     case "inventory.products.get":
       return demoInventoryProducts.find(row => row.id === (input as { id: number })?.id) ?? null;
+    /* Tax (0087) is off in the demo, as on a new shop, and deciding it is NetLet's. */
+    case "inventory.products.tax":
+      return { ready: true, on: false, ratePercent: "5.00", allProducts: true, choice: null, taxed: true, mayChange: false };
+    case "inventory.products.setTax":
+      throw new Error("platform.configure");
     case "inventory.vendors.list":
       return { ...onePage([]), counts: { all: 0, pending: 0, approved: 0, suspended: 0 } };
     case "inventory.vendors.members":

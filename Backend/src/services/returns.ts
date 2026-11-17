@@ -35,6 +35,7 @@ import { orderReference } from "../../../Shared/commerce/order.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { violatesUnique } from "../core/describeError.js";
 import { getDb } from "./db.js";
+import { frozenLineTaxes, lineTaxOf } from "./tax.js";
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
 import { firstPhotos, takeUnits } from "./orders.js";
@@ -596,7 +597,7 @@ async function receive(
     /* Nothing to send: a refund rather than a shopper left with neither. */
   }
 
-  const refundAmount = refundFor(line);
+  const refundAmount = refundFor({ lineTotal: line.lineTotal, tax: lineTaxOf(await frozenLineTaxes(db, [line.orderId]), line.id) });
   /* The line leaves the sale — which finance and payouts already count as a
      refund. From any state it can still be in rather than only `delivered`:
      the item is in the seller's hands, and a seller who moved the line back

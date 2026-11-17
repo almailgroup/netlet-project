@@ -115,8 +115,8 @@ function withItems(cart: Cart, items: CartItem[]): Cart {
     itemCount: counted(items) + unexplained,
     chosenCount: counted(going(items)) + unexplained,
     subtotal: { amount: subtotal, currencyCode },
-    /* The lines' own codes (0074) stay the server's last, like the delivery. */
-    total: { amount: subtractMoney(addMoney(subtotal, cart.delivery.total.amount), cart.codeDiscount?.amount ?? "0.000"), currencyCode },
+    /* The lines' own codes (0074) and the tax (0087) stay the server's last, like the delivery. */
+    total: { amount: subtractMoney(addMoney(subtotal, cart.delivery.total.amount, cart.tax?.amount.amount ?? "0.000"), cart.codeDiscount?.amount ?? "0.000"), currencyCode },
   };
 }
 

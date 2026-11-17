@@ -30,6 +30,7 @@ import { trpc } from "@/lib/trpc";
 import { gregorianDate, hijriDate, type InvoiceDocument, type InvoiceSeller } from "@shared/commerce/invoice";
 import { isMessageKey, translate, type MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
+import { rateLabel } from "@shared/commerce/tax";
 
 /**
  * A label in the reader's language, with the other beneath it.
@@ -142,6 +143,8 @@ function Document({ document: doc, credits, verifyCode }: { document: InvoiceDoc
         <dl className="space-y-2 text-[13px]">
           <Row k="invoice.goods" value={money(doc.goods)} />
           {Number(doc.delivery) > 0 ? <Row k="invoice.delivery" value={money(doc.delivery)} /> : null}
+          {/* Tax added at checkout (0087), before the discount, as the till adds it. */}
+          {doc.tax && Number(doc.tax) > 0 ? <Row k="invoice.tax" value={money(doc.tax)} /> : null}
           {Number(doc.discount) > 0 ? <Row k="invoice.discount" value={`−${money(doc.discount)}`} /> : null}
           <div className="flex items-start justify-between gap-4 border-t border-[#0a285a] pt-2 text-base font-extrabold">
             <dt><Both k={isCredit ? "invoice.creditTotal" : "invoice.total"} /></dt>
@@ -229,6 +232,11 @@ function SellerBlock({ seller, money }: { seller: InvoiceSeller; money: (amount:
                   {line.discount ? (
                     <span className="block text-[12px] font-semibold text-[#2f5d33]">
                       <Both k="invoice.lineCode" values={{ code: line.discount.code, amount: money(line.discount.amount) }} />
+                    </span>
+                  ) : null}
+                  {line.tax ? (
+                    <span className="block text-[12px] font-semibold text-[#536b8c]">
+                      <Both k="invoice.lineTax" values={{ rate: rateLabel(line.tax.rate), amount: money(line.tax.amount) }} />
                     </span>
                   ) : null}
                 </td>

@@ -120,6 +120,10 @@ struct PortalProductEditorView: View {
         section("extras", l.t("admin.addons")) {
             AddonsSection(product: product, mayEdit: mayEdit) { await reload() }
         }
+        /* Tax at checkout (0087): read by every rank, changed by NetLet alone. */
+        section("tax", l.t("tax.editorTitle")) {
+            ProductTaxSection(productId: product.id)
+        }
         if mayEdit {
             section("affiliates", l.t("admin.productAffiliates")) {
                 AffiliateSection(product: product) { await reload() }

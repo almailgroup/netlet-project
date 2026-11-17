@@ -42,14 +42,14 @@ import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { can, type Actor } from "@shared/inventory/permissions";
 import { privatePageMeta } from "@shared/seo";
-import { Archive, Crop, FilePen, FolderInput, ImageDown, ImageOff, PackageCheck, PackagePlus, Percent, Recycle, Search, Send, Tag, Trash2, Undo2, Upload, X } from "lucide-react";
+import { Archive, Crop, FilePen, FolderInput, ImageDown, ImageOff, PackageCheck, PackagePlus, Percent, Receipt, Recycle, Search, Send, Tag, Trash2, Undo2, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Notice } from "@/components/admin/ui";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { isMessageKey } from "@shared/i18n/dictionary";
-import { BRAND_MAX, brandProblem, percentProblem, restockProblem, scalePrice, type BulkAction } from "@shared/inventory/productBulk";
+import { BRAND_MAX, BULK_TAX_CHOICES, brandProblem, percentProblem, restockProblem, scalePrice, type BulkAction, type BulkTaxChoice } from "@shared/inventory/productBulk";
 import { isOffSite } from "@shared/commerce/media";
 import { copyPhotosToNetlet, type CopyRun } from "@/lib/copyPhotos";
 import { squarePhotos, type SquareRun, type SquareTarget } from "@/lib/squarePhotos";
@@ -92,6 +92,8 @@ function ProductTable({ actor }: { actor: Actor }) {
   const [moveTo, setMoveTo] = useState("");
   /* For "Set brand": the name typed, started from the store's when every selected product is one store's. */
   const [brand, setBrand] = useState("");
+  /* For "Set tax" (0087, NetLet's alone): taxed, not taxed, or back to the shop's setting. */
+  const [taxChoice, setTaxChoice] = useState<BulkTaxChoice>("taxed");
   /* "Copy photos to NetLet": open, and how far a run has got. */
   const [copyOpen, setCopyOpen] = useState(false);
   const [copyProgress, setCopyProgress] = useState<{ done: number; total: number } | null>(null);
@@ -256,6 +258,7 @@ function ProductTable({ actor }: { actor: Actor }) {
     ...(bulk === "restock" ? { amount: amountValue } : {}),
     ...(bulk === "department" ? { categoryId: Number(moveTo) } : {}),
     ...(bulk === "brand" ? { brand: brand.trim() } : {}),
+    ...(bulk === "tax" ? { taxChoice } : {}),
   });
   const mayCreate = can(actor, "product.create", ownVendor);
 
@@ -365,6 +368,9 @@ function ProductTable({ actor }: { actor: Actor }) {
           <button type="button" onClick={() => setBulk("reprice")} className={buttonClass.secondary}><Percent className="size-4" aria-hidden />{t("admin.bulkReprice")}</button>
           <button type="button" onClick={() => setBulk("department")} className={buttonClass.secondary}><FolderInput className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.bulkDepartment")}</button>
           <button type="button" onClick={openBrand} className={buttonClass.secondary}><Tag className="size-4 rtl:-scale-x-100" aria-hidden />{t("admin.bulkBrand")}</button>
+          {can(actor, "platform.configure") ? (
+            <button type="button" onClick={() => { setTaxChoice("taxed"); setBulk("tax"); }} className={buttonClass.secondary}><Receipt className="size-4" aria-hidden />{t("admin.bulkTax")}</button>
+          ) : null}
           <button type="button" onClick={() => setCopyOpen(true)} className={buttonClass.secondary}><ImageDown className="size-4" aria-hidden />{t("admin.bulkPhotos")}</button>
           {drawingOn ? (
             <button type="button" onClick={() => setSquareOpen(true)} className={buttonClass.secondary}><Crop className="size-4" aria-hidden />{t("admin.bulkSquare")}</button>
@@ -554,9 +560,10 @@ function ProductTable({ actor }: { actor: Actor }) {
             : bulk === "reprice" ? t("admin.bulkRepriceTitle", { count: selected.size })
             : bulk === "department" ? t("admin.bulkDepartmentTitle", { count: selected.size })
             : bulk === "brand" ? t("admin.bulkBrandTitle", { count: selected.size })
+            : bulk === "tax" ? t("admin.bulkTaxTitle")
             : t("admin.bulkRestockTitle", { count: selected.size })
         }
-        body={bulk === "reprice" ? t("admin.bulkRepriceBody") : bulk === "restock" ? t("admin.bulkRestockBody") : bulk === "department" ? t("admin.bulkDepartmentBody") : bulk === "brand" ? t("admin.bulkBrandBody") : t("admin.bulkStatusBody")}
+        body={bulk === "reprice" ? t("admin.bulkRepriceBody") : bulk === "restock" ? t("admin.bulkRestockBody") : bulk === "department" ? t("admin.bulkDepartmentBody") : bulk === "brand" ? t("admin.bulkBrandBody") : bulk === "tax" ? t("admin.bulkTaxBody") : t("admin.bulkStatusBody")}
         confirmLabel={bulk === "publish" ? t("admin.publish") : bulk === "archive" ? t("admin.bulkArchive") : bulk === "draft" ? t("admin.bulkDraft") : t("admin.bulkApply")}
         pending={runBulk.isPending}
         confirmDisabled={fieldProblem !== null}
@@ -593,6 +600,18 @@ function ProductTable({ actor }: { actor: Actor }) {
               {fieldProblem && brand.trim() ? t(fieldProblem) : t("admin.bulkBrandHint")}
             </span>
           </label>
+        ) : bulk === "tax" ? (
+          <fieldset>
+            <legend className="text-[13px] font-semibold text-[#0a285a]">{t("tax.choiceLabel")}</legend>
+            <div className="mt-1.5 space-y-1">
+              {BULK_TAX_CHOICES.map(choice => (
+                <label key={choice} className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-lg px-2 text-[14px] font-semibold text-[#0a285a]">
+                  <input type="radio" name="bulk-tax" value={choice} checked={taxChoice === choice} onChange={() => setTaxChoice(choice)} className="size-4 accent-[#0a285a]" />
+                  {t(choice === "taxed" ? "tax.choiceTaxed" : choice === "exempt" ? "tax.choiceExempt" : "tax.choiceFollow")}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         ) : null}
       </ConfirmDialog>
 

@@ -24,6 +24,8 @@ struct PortalProductsView: View {
     /// For "Set brand": the name, started from the store's when every
     /// selected product is one store's.
     @State private var brandName = ""
+    /// For "Set tax" (0087): taxed, not taxed, or back to the shop's setting.
+    @State private var taxChoice = "taxed"
     @State private var stock: String?
     @State private var store: Int?
     @State private var categories: [Category] = []
@@ -95,13 +97,13 @@ struct PortalProductsView: View {
         .sheet(item: $deleting) { product in
             DeleteProductSheet(product: product) { Task { await reload() } }
         }
-        .confirmationDialog(bulkTitle, isPresented: Binding(get: { bulk != nil && bulk != "reprice" && bulk != "restock" && bulk != "department" && bulk != "brand" }, set: { if !$0 { bulk = nil } }), titleVisibility: .visible) {
+        .confirmationDialog(bulkTitle, isPresented: Binding(get: { bulk != nil && bulk != "reprice" && bulk != "restock" && bulk != "department" && bulk != "brand" && bulk != "tax" }, set: { if !$0 { bulk = nil } }), titleVisibility: .visible) {
             Button(bulkConfirm) { Task { await runBulk() } }
             Button(l.t("common.cancel"), role: .cancel) { bulk = nil }
         } message: {
             Text(l.t("admin.bulkStatusBody"))
         }
-        .sheet(isPresented: Binding(get: { bulk == "reprice" || bulk == "restock" || bulk == "department" || bulk == "brand" }, set: { if !$0 { bulk = nil } })) {
+        .sheet(isPresented: Binding(get: { bulk == "reprice" || bulk == "restock" || bulk == "department" || bulk == "brand" || bulk == "tax" }, set: { if !$0 { bulk = nil } })) {
             bulkAmountSheet
         }
     }
@@ -275,6 +277,7 @@ struct PortalProductsView: View {
                 bulkButton("reprice", l.t("admin.bulkReprice"), "percent")
                 bulkButton("department", l.t("admin.bulkDepartment"), "folder")
                 bulkButton("brand", l.t("admin.bulkBrand"), "tag")
+                if actor?.can("platform.configure") == true { bulkButton("tax", l.t("admin.bulkTax"), "receipt") }
                 if actor?.can("stock.adjust", vendorId: own) == true { bulkButton("restock", l.t("admin.bulkRestock"), "shippingbox") }
             }
         }
@@ -291,6 +294,7 @@ struct PortalProductsView: View {
                 let stores = Set(rows.filter { selected.contains($0.id) }.map { $0.vendorName ?? "" })
                 brandName = stores.count == 1 ? String((stores.first ?? "").prefix(PortalRules.shared.bulk?.maxBrand ?? 60)) : ""
             }
+            if action == "tax" { taxChoice = "taxed" }
             bulk = action
         } label: {
             Label(label, systemImage: symbol)
@@ -313,6 +317,7 @@ struct PortalProductsView: View {
         case "reprice": return l.t("admin.bulkRepriceTitle", count)
         case "department": return l.t("admin.bulkDepartmentTitle", count)
         case "brand": return l.t("admin.bulkBrandTitle", count)
+        case "tax": return l.t("admin.bulkTaxTitle")
         default: return l.t("admin.bulkRestockTitle", count)
         }
     }
@@ -333,15 +338,18 @@ struct PortalProductsView: View {
         let amountValue = Int(amount) ?? 0
         let moving = bulk == "department"
         let naming = bulk == "brand"
+        let taxing = bulk == "tax"
         let named = !brandName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let problem = naming ? (rules?.brandProblem(brandName) ?? true)
+        let problem = taxing ? false : naming ? (rules?.brandProblem(brandName) ?? true)
             : moving ? moveTo == nil
             : repricing ? (rules?.percentProblem(percentValue) ?? true) : (rules?.restockProblem(amountValue) ?? true)
         return NavigationStack {
             VStack(alignment: .leading, spacing: 14) {
                 Text(bulkTitle).font(.inter(18, .bold)).foregroundStyle(Brand.navy)
-                Text(l.t(naming ? "admin.bulkBrandBody" : moving ? "admin.bulkDepartmentBody" : repricing ? "admin.bulkRepriceBody" : "admin.bulkRestockBody")).font(.inter(14)).foregroundStyle(Brand.body)
-                if naming {
+                Text(l.t(taxing ? "admin.bulkTaxBody" : naming ? "admin.bulkBrandBody" : moving ? "admin.bulkDepartmentBody" : repricing ? "admin.bulkRepriceBody" : "admin.bulkRestockBody")).font(.inter(14)).foregroundStyle(Brand.body)
+                if taxing {
+                    TaxChoicePicker(choice: $taxChoice)
+                } else if naming {
                     LabeledField(
                         label: l.t("admin.bulkBrandName"), text: $brandName,
                         hint: problem && named ? nil : l.t("admin.bulkBrandHint"),
@@ -392,6 +400,7 @@ struct PortalProductsView: View {
         if action == "restock" { input.amount = Int(amount) }
         if action == "department" { input.categoryId = moveTo }
         if action == "brand" { input.brand = brandName.trimmingCharacters(in: .whitespacesAndNewlines) }
+        if action == "tax" { input.taxChoice = taxChoice }
         bulk = nil
         var result: BulkResult?
         guard await app.attempt(fallback: "admin.saveFailed", { result = try await app.services.api.call(API.bulkProducts, input) }), let result else { return }

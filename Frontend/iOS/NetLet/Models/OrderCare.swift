@@ -191,6 +191,13 @@ struct InvoiceDocument: Decodable, Hashable, Sendable {
         let quantity: Int
         let unitPrice: Money
         let lineTotal: Money
+        /// The tax added on this line at checkout and its rate (0087); nil untaxed.
+        let tax: LineTax?
+    }
+
+    struct LineTax: Decodable, Hashable, Sendable {
+        let rate: String
+        let amount: Money
     }
 
     struct Seller: Decodable, Hashable, Sendable {
@@ -225,6 +232,8 @@ struct InvoiceDocument: Decodable, Hashable, Sendable {
     let goods: Money
     let delivery: Money
     let discount: Money
+    /// Tax added at checkout on the taxed goods (0087); nil on a document without it.
+    let tax: Money?
     let total: Money
     let paidWith: PaidWith
     let paymentMethod: String?

@@ -67,6 +67,8 @@ export const FEATURE_KEYS = [
   "tryOn",
   "cashOnDelivery",
   "testPayments",
+  "tax",
+  "taxAllProducts",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -152,6 +154,16 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
      nothing — so it starts off and is for trying the flow, never for a live
      shop, until a real gateway takes its place. */
   testPayments: { entries: ["orders.paymentStart"], audience: "shopper", defaultOn: false },
+  /* Tax added at checkout (migration 0087, `Shared/commerce/tax.ts`). Kuwait
+     charges no VAT today, so it starts off; on, every order from then adds
+     the shop's rate on the taxed products. An order placed with tax keeps it
+     whatever the switch says afterwards — it was frozen at the sale. Asked
+     where tax is worked out, not by entry: nothing starts from it. */
+  tax: { entries: [], audience: "shopper", defaultOn: false },
+  /* Which products tax is on: every product (on), or only those NetLet marked
+     taxed on the products list (off). A product marked either way on its own
+     keeps its mark whichever this is. Says nothing while `tax` is off. */
+  taxAllProducts: { entries: [], audience: "shopper", defaultOn: true },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;

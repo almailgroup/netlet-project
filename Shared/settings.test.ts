@@ -25,6 +25,7 @@ describe("the administrator's numbers", () => {
       "referral.productPercent": "20.00",
       "referral.invitePercent": "10.00",
       "returns.windowDays": "14",
+      "tax.ratePercent": "5.00",
     });
     expect(resolveSettings([{ key: "referral.invitePercent", value: "7.5" }])["referral.invitePercent"]).toBe("7.50");
   });

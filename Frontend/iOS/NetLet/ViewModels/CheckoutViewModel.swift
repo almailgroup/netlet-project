@@ -72,7 +72,7 @@ final class CheckoutViewModel {
 
     /// What this bag comes to with the code, the points and the card taken off.
     func bill(for cart: Cart) -> Till.Bill {
-        savings?.bill(for: cart) ?? Till.settle(goods: cart.subtotal, delivery: cart.delivery.total)
+        savings?.bill(for: cart) ?? Till.settle(goods: cart.subtotal - (cart.codeDiscount ?? .zero), delivery: cart.delivery.total, tax: cart.tax?.amount ?? .zero)
     }
 
     /// Why Place order cannot be pressed yet, first reason first — said under

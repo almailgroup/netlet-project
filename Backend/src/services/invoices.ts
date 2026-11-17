@@ -48,6 +48,7 @@ import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/
 import { describeError, violatesUnique } from "../core/describeError.js";
 import { ENV } from "../core/env.js";
 import { getDb } from "./db.js";
+import { frozenLineTaxes } from "./tax.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
@@ -111,9 +112,13 @@ async function frozenLines(db: Db | Tx, orderId: number): Promise<(FrozenOrderLi
     .leftJoin(products, eq(products.id, orderItems.productId))
     .where(eq(orderItems.orderId, orderId))
     .orderBy(orderItems.id);
+  /* Each line's tax and its rate (0087), as frozen. */
+  const taxes = await frozenLineTaxes(db as Db, [orderId]);
   return rows.map(({ destination, ...row }) => ({
     ...row,
     destinationLabel: (destination as { label?: string | null } | null)?.label ?? null,
+    tax: taxes.get(row.id)?.amount ?? null,
+    taxRate: taxes.get(row.id)?.rate ?? null,
   }));
 }
 

@@ -12,6 +12,7 @@
  * anyone else editing.
  */
 import { ProductViewsCard } from "@/components/admin/ProductViews";
+import { ProductTaxCard } from "@/components/admin/ProductTaxCard";
 import { STOCK_REASONS, stockMoveProblem } from "@shared/inventory/stockMoves";
 import { SizeChartEditor } from "@/components/admin/SizeChartEditor";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -282,6 +283,8 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     { id: "shipping", label: "admin.sectionShipping" },
     { id: "sizes", label: "admin.sectionSizes" },
     { id: "extras", label: "admin.addons" },
+    /* Tax at checkout (0087): read by every rank, changed by NetLet alone. */
+    { id: "tax", label: "tax.editorTitle" },
     ...(mayEdit ? [{ id: "affiliates", label: "admin.productAffiliates" as MessageKey }] : []),
     ...(mayPrice ? [{ id: "commission", label: "admin.productCommission" as MessageKey }] : []),
     ...(!mayPrice && mayEdit ? [{ id: "propose", label: "commission.proposeTitle" as MessageKey }] : []),
@@ -727,6 +730,8 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           >
             <AddonsEditor rows={addons} onChange={setAddons} disabled={!mayEdit} attempted={addonsAttempted} idPrefix="editor-addon" />
           </Card>
+
+          <ProductTaxCard productId={row.id} />
 
           {/* Offered to affiliates at a rate the store funds (3.7.1). */}
           {mayEdit ? <AffiliatePanel productId={row.id} percent={row.affiliatePercent ?? null} /> : null}

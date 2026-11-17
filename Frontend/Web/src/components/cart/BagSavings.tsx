@@ -87,6 +87,7 @@ export function useSavingsBill({ withBalance = false }: { withBalance?: boolean 
   const bill = settle({
     goods,
     delivery: cart?.delivery.total.amount ?? "0.000",
+    tax: cart?.tax?.amount.amount ?? "0.000",
     discount: discountOff,
     points: pointsOff,
     giftCard: giftOff,

@@ -213,6 +213,10 @@ struct InvoicePaper: View {
                             if let variant = line.variantTitle, variant != "Default", !variant.isEmpty { Text(variant).font(.inter(12)).foregroundStyle(Brand.muted) }
                             if let sku = line.sku { Text(sku).font(.inter(11).monospaced()).foregroundStyle(Brand.muted).environment(\.layoutDirection, .leftToRight) }
                             Text("\(line.quantity) × \(money(line.unitPrice))").font(.inter(12)).foregroundStyle(Brand.muted)
+                            if let tax = line.tax {
+                                Both(key: "invoice.lineTax", language: language, params: ["rate": TaxWording.rateLabel(tax.rate), "amount": money(tax.amount)])
+                                    .font(.inter(12, .semibold)).foregroundStyle(Brand.muted)
+                            }
                         }
                         Spacer(minLength: 8)
                         Text(money(line.lineTotal)).font(.inter(14, .semibold)).foregroundStyle(Brand.ink)
@@ -238,6 +242,8 @@ struct InvoicePaper: View {
         VStack(spacing: 8) {
             row("invoice.goods", money(doc.goods))
             if !doc.delivery.isZero { row("invoice.delivery", money(doc.delivery)) }
+            // Tax added at checkout (0087), before the discount, as the till adds it.
+            if let tax = doc.tax, !tax.isZero { row("invoice.tax", money(tax)) }
             if !doc.discount.isZero { row("invoice.discount", "−" + money(doc.discount)) }
             Divider()
             HStack(alignment: .top) {

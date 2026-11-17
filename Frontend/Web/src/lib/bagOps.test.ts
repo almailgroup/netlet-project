@@ -54,6 +54,13 @@ describe("a press drawn before the server answers", () => {
     expect(next.total.amount).toBe("39.000");
   });
 
+  it("keeps the last tax in the total, as it keeps the last delivery (0087)", () => {
+    const taxed = { ...bag([line()]), tax: { amount: kwd("1.250"), ratePercent: "5.00" }, total: kwd("27.750") };
+    const next = run(taxed, { kind: "set", lineId: "11", quantity: 3 })!;
+    expect(next.subtotal.amount).toBe("37.500");
+    expect(next.total.amount).toBe("40.250");
+  });
+
   it("prices a line's extras per unit, as the server does", () => {
     const fitted = line({ addons: [{ id: "1", label: "Fitting", kind: "service", price: kwd("2.000") }], addonsTotal: kwd("4.000"), lineTotal: kwd("29.000") });
     const next = run(bag([fitted]), { kind: "set", lineId: "11", quantity: 3 })!;

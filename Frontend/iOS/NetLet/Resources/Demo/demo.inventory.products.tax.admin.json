@@ -1,0 +1,15 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "on": true,
+        "ratePercent": "5.00",
+        "allProducts": true,
+        "choice": null,
+        "taxed": true,
+        "mayChange": true
+      }
+    }
+  }
+}

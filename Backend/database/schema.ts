@@ -3698,6 +3698,48 @@ export const orderHandovers = pgTable(
   table => [index("order_handovers_order_idx").on(table.orderId)],
 );
 
+/**
+ * A product NetLet marked taxed or not taxed on its own (migration 0087, on
+ * the owner's word; `Shared/commerce/tax.ts`). No row follows the shop's
+ * default — every product, or only those marked — and a row wins over it.
+ * One shop rate, so `rate` is null (taxed at the shop's rate) or nothing
+ * (not taxed); the column could hold a product's own rate, and does not.
+ *
+ * A table of its own rather than a column on `products`, for the paste
+ * window: Drizzle names every column it knows, so a column the database did
+ * not have yet would fail every read of the catalogue. A missing table reads
+ * as nothing marked, and tax as off.
+ */
+export const productTax = pgTable(
+  "product_tax",
+  {
+    productId: integer("product_id").primaryKey().references(() => products.id, { onDelete: "cascade" }),
+    rate: numeric("rate", { precision: 5, scale: 2 }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [check("product_tax_rate_check", sql`${table.rate} >= 0 AND ${table.rate} <= 100`)],
+);
+
+/**
+ * The tax charged on an order line, frozen at the sale (migration 0087): the
+ * rate and the amount, beside the price, for the reason everything on an
+ * order is copied — a rate changed in October must not change what a
+ * September order owed or refunds. `included` says whether it was in the
+ * price or added on top; NetLet adds it on top, and the column keeps the
+ * answer with the figure. An order's tax is the sum of its lines' rows.
+ */
+export const orderItemTaxes = pgTable(
+  "order_item_taxes",
+  {
+    orderItemId: integer("order_item_id").primaryKey().references(() => orderItems.id, { onDelete: "cascade" }),
+    orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    rate: numeric("rate", { precision: 5, scale: 2 }).notNull(),
+    amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
+    included: boolean("included").notNull(),
+  },
+  table => [index("order_item_taxes_order_idx").on(table.orderId)],
+);
+
 /* ------------------------------------------------------------- relations --- */
 
 export const usersRelations = relations(users, ({ one, many }) => ({

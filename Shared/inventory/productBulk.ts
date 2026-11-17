@@ -12,7 +12,14 @@ import { fromFils, toFils } from "../money.js";
 import { SPEC_NAMESPACE, type Attribute } from "../commerce/attributeSchema.js";
 import { contactFindings } from "../commerce/contactFilter.js";
 
-export const BULK_ACTIONS = ["publish", "archive", "draft", "reprice", "restock", "department", "brand"] as const;
+export const BULK_ACTIONS = ["publish", "archive", "draft", "reprice", "restock", "department", "brand", "tax"] as const;
+
+/**
+ * What `tax` sets on each product (migration 0087): taxed, not taxed, or back
+ * on the shop's default. NetLet's alone, as marking one product is.
+ */
+export const BULK_TAX_CHOICES = ["taxed", "exempt", "follow"] as const;
+export type BulkTaxChoice = (typeof BULK_TAX_CHOICES)[number];
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 
 /** One page of the list at most: a bulk action is for what somebody can see. */

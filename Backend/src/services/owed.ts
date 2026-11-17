@@ -16,6 +16,7 @@ import { orderItems } from "../../database/schema.js";
 import { stillOwed, type StillOwed } from "../../../Shared/commerce/collection.js";
 import type { FrozenDelivery } from "../../../Shared/commerce/delivery.js";
 import type { getDb } from "./db.js";
+import { frozenLineTaxes, lineTaxOf } from "./tax.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -27,6 +28,7 @@ export async function stillOwedFor(db: Db, orders: OwedOrder[]): Promise<Map<num
 
   const lines = await db
     .select({
+      id: orderItems.id,
       orderId: orderItems.orderId,
       vendorId: orderItems.vendorId,
       destination: orderItems.destination,
@@ -36,6 +38,8 @@ export async function stillOwedFor(db: Db, orders: OwedOrder[]): Promise<Map<num
     })
     .from(orderItems)
     .where(inArray(orderItems.orderId, orders.map(order => order.id)));
+  /* Each line's tax (0087): a line no longer coming takes it with it. */
+  const taxes = await frozenLineTaxes(db, orders.map(order => order.id));
 
   for (const order of orders) {
     owed.set(order.id, stillOwed(
@@ -46,6 +50,7 @@ export async function stillOwedFor(db: Db, orders: OwedOrder[]): Promise<Map<num
           vendorId: line.vendorId,
           destinationLabel: (line.destination as { label?: string } | null)?.label ?? null,
           lineTotal: line.lineTotal,
+          tax: lineTaxOf(taxes, line.id),
           fulfilment: line.fulfilment,
           choice: line.deliveryChoice,
         })),

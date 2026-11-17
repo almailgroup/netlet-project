@@ -13,7 +13,7 @@ import { PhotoCopyRefused, putPhotoBack } from "../services/photoCopies.js";
 import { PRODUCT_CONDITIONS } from "../../../Shared/commerce/condition.js";
 import { arabicTitleAvailable, draftArabicTitle } from "../services/arabicTitle.js";
 import { salesSummary } from "../services/salesSummary.js";
-import { BRAND_MAX, BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, brandProblem, percentProblem, restockProblem } from "../../../Shared/inventory/productBulk.js";
+import { BRAND_MAX, BULK_ACTIONS, BULK_LIMIT, BULK_TAX_CHOICES, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT, brandProblem, percentProblem, restockProblem } from "../../../Shared/inventory/productBulk.js";
 import { STOCK_REASONS } from "../../../Shared/inventory/stockMoves.js";
 import { TRPCError } from "@trpc/server";
 import { isGovernorate, isValidIban, isValidKuwaitPhone } from "../../../Shared/inventory/storeProfile.js";
@@ -101,6 +101,7 @@ import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../../Shared/invento
 import { BundleError, listBundles, saveBundle, setBundleActive } from "../services/bundles.js";
 import { deleteProduct, deletionCheck } from "../services/productDeletion.js";
 import { moveProductToVendor } from "../services/productMove.js";
+import { productTaxStatus, setProductTax } from "../services/tax.js";
 import { BULK_UPLOAD_LIMIT, MAX_CATEGORISE_ROWS } from "../../../Shared/inventory/bulkUpload.js";
 import { categoriseRows } from "../services/importCategories.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../../Shared/commerce/sizeGuide.js";
@@ -206,7 +207,7 @@ async function guard<T>(work: () => Promise<T>): Promise<T> {
     }
     /* A shelf NetLet holds (4.2): the seller is told whose it is, not that
        something failed. */
-    if (message.startsWith("fulfilment.") || message.startsWith("membership.") || message.startsWith("stock.") || message.startsWith("admin.option") || message.startsWith("dispatch.")) {
+    if (message.startsWith("fulfilment.") || message.startsWith("membership.") || message.startsWith("stock.") || message.startsWith("admin.option") || message.startsWith("dispatch.") || message.startsWith("tax.")) {
       throw new TRPCError({ code: "BAD_REQUEST", message });
     }
     throw error;
@@ -876,6 +877,8 @@ export const inventoryRouter = router({
         categoryId: rowId.optional(),
         /** For `brand`: the brand every product carries. */
         brand: z.string().trim().max(BRAND_MAX).optional(),
+        /** For `tax`: taxed, not taxed, or the shop's default (0087). */
+        taxChoice: z.enum(BULK_TAX_CHOICES).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
@@ -884,6 +887,9 @@ export const inventoryRouter = router({
         }
         if (input.action === "brand" && (input.brand === undefined || brandProblem(input.brand))) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "admin.bulkBrandInvalid" });
+        }
+        if (input.action === "tax" && input.taxChoice === undefined) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "admin.bulkTaxInvalid" });
         }
         if (input.action === "reprice" && (input.percent === undefined || percentProblem(input.percent))) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "admin.bulkPercentInvalid" });
@@ -904,6 +910,8 @@ export const inventoryRouter = router({
                 /* The editor's own save, so its guard and its department check apply to each. */
                 case "department": return updateProduct(actor, id, { categoryId: input.categoryId! });
                 case "brand": return setProductBrand(actor, id, input.brand!);
+                /* NetLet's alone (`platform.configure`), as marking one product is. */
+                case "tax": return setProductTax(actor, id, input.taxChoice!);
                 case "restock": {
                   const product = await getProduct(actor, id);
                   if (!product) throw new Error("NOT_FOUND");
@@ -920,6 +928,26 @@ export const inventoryRouter = router({
           }
         }
         return { done, refused };
+      }),
+
+    /**
+     * A product's tax as its editor says it (0087): taxed by today's rules or
+     * not, whether NetLet marked it, and whether this person may change it.
+     */
+    tax: protectedProcedure
+      .input(z.object({ id: rowId }))
+      .query(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => productTaxStatus(actor, input.id));
+      }),
+
+    /** Marks one product taxed, not taxed, or back on the shop's default. NetLet's alone. */
+    setTax: protectedProcedure
+      .input(z.object({ id: rowId, choice: z.enum(BULK_TAX_CHOICES) }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        await guard(() => setProductTax(actor, input.id, input.choice));
+        return guard(() => productTaxStatus(actor, input.id));
       }),
 
     /** Admin only — the data layer refuses anyone else. */

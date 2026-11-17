@@ -131,6 +131,10 @@ export const AUDIT_ACTIONS = [
   "product.catalogue.add",
   "product.catalogue.remove",
   "product.catalogue.decide",
+  /* A product marked taxed or not taxed by NetLet, or put back on the shop's
+     default (`Shared/commerce/tax.ts`). The switch and the rate are
+     `platform.setFeature` and `platform.setSetting`. */
+  "product.setTax",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

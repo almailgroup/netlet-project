@@ -42,6 +42,7 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { useReturnWindow } from "@/hooks/useReturnWindow";
 import type { OrderProgress } from "@shared/commerce/orderProgress";
 import type { MessageKey } from "@shared/i18n/dictionary";
+import { rateLabel } from "@shared/commerce/tax";
 import { CalendarDays, ChevronDown, ChevronLeft, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Search, Star, Truck, X, type LucideIcon } from "lucide-react";
 import { cameFrom, goBack } from "@/lib/inAppBack";
 import { Link, useLocation, useSearch } from "wouter";
@@ -676,6 +677,12 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
               <p className="text-xs leading-5 ink-muted">{t(returnsOn ? "returns.howTo" : "returns.howToPaused", { days: String(data.windowDays) })}</p>
             </li>
           </ul>
+          {/* The tax added at checkout (0087), part of the total on the row. */}
+          {data.tax ? (
+            <p className="mt-3 text-xs font-semibold ink-muted">
+              {t("orders.taxIncluded", { rate: rateLabel(data.tax.rate), amount: formatMoney(data.tax.amount, { currencyCode: data.order.currency, locale }) })}
+            </p>
+          ) : null}
           {/* The invoice and any credit notes (3.6.6), once the money has
               been collected — the moment the sale completes. */}
           {data.documents.length > 0 ? (

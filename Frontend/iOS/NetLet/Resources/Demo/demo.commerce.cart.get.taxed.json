@@ -1,0 +1,273 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "id": "QZ8zieEc5AEGx_H4rkeUdSChrqq5Eg21",
+        "checkoutUrl": "/checkout",
+        "items": [
+          {
+            "lineId": "122",
+            "chosen": true,
+            "bundleId": null,
+            "variantId": "2",
+            "productId": "2",
+            "productHandle": "lamp",
+            "productTitle": "Brass desk lamp",
+            "productTitleAr": null,
+            "variantTitle": "Default",
+            "image": {
+              "productId": 2,
+              "url": "/brand/collection-tech.svg",
+              "altText": null,
+              "kind": "image",
+              "posterUrl": null
+            },
+            "unitPrice": {
+              "amount": "24.375",
+              "currencyCode": "KWD"
+            },
+            "agreedFrom": null,
+            "priceReason": null,
+            "bundleName": null,
+            "destination": null,
+            "deliverySpeed": "next_day",
+            "deliveryChoice": "regular",
+            "fastDelivery": {
+              "fee": {
+                "amount": "3.000",
+                "currencyCode": "KWD"
+              },
+              "speed": "same_day"
+            },
+            "quantity": 1,
+            "maxQuantity": 33,
+            "vendor": {
+              "id": 2,
+              "name": "Acme Electronics",
+              "nameAr": null,
+              "slug": "acme"
+            },
+            "measure": {
+              "unit": "each",
+              "stepAmount": 1
+            },
+            "addons": [],
+            "addonsTotal": null,
+            "lineTotal": {
+              "amount": "24.375",
+              "currencyCode": "KWD"
+            }
+          },
+          {
+            "lineId": "123",
+            "chosen": true,
+            "bundleId": null,
+            "variantId": "10",
+            "productId": "7",
+            "productHandle": "wool-scarf",
+            "productTitle": "Wool scarf",
+            "productTitleAr": "وشاح صوف",
+            "variantTitle": "Default",
+            "image": {
+              "productId": 7,
+              "url": "/subcategories/style-accessories.webp",
+              "altText": null,
+              "kind": "image",
+              "posterUrl": null
+            },
+            "unitPrice": {
+              "amount": "8.500",
+              "currencyCode": "KWD"
+            },
+            "agreedFrom": null,
+            "priceReason": null,
+            "bundleName": null,
+            "destination": null,
+            "deliverySpeed": "next_day",
+            "deliveryChoice": "regular",
+            "fastDelivery": {
+              "fee": {
+                "amount": "3.000",
+                "currencyCode": "KWD"
+              },
+              "speed": "same_day"
+            },
+            "quantity": 2,
+            "maxQuantity": 9,
+            "vendor": {
+              "id": 2,
+              "name": "Acme Electronics",
+              "nameAr": null,
+              "slug": "acme"
+            },
+            "measure": {
+              "unit": "each",
+              "stepAmount": 1
+            },
+            "addons": [],
+            "addonsTotal": null,
+            "lineTotal": {
+              "amount": "17.000",
+              "currencyCode": "KWD"
+            }
+          }
+        ],
+        "itemCount": 3,
+        "chosenCount": 3,
+        "subtotal": {
+          "amount": "41.375",
+          "currencyCode": "KWD"
+        },
+        "recovery": {
+          "remind": false
+        },
+        "cod": {
+          "available": true
+        },
+        "addresses": [
+          {
+            "id": 1,
+            "label": "Home"
+          },
+          {
+            "id": 2,
+            "label": "Office"
+          }
+        ],
+        "delivery": {
+          "perVendor": [
+            {
+              "vendorId": 2,
+              "vendorName": "Acme Electronics",
+              "vendorNameAr": null,
+              "destinationLabel": null,
+              "goods": {
+                "amount": "41.375",
+                "currencyCode": "KWD"
+              },
+              "fee": {
+                "amount": "0.000",
+                "currencyCode": "KWD"
+              },
+              "free": true,
+              "toFree": null
+            }
+          ],
+          "total": {
+            "amount": "0.000",
+            "currencyCode": "KWD"
+          },
+          "memberWaived": {
+            "amount": "1.500",
+            "currencyCode": "KWD"
+          },
+          "memberFree": true
+        },
+        "codeDiscount": null,
+        "tax": {
+          "amount": {
+            "amount": "2.069",
+            "currencyCode": "KWD"
+          },
+          "ratePercent": "5.00"
+        },
+        "total": {
+          "amount": "43.444",
+          "currencyCode": "KWD"
+        },
+        "stores": [
+          {
+            "vendorId": 2,
+            "choice": "regular",
+            "fast": {
+              "fee": {
+                "amount": "3.000",
+                "currencyCode": "KWD"
+              },
+              "speed": "same_day"
+            },
+            "standard": {
+              "fee": {
+                "amount": "1.500",
+                "currencyCode": "KWD"
+              },
+              "freeOver": {
+                "amount": "50.000",
+                "currencyCode": "KWD"
+              }
+            },
+            "addressId": null,
+            "days": [
+              {
+                "date": "2026-11-18",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-19",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-22",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-23",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-24",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-25",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-26",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              }
+            ],
+            "slot": null,
+            "slotState": "unset"
+          }
+        ],
+        "slotsReady": true
+      },
+      "meta": {
+        "referentialEqualities": {
+          "items.0.fastDelivery": [
+            "stores.0.fast"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -635,6 +635,10 @@ struct SummaryCard: View {
             if grouped {
                 row(l.t("cart.delivery"), l.price(cart.delivery.total), faint: updating)
             }
+            // Tax (0087), added on the goods while NetLet charges it.
+            if let tax = cart.tax, !tax.amount.isZero {
+                row(l.t("summary.tax", ["rate": TaxWording.rateLabel(tax.ratePercent)]), l.price(tax.amount), faint: updating)
+            }
             if let waived = cart.delivery.memberWaived, !waived.isZero {
                 Text(l.t("membership.deliveryWaived", ["amount": l.price(waived)]))
                     .font(.inter(12, .bold))

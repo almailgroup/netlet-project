@@ -93,6 +93,8 @@ export type InvoiceLine = {
   lineTotal: string;
   /** The line's own discount code and what it took (0074); absent before it. */
   discount?: { code: string; amount: string } | null;
+  /** The tax added on this line at checkout and its rate (0087); absent when untaxed. */
+  tax?: { rate: string; amount: string } | null;
 };
 
 export type InvoiceSeller = {
@@ -121,6 +123,8 @@ export type InvoiceDocument = {
   /** Goods, delivery, the order's discount, and what all that comes to. */
   goods: string;
   delivery: string;
+  /** Tax added at checkout on the taxed goods (0087); absent from a document before it. */
+  tax?: string;
   discount: string;
   total: string;
   /** How the total was settled. Points and a gift card are payments, not price. */
@@ -148,6 +152,9 @@ export type FrozenOrderLine = {
   fulfilment: string;
   /** The trip it rode (3.2.5): a fast parcel is a door of its own, `stillOwed`'s rule. */
   deliveryChoice?: string | null;
+  /** The tax added on it at checkout and its rate, as frozen (0087). */
+  tax?: string | null;
+  taxRate?: string | null;
 };
 
 export type SellerDetails = { name: string; nameAr: string | null; licence: string | null; underPlatformLicence: boolean };
@@ -232,6 +239,7 @@ export function buildInvoice(input: {
       ...(line.discountCode && line.discountAmount && toFils(line.discountAmount) > 0n
         ? { discount: { code: line.discountCode, amount: line.discountAmount } }
         : {}),
+      ...(line.tax && toFils(line.tax) > 0n ? { tax: { rate: line.taxRate ?? "0.00", amount: line.tax } } : {}),
     });
   }
 
@@ -247,7 +255,8 @@ export function buildInvoice(input: {
   const sellers = [...groups.values()].filter(group => group.lines.length > 0 || toFils(group.delivery) > 0n);
   const goods = fromFils(kept.reduce((sum, line) => sum + toFils(line.lineTotal), 0n));
   const delivery = fromFils(sellers.reduce((sum, group) => sum + toFils(group.delivery), 0n));
-  const settled = settle({ goods, delivery, discount: order.discountValue, points: order.pointsValue, giftCard: order.giftCardValue });
+  const tax = fromFils(kept.reduce((sum, line) => sum + toFils(line.tax ?? "0.000"), 0n));
+  const settled = settle({ goods, delivery, tax, discount: order.discountValue, points: order.pointsValue, giftCard: order.giftCardValue });
 
   return {
     version: 1,
@@ -261,8 +270,9 @@ export function buildInvoice(input: {
     sellers,
     goods,
     delivery,
+    ...(toFils(tax) > 0n ? { tax } : {}),
     discount: settled.discount,
-    total: subtractMoney(addMoney(goods, delivery), settled.discount),
+    total: subtractMoney(addMoney(goods, delivery, tax), settled.discount),
     paidWith: { points: settled.points, giftCard: settled.giftCard, cash: settled.payable },
     paymentMethod: order.paymentMethod,
     credits: null,
@@ -286,6 +296,10 @@ export function buildCreditNote(input: {
 }): InvoiceDocument {
   const { invoice, line } = input;
   const original = invoice.sellers.find(seller => seller.vendorId === line.vendorId);
+  /* The refund carries the line's tax (0087): the goods and the tax are said
+     apart, as the invoice said them, and come to the amount handed back. */
+  const lineTax = line.tax && toFils(line.tax) > 0n && toFils(line.tax) <= toFils(input.amount) ? line.tax : "0.000";
+  const goods = subtractMoney(input.amount, lineTax);
   return {
     ...invoice,
     kind: "credit_note",
@@ -304,12 +318,14 @@ export function buildCreditNote(input: {
         sku: line.sku,
         quantity: line.quantity,
         unitPrice: line.unitPrice,
-        lineTotal: input.amount,
+        lineTotal: goods,
+        ...(toFils(lineTax) > 0n ? { tax: { rate: line.taxRate ?? "0.00", amount: lineTax } } : {}),
       }],
       delivery: "0.000",
     }],
-    goods: input.amount,
+    goods,
     delivery: "0.000",
+    ...(toFils(lineTax) > 0n ? { tax: lineTax } : {}),
     discount: "0.000",
     total: input.amount,
     paidWith: { points: "0.000", giftCard: "0.000", cash: "0.000" },

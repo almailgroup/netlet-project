@@ -54,6 +54,7 @@ import type { DeliveryRule, FrozenDelivery } from "./delivery.js";
 import type { FulfilmentState } from "./fulfilment.js";
 import { isOnlineMethod } from "./onlinePayment.js";
 import { discountOf, settle, type DiscountCode } from "./vouchers.js";
+import { splitTax } from "./tax.js";
 
 /** A line still in the store's hands: the shopper may change it. */
 export const CHANGEABLE: readonly FulfilmentState[] = ["pending", "preparing"];
@@ -155,12 +156,19 @@ export type ChangeLine = {
    * it cost.
    */
   coded?: boolean;
+  /**
+   * The tax added on this line at checkout (0087) and the rate it was charged
+   * at, as frozen; absent on an untaxed line. A lowered line's tax is split
+   * the way its total is, so the two parts still add up to what was frozen.
+   */
+  tax?: string;
+  taxRate?: string | null;
 };
 
 /** The figures of a split: what stays on the line, and what the cancelled sibling carries. */
 export type LineSplit = {
-  kept: { quantity: number; lineTotal: string; commissionAmount: string; vendorNet: string };
-  gone: { quantity: number; lineTotal: string; commissionAmount: string; vendorNet: string };
+  kept: { quantity: number; lineTotal: string; commissionAmount: string; vendorNet: string; tax: string };
+  gone: { quantity: number; lineTotal: string; commissionAmount: string; vendorNet: string; tax: string };
 };
 
 /**
@@ -197,13 +205,17 @@ export function splitLine(line: ChangeLine, keep: number): LineSplit | null {
   if (whole.total !== toFils(line.lineTotal) || whole.commission !== toFils(line.commissionAmount) || whole.net !== toFils(line.vendorNet)) return null;
 
   const part = priced(kept);
+  const tax = line.tax && line.taxRate && toFils(line.tax) > 0n
+    ? splitTax(line.tax, line.taxRate, fromFils(part.total))
+    : { kept: "0.000", gone: "0.000" };
   return {
-    kept: { quantity: kept, lineTotal: fromFils(part.total), commissionAmount: fromFils(part.commission), vendorNet: fromFils(part.net) },
+    kept: { quantity: kept, lineTotal: fromFils(part.total), commissionAmount: fromFils(part.commission), vendorNet: fromFils(part.net), tax: tax.kept },
     gone: {
       quantity: quantity - kept,
       lineTotal: fromFils(whole.total - part.total),
       commissionAmount: fromFils(whole.commission - part.commission),
       vendorNet: fromFils(whole.net - part.net),
+      tax: tax.gone,
     },
   };
 }
@@ -378,7 +390,7 @@ export function quoteChange(input: {
       write: { breakdown: FrozenDelivery; deliveryAdded: string; waivedAdded: string; discountValue: string; pointsValue: string; giftCardValue: string; grandTotal: string };
     } {
   const { order, lines, changes } = input;
-  const owedLines = (set: ChangeLine[]) => set.map(line => ({ vendorId: line.vendorId, destinationLabel: line.destinationLabel, lineTotal: line.lineTotal, fulfilment: line.fulfilment, choice: line.deliveryChoice }));
+  const owedLines = (set: ChangeLine[]) => set.map(line => ({ vendorId: line.vendorId, destinationLabel: line.destinationLabel, lineTotal: line.lineTotal, tax: line.tax ?? null, fulfilment: line.fulfilment, choice: line.deliveryChoice }));
   const before = stillOwed(order, owedLines(lines));
 
   const next = linesAfter(order, lines, changes);
@@ -390,15 +402,17 @@ export function quoteChange(input: {
 
   /* What is still coming, and the delivery still charged for it. */
   const dropped = stillOwed({ grandTotal: "0.000", deliveryBreakdown: delivery.breakdown }, owedLines(next.lines));
-  const keptGoods = next.lines
-    .filter(line => line.fulfilment !== "cancelled" && line.fulfilment !== "returned")
-    .reduce((sum, line) => sum + toFils(line.lineTotal), 0n);
+  const keptLines = next.lines.filter(line => line.fulfilment !== "cancelled" && line.fulfilment !== "returned");
+  const keptGoods = keptLines.reduce((sum, line) => sum + toFils(line.lineTotal), 0n);
+  /* The tax on what is still coming (0087), as frozen and split. */
+  const keptTax = keptLines.reduce((sum, line) => sum + toFils(line.tax ?? "0.000"), 0n);
   const chargedDelivery = delivery.breakdown.reduce((sum, row) => sum + toFils(row.fee), 0n) - toFils(dropped.droppedDelivery);
 
   const discount = discountAfter(input.code, order.discountValue, fromFils(keptGoods));
   const settled = settle({
     goods: fromFils(keptGoods),
     delivery: fromFils(chargedDelivery > 0n ? chargedDelivery : 0n),
+    tax: fromFils(keptTax),
     discount,
     points: order.pointsValue,
     giftCard: order.giftCardValue,

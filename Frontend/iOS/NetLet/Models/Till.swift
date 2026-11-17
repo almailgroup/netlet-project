@@ -33,8 +33,9 @@ enum Till {
         remaining.fils < owed.fils ? remaining : owed
     }
 
-    static func settle(goods: Money, delivery: Money, discount: Money = .zero, points: Money = .zero, giftCard: Money = .zero) -> Bill {
-        let total = goods + delivery
+    static func settle(goods: Money, delivery: Money, tax: Money = .zero, discount: Money = .zero, points: Money = .zero, giftCard: Money = .zero) -> Bill {
+        // Tax (0087) is on the goods, before the code, the points and the card.
+        let total = goods + delivery + tax
         let discount = capped(discount, total)
         let afterDiscount = total - discount
         let points = capped(points, afterDiscount)
@@ -59,7 +60,7 @@ enum Till {
         let card = gift?.ok == true && gift?.kind == "gift" ? gift : nil
         let giftOff = card.map { giftCardPayment(remaining: $0.remaining ?? $0.amount ?? .zero, owed: afterDiscount - pointsOff) } ?? .zero
         // The goods are what the shopper pays for them: less each product's own code (0074).
-        return settle(goods: cart.subtotal - (cart.codeDiscount ?? .zero), delivery: cart.delivery.total, discount: discountOff, points: pointsOff, giftCard: giftOff)
+        return settle(goods: cart.subtotal - (cart.codeDiscount ?? .zero), delivery: cart.delivery.total, tax: cart.tax?.amount ?? .zero, discount: discountOff, points: pointsOff, giftCard: giftOff)
     }
 
     private static func capped(_ amount: Money, _ ceiling: Money) -> Money {

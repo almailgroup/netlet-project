@@ -139,7 +139,30 @@ extension API {
         var categoryId: Int?
         /// For "brand": the brand every product carries.
         var brand: String?
+        /// For "tax" (0087, NetLet's alone): "taxed", "exempt" or "follow".
+        var taxChoice: String?
     }
+
+    /// A product's tax as its editor shows it (0087).
+    struct ProductTax: Decodable, Hashable, Sendable {
+        let ready: Bool
+        let on: Bool
+        let ratePercent: String
+        let allProducts: Bool
+        /// NetLet's own mark, "taxed" or "exempt"; nil follows the shop's setting.
+        let choice: String?
+        /// Taxed by today's rules — on or off, so the card can say "would be".
+        let taxed: Bool
+        let mayChange: Bool
+    }
+
+    struct SetProductTax: Encodable, Sendable {
+        let id: Int
+        let choice: String
+    }
+
+    static let productTax = Procedure<RowId, ProductTax>(query: "inventory.products.tax")
+    static let setProductTax = Procedure<SetProductTax, ProductTax>(mutation: "inventory.products.setTax")
 
     static let bulkProducts = Procedure<Bulk, BulkResult>(mutation: "inventory.products.bulk")
     static let deletionCheck = Procedure<RowId, DeletionCheck>(query: "inventory.products.deletionCheck")

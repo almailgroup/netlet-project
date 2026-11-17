@@ -21,6 +21,7 @@ import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js"
 import { recordAudit } from "./audit.js";
 import { auditActor } from "./inventory.js";
 import { getDb } from "./db.js";
+import { markedTaxedCount, taxTablesReady } from "./tax.js";
 
 /** Every feature's state, the stored rows folded over the defaults. */
 export async function featureStates(): Promise<FeatureStates> {
@@ -95,6 +96,17 @@ async function readinessOf(enabled: (key: FeatureKey) => boolean): Promise<Parti
   out.voiceSearch = { kind: "note", reason: "features.why.voiceBrowser" };
   /* "Bought together" is drawn from orders that held two different products. */
   const db = await getDb();
+  /* Tax (0087): on with nothing to record it in waits for the paste; which
+     products it reaches says nothing while it is off; and "only the products
+     NetLet marked" with none marked taxes nothing. */
+  if (db) {
+    const ready = await taxTablesReady(db);
+    if (!ready) out.tax = { kind: "blocked", reason: "features.why.taxNotReady" };
+    else if (enabled("tax") && !enabled("taxAllProducts") && (await markedTaxedCount(db)) === 0) {
+      out.tax = { kind: "note", reason: "features.why.taxNoneMarked" };
+    }
+  }
+  if (!enabled("tax")) out.taxAllProducts = { kind: "note", reason: "features.why.taxOff" };
   if (db) {
     const baskets = await db
       .select({ orderId: orderItems.orderId })
