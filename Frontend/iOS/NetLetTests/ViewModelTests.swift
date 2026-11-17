@@ -43,6 +43,26 @@ final class CartModelTests: XCTestCase {
         XCTAssertEqual(cart.itemCount, 0)
     }
 
+    /// The web lost a guest's bag this way: a failed read dropped the bag's id.
+    /// A read that fails says nothing about the bag, so it is kept and said so.
+    func testABagThatCannotBeReadIsKeptAndSaidSo() async throws {
+        let template = try await Fixtures.cart()
+        let service = FakeCartService(template: template)
+        let defaults = isolatedDefaults()
+        _ = await CartModel(service: service, defaults: defaults).add(variantId: "145")
+
+        let relaunched = CartModel(service: service, defaults: defaults)
+        service.readFails = true
+        await relaunched.restore()
+        XCTAssertTrue(relaunched.unread, "the cart screen says it could not be loaded, never empty")
+        XCTAssertEqual(defaults.string(forKey: CartModel.storageKey), "cart-1", "a failed read is not a missing bag")
+
+        service.readFails = false
+        await relaunched.restore()
+        XCTAssertFalse(relaunched.unread)
+        XCTAssertEqual(relaunched.cart?.id, "cart-1")
+    }
+
     func testAfterAnOrderEmptiesTheBagItIsForgotten() async throws {
         let template = try await Fixtures.cart()
         let service = FakeCartService(template: template)

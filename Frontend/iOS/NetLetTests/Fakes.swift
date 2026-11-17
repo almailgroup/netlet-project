@@ -35,6 +35,8 @@ enum Fixtures {
 final class FakeCartService: CartServicing, @unchecked Sendable {
     var stored: Cart?
     var vanished = false
+    /// Every read fails as a dropped connection does — not a missing bag.
+    var readFails = false
     var created = 0
     var added: [(String, Int)] = []
     let template: Cart
@@ -52,7 +54,8 @@ final class FakeCartService: CartServicing, @unchecked Sendable {
     }
 
     func get(_ cartId: String, skip: [String]) async throws -> Cart? {
-        vanished || stored?.id != cartId ? nil : stored
+        if readFails { throw URLError(.timedOut) }
+        return vanished || stored?.id != cartId ? nil : stored
     }
 
     func add(_ cartId: String, variantId: String, quantity: Int, skip: [String]) async throws -> Cart? {

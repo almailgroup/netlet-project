@@ -104,6 +104,11 @@ final class CartModel {
     /// never overwrites a newer one.
     @ObservationIgnored private var answers = 0
     private var restoring = false
+    /// The stored bag could not be read and nothing of it is drawn: not
+    /// empty, so the cart screen says it could not be loaded and offers to
+    /// try again — the web's `unread`. The bag's id is kept; only the server
+    /// saying it has no such bag forgets it.
+    private(set) var unread = false
     private(set) var lastError: APIError?
 
     private let service: CartServicing
@@ -160,11 +165,13 @@ final class CartModel {
         let before = answers
         do {
             let found = try await service.get(id, skip: skip)
+            unread = false
             // A press answered meanwhile is newer than this read.
             guard answers == before, waiting.isEmpty else { return }
             if let found { confirmed = found } else { forget() }
         } catch {
             lastError = APIError.from(error)
+            if confirmed == nil { unread = true }
         }
     }
 
@@ -259,6 +266,7 @@ final class CartModel {
     /// saw the last shopper's bag. The account keeps it for the next sign-in.
     func forget() {
         confirmed = nil
+        unread = false
         skip = []
         defaults.removeObject(forKey: Self.storageKey)
         defaults.removeObject(forKey: Self.skipKey)
@@ -436,6 +444,7 @@ final class CartModel {
             skip = Self.storedSkip(defaults, for: cart.id)
         }
         confirmed = cart
+        unread = false
         answers += 1
         defaults.set(cart.id, forKey: Self.storageKey)
         // A line that has left the bag leaves the list too.

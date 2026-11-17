@@ -9239,7 +9239,9 @@ the page had drawn. Three things said something false:
   keeps it as `unread`, which the drawer, `/cart` and checkout draw as "Your
   cart could not be loaded just now" with Try again (`BagUnread`) — never
   "empty" — and which is asked again when the connection or the tab comes
-  back.
+  back. The app kept the id already (`CartModel.restore` forgets only on
+  `nil`) but said "Your cart is empty"; it says it could not be loaded now
+  (`unread`), with Try again, and `CartModelTests` holds both halves.
 - **A failed session check is not signed out** (`useAuth`'s `unknown`). `/account`
   drew the sign-in form, telling a signed-in shopper they had been signed out;
   it says the account could not be reached now, with Try again.

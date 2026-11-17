@@ -60,6 +60,15 @@ struct CartView: View {
                     LoadingView().accessibilityLabel(l.t("cart.loading"))
                 } else if let cart, !cart.isEmpty {
                     filled(cart)
+                } else if app.cart.unread {
+                    // The bag could not be read: never "empty", which it may not be.
+                    EmptyStateView(
+                        systemImage: "bag",
+                        title: l.t("cart.loadFailed"),
+                        note: l.t("common.loadFailedNote"),
+                        actionTitle: l.t("home.refreshCatalog")
+                    ) { Task { await app.cart.restore() } }
+                    .card(padding: 0)
                 } else {
                     EmptyStateView(
                         systemImage: "bag",
