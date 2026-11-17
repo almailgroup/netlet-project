@@ -70,23 +70,19 @@ struct ProductStrip: View {
 
     var body: some View {
         let shown = products.prefix(HomeShelf.most).map(\.id)
-        if UITestHooks.oldStrip {
-            oldRow
-        } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 12) {
-                    ForEach(Array(products.prefix(HomeShelf.most).enumerated()), id: \.element.id) { index, product in
-                        cell(index: index, product: product)
-                            .evenCell($height, row: shown)
-                    }
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(alignment: .top, spacing: 12) {
+                ForEach(Array(products.prefix(HomeShelf.most).enumerated()), id: \.element.id) { index, product in
+                    cell(index: index, product: product)
+                        .evenCell($height, row: shown)
                 }
-                .padding(.horizontal, 16)
-                .scrollTargetLayout()
             }
-            .scrollTargetBehavior(.viewAligned)
-            .evenRow($height, row: shown)
-            .accessibilityIdentifier("product-strip")
+            .padding(.horizontal, 16)
+            .scrollTargetLayout()
         }
+        .scrollTargetBehavior(.viewAligned)
+        .evenRow($height, row: shown)
+        .accessibilityIdentifier("product-strip")
     }
 
     @ViewBuilder
@@ -101,23 +97,6 @@ struct ProductStrip: View {
             ProductCard(product: product, note: note?(product))
                 .frame(width: 164)
         }
-    }
-
-    /// The row as it was before `RowHeight`, drawn only under the diagnosis
-    /// switch (`UITestHooks.oldStrip`): bottom-aligned and sized by the cards
-    /// it had made so far.
-    private var oldRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(alignment: .bottom, spacing: 12) {
-                ForEach(Array(products.prefix(HomeShelf.most).enumerated()), id: \.element.id) { index, product in
-                    cell(index: index, product: product)
-                }
-            }
-            .padding(.horizontal, 16)
-            .scrollTargetLayout()
-        }
-        .scrollTargetBehavior(.viewAligned)
-        .accessibilityIdentifier("product-strip")
     }
 }
 

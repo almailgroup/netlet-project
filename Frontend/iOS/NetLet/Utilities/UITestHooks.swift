@@ -5,13 +5,8 @@ import SwiftUI
 enum UITestHooks {
     #if DEBUG
     static let on = UserDefaults.standard.bool(forKey: "NetLetUITest")
-    /// A diagnosis switch, for one CI run: the sideways rows as they were
-    /// before `RowHeight`, so `ShelfUITests` can say whether the old row cut a
-    /// late, taller card's top off. To go once the run has answered.
-    static let oldStrip = on && UserDefaults.standard.bool(forKey: "NetLetOldStrip")
     #else
     static let on = false
-    static let oldStrip = false
     #endif
 }
 

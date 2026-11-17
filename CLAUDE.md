@@ -10567,9 +10567,13 @@ the cart's Saved for later are the same rows. `ShelfUITests` opens the demo's
 `soldout` answers (`demo.commerce.products.list.soldout.json`: basmati rice,
 New arrivals' last card and in the demo bag, sold out), swipes the row to it
 in both languages, and fails if its tag sits outside the row or the cards'
-hearts are not level. The website's New arrivals is a grid, and on the live
-shop at 390 and 1440 every photo there was whole and square and every
-sold-out card wore its tag — measured, and left as it was.
+hearts are not level. **The cause was proved on the Mac, not only read**:
+for one run the old row was drawn behind a switch, and it put the sold-out
+card's tag 63 points above its 258-point row — cut off — where the new row is
+331 tall with the tag 10 points inside its top, in both languages (iOS run
+283); the switch went once it had answered. The website's New arrivals is a
+grid, and on the live shop at 390 and 1440 every photo there was whole and
+square and every sold-out card wore its tag — measured, and left as it was.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the

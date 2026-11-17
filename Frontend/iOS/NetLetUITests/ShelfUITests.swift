@@ -8,7 +8,10 @@ import XCTest
 /// card of New arrivals (the catalogue's oldest), so the row is scrolled to
 /// before it is made, and it is the row's tallest card: Notify me under its
 /// price. That is the card the old row cut the top off — the top of its photo
-/// and the "Sold out" tag drawn on it.
+/// and the "Sold out" tag drawn on it. Measured on the run that brought the
+/// fix (iOS run 283), the old row, drawn once behind a switch, put the tag 63
+/// points above its 258-point row; the new row is 331 tall with the tag 10
+/// points inside its top, in both languages.
 final class ShelfUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
@@ -20,18 +23,6 @@ final class ShelfUITests: XCTestCase {
 
     func testALateTallerCardKeepsItsSoldOutTagInArabic() {
         assertWhole(language: "ar")
-    }
-
-    /// The row as it was, behind the diagnosis switch: says whether it cut the
-    /// tag off, and fails nothing — the answer to "was that the cause".
-    func testTheOldRowsCutIsReported() {
-        let app = launch(language: "en", oldRow: true)
-        guard let found = lateCard(app, language: "en") else {
-            print("TEST-NOTE old row: the sold-out card was not reached")
-            return
-        }
-        let cut = found.tag.minY < found.strip.minY - 1
-        print("TEST-NOTE old row: tag top \(Int(found.tag.minY)), row top \(Int(found.strip.minY)), row height \(Int(found.strip.height)) — \(cut ? "the tag is cut off" : "the tag is whole")")
     }
 
     // MARK: The check
@@ -123,10 +114,9 @@ final class ShelfUITests: XCTestCase {
 
     // MARK: Helpers
 
-    private func launch(language: String, oldRow: Bool = false) -> XCUIApplication {
+    private func launch(language: String) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-NetLetDemo", "YES", "-NetLetDemoAs", "soldout", "-netlet.language", language, "-NetLetUITest", "YES"]
-        if oldRow { app.launchArguments += ["-NetLetOldStrip", "YES"] }
         app.launch()
         return app
     }
