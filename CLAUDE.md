@@ -10385,7 +10385,12 @@ shop too, wherever the assistant is on. The trace counts the bounces
 (`ScrollTrace.flips`, "flips N" at the head of its summary; `ScrollTraceTests`
 holds the rule on that run's own numbers). The drags and the flicks to the
 foot print it as a `TEST-NOTE` on every run, so a run that passes says
-whether the height still bounces. **A small row after a large one in a lazy
+whether the height still bounces. The first run with the fix (iOS run 278)
+counted 0 bounces on all eight it measured: the home page in both
+languages, all products, Categories and the account, after three drags and
+after the flicks to the foot. That is the first measure in which the height
+held still, and only further runs without a stand-still can settle the
+question. **A small row after a large one in a lazy
 stack is the shape to avoid**: it is guessed at the large one's size until
 it is reached.
 
