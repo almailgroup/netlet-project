@@ -54,8 +54,14 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap"
       media="print"
-      onload="this.media='all'"
+      data-webfont
     />
+    <!-- Promotes it to `all` once it arrives. It was an inline `onload`, which
+         the server's CSP (`script-src-attr 'none'`) blocks: on every page the
+         function answers — a product, a department, a store opened from a
+         shared link — the stylesheet stayed print-only and the shop was drawn
+         in the fallback font. public/font-swap.js says the rest. -->
+    <script src="/font-swap.js" async></script>
     <noscript>
       <link
         rel="stylesheet"

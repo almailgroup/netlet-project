@@ -79,11 +79,16 @@ const clearSessionIfUnauthorized = (error: unknown) => {
   queryClient.setQueryData([["auth", "me"], { type: "query" }], null);
 };
 
+/* "Signed out" is an answer, not a fault: the account's reads are asked with
+   the session check (`routeData`), and for a guest each is refused that way.
+   Logged, they were a dozen console errors on every guest's account page. */
+const signedOutRefusal = (error: unknown) => error instanceof TRPCClientError && error.message === UNAUTHED_ERR_MSG;
+
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     clearSessionIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    if (!signedOutRefusal(error)) console.error("[API Query Error]", error);
   }
 });
 

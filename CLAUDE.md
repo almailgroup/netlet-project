@@ -9297,6 +9297,17 @@ already has it.
 - **One font file.** Inter as one variable file for 400 to 700, not eight
   static styles with italics nothing used. 800 was never requested, so
   `font-extrabold` has always rendered at 700 and still does.
+- **And it is switched on by a file, never an inline handler.** The
+  stylesheet loads as `media="print"` so it never blocks the first paint and
+  is promoted to `all` once it arrives. That was an inline `onload`, which the
+  server's CSP (`script-src-attr 'none'`) refuses to run. Vercel serves the
+  plain page with no CSP, so the home page had Inter. But a product, a
+  department, a store, Categories or a guide opened straight from a link is
+  answered by the function, with the CSP, and there the stylesheet stayed
+  print-only and the page was drawn in the fallback font. `public/font-swap.js`
+  is the promotion now (`script-src 'self'`). Found by the browser sweep's
+  console, not by looking: the fallback is close enough to Inter to pass a
+  glance. **Nothing in a page may carry an `on…=` attribute.**
 
 **A first visit asks for what it needs at once, not one thing after
 another.** A phone opening a shared link waited for three downloads in a row
@@ -9328,7 +9339,9 @@ moment something knows it will be wanted:
   owner's word ("it takes a few seconds for everything to load"): it asked
   for them only once the session check had answered, a second round trip
   after the first, and for a guest the answers are refusals that say what
-  the session check says.
+  the session check says. Those refusals are not logged (`signedOutRefusal`
+  in `main.tsx`). They were thirteen console errors on every guest's account
+  page, which teaches anybody reading the console to skip past errors.
 - **The first draw waits up to 400ms for the page's code**
   (`FIRST_PAGE_WAIT_MS`, `preloadFirstPage`), so it draws the page rather
   than an outline React then holds for 300ms. **And the frame paints a frame
