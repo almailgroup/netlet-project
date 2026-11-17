@@ -18,6 +18,7 @@
  * portable.
  */
 import type { AddressParts } from "../../Shared/commerce/kuwaitAddress.js";
+import type { DeliveryWindow } from "../../Shared/commerce/deliverySlots.js";
 import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
@@ -3597,6 +3598,50 @@ export const productViews = pgTable(
   table => [
     primaryKey({ columns: [table.productId, table.day, table.channel, table.source] }),
     index("product_views_day_idx").on(table.day),
+  ],
+);
+
+/**
+ * The day and time of day a shopper would like each store's parcel (migration
+ * 0085, on the owner's word). One row per bag and store, because a store's
+ * parcels come together; the choice is a preference, never a booked slot, and
+ * `Shared/commerce/deliverySlots.ts` is the rule for what may be chosen.
+ * Cascades with the bag and the store, being of neither once they are gone.
+ */
+export const cartDeliverySlots = pgTable(
+  "cart_delivery_slots",
+  {
+    cartId: varchar("cart_id", { length: 64 }).notNull().references(() => carts.id, { onDelete: "cascade" }),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    deliveryDate: date("delivery_date", { mode: "string" }).notNull(),
+    timeWindow: varchar("time_window", { length: 16 }).$type<DeliveryWindow>().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    primaryKey({ columns: [table.cartId, table.vendorId] }),
+    check("cart_delivery_slots_window_check", sql`${table.timeWindow} in ('morning', 'afternoon', 'evening')`),
+  ],
+);
+
+/**
+ * The day and time of day frozen on an order, per store, as the bag held it
+ * when the order was placed — what the store and the driver are shown. The
+ * store reference is `set null` like every reference out of an order, and
+ * the unique index keeps one per store on an order.
+ */
+export const orderDeliverySlots = pgTable(
+  "order_delivery_slots",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    vendorId: integer("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    deliveryDate: date("delivery_date", { mode: "string" }).notNull(),
+    timeWindow: varchar("time_window", { length: 16 }).$type<DeliveryWindow>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("order_delivery_slots_order_vendor_key").on(table.orderId, table.vendorId),
+    check("order_delivery_slots_window_check", sql`${table.timeWindow} in ('morning', 'afternoon', 'evening')`),
   ],
 );
 

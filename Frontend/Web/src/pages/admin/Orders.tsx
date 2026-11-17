@@ -37,7 +37,8 @@ import { mayMoveLine } from "@shared/commerce/netletFulfilment";
 import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
-import { Banknote, ChevronDown, PackageCheck, ShieldAlert, Warehouse } from "lucide-react";
+import { Banknote, CalendarDays, ChevronDown, PackageCheck, ShieldAlert, Warehouse } from "lucide-react";
+import { useSlotWords } from "@/hooks/useSlotWords";
 import { CLAIM_WINDOW_DAYS, claimCeiling, MAX_CLAIM_DESCRIPTION } from "@shared/commerce/damageClaims";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -250,6 +251,7 @@ function OrderDetail({ orderId, reference }: { orderId: number; reference: strin
   const { t, tError } = useTranslation();
   const money = useMoney();
   const formatDate = useDateFormat();
+  const slotWords = useSlotWords();
   const detail = trpc.orders.forSellerDetail.useQuery({ orderId });
   /* Already in the cache: the shell asked it before drawing the page. */
   const me = trpc.inventory.me.useQuery(undefined, { staleTime: FRAME_FRESH_MS });
@@ -306,6 +308,16 @@ function OrderDetail({ orderId, reference }: { orderId: number; reference: strin
                     {order.addressNotes ? <><br /><span dir="auto" className="ink-muted">{order.addressNotes}</span></> : null}
                   </p>
                   <p className="mt-1"><PinLink pin={order.deliveryPin} /></p>
+                  {/* The day and time the shopper asked for (0085): a store sees its own. */}
+                  {found.deliverySlots.map(slot => (
+                    <p key={`${slot.vendorId ?? "store"}-${slot.date}`} className="mt-2 flex items-start gap-1.5 text-[13px] font-semibold text-[#0a285a]">
+                      <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
+                      <span>
+                        {found.scope === "admin" ? <><bdi>{lines.find(line => line.vendorId === slot.vendorId)?.vendorName ?? ""}</bdi> · </> : null}
+                        {t("storeDelivery.preferred", { slot: slotWords.slot(slot) })}
+                      </span>
+                    </p>
+                  ))}
                 </div>
 
                 {/* Cash is collected once, for the basket — the one thing on

@@ -12,6 +12,9 @@
 
 import { storesSelling } from "../services/storesSelling.js";
 import { DELIVERY_CHOICES } from "../../../Shared/commerce/delivery.js";
+import { DELIVERY_WINDOWS } from "../../../Shared/commerce/deliverySlots.js";
+import { DAY_ONLY } from "../../../Shared/kuwaitDay.js";
+import { setStoreDelivery, StoreDeliveryRefused } from "../services/deliverySlots.js";
 import { listBestsellers, listBrands, listTrending } from "../services/homeShelves.js";
 import { currencyRates } from "../services/currencyRates.js";
 import { z } from "zod";
@@ -315,6 +318,38 @@ export const commerceRouter = router({
           await setLineDestination(input.cartId, ctx.user?.id ?? null, Number(input.lineId), input.addressId);
         } catch (error) {
           if (error instanceof AddressError) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          throw error;
+        }
+        return getCart(input.cartId, input.skip);
+      }),
+    /**
+     * One store's delivery at once (migration 0085): Standard or Express for
+     * every one of its lines, one door for all of them, and the day and time
+     * of day the shopper would like. Each part is optional, so the sheet sends
+     * what was pressed, and the bag comes back with every figure moved — the
+     * fee, free delivery and the total. The address is the signed-in shopper's,
+     * asked inside the write, `setDestination`'s rule.
+     */
+    setStoreDelivery: publicProcedure
+      .input(
+        z.object({
+          cartId: z.string().min(1).max(64),
+          vendorId: rowId,
+          choice: z.enum(DELIVERY_CHOICES).optional(),
+          addressId: rowId.nullable().optional(),
+          slot: z.object({ date: z.string().regex(DAY_ONLY), window: z.enum(DELIVERY_WINDOWS) }).nullable().optional(),
+          skip: skipInput,
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        try {
+          await setStoreDelivery(input.cartId, ctx.user?.id ?? null, input.vendorId, {
+            choice: input.choice,
+            addressId: input.addressId,
+            slot: input.slot,
+          }, input.skip);
+        } catch (error) {
+          if (error instanceof StoreDeliveryRefused) throw new TRPCError({ code: "BAD_REQUEST", message: error.reason });
           throw error;
         }
         return getCart(input.cartId, input.skip);

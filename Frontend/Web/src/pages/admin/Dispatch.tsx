@@ -33,7 +33,8 @@ import { privatePageMeta } from "@shared/seo";
 import { courierMoves, type Parcel } from "@shared/commerce/parcels";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ORDER_CEILING_NOTE } from "@/lib/dispatchCeiling";
-import { BadgeCheck, PackageCheck, Truck, Warehouse, Zap } from "lucide-react";
+import { BadgeCheck, CalendarDays, PackageCheck, Truck, Warehouse, Zap } from "lucide-react";
+import { useSlotWords } from "@/hooks/useSlotWords";
 import { StarRow } from "@/components/product/ProductReviews";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useState } from "react";
@@ -64,6 +65,7 @@ export default function AdminDispatch() {
 function Dispatch({ actor }: { actor: Actor }) {
   const { t, tError } = useTranslation();
   const money = useMoney();
+  const slotWords = useSlotWords();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("waiting");
 
   const board = trpc.dispatch.board.useQuery({ state: tab });
@@ -168,6 +170,13 @@ function Dispatch({ actor }: { actor: Actor }) {
                             <PinLink pin={parcel.destination ? parcel.destination.pin : parcel.orderAddress.pin} />
                           </p>
 
+                          {/* The day and time the shopper would like (0085), a preference the driver aims for. */}
+                          {parcel.preferredSlot ? (
+                            <p className="mt-2 flex items-start gap-1.5 text-[13px] font-semibold text-[#0a285a]">
+                              <CalendarDays className="mt-0.5 size-4 shrink-0" aria-hidden />
+                              <span>{t("storeDelivery.preferred", { slot: slotWords.slot(parcel.preferredSlot) })}</span>
+                            </p>
+                          ) : null}
                           {/* Collected from a NetLet centre rather than the seller (4.2). */}
                           {parcel.collectFrom ? (
                             <p className="mt-2 flex items-start gap-1.5 text-[13px] font-semibold text-[#0a285a]">

@@ -39,6 +39,7 @@ import {
 import type { FulfilmentState } from "../../../Shared/commerce/fulfilment.js";
 import { assertCan, readableCouriers, type Actor } from "../../../Shared/inventory/permissions.js";
 import { getDb } from "./db.js";
+import { slotsForOrders } from "./deliverySlots.js";
 import { stillOwedFor } from "./owed.js";
 import { tellOrderMoved } from "./notifications.js";
 import { extendReferralHold } from "./referral.js";
@@ -242,6 +243,8 @@ export type BoardParcel = Parcel & {
    * and never offered for assignment — it is not NetLet's to give out.
    */
   selfDelivered: boolean;
+  /** The day and time of day the shopper would like this store's parcel (0085), a preference; null when none was chosen. */
+  preferredSlot: { date: string; window: string } | null;
   /** The order's own address, which is where a parcel with no door of its own goes. */
   orderAddress: {
     contactName: string | null;
@@ -336,7 +339,7 @@ export async function loadBoard(
      line — and it is a short table by nature. The four reads below need
      nothing from each other, so they go together: one round trip to the
      database where they were four in a row. */
-  const [courierRows, centreRows, selfRows, owed] = await Promise.all([
+  const [courierRows, centreRows, selfRows, owed, slots] = await Promise.all([
     db.select({ id: couriers.id, name: couriers.name }).from(couriers),
     db.select({ id: fulfilmentCentres.id, name: fulfilmentCentres.name, addressLine: fulfilmentCentres.addressLine, governorate: fulfilmentCentres.governorate }).from(fulfilmentCentres),
     /* The stores that deliver for themselves with a company not on NetLet. */
@@ -344,6 +347,8 @@ export async function loadBoard(
     stillOwedFor(db, window.map(order => ({
       id: order.id, grandTotal: order.orderTotal, deliveryBreakdown: order.deliveryBreakdown,
     }))),
+    /* The day each store's parcel was asked for (0085). */
+    slotsForOrders(db, window.map(order => order.id)),
   ]);
   const names = new Map(courierRows.map(row => [row.id, row.name]));
   const centres = new Map(centreRows.map(row => [row.id, { name: row.name, addressLine: row.addressLine, governorate: row.governorate }]));
@@ -377,6 +382,7 @@ export async function loadBoard(
         courierName: parcel.courierId === null ? null : names.get(parcel.courierId) ?? null,
         collectFrom: parcel.centreId === null ? null : centres.get(parcel.centreId) ?? null,
         member: order.member,
+        preferredSlot: ((slot => slot ? { date: slot.date, window: slot.window } : null)((slots.get(order.id) ?? []).find(slot => slot.vendorId !== null && slot.vendorId === parcel.vendorId))),
         selfDelivered: parcel.centreId === null && parcel.courierId === null && parcel.vendorId !== null && selfDelivering.has(parcel.vendorId),
         orderAddress: {
           contactName: order.contactName,

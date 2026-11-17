@@ -36,6 +36,7 @@ import {
 import { returnStateFor } from "../../../Shared/commerce/returns.js";
 import { blocksNewReturn } from "../../../Shared/commerce/returnRequests.js";
 import { skippedLineIds } from "../../../Shared/commerce/cartChoice.js";
+import { freezeSlots, slotsForOrders, storeSlotsFor } from "./deliverySlots.js";
 import { eligibilityFor } from "../../../Shared/commerce/reviews.js";
 import {
   draftOrder,
@@ -173,7 +174,7 @@ export type PlaceOrderDetails = {
 
 /** Thrown with a message key, so the client says it in the shopper's language. */
 export class OrderRefused extends Error {
-  constructor(public readonly reason: OrderRefusal | "order.outOfStock" | "order.noCart" | "order.nothingChosen") {
+  constructor(public readonly reason: OrderRefusal | "order.outOfStock" | "order.noCart" | "order.nothingChosen" | "order.slotGone") {
     super(reason);
     this.name = "OrderRefused";
   }
@@ -653,6 +654,13 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
      rather than charging the line in full — the order code's rule. */
   if (codeProblems.length) throw new OrderRefused("order.voucherGone");
 
+  /* Each store's day and time (0085), by the reader the bag uses: a day that
+     is no longer offered is said at checkout and refuses here, never moved to
+     a day the shopper did not choose. */
+  const slots = await storeSlotsFor(db, cartId, details.skip ?? []);
+  const storesOrdered = [...new Set(lines.map(line => line.vendorId))];
+  if (storesOrdered.some(vendorId => slots.stores.get(vendorId)?.state === "gone")) throw new OrderRefused("order.slotGone");
+
   const priced = draftOrder(lines, delivery.total);
 
   /* Who shared each product, if it came through a member's link (3.1.14,
@@ -984,6 +992,9 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
       if (claimId !== null) await stampRedemption(w, claimId, order.id);
       for (const id of lineClaims) await stampRedemption(w, id, order.id);
       if (giftTaken && giftQuote) await recordGiftCardUse(w, giftQuote.code, order.id, giftCardValue);
+
+      /* The days chosen, frozen per store, and cleared from the bag. */
+      await freezeSlots(w, cartId, order.id, slots, storesOrdered);
 
       // The basket has become the order; leaving it would let the same items be
       // bought twice from a stale tab. With some lines left out, only the ones
@@ -1460,6 +1471,8 @@ export async function getOrderFor(actor: Actor, orderId: number) {
     ...line,
     addons: addonRows.filter(addon => addon.orderItemId === line.id),
   }));
+  /* The day and time of day the shopper asked of each store (0085). */
+  const slotsAsked = (await slotsForOrders(db, [order.id])).get(order.id) ?? [];
 
   if (actor.kind === "vendor") {
     const mine = withAddons.filter(line => line.vendorId === actor.vendorId);
@@ -1522,11 +1535,13 @@ export async function getOrderFor(actor: Actor, orderId: number) {
       },
       lines: mine,
       slice,
+      /* Their own store's day alone, never another seller's. */
+      deliverySlots: slotsAsked.filter(slot => slot.vendorId === actor.vendorId),
       scope: "vendor" as const,
     };
   }
 
-  return { order, lines: withAddons, slices: null, scope: "admin" as const };
+  return { order, lines: withAddons, slices: null, deliverySlots: slotsAsked, scope: "admin" as const };
 }
 
 /** Why a line could not be moved, as a message key the page translates. */

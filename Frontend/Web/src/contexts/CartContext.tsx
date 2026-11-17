@@ -6,6 +6,13 @@ import { applyBagOp, ghostLine, realLineId, withChoice, type BagOp } from "@/lib
 import { chooseLines, chooseOnly as onlyThese, MAX_SKIPPED_LINES, pruneSkip } from "@shared/commerce/cartChoice";
 import { useAuth } from "@/hooks/useAuth";
 import type { Cart, Product } from "@shared/commerce/types";
+
+/** What one press on a store's delivery changes (`commerce.cart.setStoreDelivery`). */
+export type StoreDeliveryChange = {
+  choice?: "regular" | "fast";
+  addressId?: number | null;
+  slot?: { date: string; window: "morning" | "afternoon" | "evening" } | null;
+};
 import {
   createContext,
   ReactNode,
@@ -105,6 +112,8 @@ type Change =
   | BagOp
   | { kind: "destination"; lineId: string; addressId: number | null }
   | { kind: "speed"; lineId: string; choice: "regular" | "fast" }
+  /* One store's delivery at once (0085): the trip, the door, the day. */
+  | { kind: "store"; vendorId: number; change: StoreDeliveryChange }
   /* A line's own discount code (0074); `answer` carries the refusal back. */
   | { kind: "code"; lineId: string; code: string | null; answer: { reason: string | null } }
   /* The lines chosen for checkout changed: the bag is read again with them. */
@@ -156,6 +165,12 @@ type CartContextValue = {
   setDestination: (lineId: string, addressId: number | null) => Promise<void>;
   /** Fast or regular for this line (3.2.5); the quote moves with it. */
   setDeliveryChoice: (lineId: string, choice: "regular" | "fast") => Promise<void>;
+  /**
+   * One store's delivery at once (migration 0085): Standard or Express for
+   * every one of its lines, one door, and the day and time of day. Rejects
+   * with the server's refusal, a message key.
+   */
+  setStoreDelivery: (vendorId: number, change: StoreDeliveryChange) => Promise<void>;
   /**
    * A store's or a product's discount code on this line alone (migration
    * 0074), or `null` to take it off. Answers null when it went on, or the
@@ -284,6 +299,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const lineId = realLineId(current, change.lineId);
         if (!id || !lineId) return current;
         return (await client.setDeliveryChoice.mutate({ cartId: id, lineId, choice: change.choice, skip })) ?? current;
+      }
+      case "store": {
+        if (!id) return current;
+        return (await client.setStoreDelivery.mutate({ cartId: id, vendorId: change.vendorId, ...change.change, skip })) ?? current;
       }
       case "code": {
         const lineId = realLineId(current, change.lineId);
@@ -431,7 +450,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cartId, setCartId, setServerCart, utils.commerce.cart.get]);
 
   const cart = useMemo(() => {
-    const drawn = waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "speed" || change.kind === "code" || change.kind === "choose" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart);
+    const drawn = waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "speed" || change.kind === "store" || change.kind === "code" || change.kind === "choose" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart);
     /* The circles as pressed, before the server has read the bag with them —
        and after, which agrees, and the demo's, which knows no choice. */
     return waiting.length || skip.length ? withChoice(drawn, skip) : drawn;
@@ -477,6 +496,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   /* Through the queue for `setDestination`'s reason: the delivery quote moves with it. */
   const setDeliveryChoice = useCallback(
     (lineId: string, choice: "regular" | "fast") => enqueue({ kind: "speed", lineId, choice }),
+    [enqueue]
+  );
+
+  /* Through the queue for `setDestination`'s reason: the fee, free delivery and the total move with it. */
+  const setStoreDelivery = useCallback(
+    (vendorId: number, change: StoreDeliveryChange) => enqueue({ kind: "store", vendorId, change }),
     [enqueue]
   );
 
@@ -563,6 +588,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       setDestination,
       setDeliveryChoice,
+      setStoreDelivery,
       setLineCode,
       skip,
       choose,
@@ -588,6 +614,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeItem,
       setDestination,
       setDeliveryChoice,
+      setStoreDelivery,
       setLineCode,
       skip,
       choose,

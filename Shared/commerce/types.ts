@@ -441,4 +441,31 @@ export type Cart = {
    */
   codeDiscount?: Money | null;
   total: Money;
+  /**
+   * Each store's delivery as the shopper chose it (migration 0085): Standard
+   * or Express, the door, and the day and time of day. Absent from a bag read
+   * before it existed, which draws each store's delivery as it always did.
+   */
+  stores?: CartStoreDelivery[];
+  /** Whether a day and time can be chosen at all: false until 0085 is pasted. */
+  slotsReady?: boolean;
+};
+
+/** One store's delivery in the bag, for the row beside its car (migration 0085). */
+export type CartStoreDelivery = {
+  vendorId: number;
+  /** Standard or Express for this store's lines; `mixed` when lines chosen one by one before differ. */
+  choice: "regular" | "fast" | "mixed";
+  /** Express from this store, when it offers it: what it costs and how soon. */
+  fast: { fee: Money; speed: string | null } | null;
+  /** Standard from this store: its fee (null: free) and the goods total it is free over (null: never). */
+  standard: { fee: Money | null; freeOver: Money | null };
+  /** The saved address every line goes to; null for the order's own; `mixed` when lines differ. */
+  addressId: number | null | "mixed";
+  /** The days the store offers from its earliest, each with its windows; empty when it has said nothing. */
+  days: { date: string; windows: ("morning" | "afternoon" | "evening")[] }[];
+  /** The day and window the shopper would like, or null. */
+  slot: { date: string; window: "morning" | "afternoon" | "evening" } | null;
+  /** `gone` when that day is no longer offered: said beside the store, and the order waits. */
+  slotState: "unset" | "kept" | "gone";
 };

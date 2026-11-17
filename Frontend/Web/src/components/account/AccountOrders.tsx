@@ -36,11 +36,12 @@ import { useFeature } from "@/hooks/useFeature";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useSlotWords } from "@/hooks/useSlotWords";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useReturnWindow } from "@/hooks/useReturnWindow";
 import type { OrderProgress } from "@shared/commerce/orderProgress";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ChevronDown, ChevronLeft, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Search, Star, Truck, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Search, Star, Truck, X, type LucideIcon } from "lucide-react";
 import { cameFrom, goBack } from "@/lib/inAppBack";
 import { Link, useLocation, useSearch } from "wouter";
 import { useEffect, useId, useRef, useState } from "react";
@@ -564,6 +565,7 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
   const returnsOn = useFeature("returns");
   const detail = trpc.orders.get.useQuery({ reference });
   const formatDate = useDateFormat();
+  const slotWords = useSlotWords();
   const utils = trpc.useUtils();
   const [rating, setRating] = useState<ReviewTarget | null>(null);
   const rate = (lineId: number) => {
@@ -589,6 +591,20 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
 
         return (
           <OrderAfterSales reference={reference} detail={data} trackFirst={trackFirst} refundFirst={refundFirst} onRate={rate}>
+          {/* The day and time asked of each store in the cart (0085), as frozen. */}
+          {data.deliverySlots.length ? (
+            <ul className="mb-4 space-y-1.5 rounded-xl bg-[#f7f9fc] px-4 py-3">
+              {data.deliverySlots.map(slot => {
+                const vendor = data.lines.find(line => line.vendorId === slot.vendorId)?.vendorName;
+                return (
+                  <li key={`${slot.vendorId ?? "store"}-${slot.date}`} className="flex items-start gap-2 text-[13px] font-semibold leading-5 text-[#404553]">
+                    <CalendarDays className="mt-0.5 size-4 shrink-0 text-[#0a285a]" aria-hidden />
+                    <span>{vendor ? <><bdi>{t("delivery.parcelFrom", { vendor })}</bdi> · </> : null}{t("storeDelivery.preferred", { slot: slotWords.slot(slot) })}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
           <ul className="space-y-4">
             {data.lines.map(line => {
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;

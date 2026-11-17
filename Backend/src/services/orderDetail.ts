@@ -16,6 +16,14 @@ import { returnsForShopperOrder } from "./returns.js";
 import { lineEligibility, myReviewsForLines } from "./reviews.js";
 import { returnWindowDays } from "./settings.js";
 import { claimsForShopperOrder, warrantyStateForLines } from "./warranty.js";
+import { slotsForOrders } from "./deliverySlots.js";
+import { getDb } from "./db.js";
+
+async function orderDb() {
+  const db = await getDb();
+  if (!db) throw new Error("Database is not configured");
+  return db;
+}
 
 export async function orderDetailForShopper(userId: number, reference: string) {
   const found = await getOrderForUser(userId, reference);
@@ -57,6 +65,8 @@ export async function orderDetailForShopper(userId: number, reference: string) {
     paymentChange: paymentChangeState(found.order, found.lines),
     /* Each parcel as steps for "Track order", with the store's estimate. */
     steps: await orderStepsFor(found.order, found.lines),
+    /* The day and time of day the shopper chose per store (0085), as frozen. */
+    deliverySlots: (await slotsForOrders(await orderDb(), [found.order.id])).get(found.order.id) ?? [],
     /* Warranty claims on its lines (migration 0072), newest first, with where each stands. */
     warranty: await claimsForShopperOrder(userId, found.order.id),
     lines: found.lines.map(line => ({

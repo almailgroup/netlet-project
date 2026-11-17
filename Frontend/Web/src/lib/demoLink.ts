@@ -399,6 +399,9 @@ function resolve(path: string, rawInput: unknown): unknown {
     /* No demo store offers a fast trip (3.2.5), so every line rides regular. */
     case "commerce.cart.setDeliveryChoice":
       return requireCart(String(input.cartId));
+    /* The demo's bag names no store, so it draws no store's delivery row (0085). */
+    case "commerce.cart.setStoreDelivery":
+      return requireCart(String(input.cartId));
     /* The demo has no codes, so a product's code is one nobody recognises (0074). */
     case "commerce.cart.setLineCode":
       return { ok: false, reason: "voucher.unknown" } as const;

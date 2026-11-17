@@ -70,6 +70,8 @@ import { LineCode } from "@/components/checkout/LineCode";
 import { subtractMoney } from "@shared/money";
 import { pressHaptic, refusedHaptic, successHaptic } from "@/lib/haptics";
 import { bagGroups, type BagGroup } from "@/lib/bagGroups";
+import { storeDeliveryOf } from "@/components/cart/StoreDelivery";
+import { useSlotWords } from "@/hooks/useSlotWords";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { Banknote, CreditCard, Info, LoaderCircle, PackageCheck, RotateCcw, ShoppingBag, Smartphone, Store, Truck, Wallet } from "lucide-react";
@@ -178,6 +180,8 @@ export default function Checkout() {
     : !items.length ? (cart?.items.length ? "order.nothingChosen" : "checkout.needItems")
     : shortLines(items).size ? "checkout.needFewer"
     : items.some(item => item.codeProblem) ? "checkout.codeProblem"
+    /* A day chosen in the cart that is no longer offered (0085): said, never moved. */
+    : cart?.slotsReady && cart.stores?.some(store => store.slotState === "gone" && items.some(item => item.vendor?.id === store.vendorId)) ? "checkout.slotGone"
     : cart?.cod.available === false ? "checkout.needCod"
     : !address ? "checkout.needAddressChoice"
     : !addressLineOf(address) ? "checkout.needAddress"
@@ -205,7 +209,7 @@ export default function Checkout() {
       return;
     }
     /* The quantity is changed where the stepper is, and the choice where the circles are. */
-    if (blocker === "checkout.needFewer" || blocker === "order.nothingChosen") {
+    if (blocker === "checkout.needFewer" || blocker === "order.nothingChosen" || blocker === "checkout.slotGone") {
       navigate("/cart");
       return;
     }
@@ -515,7 +519,7 @@ function OrderItems() {
 function StoreParcel({ group, name }: { group: BagGroup; name: string }) {
   const { t, isArabic } = useTranslation();
   const money = useMoney();
-  const { syncing } = useCart();
+  const { syncing, cart } = useCart();
   const shortDay = (value: Date) => value.toLocaleDateString(isArabic ? "ar-KW-u-nu-latn" : "en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: SHOP_TIME_ZONE });
   const arrival = (speed: DeliverySpeed | null) => {
     if (!speed) return null;
@@ -525,6 +529,10 @@ function StoreParcel({ group, name }: { group: BagGroup; name: string }) {
       ? t("checkout.arrivesOne", { date: shortDay(when.to) })
       : t("checkout.arrives", { from: shortDay(when.from), to: shortDay(when.to) });
   };
+  /* The day and time chosen for this store in the cart (0085). */
+  const words = useSlotWords();
+  const store = storeDeliveryOf(cart, group);
+  const chosenDay = cart?.slotsReady && store?.slot && store.slotState === "kept" ? t("storeDelivery.preferred", { slot: words.slot(store.slot) }) : null;
   const speedOf = (items: CartItem[], fast: boolean) => slowestSpeed(items.map(item => {
     const band = fast ? item.fastDelivery?.speed : item.deliverySpeed;
     return isDeliverySpeed(band) ? band : null;
@@ -539,7 +547,8 @@ function StoreParcel({ group, name }: { group: BagGroup; name: string }) {
       <div className={`space-y-1 border-t border-[#eef1f5] bg-[#fafbfc] px-4 py-3 transition-opacity ${syncing ? "opacity-50" : ""}`}>
         {group.delivery.map(row => {
           const fast = row.choice === "fast";
-          const when = arrival(speedOf(group.items.filter(item => (item.deliveryChoice === "fast") === fast), fast));
+          /* A day the shopper chose says when; the band says when otherwise. */
+          const when = chosenDay ?? arrival(speedOf(group.items.filter(item => (item.deliveryChoice === "fast") === fast), fast));
           return (
             <div key={`${row.destinationLabel ?? ""}|${row.choice ?? ""}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[13px]">
               <span className="flex items-center gap-1.5 font-semibold text-[#404553]">
@@ -553,6 +562,9 @@ function StoreParcel({ group, name }: { group: BagGroup; name: string }) {
             </div>
           );
         })}
+        {cart?.slotsReady && store?.slotState === "gone" ? (
+          <Link href="/cart" className="block text-[12px] font-bold leading-5 text-[#c2362a] underline-offset-2 hover:underline">{t("storeDelivery.slotGone")}</Link>
+        ) : null}
       </div>
     </div>
   );

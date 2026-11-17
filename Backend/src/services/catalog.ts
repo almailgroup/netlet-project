@@ -41,7 +41,7 @@ import {
   toStorefrontProduct,
   type LocalePick,
 } from "../../../Shared/commerce/fromInventory.js";
-import { MAX_LINE_QUANTITY, type Cart, type CartItem, type Collection, type Product } from "../../../Shared/commerce/types.js";
+import { MAX_LINE_QUANTITY, type Cart, type CartItem, type CartStoreDelivery, type Collection, type Product } from "../../../Shared/commerce/types.js";
 import { maxQuantityFor } from "../../../Shared/commerce/preorder.js";
 import type { Measure } from "../../../Shared/commerce/units.js";
 import { publishedCatalog, publishedProduct } from "./inventory.js";
@@ -66,6 +66,7 @@ import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
 import { valueOf } from "../../../Shared/commerce/attributeSchema.js";
 import { featureOn } from "./features.js";
 import { warrantyLengthsReady } from "./warrantyLengths.js";
+import { storeSlotsFor, type StoreSlots } from "./deliverySlots.js";
 import {
   awardedBadges,
   FAST_SHIPPING_HOURS,
@@ -871,6 +872,8 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
   /* Whether every trip on this bag is NetLet's to carry, fast included (4.1):
      the line's Fast choice then says "free" rather than a fee nobody pays. */
   const memberFree = member && (minimum === null || compareMoney(subtractMoney(subtotal, codeDiscount), minimum) >= 0);
+  /* Each store's day and time (0085), by the one reader the order asks too. */
+  const slots = await storeSlotsFor(db, cartId, skip);
   /* One row per seller, so the COD rules line up with the delivery groups. */
   const rules = new Map(going.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
 
@@ -924,7 +927,45 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
     },
     codeDiscount: toFils(codeDiscount) > 0n ? money(codeDiscount) : null,
     total: money(addMoney(subtractMoney(subtotal, codeDiscount), quote.total)),
+    stores: storeDeliveries(items, slots, new Map(rows.map(row => [row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver }]))),
+    slotsReady: slots.ready,
   };
+}
+
+/**
+ * Each store's delivery as one row (migration 0085): the trip and the door
+ * its lines share — or `mixed` when lines set one by one before differ — and
+ * the days `storeSlotsFor` decided, the reader the order uses.
+ */
+function storeDeliveries(
+  items: CartItem[],
+  slots: StoreSlots,
+  rules: Map<number, { flat: string | null; freeOver: string | null }>,
+): CartStoreDelivery[] {
+  /* A fee that is blank, rubbish or zero is free, `quoteDelivery`'s rule. */
+  const fee = (value: string | null | undefined) =>
+    value && /^\d+(\.\d{1,3})?$/.test(value.trim()) && toFils(value.trim()) > 0n ? money(value.trim()) : null;
+  const byStore = new Map<number, CartItem[]>();
+  for (const item of items) {
+    const id = item.vendor?.id;
+    if (id == null) continue;
+    byStore.set(id, [...(byStore.get(id) ?? []), item]);
+  }
+  return [...byStore].map(([vendorId, lines]) => {
+    const choices = new Set(lines.map(line => line.deliveryChoice ?? "regular"));
+    const doors = new Set(lines.map(line => line.destination?.id ?? null));
+    const found = slots.stores.get(vendorId);
+    return {
+      vendorId,
+      choice: choices.size === 1 ? [...choices][0] : "mixed",
+      fast: lines.find(line => line.fastDelivery)?.fastDelivery ?? null,
+      standard: { fee: fee(rules.get(vendorId)?.flat), freeOver: fee(rules.get(vendorId)?.freeOver) },
+      addressId: doors.size === 1 ? [...doors][0] : "mixed",
+      days: found?.days ?? [],
+      slot: found?.slot ?? null,
+      slotState: found?.state ?? "unset",
+    };
+  });
 }
 
 /**

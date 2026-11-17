@@ -21,6 +21,7 @@ import { isDefaultVariantTitle } from "@shared/commerce/fromInventory";
 import { useDinars, useMoney, useTranslation } from "@/hooks/useTranslation";
 import { useOverlay } from "@/hooks/useOverlay";
 import { useStockLimit } from "@/hooks/useStockLimit";
+import { StoreDeliveryRow, storeDeliveryOf } from "@/components/cart/StoreDelivery";
 import { ArrowRight, Check, ChevronRight, Minus, Plus, ShoppingBag, Store, Trash2, Truck, X } from "lucide-react";
 import { Link } from "wouter";
 import { useRef, useState } from "react";
@@ -139,6 +140,9 @@ function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; 
   const { t } = useTranslation();
   const money = useMoney();
   const ids = group.items.map(item => item.lineId);
+  /* The store's delivery as one row beside its car, with a sheet to change it
+     (0085); a bag from before it draws each parcel's line as it did. */
+  const storeDelivery = storeDeliveryOf(cart, group);
   return (
     <div className={padded ? "border-b border-[#eef1f5] px-4 pb-3 pt-3" : "border-b border-[#d5dfeb] pb-3"}>
       <div className="flex items-center gap-1">
@@ -159,7 +163,7 @@ function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; 
           <ChevronRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
         </Link>
       </div>
-      {group.delivery.map(row => {
+      {storeDelivery ? <StoreDeliveryRow group={group} name={name} store={storeDelivery} /> : group.delivery.map(row => {
         const fast = row.choice === "fast";
         const cost = row.free
           ? t(fast ? "cart.storeFastDeliveryFree" : "cart.storeDeliveryFree")
@@ -265,7 +269,9 @@ function BagLine({ item }: { item: CartItem }) {
           </div>
         </div>
         {/* Fast or regular (3.2.5), only where the store offers fast. */}
-        {item.fastDelivery ? <SpeedChoice item={item} title={title} /> : null}
+        {/* Standard or Express is the store's now, on its delivery row (0085);
+            a bag from before draws the line's own choice. */}
+        {item.fastDelivery && !cart?.stores?.some(store => store.vendorId === item.vendor?.id) ? <SpeedChoice item={item} title={title} /> : null}
         {/* A thumb's size under a coarse pointer (40px a side), the
             old 28px under a mouse, where the drawer is narrow. */}
         <div className="mt-3 inline-flex items-center rounded-full border border-[#d5dfeb] bg-white">
