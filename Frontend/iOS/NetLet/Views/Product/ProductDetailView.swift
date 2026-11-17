@@ -301,30 +301,27 @@ private struct ProductPage: View {
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
     }
 
+    /// How many the price is for: the bag's plain line once there is one,
+    /// else the stepper's — the count Buy now says.
+    private var priceCount: Int { bagLine?.quantity ?? model.quantity }
+
+    /// The extras ticked, each priced per unit as the bag charges them.
+    private var chosenExtras: [Money] {
+        (product.addons ?? []).filter { model.addons.contains($0.id) }.map(\.price)
+    }
+
+    /// The total for the quantity chosen, and the price of one under it, on
+    /// the owner's word (`QuantityPrice`, the web's `priceForQuantity`).
+    private var quote: QuantityPrice? {
+        guard let variant else { return nil }
+        return QuantityPrice(price: variant.price, compareAt: variant.saving == nil ? nil : variant.compareAtPrice,
+                             quantity: priceCount, extras: chosenExtras, measure: variant.measure)
+    }
+
     @ViewBuilder
     private var price: some View {
-        if let variant {
-            FlowLayout(spacing: 12) {
-                Text(l.price(variant.price))
-                    .font(.inter(32, .heavy))
-                    .tracking(-1.2)
-                    .foregroundStyle(Brand.ink)
-                if let was = variant.compareAtPrice, variant.saving != nil {
-                    Text(l.price(was))
-                        .font(.inter(18))
-                        .strikethrough()
-                        .foregroundStyle(Brand.muted)
-                        .accessibilityLabel(l.t("browse.onOffer") + ", " + l.price(was))
-                }
-                if let percent = variant.savingPercent, percent > 0 {
-                    Text(l.t("product.savePercent", ["percent": "\(percent)"]))
-                        .font(.inter(12, .bold))
-                        .foregroundStyle(Color(red: 21 / 255, green: 87 / 255, blue: 36 / 255))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color(red: 212 / 255, green: 237 / 255, blue: 218 / 255)))
-                }
-            }
+        if let quote {
+            QuantityPriceView(quote: quote, savingPercent: variant?.savingPercent)
         }
     }
 
@@ -335,7 +332,11 @@ private struct ProductPage: View {
     private var priceNotes: some View {
         if let variant {
             if member, let memberPrice = variant.memberPrice {
-                Label(l.t("membership.yourPrice", ["price": l.price(memberPrice)]), systemImage: "checkmark.seal.fill")
+                let mine = QuantityPrice(price: memberPrice, quantity: priceCount, extras: chosenExtras)
+                Label(mine.quantity > 1
+                      ? l.t("membership.yourPriceFor", ["total": l.price(mine.total), "price": l.price(mine.unit)])
+                      : l.t("membership.yourPrice", ["price": l.price(mine.total)]),
+                      systemImage: "checkmark.seal.fill")
                     .font(.inter(13, .heavy))
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 12)
@@ -555,8 +556,8 @@ private struct ProductPage: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(product.title).font(.inter(12)).foregroundStyle(Brand.muted).lineLimit(1)
-                if let variant {
-                    Text(l.price(variant.price)).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
+                if let quote {
+                    Text(l.price(quote.total)).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }

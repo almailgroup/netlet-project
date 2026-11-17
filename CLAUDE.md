@@ -8460,6 +8460,31 @@ behind unmoved, axe clean at both.
 **The page says what is already in the bag.** "2 already in your cart" beside
 the stepper opens the bag, so Add is not pressed again to find out.
 
+**The price is the total for the quantity chosen, with the price of one under
+it, on the owner's word** ("the main price should update automatically based
+on the selected quantity … clearly display the individual unit price below or
+beside the total price"). `priceForQuantity` (`Shared/commerce/quantityPrice.ts`,
+pure; the app's `QuantityPrice`, on the same cases) is the rule: the price of
+one plus the extras ticked for it — installation and a warranty plan are per
+unit, as the bag charges them — times the stepper's number (the bag's line
+once it is one), in fils; the was-price is the same sum, so the struck figure
+less the total is the real saving, and the percent badge stays the product's.
+`QuantityPriceBlock` (web) and `QuantityPriceView` (app) draw it on the
+product page and in the preview, and the phone's buy bar says the total. **The
+unit line is always drawn**, at one too ("KWD 8.500 each", "3 × KWD 8.500
+each", "… each with extras", "KWD 0.500 per 500 g" for something sold by
+weight): drawn only from two, it pushed the stepper down under the thumb
+pressing its plus. **On a phone the struck price and the badge sit on their
+own line under the total** for the same reason: beside it, a total gaining a
+digit wrapped them at one press and not the one before. A member's pill says
+their total and their price each. A screen reader hears the new total as the
+number changes (a polite live region on the web, an announcement in the app).
+Nothing here decides what is charged; the bag and the order price a line
+themselves. Measured at 320, 390 and 1440 in both languages: 3 of an 8.500
+scarf reads 25.500 with 30 struck and "3 × KWD 8.500 each", the stepper's
+place unchanged by the press, a heater with installation ticked 2 × 17.500,
+the buy bar the total, the Arabic line right to left, axe clean.
+
 **Related means the same department or a shared tag** (`Shared/commerce/related.ts`).
 The same seller counted on its own, so a store's food processor sat on its
 phone's page, and anything scoring nothing was still drawn to fill four places.
@@ -8938,8 +8963,9 @@ product page's picker shares with the editor — then 1,081 KB (311 KB), the
 photo zoom's words for a mouse in both languages and the second-click hook —
 then 1,093 KB (315 KB), the product views' words in both languages (the
 portal's page and the editor's card share them, and the dictionary is one
-module) — and is 1,107 KB (319 KB) now, the refurbished section's and the
-photo squaring's words in both languages —
+module) — then 1,107 KB (319 KB), the refurbished section's and the
+photo squaring's words in both languages — and is 1,109 KB (319 KB) now, the
+product page's total for the quantity and its words —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

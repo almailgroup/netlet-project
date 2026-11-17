@@ -15,6 +15,7 @@ import { ProductInfo } from "@/components/product/ProductInfo";
 import { ProductCatalogues } from "@/components/product/ProductCatalogues";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
+import { QuantityPriceBlock } from "@/components/product/QuantityPrice";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
 import { AddonPicker } from "@/components/product/AddonPicker";
 import { BundleOffer } from "@/components/product/BundleOffer";
@@ -43,6 +44,7 @@ import { EMPTY_FILTERS, categorySlug, searchPath, searchWithTerm } from "@shared
 import { categoryMessageKey } from "@/content/homeLayout";
 import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
 import { lineCeiling, roomFor } from "@shared/commerce/typedQuantity";
+import { priceForQuantity } from "@shared/commerce/quantityPrice";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { StarRow } from "@/components/ui/StarRow";
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, Recycle, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
@@ -1403,6 +1405,13 @@ export default function ProductDetail() {
   const price = selectedVariant?.price ?? product.priceRange.min;
   const compareAtPrice = selectedVariant?.compareAtPrice ?? null;
   const savings = savingsPercent(price, compareAtPrice);
+  /* The total for what the stepper says — the bag's line once it is one —
+     with the extras ticked, each priced per unit as the bag charges them. */
+  const extras = (product.addons ?? []).filter(addon => chosenAddons.includes(addon.id)).map(addon => addon.price);
+  const quote = priceForQuantity({ price, compareAt: compareAtPrice, quantity: buyCount, extras, measure: selectedVariant?.measure });
+  const memberQuote = member && selectedVariant?.memberPrice
+    ? priceForQuantity({ price: selectedVariant.memberPrice, quantity: buyCount, extras })
+    : null;
   const inStock = Boolean(selectedVariant?.availableForSale);
   /* Nothing of it can be bought: the page's one action is the reminder. */
   const soldOut = !product.variants.some(variant => variant.availableForSale) && !plainLine;
@@ -1478,11 +1487,9 @@ export default function ProductDetail() {
 
             {express ? <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#f2683a] px-3 py-1 text-xs font-bold text-[#0a285a]"><Zap className="size-3.5 fill-current" />{t("product.expressTitle")}</p> : null}
 
-            <div className="mt-5 flex flex-wrap items-baseline gap-3">
-              <span className="text-[32px] font-extrabold tracking-[-.04em] text-[#1f2229]">{money(price)}</span>
-              {compareAtPrice ? <span className="text-lg ink-muted line-through">{money(compareAtPrice)}</span> : null}
-              {savings > 0 ? <span className="rounded-sg bg-[#d4edda] px-2.5 py-1 text-xs font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
-            </div>
+            {/* The total for the quantity chosen, extras ticked included, and
+                the price of one under it, on the owner's word. */}
+            <QuantityPriceBlock quote={quote} savings={savings} tone="page" className="mt-5" />
 
             {/* A member's price (4.1), shown only to a member: a price somebody
                 is told about and cannot have is not one to show them. The bag
@@ -1490,7 +1497,9 @@ export default function ProductDetail() {
             {member && selectedVariant?.memberPrice ? (
               <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#e7edf5] px-3 py-1 text-[13px] font-extrabold text-[#0a285a]">
                 <BadgeCheck className="size-4" aria-hidden />
-                {t("membership.yourPrice", { price: money(selectedVariant.memberPrice) })}
+                {memberQuote && memberQuote.quantity > 1
+                  ? t("membership.yourPriceFor", { total: money(memberQuote.total), price: money(memberQuote.unit) })
+                  : t("membership.yourPrice", { price: money(memberQuote?.total ?? selectedVariant.memberPrice) })}
               </p>
             ) : null}
 
@@ -1692,7 +1701,7 @@ export default function ProductDetail() {
       <StickyBuyBar
         shown={buyPassed}
         name={t("product.buyBar", { name: product.title })}
-        price={money(price)}
+        price={money(quote.total)}
         addLabel={addLabel}
         buyLabel={buyLabel}
         disabled={!plainLine && !inStock}

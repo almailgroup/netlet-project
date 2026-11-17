@@ -294,10 +294,14 @@ private struct QuickViewContent: View {
                 RatingLine(rating: rating, starSize: 14).padding(.top, 8)
             }
             if let variant {
-                PriceView(price: variant.price, was: variant.saving == nil ? nil : variant.compareAtPrice, large: true)
-                    .padding(.top, 12)
-                    .contentTransition(.numericText())
-                    .animation(still ? nil : .snappy(duration: 0.25), value: variant.id)
+                // The total for the quantity chosen and the price of one, the
+                // product page's own block; the saving's badge is on the photo.
+                QuantityPriceView(
+                    quote: QuantityPrice(price: variant.price, compareAt: variant.saving == nil ? nil : variant.compareAtPrice,
+                                         quantity: bagLine?.quantity ?? min(model.quantity, max(room, 1)), measure: variant.measure),
+                    large: false
+                )
+                .padding(.top, 12)
                 if let measure = variant.measure,
                    let per = ListingRules.shared.unitPrice(variant.price, unit: measure.unit, step: measure.stepAmount) {
                     Text(l.t("unit.perUnit", ["price": l.price(per.price), "unit": l.t("unit.\(per.unit)")]))

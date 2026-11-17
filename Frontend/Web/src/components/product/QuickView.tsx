@@ -30,6 +30,8 @@ import { AvailabilityLine } from "@/components/product/Availability";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { MAX_LINE_QUANTITY, type Product } from "@shared/commerce/types";
 import { lineCeiling, roomFor } from "@shared/commerce/typedQuantity";
+import { priceForQuantity } from "@shared/commerce/quantityPrice";
+import { QuantityPriceBlock } from "@/components/product/QuantityPrice";
 import { StarRow } from "@/components/ui/StarRow";
 import { ArrowRight, ShoppingBag, X, Zap } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -98,6 +100,8 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
     if (next <= 0) void askRemove(product?.title ?? plainLine.productTitle).then(sure => (sure ? removeItem(plainLine.lineId) : undefined)).catch(failed);
     else if (next !== plainLine.quantity) void updateQuantity(plainLine.lineId, next).catch(failed);
   };
+  /* What the stepper says — the bag's line once it is one — the product page's rule. */
+  const quote = priceForQuantity({ price, compareAt, quantity: plainLine?.quantity ?? asked, measure: variant?.measure });
   const image = product.images[imageIndex] ?? product.images[0];
   const fullHref = appPath(`/products/${encodeURIComponent(product.handle)}`);
 
@@ -189,11 +193,9 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                 </div>
               ) : null}
 
-              <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="text-[28px] font-extrabold leading-none tracking-[-.03em] text-[#0a285a] lg:text-[32px]">{money(price)}</span>
-                {compareAt ? <span className="text-[15px] ink-muted line-through">{money(compareAt)}</span> : null}
-                {savings > 0 ? <span className="rounded-full bg-[#d4edda] px-2.5 py-0.5 text-[13px] font-bold text-[#155724]">{t("product.savePercent", { percent: savings })}</span> : null}
-              </div>
+              {/* The total for the quantity chosen and the price of one, the
+                  product page's own block. */}
+              <QuantityPriceBlock quote={quote} savings={savings} tone="preview" className="mt-4" />
 
               <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-semibold">
                 <AvailabilityLine variant={variant} size="small" />
