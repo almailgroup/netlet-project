@@ -1,26 +1,32 @@
 /**
- * "Change payment method" — how an order is paid, changed while nothing of it
- * is with a driver (on the owner's word: "before the order is fully confirmed
- * and handed over to shipping … they can switch the payment method to other
- * methods, like credit cards and KNET").
+ * "Change payment method" — paying a cash order online instead, until it is
+ * delivered (on the owner's word: "allow customers to change from COD to
+ * online payment through the order page").
  *
- * **A mockup until a payment provider is connected, also on the owner's
- * word** ("just build the mockup for now, we will implement the payment
- * method later"). Cash on delivery is the order's way and the one NetLet can
- * take; KNET, a card and Apple Pay are checkout's own rows, marked as coming,
- * and choosing one shows what switching will do — paid now on the provider's
- * page, the driver collecting nothing — over a Switch button that cannot be
- * pressed and says why beside it. Nothing is sent: there is no procedure to
- * send it to until a provider is.
+ * **Two states, by the server's word** (`paymentChange.live`). While no
+ * gateway is connected and the `testPayments` switch is off, it is the mockup
+ * it was: KNET, a card and Apple Pay drawn as they will be, marked as coming,
+ * over a Switch that cannot be pressed. With the switch on (and 0086 pasted),
+ * choosing one and pressing Pay opens NetLet's own test page
+ * (`/pay/test/:id`), which takes no money and says so — the order then reads
+ * paid online and the driver collects nothing. The figure sent is the one the
+ * panel shows; the server refuses it if the order now owes something else.
  */
 import { useId, useState, type ReactNode } from "react";
-import { Banknote, CreditCard, Smartphone } from "lucide-react";
+import { useLocation } from "wouter";
+import { Banknote, CreditCard, FlaskConical, Smartphone } from "lucide-react";
+import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatMoney } from "@/lib/format";
+import { trpc } from "@/lib/trpc";
+import type { OnlineMethod } from "@shared/commerce/onlinePayment";
 import type { Detail } from "@/components/account/LineReturn";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
 type Way = "cod" | "knet" | "card" | "apple";
+
+/** What the server calls each online way. */
+const METHOD: Record<Exclude<Way, "cod">, OnlineMethod> = { knet: "knet", card: "card", apple: "apple_pay" };
 
 const WAYS: { key: Way; icon: ReactNode; title: MessageKey; note: MessageKey; preview?: MessageKey }[] = [
   { key: "cod", icon: <Banknote className="size-5" />, title: "checkout.payCod", note: "checkout.payCodNote" },
@@ -29,12 +35,27 @@ const WAYS: { key: Way; icon: ReactNode; title: MessageKey; note: MessageKey; pr
   { key: "apple", icon: <Smartphone className="size-5" />, title: "checkout.payApple", note: "checkout.payAppleNote", preview: "orders.payPreviewApple" },
 ];
 
-export function OrderPayment({ detail, onCancel }: { detail: Detail; onCancel: () => void }) {
-  const { t, locale } = useTranslation();
+export function OrderPayment({ reference, detail, onCancel, onMoved }: {
+  reference: string;
+  detail: Detail;
+  onCancel: () => void;
+  /** The order moved under the panel: read it again, so the figure is today's. */
+  onMoved: () => void;
+}) {
+  const { t, tError, locale } = useTranslation();
   const ids = useId();
+  const [, navigate] = useLocation();
   const [chosen, setChosen] = useState<Way>("cod");
+  const live = detail.paymentChange.live;
   const amount = formatMoney(detail.owedNow, { currencyCode: detail.order.currency, locale });
   const picked = WAYS.find(way => way.key === chosen)!;
+  const start = trpc.orders.paymentStart.useMutation({
+    onSuccess: started => navigate(`/pay/test/${started.paymentId}`),
+    onError: error => {
+      toast.error(tError(error.message));
+      if (error.message === "orders.payMoved") onMoved();
+    },
+  });
 
   return (
     <section aria-labelledby={`${ids}-title`} className="mt-3 rounded-2xl border border-[#d5dfeb] bg-white p-4">
@@ -63,7 +84,7 @@ export function OrderPayment({ detail, onCancel }: { detail: Detail; onCancel: (
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="text-[14px] font-bold text-[#0a285a]">{t(way.title)}</span>
                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${way.key === "cod" ? "bg-[#e7f3ea] text-[#2f5d33]" : "bg-[#f0f2f5] text-[#536b8c]"}`}>
-                        {t(way.key === "cod" ? "orders.payCurrent" : "checkout.paySoon")}
+                        {t(way.key === "cod" ? "orders.payCurrent" : live ? "orders.payTest" : "checkout.paySoon")}
                       </span>
                     </span>
                     <span id={`${ids}-${way.key}-note`} className="mt-0.5 block text-[12px] leading-4 ink-muted">{t(way.note)}</span>
@@ -75,16 +96,35 @@ export function OrderPayment({ detail, onCancel }: { detail: Detail; onCancel: (
         </ul>
       </fieldset>
 
-      {picked.preview ? (
+      {/* The mockup says what a gateway's page will do; live, the test page's own note does. */}
+      {picked.preview && !live ? (
         <p aria-live="polite" className="mt-3 rounded-xl bg-[#eef4fb] px-3 py-2.5 text-[13px] leading-5 text-[#0a285a]">
           {t(picked.preview, { amount })}
         </p>
-      ) : (
+      ) : picked.preview ? null : (
         <p aria-live="polite" className="mt-3 text-[12px] leading-5 ink-muted">{t("orders.payWindow")}</p>
       )}
 
+      {/* With the test switch on: what the page it opens is, before it is pressed. */}
+      {live && picked.preview ? (
+        <p id={`${ids}-test`} aria-live="polite" className="mt-3 flex items-start gap-2 rounded-xl border border-dashed border-[#e4b363] bg-[#fff8eb] px-3 py-2 text-[12px] leading-5 text-[#6b4a12]">
+          <FlaskConical className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span>{t("orders.payTestNote")}</span>
+        </p>
+      ) : null}
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {picked.preview ? (
+        {picked.preview && live ? (
+          <button
+            type="button"
+            disabled={start.isPending}
+            aria-describedby={`${ids}-test`}
+            onClick={() => start.mutate({ reference, method: METHOD[picked.key as Exclude<Way, "cod">], expectOwed: detail.owedNow })}
+            className="glass-navy type-control pressable inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 disabled:opacity-60 pointer-fine:min-h-9"
+          >
+            {t(start.isPending ? "orders.payOpening" : "orders.payNow", { amount })}
+          </button>
+        ) : picked.preview ? (
           <button
             type="button"
             disabled
@@ -98,7 +138,7 @@ export function OrderPayment({ detail, onCancel }: { detail: Detail; onCancel: (
           {t("common.close")}
         </button>
       </div>
-      {picked.preview ? <p id={`${ids}-soon`} className="mt-2 text-[12px] leading-5 ink-muted">{t("orders.paySoonNote")}</p> : null}
+      {picked.preview && !live ? <p id={`${ids}-soon`} className="mt-2 text-[12px] leading-5 ink-muted">{t("orders.paySoonNote")}</p> : null}
     </section>
   );
 }

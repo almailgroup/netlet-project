@@ -58,10 +58,14 @@ describe("what a shopper may change", () => {
     expect(shopperChangeState(unpaid, [{ fulfilment: "shipped" }, { fulfilment: "delivered" }])).toEqual({ changeable: false, reason: "orders.changeCollected" });
     expect(shopperChangeState({ status: "paid" }, [{ fulfilment: "pending" }])).toEqual({ changeable: false, reason: "orders.changePaid" });
     expect(shopperChangeState({ status: "cancelled" }, [{ fulfilment: "cancelled" }])).toEqual({ changeable: false, reason: "orders.changeClosed" });
+    /* Paid online (0086): the items stay as paid for; the whole order can still be cancelled. */
+    expect(shopperChangeState({ status: "pending_payment", paymentMethod: "knet" }, [{ fulfilment: "pending" }])).toEqual({ changeable: false, reason: "orders.changePaidOnline" });
   });
 
   it("changes the address only while nothing going there has left", () => {
     expect(addressChangeState(unpaid, [{ fulfilment: "pending" }, { fulfilment: "preparing" }])).toEqual({ changeable: true });
+    /* Where it goes costs nothing more, so paying online does not hold the address. */
+    expect(addressChangeState({ status: "pending_payment", paymentMethod: "card" }, [{ fulfilment: "pending" }])).toEqual({ changeable: true });
     expect(addressChangeState(unpaid, [{ fulfilment: "pending" }, { fulfilment: "shipped" }])).toEqual({ changeable: false, reason: "orders.changeCollected" });
     /* A line going to an address of its own does not hold the order's back. */
     expect(addressChangeState(unpaid, [{ fulfilment: "pending" }, { fulfilment: "shipped", destination: { label: "Office" } }])).toEqual({ changeable: true });

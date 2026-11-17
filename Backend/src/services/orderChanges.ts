@@ -144,6 +144,7 @@ function priced(loaded: Awaited<ReturnType<typeof load>>, changes: LineChange[])
   return quoteChange({
     order: {
       status: order.status,
+      paymentMethod: order.paymentMethod,
       grandTotal: order.grandTotal,
       member: order.member,
       discountCode: order.discountCode,

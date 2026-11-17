@@ -36,6 +36,7 @@ import Home from "./pages/Home";
 const BagDrawer = lazyPage(async () => ({ default: (await import("@/components/cart/BagDrawer")).BagDrawer }));
 const ProductDetail = lazyPage(() => import("@/pages/ProductDetail"));
 const Checkout = lazyPage(() => import("@/pages/Checkout"));
+const TestPayment = lazyPage(() => import("@/pages/TestPayment"));
 const Account = lazyPage(() => import("@/pages/Account"));
 const SignIn = lazyPage(() => import("@/pages/SignIn"));
 const Saved = lazyPage(() => import("@/pages/Saved"));
@@ -69,6 +70,7 @@ const AdminPromotions = lazyPage(() => import("@/pages/admin/Promotions"));
 const AdminApplications = lazyPage(() => import("@/pages/admin/Applications"));
 const AdminBundles = lazyPage(() => import("@/pages/admin/Bundles"));
 const AdminDispatch = lazyPage(() => import("@/pages/admin/Dispatch"));
+const AdminDispatchScan = lazyPage(() => import("@/pages/admin/DispatchScan"));
 const AdminCouriers = lazyPage(() => import("@/pages/admin/Couriers"));
 const AdminClaims = lazyPage(() => import("@/pages/admin/Claims"));
 const AdminReturns = lazyPage(() => import("@/pages/admin/Returns"));
@@ -273,6 +275,8 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/login", page: SignIn, frame: "bare" },
   { path: "/register", page: SignIn, frame: "bare" },
   { path: "/checkout", page: Checkout, frame: "bare" },
+  /* NetLet's own test payment page (0086), until a gateway's takes its place. */
+  { path: "/pay/test/:id", page: TestPayment, frame: "bare" },
   { path: "/account", page: Account, frame: "shop" },
   { path: "/account/:section", page: Account, frame: "shop" },
   { path: "/saved", page: Saved, frame: "shop" },
@@ -317,6 +321,7 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
      than a shell of its own: scope is already decided by the server, and two
      shells would be two navigations showing the same links. A courier sees
      only these. */
+  { path: "/admin/dispatch/scan", page: AdminDispatchScan, frame: "admin" },
   { path: "/admin/dispatch", page: AdminDispatch, frame: "admin" },
   { path: "/admin/couriers", page: AdminCouriers, frame: "admin" },
   { path: "/admin/claims", page: AdminClaims, frame: "admin" },

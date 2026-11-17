@@ -49,6 +49,10 @@ import { trackOrder, TrackingError } from "../services/tracking.js";
 import { checkVoucherAllowed, recordVoucherMiss } from "../services/rateLimit.js";
 import { applyOrderChange, buyAgain, changeOrderAddress, OrderChangeRefused, quoteOrderChange } from "../services/orderChanges.js";
 import { orderDetailForShopper } from "../services/orderDetail.js";
+import { externalPath } from "../../../Shared/portal.js";
+import { handoverScanPath, ONLINE_METHODS } from "../../../Shared/commerce/onlinePayment.js";
+import { finishTestPayment, paymentForShopper, PaymentRefused, startTestPayment } from "../services/onlinePayments.js";
+import { portalDomainFor, portalOriginFor } from "../core/portalAddress.js";
 import { ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_VIEWS } from "../../../Shared/commerce/orderFilters.js";
 
 /** The lines a shopper asks to change: each named once, a quantity of nought taking it out. */
@@ -57,6 +61,19 @@ const lineChanges = z
   .min(1)
   .max(50)
   .refine(changes => new Set(changes.map(change => change.lineId)).size === changes.length, { message: "orders.changeNothing" });
+
+/** A payment's refusal, said as the message key the page turns into words. */
+async function paymentGuard<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof PaymentRefused) {
+      const code = error.reason === "orders.payNotFound" ? "NOT_FOUND" : error.reason === "orders.payUnavailable" ? "PRECONDITION_FAILED" : "CONFLICT";
+      throw new TRPCError({ code, message: error.reason });
+    }
+    throw error;
+  }
+}
 
 /** A change's refusal, said as the message key the page turns into words. */
 async function changeGuard<T>(run: () => Promise<T>): Promise<T> {
@@ -127,7 +144,20 @@ export const ordersRouter = router({
 
   get: protectedProcedure
     .input(z.object({ reference: z.string().min(1).max(64) }))
-    .query(({ ctx, input }) => orderDetailForShopper(ctx.user.id, input.reference)),
+    .query(async ({ ctx, input }) => {
+      const detail = await orderDetailForShopper(ctx.user.id, input.reference);
+      if (!detail) return detail;
+      /* The QR's address is the vendor portal's scan page as this request
+         reaches it, so a driver's own camera opens it signed in. */
+      const domain = portalDomainFor(ctx.req);
+      const path = detail.handover ? externalPath(handoverScanPath(detail.handover.token)) : null;
+      return {
+        ...detail,
+        handover: detail.handover
+          ? { ...detail.handover, url: domain && path ? `${portalOriginFor(ctx.req, "vendor", domain)}${path}` : null }
+          : null,
+      };
+    }),
 
   /**
    * Rate how one parcel was delivered (3.4.4), or change the rating.
@@ -195,6 +225,31 @@ export const ordersRouter = router({
   changeAddress: protectedProcedure
     .input(z.object({ reference: z.string().min(1).max(64), addressId: rowId }))
     .mutation(({ ctx, input }) => changeGuard(() => changeOrderAddress(ctx.user.id, input.reference, input.addressId))),
+
+  /**
+   * Pay a cash order online instead (0086, on the owner's word), until it is
+   * delivered. Only NetLet's test page takes it today ("build a mockup"),
+   * behind the `testPayments` switch; no money moves and the books are not
+   * touched, but the order is taken off cash, so the driver collects nothing.
+   * Sent with the figure the page showed; refused if the order owes another.
+   */
+  paymentStart: protectedProcedure
+    .input(z.object({
+      reference: z.string().min(1).max(64),
+      method: z.enum(ONLINE_METHODS),
+      expectOwed: z.string().regex(/^\d{1,9}(\.\d{1,3})?$/),
+    }))
+    .mutation(({ ctx, input }) => paymentGuard(() => startTestPayment(ctx.user.id, input.reference, input.method, input.expectOwed))),
+
+  /** One of the shopper's own payments, for the test page to draw. */
+  paymentGet: protectedProcedure
+    .input(z.object({ paymentId: rowId }))
+    .query(({ ctx, input }) => paymentForShopper(ctx.user.id, input.paymentId)),
+
+  /** The test page's answer: paid, or backed out. Asked again under a lock on the order. */
+  paymentTest: protectedProcedure
+    .input(z.object({ paymentId: rowId, outcome: z.enum(["paid", "cancelled"]) }))
+    .mutation(({ ctx, input }) => paymentGuard(() => finishTestPayment(ctx.user.id, input.paymentId, input.outcome))),
 
   /** Everything on the order back in the bag at today's prices, naming what could not be. */
   buyAgain: protectedProcedure

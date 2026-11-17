@@ -19,6 +19,7 @@
  */
 import type { AddressParts } from "../../Shared/commerce/kuwaitAddress.js";
 import type { DeliveryWindow } from "../../Shared/commerce/deliverySlots.js";
+import type { OnlineMethod, PaymentAttemptState, PaymentProvider } from "../../Shared/commerce/onlinePayment.js";
 import { relations, sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
@@ -3643,6 +3644,58 @@ export const orderDeliverySlots = pgTable(
     uniqueIndex("order_delivery_slots_order_vendor_key").on(table.orderId, table.vendorId),
     check("order_delivery_slots_window_check", sql`${table.timeWindow} in ('morning', 'afternoon', 'evening')`),
   ],
+);
+
+/**
+ * An order paid online after it was placed as cash on delivery (0086, on the
+ * owner's word), one row per attempt: started on the press, then paid,
+ * failed, or refunded after a cancel. `Shared/commerce/onlinePayment.ts` is
+ * the rule. Only `test` takes payments today — NetLet's own page, no money —
+ * and a test payment never marks the order `paid`; a gateway, when one is
+ * connected, will. The amount is the figure the page showed, frozen, so a
+ * refund later is that figure. At most one paid row per order, by the
+ * partial unique index, so two tabs cannot both pay.
+ */
+export const orderPayments = pgTable(
+  "order_payments",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    provider: varchar("provider", { length: 16 }).$type<PaymentProvider>().notNull(),
+    method: varchar("method", { length: 16 }).$type<OnlineMethod>().notNull(),
+    amount: numeric("amount", { precision: 12, scale: 3 }).notNull(),
+    status: varchar("status", { length: 16 }).$type<PaymentAttemptState>().notNull().default("started"),
+    /** The gateway's own id for it; a test payment's is its own token. */
+    providerRef: varchar("provider_ref", { length: 128 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+  },
+  table => [
+    index("order_payments_order_idx").on(table.orderId),
+    uniqueIndex("order_payments_one_paid_key").on(table.orderId).where(sql`${table.status} = 'paid'`),
+    check("order_payments_provider_check", sql`${table.provider} in ('test', 'myfatoorah', 'tap')`),
+    check("order_payments_method_check", sql`${table.method} in ('knet', 'card', 'apple_pay')`),
+    check("order_payments_status_check", sql`${table.status} in ('started', 'paid', 'failed', 'refunded')`),
+  ],
+);
+
+/**
+ * A driver's scan of the shopper's QR at the door (0086, on the owner's
+ * word): which box was handed over, by whom and when, and what the scan
+ * showed them about the payment. One row per parcel handed over; the driver
+ * reference is `set null` like every reference out of an order.
+ */
+export const orderHandovers = pgTable(
+  "order_handovers",
+  {
+    id: serial("id").primaryKey(),
+    orderId: integer("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    parcelKey: varchar("parcel_key", { length: 200 }).notNull(),
+    scannedBy: integer("scanned_by").references(() => users.id, { onDelete: "set null" }),
+    scannedAt: timestamp("scanned_at", { withTimezone: true }).notNull().defaultNow(),
+    paidOnline: boolean("paid_online").notNull(),
+  },
+  table => [index("order_handovers_order_idx").on(table.orderId)],
 );
 
 /* ------------------------------------------------------------- relations --- */

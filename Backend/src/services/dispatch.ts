@@ -41,6 +41,8 @@ import { assertCan, readableCouriers, type Actor } from "../../../Shared/invento
 import { getDb } from "./db.js";
 import { slotsForOrders } from "./deliverySlots.js";
 import { stillOwedFor } from "./owed.js";
+import { paidOnlineFor } from "./onlinePayments.js";
+import type { OnlineMethod } from "../../../Shared/commerce/onlinePayment.js";
 import { tellOrderMoved } from "./notifications.js";
 import { extendReferralHold } from "./referral.js";
 
@@ -227,6 +229,13 @@ export type BoardParcel = Parcel & {
    * `stillOwedFor` now — the same figure the shopper's own order page shows.
    */
   orderTotal: string;
+  /**
+   * Paid online instead (0086), so the driver collects nothing: the method,
+   * and whether it was NetLet's test page, which took no money. The board
+   * asks again while it is open, so a shopper paying on the driver's way
+   * changes what the driver reads without anybody refreshing.
+   */
+  paidOnline: { method: OnlineMethod; test: boolean } | null;
   /** Who is carrying it, by name, so a board reads without a second lookup. */
   courierName: string | null;
   /**
@@ -339,7 +348,7 @@ export async function loadBoard(
      line — and it is a short table by nature. The four reads below need
      nothing from each other, so they go together: one round trip to the
      database where they were four in a row. */
-  const [courierRows, centreRows, selfRows, owed, slots] = await Promise.all([
+  const [courierRows, centreRows, selfRows, owed, slots, paid] = await Promise.all([
     db.select({ id: couriers.id, name: couriers.name }).from(couriers),
     db.select({ id: fulfilmentCentres.id, name: fulfilmentCentres.name, addressLine: fulfilmentCentres.addressLine, governorate: fulfilmentCentres.governorate }).from(fulfilmentCentres),
     /* The stores that deliver for themselves with a company not on NetLet. */
@@ -349,6 +358,8 @@ export async function loadBoard(
     }))),
     /* The day each store's parcel was asked for (0085). */
     slotsForOrders(db, window.map(order => order.id)),
+    /* What was paid online (0086); none before the table is pasted. */
+    paidOnlineFor(db, window.map(order => order.id)),
   ]);
   const names = new Map(courierRows.map(row => [row.id, row.name]));
   const centres = new Map(centreRows.map(row => [row.id, { name: row.name, addressLine: row.addressLine, governorate: row.governorate }]));
@@ -379,6 +390,7 @@ export async function loadBoard(
         paymentMethod: order.paymentMethod,
         paymentCollectedAt: order.paymentCollectedAt,
         orderTotal: owed.get(order.id)?.owed ?? order.orderTotal,
+        paidOnline: ((one => one ? { method: one.method, test: one.test } : null)(paid.get(order.id))),
         courierName: parcel.courierId === null ? null : names.get(parcel.courierId) ?? null,
         collectFrom: parcel.centreId === null ? null : centres.get(parcel.centreId) ?? null,
         member: order.member,

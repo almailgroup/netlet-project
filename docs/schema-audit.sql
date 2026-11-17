@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 83 tables, 866 columns, 145 indexes, 188 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 85 tables, 881 columns, 148 indexes, 191 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -71,8 +71,10 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('occasion_products', 'occasion_id:n,position:nd,product_id:n', 'occasion_products_product_idx', 'occasion_id>occasions:c,product_id>products:c'),
   ('occasions', 'created_at:nd,created_by,ends_on,id:pnd,image_url,include_tagged:nd,slug:n,starts_on,status:nd,title:n,title_ar:n,updated_at:nd', 'occasions_slug_unique:u', 'created_by>users:n'),
   ('order_delivery_slots', 'created_at:nd,delivery_date:n,id:pnd,order_id:n,time_window:n,vendor_id', 'order_delivery_slots_order_vendor_key:u', 'order_id>orders:c,vendor_id>vendors:n'),
+  ('order_handovers', 'id:pnd,order_id:n,paid_online:n,parcel_key:n,scanned_at:nd,scanned_by', 'order_handovers_order_idx', 'order_id>orders:c,scanned_by>users:n'),
   ('order_item_addons', 'addon_id,id:pnd,kind:n,label:n,order_item_id:n,price:n,warranty_months', 'order_item_addons_line_idx', 'addon_id>product_addons:n,order_item_id>order_items:c'),
   ('order_items', 'affiliate_vendor_percent,bundle_id,bundle_name,carried_by,centre_id,commission_amount:nd,commission_fixed:nd,commission_percent:nd,courier_id,created_at:nd,delivered_at,delivery_choice:nd,destination,discount_amount:nd,discount_code,discount_code_id,fulfilment:nd,id:pnd,line_total:n,order_id:n,preorder_release_at,preordered:nd,product_id,product_title:n,quantity:n,referral_rate,referrer_id,size_class,sku,unit_price:n,updated_at:nd,variant_id,variant_title,vendor_id,vendor_name,vendor_net:nd,weight_grams', 'order_items_fulfilment_idx,order_items_order_id_idx,order_items_vendor_id_idx', 'bundle_id>bundles:n,carried_by>users:n,centre_id>fulfilment_centres:r,courier_id>couriers:n,discount_code_id>discount_codes:n,order_id>orders:c,product_id>products:n,referrer_id>users:n,variant_id>product_variants:n,vendor_id>vendors:n'),
+  ('order_payments', 'amount:n,created_at:nd,id:pnd,method:n,order_id:n,paid_at,provider:n,provider_ref,status:nd', 'order_payments_one_paid_key:uw,order_payments_order_idx', 'order_id>orders:c'),
   ('order_tracking_events', 'created_at:nd,id:pnd,message,occurred_at:nd,order_reference:n,status:n,user_id:n', 'order_tracking_user_id_idx,order_tracking_user_occurred_idx', 'user_id>users:c'),
   ('orders', 'address_line,address_notes,affiliate_id,affiliate_rate,commission_total:nd,contact_name,contact_phone,currency:nd,delivery_address_parts,delivery_breakdown,delivery_pin,delivery_total:nd,delivery_waived:nd,delivery_zone_id,discount_code,discount_value:nd,email,gift_card_code,gift_card_value:nd,grand_total:n,id:pnd,items_total:n,member:nd,payment_collected_at,payment_method,placed_at:nd,points_spent:nd,points_value:nd,reference:n,status:nd,subscription_id,updated_at:nd,user_id', 'orders_placed_idx,orders_reference_unique:u,orders_status_idx,orders_user_id_idx', 'affiliate_id>affiliates:n,subscription_id>subscriptions:n,user_id>users:n'),
   ('payout_files', 'created_at:nd,created_by,id:pnd', '', 'created_by>users:n'),
@@ -256,7 +258,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 83 tables' AS object,
+    count(*) || ' of 85 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -270,7 +272,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 83 tables, 866 columns, 145 indexes, 188 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 85 tables, 881 columns, 148 indexes, 191 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

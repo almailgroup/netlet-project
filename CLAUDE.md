@@ -3512,28 +3512,97 @@ address is written, and the order freezes its parts from it. A store charges the
 same anywhere in Kuwait, so what the driver collects does not move, and the
 answer says so; a line sent to an address of its own keeps its own.
 
-**How an order is paid can change until a driver has it — as a mockup, on
-the owner's word** ("before the order is fully confirmed and handed over to
-shipping … switch the payment method … like credit cards and KNET", and,
-offered a gateway to build on, "just build the mockup for now, we will
-implement the payment method later"). `paymentChangeState`
-(`Shared/commerce/payment.ts`) is the cancel window — unpaid and every line
-still coming in the stores' hands — for a cash order, on `orders.get` as
-`paymentChange`. The order's ⋯ then offers "Change payment method"
-(`OrderPayment` on the web, `OrderPaymentSheet` in the app): cash on delivery
-marked current, then checkout's own KNET, card and Apple Pay rows marked
-"Coming soon"; choosing one says what switching will do ("You'd pay KWD … now
-on KNET's secure page, and the driver would collect nothing") over a "Switch
-to …" that cannot be pressed, with the reason beneath it. **Nothing is sent
-and there is no procedure**: NetLet has no payment provider, so a switch
-would be a shopper told they had paid when nothing was charged. Making it
-real is a gateway (KNET and cards through one, such as Tap Payments or
-MyFatoorah), its keys in Vercel, and a payments table shown to the owner
-first; the order then turns `paid` on the gateway's word and the driver
-collects nothing. The app's recorded orders carry the rule's answer, and the
-CI photographs the sheet (`101-order-payment`). Walked at 320, 390 and 1440 in
-both languages: offered on an order still with the stores and not on a paid
-one, the switch disabled with its note, axe clean, no sideways scroll.
+**A cash order can be paid online instead until it is delivered, and the
+driver's board says so, on the owner's word** ("allow customers to change from
+Cash on Delivery to online payment through the order page … automatically
+update the payment status in the driver's system … a QR code for the driver to
+scan as additional payment confirmation"; migration 0086, approved as shown;
+`Shared/commerce/onlinePayment.ts` the rule, `Backend/src/services/onlinePayments.ts`
+and `handovers.ts` the database half). It began as a mockup over a Switch
+nobody could press, and asked again the owner chose **NetLet's own test page
+rather than a gateway** ("build a mockup"), **until the order is delivered**,
+the driver on the way included, and **a scan that confirms the payment and
+hands the order over in one step**.
+
+- **The window is `onlinePayWindow`**: an unpaid cash order, not already paid
+  online, with something still coming that has not arrived. `paymentChangeState`
+  is that window now (it was the cancel window), on `orders.get` as
+  `paymentChange`, with `live` (the `testPayments` switch on and the tables
+  pasted) and `paidOnline`. Live, the order's ⋯ "Change payment method"
+  (`OrderPayment` on the web, `OrderPaymentSheet` in the app) marks KNET, a
+  card and Apple Pay "Test" and says before the press that the page takes no
+  money; Pay opens it. Not live, it is the mockup it was: the ways drawn as
+  coming over a Switch that cannot be pressed.
+- **The test page is NetLet's, said at its top before the amount**
+  (`/pay/test/:id`, `pages/TestPayment.tsx`, outside the shop's frame as
+  checkout is; the app's `TestPaymentPane` in the sheet): no card is asked for,
+  Pay or Cancel. `orders.paymentStart` writes an `order_payments` row
+  (`provider` test, `started`) at the figure the page showed (`expectOwed`,
+  `stillOwed`, refused with `orders.payMoved` if it has moved, the page then
+  reading the order again); `orders.paymentTest` asks the window and the figure
+  again under a lock on the order and marks it `paid` — **one paid row per
+  order, a partial unique index** — or `failed`. A refusal is returned from
+  the transaction and thrown after it, so the `failed` mark is kept.
+- **A test payment never touches the books**: the order stays
+  `pending_payment` with `payment_method` the way chosen, so finance, payouts
+  and invoices read it as unpaid, and `recordCashCollected` (cash only) refuses
+  it. Paid online, the shopper's order, the list ("Paid online", green) and the
+  board ("Paid online (KNET) · collect nothing") all say the driver collects
+  nothing. **Items cannot change once paid online** (`orders.changePaidOnline`,
+  in `shopperChangeState`); the address still can; cancelling the whole order
+  marks the payment `refunded` inside `closeIfNothingLeft`. **A store cancelling
+  one line after the shopper paid leaves the payment as it was**: a real
+  gateway's partial refund is the answer, and there is none yet.
+- **The board asks again every 20 seconds while it is open** (the web's
+  `refetchInterval`, the app's own loop), so a shopper paying on the driver's
+  way shows without anybody pulling.
+- **The QR is a signed token, shown while a parcel is on its way**
+  (`handover` on `orders.get`, `HandoverCard` on the web and in the app):
+  `h1.<order>.<HMAC of the order under JWT_SECRET>`, no table, so it works the
+  day the code deploys; beside it eight characters from the same signature
+  (`handoverCodeFrom`, an alphabet without the letters people mishear), read
+  out where a camera fails. The QR is the vendor portal's own scan address
+  with the token in the fragment (`/dispatch/scan#h=…`), so a driver's own
+  camera opens it, and the page keeps the token through a sign-in
+  (`lib/handoverScan.ts`, the tab's storage).
+- **The scan is `dispatch.handover`** (`delivery.move`: a delivery company's
+  people and NetLet): a token, or an order on the driver's way and its code,
+  compared in constant time. It answers how the order is paid and hands over
+  only the driver's own collected parcels (`moveParcel` to delivered, one
+  `order_handovers` row each). **Paid online is one step**; **cash is two** —
+  "Collect KWD … in cash", then "Cash received, hand over" (`cashReceived`),
+  since a scan before the money would mark delivered a parcel nobody paid for.
+  Recording the cash on the books stays the store's or NetLet's own press.
+  `/admin/dispatch/scan` (`DispatchScan.tsx`: the browser's `BarcodeDetector`
+  where there is one, the typed code always) and the app's `HandoverScanSheet`
+  (VisionKit's `DataScannerViewController`) are its two doors, opened from a
+  parcel's "Scan at the door". A store that carries its own parcels has no
+  scan of its own, its people holding no `delivery.move`; NetLet's can scan
+  any parcel on its way.
+- **Closed, not broken, until 0086 is pasted**: no table reads as nothing paid
+  online and the sheet as the mockup; the QR and the scan still work, without
+  the handover rows. **`testPayments` starts off** (`/admin/features`), because
+  switching it on lets every shopper mark an order paid that nobody has paid —
+  the driver then collects nothing for real goods. It is for walking the flow
+  with the store and the drivers, and goes off again, or is replaced by the
+  gateway (KNET and cards through one, such as Tap Payments or MyFatoorah, its
+  keys in Vercel, `provider` already allowing both), which turns the order
+  `paid` on the gateway's word.
+
+`onlinePayments.test.ts` holds the server's rules against a real Postgres (the
+figure, a stranger, paying twice, a cancelled line, the window, the driver's
+one step and cash's two, a wrong code, the tables missing). Walked on a
+production build against a local Postgres at 320, 390 and 1440 in both
+languages: paying on the test page and landing on the order said paid, the
+list's label, the QR card, the board's pill, a typed code for cash in two
+steps and the QR's own address handing a paid order over by itself; axe clean
+on all 42 views, no sideways scroll. The app's answers were recorded off that
+server (`demo.orders.get.payable`, `.ontheway`, `demo.orders.payment*`,
+`demo.dispatch.handover`, `demo.dispatch.board.admin`), `OnlinePaymentTests`
+decodes them and holds the code and the token on the TypeScript's cases, and
+the CI photographs the sheet with KNET chosen, an order with its QR and the
+board (`104`–`106`). VisionKit's reader has not been seen on a phone from this
+sandbox.
 
 **Buy again puts everything still for sale back in the bag at today's price**
 (`orders.buyAgain`): the bag stores no price, so nothing old is carried over; a
@@ -9007,8 +9076,10 @@ then 1,093 KB (315 KB), the product views' words in both languages (the
 portal's page and the editor's card share them, and the dictionary is one
 module) — then 1,107 KB (319 KB), the refurbished section's and the
 photo squaring's words in both languages — then 1,109 KB (319 KB), the
-product page's total for the quantity and its words — and is 1,114 KB
-(320 KB) now, each store's delivery row and sheet and their words —
+product page's total for the quantity and its words — then 1,114 KB
+(320 KB), each store's delivery row and sheet and their words — and is
+1,126 KB (323 KB) now, paying online, the test page and the door check's
+words in both languages —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

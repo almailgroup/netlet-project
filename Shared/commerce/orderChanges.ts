@@ -52,6 +52,7 @@ import { vendorAffiliateFils } from "./affiliate.js";
 import { stillOwed } from "./collection.js";
 import type { DeliveryRule, FrozenDelivery } from "./delivery.js";
 import type { FulfilmentState } from "./fulfilment.js";
+import { isOnlineMethod } from "./onlinePayment.js";
 import { discountOf, settle, type DiscountCode } from "./vouchers.js";
 
 /** A line still in the store's hands: the shopper may change it. */
@@ -80,12 +81,24 @@ export type ChangeRefusal =
   /** Nothing asked for. */
   | "orders.changeNothing"
   /** The money moved between the quote and the press. */
-  | "orders.changeMoved";
+  | "orders.changeMoved"
+  /** Paid online (0086): what was paid is the order as it stood, so items stay
+      as they are; the whole order can still be cancelled, which gives it back. */
+  | "orders.changePaidOnline";
 
 export type ChangeState = { changeable: true } | { changeable: false; reason: ChangeRefusal };
 
 /** Whether anything on the order may still be changed by its shopper. */
-export function shopperChangeState(order: { status: string }, lines: { fulfilment: FulfilmentState | string }[]): ChangeState {
+export function shopperChangeState(
+  order: { status: string; paymentMethod?: string | null },
+  lines: { fulfilment: FulfilmentState | string }[],
+): ChangeState {
+  const base = stillWithStores(order, lines);
+  if (base.changeable && isOnlineMethod(order.paymentMethod)) return { changeable: false, reason: "orders.changePaidOnline" };
+  return base;
+}
+
+function stillWithStores(order: { status: string }, lines: { fulfilment: FulfilmentState | string }[]): ChangeState {
   if (order.status === "cancelled" || order.status === "refunded") return { changeable: false, reason: "orders.changeClosed" };
   if (order.status !== "pending_payment") return { changeable: false, reason: "orders.changePaid" };
   const coming = lines.filter(line => line.fulfilment !== "cancelled");
@@ -103,7 +116,8 @@ export function addressChangeState(
   order: { status: string },
   lines: { fulfilment: FulfilmentState | string; destination?: unknown | null }[],
 ): ChangeState {
-  const base = shopperChangeState(order, lines);
+  /* Paid online does not hold the address: where it goes costs nothing more. */
+  const base = stillWithStores(order, lines);
   if (!base.changeable) return base;
   const home = lines.filter(line => line.fulfilment !== "cancelled" && !line.destination);
   if (home.length === 0) return { changeable: false, reason: "orders.changeClosed" };
@@ -219,6 +233,8 @@ export type ChangeQuote = {
 /** The order's money as frozen, and what the settle needs. */
 export type ChangeOrder = {
   status: string;
+  /** How it is paid (0086): once paid online, items stay as they are. */
+  paymentMethod?: string | null;
   grandTotal: string;
   member: boolean;
   discountCode: string | null;
@@ -254,7 +270,7 @@ function goodsByDoor(lines: Pick<ChangeLine, "vendorId" | "destinationLabel" | "
  * as they are.
  */
 export function linesAfter(
-  order: { status: string },
+  order: { status: string; paymentMethod?: string | null },
   lines: ChangeLine[],
   changes: LineChange[],
 ): { lines: ChangeLine[]; quoted: QuotedLine[] } | { refused: ChangeRefusal } {

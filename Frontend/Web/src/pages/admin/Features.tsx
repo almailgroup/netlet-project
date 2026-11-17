@@ -50,6 +50,7 @@ const NAME: Record<FeatureKey, MessageKey> = {
   articles: "features.articles",
   tryOn: "features.tryOn",
   cashOnDelivery: "features.cashOnDelivery",
+  testPayments: "features.testPayments",
 };
 
 const WHEN_OFF: Record<FeatureKey, MessageKey> = {
@@ -74,6 +75,7 @@ const WHEN_OFF: Record<FeatureKey, MessageKey> = {
   articles: "features.articlesOff",
   tryOn: "features.tryOnOff",
   cashOnDelivery: "features.cashOnDeliveryOff",
+  testPayments: "features.testPaymentsOff",
 };
 
 /* Twenty switches in one column read as a wall; grouped by what a shopper or
@@ -102,6 +104,7 @@ const GROUP_OF: Record<FeatureKey, Group> = {
   articles: "content",
   tryOn: "shopping",
   cashOnDelivery: "shopping",
+  testPayments: "shopping",
 };
 const GROUPS: { key: Group; title: MessageKey }[] = [
   { key: "search", title: "features.groupSearch" },

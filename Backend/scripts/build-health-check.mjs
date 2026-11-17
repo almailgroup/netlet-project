@@ -132,6 +132,9 @@ const checks = [
   ["Shop", "Cash on delivery", "fail",
     `SELECT coalesce((SELECT CASE WHEN enabled THEN 'on' ELSE 'off' END FROM feature_switches WHERE key = 'cashOnDelivery'), 'on'), coalesce((SELECT NOT enabled FROM feature_switches WHERE key = 'cashOnDelivery'), false)`,
     "Cash is the only way to pay, so nobody can order. Switch it on at /admin/features."],
+  ["Shop", "Test online payments", "warn",
+    `SELECT coalesce((SELECT CASE WHEN enabled THEN 'on' ELSE 'off' END FROM feature_switches WHERE key = 'testPayments'), 'off'), coalesce((SELECT enabled FROM feature_switches WHERE key = 'testPayments'), false)`,
+    "While it is on, any shopper can mark a cash order paid online on NetLet's test page without paying, and the driver collects nothing. Switch it off at /admin/features unless you are trying the flow."],
   ["Shop", "Features an administrator switched off", "info",
     `SELECT coalesce(string_agg(key, ', ' ORDER BY key), 'none'), false FROM feature_switches WHERE NOT enabled`, ""],
 

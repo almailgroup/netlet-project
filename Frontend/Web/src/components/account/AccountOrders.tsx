@@ -27,6 +27,7 @@
  * `?q=`, `?period=`), the browse pages' rule, and decided by the server over
  * every order (`Shared/commerce/orderFilters.ts`), never over one page.
  */
+import { isOnlineMethod } from "@shared/commerce/onlinePayment";
 import { QueryGate } from "@/components/admin/QueryGate";
 import { Pager } from "@/components/admin/Pager";
 import { Thumb } from "@/components/product/Thumb";
@@ -531,7 +532,7 @@ export function AccountOrders() {
  * advertises a permitted saving, and a cancelled sofa is not one.
  */
 function OrderTotal({ order }: {
-  order: { status: string; currency: string; grandTotal: string; owed?: { owed: string; reduced: boolean } | null };
+  order: { status: string; currency: string; grandTotal: string; paymentMethod?: string | null; owed?: { owed: string; reduced: boolean } | null };
 }) {
   const { t, locale } = useTranslation();
   /* An order that is over — refunded or cancelled — shows what it came to,
@@ -542,6 +543,8 @@ function OrderTotal({ order }: {
   const how: { label: MessageKey; className: string } | null =
     order.status === "paid" ? { label: "orders.statusPaid", className: "text-[#2f5d33]" }
     : order.status === "refunded" ? { label: "orders.statusRefunded", className: "ink-muted" }
+    /* Paid online instead (0086): the driver collects nothing. */
+    : order.status === "pending_payment" && isOnlineMethod(order.paymentMethod) ? { label: "orders.paidOnline", className: "text-[#2f5d33]" }
     : order.status === "pending_payment" && Number(owes) > 0 ? { label: "orders.payOnDelivery", className: "ink-muted" }
     : null;
   return (

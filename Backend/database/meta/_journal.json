@@ -603,6 +603,13 @@
       "when": 1794914272014,
       "tag": "0085_delivery_slots",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1794929543559,
+      "tag": "0086_online_payments",
+      "breakpoints": true
     }
   ]
 }

@@ -71,7 +71,8 @@ import { resolveActor } from "../services/inventory.js";
 import { DeviceError, adminSide, browserOnShop, deviceRuleOn, noteDeviceSignIn, requestDevice, tellOwnerOfDevice } from "../services/adminDevices.js";
 import { DEVICE_HEADER, type DeviceAccess, type DeviceState } from "../../../Shared/auth/adminDevice.js";
 import { keepSecret } from "./devices.js";
-import { domainOfShopHost, isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
+import { isPortalPath, portalDomain, portalOfHost, portalSideFor, type PortalSide } from "../../../Shared/portal.js";
+import { hostOf, portalDomainFor, portalOriginFor, type RequestLike } from "../core/portalAddress.js";
 import { recordReferral } from "../services/referral.js";
 import type { User } from "../../database/schema.js";
 import { randomBytes } from "node:crypto";
@@ -367,25 +368,6 @@ async function assertNotThrottled(caller: Caller, kind: AttemptKind): Promise<vo
   });
 }
 
-type RequestLike = { protocol?: string; hostname?: string; headers?: { host?: string } };
-
-/** The host a request came to, without its port. */
-function hostOf(req: RequestLike): string {
-  return (req.hostname ?? req.headers?.host ?? "").replace(/:\d+$/, "").toLowerCase();
-}
-
-/**
- * The domain the portals hang from, for this request: the setting, or — on a
- * portal's own address, which is a portal by its name (`portalOfHost`) — the
- * domain that address hangs from, or else the shop's own address less `www.`
- * (`domainOfShopHost`). The shop has no `/admin` of its own any more, on the
- * owner's word, so the portals' two names are the only way in and a sign-in
- * on the shop always has somewhere to hand on to.
- */
-function portalDomainFor(req: RequestLike): string | null {
-  const host = hostOf(req);
-  return portalDomain(process.env.PORTAL_DOMAIN) ?? portalOfHost(host, null)?.domain ?? domainOfShopHost(host);
-}
 
 /* On a portal's own address only that portal's people sign in — one answer
    for every door, so whoever asks learns only which portal this is. */
@@ -394,12 +376,6 @@ const adminSignsInOnPortal = new TRPCError({ code: "FORBIDDEN", message: "auth.a
 
 const portalVendorsOnly = new TRPCError({ code: "FORBIDDEN", message: "auth.portalVendorsOnly" });
 
-/** A portal's origin as this request would reach it: the scheme and port it came in on. */
-function portalOriginFor(req: RequestLike, side: PortalSide, domain: string): string {
-  const port = /:(\d+)$/.exec(req.headers?.host ?? "")?.[1];
-  const scheme = req.protocol === "http" ? "http" : "https";
-  return `${scheme}://${side}.${domain}${port ? `:${port}` : ""}`;
-}
 
 /**
  * Where somebody signed in here goes to be signed in on their portal too: the

@@ -2267,6 +2267,45 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "order_delivery_slots_order_vendor_key" ON "order_delivery_slots" USING btree ("order_id","vendor_id");
 
+-- ===== 0086_online_payments.sql =====
+CREATE TABLE IF NOT EXISTS "order_handovers" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"order_id" integer NOT NULL,
+	"parcel_key" varchar(200) NOT NULL,
+	"scanned_by" integer,
+	"scanned_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"paid_online" boolean NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "order_payments" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"order_id" integer NOT NULL,
+	"provider" varchar(16) NOT NULL,
+	"method" varchar(16) NOT NULL,
+	"amount" numeric(12, 3) NOT NULL,
+	"status" varchar(16) DEFAULT 'started' NOT NULL,
+	"provider_ref" varchar(128),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"paid_at" timestamp with time zone,
+	CONSTRAINT "order_payments_provider_check" CHECK ("order_payments"."provider" in ('test', 'myfatoorah', 'tap')),
+	CONSTRAINT "order_payments_method_check" CHECK ("order_payments"."method" in ('knet', 'card', 'apple_pay')),
+	CONSTRAINT "order_payments_status_check" CHECK ("order_payments"."status" in ('started', 'paid', 'failed', 'refunded'))
+);
+DO $$ BEGIN
+  ALTER TABLE "order_handovers" ADD CONSTRAINT "order_handovers_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "order_handovers" ADD CONSTRAINT "order_handovers_scanned_by_users_id_fk" FOREIGN KEY ("scanned_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "order_payments" ADD CONSTRAINT "order_payments_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "order_handovers_order_idx" ON "order_handovers" USING btree ("order_id");
+CREATE INDEX IF NOT EXISTS "order_payments_order_idx" ON "order_payments" USING btree ("order_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "order_payments_one_paid_key" ON "order_payments" USING btree ("order_id") WHERE "order_payments"."status" = 'paid';
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2318,6 +2357,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  86 AS migrations_in_this_file,
+  87 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -70,6 +70,7 @@ import { giftCardPayment, settle } from "../../../Shared/commerce/vouchers.js";
 import { bundlePricing } from "./bundles.js";
 import { judgeLineCodes, releaseLineCodes } from "./lineCodes.js";
 import type { LineCodeRefusal } from "../../../Shared/commerce/lineCodes.js";
+import { refundTestPayment } from "./onlinePayments.js";
 import { claimRedemption, quoteVoucher, recordGiftCardUse, refundGiftCard, returnRedemption, spendGiftCard, stampRedemption } from "./vouchers.js";
 import { addMoney, multiplyMoney, subtractMoney, toFils } from "../../../Shared/money.js";
 import { liveOffersFor, markOffersUsed } from "./offers.js";
@@ -1727,6 +1728,9 @@ export async function closeIfNothingLeft(db: Db, orderId: number): Promise<boole
     }
     await tx.delete(discountRedemptions).where(eq(discountRedemptions.orderId, orderId));
     await tx.update(priceOffers).set({ usedOnOrderId: null }).where(eq(priceOffers.usedOnOrderId, orderId));
+    /* An order paid online on NetLet's test page and then cancelled whole:
+       the payment reads as given back. A gateway's would be refunded there. */
+    await refundTestPayment(tx as unknown as Db, orderId);
     return true;
   });
 }

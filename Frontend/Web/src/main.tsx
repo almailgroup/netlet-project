@@ -15,6 +15,7 @@ import { PORTAL_SIDE } from "@/lib/portalHost";
 import { rememberShelves, restoreShelves } from "@/lib/shelfMemory";
 import { catchEmailReturn } from "@/lib/emailReturn";
 import { catchPortalPass } from "@/lib/portalPass";
+import { catchHandoverToken } from "@/lib/handoverScan";
 import { installHistoryDepth } from "@/lib/inAppBack";
 import "./index.css";
 
@@ -156,6 +157,9 @@ loadAnalytics();
    same way, before anything else reads it (`portalPass`). */
 catchPortalPass();
 catchEmailReturn();
+/* And a shopper's QR, scanned by a driver's camera, carries its token to the
+   scan page in the fragment, taken out the same way (`handoverScan`). */
+catchHandoverToken();
 /* Every history entry from here on knows how deep into the visit it is, so a
    page's own way back can go back rather than forward (`inAppBack`). */
 installHistoryDepth();

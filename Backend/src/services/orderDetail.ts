@@ -18,6 +18,9 @@ import { returnWindowDays } from "./settings.js";
 import { claimsForShopperOrder, warrantyStateForLines } from "./warranty.js";
 import { slotsForOrders } from "./deliverySlots.js";
 import { getDb } from "./db.js";
+import { featureOn } from "./features.js";
+import { onlinePaymentsReady, paidOnlineFor } from "./onlinePayments.js";
+import { handoverFor } from "../core/handover.js";
 
 async function orderDb() {
   const db = await getDb();
@@ -62,7 +65,17 @@ export async function orderDetailForShopper(userId: number, reference: string) {
     changeAddress: addressChangeState(found.order, found.lines),
     /* Whether how it is paid may still change — the cancel window. A mockup
        until a payment provider is connected: cash is all NetLet can take. */
-    paymentChange: paymentChangeState(found.order, found.lines),
+    paymentChange: {
+      ...paymentChangeState(found.order, found.lines),
+      /* Whether pressing pays (on NetLet's test page, 0086) or is still the
+         mockup that says it is coming: the switch, and the table pasted. */
+      live: (await featureOn("testPayments")) && (await onlinePaymentsReady()),
+      /* What was paid online, so the page says it and the driver collects nothing. */
+      paidOnline: (await paidOnlineFor(await orderDb(), [found.order.id])).get(found.order.id) ?? null,
+    },
+    /* The QR the driver scans at the door, and the code under it, while a
+       parcel is on its way to it (0086). Signed, never stored. */
+    handover: found.lines.some(line => line.fulfilment === "shipped") ? handoverFor(found.order.id) : null,
     /* Each parcel as steps for "Track order", with the store's estimate. */
     steps: await orderStepsFor(found.order, found.lines),
     /* The day and time of day the shopper chose per store (0085), as frozen. */

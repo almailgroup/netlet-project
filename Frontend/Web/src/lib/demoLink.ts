@@ -481,9 +481,14 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "orders.change":
     case "orders.changeAddress":
     case "orders.buyAgain":
+    /* Nor any to pay online, or any payment to read. */
+    case "orders.paymentStart":
+    case "orders.paymentTest":
     case "warranty.file":
     case "warranty.withdraw":
       throw new Error("orders.detailMissing");
+    case "orders.paymentGet":
+      return null;
     /* Nor any warranty claim for a store to answer. */
     case "warranty.list":
       return [];
@@ -1149,6 +1154,9 @@ function resolve(path: string, rawInput: unknown): unknown {
       return 0;
     case "dispatch.claims.file":
       throw new Error("parcel.notFound");
+    /* No shopper holds a code in the demo, so nothing it is shown is one. */
+    case "dispatch.handover":
+      throw new Error("dispatch.scanUnknown");
     case "dispatch.claims.respond":
     case "dispatch.claims.decide":
       return { success: true } as const;

@@ -33,7 +33,9 @@ import { privatePageMeta } from "@shared/seo";
 import { courierMoves, type Parcel } from "@shared/commerce/parcels";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ORDER_CEILING_NOTE } from "@/lib/dispatchCeiling";
-import { BadgeCheck, CalendarDays, PackageCheck, Truck, Warehouse, Zap } from "lucide-react";
+import { BadgeCheck, CalendarDays, PackageCheck, ScanLine, Truck, Warehouse, Zap } from "lucide-react";
+import { Link } from "wouter";
+import { METHOD_NAME } from "@/components/account/OrderHandover";
 import { useSlotWords } from "@/hooks/useSlotWords";
 import { StarRow } from "@/components/product/ProductReviews";
 import { useDateFormat } from "@/hooks/useDateFormat";
@@ -68,7 +70,9 @@ function Dispatch({ actor }: { actor: Actor }) {
   const slotWords = useSlotWords();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("waiting");
 
-  const board = trpc.dispatch.board.useQuery({ state: tab });
+  /* Asked again while the board is open (0086): a shopper paying online on
+     the driver's way changes what the driver reads, without a refresh. */
+  const board = trpc.dispatch.board.useQuery({ state: tab }, { refetchInterval: 20_000, refetchOnWindowFocus: true });
   /* Only somebody who may give work out needs the list of companies, and asking
      for it as a courier is a request the server would refuse. */
   const mayAssign = can(actor, "delivery.assign");
@@ -196,7 +200,13 @@ function Dispatch({ actor }: { actor: Actor }) {
                                 parcels of one order before that, which is an
                                 instruction to collect it twice. Recording the cash
                                 stays with the seller, who reconciles with the driver. */}
-                            {parcel.paymentMethod === "cod" ? (
+                            {/* Paid online instead (0086): nothing to collect, said in green. */}
+                            {parcel.paidOnline ? (
+                              <Pill tone="good">
+                                <BadgeCheck className="size-3.5" aria-hidden />
+                                {t("dispatch.paidOnline", { method: t(METHOD_NAME[parcel.paidOnline.method]) })}
+                              </Pill>
+                            ) : parcel.paymentMethod === "cod" ? (
                               <Pill tone={parcel.paymentCollectedAt ? "good" : "warning"}>
                                 {parcel.paymentCollectedAt ? t("dispatch.cashPaid") : t("dispatch.collectCash", { amount: money({ amount: parcel.orderTotal, currencyCode: "KWD" }) })}
                               </Pill>
@@ -248,6 +258,13 @@ function Dispatch({ actor }: { actor: Actor }) {
                             ) : null}
                             {/* The same pure function the server refuses on, so the
                                 board cannot offer a step the API would reject. */}
+                            {/* On the way: the shopper's code at the door (0086). */}
+                            {parcel.state === "shipped" && can(actor, "delivery.move") ? (
+                              <Link href={`/admin/dispatch/scan?order=${parcel.orderId}`} className={smallButtonClass.secondary}>
+                                <ScanLine className="size-4" aria-hidden />
+                                {t("dispatch.scanAtDoor")}
+                              </Link>
+                            ) : null}
                             {moves.map(state => (
                               <button
                                 key={state}

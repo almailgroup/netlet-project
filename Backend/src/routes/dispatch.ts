@@ -28,6 +28,7 @@ import {
   setCourierStatus,
 } from "../services/dispatch.js";
 import { resolveActor } from "../services/inventory.js";
+import { handOver, HandoverRefused } from "../services/handovers.js";
 import {
   countOpenClaims,
   damageLedger,
@@ -150,6 +151,28 @@ export const dispatchRouter = router({
       const actor = await resolveActor(ctx.user);
       await guard(() => moveParcel(actor, input.orderId, input.key, input.to));
       return { success: true } as const;
+    }),
+
+  /**
+   * The shopper's QR scanned at the door, or its code typed (0086). Paid
+   * online, it hands the driver's parcels over at once; cash, it answers what
+   * to collect, and hands over when called again with `cashReceived`.
+   */
+  handover: protectedProcedure
+    .input(z.union([
+      z.object({ token: z.string().min(16).max(120), cashReceived: z.boolean().optional() }),
+      z.object({ orderId: rowId, code: z.string().min(1).max(40), cashReceived: z.boolean().optional() }),
+    ]))
+    .mutation(async ({ ctx, input }) => {
+      const actor = await resolveActor(ctx.user);
+      try {
+        return await guard(() => handOver(actor, input));
+      } catch (error) {
+        if (error instanceof HandoverRefused) {
+          throw new TRPCError({ code: error.reason === "dispatch.notYours" ? "FORBIDDEN" : "BAD_REQUEST", message: error.reason });
+        }
+        throw error;
+      }
     }),
 
   /**

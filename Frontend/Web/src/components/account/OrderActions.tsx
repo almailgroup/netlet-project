@@ -53,6 +53,7 @@ import { LineReturnForm, mayRequestReturn, REASON_LABEL, type Detail } from "@/c
 import { OrderModify } from "@/components/account/OrderModify";
 import { OrderAddress } from "@/components/account/OrderAddress";
 import { OrderPayment } from "@/components/account/OrderPayment";
+import { HandoverCard, PaidOnlineNote } from "@/components/account/OrderHandover";
 import { WarrantyClaims, WarrantyForm } from "@/components/account/OrderWarranty";
 import { OrderHelp } from "@/components/account/OrderHelp";
 import { useCart } from "@/contexts/CartContext";
@@ -223,6 +224,10 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
       </div>
       {whyNot ? <p className="mb-3 text-[12px] leading-5 ink-muted">{t(whyNot)}</p> : null}
 
+      {/* Paid online (0086), and the code the driver scans at the door. */}
+      <PaidOnlineNote detail={detail} />
+      <HandoverCard detail={detail} />
+
       <WarrantyClaims detail={detail} onChanged={refresh} />
 
       <div id={`${ids}-panel`} className="mb-3 empty:hidden">
@@ -239,7 +244,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
         {orderPanel?.kind === "address" && detail.changeAddress.changeable ? (
           <OrderAddress reference={reference} detail={detail} onDone={controls.done} onCancel={controls.close} />
         ) : null}
-        {orderPanel?.kind === "payment" && detail.paymentChange.open ? <OrderPayment detail={detail} onCancel={controls.close} /> : null}
+        {orderPanel?.kind === "payment" && detail.paymentChange.open ? <OrderPayment reference={reference} detail={detail} onCancel={controls.close} onMoved={refresh} /> : null}
         {orderPanel?.kind === "help" ? <OrderHelp reference={reference} items={helpItems(detail)} onAction={(action, lineId) => act(action, lineId)} onClose={controls.close} /> : null}
       </div>
 

@@ -66,6 +66,7 @@ export const FEATURE_KEYS = [
   "articles",
   "tryOn",
   "cashOnDelivery",
+  "testPayments",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -146,6 +147,11 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   /* Trying clothes on from a photo of yourself (3.1.8): the shopper's photo
      goes to Google's model, so it starts off and is a decision to switch on. */
   tryOn: { entries: ["tryOn.make"], audience: "shopper", defaultOn: false },
+  /* Paying a cash order online on NetLet's own test page (0086). No money
+     moves, yet the order then reads "paid online" and the driver collects
+     nothing — so it starts off and is for trying the flow, never for a live
+     shop, until a real gateway takes its place. */
+  testPayments: { entries: ["orders.paymentStart"], audience: "shopper", defaultOn: false },
 };
 
 export type FeatureStates = Record<FeatureKey, boolean>;
