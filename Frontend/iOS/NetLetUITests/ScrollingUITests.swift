@@ -130,6 +130,7 @@ final class ScrollingUITests: XCTestCase {
         for point in points { drag(app, x: point.dx, from: point.dy) }
         let now = frame(of: top)?.minY
         let moved = now.map { $0 < start - distance } ?? true
+        noteBounces(app, after: "three drags (\(name))")
         guard !moved else { return }
         keepScreenshot(app)
         let seen = surroundings(app, at: points)
@@ -140,6 +141,16 @@ final class ScrollingUITests: XCTestCase {
         drag(app, x: 0.5, from: 0.6)
         let later = frame(of: top).map { "top at \($0.minY)" } ?? "top gone off the screen"
         XCTFail("Three drags left the page where it was (top at \(start), now \(now ?? -1)). A fourth, five seconds later: \(later). \(seen). Trace after three drags: \(traced). After the fourth: \(trace(app)).", file: file, line: line)
+    }
+
+    /// How many times the page's height bounced back to a height it had just
+    /// left (`ScrollTrace.flips`), said in the run's notes on every run, pass
+    /// or fail — the stand-still's trace showed the home page's height
+    /// bouncing every frame, and a run that passes says whether it still does.
+    private func noteBounces(_ app: XCUIApplication, after what: String) {
+        let summary = trace(app)
+        let count = summary.hasPrefix("flips ") ? String(summary.dropFirst(6).prefix { $0.isNumber }) : "?"
+        print("TEST-NOTE height bounces after \(what): \(count)")
     }
 
     /// What the page's scroll did, by the app's own account (`ScrollTrace`):
@@ -276,6 +287,7 @@ final class ScrollingUITests: XCTestCase {
             reached = onScreen(foot)
         }
         let elsewhere = app.buttons["Back"].exists || app.sheets.count > 0 ? " — and the flicks had left the page (a Back button or a sheet is up)" : ""
+        noteBounces(app, after: "flicks to the foot (\(name))")
         XCTAssertTrue(reached, "\(flicks) flicks never reached the page's foot. Top after each: \(trace.joined(separator: " ")); foot \(frame(of: foot).map { "at \(Int($0.minY))" } ?? "not drawn")\(elsewhere).", file: file, line: line)
         flicks = 0
         while !(onScreen(top) && (frame(of: top)?.minY ?? 0) > 40) && flicks < 25 {

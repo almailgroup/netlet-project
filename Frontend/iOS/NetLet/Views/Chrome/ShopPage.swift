@@ -126,17 +126,25 @@ struct ShopPage<Content: View>: View {
                         Section {
                             PageTopMarker()
                             content()
-                            if app.assistantOn {
-                                // Room under the last row for the assistant's button —
-                                // kept while it steps aside too, so the page's height
-                                // never changes under a scroll when it does.
-                                Color.clear.frame(height: 64).accessibilityHidden(true)
-                            }
-                            PageFootMarker()
                         } header: {
                             if header { SearchRow(back: logo ? nil : back, reach: logoReaches ? 0 : statusBar, pageSearch: pageSearch) }
                         }
                     }
+                    // **Nothing small follows the page's content in the lazy
+                    // stack.** The room under the last row for the assistant's
+                    // button (kept while it steps aside too, so the page's
+                    // height never changes under a scroll when it does) and the
+                    // UI tests' foot marker were rows of their own after it, and
+                    // a lazy stack guesses the height of a row it has not made
+                    // from the rows it has — on the home page one block 2,200
+                    // points tall — so near the foot each frame it made them,
+                    // measured 65 points and dropped them again for a guess of
+                    // about 1,400: the scroll trace saw the page's height flip
+                    // between 2,452 and 3,700-odd every frame or two until the
+                    // page stood still and was put back at its top
+                    // (`ScrollingUITests`). Padding and an overlay are not rows.
+                    .padding(.bottom, app.assistantOn ? 64 : 0)
+                    .overlay(alignment: .bottom) { PageFootMarker() }
                     .modifier(ScrollContentPlace(space: ShopPageTop.space, viewport: screen.size.height, changed: follow))
                 }
                 .coordinateSpace(.named(ShopPageTop.space))

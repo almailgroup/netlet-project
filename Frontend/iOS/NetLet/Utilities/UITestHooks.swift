@@ -55,6 +55,10 @@ enum ScrollTrace {
     private static let began = Date()
     private static var lastY: CGFloat = 0
     private static var lastHeight: CGFloat = 0
+    /// The height before the last big change, and how many big changes went
+    /// straight back to it (`returnsTo`).
+    private static var levelBefore: CGFloat = 0
+    private static var flips = 0
     private static var furthest: CGFloat = 0
     /// The furthest the page has been since it last left its top, so a return
     /// that glides back in small steps is noted as well as a jump.
@@ -89,18 +93,48 @@ enum ScrollTrace {
         let away = sinceLeft
         lastY = y
         lastHeight = height
+        let big = wasHeight > 0 && abs(height - wasHeight) > Self.bigChange
+        if big {
+            if Self.returnsTo(levelBefore, height) { flips += 1 }
+            levelBefore = wasHeight
+        }
         furthest = max(furthest, y)
         if y > 1 { sinceLeft = max(sinceLeft, y) } else { sinceLeft = 0 }
         lock.unlock()
         if was <= 1, y > 1 { note("left top (h\(Int(height)) in \(Int(viewport)))") }
         if y <= 1, away > 20 { note("back at top from \(Int(away)) (last step from \(Int(was)))") }
-        if wasHeight > 0, abs(height - wasHeight) > 100 { note("height \(Int(wasHeight))→\(Int(height)) at y\(Int(y))") }
+        if big { note("height \(Int(wasHeight))→\(Int(height)) at y\(Int(y))") }
+    }
+
+    /// A change of the page's height worth noting.
+    static let bigChange: CGFloat = 100
+
+    /// A big change that lands back on the height before the last one — the
+    /// page's height bouncing between two values, which is a lazy stack
+    /// measuring a row and guessing it again, not anything arriving.
+    nonisolated static func returnsTo(_ levelBefore: CGFloat, _ height: CGFloat) -> Bool {
+        levelBefore > 0 && abs(height - levelBefore) <= 20
+    }
+
+    /// How many times `readings` bounced back, by `scrolled`'s own rule.
+    nonisolated static func flips(in readings: [CGFloat]) -> Int {
+        var count = 0
+        var level: CGFloat = 0
+        var was: CGFloat = 0
+        for height in readings {
+            if was > 0, abs(height - was) > bigChange {
+                if returnsTo(level, height) { count += 1 }
+                level = was
+            }
+            was = height
+        }
+        return count
     }
 
     static var summary: String {
         lock.lock()
         defer { lock.unlock() }
-        return "furthest \(Int(furthest)), now \(Int(lastY)); " + events.joined(separator: " · ")
+        return "flips \(flips), furthest \(Int(furthest)), now \(Int(lastY)); " + events.joined(separator: " · ")
     }
 
     /// How much of the summary one marker carries: XCTest cuts an element's

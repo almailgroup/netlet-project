@@ -10322,6 +10322,29 @@ holds the same number of lines, so nothing a lazy row forgets can move the
 page; the departments' six tiles are a plain `HStack`, made at once. This
 fits the trace and is not proven: the stand-still was never reproduced on
 demand, so only runs without it will say.
+**A run said: the held heights did not stop it** (the tenth sighting, run
+44063612974 on 785f630, the English home page). The height flipped between
+2,452 and 3,739–3,933 points every frame or two while the page slowed between
+1,171 and 1,437 points down, the main thread was held 873ms, and at the next
+drop to 2,452 the page was back at its top. **2,452 is the page's true
+height**: the demo's catalogue is four products with none on offer, so the
+failure's own read found the refurbished shelf's note just under the
+departments, with the scroll at its top. So the 1,300-odd points that came
+and went were never on the page. They match one thing that is not a shelf.
+The frame's lazy stack (`ShopPage`) had two small rows after the page's one
+2,200-point block: the 64-point room for the assistant's button, and the
+tests' foot marker. A lazy stack guesses a row it has not made from the rows
+it has. Near the foot it made them, measured 65 points, and let them go for
+that guess again, frame after frame. So **nothing small follows a page's
+content in the lazy stack now**: the room is the stack's bottom padding and
+the foot marker an overlay, neither of them a row. The room was a row in the
+shop too, wherever the assistant is on. The trace counts the bounces
+(`ScrollTrace.flips`, "flips N" at the head of its summary; `ScrollTraceTests`
+holds the rule on that run's own numbers). The drags and the flicks to the
+foot print it as a `TEST-NOTE` on every run, so a run that passes says
+whether the height still bounces. **A small row after a large one in a lazy
+stack is the shape to avoid**: it is guessed at the large one's size until
+it is reached.
 
 **A flow of chips or a price never wraps onto a line it did not count**
 (`FlowLayout`): it reports exactly its widest row's width and then placed the
