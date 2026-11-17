@@ -10885,7 +10885,8 @@ run's time** — about half a minute a screen in each language — so the job's
 limit grows with them: the push of the address screens finished 0s inside
 the old 40 minutes, and a run that times out uploads nothing, so it was 60 —
 and 75 once the after-sales sheets were added, the run before them having
-finished in 54. **A picture of the phone's home screen is a crash**, and its
+finished in 54 — then 90, and 110 once a run took 83 of them (28 minutes of
+tests, 54 of pictures). **A picture of the phone's home screen is a crash**, and its
 report is on the Mac, not in the test log: after every run the job prints
 NetLet's crash reports from `~/Library/Logs/DiagnosticReports` — the reason
 and the faulting thread with file and line — which is what named the portal

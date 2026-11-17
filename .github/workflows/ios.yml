@@ -36,8 +36,9 @@ jobs:
     # The previews are most of the run — about half a minute a screen, in two
     # languages — and grow with every screen added; the push of the address
     # screens finished 0s inside the old 40 minutes, and a run that times out
-    # uploads nothing to TestFlight.
-    timeout-minutes: 90
+    # uploads nothing to TestFlight. 785f630's took 83 of 90 (28 testing,
+    # 54 photographing), so the limit leaves room for a slower runner.
+    timeout-minutes: 110
     defaults:
       run:
         working-directory: Frontend/iOS
