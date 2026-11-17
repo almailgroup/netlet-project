@@ -359,8 +359,14 @@ private struct CartStoreCard: View {
                     }
                     .buttonStyle(.tap)
                 }
-                ForEach(Array(group.delivery.enumerated()), id: \.offset) { _, parcel in
-                    ParcelLine(parcel: parcel)
+                // The store's delivery as one row beside its truck, with a sheet
+                // to change it (0085); a bag from before draws each parcel's line.
+                if let id = group.store.id, let store = app.cart.cart?.stores?.first(where: { $0.vendorId == id }) {
+                    StoreDeliveryRow(group: group, store: store)
+                } else {
+                    ForEach(Array(group.delivery.enumerated()), id: \.offset) { _, parcel in
+                        ParcelLine(parcel: parcel)
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -518,8 +524,9 @@ struct CartLineRow: View {
                         .font(.inter(12))
                         .foregroundStyle(Brand.muted)
                 }
-                // Fast or regular (3.2.5), only where the store offers fast.
-                if let fast = item.fastDelivery {
+                // Fast or regular (3.2.5), only where the store offers fast —
+                // the store's own row chooses for all its lines now (0085).
+                if let fast = item.fastDelivery, !(app.cart.cart?.stores ?? []).contains(where: { $0.vendorId == item.vendor?.id }) {
                     SpeedChoice(item: item, fast: fast, title: title).padding(.top, 4)
                 }
                 // No more than there is of it (`BagStock`), and a line asking

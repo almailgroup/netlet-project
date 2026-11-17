@@ -4506,6 +4506,48 @@ marks it. **A member's fast trip is free too, on the owner's word** (4.1's
 choice says "free for members" while `delivery.memberFree` holds rather than a
 fee nobody pays.
 
+**Each store's delivery is one row beside its truck in the cart, and a press
+changes all of it, on the owner's word** ("display the default delivery
+address and delivery fee next to the delivery car icon for each seller …
+change the delivery type (Standard/Express), date, time, and address";
+migration 0085, approved as shown). Under each store's lines the row says
+where it goes ("To Home", "To more than one address"), Standard or Express
+with the fee or **Free delivery** in green, and when — the day chosen, "Choose
+a day and time", or the store's band — with the way to free delivery under it
+(`StoreDeliveryRow` on the web and in the app). A press opens one sheet
+(`StoreDeliverySheet`): the type (Express only where the store keeps a fast
+fee, said so otherwise), the address (the order's own or a saved one, for
+every line of that store at once), a day and a time of day. Each press goes
+through the bag's queue (`commerce.cart.setStoreDelivery`, which writes every
+line's `delivery_choice` and `address_id` and the slot in one call), so the
+fees, free delivery and the total are the server's again a moment later; a
+line's own destination button stays for one line that goes elsewhere, and the
+per-line Fast or Regular gives way to the row. **The day and time are the
+shopper's preference, said as one** ("Preferred: Tomorrow, Evening 4 – 9pm"),
+never a promise: `Shared/commerce/deliverySlots.ts` is the rule, pure —
+windows on Kuwait's clock (morning 9–12, afternoon 12–4, evening 4–9), seven
+working days from the store's own earliest (`arrivalFor` of the slowest line,
+the fast band for Express) skipping Friday and Saturday, a window today only
+while its start is ahead, and nothing at all for a store with no band, a
+made-to-order or pre-ordered line, or Express with no fast band.
+`cart_delivery_slots` keeps the bag's (one per bag and store, cascading with
+both) and `order_delivery_slots` the order's, frozen at the sale; the
+shopper's order, the store's desk (its own store's alone) and the dispatch
+board (`preferredSlot`) read it. **A day no longer offered is never moved for
+the shopper** (`slotState` "gone"): the cart and checkout say so in red, Place
+order waits (`checkout.slotGone`) and the server refuses it
+(`order.slotGone`). **Tables rather than columns, and closed until 0085 is
+pasted**: a missing table reads as no slots (`slotsReady: false`), no day or
+time is drawn, and the type and the address work as before.
+`deliverySlots.test.ts` holds both halves. Walked on a production build
+against a local Postgres at 320, 390 and 1440 in both languages: two stores'
+rows, Express reaching both of one store's lines, a day and the evening kept,
+Office reaching both lines, Escape closing, a store with no band saying it
+offers no day, checkout saying Preferred, a gone day said and refused, the
+order freezing it; axe clean, no sideways scroll. The app's demo bag carries
+`stores` written by `slotDays`, and the CI photographs the sheet
+(`103-store-delivery`, `-NetLetOpen storeDelivery:<vendor>`).
+
 **A store delivers itself or through NetLet** (3.3.13). `delivery_mode` is
 `netlet` by default — what every store did before — or `own`: with a company
 chosen (`delivery_courier_id`, one NetLet works with) the store's parcels are
@@ -8964,8 +9006,9 @@ photo zoom's words for a mouse in both languages and the second-click hook —
 then 1,093 KB (315 KB), the product views' words in both languages (the
 portal's page and the editor's card share them, and the dictionary is one
 module) — then 1,107 KB (319 KB), the refurbished section's and the
-photo squaring's words in both languages — and is 1,109 KB (319 KB) now, the
-product page's total for the quantity and its words —
+photo squaring's words in both languages — then 1,109 KB (319 KB), the
+product page's total for the quantity and its words — and is 1,114 KB
+(320 KB) now, each store's delivery row and sheet and their words —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

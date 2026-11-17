@@ -163,6 +163,45 @@ enum API {
 
     static let setLineDeliveryChoice = Procedure<LineDeliveryChoice, Cart?>(mutation: "commerce.cart.setDeliveryChoice")
 
+    /// What one press on a store's delivery changes (migration 0085). Each part
+    /// is sent only when set, so the sheet sends what was pressed; an address
+    /// of nil means the order's own, and a slot of nil no preference — both
+    /// sent as an explicit null, which the server reads as "clear it".
+    struct StoreDeliveryChange: Sendable, Hashable {
+        enum Door: Sendable, Hashable { case order, saved(Int) }
+        var choice: String? = nil
+        var door: Door? = nil
+        /// A day and window, or `.some(nil)` for no preference.
+        var slot: DeliverySlot?? = nil
+    }
+
+    struct StoreDeliveryInput: Encodable, Sendable {
+        let cartId: String
+        let vendorId: Int
+        let change: StoreDeliveryChange
+        var skip: [String]? = nil
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(cartId, forKey: .cartId)
+            try container.encode(vendorId, forKey: .vendorId)
+            try container.encodeIfPresent(change.choice, forKey: .choice)
+            switch change.door {
+            case .order: try container.encodeNil(forKey: .addressId)
+            case let .saved(id): try container.encode(id, forKey: .addressId)
+            case nil: break
+            }
+            if let slot = change.slot {
+                if let slot { try container.encode(slot, forKey: .slot) } else { try container.encodeNil(forKey: .slot) }
+            }
+            try container.encodeIfPresent(skip, forKey: .skip)
+        }
+
+        private enum CodingKeys: String, CodingKey { case cartId, vendorId, choice, addressId, slot, skip }
+    }
+
+    static let setStoreDelivery = Procedure<StoreDeliveryInput, Cart?>(mutation: "commerce.cart.setStoreDelivery")
+
     /// A store's or a product's discount code on one line (migration 0074).
     struct LineCodeInput: Encodable, Sendable {
         let cartId: String

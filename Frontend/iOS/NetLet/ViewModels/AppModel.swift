@@ -326,6 +326,9 @@ final class AppModel {
     /// `-NetLetOpen confirmOrder` (Debug, for the screenshots): checkout with
     /// "Confirm your order" up, once the bag and the address are read.
     var confirmOrderOnOpen = false
+    /// `-NetLetOpen storeDelivery:<vendor id>` (Debug, for the screenshots):
+    /// the cart with that store's delivery sheet up (0085).
+    var storeDeliveryOnOpen: Int?
     private(set) var memberCode: String?
     /// Whether this account has joined the affiliate programme, a suspended
     /// member included — what decides whether "Join" is offered. Nil until
@@ -543,6 +546,9 @@ final class AppModel {
             selectedTab = .cart
             confirmOrderOnOpen = true
             cartPath = NavigationPath([Route.checkout])
+        case "storeDelivery":
+            selectedTab = .cart
+            storeDeliveryOnOpen = value.flatMap(Int.init)
         case "orderPlaced":
             selectedTab = .cart
             cartPath = NavigationPath([Route.orderPlaced(reference: value ?? "NL-20261103-QRTVW")])

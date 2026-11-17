@@ -568,6 +568,27 @@ struct OrderDetailView: View {
     private func lines(_ detail: OrderDetail, reload: @escaping () async -> Void) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(OrderWording.date(detail.order.placedAt, language: l.current)).font(.footnote).foregroundStyle(Brand.muted)
+            if !detail.deliverySlots.isEmpty {
+                // The day and time asked of each store, said as the shopper's own.
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(detail.deliverySlots.enumerated()), id: \.offset) { _, asked in
+                        let vendor = detail.lines.first { $0.vendorId != nil && $0.vendorId == asked.vendorId }?.vendorName
+                        let when = l.t("storeDelivery.preferred", ["slot": SlotWords.slot(asked.slot, l)])
+                        Label {
+                            Text(vendor.map { l.t("delivery.parcelFrom", ["vendor": "\u{2068}\($0)\u{2069}"]) + " · " + when } ?? when)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: "calendar").foregroundStyle(Brand.navy)
+                        }
+                        .font(.inter(13, .semibold))
+                        .foregroundStyle(Brand.body)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(red: 247 / 255, green: 249 / 255, blue: 252 / 255)))
+            }
             ForEach(detail.lines) { line in
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 12) {

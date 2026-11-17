@@ -100,7 +100,83 @@
         "codeDiscount": {
           "amount": "0.950",
           "currencyCode": "KWD"
-        }
+        },
+        "stores": [
+          {
+            "vendorId": 4,
+            "choice": "regular",
+            "fast": null,
+            "standard": {
+              "fee": {
+                "amount": "0.750",
+                "currencyCode": "KWD"
+              },
+              "freeOver": null
+            },
+            "addressId": null,
+            "days": [
+              {
+                "date": "2026-11-18",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-19",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-22",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-23",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-24",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-25",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              },
+              {
+                "date": "2026-11-26",
+                "windows": [
+                  "morning",
+                  "afternoon",
+                  "evening"
+                ]
+              }
+            ],
+            "slot": null,
+            "slotState": "unset"
+          }
+        ],
+        "slotsReady": true
       }
     }
   }

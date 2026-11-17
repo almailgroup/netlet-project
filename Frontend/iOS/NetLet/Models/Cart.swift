@@ -22,6 +22,11 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
     /// What the lines' own codes take off together (0074); nil when none does.
     /// `subtotal` is before them and `total` after them.
     var codeDiscount: Money? = nil
+    /// Each store's delivery as the shopper chose it (migration 0085); nil
+    /// from a bag read before it existed, which draws each parcel as before.
+    var stores: [CartStoreDelivery]? = nil
+    /// Whether a day and time can be chosen: false until 0085 is pasted.
+    var slotsReady: Bool? = nil
     /// The units chosen for this checkout (`CartChoice`): the subtotal, the
     /// delivery, the cash rule and the total are of these alone. Nil from a
     /// bag read before the choice existed, which is all chosen.
@@ -187,6 +192,67 @@ struct BagGroup: Identifiable, Hashable, Sendable {
         let threshold = goods.fils + toFree.fils
         guard threshold > 0 else { return nil }
         return min(1, max(0, Double(goods.fils) / Double(threshold)))
+    }
+}
+
+/// A day and a time of day the shopper would like a store's parcel
+/// (migration 0085): "morning", "afternoon" or "evening" on Kuwait's clock.
+struct DeliverySlot: Codable, Hashable, Sendable {
+    let date: String
+    let window: String
+}
+
+/// One store's delivery in the bag, for the row beside its car (migration
+/// 0085, `CartStoreDelivery` on the web). Every figure is the server's.
+struct CartStoreDelivery: Decodable, Hashable, Sendable {
+    struct Fast: Decodable, Hashable, Sendable {
+        let fee: Money
+        let speed: String?
+    }
+    struct Standard: Decodable, Hashable, Sendable {
+        let fee: Money?
+        let freeOver: Money?
+    }
+    struct Day: Decodable, Hashable, Sendable {
+        let date: String
+        let windows: [String]
+    }
+    /// The door: the order's own, a saved address, or more than one.
+    enum Door: Hashable, Sendable { case order, saved(Int), mixed }
+
+    let vendorId: Int
+    /// "regular", "fast" or "mixed" (lines chosen one by one before differ).
+    let choice: String
+    let fast: Fast?
+    let standard: Standard
+    let door: Door
+    let days: [Day]
+    let slot: DeliverySlot?
+    /// "unset", "kept" or "gone" — a gone day is said, and checkout waits.
+    let slotState: String
+
+    var isFast: Bool { choice == "fast" }
+    var slotGone: Bool { slotState == "gone" }
+
+    private enum CodingKeys: String, CodingKey { case vendorId, choice, fast, standard, addressId, days, slot, slotState }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        vendorId = try c.decode(Int.self, forKey: .vendorId)
+        choice = try c.decode(String.self, forKey: .choice)
+        fast = try c.decodeIfPresent(Fast.self, forKey: .fast)
+        standard = try c.decodeIfPresent(Standard.self, forKey: .standard) ?? Standard(fee: nil, freeOver: nil)
+        // A number is a saved address, "mixed" is more than one, and null the order's own.
+        if let id = try? c.decode(Int.self, forKey: .addressId) {
+            door = .saved(id)
+        } else if (try? c.decode(String.self, forKey: .addressId)) == "mixed" {
+            door = .mixed
+        } else {
+            door = .order
+        }
+        days = try c.decodeIfPresent([Day].self, forKey: .days) ?? []
+        slot = try c.decodeIfPresent(DeliverySlot.self, forKey: .slot)
+        slotState = try c.decodeIfPresent(String.self, forKey: .slotState) ?? "unset"
     }
 }
 

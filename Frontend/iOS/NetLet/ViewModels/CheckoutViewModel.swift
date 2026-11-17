@@ -84,6 +84,11 @@ final class CheckoutViewModel {
         if !BagStock.shortLines(cart.items).isEmpty { return "checkout.needFewer" }
         // A product's own code that no longer applies is removed first (0074).
         if cart.items.contains(where: { $0.codeProblem != nil }) { return "checkout.codeProblem" }
+        // A delivery day a store no longer offers is chosen again in the cart
+        // (0085) — only for a store whose lines are going in this order.
+        if let stores = cart.stores, stores.contains(where: { store in
+            store.slotGone && cart.items.contains { $0.vendor?.id == store.vendorId }
+        }) { return "checkout.slotGone" }
         if !cart.cod.available { return "checkout.needCod" }
         guard let address else { return "checkout.needAddressChoice" }
         return Validation.savedAddressProblem(address, phone: phone(for: address), requiredParts: reference.requiredParts)

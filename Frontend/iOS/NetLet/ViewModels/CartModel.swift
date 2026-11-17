@@ -34,6 +34,8 @@ final class CartModel {
         case remove(lineId: String)
         case destination(lineId: String, addressId: Int?)
         case speed(lineId: String, fast: Bool)
+        /// One store's delivery at once (0085): the trip, the door, the day.
+        case store(vendorId: Int, change: API.StoreDeliveryChange)
         /// A product's own discount code on a line (0074), or nil to take it off.
         case code(lineId: String, code: String?)
         /// The lines chosen for checkout changed: the bag is read again with them.
@@ -53,7 +55,7 @@ final class CartModel {
                 return [.set(lineId: lineId, quantity: quantity)]
             case let .remove(lineId):
                 return [.remove(lineId: lineId)]
-            case .destination, .speed, .code, .choose, .refresh:
+            case .destination, .speed, .store, .code, .choose, .refresh:
                 return []
             }
         }
@@ -91,6 +93,8 @@ final class CartModel {
     private(set) var skip: [String] = []
     /// Why the last line code did not fit, handed back by `setLineCode`.
     private var codeRefusal: String?
+    /// Why the last store delivery change was refused, handed back by `setStoreDelivery`.
+    private var storeRefusal: String?
     /// Presses drawn and not yet answered, oldest first.
     private var waiting: [Entry] = []
     @ObservationIgnored private var waiters: [Int: [CheckedContinuation<Bool, Never>]] = [:]
@@ -207,6 +211,19 @@ final class CartModel {
     func setDeliveryChoice(lineId: String, fast: Bool) async -> Bool {
         guard cartId != nil else { return false }
         return await enqueue(.speed(lineId: lineId, fast: fast))
+    }
+
+    /// One store's delivery at once (migration 0085) — Standard or Express for
+    /// every one of its lines, one door for all of them, a day and a time of
+    /// day — the web's `setStoreDelivery`. Nil when it took; otherwise why not,
+    /// as a message key the sheet says.
+    func setStoreDelivery(vendorId: Int, _ change: API.StoreDeliveryChange) async -> String? {
+        guard cartId != nil else { return "delivery.noStore" }
+        storeRefusal = nil
+        let took = await enqueue(.store(vendorId: vendorId, change: change))
+        defer { storeRefusal = nil }
+        if took { return nil }
+        return storeRefusal ?? "cart.updateFailed"
     }
 
     /// Puts a store's or a product's discount code on one line (migration
@@ -385,6 +402,16 @@ final class CartModel {
         case let .speed(lineId, fast):
             guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return false }
             if let found = try await service.setDeliveryChoice(id, lineId: line, choice: fast ? "fast" : "regular", skip: skip) { keep(found) }
+            return true
+        case let .store(vendorId, change):
+            guard let id = cartId else { return false }
+            do {
+                if let found = try await service.setStoreDelivery(id, vendorId: vendorId, change: change, skip: skip) { keep(found) }
+            } catch {
+                // The server's refusal is a message key the sheet says in words.
+                if let message = APIError.from(error).serverMessage { storeRefusal = message }
+                throw error
+            }
             return true
         case let .code(lineId, code):
             guard let id = cartId, let line = BagOps.realLineId(confirmed, lineId) else { return false }

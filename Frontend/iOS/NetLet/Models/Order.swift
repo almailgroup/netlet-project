@@ -105,8 +105,11 @@ struct OrderDetail: Decodable, Sendable {
     let owedNow: Money?
     /// Warranty claims on its lines, newest first, with where each stands.
     let warranty: [WarrantyClaim]
+    /// The day and time the shopper asked of each store (migration 0085),
+    /// frozen with the order; empty from an older server or an order with none.
+    let deliverySlots: [OrderDeliverySlot]
 
-    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, paymentChange, owedNow, warranty }
+    private enum CodingKeys: String, CodingKey { case order, lines, windowDays, parcels, returns, documents, cancel, steps, change, changeAddress, paymentChange, owedNow, warranty, deliverySlots }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -123,6 +126,7 @@ struct OrderDetail: Decodable, Sendable {
         paymentChange = try container.decodeIfPresent(PaymentChangeState.self, forKey: .paymentChange) ?? .closed
         owedNow = try container.decodeIfPresent(Money.self, forKey: .owedNow)
         warranty = try container.decodeIfPresent([WarrantyClaim].self, forKey: .warranty) ?? []
+        deliverySlots = try container.decodeIfPresent([OrderDeliverySlot].self, forKey: .deliverySlots) ?? []
     }
 
     /// The lines that may be sent back for a refund now.
@@ -215,11 +219,22 @@ struct OrderRecord: Decodable, Hashable, Sendable {
 }
 
 /// A line as it was sold: every figure was frozen at the moment of sale.
+/// A store's preferred day and time on an order (`order_delivery_slots`).
+struct OrderDeliverySlot: Decodable, Hashable, Sendable {
+    let vendorId: Int?
+    let date: String
+    let window: String
+
+    var slot: DeliverySlot { DeliverySlot(date: date, window: window) }
+}
+
 struct OrderLine: Decodable, Identifiable, Hashable, Sendable {
     let id: Int
     let productTitle: String
     let variantTitle: String
     let vendorName: String?
+    /// The store it came from, which a delivery day names (0085).
+    var vendorId: Int? = nil
     let unitPrice: Money
     let quantity: Int
     let lineTotal: Money

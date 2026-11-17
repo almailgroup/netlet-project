@@ -2036,3 +2036,75 @@ final class CuratedOccasionTests: XCTestCase {
         XCTAssertEqual(OccasionRules.limits.maxProducts, 60)
     }
 }
+
+/// Each store's delivery in the bag (migration 0085): what the row beside the
+/// car reads, what a change sends, and the words for a day and a window.
+final class StoreDeliveryTests: XCTestCase {
+    func testTheRecordedBagSaysEachStoresDelivery() async throws {
+        let cart = try await Fixtures.cart()
+        let stores = try XCTUnwrap(cart.stores, "the bag says each store's delivery")
+        XCTAssertEqual(cart.slotsReady, true)
+        // One store per store with a line in the bag, named as its lines name it.
+        let ids = Set(cart.items.compactMap { $0.vendor?.id })
+        XCTAssertEqual(Set(stores.map(\.vendorId)), ids)
+        let grocer = try XCTUnwrap(stores.first)
+        XCTAssertEqual(grocer.choice, "regular")
+        XCTAssertFalse(grocer.isFast)
+        XCTAssertNil(grocer.fast, "Gulf Grocers offers no Express")
+        XCTAssertEqual(grocer.door, .order)
+        XCTAssertEqual(grocer.days.count, 7, "seven working days from the store's earliest")
+        XCTAssertTrue(grocer.days.allSatisfy { !$0.windows.isEmpty })
+        XCTAssertNil(grocer.slot)
+        XCTAssertFalse(grocer.slotGone)
+        // The standard fee is the parcel's own.
+        XCTAssertEqual(grocer.standard.fee?.fils, cart.delivery.perVendor.first { $0.vendorId == grocer.vendorId }?.fee.fils)
+    }
+
+    func testTheDoorIsTheOrdersASavedAddressOrSeveral() throws {
+        func door(_ value: String) throws -> CartStoreDelivery.Door {
+            let json = #"{"vendorId":2,"choice":"mixed","fast":{"fee":{"amount":"3.000","currencyCode":"KWD"},"speed":"same_day"},"standard":{"fee":null,"freeOver":null},"addressId":"# + value + #","days":[],"slot":{"date":"2020-01-05","window":"evening"},"slotState":"gone"}"#
+            return try JSONDecoder().decode(CartStoreDelivery.self, from: Data(json.utf8)).door
+        }
+        XCTAssertEqual(try door("null"), .order)
+        XCTAssertEqual(try door("12"), .saved(12))
+        XCTAssertEqual(try door(#""mixed""#), .mixed)
+        let gone = try JSONDecoder().decode(CartStoreDelivery.self, from: Data(#"{"vendorId":2,"choice":"fast","standard":{"fee":null,"freeOver":null},"addressId":null,"slot":{"date":"2020-01-05","window":"evening"},"slotState":"gone"}"#.utf8))
+        XCTAssertTrue(gone.isFast)
+        XCTAssertTrue(gone.slotGone)
+        XCTAssertEqual(gone.slot, DeliverySlot(date: "2020-01-05", window: "evening"))
+        XCTAssertEqual(gone.days, [], "a store answering no days offers none")
+    }
+
+    func testAChangeSendsOnlyWhatChanged() throws {
+        func sent(_ change: API.StoreDeliveryChange) throws -> [String: Any] {
+            let data = try JSONEncoder().encode(API.StoreDeliveryInput(cartId: "c", vendorId: 2, change: change))
+            return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        }
+        let express = try sent(.init(choice: "fast"))
+        XCTAssertEqual(express["choice"] as? String, "fast")
+        XCTAssertNil(express["addressId"], "the door is left alone")
+        XCTAssertNil(express["slot"], "the day is left alone")
+        // The order's own door and no preferred day are both a null, sent.
+        let cleared = try sent(.init(door: .order, slot: .some(nil)))
+        XCTAssertTrue(cleared["addressId"] is NSNull)
+        XCTAssertTrue(cleared["slot"] is NSNull)
+        let chosen = try sent(.init(door: .saved(7), slot: DeliverySlot(date: "2026-11-18", window: "evening")))
+        XCTAssertEqual(chosen["addressId"] as? Int, 7)
+        XCTAssertEqual((chosen["slot"] as? [String: String])?["window"], "evening")
+    }
+
+    @MainActor
+    func testADayIsTodayTomorrowOrItsDateAndAWindowItsHours() {
+        let english = LanguageSettings(defaults: UserDefaults(suiteName: "StoreDeliveryTests-en")!)
+        english.set(.en)
+        let now = Date()
+        XCTAssertEqual(SlotWords.day(StoreRules.kuwaitDay(now), english, now: now), "Today")
+        XCTAssertEqual(SlotWords.day(StoreRules.kuwaitDay(now.addingTimeInterval(86_400)), english, now: now), "Tomorrow")
+        let later = SlotWords.day("2030-03-05", english, now: now)
+        XCTAssertNotEqual(later, "2030-03-05", "a later day is said as a date")
+        let line = SlotWords.slot(DeliverySlot(date: StoreRules.kuwaitDay(now), window: "evening"), english)
+        XCTAssertTrue(line.hasPrefix("Today"), line)
+        XCTAssertTrue(line.contains("Evening"), line)
+        XCTAssertTrue(line.contains("4 – 9pm"), line)
+    }
+}

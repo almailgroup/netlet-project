@@ -269,7 +269,7 @@ private struct CheckoutForm: View {
             return
         case "checkout.needPhone", "checkout.badPhone":
             if model.asksPhone(for: address) { phoneFocused = true } else { app.deliveryOpen = true }
-        case "checkout.needFewer":
+        case "checkout.needFewer", "checkout.slotGone":
             editCart()
         default:
             app.deliveryOpen = true
@@ -395,6 +395,12 @@ private struct StoreParcel: View {
                 ForEach(Array(group.delivery.enumerated()), id: \.offset) { _, row in
                     deliveryRow(row)
                 }
+                if let id = group.store.id, app.cart.cart?.stores?.first(where: { $0.vendorId == id })?.slotGone == true {
+                    Label(l.t("storeDelivery.slotGone"), systemImage: "exclamationmark.circle")
+                        .font(.inter(13, .bold))
+                        .foregroundStyle(Brand.danger)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -412,7 +418,11 @@ private struct StoreParcel: View {
         let fast = row.choice == "fast"
         let lines = group.items.filter { $0.isFast == fast }
         let speed = DeliveryLine.slowest(lines.map { fast ? $0.fastDelivery?.speed : $0.deliverySpeed })
-        let when = DeliveryLine.arrival(speed, language: l)
+        // The day and time the shopper chose for this store (0085) stand in
+        // for the band, said as theirs; a day no longer offered is said in red.
+        let store = group.store.id.flatMap { id in app.cart.cart?.stores?.first { $0.vendorId == id } }
+        let preferred = store?.slotGone == false ? store?.slot.map { l.t("storeDelivery.preferred", ["slot": SlotWords.slot($0, l)]) } : nil
+        let when = preferred ?? DeliveryLine.arrival(speed, language: l)
         let door = row.destinationLabel.map { l.t("address.sendingTo", ["label": $0]) + " · " } ?? ""
         let what = l.t(fast ? "delivery.fastTag" : "cart.delivery")
         let free = row.free || row.fee.isZero
