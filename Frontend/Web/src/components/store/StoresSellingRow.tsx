@@ -16,8 +16,33 @@ import { useTranslation } from "@/hooks/useTranslation";
 
 export type SellingStoreData = StoreCardData & { matching: number };
 
-export function StoresSellingRow({ stores, hrefFor }: { stores: SellingStoreData[]; hrefFor: (slug: string) => string }) {
+/**
+ * While the stores are being asked (`pending`) the row is drawn as outlines of
+ * its own height: it arrives with the search's answer, and drawn only then it
+ * pushed the whole results grid 209px down a moment after the page had drawn
+ * it — measured as a layout shift of 0.09 on a wide screen, nearly the 0.1
+ * that counts as poor. A page that finds products has a store selling them,
+ * so the outlines are nearly always replaced by the row they stand for.
+ */
+export function StoresSellingRow({ stores, hrefFor, pending = false }: { stores: SellingStoreData[]; hrefFor: (slug: string) => string; pending?: boolean }) {
   const { t } = useTranslation();
+  if (pending && !stores.length) {
+    return (
+      <div aria-hidden className="mb-5 mt-2">
+        <p className="mb-3 text-[19px] font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-xl">{t("browse.shopByStore")}</p>
+        <div className="-mx-4 flex gap-3 overflow-hidden px-4 pb-1 sm:mx-0 sm:gap-4 sm:px-0">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="flex w-[84px] shrink-0 flex-col items-center gap-2 sm:w-[104px]">
+              <span className="size-[84px] animate-pulse rounded-full bg-[#f1f3f6] sm:size-[104px]" />
+              <span className="flex min-h-[2.5em] w-full items-start justify-center text-[13px] leading-tight">
+                <span className="mt-[.2em] h-[.8em] w-3/4 animate-pulse rounded-full bg-[#f1f3f6]" />
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (!stores.length) return null;
   const count = (matching: number) => (matching === 1 ? t("browse.countOne") : t("browse.countMany", { count: matching }));
   return (
@@ -40,7 +65,7 @@ export function StoresSellingRow({ stores, hrefFor }: { stores: SellingStoreData
                   icon={<span aria-hidden className="text-[30px] font-extrabold sm:text-[36px]">{Array.from(store.name.trim())[0]?.toLocaleUpperCase() ?? "·"}</span>}
                 />
               </span>
-              <bdi dir="auto" aria-hidden className="line-clamp-2 w-full text-[13px] font-semibold leading-tight text-[#0a285a]">{store.name}</bdi>
+              <bdi dir="auto" aria-hidden className="line-clamp-2 min-h-[2.5em] w-full text-[13px] font-semibold leading-tight text-[#0a285a]">{store.name}</bdi>
             </Link>
           </li>
         ))}

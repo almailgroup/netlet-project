@@ -8,7 +8,11 @@ import type { SideScroll } from "@/hooks/useSideScroll";
 
 export function ScrollArrows({ scroll, previousLabel, nextLabel }: { scroll: Pick<SideScroll, "edges" | "scrollBy">; previousLabel: string; nextLabel: string }) {
   const { edges, scrollBy } = scroll;
-  if (!edges.back && !edges.forward) return null;
+  /* Their height is kept while they are not drawn: they appear once the row
+     has been measured, a frame or two after the page, and a 36px pair in a
+     32px heading row moved everything under every shelf 4px down as it did
+     (measured as the home page's one layout shift on a wide screen). */
+  if (!edges.back && !edges.forward) return <div aria-hidden className="hidden h-9 sm:block" />;
   const arrowClass = "glass pressable grid size-9 place-items-center rounded-full text-[#0a285a] disabled:opacity-35";
   return (
     <div className="hidden items-center gap-2 sm:flex">

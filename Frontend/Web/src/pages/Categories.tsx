@@ -77,8 +77,16 @@ export default function Categories() {
   /* The department folding away, drawn until its fold has run. */
   const [closing, setClosing] = useState<string | null>(null);
   const shown = opened ?? DEPARTMENTS.find(department => department.slug === closing) ?? null;
+  /*
+   * The department the page arrived with open (a home tile, a shared link) is
+   * drawn open rather than unfolding: nobody pressed anything here yet, and
+   * the unfold pushed every tile under it down over its 300ms — measured as a
+   * layout shift of 0.05 on a wide screen. Any press after that unfolds.
+   */
+  const [arrivedOpen, setArrivedOpen] = useState(() => opened?.slug ?? null);
 
   const toggle = (slug: string) => {
+    setArrivedOpen(null);
     if (opened?.slug === slug) {
       setClosing(slug);
       navigate("/categories", { replace: true });
@@ -135,7 +143,7 @@ export default function Categories() {
               </li>,
               index === listAfter && shown ? (
                 <li key={`list-${shown.slug}`} className="col-span-full -mt-1 min-w-0">
-                  <Unfold open={Boolean(opened)} onGone={() => setClosing(null)}>
+                  <Unfold open={Boolean(opened)} instant={shown.slug === arrivedOpen} onGone={() => setClosing(null)}>
                     <SubcategoryList department={shown} pictures={pictures.data} />
                   </Unfold>
                 </li>
@@ -187,8 +195,8 @@ function TileName({ children }: { children: ReactNode }) {
  * A list unfolding to its content's height and folding back — a grid row
  * from nothing to the whole of it (`.cat-unfold`) — then leaving the page.
  */
-function Unfold({ open, onGone, children }: { open: boolean; onGone?: () => void; children: ReactNode }) {
-  const [unfolded, setUnfolded] = useState(false);
+function Unfold({ open, instant = false, onGone, children }: { open: boolean; instant?: boolean; onGone?: () => void; children: ReactNode }) {
+  const [unfolded, setUnfolded] = useState(() => open && instant);
   const gone = useRef(onGone);
   gone.current = onGone;
   useEffect(() => {

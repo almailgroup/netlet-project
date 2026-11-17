@@ -99,7 +99,20 @@ export function AccountMenu() {
    * name, so the bar shifted under the cursor and a signed-in shopper was told,
    * briefly, that they were not.
    */
-  if (loading) return <span aria-hidden className="block h-11 w-[104px] shrink-0 rounded-xl bg-[#0a285a]/[.05]" />;
+  /* The block is the signed-out control drawn unseen, so it is exactly that
+     control's width in either language: a fixed 104px was "Sign in" in
+     English and 32px short of "تسجيل الدخول", which pushed the area, Saved and
+     the language across the bar the moment the session answered. */
+  if (loading) {
+    return (
+      <span aria-hidden className={`${plain} pointer-events-none bg-[#0a285a]/[.05]`}>
+        <span className="invisible flex items-center gap-2">
+          <UserRound className="size-[19px] shrink-0" />
+          <span className="hidden lg:inline">{t("header.signIn")}</span>
+        </span>
+      </span>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

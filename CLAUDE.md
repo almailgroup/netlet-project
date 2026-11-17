@@ -8842,6 +8842,24 @@ shift, console errors — found four things no screenshot showed, now fixed:
   sideways as it flipped — 0.77 on the Arabic home page at 1440. It is a layout
   effect now (`CustomerContext`), which lands before the paint. After both:
   every route under 0.1, nearly all at 0.
+- **Four more on a wide screen, each found by reading the shift's own
+  sources** (a `layout-shift` observer's `previousRect` and `currentRect`,
+  1440, fonts blocked so the fallback cannot hide one):
+  - "Shop by store" arrived with the search's answer and pushed a results
+    page's whole grid 209px down — 0.09. While the stores are asked the row
+    is outlines of its own height (`StoresSellingRow`'s `pending`), and a
+    store's name keeps room for two lines, so a one-line name and a two-line
+    one make the same row.
+  - A department opened by the address (`/categories?dept=`, a home tile, a
+    shared link) unfolded over 300ms and pushed every tile under it down —
+    0.05. It is drawn open (`Unfold`'s `instant`); a press still unfolds.
+  - The account control's placeholder while the session loads was a fixed
+    block narrower than "Sign in", so the bar moved when it arrived; it is the
+    signed-out control drawn invisible now. The header logo carries its
+    `width` and `height`, and a shelf's arrows leave a 36px placeholder when
+    nothing is off an end, or the heading row grew 4px when they came.
+  After them, every shopping route is 0.003 or under at 1440 and 0 at 390, in
+  both languages (`.scratch/cls-probe.mjs`, `W=390` for the phone).
 - **A field under 16px zooms an iPhone in**, and leaves it zoomed. The header's
   search, every box at checkout, the address form and the voucher box were 13
   to 15px. Under a coarse pointer every text field is 16px (`index.css`,

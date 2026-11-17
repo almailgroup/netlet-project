@@ -225,7 +225,7 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
   const phoneTop = (
     <div className="container flex h-[58px] items-center justify-between gap-3 lg:hidden">
       <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
-        <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-10 w-auto max-w-[100px] object-contain min-[360px]:max-w-[130px]" />
+        <img src={logoImage} alt="NetLet" width={480} height={214} loading="eager" decoding="async" className="h-10 w-auto max-w-[100px] object-contain min-[360px]:max-w-[130px]" />
       </Link>
       <div className="-me-2 flex min-w-0 items-center">
         <button
@@ -319,7 +319,7 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
         {/* Wide: logo, a field that takes the room, then the controls. */}
         <div className="container hidden h-[76px] items-center gap-5 lg:flex">
           <Link href="/" onClick={toTopOnHome} className="flex shrink-0 items-center" aria-label={t("header.home")}>
-            <img src={logoImage} alt="NetLet" loading="eager" decoding="async" className="h-12 w-auto max-w-[156px] object-contain" />
+            <img src={logoImage} alt="NetLet" width={480} height={214} loading="eager" decoding="async" className="h-12 w-auto max-w-[156px] object-contain" />
           </Link>
           <div className="min-w-0 flex-1">{field}</div>
           {/* Where it goes, then saved, language, account, cart — the order

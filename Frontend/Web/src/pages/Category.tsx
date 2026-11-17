@@ -611,7 +611,7 @@ export default function Category() {
 
         {/* Then the stores that sell it, as the owner's picture draws a shop's
             brands: after the filters, over the products. */}
-        <StoresSellingRow stores={sellingStores} hrefFor={storeHref} />
+        <StoresSellingRow stores={sellingStores} hrefFor={storeHref} pending={searching ? answer.isLoading : asksStores && subStores.isLoading} />
 
         <div className="grid gap-6 lg:grid-cols-[248px_minmax(0,1fr)] lg:gap-7">
           {/* Sticky so the filters stay reachable through a long grid, and
