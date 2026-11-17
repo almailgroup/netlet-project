@@ -49,6 +49,7 @@ import { AlertTriangle, Check, Gift, Lock, RotateCw, Search, ShoppingBag } from 
 import { useId, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
+import { failedToLoad } from "@/lib/queryState";
 
 export default function GiftList() {
   const { t } = useTranslation();
@@ -80,7 +81,7 @@ function ByToken({ token }: { token: string }) {
   return (
     <>
       {list.isLoading ? <ListSkeleton />
-        : list.isError ? <LoadFailed onRetry={() => void list.refetch()} />
+        : failedToLoad(list) ? <LoadFailed onRetry={() => void list.refetch()} />
         : list.data ? <ListCard list={list.data} onChanged={() => void list.refetch()} />
         : <NotFound byLink />}
       <Link
@@ -185,7 +186,7 @@ function Lookup() {
         : found.isLoading ? <ListSkeleton />
         : refusal ? (
           <p role="alert" className="mt-6 rounded-2xl bg-[#fdeceb] p-4 text-sm text-[#8c2f22]">{t(refusal)}</p>
-        ) : found.isError ? <LoadFailed onRetry={() => void found.refetch()} />
+        ) : failedToLoad(found) ? <LoadFailed onRetry={() => void found.refetch()} />
         : found.data?.length === 0 ? <NotFound />
         : (found.data ?? []).map(list => (
           <ListCard key={list.token} list={list} onChanged={() => void found.refetch()} />
@@ -279,7 +280,7 @@ function ListCard({ list, onChanged }: { list: PublicList; onChanged: () => void
 
       {list.items.length === 0 ? (
         <p className="mt-5 text-sm ink-muted">{t("gift.emptyList")}</p>
-      ) : products.query.isError ? (
+      ) : failedToLoad(products.query) ? (
         <LoadFailed onRetry={() => void products.query.refetch()} />
       ) : (
         <ul className="mt-5 space-y-3">

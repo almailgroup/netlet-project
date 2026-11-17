@@ -49,7 +49,7 @@ import { privatePageMeta } from "@shared/seo";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import type { AuthMode } from "@/components/auth/AuthForm";
 import { DEMO_MODE } from "@/lib/demoMode";
-import { PageBody, TITLE } from "@/components/layout/Page";
+import { BUTTON_PRIMARY, EmptyState, PageBody, TITLE } from "@/components/layout/Page";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { useEffect, useState } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -57,7 +57,7 @@ import { useFeature } from "@/hooks/useFeature";
 import { useAccountSignals } from "@/hooks/useAccountSignals";
 import { trpc } from "@/lib/trpc";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ArrowLeft, LogOut } from "lucide-react";
+import { ArrowLeft, LogOut, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Link, useLocation, useRoute } from "wouter";
 import { cameFrom, goBack } from "@/lib/inAppBack";
@@ -137,7 +137,7 @@ export default function Account() {
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const { t } = useTranslation();
-  const { user, loading, isAuthenticated, logout } = useAuth();
+  const { user, loading, isAuthenticated, unknown, logout, refresh } = useAuth();
   const [, navigate] = useLocation();
   const [onSection, params] = useRoute("/account/:section");
   const signals = useAccountSignals();
@@ -247,6 +247,15 @@ export default function Account() {
           <div className={`${COLUMN} space-y-3`} aria-hidden>
             <div className="h-9 w-56 animate-pulse rounded-xl bg-[#e7edf5]" />
             <div className="h-28 animate-pulse rounded-2xl bg-[#e7edf5]" />
+          </div>
+        ) : unknown ? (
+          /* The session could not be read: never the sign-in form, which
+             would tell a signed-in shopper they had been signed out. */
+          <div className={COLUMN}>
+            <h1 className="sr-only">{t("account.yourWay")}</h1>
+            <EmptyState heading="h2" icon={<UserRound className="size-6" />} title={t("account.loadFailed")} note={t("common.loadFailedNote")}>
+              <button type="button" onClick={() => void refresh()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
+            </EmptyState>
           </div>
         ) : !isAuthenticated || !user ? (
           /* Signed out, the account page is the form itself rather than a

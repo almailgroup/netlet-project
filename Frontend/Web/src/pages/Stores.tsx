@@ -14,6 +14,7 @@ import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { StoreCardLink } from "@/components/store/StoreCard";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { storesMeta } from "@shared/seo";
 
@@ -26,13 +27,14 @@ export default function Stores() {
   usePageChrome({ activeDepartment: null });
   const stores = trpc.commerce.stores.useQuery({ locale, limit: INDEX_LIMIT }, { staleTime: 5 * 60 * 1000 });
   const list = stores.data ?? [];
+  const failed = failedToLoad(stores);
 
   return (
     <PageBody>
       <Breadcrumbs trail={[{ label: t("stores.title") }]} />
       <PageHeading
         title={t("stores.title")}
-        note={stores.isLoading || stores.error ? " " : list.length >= INDEX_LIMIT
+        note={stores.isLoading || !list.length ? " " : list.length >= INDEX_LIMIT
           ? t("stores.countAtLeast", { count: list.length })
           : list.length === 1 ? t("stores.countOne") : t("stores.countMany", { count: list.length })}
       />
@@ -40,9 +42,9 @@ export default function Stores() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-hidden>
           {Array.from({ length: 8 }, (_, index) => <li key={index} className="h-[78px] animate-pulse rounded-2xl border border-[#e6e9ef] bg-white/60" />)}
         </ul>
-      ) : stores.error || !list.length ? (
-        <EmptyState icon={<StoreIcon className="size-6" />} title={t(stores.error ? "home.catalogSlow" : "stores.empty")} note={t(stores.error ? "home.refreshNote" : "stores.emptyNote")}>
-          {stores.error
+      ) : !list.length ? (
+        <EmptyState icon={<StoreIcon className="size-6" />} title={t(failed ? "stores.loadFailed" : "stores.empty")} note={t(failed ? "common.loadFailedNote" : "stores.emptyNote")}>
+          {failed
             ? <button type="button" onClick={() => void stores.refetch()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
             : <Link href="/category/all" className={BUTTON_PRIMARY}>{t("browse.browseEverything")}</Link>}
         </EmptyState>

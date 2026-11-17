@@ -16,6 +16,7 @@ import { privatePageMeta } from "@shared/seo";
 import { trpc } from "@/lib/trpc";
 import type { Actor } from "@shared/inventory/permissions";
 import { useState } from "react";
+import { failedToLoad } from "@/lib/queryState";
 
 export default function AdminViews() {
   usePageMeta(privatePageMeta("Product views"));
@@ -52,7 +53,7 @@ function Views({ actor }: { actor: Actor }) {
         <div className={`transition-opacity ${report.isFetching && report.isPlaceholderData ? "opacity-60" : ""}`}>
           <ViewsReportView report={report.data} />
         </div>
-      ) : report.isError ? (
+      ) : failedToLoad(report) ? (
         <QueryGate queries={[report]}>{() => null}</QueryGate>
       ) : (
         <SkeletonCards count={4} label={t("admin.loading")} />

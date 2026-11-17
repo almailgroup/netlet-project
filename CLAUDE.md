@@ -9212,6 +9212,44 @@ delivery area, the guest cart's id, a referral code. Losing one costs a shopper
 a preference they can set again, and that trade is only available because
 anything NetLet actually needs is on the server.
 
+## When a read fails
+
+**A failed read is never a claim about the shop.** The bug hunt drove every
+page with the API answering 503 or not at all, and with it failing only after
+the page had drawn. Three things said something false:
+
+- **What is on screen stays when asking again fails** (`failedToLoad`,
+  `lib/queryState.ts`). React Query keeps the last answer when a refresh fails
+  — a tab refocused after thirty seconds, a reconnect — and sets `error`
+  beside it, and pages chose their error state on `error` alone. A product
+  page left open and refocused on a flaky connection became "Product not
+  found … may be sold out or no longer for sale"; a store's page "Store not
+  found"; `QueryGate`'s every section in the account and the portal its error
+  card. Now the error is drawn only when there is nothing to show — the first
+  read failed, or what is drawn is another page's placeholder — and "not
+  found" only when the server said null. A failed read says what failed
+  ("This product could not be loaded just now", "Stores could not …") with
+  Try again; `/stores` said "Products could not be loaded". `queryState.test.ts`
+  refuses the old shapes in the source (`.isError ? (`, `x.error || !…`).
+- **A guest's bag is never dropped for a failed read** (`CartContext`). Reading
+  the stored bag dropped its id on any error, and the id is a guest's only key
+  to it, so one timeout on a phone lost the whole bag for good — reproduced:
+  the id gone, the bag empty on the next visit with the server back. Only the
+  server's null or a refusal of the request (a 4xx) drops it now; anything else
+  keeps it as `unread`, which the drawer, `/cart` and checkout draw as "Your
+  cart could not be loaded just now" with Try again (`BagUnread`) — never
+  "empty" — and which is asked again when the connection or the tab comes
+  back.
+- **A failed session check is not signed out** (`useAuth`'s `unknown`). `/account`
+  drew the sign-in form, telling a signed-in shopper they had been signed out;
+  it says the account could not be reached now, with Try again.
+
+Walked with the API refusing (`.scratch/api-down.mjs`, `signedin-down.mjs`,
+`bag-lost.mjs`, `flaky-refetch2.mjs`): every page names what failed and offers
+Try again, a refocused product stays, the bag keeps its id and comes back on
+Try again and on coming back online, and a missing product, store or guide
+still says "not found".
+
 ## The first visit
 
 **What every shopper downloads first is the home page and nothing it does not

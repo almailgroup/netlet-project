@@ -2,6 +2,7 @@ import { readStored, removeStored, writeStored } from "@/lib/browserStore";
 import { appPath } from "@/lib/basePath";
 import { navigateWhenReady } from "@/lib/readyNavigation";
 import { trpc } from "@/lib/trpc";
+import { TRPCClientError } from "@trpc/client";
 import { applyBagOp, ghostLine, realLineId, withChoice, type BagOp } from "@/lib/bagOps";
 import { chooseLines, chooseOnly as onlyThese, MAX_SKIPPED_LINES, pruneSkip } from "@shared/commerce/cartChoice";
 import { useAuth } from "@/hooks/useAuth";
@@ -154,6 +155,14 @@ type CartContextValue = {
    * cannot be told.
    */
   settling: boolean;
+  /**
+   * The stored bag could not be read — a timeout, a dropped connection, the
+   * server down — so what is in it is not known. Not empty: the bag pages say
+   * it could not be loaded and offer `readAgain`, never "your cart is empty".
+   */
+  unread: boolean;
+  /** Ask for the stored bag again after a read that failed. */
+  readAgain: () => void;
   itemCount: number;
   openCart: () => void;
   closeCart: () => void;
@@ -206,6 +215,12 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
+/** The server refused the request itself (a 4xx): asking again gives the same answer. */
+function isRefusal(error: unknown): boolean {
+  const status = error instanceof TRPCClientError ? (error.data as { httpStatus?: number } | undefined)?.httpStatus : undefined;
+  return typeof status === "number" && status >= 400 && status < 500;
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cartId, setCartIdState] = useState<string | null>(() => readStoredCartId());
   /* The bag as the server last answered it; what is drawn adds the presses still waiting. */
@@ -215,6 +230,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
   /* A stored bag still on its way from the server: not empty, not yet known. */
   const [hydrating, setHydrating] = useState(() => readStoredCartId() !== null);
+  /* The stored bag's last read failed, and the tries since (`readAgain`). */
+  const [unread, setUnread] = useState(false);
+  const [readTries, setReadTries] = useState(0);
 
   const utils = trpc.useUtils();
   const { isAuthenticated } = useAuth();
@@ -255,6 +273,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const setServerCart = useCallback((value: Cart | null) => {
     serverCartRef.current = value;
     setServerCartState(value);
+    if (value) setUnread(false);
   }, []);
 
   /* Whether this tab has seen a signed-in shopper, so a sign-out can be told
@@ -420,6 +439,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (!cartId) {
       setServerCart(null);
       setHydrating(false);
+      setUnread(false);
       return;
     }
     /* The bag this tab just made is already the one drawn. */
@@ -433,12 +453,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
       .fetch({ cartId, skip: skipRef.current })
       .then(c => {
         if (cancelled) return;
+        setUnread(false);
         if (c) setServerCart(c);
         // Stored cart id no longer valid — drop it.
         else setCartId(null);
       })
-      .catch(() => {
-        if (!cancelled) setCartId(null);
+      .catch(error => {
+        if (cancelled) return;
+        /*
+         * Only the server saying this is not a bag drops the id: the answer
+         * null above, or a refusal of the request itself (a 4xx). A read that
+         * failed — a timeout, a dropped connection, a 503 — said nothing about
+         * the bag, and the id is a guest's only key to it, so dropping it
+         * there lost the whole bag to one bad moment on a phone's connection.
+         * It is kept, and the bag is asked for again.
+         */
+        if (isRefusal(error)) setCartId(null);
+        else setUnread(true);
       })
       .finally(() => {
         if (!cancelled) setHydrating(false);
@@ -447,7 +478,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [cartId, setCartId, setServerCart, utils.commerce.cart.get]);
+  }, [cartId, setCartId, setServerCart, utils.commerce.cart.get, readTries]);
+
+  const readAgain = useCallback(() => setReadTries(tries => tries + 1), []);
+  /* Back online, or back to the tab: ask again for a bag that could not be read. */
+  useEffect(() => {
+    if (!unread) return;
+    const again = () => { if (document.visibilityState !== "hidden") readAgain(); };
+    window.addEventListener("online", again);
+    document.addEventListener("visibilitychange", again);
+    return () => {
+      window.removeEventListener("online", again);
+      document.removeEventListener("visibilitychange", again);
+    };
+  }, [unread, readAgain]);
 
   const cart = useMemo(() => {
     const drawn = waiting.reduce<Cart | null>((bag, change) => (change.kind === "destination" || change.kind === "speed" || change.kind === "store" || change.kind === "code" || change.kind === "choose" || change.kind === "refresh" ? bag : applyBagOp(bag, change)), serverCart);
@@ -580,6 +624,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       loading,
       syncing,
       settling,
+      unread,
+      readAgain,
       itemCount,
       openCart,
       closeCart,
@@ -606,6 +652,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       loading,
       syncing,
       settling,
+      unread,
+      readAgain,
       itemCount,
       openCart,
       closeCart,

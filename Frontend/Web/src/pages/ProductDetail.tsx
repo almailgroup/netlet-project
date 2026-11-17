@@ -47,7 +47,7 @@ import { lineCeiling, roomFor } from "@shared/commerce/typedQuantity";
 import { priceForQuantity } from "@shared/commerce/quantityPrice";
 import { visibleBadges } from "@shared/inventory/vendorHealth";
 import { StarRow } from "@/components/ui/StarRow";
-import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, Recycle, RotateCcw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Heart, ListTree, Loader2, PackageOpen, Play, Recycle, RotateCcw, RotateCw, ScanSearch, Share2, ShieldCheck, ShoppingBag, Tag, Truck, Wallet, Wrench, X, Zap, ZoomIn, ZoomOut } from "lucide-react";
 import { isRefurbished } from "@shared/commerce/condition";
 import { REFURBISHED_PATH } from "@/lib/refurbished";
 import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -77,6 +77,7 @@ import { toast } from "sonner";
 import { useMoney, useTranslation, type Translate } from "@/hooks/useTranslation";
 import { ProductCard, shareProduct } from "@/components/product/ProductCard";
 import { rememberProductLink } from "@/lib/referral";
+import { failedToLoad } from "@/lib/queryState";
 import { useMemberCode } from "@/hooks/useMemberCode";
 import { ShareAndEarn } from "@/components/product/ShareAndEarn";
 import { FrequentButton } from "@/components/product/FrequentButton";
@@ -1187,7 +1188,11 @@ export default function ProductDetail() {
   const [, params] = useRoute("/products/:handle");
   const [, navigate] = useLocation();
   const handle = params?.handle ?? "";
-  const { data: product, isLoading, error } = useProductByHandle(handle);
+  const productQuery = useProductByHandle(handle);
+  const { data: product, isLoading } = productQuery;
+  /* Nothing to show and the read failed — never a refresh that failed behind
+     a product already on screen (`failedToLoad`). */
+  const loadFailed = failedToLoad(productQuery);
   /* Opened, so the home page's "Previously viewed" and the picks can count it — on this device alone. */
   useEffect(() => {
     if (product?.id) rememberViewed(product.id);
@@ -1396,7 +1401,18 @@ export default function ProductDetail() {
     </PageBody>
   );
 
-  if (!product || error) return (
+  /* The read failed: say that, with another try — never "not found", which is
+     a claim about the shop when the fault is the connection. */
+  if (!product && loadFailed) return (
+    <PageBody>
+      <PageHeading title={t("product.loadFailed")} note={t("common.loadFailedNote")} />
+      <button type="button" onClick={() => void productQuery.refetch()} className={BUTTON_PRIMARY}>
+        <RotateCw className="size-4" aria-hidden />{t("home.refreshCatalog")}
+      </button>
+    </PageBody>
+  );
+
+  if (!product) return (
     <PageBody>
       <PageHeading title={t("product.notFound")} note={t("product.notFoundNote")} />
       <Link href="/" className={BUTTON_PRIMARY}><ArrowLeft className="size-4 rtl:-scale-x-100" aria-hidden />{t("product.backToNetlet")}</Link>

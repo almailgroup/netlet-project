@@ -26,6 +26,7 @@ import { DASHBOARD_RANGES, DEFAULT_DASHBOARD_RANGE, type DashboardRange } from "
 import { ArrowRight, CheckCircle2, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { failedToLoad } from "@/lib/queryState";
 
 const RANGE_KEY = "portal:range";
 
@@ -241,7 +242,7 @@ function Overview({ actor }: { actor: Actor }) {
           </div>
           <TopPanel board={board.data} />
         </div>
-      ) : mayMoney && board.isError ? (
+      ) : mayMoney && failedToLoad(board) ? (
         <QueryGate queries={[board]}>{() => null}</QueryGate>
       ) : mayMoney ? (
         <DashboardSkeleton label={t("admin.loading")} />

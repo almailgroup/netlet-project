@@ -22,6 +22,7 @@
  * store page that picked its best ones would be an advert.
  */
 import { isRefurbished } from "@shared/commerce/condition";
+import { failedToLoad } from "@/lib/queryState";
 import { toastHeart } from "@/lib/heartToast";
 import { MapPin, PackageOpen, Recycle, Search, SlidersHorizontal, Store as StoreIcon, Truck, Wallet, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -74,7 +75,7 @@ export default function Store() {
   const store = page.data?.store ?? null;
   const shelf = useMemo(() => page.data?.products ?? [], [page.data]);
 
-  usePageMeta(store ? storeMeta(store, SITE_URL) : privatePageMeta(page.isLoading ? t("stores.title") : t("stores.notFound")));
+  usePageMeta(store ? storeMeta(store, SITE_URL) : privatePageMeta(page.isLoading || failedToLoad(page) ? t("stores.title") : t("stores.notFound")));
 
   /* The view lives in the address, so it survives Back and can be sent. */
   const view = useMemo(() => {
@@ -151,17 +152,18 @@ export default function Store() {
     );
   }
 
-  if (page.error || !store) {
+  if (!store) {
+    const failed = failedToLoad(page);
     return (
       <PageBody>
         <Breadcrumbs trail={[{ label: t("stores.title"), href: "/stores" }]} />
         <EmptyState
           heading="h1"
           icon={<StoreIcon className="size-6" />}
-          title={t(page.error ? "home.catalogSlow" : "stores.notFound")}
-          note={t(page.error ? "home.refreshNote" : "stores.notFoundNote")}
+          title={t(failed ? "stores.oneLoadFailed" : "stores.notFound")}
+          note={t(failed ? "common.loadFailedNote" : "stores.notFoundNote")}
         >
-          {page.error
+          {failed
             ? <button type="button" onClick={() => void page.refetch()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
             : <Link href="/stores" className={BUTTON_PRIMARY}>{t("stores.seeAll")}</Link>}
         </EmptyState>

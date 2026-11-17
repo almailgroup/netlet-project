@@ -14,6 +14,7 @@ import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { BrandTile } from "@/components/store/BrandTile";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { privatePageMeta } from "@shared/seo";
 
@@ -23,6 +24,7 @@ export default function Brands() {
   usePageChrome({ activeDepartment: null });
   const brands = trpc.commerce.brands.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   const list = brands.data ?? [];
+  const failed = failedToLoad(brands);
 
   return (
     <PageBody>
@@ -32,9 +34,9 @@ export default function Brands() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-hidden>
           {Array.from({ length: 8 }, (_, index) => <li key={index} className="h-[70px] animate-pulse rounded-2xl border border-[#e6e9ef] bg-white/60" />)}
         </ul>
-      ) : brands.error || !list.length ? (
-        <EmptyState icon={<Tags className="size-6" />} title={t(brands.error ? "home.catalogSlow" : "brands.empty")} note={t(brands.error ? "home.refreshNote" : "brands.emptyNote")}>
-          {brands.error
+      ) : !list.length ? (
+        <EmptyState icon={<Tags className="size-6" />} title={t(failed ? "brands.loadFailed" : "brands.empty")} note={t(failed ? "common.loadFailedNote" : "brands.emptyNote")}>
+          {failed
             ? <button type="button" onClick={() => void brands.refetch()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
             : <Link href="/category/all" className={BUTTON_PRIMARY}>{t("browse.browseEverything")}</Link>}
         </EmptyState>

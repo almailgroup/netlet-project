@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { useQueryClient } from "@tanstack/react-query";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useMemo } from "react";
+import { failedToLoad } from "@/lib/queryState";
 
 /** How long the answer to "who is signed in" counts as fresh. */
 export const SESSION_FRESH_MS = 60_000;
@@ -57,11 +58,20 @@ export function useAuth() {
       loading: meQuery.isLoading || logoutMutation.isPending,
       error: meQuery.error ?? logoutMutation.error ?? null,
       isAuthenticated: Boolean(meQuery.data),
+      /*
+       * Who is signed in could not be read — a timeout, a dropped connection,
+       * the server down — and nothing was known before. Not "signed out": a
+       * page that would draw the sign-in form says the account could not be
+       * reached instead, or a signed-in shopper is told they were signed out
+       * by a bad moment on their connection.
+       */
+      unknown: failedToLoad(meQuery),
     };
   }, [
     meQuery.data,
     meQuery.error,
     meQuery.isLoading,
+    meQuery.isError,
     logoutMutation.error,
     logoutMutation.isPending,
   ]);

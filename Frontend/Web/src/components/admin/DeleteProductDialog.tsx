@@ -23,6 +23,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { buttonClass, fieldClass, isolate } from "./ui";
+import { failedToLoad } from "@/lib/queryState";
 
 export function DeleteProductDialog({ product, onClose, onDeleted }: {
   /** The product to delete, or null when the dialog is closed. */
@@ -104,9 +105,9 @@ export function DeleteProductDialog({ product, onClose, onDeleted }: {
             <p className="flex items-center gap-2 text-[13px] ink-muted">
               <LoaderCircle className="size-4 animate-spin" aria-hidden />{t("admin.deleteChecking")}
             </p>
-          ) : check.isError ? (
+          ) : failedToLoad(check) ? (
             <p className="rounded-xl bg-[#fdeceb] px-3.5 py-3 text-[13px] font-semibold text-[#8c2f22]">
-              {isMessageKey(check.error.message) ? t(check.error.message) : t("admin.loadFailed")}
+              {check.error && isMessageKey(check.error.message) ? t(check.error.message) : t("admin.loadFailed")}
             </p>
           ) : data ? (
             <>

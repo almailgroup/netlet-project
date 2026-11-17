@@ -31,6 +31,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { failedToLoad } from "@/lib/queryState";
 
 type Turn = CopilotTurn & { actions?: CopilotAction[]; failed?: boolean };
 
@@ -151,7 +152,7 @@ export function CopilotPanel({ open, onClose, opener, pageLabel }: {
               <span className="sr-only">{t("admin.loading")}</span>
               {[0, 1, 2].map(index => <div key={index} aria-hidden className="portal-shimmer h-16 rounded-xl" />)}
             </div>
-          ) : brief.isError ? (
+          ) : failedToLoad(brief) ? (
             <p className="mt-3 text-[14px] ink-muted">{t("copilot.unavailable")}</p>
           ) : (
             <ul className="mt-3 space-y-2">

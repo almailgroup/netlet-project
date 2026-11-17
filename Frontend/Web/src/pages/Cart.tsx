@@ -40,6 +40,7 @@
  * for checkout does not change because somebody looked for one line.
  */
 import { AllChoice, BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
+import { BagUnread } from "@/components/cart/BagUnread";
 import { DeliveryAddressCard, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { SavedForLater } from "@/components/cart/SavedForLater";
 import { BUTTON_PRIMARY, CARD, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
@@ -71,7 +72,7 @@ const COLUMN = "mx-auto w-full max-w-2xl lg:max-w-5xl";
 export default function Cart() {
   const { t } = useTranslation();
   const money = useMoney();
-  const { cart, settling, proceedToCheckout } = useCart();
+  const { cart, settling, unread, proceedToCheckout } = useCart();
   const { user, isAuthenticated } = useAuth();
   usePageMeta(privatePageMeta("Your cart"));
   const items = cart?.items.length ?? 0;
@@ -132,6 +133,8 @@ export default function Cart() {
         {items && !headerDrawn ? <PageSearchField setup={{ placeholder: "search.inCart" }} className="mb-3" /> : null}
         {!items && settling ? (
           <BagSettling />
+        ) : !items && unread ? (
+          <BagUnread heading="h2" />
         ) : !items ? (
           <>
             <EmptyState icon={<ShoppingBag className="size-6" />} title={t("cart.empty")} note={t("cart.emptyNote")}>

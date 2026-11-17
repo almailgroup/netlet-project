@@ -15,6 +15,7 @@
  * Enter in the header lands on the layout every department already has —
  * filters, sort, the empty state — rather than on a model's answer.
  */
+import { failedToLoad } from "@/lib/queryState";
 import { toastHeart } from "@/lib/heartToast";
 import { useCatalog, useRefurbishedSummary } from "@/hooks/useCatalog";
 import { REFURBISHED_PATH, refurbishedPath } from "@/lib/refurbished";
@@ -200,7 +201,9 @@ export default function Category() {
   );
   const occasionLoading = Boolean(occasionSlug) && occasionPage.isLoading;
   const isLoading = (searching ? answer.isLoading : shelf.isLoading) || occasionLoading;
-  const error = searching ? answer.error : shelf.error;
+  /* Only a read with nothing to show is an error here: a refresh that fails
+     behind a grid already drawn leaves the grid (`failedToLoad`). */
+  const error = failedToLoad(searching ? answer : shelf) ? (searching ? answer.error : shelf.error) : null;
   const refetch = searching ? answer.refetch : shelf.refetch;
 
   // Facets describe what is in the department, before the sidebar narrows it —

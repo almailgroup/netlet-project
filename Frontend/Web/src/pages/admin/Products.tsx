@@ -55,6 +55,7 @@ import { copyPhotosToNetlet, type CopyRun } from "@/lib/copyPhotos";
 import { squarePhotos, type SquareRun, type SquareTarget } from "@/lib/squarePhotos";
 import { Link, useLocation, useSearch } from "wouter";
 import { Select } from "@/components/ui/Select";
+import { failedToLoad } from "@/lib/queryState";
 
 export default function AdminProducts() {
   usePageMeta(privatePageMeta("Admin"));
@@ -400,7 +401,7 @@ function ProductTable({ actor }: { actor: Actor }) {
       <div className="mt-4">
         {products.isLoading ? (
           <SkeletonRows label={t("admin.loading")} />
-        ) : products.isError ? (
+        ) : failedToLoad(products) ? (
           <QueryGate queries={[products]}>{() => null}</QueryGate>
         ) : rows.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-6 py-14 text-center">

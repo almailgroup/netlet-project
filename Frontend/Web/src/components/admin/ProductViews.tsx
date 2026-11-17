@@ -40,6 +40,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { ArrowUpRight, Eye, ImageOff, Percent, ReceiptText, Search, Users } from "lucide-react";
 import { useMemo, useState, type ComponentProps } from "react";
 import { Link } from "wouter";
+import { failedToLoad } from "@/lib/queryState";
 
 /** Fixed per channel, wherever a channel is drawn: colour follows the thing, never its rank. */
 export const CHANNEL_COLOR: Record<ViewChannel, string> = { app: SERIES[0], web_phone: SERIES[2], web_computer: SERIES[1] };
@@ -509,7 +510,7 @@ export function ProductViewsCard({ productId, published }: { productId: number; 
         !published && report.data.ready && report.data.totals.views.current === 0
           ? <Notice tone="info">{t("views.cardDraft")}</Notice>
           : <ProductViewsSummary report={report.data} />
-      ) : report.isError ? (
+      ) : failedToLoad(report) ? (
         <QueryGate queries={[report]}>{() => null}</QueryGate>
       ) : (
         <SkeletonCards count={2} label={t("admin.loading")} />

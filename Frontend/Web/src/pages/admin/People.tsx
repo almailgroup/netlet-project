@@ -29,6 +29,7 @@ import { Search, ShieldCheck, ShieldOff, UserMinus, UserPlus, X } from "lucide-r
 import { useState } from "react";
 import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
+import { failedToLoad } from "@/lib/queryState";
 
 export default function AdminPeople() {
   usePageMeta(privatePageMeta("People"));
@@ -129,7 +130,7 @@ function People({ selfId }: { selfId: number }) {
       <div className="mt-4">
         {people.isLoading ? (
           <SkeletonRows label={t("admin.loading")} />
-        ) : people.isError ? (
+        ) : failedToLoad(people) ? (
           <QueryGate queries={[people]}>{() => null}</QueryGate>
         ) : rows.length === 0 ? (
           <EmptyState title={t("admin.noPeople")} />

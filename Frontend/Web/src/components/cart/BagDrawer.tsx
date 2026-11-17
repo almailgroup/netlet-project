@@ -8,6 +8,7 @@
  * phone Back closed nothing and left the shop. Both draw the same lines and
  * the same summary from here, so the two cannot disagree about a bag.
  */
+import { BagUnread } from "@/components/cart/BagUnread";
 import { lineTitle, storeName } from "@/lib/lineTitle";
 import { useCart } from "@/contexts/CartContext";
 import { Thumb } from "@/components/product/Thumb";
@@ -508,7 +509,7 @@ export function AllChoice({ className = "", compact = false }: { className?: str
 }
 
 export function BagDrawer() {
-  const { cart, isOpen, closeCart, settling } = useCart();
+  const { cart, isOpen, closeCart, settling, unread } = useCart();
   const { t } = useTranslation();
   useOverlay(isOpen, closeCart);
   /* It slides out the way it came, the page behind answering at once. */
@@ -523,6 +524,8 @@ export function BagDrawer() {
         </div>
         {!cart?.items.length && settling ? (
           <div className="flex flex-1 flex-col px-6 py-5"><BagSettling /></div>
+        ) : !cart?.items.length && unread ? (
+          <BagUnread />
         ) : !cart?.items.length ? (
           <BagEmpty onBrowse={closeCart} />
         ) : (

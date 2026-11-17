@@ -14,6 +14,7 @@ import { BUTTON_PRIMARY, Breadcrumbs, EmptyState, PageBody, PageHeading } from "
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { guidesMeta } from "@shared/seo";
 
@@ -36,13 +37,13 @@ export default function Guides() {
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
           {Array.from({ length: 3 }, (_, index) => <li key={index} className="h-[320px] animate-pulse rounded-2xl border border-[#e6e9ef] bg-white/60" />)}
         </ul>
-      ) : guides.error || groups.length === 0 ? (
+      ) : groups.length === 0 ? (
         <EmptyState
           icon={<BookOpen className="size-6" />}
-          title={t(guides.error ? "home.catalogSlow" : "guides.empty")}
-          note={t(guides.error ? "home.refreshNote" : "guides.emptyNote")}
+          title={t(failedToLoad(guides) ? "guides.loadFailed" : "guides.empty")}
+          note={t(failedToLoad(guides) ? "common.loadFailedNote" : "guides.emptyNote")}
         >
-          {guides.error
+          {failedToLoad(guides)
             ? <button type="button" onClick={() => void guides.refetch()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
             : <Link href="/help" className={BUTTON_PRIMARY}>{t("help.title")}</Link>}
         </EmptyState>

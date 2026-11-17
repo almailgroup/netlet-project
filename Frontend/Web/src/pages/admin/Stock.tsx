@@ -37,6 +37,7 @@ import { AlertTriangle, CheckCircle2, Clock, Loader2, PackagePlus, RefreshCw, XC
 import { useId, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Link } from "wouter";
+import { failedToLoad } from "@/lib/queryState";
 
 export default function AdminStock() {
   usePageMeta(privatePageMeta("Stock"));
@@ -200,7 +201,7 @@ function Stock({ actor }: { actor: Actor }) {
         <SectionHeading><span id="movements">{t("admin.recentMovements")}</span></SectionHeading>
         {history.isLoading ? (
           <SkeletonRows rows={4} label={t("admin.loading")} />
-        ) : history.isError ? (
+        ) : failedToLoad(history) ? (
           <QueryGate queries={[history]}>{() => null}</QueryGate>
         ) : moves.length === 0 ? (
           <EmptyState title={t("admin.noMovements")} />

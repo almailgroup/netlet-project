@@ -14,12 +14,18 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey } from "@shared/i18n/dictionary";
 import { AlertTriangle, RotateCw } from "lucide-react";
 import type { ReactNode } from "react";
+import { failedToLoad } from "@/lib/queryState";
 
 type GatedQuery = {
   isLoading: boolean;
   isError: boolean;
   error: { message: string } | null;
   refetch: () => unknown;
+  /* What the query holds, so a refresh that failed behind an answer already
+     drawn leaves that answer on screen rather than replacing the section
+     (`failedToLoad`). */
+  data?: unknown;
+  isPlaceholderData?: boolean;
 };
 
 export function QueryGate({ queries, children, audience = "staff" }: {
@@ -51,7 +57,7 @@ export function QueryGate({ queries, children, audience = "staff" }: {
     );
   }
 
-  const failed = queries.find(query => query.isError);
+  const failed = queries.find(query => failedToLoad(query));
   if (failed) {
     /*
      * The server's own message, when it is one we wrote. A tRPC error from a

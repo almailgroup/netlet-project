@@ -19,6 +19,7 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { useState } from "react";
+import { failedToLoad } from "@/lib/queryState";
 
 /** The rank names the portal already uses, so one word is not spelled twice. */
 const ROLE_LABEL: Record<string, MessageKey> = {
@@ -107,7 +108,7 @@ function Trail() {
 
       {active.isLoading ? (
         <SkeletonRows label={t("admin.loading")} />
-      ) : active.isError ? (
+      ) : failedToLoad(active) ? (
         <QueryGate queries={[active]}>{() => null}</QueryGate>
       ) : rows.length === 0 ? (
         <EmptyState title={t("admin.noAudit")} />

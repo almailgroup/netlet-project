@@ -67,6 +67,7 @@ import { playOrderChime, primeOrderChime } from "@/lib/orderChime";
 import { heldClaims } from "@/lib/giftClaims";
 import { productLinks } from "@/lib/referral";
 import { BagSavings, useSavingsBill } from "@/components/cart/BagSavings";
+import { BagUnread } from "@/components/cart/BagUnread";
 import { LineCode } from "@/components/checkout/LineCode";
 import { subtractMoney } from "@shared/money";
 import { rateLabel } from "@shared/commerce/tax";
@@ -90,7 +91,7 @@ const fieldClass = "h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3
 
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
-  const { cart, refreshCart, settling, syncing, skip, forgetChoice } = useCart();
+  const { cart, refreshCart, settling, unread, syncing, skip, forgetChoice } = useCart();
   const { t, tError, locale, isArabic } = useTranslation();
   const returnDays = useReturnWindow();
   const money = useMoney();
@@ -292,7 +293,9 @@ export default function Checkout() {
   /* Nothing to check out: said as the cart says it, not as a form with a
      total of nothing. Not once an order is placed — the bag empties under the
      confirmation, and the page it sits over stays as it was. */
-  const empty = !settling && !items.length && !placed && !place.isPending;
+  /* The bag could not be read: not empty, and nothing to check out until it is. */
+  const unreadBag = unread && !items.length && !placed;
+  const empty = !settling && !unreadBag && !items.length && !placed && !place.isPending;
   const placeLabel = t(place.isPending ? "checkout.placing" : "checkout.placeOrder");
   const totalText = settling ? null : money(payable);
 
@@ -304,7 +307,9 @@ export default function Checkout() {
       <main id="main" tabIndex={-1} className={`container flex-1 outline-none ${PAGE_SPACE}`}>
         <div className="mx-auto w-full max-w-2xl lg:max-w-5xl">
           <PageHeading title={t("checkout.heading")} note={empty ? undefined : t("checkout.confirmNote")} />
-          {empty ? (
+          {unreadBag ? (
+            <BagUnread heading="h2" />
+          ) : empty ? (
             <EmptyState icon={<ShoppingBag className="size-6" />} title={t("cart.empty")} note={t("checkout.emptyNote")}>
               <Link href="/" className={BUTTON_PRIMARY}>{t("header.continueShopping")}</Link>
             </EmptyState>

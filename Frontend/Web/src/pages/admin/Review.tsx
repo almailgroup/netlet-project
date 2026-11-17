@@ -25,6 +25,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { failedToLoad } from "@/lib/queryState";
 
 export default function AdminReview() {
   usePageMeta(privatePageMeta("Review queue"));
@@ -85,7 +86,7 @@ function Queue() {
       />
       {products.isLoading ? (
         <SkeletonRows rows={3} label={t("admin.loading")} />
-      ) : products.isError ? (
+      ) : failedToLoad(products) ? (
         <QueryGate queries={[products]}>{() => null}</QueryGate>
       ) : waiting.length === 0 ? (
         <EmptyState title={t("admin.nothingToReview")} />

@@ -32,6 +32,7 @@ import { privatePageMeta } from "@shared/seo";
 import { CheckCircle2, CircleAlert, Search, Store } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { failedToLoad } from "@/lib/queryState";
 
 export default function AdminVendors() {
   usePageMeta(privatePageMeta("Vendors"));
@@ -119,7 +120,7 @@ function VendorList() {
       <div className="mt-4">
         {vendors.isLoading ? (
           <SkeletonRows label={t("admin.loading")} />
-        ) : vendors.isError ? (
+        ) : failedToLoad(vendors) ? (
           <QueryGate queries={[vendors]}>{() => null}</QueryGate>
         ) : rows.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#b8c9dc] bg-white px-6 py-14 text-center">

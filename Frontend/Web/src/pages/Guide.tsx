@@ -16,6 +16,7 @@ import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { Thumb } from "@/components/product/Thumb";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { guideMeta, privatePageMeta } from "@shared/seo";
 
@@ -47,8 +48,10 @@ export default function Guide() {
   if (!found) {
     return (
       <PageBody width="reading">
-        <EmptyState icon={<BookOpen className="size-6" />} title={t(guide.error ? "home.catalogSlow" : "guides.notFound")} note={t(guide.error ? "home.refreshNote" : "guides.notFoundNote")} heading="h1">
-          <Link href="/guides" className={BUTTON_PRIMARY}>{t("guides.all")}</Link>
+        <EmptyState icon={<BookOpen className="size-6" />} title={t(failedToLoad(guide) ? "guides.oneLoadFailed" : "guides.notFound")} note={t(failedToLoad(guide) ? "common.loadFailedNote" : "guides.notFoundNote")} heading="h1">
+          {failedToLoad(guide)
+            ? <button type="button" onClick={() => void guide.refetch()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
+            : <Link href="/guides" className={BUTTON_PRIMARY}>{t("guides.all")}</Link>}
         </EmptyState>
       </PageBody>
     );
