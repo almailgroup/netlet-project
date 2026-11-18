@@ -32,7 +32,7 @@ import { kuwaitDeliveryZones } from "@shared/customer";
 import { DELIVERY_SPEEDS, type DeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { discountAllowed } from "@shared/inventory/discountLicence";
-import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
+import { can, VENDOR_ROLES, type Actor, type VendorRole } from "@shared/inventory/permissions";
 import { ibanReadAs, isValidIban, isValidKuwaitPhone, missingStoreDetails } from "@shared/inventory/storeProfile";
 import { MIN_PASSWORD_LENGTH } from "@shared/auth/passwordStrength";
 import {
@@ -58,7 +58,7 @@ export default function AdminVendorDetail() {
   usePageMeta(privatePageMeta("Store"));
   const [, params] = useRoute("/admin/vendors/:id");
   const id = Number(params?.id ?? 0);
-  return <AdminShell need={"stores.view"}>{() => <VendorDetail vendorId={id} />}</AdminShell>;
+  return <AdminShell need={"stores.view"}>{actor => <VendorDetail vendorId={id} actor={actor} />}</AdminShell>;
 }
 
 const STATUSES = ["pending", "approved", "suspended"] as const;
@@ -84,14 +84,29 @@ type Draft = {
 
 const textarea = `${fieldClass} h-auto min-h-24 py-2.5 leading-6`;
 
-function VendorDetail({ vendorId }: { vendorId: number }) {
+function VendorDetail({ vendorId, actor }: { vendorId: number; actor: Actor }) {
   const { t, isArabic } = useTranslation();
+  /* What this person may change, each section by the capability its save
+     asks for. A store's page is open to most of NetLet's team roles
+     (`stores.view`), and only the Stores area edits a store: anybody else
+     reads it, with no Save the server would refuse. */
+  const may = {
+    edit: can(actor, "stores.manage"),
+    approve: can(actor, "vendor.approve"),
+    rate: can(actor, "vendor.setCommission", vendorId),
+    review: can(actor, "product.review"),
+    papers: can(actor, "vendor.editProfile", vendorId),
+    team: can(actor, "vendor.viewMembers", vendorId),
+    products: can(actor, "product.view", vendorId),
+    add: can(actor, "product.create", vendorId),
+  };
   const money = useMoney();
   const formatDate = useDateFormat();
   const utils = trpc.useUtils();
   const vendor = trpc.inventory.vendors.get.useQuery({ vendorId }, { enabled: vendorId > 0 });
-  /* The delivery companies on NetLet, for a store that uses its own (3.3.13). */
-  const companies = trpc.dispatch.couriers.list.useQuery(undefined, { staleTime: 60_000 });
+  /* The delivery companies on NetLet, for a store that uses its own
+     (3.3.13): asked only of somebody whose role reads them. */
+  const companies = trpc.dispatch.couriers.list.useQuery(undefined, { staleTime: 60_000, enabled: can(actor, "delivery.view") });
 
   const refresh = () => {
     void utils.inventory.vendors.get.invalidate({ vendorId });
@@ -151,7 +166,9 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
   const blank = (value: string) => (value.trim() === "" ? null : value.trim());
 
   const phoneProblem = draft.contactPhone.trim() && !isValidKuwaitPhone(draft.contactPhone) ? t("admin.invalidPhone") : undefined;
-  const ibanProblem = draft.payoutIban.trim() && !isValidIban(draft.payoutIban) ? t("admin.invalidIban") : undefined;
+  /* Only an editor is checked: anybody else reads the account masked
+     (`payoutIbanFor`), which no IBAN rule would pass. */
+  const ibanProblem = may.edit && draft.payoutIban.trim() && !isValidIban(draft.payoutIban) ? t("admin.invalidIban") : undefined;
   const ibanRead = ibanProblem ? null : ibanReadAs(draft.payoutIban);
 
   /* One section's fields and nothing else: an absent key writes nothing. */
@@ -177,18 +194,18 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       ? { text: t("admin.permitValid", { date: formatDate(row.discountLicenceExpiresAt) }), tone: "bg-[#d4edda] text-[#155724]" }
       : { text: t("admin.permitNoExpiry"), tone: "bg-[#d4edda] text-[#155724]" };
 
-  const sections: { id: string; label: MessageKey }[] = [
+  const sections = ([
     { id: "profile", label: "admin.sectionProfile" },
     { id: "contact", label: "admin.sectionContact" },
     { id: "licences", label: "admin.sectionLicences" },
-    { id: "documents", label: "storeDocs.title" },
+    { id: "documents", label: "storeDocs.title", shown: may.papers },
     { id: "delivery", label: "admin.sectionDelivery" },
     { id: "payments", label: "admin.sectionPayments" },
     { id: "terms", label: "admin.commercialTerms" },
     { id: "badges", label: "admin.badges" },
     { id: "warnings", label: "warnings.title" },
-    { id: "team", label: "admin.storeTeam" },
-  ];
+    { id: "team", label: "admin.storeTeam", shown: may.team },
+  ] as { id: string; label: MessageKey; shown?: boolean }[]).filter(section => section.shown !== false);
 
   return (
     <>
@@ -206,12 +223,16 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
         }
         actions={
           <>
-            <Link href={`/admin/products?vendor=${vendorId}`} className={buttonClass.secondary}>
-              <LayoutGrid className="size-4" aria-hidden />{t("admin.viewStoreProducts")}
-            </Link>
-            <Link href={`/admin/products/new?vendor=${vendorId}`} className={buttonClass.primary}>
-              <PackagePlus className="size-4" aria-hidden />{t("admin.addProductToStore")}
-            </Link>
+            {may.products ? (
+              <Link href={`/admin/products?vendor=${vendorId}`} className={buttonClass.secondary}>
+                <LayoutGrid className="size-4" aria-hidden />{t("admin.viewStoreProducts")}
+              </Link>
+            ) : null}
+            {may.add ? (
+              <Link href={`/admin/products/new?vendor=${vendorId}`} className={buttonClass.primary}>
+                <PackagePlus className="size-4" aria-hidden />{t("admin.addProductToStore")}
+              </Link>
+            ) : null}
           </>
         }
       >
@@ -223,9 +244,9 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
       {/* The figures the page opens on. Each one is what somebody would
           otherwise have to count by opening another page. */}
       <ul className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label={t("admin.statProducts")} value={row.stats.products} note={t("admin.statLive", { count: row.stats.live })} href={`/admin/products?vendor=${vendorId}`} />
-        <Stat label={t("admin.statInReview")} value={row.stats.inReview} note={t("admin.statDrafts", { count: row.stats.drafts })} href={row.stats.inReview > 0 ? "/admin/review" : undefined} />
-        <Stat label={t("admin.statTeam")} value={row.stats.members} href="#team" />
+        <Stat label={t("admin.statProducts")} value={row.stats.products} note={t("admin.statLive", { count: row.stats.live })} href={may.products ? `/admin/products?vendor=${vendorId}` : undefined} />
+        <Stat label={t("admin.statInReview")} value={row.stats.inReview} note={t("admin.statDrafts", { count: row.stats.drafts })} href={row.stats.inReview > 0 && may.review ? "/admin/review" : undefined} />
+        <Stat label={t("admin.statTeam")} value={row.stats.members} href={may.team ? "#team" : undefined} />
         <Stat
           label={t("admin.statCommission")}
           value={<bdi dir="ltr">{`${Number(row.commissionPercent)}%`}</bdi>}
@@ -260,7 +281,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             id="profile"
             title={t("admin.sectionProfile")}
             description={t("admin.sectionProfileNote")}
-            footer={saveButton("profile", () => save("profile", {
+            footer={may.edit && saveButton("profile", () => save("profile", {
               name: draft.name.trim(),
               nameAr: blank(draft.nameAr),
               logoUrl: blank(draft.logoUrl),
@@ -268,58 +289,62 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               descriptionAr: blank(draft.descriptionAr),
             }), draft.name.trim() === "")}
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("admin.storeName")}>
-                <input dir="auto" value={draft.name} onChange={e => set("name", e.target.value)} aria-invalid={draft.name.trim() === ""} className={fieldClass} />
-              </Field>
-              <Field label={t("admin.storeNameAr")} optional>
-                <input dir="rtl" lang="ar" value={draft.nameAr} onChange={e => set("nameAr", e.target.value)} className={fieldClass} />
-              </Field>
-              <div className="flex items-end gap-3 sm:col-span-2">
-                <Field label={t("admin.logoUrl")} optional className="min-w-0 flex-1">
-                  <input dir="ltr" type="url" inputMode="url" placeholder="https://" value={draft.logoUrl} onChange={e => set("logoUrl", e.target.value)} className={fieldClass} />
+            <fieldset disabled={!may.edit} className="min-w-0">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("admin.storeName")}>
+                  <input dir="auto" value={draft.name} onChange={e => set("name", e.target.value)} aria-invalid={draft.name.trim() === ""} className={fieldClass} />
                 </Field>
-                <div aria-label={t("admin.logoPreview")} role="img">
-                  <StoreAvatar name={draft.name || row.name} logoUrl={blank(draft.logoUrl)} />
+                <Field label={t("admin.storeNameAr")} optional>
+                  <input dir="rtl" lang="ar" value={draft.nameAr} onChange={e => set("nameAr", e.target.value)} className={fieldClass} />
+                </Field>
+                <div className="flex items-end gap-3 sm:col-span-2">
+                  <Field label={t("admin.logoUrl")} optional className="min-w-0 flex-1">
+                    <input dir="ltr" type="url" inputMode="url" placeholder="https://" value={draft.logoUrl} onChange={e => set("logoUrl", e.target.value)} className={fieldClass} />
+                  </Field>
+                  <div aria-label={t("admin.logoPreview")} role="img">
+                    <StoreAvatar name={draft.name || row.name} logoUrl={blank(draft.logoUrl)} />
+                  </div>
                 </div>
+                <Field label={t("admin.storeDescription")} optional className="sm:col-span-2">
+                  <textarea dir="auto" value={draft.description} onChange={e => set("description", e.target.value)} rows={4} className={textarea} />
+                </Field>
+                <Field label={t("admin.storeDescriptionAr")} optional className="sm:col-span-2">
+                  <textarea dir="rtl" lang="ar" value={draft.descriptionAr} onChange={e => set("descriptionAr", e.target.value)} rows={4} className={textarea} />
+                </Field>
               </div>
-              <Field label={t("admin.storeDescription")} optional className="sm:col-span-2">
-                <textarea dir="auto" value={draft.description} onChange={e => set("description", e.target.value)} rows={4} className={textarea} />
-              </Field>
-              <Field label={t("admin.storeDescriptionAr")} optional className="sm:col-span-2">
-                <textarea dir="rtl" lang="ar" value={draft.descriptionAr} onChange={e => set("descriptionAr", e.target.value)} rows={4} className={textarea} />
-              </Field>
-            </div>
+            </fieldset>
           </Card>
 
           <Card
             id="contact"
             title={t("admin.sectionContact")}
             description={t("admin.sectionContactNote")}
-            footer={saveButton("contact", () => save("contact", {
+            footer={may.edit && saveButton("contact", () => save("contact", {
               contactEmail: blank(draft.contactEmail),
               contactPhone: blank(draft.contactPhone),
               governorate: blank(draft.governorate),
               addressLine: blank(draft.addressLine),
             }), Boolean(phoneProblem))}
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("admin.contactEmail")}>
-                <input dir="ltr" type="email" value={draft.contactEmail} onChange={e => set("contactEmail", e.target.value)} className={fieldClass} />
-              </Field>
-              <Field label={t("admin.contactPhone")} error={phoneProblem}>
-                <input dir="ltr" inputMode="tel" value={draft.contactPhone} onChange={e => set("contactPhone", e.target.value)} className={fieldClass} />
-              </Field>
-              <Field label={t("admin.governorate")}>
-                <Select value={draft.governorate} onChange={e => set("governorate", e.target.value)} className={fieldClass}>
-                  <option value="">{t("admin.notSet")}</option>
-                  {kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zone.label}</option>)}
-                </Select>
-              </Field>
-              <Field label={t("admin.addressLine")}>
-                <input dir="auto" value={draft.addressLine} onChange={e => set("addressLine", e.target.value)} className={fieldClass} />
-              </Field>
-            </div>
+            <fieldset disabled={!may.edit} className="min-w-0">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("admin.contactEmail")}>
+                  <input dir="ltr" type="email" value={draft.contactEmail} onChange={e => set("contactEmail", e.target.value)} className={fieldClass} />
+                </Field>
+                <Field label={t("admin.contactPhone")} error={phoneProblem}>
+                  <input dir="ltr" inputMode="tel" value={draft.contactPhone} onChange={e => set("contactPhone", e.target.value)} className={fieldClass} />
+                </Field>
+                <Field label={t("admin.governorate")}>
+                  <Select value={draft.governorate} onChange={e => set("governorate", e.target.value)} className={fieldClass}>
+                    <option value="">{t("admin.notSet")}</option>
+                    {kuwaitDeliveryZones.map(zone => <option key={zone.id} value={zone.id}>{zone.label}</option>)}
+                  </Select>
+                </Field>
+                <Field label={t("admin.addressLine")}>
+                  <input dir="auto" value={draft.addressLine} onChange={e => set("addressLine", e.target.value)} className={fieldClass} />
+                </Field>
+              </div>
+            </fieldset>
           </Card>
 
           {/* The Ministry of Commerce discount permit. Without a valid one the
@@ -330,42 +355,44 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             id="licences"
             title={t("admin.sectionLicences")}
             description={t("admin.discountLicenceHint")}
-            footer={saveButton("licences", () => save("licences", {
+            footer={may.edit && saveButton("licences", () => save("licences", {
               licenceNumber: blank(draft.licenceNumber),
               underPlatformLicence: draft.underPlatformLicence,
               discountLicenceNumber: blank(draft.discountLicenceNumber),
               discountLicenceExpiresAt: draft.discountLicenceExpiresAt ? new Date(draft.discountLicenceExpiresAt) : null,
             }))}
           >
-            <p className="mb-4 flex flex-wrap items-center gap-2 text-[13px]">
-              <span className="font-semibold text-[#0a285a]">{t("admin.permitState")}</span>
-              <span className={`rounded-full px-2.5 py-1 text-[12px] leading-none font-semibold ${permitLine.tone}`}>{permitLine.text}</span>
-            </p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("admin.licenceNumber")}>
-                <input dir="ltr" value={draft.licenceNumber} onChange={e => set("licenceNumber", e.target.value)} className={fieldClass} />
-              </Field>
-              {/* Recorded rather than inferred from a blank licence number
-                  (3.3.16): a seller who has not handed their paperwork in is not
-                  the same as one trading under ours. */}
-              <Toggle
-                checked={draft.underPlatformLicence}
-                onChange={value => set("underPlatformLicence", value)}
-                label={t("admin.underPlatformLicence")}
-                hint={t("admin.underPlatformLicenceHint")}
-              />
-              <Field label={t("admin.discountLicence")}>
-                <input dir="ltr" value={draft.discountLicenceNumber} onChange={e => set("discountLicenceNumber", e.target.value)} className={fieldClass} />
-              </Field>
-              <Field label={t("admin.discountLicenceExpires")}>
-                <input type="date" value={draft.discountLicenceExpiresAt} onChange={e => set("discountLicenceExpiresAt", e.target.value)} className={fieldClass} />
-              </Field>
-            </div>
+            <fieldset disabled={!may.edit} className="min-w-0">
+              <p className="mb-4 flex flex-wrap items-center gap-2 text-[13px]">
+                <span className="font-semibold text-[#0a285a]">{t("admin.permitState")}</span>
+                <span className={`rounded-full px-2.5 py-1 text-[12px] leading-none font-semibold ${permitLine.tone}`}>{permitLine.text}</span>
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("admin.licenceNumber")}>
+                  <input dir="ltr" value={draft.licenceNumber} onChange={e => set("licenceNumber", e.target.value)} className={fieldClass} />
+                </Field>
+                {/* Recorded rather than inferred from a blank licence number
+                    (3.3.16): a seller who has not handed their paperwork in is not
+                    the same as one trading under ours. */}
+                <Toggle
+                  checked={draft.underPlatformLicence}
+                  onChange={value => set("underPlatformLicence", value)}
+                  label={t("admin.underPlatformLicence")}
+                  hint={t("admin.underPlatformLicenceHint")}
+                />
+                <Field label={t("admin.discountLicence")}>
+                  <input dir="ltr" value={draft.discountLicenceNumber} onChange={e => set("discountLicenceNumber", e.target.value)} className={fieldClass} />
+                </Field>
+                <Field label={t("admin.discountLicenceExpires")}>
+                  <input type="date" value={draft.discountLicenceExpiresAt} onChange={e => set("discountLicenceExpiresAt", e.target.value)} className={fieldClass} />
+                </Field>
+              </div>
+            </fieldset>
           </Card>
 
           {/* The store's papers themselves — the scans of what the card above
               records by number — uploaded by NetLet or by the store's owner. */}
-          <StoreDocuments vendorId={vendorId} audience="netlet" />
+          {may.papers ? <StoreDocuments vendorId={vendorId} audience="netlet" /> : null}
 
           {/* What this store charges to deliver (3.2.4), how fast (3.2.5), and
               who carries it (3.4.13). Blank is free and blank says nothing —
@@ -374,7 +401,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             id="delivery"
             title={t("admin.sectionDelivery")}
             description={t("admin.sectionDeliveryNote")}
-            footer={saveButton("delivery", () => save("delivery", {
+            footer={may.edit && saveButton("delivery", () => save("delivery", {
               /* The select only offers the listed bands, and the server checks
                  the same list — this cast narrows a plain string to it. */
               deliverySpeed: blank(draft.deliverySpeed) as DeliverySpeed | null,
@@ -387,58 +414,60 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               deliveryCourierId: draft.deliveryMode === "own" && draft.deliveryCourierId ? Number(draft.deliveryCourierId) : null,
             }))}
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t("admin.fieldDeliverySpeed")} className="sm:col-span-2">
-                <Select value={draft.deliverySpeed} onChange={e => set("deliverySpeed", e.target.value)} className={fieldClass}>
-                  <option value="">{t("admin.speedUnset")}</option>
-                  {DELIVERY_SPEEDS.map(speed => <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>)}
-                </Select>
-              </Field>
-              <Field label={t("admin.fieldDeliveryFlat")} hint={t("admin.fieldDeliveryFlatHint")}>
-                <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.deliveryFlat} onChange={e => set("deliveryFlat", e.target.value)} className={fieldClass} />
-              </Field>
-              <Field label={t("admin.fieldDeliveryFreeOver")} hint={t("admin.fieldDeliveryFreeOverHint")}>
-                <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.deliveryFreeOver} onChange={e => set("deliveryFreeOver", e.target.value)} className={fieldClass} />
-              </Field>
-              <Field label={t("admin.fieldDeliveryProvider")} hint={t("admin.fieldDeliveryProviderHint")} className="sm:col-span-2">
-                <input dir="auto" value={draft.deliveryProvider} onChange={e => set("deliveryProvider", e.target.value)} className={fieldClass} />
-              </Field>
-              {/* The fast trip (3.2.5): a fee of its own, charged per fast
-                  parcel, and the band it promises. Blank is no fast option. */}
-              <Field label={t("admin.fieldFastFee")} hint={t("admin.fieldFastFeeHint")}>
-                <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.fastDeliveryFee} onChange={e => set("fastDeliveryFee", e.target.value)} className={fieldClass} />
-              </Field>
-              <Field label={t("admin.fieldFastSpeed")}>
-                <Select value={draft.fastDeliverySpeed} onChange={e => set("fastDeliverySpeed", e.target.value)} className={fieldClass}>
-                  <option value="">{t("admin.speedUnset")}</option>
-                  {DELIVERY_SPEEDS.filter(speed => speed !== "made_to_order").map(speed => <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>)}
-                </Select>
-              </Field>
-            </div>
-            {/* Who carries this store's parcels (3.3.13). */}
-            <fieldset className="mt-5 border-t border-[#eef1f5] pt-4">
-              <legend className="text-[13px] font-semibold text-[#0a285a]">{t("admin.deliveryModeTitle")}</legend>
-              <div className="mt-2 space-y-2">
-                {(["netlet", "own"] as const).map(mode => (
-                  <label key={mode} className="flex items-start gap-2.5 text-[14px] text-[#0a285a]">
-                    <input type="radio" name="delivery-mode" checked={draft.deliveryMode === mode} onChange={() => set("deliveryMode", mode)} className="mt-1 size-4 shrink-0 accent-[#0a285a]" />
-                    <span>
-                      <span className="font-semibold">{t(mode === "netlet" ? "admin.deliveryModeNetlet" : "admin.deliveryModeOwn")}</span>
-                      <span className="block text-[12px] leading-5 ink-muted">{t(mode === "netlet" ? "admin.deliveryModeNetletNote" : "admin.deliveryModeOwnNote")}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {draft.deliveryMode === "own" ? (
-                <Field label={t("admin.deliveryCourier")} hint={t("admin.deliveryCourierHint")} className="mt-3 max-w-md">
-                  <Select value={draft.deliveryCourierId} onChange={e => set("deliveryCourierId", e.target.value)} className={fieldClass}>
-                    <option value="">{t("admin.deliveryCourierNone")}</option>
-                    {(companies.data ?? []).filter(company => company.status === "active" || String(company.id) === draft.deliveryCourierId).map(company => (
-                      <option key={company.id} value={company.id}>{isArabic && company.nameAr ? company.nameAr : company.name}</option>
-                    ))}
+            <fieldset disabled={!may.edit} className="min-w-0">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("admin.fieldDeliverySpeed")} className="sm:col-span-2">
+                  <Select value={draft.deliverySpeed} onChange={e => set("deliverySpeed", e.target.value)} className={fieldClass}>
+                    <option value="">{t("admin.speedUnset")}</option>
+                    {DELIVERY_SPEEDS.map(speed => <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>)}
                   </Select>
                 </Field>
-              ) : null}
+                <Field label={t("admin.fieldDeliveryFlat")} hint={t("admin.fieldDeliveryFlatHint")}>
+                  <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.deliveryFlat} onChange={e => set("deliveryFlat", e.target.value)} className={fieldClass} />
+                </Field>
+                <Field label={t("admin.fieldDeliveryFreeOver")} hint={t("admin.fieldDeliveryFreeOverHint")}>
+                  <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.deliveryFreeOver} onChange={e => set("deliveryFreeOver", e.target.value)} className={fieldClass} />
+                </Field>
+                <Field label={t("admin.fieldDeliveryProvider")} hint={t("admin.fieldDeliveryProviderHint")} className="sm:col-span-2">
+                  <input dir="auto" value={draft.deliveryProvider} onChange={e => set("deliveryProvider", e.target.value)} className={fieldClass} />
+                </Field>
+                {/* The fast trip (3.2.5): a fee of its own, charged per fast
+                    parcel, and the band it promises. Blank is no fast option. */}
+                <Field label={t("admin.fieldFastFee")} hint={t("admin.fieldFastFeeHint")}>
+                  <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.fastDeliveryFee} onChange={e => set("fastDeliveryFee", e.target.value)} className={fieldClass} />
+                </Field>
+                <Field label={t("admin.fieldFastSpeed")}>
+                  <Select value={draft.fastDeliverySpeed} onChange={e => set("fastDeliverySpeed", e.target.value)} className={fieldClass}>
+                    <option value="">{t("admin.speedUnset")}</option>
+                    {DELIVERY_SPEEDS.filter(speed => speed !== "made_to_order").map(speed => <option key={speed} value={speed}>{t(`speed.${speed}` as MessageKey)}</option>)}
+                  </Select>
+                </Field>
+              </div>
+              {/* Who carries this store's parcels (3.3.13). */}
+              <fieldset className="mt-5 min-w-0 border-t border-[#eef1f5] pt-4">
+                <legend className="text-[13px] font-semibold text-[#0a285a]">{t("admin.deliveryModeTitle")}</legend>
+                <div className="mt-2 space-y-2">
+                  {(["netlet", "own"] as const).map(mode => (
+                    <label key={mode} className="flex items-start gap-2.5 text-[14px] text-[#0a285a]">
+                      <input type="radio" name="delivery-mode" checked={draft.deliveryMode === mode} onChange={() => set("deliveryMode", mode)} className="mt-1 size-4 shrink-0 accent-[#0a285a]" />
+                      <span>
+                        <span className="font-semibold">{t(mode === "netlet" ? "admin.deliveryModeNetlet" : "admin.deliveryModeOwn")}</span>
+                        <span className="block text-[12px] leading-5 ink-muted">{t(mode === "netlet" ? "admin.deliveryModeNetletNote" : "admin.deliveryModeOwnNote")}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {draft.deliveryMode === "own" ? (
+                  <Field label={t("admin.deliveryCourier")} hint={t("admin.deliveryCourierHint")} className="mt-3 max-w-md">
+                    <Select value={draft.deliveryCourierId} onChange={e => set("deliveryCourierId", e.target.value)} className={fieldClass}>
+                      <option value="">{t("admin.deliveryCourierNone")}</option>
+                      {(companies.data ?? []).filter(company => company.status === "active" || String(company.id) === draft.deliveryCourierId).map(company => (
+                        <option key={company.id} value={company.id}>{isArabic && company.nameAr ? company.nameAr : company.name}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                ) : null}
+              </fieldset>
             </fieldset>
           </Card>
 
@@ -449,43 +478,45 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             id="payments"
             title={t("admin.sectionPayments")}
             description={t("admin.sectionPaymentsNote")}
-            footer={saveButton("payments", () => save("payments", {
+            footer={may.edit && saveButton("payments", () => save("payments", {
               acceptsCod: draft.acceptsCod,
               codCeiling: blank(draft.codCeiling),
               subscriptionPercent: blank(draft.subscriptionPercent),
               payoutIban: blank(draft.payoutIban),
             }), Boolean(ibanProblem))}
           >
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Toggle
-                checked={draft.acceptsCod}
-                onChange={value => set("acceptsCod", value)}
-                label={t("admin.acceptsCod")}
-                hint={t("admin.acceptsCodHint")}
-                className="sm:col-span-2"
-              />
-              <Field label={t("admin.codCeiling")} optional>
-                <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.codCeiling} disabled={!draft.acceptsCod} onChange={e => set("codCeiling", e.target.value)} className={fieldClass} />
-              </Field>
-              <Field label={t("admin.subscriptionPercent")} hint={t("admin.subscriptionPercentHint")}>
-                <input dir="ltr" inputMode="decimal" value={draft.subscriptionPercent} onChange={e => set("subscriptionPercent", e.target.value)} className={fieldClass} />
-              </Field>
-              <Field
-                label={t("admin.payoutIban")}
-                error={ibanProblem}
-                hint={ibanRead ? t("admin.ibanReadAs", { iban: ibanRead }) : undefined}
-                className="sm:col-span-2"
-              >
-                <input dir="ltr" autoComplete="off" spellCheck={false} value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={fieldClass} />
-              </Field>
-            </div>
+            <fieldset disabled={!may.edit} className="min-w-0">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Toggle
+                  checked={draft.acceptsCod}
+                  onChange={value => set("acceptsCod", value)}
+                  label={t("admin.acceptsCod")}
+                  hint={t("admin.acceptsCodHint")}
+                  className="sm:col-span-2"
+                />
+                <Field label={t("admin.codCeiling")} optional>
+                  <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.codCeiling} disabled={!draft.acceptsCod} onChange={e => set("codCeiling", e.target.value)} className={fieldClass} />
+                </Field>
+                <Field label={t("admin.subscriptionPercent")} hint={t("admin.subscriptionPercentHint")}>
+                  <input dir="ltr" inputMode="decimal" value={draft.subscriptionPercent} onChange={e => set("subscriptionPercent", e.target.value)} className={fieldClass} />
+                </Field>
+                <Field
+                  label={t("admin.payoutIban")}
+                  error={ibanProblem}
+                  hint={ibanRead ? t("admin.ibanReadAs", { iban: ibanRead }) : undefined}
+                  className="sm:col-span-2"
+                >
+                  <input dir="ltr" autoComplete="off" spellCheck={false} value={draft.payoutIban} onChange={e => set("payoutIban", e.target.value)} className={fieldClass} />
+                </Field>
+              </div>
+            </fieldset>
           </Card>
 
           <Card
             id="terms"
             title={t("admin.commercialTerms")}
             description={t("admin.sectionTermsNote")}
-            footer={
+            footer={may.rate && (
               <button
                 type="button"
                 onClick={() => setCommission.mutate({ vendorId, percent: terms.commissionPercent, fixed: terms.commissionFixed.trim() || null })}
@@ -495,13 +526,13 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
                 {setCommission.isPending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Save className="size-4" aria-hidden />}
                 {t("admin.save")}
               </button>
-            }
+            )}
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("admin.vendorStatus")} hint={t("admin.statusHint")}>
                 <Select
                   value={row.status}
-                  disabled={setStatus.isPending}
+                  disabled={!may.approve || setStatus.isPending}
                   onChange={e => setStatus.mutate({ vendorId, status: e.target.value as (typeof STATUSES)[number] })}
                   className={fieldClass}
                 >
@@ -510,16 +541,16 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
               </Field>
               <Toggle
                 checked={row.autoPublish}
-                disabled={setAutoPublish.isPending}
+                disabled={!may.review || setAutoPublish.isPending}
                 onChange={value => setAutoPublish.mutate({ vendorId, autoPublish: value })}
                 label={t("admin.autoPublishLabel")}
                 hint={t("admin.autoPublishHint")}
               />
               <Field label={t("admin.commissionPercent")} hint={t("admin.commissionPercentHint")}>
-                <input dir="ltr" inputMode="decimal" value={terms.commissionPercent} onChange={e => setTerms({ ...terms, commissionPercent: e.target.value })} className={fieldClass} />
+                <input dir="ltr" inputMode="decimal" disabled={!may.rate} value={terms.commissionPercent} onChange={e => setTerms({ ...terms, commissionPercent: e.target.value })} className={fieldClass} />
               </Field>
               <Field label={t("admin.commissionFixed")} optional>
-                <input dir="ltr" inputMode="decimal" placeholder="0.000" value={terms.commissionFixed} onChange={e => setTerms({ ...terms, commissionFixed: e.target.value })} className={fieldClass} />
+                <input dir="ltr" inputMode="decimal" placeholder="0.000" disabled={!may.rate} value={terms.commissionFixed} onChange={e => setTerms({ ...terms, commissionFixed: e.target.value })} className={fieldClass} />
               </Field>
             </div>
           </Card>
@@ -547,7 +578,7 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
                     key={badge}
                     type="button"
                     aria-pressed={on}
-                    disabled={setBadges.isPending}
+                    disabled={!may.approve || setBadges.isPending}
                     onClick={() => setBadges.mutate({ vendorId, badges: on ? held.filter(one => one !== badge) : [...held, badge] })}
                     className={`inline-flex h-10 items-center rounded-full px-4 text-[13px] font-semibold transition disabled:opacity-60 ${
                       on ? "bg-[#0a285a] text-white" : "border border-[#cfd9e6] bg-white text-[#536b8c] hover:border-[#0a285a] hover:bg-[#f0f2f5] hover:text-[#0a285a]"
@@ -560,9 +591,9 @@ function VendorDetail({ vendorId }: { vendorId: number }) {
             </div>
           </Card>
 
-          <StoreWarnings vendorId={vendorId} storeName={row.name} manage />
+          <StoreWarnings vendorId={vendorId} storeName={row.name} manage={may.approve} />
 
-          <VendorTeam vendorId={vendorId} />
+          {may.team ? <VendorTeam vendorId={vendorId} /> : null}
         </div>
       </div>
     </>

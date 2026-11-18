@@ -394,6 +394,12 @@ struct PortalStoreView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
+    /// What this person may change, each section by the capability its save
+    /// asks for — the web's store page. A store's page is open to most of
+    /// NetLet's team roles (`stores.view`), and only the Stores area edits a
+    /// store: anybody else reads it, with no Save the server would refuse.
+    private func may(_ capability: String) -> Bool { app.session.seller?.can(capability, vendorId: vendorId) == true }
+
     var body: some View {
         PortalScreen(title: store?.name ?? l.t("admin.vendors"), refresh: { await load() }) {
             if let store {
@@ -407,13 +413,13 @@ struct PortalStoreView: View {
                 licences(store)
                 /* The papers themselves — the scans of what the card above
                    records by number — added by NetLet or the store's owner. */
-                StoreDocumentsCard(vendorId: vendorId, audience: .netlet)
+                if may("vendor.editProfile") { StoreDocumentsCard(vendorId: vendorId, audience: .netlet) }
                 delivery
                 payments
                 terms(store)
                 badges(store)
-                StoreWarningsCard(vendorId: vendorId, storeName: store.name, manage: true)
-                StoreTeamSection(vendorId: vendorId) { await load() }
+                StoreWarningsCard(vendorId: vendorId, storeName: store.name, manage: may("vendor.approve"))
+                if may("vendor.viewMembers") { StoreTeamSection(vendorId: vendorId) { await load() } }
             } else if missing {
                 PortalEmpty(text: l.t("admin.storeNotFound"))
             } else if let failed {
@@ -424,7 +430,7 @@ struct PortalStoreView: View {
         }
         .task {
             await load()
-            companies = (try? await app.services.api.call(API.deliveryCompanies)) ?? []
+            if may("delivery.view") { companies = (try? await app.services.api.call(API.deliveryCompanies)) ?? [] }
         }
     }
 
@@ -443,21 +449,24 @@ struct PortalStoreView: View {
                 }
             }
             HStack(spacing: 8) {
-                Button { app.open(.portal("/admin/products?vendor=\(vendorId)")) } label: { Label(l.t("admin.viewStoreProducts"), systemImage: "square.grid.2x2") }
-                    .buttonStyle(PortalSmallButtonStyle())
-                Button { app.open(.portal("/admin/products/new?vendor=\(vendorId)")) } label: { Label(l.t("admin.addProductToStore"), systemImage: "plus.square") }
-                    .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                if may("product.view") {
+                    Button { app.open(.portal("/admin/products?vendor=\(vendorId)")) } label: { Label(l.t("admin.viewStoreProducts"), systemImage: "square.grid.2x2") }
+                        .buttonStyle(PortalSmallButtonStyle())
+                }
+                if may("product.create") {
+                    Button { app.open(.portal("/admin/products/new?vendor=\(vendorId)")) } label: { Label(l.t("admin.addProductToStore"), systemImage: "plus.square") }
+                        .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                }
             }
         }
     }
 
     private func stats(_ store: StoreDetail) -> some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-            StoreStat(label: l.t("admin.statProducts"), value: "\(store.stats.products)", note: l.t("admin.statLive", ["count": "\(store.stats.live)"])) {
-                app.open(.portal("/admin/products?vendor=\(vendorId)"))
-            }
+            StoreStat(label: l.t("admin.statProducts"), value: "\(store.stats.products)", note: l.t("admin.statLive", ["count": "\(store.stats.live)"]),
+                      open: may("product.view") ? { app.open(.portal("/admin/products?vendor=\(vendorId)")) } : nil)
             StoreStat(label: l.t("admin.statInReview"), value: "\(store.stats.inReview)", note: l.t("admin.statDrafts", ["count": "\(store.stats.drafts)"]),
-                      open: store.stats.inReview > 0 ? { app.open(.portal("/admin/review")) } : nil)
+                      open: store.stats.inReview > 0 && may("product.review") ? { app.open(.portal("/admin/review")) } : nil)
             StoreStat(label: l.t("admin.statTeam"), value: "\(store.stats.members)")
             StoreStat(label: l.t("admin.statCommission"), value: rateText(store.commissionPercent),
                       note: store.commissionFixed.flatMap { Money(amount: $0) }.flatMap { $0.fils > 0 ? l.t("admin.statCommissionFixed", ["amount": $0.formatted(l.current)]) : nil })
@@ -466,13 +475,13 @@ struct PortalStoreView: View {
 
     // MARK: Sections
 
-    private func section<Content: View>(_ title: String, note: String? = nil, key: String, disabled: Bool = false,
+    private func section<Content: View>(_ title: String, note: String? = nil, key: String, editable: Bool = true, disabled: Bool = false,
                                         save: (() -> Void)? = nil, @ViewBuilder _ content: @escaping () -> Content) -> some View {
         PortalCard {
             Text(l.t(title)).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
             if let note { Text(l.t(note)).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true) }
-            content()
-            if let save {
+            content().disabled(!editable)
+            if editable, let save {
                 HStack {
                     Spacer()
                     SectionSave(pending: saving == key, disabled: disabled || (saving != nil && saving != key), action: save)
@@ -482,7 +491,7 @@ struct PortalStoreView: View {
     }
 
     private func profile(_ store: StoreDetail) -> some View {
-        section("admin.sectionProfile", note: "admin.sectionProfileNote", key: "profile",
+        section("admin.sectionProfile", note: "admin.sectionProfileNote", key: "profile", editable: may("stores.manage"),
                 disabled: draft.name.trimmingCharacters(in: .whitespaces).isEmpty, save: {
             save("profile", .init(vendorId: vendorId, name: draft.name.trimmingCharacters(in: .whitespaces), nameAr: .text(draft.nameAr),
                                   logoUrl: .text(draft.logoUrl), description: .text(draft.description), descriptionAr: .text(draft.descriptionAr)))
@@ -505,8 +514,10 @@ struct PortalStoreView: View {
         draft.contactPhone.trimmingCharacters(in: .whitespaces).isEmpty || StoreRules.isValidKuwaitPhone(draft.contactPhone) ? nil : l.t("admin.invalidPhone")
     }
 
+    /// Only an editor is checked: anybody else reads the account masked,
+    /// which no IBAN rule would pass.
     private var ibanProblem: String? {
-        draft.payoutIban.trimmingCharacters(in: .whitespaces).isEmpty || StoreRules.isValidIban(draft.payoutIban) ? nil : l.t("admin.invalidIban")
+        !may("stores.manage") || draft.payoutIban.trimmingCharacters(in: .whitespaces).isEmpty || StoreRules.isValidIban(draft.payoutIban) ? nil : l.t("admin.invalidIban")
     }
 
     /// "Saved as KW75NBOK…" when the bank code was typed with a 0 or a 1.
@@ -516,7 +527,7 @@ struct PortalStoreView: View {
     }
 
     private var contact: some View {
-        section("admin.sectionContact", note: "admin.sectionContactNote", key: "contact", disabled: phoneProblem != nil, save: {
+        section("admin.sectionContact", note: "admin.sectionContactNote", key: "contact", editable: may("stores.manage"), disabled: phoneProblem != nil, save: {
             save("contact", .init(vendorId: vendorId, contactEmail: .text(draft.contactEmail), contactPhone: .text(draft.contactPhone),
                                   governorate: OrNull(draft.governorate), addressLine: .text(draft.addressLine)))
         }) {
@@ -529,7 +540,7 @@ struct PortalStoreView: View {
     }
 
     private func licences(_ store: StoreDetail) -> some View {
-        section("admin.sectionLicences", note: "admin.discountLicenceHint", key: "licences", save: {
+        section("admin.sectionLicences", note: "admin.discountLicenceHint", key: "licences", editable: may("stores.manage"), save: {
             save("licences", .init(vendorId: vendorId, licenceNumber: .text(draft.licenceNumber), underPlatformLicence: draft.underPlatformLicence,
                                    discountLicenceNumber: .text(draft.discountLicenceNumber),
                                    discountLicenceExpiresAt: OrNull(draft.expires.map(StoreRules.kuwaitDay))))
@@ -568,7 +579,7 @@ struct PortalStoreView: View {
     }
 
     private var delivery: some View {
-        section("admin.sectionDelivery", note: "admin.sectionDeliveryNote", key: "delivery", save: {
+        section("admin.sectionDelivery", note: "admin.sectionDeliveryNote", key: "delivery", editable: may("stores.manage"), save: {
             save("delivery", .init(vendorId: vendorId, deliverySpeed: OrNull(draft.deliverySpeed), deliveryFlat: .text(PhoneNumber.foldDigits(draft.deliveryFlat)),
                                    deliveryFreeOver: .text(PhoneNumber.foldDigits(draft.deliveryFreeOver)), deliveryProvider: .text(draft.deliveryProvider),
                                    fastDeliveryFee: .text(PhoneNumber.foldDigits(draft.fastDeliveryFee)), fastDeliverySpeed: OrNull(draft.fastDeliverySpeed),
@@ -617,7 +628,7 @@ struct PortalStoreView: View {
     }
 
     private var payments: some View {
-        section("admin.sectionPayments", note: "admin.sectionPaymentsNote", key: "payments", disabled: ibanProblem != nil, save: {
+        section("admin.sectionPayments", note: "admin.sectionPaymentsNote", key: "payments", editable: may("stores.manage"), disabled: ibanProblem != nil, save: {
             save("payments", .init(vendorId: vendorId, acceptsCod: draft.acceptsCod, codCeiling: .text(PhoneNumber.foldDigits(draft.codCeiling)),
                                    subscriptionPercent: .text(PhoneNumber.foldDigits(draft.subscriptionPercent)), payoutIban: .text(draft.payoutIban)))
         }) {
@@ -630,27 +641,30 @@ struct PortalStoreView: View {
     }
 
     private func terms(_ store: StoreDetail) -> some View {
-        section("admin.commercialTerms", note: "admin.sectionTermsNote", key: "terms", save: {
+        section("admin.commercialTerms", note: "admin.sectionTermsNote", key: "terms", save: may("vendor.setCommission") ? {
             Task { await saveTerms() }
-        }) {
+        } : nil) {
             ChoiceField(label: l.t("admin.vendorStatus"), hint: l.t("admin.statusHint"), current: store.status, placeholder: l.t("admin.vendorStatus"),
-                        options: StoreRules.statuses.map { ($0, l.t(StoreRules.statusKey($0))) }, enabled: saving == nil) { chosen in
+                        options: StoreRules.statuses.map { ($0, l.t(StoreRules.statusKey($0))) }, enabled: saving == nil && may("vendor.approve")) { chosen in
                 guard let chosen, chosen != store.status else { return }
                 Task { await act("status") { try await $0.call(API.setStoreStatus, .init(vendorId: vendorId, status: chosen)) } }
             }
             toggle("admin.autoPublishLabel", hint: "admin.autoPublishHint", isOn: Binding(get: { store.autoPublish }, set: { on in
                 Task { await act("autoPublish") { try await $0.call(API.setStoreAutoPublish, .init(vendorId: vendorId, autoPublish: on)) } }
             }))
-            .disabled(saving != nil)
-            LabeledField(label: l.t("admin.commissionPercent"), text: $draft.percent, hint: l.t("admin.commissionPercentHint"), keyboard: .decimalPad, leftToRight: true)
-            LabeledField(label: l.t("admin.commissionFixed"), text: $draft.fixed, placeholder: "0.000", keyboard: .decimalPad, leftToRight: true)
+            .disabled(saving != nil || !may("product.review"))
+            Group {
+                LabeledField(label: l.t("admin.commissionPercent"), text: $draft.percent, hint: l.t("admin.commissionPercentHint"), keyboard: .decimalPad, leftToRight: true)
+                LabeledField(label: l.t("admin.commissionFixed"), text: $draft.fixed, placeholder: "0.000", keyboard: .decimalPad, leftToRight: true)
+            }
+            .disabled(!may("vendor.setCommission"))
         }
     }
 
     private func badges(_ store: StoreDetail) -> some View {
         let rules = PortalRules.shared.badges
         let held = store.awarded
-        return section("admin.badges", key: "badges") {
+        return section("admin.badges", key: "badges", editable: may("vendor.approve")) {
             if let rules {
                 Text(l.t("admin.badgesEarned", [
                     "rating": rules.highRatingFloor == rules.highRatingFloor.rounded() ? "\(Int(rules.highRatingFloor))" : "\(rules.highRatingFloor)",

@@ -7255,7 +7255,7 @@ one every hour, and the owner asked for devices.
 - **Every request decides it again** (`gateAdminRights`, in
   `authenticateRequest`, the one door every request's user passes): an
   administrator on any device not `approved` is read as a shopper for that
-  request — `role: "user"`, so `adminProcedure`, `resolveActor`, the error
+  request — `role: "user"`, so `resolveActor`, the error
   formatter and an invoice answer as they do for a shopper without knowing
   devices exist — and `resolveActor` drops an employee's grants the same way
   (`grantsHold`). The actor carries `adminLocked`, so the shop's doors still
@@ -7737,6 +7737,28 @@ team, since `can()` passes an administrator for every store's capability. The
 app's `PortalRules.menu(for:)` reads the same flag from `portal.json`. Each
 store's team and papers are still on its own page under Vendors, and either
 address typed in still answers with the note pointing there.
+
+**A store's page is read by most roles and edited by one.** `stores.view` is
+in five areas (catalogue, orders, delivery, money, marketing), so a member
+holding any of them opens `/admin/vendors/:id` — and the page was a full
+administrator's: every section a form with a Save the server refused, the
+Store documents and team sections error cards (`vendor.editProfile`,
+`vendor.viewMembers`), the delivery companies asked for without
+`delivery.view`. Each section now asks the capability its own save asks
+(`may` in `VendorDetail.tsx`, the app's `may(_:)` on `PortalStoreView`): the
+profile, contact, licences, delivery and payments are read-only without
+`stores.manage`, status and badges and warnings need `vendor.approve`, the
+commission `vendor.setCommission`, publishing without review
+`product.review`; documents and the team are drawn only for who reads them.
+**And the payout IBAN is masked for a role that neither edits nor pays the
+store** (`payoutIbanFor` in `services/inventory.ts`, on `vendors.get` and
+`vendors.list`): Marketing or Catalogue read `KW•••• 0101`, as a payout run
+shows it to a store; Finance (`payouts.view`) and the Stores area read it
+whole, and nobody who can save the field is handed the mask, so a save never
+writes one back. Found by an overnight sweep that calls every procedure as a
+member of each ready-made role and lists what each reaches that a shopper
+does not; `team.test.ts` holds the IBAN. **There is no `adminProcedure`**: it
+was unused, and a gate on `role === "admin"` is now every role's door.
 `adminMenu.test.ts` and `testThePortalOffersWhatThePersonMayUse` hold it.
 
 ## Managing products
