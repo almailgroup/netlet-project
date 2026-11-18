@@ -196,12 +196,12 @@ private struct SponsorAskForm: View {
     }
 
     private func send() async {
-        guard let productId else { return }
+        guard let chosen = productId else { return }
         sending = true
         defer { sending = false }
         let words = note.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         guard await app.attempt(done: "sponsor.sent", fallback: "admin.saveFailed", {
-            _ = try await app.services.api.call(API.sponsorRequest, .init(productId: productId, startsOn: startsOn, days: days, note: words.isEmpty ? nil : words))
+            _ = try await app.services.api.call(API.sponsorRequest, .init(productId: chosen, startsOn: startsOn, days: days, note: words.isEmpty ? nil : words))
         }) else { return await ask() }
         note = ""
         productId = nil
