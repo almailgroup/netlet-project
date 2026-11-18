@@ -9350,8 +9350,10 @@ product page's total for the quantity and its words — then 1,114 KB
 (320 KB), each store's delivery row and sheet and their words — then
 1,126 KB (323 KB), paying online, the test page and the door check's
 words in both languages — then 1,132 KB (324 KB), the tax words in
-both languages — and is 1,133 KB (324 KB) now, the untick note and its toast
-in both languages —
+both languages — then 1,133 KB (324 KB), the untick note and its toast
+in both languages — and is 1,142 KB (329 KB) now, the default address and way
+to pay in Quick settings, checkout's folded rows, the overlays' motion and the
+"could not be loaded" states in both languages —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
