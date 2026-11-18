@@ -591,6 +591,13 @@
     visibility: visible;
     opacity: 1;
   }
+  /* Shown at once while focus is handed back to it (`useOverlay`): a hidden
+     control takes no focus, and one mid-fade is still hidden. */
+  .group[data-reveal] .reveal-control {
+    visibility: visible;
+    opacity: 1;
+    transition: none;
+  }
 }
 
 /* The shop's dropdown list (`components/ui/Select.tsx`) opens with a short

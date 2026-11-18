@@ -118,7 +118,32 @@ export function useOverlay(open: boolean, onClose: () => void) {
       const active = document.activeElement;
       // An overlay playing its way out (`usePresence`) is still drawn, inert:
       // focus left inside it has left, as it would have had it unmounted.
-      if (!active || active === document.body || !document.contains(active) || active.closest("[inert]")) opener.current.focus({ preventScroll: true });
+      if (!active || active === document.body || !document.contains(active) || active.closest("[inert]")) handBack(opener.current);
     };
   }, [open]);
+}
+
+/*
+ * Focus back on the control that opened the overlay — and somewhere sensible
+ * when it cannot take it. Quick view's eye is a `.reveal-control`, hidden
+ * (`visibility`) unless its card is hovered or holds focus, and a hidden
+ * control refuses focus: opened from the keyboard, the preview handed focus
+ * back to nothing and the keyboard was on `<body>`, the top of the page. So
+ * the card shows its controls for the moment the eye takes focus
+ * (`data-reveal`, without the fade), after which the card holds focus and
+ * keeps them shown by itself. A control that has gone altogether hands focus
+ * to the page's `<main>` instead of the document.
+ */
+function handBack(target: HTMLElement) {
+  target.focus({ preventScroll: true });
+  if (document.activeElement === target) return;
+  const card = target.closest<HTMLElement>(".group");
+  if (card && target.isConnected) {
+    card.dataset.reveal = "";
+    target.focus({ preventScroll: true });
+    delete card.dataset.reveal;
+    if (document.activeElement === target) return;
+  }
+  const active = document.activeElement;
+  if (!active || active === document.body) document.querySelector<HTMLElement>("#main, #admin-main")?.focus({ preventScroll: true });
 }

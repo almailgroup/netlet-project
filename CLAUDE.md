@@ -2408,7 +2408,13 @@ caught, so a dialog's own order is the browser's): Tab walked out of the bag
 drawer into the header under the dim. **Moving focus in is the overlay's own**,
 by an effect declared after `useOverlay` so the opener is recorded first —
 the bag drawer and the voice and photo sheets never did, so the keyboard stayed
-on the button under the dim; they focus their Close now, as Quick view does.
+on the button under the dim; they focus their Close now, as Quick view does. **Focus
+goes back even to a control that hides** (`handBack`): Quick view's eye is a
+`.reveal-control`, hidden unless its card is hovered or holds focus, and a
+hidden control refuses focus, so a preview opened from the keyboard handed
+focus back to `<body>` — and so did the bag drawer opened by the preview's Add
+to cart. The card shows its controls for the moment the eye takes focus
+(`data-reveal`, no fade), and a control that has gone hands focus to `<main>`.
 
 **A page's own way back goes back, on the owner's word** (`lib/inAppBack.ts`).
 The account sections' round arrow was a link to `/account`, so it pushed the
