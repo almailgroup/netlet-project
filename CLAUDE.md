@@ -2498,7 +2498,9 @@ spills off the screen — the guide editor's "Upload a photo" ran 68px past a
 320 phone beside the step's 192px picture. `basis-56` (the occasions list's,
 and now the guide step's) lets it drop under the picture when there is no
 room. `.scratch/full-sweep.mjs` (every route, every role, 320, 390 and 1440 in
-both languages) is what finds these.
+both languages, and any other width asked for — `en@1024`) is what finds
+these; the widths between a phone and a laptop (768, 1024) are where a layout
+built for both ends breaks.
 
 ## Removing asks first
 
@@ -8678,6 +8680,15 @@ already standing is drawn open, being something the shopper is waiting on.
 fourth. Below `sm` each opens and closes, the specifications open to start;
 from `sm` up they are tabs. One structure at a time (`useMediaQuery`), never
 both with one hidden, which would put every panel and its id on the page twice.
+**And the tabs are drawn only where they fit, whatever the window's width**:
+from `lg` the information is in the buy box's column beside the photos, and
+between 1024 and about 1180 that column is narrower than the four tabs (528px
+in English, 446 in Arabic) — the English page scrolled sideways and the
+Arabic tabs hung past the card's edge. The strip's own width is measured as it
+is drawn, before the paint, against the room the column has (a
+`ResizeObserver`), and the sections are drawn while it does not fit; a change
+of language measures again. Found by the full sweep at 1024, a width none of
+the earlier sweeps used.
 
 **On a phone the price and the two buttons follow the shopper down the page**
 (`StickyBuyBar` in `ProductDetail.tsx`). The buy box is under the photo, so
