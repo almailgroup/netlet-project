@@ -68,6 +68,10 @@ export function LinePopover({ item, photo, title, label, short, trigger, actions
   const choose = (action: LineAction) => {
     pressHaptic();
     setOpen(false);
+    /* The "⋯" takes focus before the choice runs, so a question it asks
+       ("Remove from cart?") returns to it — the row chosen is gone by then,
+       and the keyboard went to <body> behind the bag drawer. */
+    button.current?.focus({ preventScroll: true });
     action.run();
   };
   const focusItem = (index: number) => {

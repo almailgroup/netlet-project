@@ -20,6 +20,7 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { lineTitle } from "@/lib/lineTitle";
 import { untickPlan } from "@shared/commerce/cartChoice";
+import { focusWhereTheShopperIs } from "@/hooks/useOverlay";
 
 export function useUntickToSaved() {
   const { cart, choose, removeItem, addItem } = useCart();
@@ -44,7 +45,7 @@ export function useUntickToSaved() {
         toast.error(t("cart.updateFailed"));
       });
     }
-    window.setTimeout(() => document.getElementById("main")?.focus({ preventScroll: true }), 0);
+    window.setTimeout(focusWhereTheShopperIs, 0);
 
     const message = moved.length === 1
       ? t("cart.savedForLater", { name: lineTitle(moved[0], isArabic) })

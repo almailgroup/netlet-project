@@ -36,6 +36,7 @@ import type { CartItem } from "@shared/commerce/types";
 import { Bookmark, ExternalLink, Gift, MoreHorizontal, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAskRemoveFromCart } from "@/components/ui/ConfirmRemoval";
+import { focusWhereTheShopperIs } from "@/hooks/useOverlay";
 
 export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   const { t } = useTranslation();
@@ -50,8 +51,8 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   const productId = item.productId;
   const plain = !item.addons?.length && !item.bundleName;
   /* After a line leaves the bag its button is gone, so the keyboard goes to
-     the page rather than to `<body>`. */
-  const toPage = () => window.setTimeout(() => document.getElementById("main")?.focus({ preventScroll: true }), 0);
+     the bag drawer it was in, or the page, rather than to `<body>`. */
+  const toPage = () => window.setTimeout(focusWhereTheShopperIs, 0);
   const drop = () => void removeItem(item.lineId).catch(() => toast.error(t("cart.updateFailed")));
 
   const actions: LineAction[] = [];

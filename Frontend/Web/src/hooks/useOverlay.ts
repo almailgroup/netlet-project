@@ -132,7 +132,8 @@ export function useOverlay(open: boolean, onClose: () => void) {
  * the card shows its controls for the moment the eye takes focus
  * (`data-reveal`, without the fade), after which the card holds focus and
  * keeps them shown by itself. A control that has gone altogether hands focus
- * to the page's `<main>` instead of the document.
+ * to the dialog still open under this one, or the page's `<main>`, rather
+ * than the document.
  */
 function handBack(target: HTMLElement) {
   target.focus({ preventScroll: true });
@@ -144,6 +145,23 @@ function handBack(target: HTMLElement) {
     delete card.dataset.reveal;
     if (document.activeElement === target) return;
   }
+  /* Focus left on an overlay playing its way out is nowhere: it goes to
+     <body> with it. */
   const active = document.activeElement;
-  if (!active || active === document.body) document.querySelector<HTMLElement>("#main, #admin-main")?.focus({ preventScroll: true });
+  if (active && active !== document.body && active.isConnected && !active.closest("[inert]")) return;
+  focusWhereTheShopperIs();
+}
+
+/**
+ * Somewhere sensible for the keyboard when what held it has gone: the first
+ * stop of the modal still open on top (a line removed inside the bag drawer,
+ * a question asked from it), else the page's own `<main>`. Sending it to
+ * `<main>` with the drawer open put the keyboard behind the dim.
+ */
+export function focusWhereTheShopperIs() {
+  const open = Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"]')).filter(dialog => !dialog.closest("[inert]"));
+  const holder = open[open.length - 1];
+  (holder ? tabStops(holder)[0] : null)?.focus({ preventScroll: true });
+  if (holder && holder.contains(document.activeElement)) return;
+  document.querySelector<HTMLElement>("#main, #admin-main")?.focus({ preventScroll: true });
 }
