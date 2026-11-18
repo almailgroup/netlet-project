@@ -7727,6 +7727,18 @@ answers were recorded off that server (`demo.team.desk.admin.json`,
 `PortalRules.can` mirrors `areasAllow` from `portal.json`'s `team`, and the CI
 photographs the owner's and HR's desk (`109-team`, `110-team-hr`).
 
+**A store's own pages are not in an administrator's menu, on the owner's
+word** ("I don't want it to be confusing"): the owner opened the store team
+page, then called "Team", beside "NetLet team", and found only "Administrators
+belong to no single store". It is "Store team" now (`admin.team`), and it and
+Store documents carry `storeOnly` in `ADMIN_MENU`: `menuFor`
+(`content/adminMenu.ts`) leaves them out for any administrator, full or on the
+team, since `can()` passes an administrator for every store's capability. The
+app's `PortalRules.menu(for:)` reads the same flag from `portal.json`. Each
+store's team and papers are still on its own page under Vendors, and either
+address typed in still answers with the note pointing there.
+`adminMenu.test.ts` and `testThePortalOffersWhatThePersonMayUse` hold it.
+
 ## Managing products
 
 **Adding a product is one form and one press.** "New product" used to create a

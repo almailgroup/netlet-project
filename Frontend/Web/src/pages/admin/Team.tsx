@@ -38,7 +38,7 @@ const ROLE_NOTE: Record<VendorRole, MessageKey> = {
 };
 
 export default function AdminTeam() {
-  usePageMeta(privatePageMeta("Team"));
+  usePageMeta(privatePageMeta("Store team"));
   return <AdminShell need={"vendor.viewMembers"}>{actor => <Team actor={actor} />}</AdminShell>;
 }
 

@@ -29,7 +29,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import { roleName } from "@shared/inventory/team";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ADMIN_MENU } from "@/content/adminMenu";
+import { menuFor } from "@/content/adminMenu";
 import { ArrowLeft, LogOut, BadgeCheck, Eye, BookOpen, Boxes, Building2, CalendarHeart, ClipboardCheck, ClipboardList, Coins, FileText, FolderLock, Gauge, Images, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, Rocket, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, UserCog, Users, Warehouse } from "lucide-react";
 import { isActiveHref, JumpButton, MenuDrawer, PageJump, Sidebar, useJumpShortcut, useRail, type FrameGroup } from "@/components/admin/frame";
 import { CopilotPanel } from "@/components/admin/CopilotPanel";
@@ -310,11 +310,11 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     return <Frame><MoveToPortal side={belongs} address={`${location}${search ? `?${search}` : ""}`} /></Frame>;
   }
 
-  /* The menu is `ADMIN_MENU` (`content/adminMenu.ts`), which the iOS app
-     reads too; this frame adds each link's icon. */
-  const groups: FrameGroup[] = ADMIN_MENU
-    .map(group => ({ label: group.label, links: group.links.filter(link => canAny(actor, link.need)).map(link => ({ href: link.href, label: link.label, icon: MENU_ICONS[link.href] })) }))
-    .filter(group => group.links.length > 0);
+  /* The menu is `ADMIN_MENU` as `menuFor` cuts it for this person
+     (`content/adminMenu.ts`), which the iOS app reads too; this frame adds
+     each link's icon. */
+  const groups: FrameGroup[] = menuFor(actor)
+    .map(group => ({ label: group.label, links: group.links.map(link => ({ href: link.href, label: link.label, icon: MENU_ICONS[link.href] })) }));
 
   /* Somebody whose only way in is a grant has no overview of a store to see:
      the portal's front door takes them to the first page they can use. */

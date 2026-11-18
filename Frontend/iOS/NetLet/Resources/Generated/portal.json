@@ -180,12 +180,14 @@
         {
           "href": "/admin/team",
           "label": "admin.team",
-          "need": "vendor.viewMembers"
+          "need": "vendor.viewMembers",
+          "storeOnly": true
         },
         {
           "href": "/admin/store-documents",
           "label": "storeDocs.title",
-          "need": "vendor.editProfile"
+          "need": "vendor.editProfile",
+          "storeOnly": true
         },
         {
           "href": "/admin/vendors",

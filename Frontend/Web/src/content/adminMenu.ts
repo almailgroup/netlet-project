@@ -9,11 +9,28 @@
  * Each group is what one kind of task reaches for, and a group a person
  * cannot use any of disappears with its heading.
  */
-import type { Capability } from "@shared/inventory/permissions";
+import { can, type Actor, type Capability } from "@shared/inventory/permissions";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
-export type AdminMenuLink = { href: string; label: MessageKey; need: Capability | Capability[] };
+/** `storeOnly`: a page about one store, for that store's own people. An
+ *  administrator passes `can()` for it (they reach every store) but works a
+ *  store's team and papers on that store's page under Vendors, so the page
+ *  only ever told them to look elsewhere — and "Team" beside "NetLet team"
+ *  read as the same thing. Left out of their menu on the owner's word. */
+export type AdminMenuLink = { href: string; label: MessageKey; need: Capability | Capability[]; storeOnly?: true };
 export type AdminMenuGroup = { label: MessageKey | null; links: AdminMenuLink[] };
+
+/** The menu this person may use: what `can()` allows them, less a store's own
+ *  pages for an administrator. A group with nothing left goes with its heading. */
+export function menuFor(actor: Actor): AdminMenuGroup[] {
+  const own = actor.kind === "vendor" ? actor.vendorId : undefined;
+  const allowed = (link: AdminMenuLink) =>
+    !(link.storeOnly && actor.kind === "admin")
+    && (Array.isArray(link.need) ? link.need : [link.need]).some(one => can(actor, one, own));
+  return ADMIN_MENU
+    .map(group => ({ label: group.label, links: group.links.filter(allowed) }))
+    .filter(group => group.links.length > 0);
+}
 
 export const ADMIN_MENU: AdminMenuGroup[] = [
   { label: null, links: [
@@ -72,9 +89,9 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     { href: "/admin/commission", label: "commission.deskTitle", need: "vendor.setCommission" },
   ] },
   { label: "admin.navPlatform", links: [
-    { href: "/admin/team", label: "admin.team", need: "vendor.viewMembers" },
+    { href: "/admin/team", label: "admin.team", need: "vendor.viewMembers", storeOnly: true },
     /* The store's own papers, for its owner; NetLet reads each store's on its page. */
-    { href: "/admin/store-documents", label: "storeDocs.title", need: "vendor.editProfile" },
+    { href: "/admin/store-documents", label: "storeDocs.title", need: "vendor.editProfile", storeOnly: true },
     { href: "/admin/vendors", label: "admin.vendors", need: "stores.view" },
     { href: "/admin/applications", label: "admin.applications", need: "stores.manage" },
     /* NetLet's own team: who opens which part of this panel, with which role. */

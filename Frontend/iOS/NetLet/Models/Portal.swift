@@ -11,8 +11,11 @@ struct PortalRules: Decodable, Sendable {
         let label: String
         /// Any one of these is enough.
         let need: [String]
+        /// A page about one store, for its own people (`storeOnly`): an
+        /// administrator works a store's team and papers on its page.
+        let storeOnly: Bool
 
-        private enum CodingKeys: String, CodingKey { case href, label, need }
+        private enum CodingKeys: String, CodingKey { case href, label, need, storeOnly }
 
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -23,6 +26,7 @@ struct PortalRules: Decodable, Sendable {
             } else {
                 need = try container.decode([String].self, forKey: .need)
             }
+            storeOnly = (try container.decodeIfPresent(Bool.self, forKey: .storeOnly)) ?? false
         }
     }
 
@@ -158,7 +162,9 @@ struct PortalRules: Decodable, Sendable {
     /// The menu this person may use, keeping only pages the app draws.
     func menu(for actor: SellerIdentity) -> [Group] {
         menu.map { group in
-            Group(label: group.label, links: group.links.filter { PortalPage.draws($0.href) && canAny(actor, $0.need) })
+            Group(label: group.label, links: group.links.filter {
+                PortalPage.draws($0.href) && !($0.storeOnly && actor.kind == "admin") && canAny(actor, $0.need)
+            })
         }
         .filter { !$0.links.isEmpty }
     }

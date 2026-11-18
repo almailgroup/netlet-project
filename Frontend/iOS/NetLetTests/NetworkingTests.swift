@@ -1143,6 +1143,14 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertTrue(rules.menu(for: owner).flatMap(\.links).contains { $0.href == "/admin/products" })
         XCTAssertFalse(rules.menu(for: courier).flatMap(\.links).contains { $0.href == "/admin/products" })
         XCTAssertTrue(rules.menu(for: admin).flatMap(\.links).allSatisfy { PortalPage.draws($0.href) }, "the menu offers only pages the app draws")
+        /* A store's own team and papers are for its people; an administrator
+           works them on the store's page (`storeOnly`, the owner's word). */
+        let adminLinks = rules.menu(for: admin).flatMap(\.links).map(\.href)
+        XCTAssertFalse(adminLinks.contains("/admin/team"))
+        XCTAssertFalse(adminLinks.contains("/admin/store-documents"))
+        XCTAssertTrue(adminLinks.contains("/admin/vendors"))
+        XCTAssertTrue(rules.menu(for: owner).flatMap(\.links).contains { $0.href == "/admin/team" })
+        XCTAssertTrue(rules.menu(for: owner).flatMap(\.links).contains { $0.href == "/admin/store-documents" })
         XCTAssertEqual(PortalPage("/admin/products?vendor=4"), .products(vendorId: 4))
         XCTAssertEqual(PortalPage("/admin/products/new"), .newProduct(vendorId: nil))
         XCTAssertNil(PortalPage("/account"))
