@@ -373,8 +373,12 @@ export async function saveBundle(
 export async function listBundles(actor: Actor): Promise<BundleView[]> {
   const db = await getDb();
   if (!db) return [];
+  /* Reading the bundles is reading the catalogue (`product.view`), the
+     page's own gate; making or changing NetLet's own is `bundles.netlet`.
+     Asking that here refused every team role whose menu offers the page
+     without the Catalogue area — Finance, Operations, Marketing. */
   if (actor.kind === "admin") {
-    assertCan(actor, "bundles.netlet");
+    assertCan(actor, "product.view");
     return loadBundles(db);
   }
   /* A shopper has no store to list bundles for, and `assertCan` would refuse

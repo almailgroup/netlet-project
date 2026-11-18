@@ -7759,6 +7759,15 @@ writes one back. Found by an overnight sweep that calls every procedure as a
 member of each ready-made role and lists what each reaches that a shopper
 does not; `team.test.ts` holds the IBAN. **There is no `adminProcedure`**: it
 was unused, and a gate on `role === "admin"` is now every role's door.
+**Then a browser sweep signed in as each ready-made role** (`.scratch/full-sweep.mjs
+en@1440 team`) found two more of the same shape, both fixed: the Bundles page
+is in the menu by `product.view` and its list asked `bundles.netlet` of any
+administrator, so it could not load for Finance, Operations or Marketing —
+reading bundles is `product.view` now, and the new-bundle form and Take off
+are drawn only for who may save them; and the product editor offered
+Catalogue the commission-proposal card, which is a store's own ask of NetLet
+(`proposes`: a store's people only, on both platforms). The sweep is clean for
+all six.
 `adminMenu.test.ts` and `testThePortalOffersWhatThePersonMayUse` hold it.
 
 ## Managing products

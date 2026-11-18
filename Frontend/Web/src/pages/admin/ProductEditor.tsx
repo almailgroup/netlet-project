@@ -255,6 +255,10 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
      than shown disabled — a greyed-out commission box invites the question of
      how to enable it. */
   const mayPrice = can(actor, "vendor.setCommission");
+  /* A store asks NetLet for a rate; NetLet's own people set one or do
+     not, so the proposal is a store's alone — a team role that edits
+     products but not commission (Catalogue) was offered it and refused. */
+  const proposes = actor.kind === "vendor" && !mayPrice && mayEdit;
   const mayDelete = can(actor, "product.delete", row.vendorId);
   /* What Publish would be refused for, said before it is pressed — the
      server's own two rules (`assertPriced`, `assertWarrantyStated`), as the
@@ -287,7 +291,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
     { id: "tax", label: "tax.editorTitle" },
     ...(mayEdit ? [{ id: "affiliates", label: "admin.productAffiliates" as MessageKey }] : []),
     ...(mayPrice ? [{ id: "commission", label: "admin.productCommission" as MessageKey }] : []),
-    ...(!mayPrice && mayEdit ? [{ id: "propose", label: "commission.proposeTitle" as MessageKey }] : []),
+    ...(proposes ? [{ id: "propose", label: "commission.proposeTitle" as MessageKey }] : []),
     ...(mayMove ? [{ id: "store", label: "admin.sectionStore" as MessageKey }] : []),
     ...(mayDelete ? [{ id: "delete", label: "admin.deleteProduct" as MessageKey }] : []),
   ];
@@ -738,7 +742,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
 
           {/* A store asking for a rate of its own (3.3.2): for this product,
               or — an owner — for the whole store. NetLet decides. */}
-          {!mayPrice && mayEdit ? (
+          {proposes ? (
             <ProposeCommission vendorId={row.vendorId} productId={row.id} mayStoreWide={can(actor, "vendor.editProfile", row.vendorId)} />
           ) : null}
 

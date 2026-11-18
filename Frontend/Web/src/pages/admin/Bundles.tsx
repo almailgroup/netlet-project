@@ -48,6 +48,11 @@ function Bundles({ actor }: { actor: Actor }) {
   const utils = trpc.useUtils();
 
   const mayCrossVendor = can(actor, "bundles.netlet");
+  /* What this person may change, by the capability each save asks: a
+     store's own bundles are `product.edit` for that store, NetLet's are
+     `bundles.netlet`. A team role that only reads the catalogue reads. */
+  const mayChange = (vendorId: number | null) => vendorId === null ? can(actor, "bundles.netlet") : can(actor, "product.edit", vendorId);
+  const mayMake = mayChange(actor.kind === "vendor" ? actor.vendorId : null);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
@@ -86,7 +91,7 @@ function Bundles({ actor }: { actor: Actor }) {
     <>
       <PageHeader title={t("admin.bundles")} description={t("admin.bundlesNote")} />
 
-      <Card
+      {mayMake ? <Card
         title={t("admin.bundleNew")}
         footer={
           <button
@@ -166,7 +171,7 @@ function Bundles({ actor }: { actor: Actor }) {
         )}
 
         <ProductFinder chosen={members.map(member => member.variantId)} onPick={add} />
-      </Card>
+      </Card> : null}
 
       <section className="mt-8" aria-labelledby="bundle-list">
         <SectionHeading><span id="bundle-list">{t("admin.bundleListTitle")}</span></SectionHeading>
@@ -199,7 +204,7 @@ function Bundles({ actor }: { actor: Actor }) {
                           <li key={index} dir="auto" className="rounded-lg bg-[#f2f5f9] px-2.5 py-1 text-[13px] text-[#3d5376]">{member.productTitle}</li>
                         ))}
                       </ul>
-                      <div className="mt-4 border-t border-[#eef1f5] pt-3">
+                      {mayChange(bundle.vendorId) ? <div className="mt-4 border-t border-[#eef1f5] pt-3">
                         <button
                           type="button"
                           disabled={setActive.isPending}
@@ -208,7 +213,7 @@ function Bundles({ actor }: { actor: Actor }) {
                         >
                           {t(bundle.active ? "admin.bundleTakeOff" : "admin.bundlePutOn")}
                         </button>
-                      </div>
+                      </div> : null}
                     </li>
                   ))}
                 </ul>

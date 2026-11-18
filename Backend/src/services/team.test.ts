@@ -144,6 +144,18 @@ describe("a member's role is what they are answered by", () => {
     expect(await ibanOf(people.boss)).toBe(iban);
   });
 
+  it("lets a role that reads the catalogue list the bundles, and only Catalogue make NetLet's", async () => {
+    /* Finance reaches Bundles through Orders' `product.view`; listing asked
+       `bundles.netlet` of any administrator, so the page could not load. */
+    const finance = await callAs(people.finance);
+    await expect(finance.inventory.bundles.list()).resolves.toEqual([]);
+    await expect(finance.inventory.bundles.save({ vendorId: null, name: "Set", bundlePrice: "5.000", members: [{ variantId: 1, quantity: 1 }, { variantId: 2, quantity: 1 }] }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(can(await actorOf(people.catalogue), "bundles.netlet")).toBe(true);
+    /* A shopper still reads none of it. */
+    await expect((await callAs(people.shopper)).inventory.bundles.list()).resolves.toEqual([]);
+  });
+
   it("keeps the owner a full administrator whatever a row says", async () => {
     const { ENV } = await import("../core/env.js");
     const before = ENV.ownerEmail;

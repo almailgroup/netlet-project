@@ -41,9 +41,24 @@ those wait for the owner.
 3. **Removed `adminProcedure`**, unused, and since the team split a
    door every role would pass, plus two unused constants.
 
+4. **The Bundles page could not load for Finance, Operations or
+   Marketing**: the menu offers it by `product.view`, the list asked
+   `bundles.netlet`. Listing reads by `product.view`; the form and the
+   Take off buttons show only to who may save. Test: `team.test.ts`.
+5. **The product editor offered Catalogue a commission proposal**, a
+   store's own ask of NetLet, whose list then refused. Drawn for a
+   store's people only.
+6. Re-swept the admin portal signed in as all six team roles: **0
+   findings**.
+
+The app's half of 4 and 5 waits in a stash until iOS run 292 and its
+TestFlight upload finish, since a push to `Frontend/iOS` would cancel it.
+
 ### Queued
 
-- Browser sweep of the shop, account and portal (all roles, 320 / 390 /
-  1440, both languages) on a production build.
+- Push the app's half of 4 and 5 once TestFlight 292 is up.
+- Visual improvements on the website, desktop and phone (the owner's ask).
+- Browser sweep of the shop and account (320 / 390 / 1440, both
+  languages) on a production build.
 - Static audit: procedures whose guard reads the role rather than a
   capability; dead exports.
