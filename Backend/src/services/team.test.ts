@@ -125,6 +125,25 @@ describe("a member's role is what they are answered by", () => {
     await expect(finance.finance.report({})).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
+  it("shows a store's payout account whole only to a role that edits or pays the store", async () => {
+    const iban = "KW81CBKU0000000000001234560101";
+    await db.update(vendors).set({ payoutIban: iban }).where(eq(vendors.id, acme));
+    await team.addToTeam(await actorOf(people.boss), { email: people.other.email!, roleId: await roleId("marketing") });
+    const ibanOf = async (user: User) => {
+      const caller = await callAs(user);
+      const one = await caller.inventory.vendors.get({ vendorId: acme });
+      const listed = (await caller.inventory.vendors.list({ pageSize: 10 })).rows.find((row: { id: number }) => row.id === acme);
+      expect(listed.payoutIban).toBe(one.payoutIban);
+      return one.payoutIban;
+    };
+    /* Marketing and Catalogue open a store's page and have no use for its bank account. */
+    expect(await ibanOf(people.other)).toBe("KW•••• 0101");
+    expect(await ibanOf(people.catalogue)).toBe("KW•••• 0101");
+    /* Finance pays it, and a full administrator edits it. */
+    expect(await ibanOf(people.finance)).toBe(iban);
+    expect(await ibanOf(people.boss)).toBe(iban);
+  });
+
   it("keeps the owner a full administrator whatever a row says", async () => {
     const { ENV } = await import("../core/env.js");
     const before = ENV.ownerEmail;

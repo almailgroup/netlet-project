@@ -19,6 +19,7 @@ import { brandProblem, percentProblem, scalePrice, withBrand } from "../../../Sh
 import { conditionOf, withCondition, type CatalogueCondition, type ProductCondition } from "../../../Shared/commerce/condition.js";
 import { conditionWhere, newOnly, refurbishedOnly } from "./productCondition.js";
 import { normaliseIban } from "../../../Shared/inventory/storeProfile.js";
+import { maskIban } from "../../../Shared/commerce/payoutRuns.js";
 import { randomBytes } from "node:crypto";
 import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
@@ -2515,6 +2516,7 @@ export async function listVendors(
       const shelf = catalogue.find(entry => entry.vendorId === row.id);
       return {
         ...row,
+        payoutIban: payoutIbanFor(actor, row.id, row.payoutIban),
         productCount: shelf?.all ?? 0,
         liveCount: shelf?.live ?? 0,
         memberCount: teams.find(entry => entry.vendorId === row.id)?.n ?? 0,
@@ -2700,6 +2702,18 @@ export async function createVendorWithOwner(actor: Actor, input: NewVendorInput)
 }
 
 /** One vendor in full, for the detail page. Admin only, like the list. */
+/**
+ * A store's payout account, whole only for whoever edits the store or pays
+ * it. `stores.view` opens a store's page to most of NetLet's team roles —
+ * Catalogue, Orders, Delivery, Marketing — and none of them needs the bank
+ * account a store is paid into, so they read it masked, as a payout run
+ * shows it to a store. Nobody who can save the field is handed the mask,
+ * so a save never writes one back.
+ */
+export function payoutIbanFor(actor: Actor, vendorId: number, iban: string | null): string | null {
+  return can(actor, "stores.manage") || can(actor, "vendor.editProfile", vendorId) || can(actor, "payouts.view") ? iban : maskIban(iban);
+}
+
 export async function getVendor(actor: Actor, vendorId: number) {
   assertCan(actor, "stores.view");
   const db = await getDb();
@@ -2722,6 +2736,7 @@ export async function getVendor(actor: Actor, vendorId: number) {
   ]);
   return {
     ...vendor,
+    payoutIban: payoutIbanFor(actor, vendor.id, vendor.payoutIban),
     stats: {
       products: shelf?.all ?? 0,
       live: shelf?.live ?? 0,

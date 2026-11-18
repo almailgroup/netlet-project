@@ -1,4 +1,4 @@
-import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '../../../Shared/const.js';
+import { UNAUTHED_ERR_MSG } from '../../../Shared/const.js';
 import { initTRPC, TRPCError } from "@trpc/server";
 import { ZodError } from "zod";
 import superjson from "superjson";
@@ -187,19 +187,9 @@ const requireUser = t.middleware(async opts => {
 
 export const protectedProcedure = base.use(requireUser);
 
-export const adminProcedure = base.use(
-  t.middleware(async opts => {
-    const { ctx, next } = opts;
-
-    if (!ctx.user || ctx.user.role !== 'admin') {
-      throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
-    }
-
-    return next({
-      ctx: {
-        ...ctx,
-        user: ctx.user,
-      },
-    });
-  }),
-);
+/*
+ * There is no `adminProcedure`. A member of NetLet's team is an administrator
+ * to the role column, so a gate on `role === "admin"` would open every desk to
+ * every role, HR's included: a procedure resolves who is asking
+ * (`resolveActor`) and asks `can()` for the one capability it needs.
+ */

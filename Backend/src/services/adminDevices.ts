@@ -5,7 +5,7 @@
  * **Every request decides it again.** `authenticateRequest` asks `gateAdminRights`
  * for any administrator, and an administrator on a device the owner has not
  * authorised is that request's ordinary shopper — `role` read as `user`, so
- * every check that reads the role (`adminProcedure`, `resolveActor`, the error
+ * every check that reads the role (`resolveActor`, the error
  * formatter, an invoice) answers as it does for a shopper, without each of
  * them having to know devices exist. An employee holding a grant is held back
  * the same way, by `resolveActor`, which is where grants are read.
