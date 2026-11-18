@@ -15,6 +15,7 @@ struct TeamRoleRow: Decodable, Sendable, Identifiable, Hashable {
     let deletable: Bool
 
     /// `roleName`: its own name in this language, the other language's, or the ready-made one's.
+    @MainActor
     func shownName(_ l: LanguageSettings) -> String {
         let own = l.current == .ar ? (nameAr ?? name) : (name ?? nameAr)
         if let own, !own.isEmpty { return own }

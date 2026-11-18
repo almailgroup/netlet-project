@@ -11458,7 +11458,11 @@ outside the main actor**, so a main-actor object is made in an initialiser
 exactly that. Two more of the same family failed the portal's builds: a pure
 helper on a main-actor type that something nonisolated calls is marked
 `nonisolated` (`trimmedRate`), and a view helper that hands its content to
-`PortalCard` takes it `@escaping`, because the card keeps it. And **no
+`PortalCard` takes it `@escaping`, because the card keeps it. The other way
+round, a model's method that asks `LanguageSettings` for words is marked
+`@MainActor` (`CartDeliveryLine.label`, `TeamRoleRow.shownName`): the settings
+are main-actor and a `Decodable` struct is not, and the team's first build
+failed on exactly that. And **no
 `await` inside an XCTest assertion**: `XCTUnwrap` and `XCTAssert…` take
 autoclosures, which cannot be async, so the value is awaited first. And
 **`API` is one namespace across every file that extends it**:
