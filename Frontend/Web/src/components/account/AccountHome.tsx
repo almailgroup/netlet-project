@@ -323,15 +323,19 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           switch closes the door and never locks anybody in. Drawn once the
           server has answered, so it never says Join to a member. */}
       {affiliate ? (
-        <Link href="/account/affiliate" className="flex items-center gap-4 overflow-hidden rounded-[1.35rem] bg-[#0a285a] p-4 text-white hover:bg-[#0d3372] sm:p-5">
-          <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10">
-            <Megaphone className="size-6 text-[#ffab85]" />
+        <Link href="/account/affiliate" className="@container block overflow-hidden rounded-[1.35rem] bg-[#0a285a] p-4 text-white hover:bg-[#0d3372] sm:p-5">
+          <span className={OFFER_LAYOUT}>
+            <span className="flex min-w-0 flex-1 items-center gap-4">
+              <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-white/10">
+                <Megaphone className="size-6 text-[#ffab85]" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[16px] font-bold">{t("affiliate.section")}</span>
+                <span className="mt-0.5 block text-[13px] leading-5 text-[#d6deea]">{t(affiliate === "join" ? "affiliate.promoBody" : "affiliate.promoMemberBody")}</span>
+              </span>
+            </span>
+            <span className={`${OFFER_BUTTON} bg-white text-[#0a285a]`}>{t(affiliate === "join" ? "affiliate.promoJoin" : "affiliate.promoOpen")}</span>
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[16px] font-bold">{t("affiliate.section")}</span>
-            <span className="mt-0.5 block text-[13px] leading-5 text-[#d6deea]">{t(affiliate === "join" ? "affiliate.promoBody" : "affiliate.promoMemberBody")}</span>
-          </span>
-          <span className="shrink-0 rounded-full bg-white px-3.5 py-2 text-[13px] font-bold text-[#0a285a]">{t(affiliate === "join" ? "affiliate.promoJoin" : "affiliate.promoOpen")}</span>
         </Link>
       ) : null}
 
@@ -445,6 +449,16 @@ function AccountSearchResults({ term, has, onSignOut }: { term: string; has: (id
  * back to the shop; anybody else is offered `/sell`. The server decides which
  * (`inventory.me`), so nobody is shown a door that refuses them.
  */
+/*
+ * The two offers at the foot of the page — the seller's door and the affiliate
+ * card — put their button beside the words where the card has room, and under
+ * them, the card's width, where it has not: beside them on a 320 phone the
+ * words were a column one word wide ("Switch / to / the / seller / portal").
+ * A container query, so it answers the card's width, not the window's.
+ */
+const OFFER_LAYOUT = "flex flex-col gap-3 @md:flex-row @md:items-center @md:gap-4";
+const OFFER_BUTTON = "block rounded-full px-3.5 py-2 text-center text-[13px] font-bold @md:shrink-0";
+
 function SellerEntry() {
   const { t } = useTranslation();
   const me = trpc.inventory.me.useQuery(undefined, { staleTime: 10 * 60 * 1000, retry: false });
@@ -456,22 +470,24 @@ function SellerEntry() {
   const door = usePortalDoor();
   const side = portalSideFor(me.data) ?? "vendor";
   if (me.isPending) return null;
-  const className = `${PANEL} flex items-center gap-4 p-4 hover:bg-[#f0f2f5] sm:p-5`;
+  const className = `${PANEL} @container block p-4 hover:bg-[#f0f2f5] sm:p-5`;
   const inside = (
-    <>
-      <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-[#eef2f8] text-[#0a285a]">
-        <Store className="size-6" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[16px] font-bold text-[#0a285a]">{t(seller ? "seller.cardTitle" : "seller.becomeTitle")}</span>
-        <span className="mt-0.5 block text-[13px] leading-5 ink-muted">
-          {seller
-            ? t("seller.cardBody", { store: store.data?.name ? `\u2068${store.data.name}\u2069` : t("account.sellerPlatform") })
-            : t("seller.becomeBody")}
+    <span className={OFFER_LAYOUT}>
+      <span className="flex min-w-0 flex-1 items-center gap-4">
+        <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-full bg-[#eef2f8] text-[#0a285a]">
+          <Store className="size-6" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[16px] font-bold text-[#0a285a]">{t(seller ? "seller.cardTitle" : "seller.becomeTitle")}</span>
+          <span className="mt-0.5 block text-[13px] leading-5 ink-muted">
+            {seller
+              ? t("seller.cardBody", { store: store.data?.name ? `\u2068${store.data.name}\u2069` : t("account.sellerPlatform") })
+              : t("seller.becomeBody")}
+          </span>
         </span>
       </span>
-      <span className="shrink-0 rounded-full bg-[#0a285a] px-3.5 py-2 text-[13px] font-bold text-white">{t(seller ? "seller.open" : "seller.become")}</span>
-    </>
+      <span className={`${OFFER_BUTTON} bg-[#0a285a] text-white`}>{t(seller ? "seller.open" : "seller.become")}</span>
+    </span>
   );
   return seller
     ? <a href={door.href(side)} onClick={event => door.open(event, side)} className={className}>{inside}</a>

@@ -87,7 +87,7 @@ export function PageSearchField({ setup, className = "" }: { setup: PageSearchSe
           aria-keyshortcuts="/"
           enterKeyHint="search"
           placeholder={t(setup.placeholder)}
-          className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c] [&::-webkit-search-cancel-button]:hidden"
+          className="type-body w-full min-w-0 text-ellipsis bg-transparent px-3 outline-none placeholder:text-[#536b8c] [&::-webkit-search-cancel-button]:hidden"
         />
         {value ? (
           <button type="button" onMouseDown={event => event.preventDefault()} onClick={() => { change(""); field.current?.focus(); }} aria-label={t("header.searchClear")} className="glass type-control grid size-7 shrink-0 place-items-center rounded-full !text-[#536b8c]">

@@ -9194,6 +9194,17 @@ and the role badge goes under the email on a phone so the name has the width.
 Measured at 320 and 390 in both languages and at 1440: no sideways scroll, axe
 clean on every page changed, the bars shown and hidden where they should be.
 
+**A card's button goes under its words where the card is narrow**, by a
+container query on the card (`@container`, `@md:` or `@sm:`), never the
+window: beside the words at 320 the product page's "Share and earn points",
+the account's "Your store" and the affiliate card left the words a column
+one or two words wide ("Switch / to / the / seller / portal"). Checkout's
+Place order leaves its total out on a summary too narrow for both — the
+total is the line above it — rather than breaking over three lines. A
+summary says free delivery as "Free", in green, never "KWD 0.000". A lone
+sponsored card is a card's width, not the row's. Measured at 320, 360, 390
+and 1440 in both languages (`.scratch/visual-check.mjs`).
+
 ## Display currency
 
 **A shopper can read prices in another currency, on the owner's word** ("add a

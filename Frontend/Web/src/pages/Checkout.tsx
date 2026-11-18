@@ -342,11 +342,11 @@ export default function Checkout() {
               <PaymentMethods />
             </div>
 
-            <aside aria-label={t("checkout.orderSummary")} aria-busy={settling || syncing} className={`${CARD} p-4 sm:p-5 lg:sticky lg:top-6`}>
+            <aside aria-label={t("checkout.orderSummary")} aria-busy={settling || syncing} className={`${CARD} @container p-4 sm:p-5 lg:sticky lg:top-6`}>
               <h2 className="text-[17px] font-extrabold">{t("checkout.orderSummary")}</h2>
               <dl className="mt-3 space-y-2 text-[14px]">
                 <Row label={<>{t("cart.subtotal")} <span className="ink-muted">({t("cart.itemCount", { count: chosenCount })})</span></>} value={settling ? null : money(subtotal)} />
-                <Row label={t("cart.delivery")} value={settling ? null : cart ? (Number(cart.delivery.total.amount) > 0 ? money(cart.delivery.total) : t("cart.deliveryFree")) : null} faint={syncing} />
+                <Row label={t("cart.delivery")} value={settling ? null : cart ? (Number(cart.delivery.total.amount) > 0 ? money(cart.delivery.total) : t("cart.deliveryFree")) : null} faint={syncing} good={Boolean(cart && Number(cart.delivery.total.amount) === 0)} />
                 {/* Each product's own code (0074), named, before anything paid. */}
                 {items.filter(item => item.code).map(item => (
                   <Row
@@ -388,8 +388,10 @@ export default function Checkout() {
                   className="glass-accent mt-4 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl px-5 text-[16px] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-55"
                 >
                   {place.isPending ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : <PackageCheck className="size-5" aria-hidden />}
-                  {placeLabel}
-                  {canPlace && !place.isPending && totalText ? <span className="font-semibold">· {totalText}</span> : null}
+                  <span className="whitespace-nowrap">{placeLabel}</span>
+                  {/* The total is said just above; on a card too narrow for
+                      both (a 320 phone) the button keeps its words on one line. */}
+                  {canPlace && !place.isPending && totalText ? <span className="hidden whitespace-nowrap font-semibold @[18rem]:inline">· {totalText}</span> : null}
                 </button>
               ) : (
                 <button ref={placeRef} type="button" onClick={() => setAuthOpen(true)} className="glass glass-navy mt-4 flex h-14 w-full items-center justify-center rounded-2xl px-5 text-[16px] font-bold">

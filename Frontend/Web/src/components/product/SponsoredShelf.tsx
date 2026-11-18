@@ -43,7 +43,10 @@ export function SponsoredShelf({ slot, departmentSlug, layout, saved, onSave, on
 
   const id = `sponsored-${slot}`;
   const cards = products.map(product => (
-    <div key={product.id} className={layout === "rail" ? "min-w-[172px] sm:min-w-[195px] lg:min-w-0" : "min-w-0"}>
+    /* A card's own width, the product shelves' (`ProductShelf`): with only a
+       minimum, one paid product stretched to its photo's size — the whole
+       width of a phone, a card twice the size of every other shelf's. */
+    <div key={product.id} className={layout === "rail" ? "w-[164px] shrink-0 sm:w-[195px] lg:w-auto" : "min-w-0"}>
       <ProductCard
         compact
         product={product}

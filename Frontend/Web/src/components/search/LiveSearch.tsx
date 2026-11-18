@@ -569,7 +569,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
           aria-controls={listed ? listboxId : undefined}
           aria-activedescendant={listed && activeIndex >= 0 ? optionId(activeIndex) : undefined}
           enterKeyHint="search"
-          className="type-body w-full min-w-0 bg-transparent px-3 outline-none placeholder:text-[#536b8c]"
+          className="type-body w-full min-w-0 text-ellipsis bg-transparent px-3 outline-none placeholder:text-[#536b8c]"
           placeholder={scoped ? t("search.placeholderIn", { department: t(categoryMessageKey(scope) ?? ALL_DEPARTMENTS.label) }) : example ? t("header.searchPlaceholder", { example }) : t("header.searchAria")}
         />
         {/* The shortcut, said where it applies. Only on a wide screen, which is
