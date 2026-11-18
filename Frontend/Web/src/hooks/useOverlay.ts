@@ -78,7 +78,12 @@ export function useOverlay(open: boolean, onClose: () => void) {
   useEffect(() => {
     if (!open) return;
 
-    opener.current = document.activeElement as HTMLElement | null;
+    /* `<body>` is nobody's opener: an overlay opened once something had
+       loaded (the review form My orders opens on the first item to rate)
+       found focus there, gone with the press that asked for it, and handed it
+       straight back to `<body>` on closing. */
+    const active = document.activeElement as HTMLElement | null;
+    opener.current = active && active !== document.body ? active : null;
     const self = Symbol("overlay");
     openOverlays.push(self);
 
@@ -114,11 +119,13 @@ export function useOverlay(open: boolean, onClose: () => void) {
       // focus (a product's photo) hands it to the nearest focusable
       // ancestor, the page's `<main>`, and focusing that scrolled the page
       // 125px down as the photos closed.
-      if (!opener.current) return;
       const active = document.activeElement;
       // An overlay playing its way out (`usePresence`) is still drawn, inert:
       // focus left inside it has left, as it would have had it unmounted.
-      if (!active || active === document.body || !document.contains(active) || active.closest("[inert]")) handBack(opener.current);
+      const nowhere = !active || active === document.body || !document.contains(active) || Boolean(active.closest("[inert]"));
+      if (!nowhere) return;
+      if (opener.current) handBack(opener.current);
+      else focusWhereTheShopperIs();
     };
   }, [open]);
 }

@@ -2418,7 +2418,10 @@ to cart. The card shows its controls for the moment the eye takes focus
 modal still open underneath, else `<main>` (`focusWhereTheShopperIs`) — a
 line removed inside the bag drawer sent the keyboard to `<main>` behind the
 dim. A line's "⋯" takes focus before running a choice, so "Remove from cart?"
-returns to it on Cancel.
+returns to it on Cancel. **`<body>` is never an opener**: an overlay opened
+after the button pressed has re-rendered away — the review form My orders
+opens on the first item to rate — recorded `<body>` and handed focus straight
+back to it; it goes where the shopper is instead.
 
 **A page's own way back goes back, on the owner's word** (`lib/inAppBack.ts`).
 The account sections' round arrow was a link to `/account`, so it pushed the
