@@ -2672,6 +2672,13 @@ as it closes keeps the last ones (`useHeldWhileOpen`: the removal question,
 Quick view's product), and a caller that drew it only while open
 (`{open ? <Dialog open /> : null}`) keeps it once used (`useEverOpened`), lazy
 until then. The address book goes back to its list only after it has left.
+**Opened again while it is still leaving, an overlay starts afresh**: the
+sign-in dialog's form moves focus only as it mounts or changes mode, and
+reopened inside its 160ms exit it had never unmounted — the keyboard stayed on
+the header's button behind the modal, and what was typed stayed in the boxes.
+Each opening keys its own form now (`AuthDialog`'s `opening`); an overlay that
+moves focus in on `open`, as the rest do, needs nothing. Found by closing and
+reopening each overlay 30 and 100ms apart (`.scratch/reopen-fast.mjs`).
 Somebody who asked for less motion gets the cut, as before. The rest — the
 review, size guide, try-on, wish chooser, store delivery, a line's code and
 menu, the voice and photo sheets — have the entrance alone.

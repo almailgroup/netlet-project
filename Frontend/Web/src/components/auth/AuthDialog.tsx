@@ -51,12 +51,24 @@ export default function AuthDialog({ open, onClose, initialMode = "signin" }: {
   useOverlay(open, onClose);
   const { mounted, closing } = usePresence(open);
 
+  /* Each opening gets a form of its own. Opened again while the last one is
+     still playing its way out, the form was never unmounted, so it kept what
+     was typed and — since it moves focus only as it mounts or changes mode —
+     left the keyboard on the header's button behind the modal. */
+  const [lastOpen, setLastOpen] = useState(open);
+  const [opening, setOpening] = useState(0);
+  if (open !== lastOpen) {
+    setLastOpen(open);
+    if (open) setOpening(count => count + 1);
+  }
+
   if (!mounted) return null;
 
   return createPortal(
     <div className="overlay-scrim fixed inset-0 z-[80] overflow-y-auto bg-[#061b3b]/60" data-closing={closing ? "" : undefined} inert={closing} onClick={onClose}>
       <div className="flex min-h-full sm:items-center sm:justify-center sm:p-6">
         <div
+          key={opening}
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
