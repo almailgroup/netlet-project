@@ -14,7 +14,7 @@
  */
 import { eq, inArray, sql } from "drizzle-orm";
 import { orderItemTaxes, productTax, products } from "../../database/schema.js";
-import { addMoney, fromFils, toFils } from "../../../Shared/money.js";
+import { addMoney, toFils } from "../../../Shared/money.js";
 import {
   choiceFromRow,
   NO_TAX,
@@ -230,6 +230,3 @@ export async function markedTaxedCount(db: Db): Promise<number> {
   }
 }
 
-/** Re-exported so callers sum a frozen line's tax the one way. */
-export const taxFils = (amount: string) => toFils(amount);
-export const taxFromFils = (fils: bigint) => fromFils(fils);

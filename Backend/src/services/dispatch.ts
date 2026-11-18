@@ -195,18 +195,6 @@ export async function removeCourierMember(actor: Actor, courierId: number, userI
     .where(and(eq(courierMembers.courierId, courierId), eq(courierMembers.userId, userId)));
 }
 
-/** The company this account works for, if any. Used to resolve the actor. */
-export async function courierFor(userId: number): Promise<number | null> {
-  const db = await getDb();
-  if (!db) return null;
-  const [row] = await db
-    .select({ courierId: courierMembers.courierId })
-    .from(courierMembers)
-    .where(eq(courierMembers.userId, userId))
-    .limit(1);
-  return row?.courierId ?? null;
-}
-
 export type BoardParcel = Parcel & {
   orderId: number;
   reference: string;

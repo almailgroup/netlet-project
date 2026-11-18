@@ -15,7 +15,6 @@ import { ALL_DEPARTMENTS, DEPARTMENTS, type Department } from "@shared/commerce/
 import { DepartmentArt } from "@/components/browse/DepartmentArt";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { appPath } from "@/lib/basePath";
 import { categoryMessageKey, categoryRail } from "@/content/homeLayout";
 import { DepartmentIcon } from "@/components/browse/DepartmentIcon";
 import { categorySlug } from "@shared/commerce/browse";

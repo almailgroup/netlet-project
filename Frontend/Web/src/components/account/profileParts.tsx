@@ -47,18 +47,6 @@ export function FloatingField({ label, required = false, start, end, leftToRight
  */
 export const PANEL = "rounded-3xl bg-white shadow-[0_1px_2px_rgba(10,40,90,.05)]";
 
-/** One of the page's white cards: a title, a line on what it is for, the fields. */
-export function ProfileCard({ title, note, children }: { title?: string; note?: string; children: ReactNode }) {
-  const titleId = useId();
-  return (
-    <section aria-labelledby={title ? titleId : undefined} className={`${PANEL} p-5 sm:p-6`}>
-      {title ? <h3 id={titleId} className="text-[17px] font-bold text-[#0a285a]">{title}</h3> : null}
-      {note ? <p className={`text-[14px] leading-5 ink-muted ${title ? "mt-1" : ""}`}>{note}</p> : null}
-      <div className={title || note ? "mt-4" : ""}>{children}</div>
-    </section>
-  );
-}
-
 /*
  * The account's two buttons, as pills like the home's language switch and
  * points: navy for the one that saves, white with a light rim for the rest

@@ -316,7 +316,7 @@ function GiftRow({ item, product, waiting, token, signedIn, onChanged }: {
   signedIn: boolean;
   onChanged: () => void;
 }) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const money = useMoney();
   const { addItem } = useCart();
   const claim = trpc.wishlists.claim.useMutation();

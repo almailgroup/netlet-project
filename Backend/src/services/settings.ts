@@ -21,14 +21,6 @@ import { getDb } from "./db.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
-/** Every setting, the stored rows folded over the defaults. */
-export async function settingValues(db?: Db | null): Promise<Record<SettingKey, string>> {
-  const handle = db ?? (await getDb());
-  if (!handle) return resolveSettings([]);
-  const rows = await handle.select({ key: platformSettings.key, value: platformSettings.value }).from(platformSettings);
-  return resolveSettings(rows);
-}
-
 /** One setting: its stored value if it reads as its shape, otherwise its default. */
 export async function settingValue(key: SettingKey, db?: Db | null): Promise<string> {
   const handle = db ?? (await getDb());

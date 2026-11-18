@@ -17,7 +17,7 @@
  * order is a separate, narrower question, and inventing an answer to it by
  * leaking this one would be the wrong way round.
  */
-import { and, desc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { notifications, orderItems, orders, referrals, reviews, users, vendorMembers } from "../../database/schema.js";
 import {

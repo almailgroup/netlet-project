@@ -92,7 +92,7 @@ const fieldClass = "h-11 w-full rounded-xl border border-[#d5dfeb] bg-white px-3
 export default function Checkout() {
   usePageMeta(privatePageMeta("Checkout"));
   const { cart, refreshCart, settling, unread, syncing, skip, forgetChoice } = useCart();
-  const { t, tError, locale, isArabic } = useTranslation();
+  const { t, locale, isArabic } = useTranslation();
   const returnDays = useReturnWindow();
   const money = useMoney();
   const reading = useDisplayCurrency();

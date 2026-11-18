@@ -53,7 +53,7 @@ import { AccountReturns } from "@/components/account/AccountReturns";
 import { AccountReviews } from "@/components/account/AccountReviews";
 import {
   isOrderPeriod, isOrderTab, isOrderView, ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_TABS,
-  type OrderCounts, type OrderPeriod, type OrderTab,
+  type OrderPeriod, type OrderTab,
 } from "@shared/commerce/orderFilters";
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
@@ -320,7 +320,7 @@ function NoMatch({ onClear }: { onClear: () => void }) {
 }
 
 export function AccountOrders() {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
   const [page, setPage] = useState(1);
   /* Checkout lands here with `?order=` on the order it just placed, open. */
   const search = useSearch();

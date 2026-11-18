@@ -195,17 +195,6 @@ export async function recordLookup(address: string | null | undefined): Promise<
   );
 }
 
-/** How many attempts a bucket currently carries. Exposed for tests. */
-export async function attemptCount(bucket: string): Promise<number> {
-  const db = await getDb();
-  if (!db) return 0;
-  const [row] = await db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(authAttempts)
-    .where(eq(authAttempts.bucket, bucket));
-  return row?.n ?? 0;
-}
-
 /** Whether this address may search with another photo (3.1.6). Address only: whoever is asking is often signed out. */
 export async function checkPhotoSearchAllowed(address: string | null | undefined): Promise<RateVerdict> {
   const db = await getDb();

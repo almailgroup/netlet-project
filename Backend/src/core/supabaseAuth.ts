@@ -479,30 +479,6 @@ export async function verifySupabasePhoneCode(phone: string, code: string): Prom
 }
 
 /**
- * Whether the project confirms addresses by itself — Authentication → Sign In
- * / Providers → Email → "Confirm email" switched off.
- *
- * Then no code is ever sent and an account is usable the moment it is asked
- * for, which is the one setting that makes the code step impossible. Asked by
- * `pnpm preflight` and the features page, never on a shopper's path. Null when
- * it cannot be told.
- */
-export async function supabaseConfirmsEmailItself(): Promise<boolean | null> {
-  if (!isSupabaseAuthConfigured()) return null;
-  try {
-    const response = await fetch(`${base()}/auth/v1/settings`, {
-      headers: anonHeaders(),
-      signal: AbortSignal.timeout(AUTH_DEADLINE_MS),
-    });
-    if (!response.ok) return null;
-    const body = (await response.json()) as { mailer_autoconfirm?: boolean };
-    return typeof body.mailer_autoconfirm === "boolean" ? body.mailer_autoconfirm : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Signs in with an identity token another provider issued — Sign in with
  * Apple's, from Apple's own window on the website or the system's sheet in
  * the app, or Google's, from its consent page in a popup or the system's
@@ -588,11 +564,6 @@ export async function supabaseExternalProviders(): Promise<Record<string, boolea
      for five minutes. */
   providerSettings = { at: external ? Date.now() : Date.now() - PROVIDER_SETTINGS_MS + 30_000, external };
   return external;
-}
-
-/** For tests: forget the cached settings. */
-export function forgetProviderSettings(): void {
-  providerSettings = null;
 }
 
 /**

@@ -41,7 +41,7 @@
  * split froze `commission + net === lineTotal` on every line, and net here is
  * the lines that stuck. A reader can check the table with their eyes.
  */
-import { addMoney, fromFils, subtractMoney, toFils } from "../money.js";
+import { fromFils, toFils } from "../money.js";
 
 /**
  * The payment states where money actually moved.
@@ -109,12 +109,6 @@ export type Totals = {
   /** How many lines each side of that. */
   paidLines: number;
   refundedLines: number;
-};
-
-const ZERO: Totals = {
-  gross: "0.000", refunded: "0.000", net: "0.000",
-  commission: "0.000", vendorNet: "0.000",
-  paidLines: 0, refundedLines: 0,
 };
 
 function isCounted(status: string): status is CountedStatus {
@@ -239,15 +233,3 @@ export function takeRate(totals: Totals): number | null {
   if (net <= 0n) return null;
   return Math.round(Number((toFils(totals.commission) * 1000n) / net)) / 10;
 }
-
-/** Gross less refunded, exposed for a caller that has the two strings already. */
-export function netOf(gross: string, refunded: string): string {
-  return subtractMoney(gross, refunded);
-}
-
-/** Sum a column of money strings exactly. */
-export function sumMoney(amounts: string[]): string {
-  return amounts.length ? addMoney(...amounts) : "0.000";
-}
-
-export const EMPTY_TOTALS = ZERO;

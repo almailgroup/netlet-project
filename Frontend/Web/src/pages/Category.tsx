@@ -74,7 +74,6 @@ import { matchesSearch } from "@shared/commerce/search";
 import { isolate } from "@/lib/isolate";
 import { PageSearchMissed } from "@/components/layout/PageSearch";
 import { StoresSellingRow } from "@/components/store/StoresSellingRow";
-import { toast } from "sonner";
 import { Select } from "@/components/ui/Select";
 import { NoticeDot } from "@/components/ui/CountBadge";
 import { useMediaQuery } from "@/hooks/useMediaQuery";

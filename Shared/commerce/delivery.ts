@@ -47,7 +47,7 @@
  * different trip. A line asking for fast from a store that has no fast fee is
  * a regular line — the store never offered it.
  */
-import { compareMoney, fromFils, toFils } from "../money.js";
+import { fromFils, toFils } from "../money.js";
 import { parcelKey, type DestinationId, type DestinedLine } from "./addresses.js";
 
 /** Which trip a line takes (3.2.5). */
@@ -293,7 +293,3 @@ export function frozenTotal(frozen: FrozenDelivery): string {
   return fromFils(frozen.reduce((sum, row) => sum + toFils(row.fee), 0n));
 }
 
-/** True when two money strings are the same amount, whatever their spelling. */
-export function sameMoney(a: string, b: string): boolean {
-  return compareMoney(a, b) === 0;
-}

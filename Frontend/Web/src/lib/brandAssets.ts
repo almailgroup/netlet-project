@@ -20,7 +20,6 @@ import { appPath } from "@/lib/basePath";
 
 export const logoImage = appPath("/brand/netlet-logo.webp");
 export const footerLogoImage = appPath("/brand/netlet-logo-white.webp");
-export const heroImage = appPath("/brand/hero.svg");
 
 /**
  * NetLet's own street — four stores and the van being loaded, the towers

@@ -22,7 +22,7 @@
  * the transaction it sits in.
  */
 import { randomBytes } from "node:crypto";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { orderItems, orderPayments, orders } from "../../database/schema.js";
 import { compareMoney } from "../../../Shared/money.js";
 import {
@@ -289,8 +289,3 @@ export async function refundTestPayment(tx: Db, orderId: number): Promise<void> 
     .where(and(eq(orderPayments.orderId, orderId), eq(orderPayments.status, "paid"), eq(orderPayments.provider, "test")));
 }
 
-/** The newest attempts on an order, for a test that wants to see them. */
-export async function paymentsForOrder(orderId: number) {
-  const db = await handle();
-  return db.select().from(orderPayments).where(eq(orderPayments.orderId, orderId)).orderBy(desc(orderPayments.id));
-}

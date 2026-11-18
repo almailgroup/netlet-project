@@ -54,11 +54,60 @@ those wait for the owner.
 The app's half of 4 and 5 waits in a stash until iOS run 292 and its
 TestFlight upload finish, since a push to `Frontend/iOS` would cancel it.
 
+## Cycle 2 — 22:00 UTC
+
+### Visual pass on the website (the owner's ask), desktop and phone
+
+Pictures of every shopping page at 320, 390 and 1440 in both languages,
+read one by one. What was wrong, and what it is now:
+
+7. **A lone sponsored product stretched the width of a phone.** The rail's
+   item had a minimum width and no maximum, so one card filled the row. A
+   card is a card's width now (164px, 195 from `sm`), as in every shelf.
+8. **The product page's "Share and earn points" was cramped on a phone**:
+   the coin, two lines and the Share button in one row left the words a
+   narrow column. The button goes under the words when the card is narrow
+   (a container query, so it answers the card's width), and stays beside
+   them on a computer.
+9. **The bag and checkout said "KWD 0.000" for free delivery.** Both
+   summaries say "Free", in green, as the store rows above them already did.
+10. **Checkout's Place order broke over three lines at 320** — "Place",
+    "order", then the dot alone and the total. The total is said just above
+    it, so on a card too narrow for both the button keeps its words on one
+    line and the total is left out (`@container` on the summary).
+11. **The account's "Your store" and affiliate cards were a column one word
+    wide at 320** ("Switch / to / the / seller / portal"). Their button goes
+    under the words when the card is narrow, as the share card's does.
+12. **A search box's example was cut mid-word at 320** ("Search categories
+    and store"). The field ends it with an ellipsis instead.
+
+Each was measured after the fix at 320, 360, 390 and 1440 in both
+languages (`.scratch/visual-check.mjs`): the button's words on one line, the
+cards' words at full width, no sideways scroll.
+
+Two more wait for the dictionary, which the iOS run must finish before it
+can change: a card with no photo says "Image processing" (nothing is being
+processed; it should draw the bag that every other missing photo draws),
+and the home page's app section carries an eyebrow and a slogan as its
+heading, which CLAUDE.md asks against.
+
+### Static audit
+
+13. **No guard reads the role where it should read a capability**: every
+    `role === "admin"` left in the server decides something other than
+    access (the owner's account, device trust, error detail, the trail).
+14. **Twenty unused exports removed** — database helpers nothing called
+    (`courierFor`, `paymentsForOrder`, `markLineDelivered`, `settingValues`),
+    one whose comment claimed callers it did not have
+    (`supabaseConfirmsEmailItself`, "asked by `pnpm preflight`"), test
+    helpers no test used, and four money and parcel helpers.
+15. **Ten unused imports and locals removed**, and `noUnusedLocals` turned on
+    in `tsconfig.json`, so `pnpm check` refuses the next one.
+16. Re-ran the browser sweep of the shop and the account as a guest and a
+    shopper at 390 and 320 in both languages and at 1440 in Arabic: **0
+    findings**.
+
 ### Queued
 
 - Push the app's half of 4 and 5 once TestFlight 292 is up.
-- Visual improvements on the website, desktop and phone (the owner's ask).
-- Browser sweep of the shop and account (320 / 390 / 1440, both
-  languages) on a production build.
-- Static audit: procedures whose guard reads the role rather than a
-  capability; dead exports.
+- The two dictionary-touching visual fixes above, after the same run.

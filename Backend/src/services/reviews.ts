@@ -831,16 +831,3 @@ export async function waitingReviewCount(): Promise<number> {
   return total;
 }
 
-/**
- * Mark an order line as delivered, which is what opens the review window.
- *
- * The date is set once and never moved by a later edit: `deliveredAt` is when
- * the goods arrived, and a vendor correcting a typo on the line must not push
- * somebody's return window or review right out of reach.
- */
-export async function markLineDelivered(orderItemId: number, when: Date = new Date()): Promise<void> {
-  await (await db())
-    .update(orderItems)
-    .set({ fulfilment: "delivered", deliveredAt: when })
-    .where(and(eq(orderItems.id, orderItemId), isNull(orderItems.deliveredAt)));
-}

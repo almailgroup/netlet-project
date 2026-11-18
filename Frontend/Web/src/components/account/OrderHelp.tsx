@@ -29,19 +29,6 @@ import { trpc } from "@/lib/trpc";
 import { HelpAnswer, HelpOffers, IssueChips, ItemPicker, PersonCard, type DoneAct, type HelpItem } from "@/components/help/SelfHelp";
 import { MAX_ORDER_HELP_QUESTION, orderHelpProblem, type OrderHelpAction, type OrderHelpTurn } from "@shared/commerce/orderHelp";
 import { issueNeeds, type HelpIssue, type HelpOffer, type HelpPanel } from "@shared/commerce/selfService";
-import type { MessageKey } from "@shared/i18n/dictionary";
-
-/** What each button an answer offers is called, in the page's words. */
-export const HELP_ACTION_LABEL: Record<OrderHelpAction, MessageKey> = {
-  track: "orders.track",
-  refund: "orders.requestRefund",
-  warranty: "warranty.title",
-  cancel: "orders.cancelOrder",
-  modify: "orders.modify",
-  address: "orders.changeAddress",
-  buyAgain: "orders.buyAgain",
-  rate: "orders.rateItems",
-};
 
 /** A panel an answer opens, as the order page's own actions name it. */
 const PANEL_ACTION: Record<HelpPanel, OrderHelpAction> = {

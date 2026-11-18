@@ -37,7 +37,6 @@ import { SavedCard, useSavedMoves } from "@/components/cart/SavedForLater";
 import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { BUTTON_PRIMARY, EmptyState, PageBody, PageHeading } from "@/components/layout/Page";
 import { useCustomer } from "@/contexts/CustomerContext";
-import { trpc } from "@/lib/trpc";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { privatePageMeta } from "@shared/seo";

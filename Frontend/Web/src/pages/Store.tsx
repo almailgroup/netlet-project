@@ -27,7 +27,6 @@ import { toastHeart } from "@/lib/heartToast";
 import { MapPin, PackageOpen, Recycle, Search, SlidersHorizontal, Store as StoreIcon, Truck, Wallet, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useLocation, useRoute, useSearch } from "wouter";
-import { toast } from "sonner";
 import { BUTTON_PRIMARY, Breadcrumbs, CARD, EmptyState, PageBody, TITLE } from "@/components/layout/Page";
 import { usePageChrome } from "@/components/layout/StorefrontShell";
 import { ProductCard } from "@/components/product/ProductCard";

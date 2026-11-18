@@ -211,16 +211,6 @@ export function courierMoves(parcel: Pick<Parcel, "state">): FulfilmentState[] {
 }
 
 /**
- * A short label for the parcel, for a board and for a driver reading it aloud.
- *
- * The seller's name and the door, because those are the two facts that tell one
- * parcel from another on the same order.
- */
-export function describeParcel(parcel: Parcel): { vendorName: string | null; destinationLabel: string | null } {
-  return { vendorName: parcel.vendorName, destinationLabel: parcel.destination?.label ?? null };
-}
-
-/**
  * A stable key for a destination.
  *
  * The label alone is not enough — two addresses can both be called "Home" by

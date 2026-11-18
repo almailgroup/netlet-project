@@ -21,7 +21,6 @@ import { privatePageMeta } from "@shared/seo";
 import { ArrowRight, Heart } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { toast } from "sonner";
 
 export default function NotFound() {
   usePageMeta(privatePageMeta("Page not found"));

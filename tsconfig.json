@@ -11,6 +11,10 @@
     // Vite build and the server runtime handle natively.
     "target": "ES2022",
     "strict": true,
+    // An import or a local nothing reads is refused: ten of them had piled
+    // up (a toast imported on four pages that no longer raised one, a
+    // locale read and dropped), each one a reader's question with no answer.
+    "noUnusedLocals": true,
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",
     "esModuleInterop": true,
