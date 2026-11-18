@@ -1302,6 +1302,102 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(PortalPage("/admin/guides/2"), .guide(2))
         XCTAssertEqual(PortalPage("/admin/couriers"), .couriers)
         XCTAssertEqual(PortalPage("/admin/store-documents"), .storeDocuments)
+        XCTAssertEqual(PortalPage("/admin/sponsored"), .sponsored)
+    }
+
+    /// Sponsored products (migration 0089), as a real server answered a store
+    /// with a request in every state and NetLet reading the same five: each
+    /// side is sent only the buttons it may press, the transfer's details and
+    /// a running placement's results, and every state has words here.
+    func testSponsoredRequestsDecode() async throws {
+        let mine = try await client.call(API.sponsorList, .init(view: "all", page: 1))
+        XCTAssertTrue(mine.ready)
+        XCTAssertEqual(Set(mine.rows.map(\.state)), ["review", "payment", "sent", "paid", "declined"])
+        XCTAssertNotNil(mine.transfer, "a store paying by transfer is told where to send it")
+        XCTAssertNotNil(mine.room)
+        XCTAssertEqual(mine.counts.all, mine.rows.count)
+        let owing = try XCTUnwrap(mine.rows.first { $0.state == "payment" })
+        XCTAssertTrue(owing.actions.payFromEarnings && owing.actions.sendTransfer && owing.actions.withdraw)
+        XCTAssertFalse(owing.actions.approve || owing.actions.confirmPayment, "a store never approves or confirms its own")
+        XCTAssertNotNil(owing.payBy)
+        XCTAssertEqual(owing.transferReference, "SP-\(owing.id)")
+        let live = try XCTUnwrap(mine.rows.first { $0.state == "paid" })
+        XCTAssertEqual(live.placement?.state, "running")
+        XCTAssertEqual(live.paidWith, "transfer")
+        XCTAssertFalse(live.actions.stop, "a run paid by transfer is NetLet's to take down")
+        let results = try XCTUnwrap(live.results)
+        XCTAssertGreaterThan(results.daysShown, 0)
+        XCTAssertGreaterThan(results.homeViews, results.viewsBefore)
+        XCTAssertNotNil(results.lift)
+
+        let admin = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "admin"))
+        let theirs = try await admin.call(API.sponsorList, .init(view: "all", page: 1))
+        XCTAssertEqual(theirs.rows.count, mine.rows.count)
+        XCTAssertNil(theirs.room, "NetLet has no earnings of its own")
+        let waiting = try XCTUnwrap(theirs.rows.first { $0.state == "review" })
+        XCTAssertTrue(waiting.actions.approve && waiting.actions.decline)
+        XCTAssertNotNil(waiting.storeRoom, "NetLet sees what the store could pay from its earnings")
+        let sent = try XCTUnwrap(theirs.rows.first { $0.state == "sent" })
+        XCTAssertTrue(sent.actions.confirmPayment && sent.actions.notReceived)
+        XCTAssertNotNil(sent.paymentReference)
+        XCTAssertTrue(try XCTUnwrap(theirs.rows.first { $0.state == "paid" }).actions.stop)
+        XCTAssertNotNil(try XCTUnwrap(theirs.rows.first { $0.state == "paid" }).refundIfStopped)
+
+        let quote = try await client.call(API.sponsorQuote, .init(productId: 13, startsOn: "2026-12-04", days: 5))
+        XCTAssertTrue(quote.ready)
+        XCTAssertNil(quote.problem)
+        XCTAssertEqual(quote.cost, Money(fils: quote.dailyRate.fils * 5))
+        let counts = try await client.call(API.sponsorWaiting)
+        XCTAssertEqual(counts.toPay, 1)
+        let netlet = try await admin.call(API.sponsorWaiting)
+        XCTAssertEqual(netlet.forNetLet, 2, "waiting for an answer, and a transfer to confirm")
+
+        // Every state and step the server sends has words here.
+        for key in ["sponsor.stateReview", "sponsor.statePayment", "sponsor.stateSent", "sponsor.statePaid", "sponsor.stateDeclined",
+                    "sponsor.stateWithdrawn", "sponsor.stateLapsed", "sponsor.stepRequested", "sponsor.stepPayment", "sponsor.stepLive",
+                    "sponsor.stepEnded", "admin.sponsored", "admin.sponsorsWaiting", "admin.sponsorsToPay"] {
+            XCTAssertTrue(Phrasebook.shared.has(key), key)
+        }
+        XCTAssertTrue(mine.rows.allSatisfy { SponsorRow.steps.contains($0.step) })
+    }
+
+    /// The rules a sponsored request is checked by before it is sent, on
+    /// `Shared/commerce/sponsorRequests.test.ts`'s own cases.
+    func testSponsorRulesMatchTheServers() {
+        let rules = SponsorRules.shared
+        XCTAssertEqual(rules.sponsor.referenceMax, 80)
+        XCTAssertNil(rules.rateProblem("10.000"))
+        XCTAssertNil(rules.rateProblem("7.5"))
+        XCTAssertEqual(rules.rateProblem("0"), "sponsor.rateBad")
+        XCTAssertEqual(rules.rateProblem("-3"), "sponsor.rateBad")
+        XCTAssertEqual(rules.rateProblem("1.2345"), "sponsor.rateBad")
+        XCTAssertEqual(rules.rateProblem("ten"), "sponsor.rateBad")
+        XCTAssertEqual(rules.rateProblem("1000"), "sponsor.rateTooHigh")
+
+        XCTAssertNil(rules.payByProblem("2026-12-05", startsOn: "2026-12-10", today: "2026-12-01"))
+        XCTAssertEqual(rules.payByProblem("2026-11-30", startsOn: "2026-12-10", today: "2026-12-01"), "sponsor.payByPast")
+        XCTAssertEqual(rules.payByProblem("2026-12-11", startsOn: "2026-12-10", today: "2026-12-01"), "sponsor.payByLate")
+        XCTAssertEqual(rules.payByProblem("2026-02-31", startsOn: "2026-12-10", today: "2026-12-01"), "sponsor.payByBad")
+        XCTAssertNil(rules.payByProblem("2026-12-13", startsOn: "2026-12-10", today: "2026-12-13"))
+
+        XCTAssertEqual(rules.referenceProblem("  "), "sponsor.referenceNeeded")
+        XCTAssertNil(rules.referenceProblem("FT2611"))
+        XCTAssertEqual(rules.referenceProblem(String(repeating: "x", count: 81)), "sponsor.referenceTooLong")
+
+        XCTAssertEqual(rules.defaultPayBy(startsOn: "2026-12-10", today: "2026-12-01"), "2026-12-04")
+        XCTAssertEqual(rules.defaultPayBy(startsOn: "2026-12-03", today: "2026-12-01"), "2026-12-03")
+        XCTAssertEqual(rules.defaultPayBy(startsOn: "2026-12-01", today: "2026-12-01"), "2026-12-01")
+        XCTAssertEqual(rules.defaultPayBy(startsOn: "2026-11-28", today: "2026-12-01"), "2026-12-01")
+
+        let asAsked = rules.approvedRun(startsOn: "2026-12-10", endsOn: "2026-12-16", today: "2026-12-01", rate: "10.000")
+        XCTAssertEqual(asAsked?.startsOn, "2026-12-10")
+        XCTAssertEqual(asAsked?.days, 7)
+        XCTAssertEqual(asAsked?.total, Money(amount: "70.000"))
+        let late = rules.approvedRun(startsOn: "2026-12-10", endsOn: "2026-12-16", today: "2026-12-13", rate: "8.500")
+        XCTAssertEqual(late?.startsOn, "2026-12-13")
+        XCTAssertEqual(late?.days, 4)
+        XCTAssertEqual(late?.total, Money(amount: "34.000"))
+        XCTAssertNil(rules.approvedRun(startsOn: "2026-12-10", endsOn: "2026-12-16", today: "2026-12-01", rate: "0"))
     }
 
     /// A product's catalogues, as a real server answered them: the product

@@ -137,6 +137,8 @@ struct PortalHomeView: View {
         add("admin.affiliatesWaiting", waiting["affiliates"], "/admin/affiliates")
         add("commission.waitingTile", waiting["proposals"], "/admin/commission")
         add("admin.bannersWaiting", waiting["banners"], "/admin/ads")
+        add("admin.sponsorsWaiting", waiting["sponsorsForNetLet"], "/admin/sponsored")
+        add("admin.sponsorsToPay", waiting["sponsorsToPay"], "/admin/sponsored")
         add("support.waitingTile", waiting["support"], "/admin/support")
         add("fraud.ordersTile", waiting["fraudOrders"], "/admin/orders")
         add("fraud.watchTile", waiting["fraudWatch"], "/admin/fraud")
@@ -198,6 +200,8 @@ struct PortalHomeView: View {
             let affiliates = count("affiliate.manage") { try await api.call(API.affiliatesWaiting) }
             let proposals = count("vendor.setCommission") { try await api.call(API.proposalsWaiting) }
             let banners = count("product.review") { try await api.call(API.bannersWaiting) }
+            /* Sponsorship requests: NetLet's to answer, or the store's to pay for. */
+            let sponsors = start(who.can("ads.book", vendorId: own)) { try await api.call(API.sponsorWaiting) }
             /* Catalogues a store put under a product, waiting on NetLet before they show. */
             let catalogues = count("product.review") { try await api.call(API.waitingCatalogueCount) }
             let support = count("support.answer") { try await api.call(API.supportWaiting) }
@@ -230,6 +234,7 @@ struct PortalHomeView: View {
                 "fraudOrders": alerts?.orders, "fraudWatch": alerts?.watch,
                 "reviewsWaiting": await heldReviews.value,
                 "devices": await devices.value,
+                "sponsorsForNetLet": await sponsors.value?.forNetLet, "sponsorsToPay": await sponsors.value?.toPay,
             ]
             waiting = found.compactMapValues { $0 }
         } catch {

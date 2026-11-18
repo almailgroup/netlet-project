@@ -64,6 +64,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     { href: "/admin/promotions", label: "admin.promotions", need: "promotion.manage" },
     /* A store's owner books here; an administrator sees every store's bookings. */
     { href: "/admin/ads", label: "admin.ads", need: "ads.book" },
+    /* The home page's first products, asked for, reviewed and paid for. */
+    { href: "/admin/sponsored", label: "admin.sponsored", need: "ads.book" },
     { href: "/admin/affiliates", label: "admin.affiliates", need: "affiliate.manage" },
     /* Stores' rates and their proposals (3.3.2, 3.3.9): an administrator's, or
        an employee's granted exactly that and nothing else. */

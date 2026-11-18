@@ -58,6 +58,7 @@ import {
 } from "../../database/schema.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { kuwaitToday } from "../../../Shared/commerce/adBookings.js";
+import { openSponsorsFor } from "./sponsorHolds.js";
 import { isMediaPath } from "../../../Shared/commerce/media.js";
 import type { MessageKey } from "../../../Shared/i18n/dictionary.js";
 import { auditActor } from "./inventory.js";
@@ -69,7 +70,7 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Runner = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 /** Why a product cannot be deleted yet. Message keys, so the dialog says it. */
-export type DeletionBlocker = Extract<MessageKey, "admin.deleteBlockedAd" | "admin.deleteBlockedNetlet">;
+export type DeletionBlocker = Extract<MessageKey, "admin.deleteBlockedAd" | "admin.deleteBlockedSponsor" | "admin.deleteBlockedNetlet">;
 
 /** What deleting would touch, for the dialog to show before anybody confirms. */
 export type DeletionCheck = {
@@ -133,6 +134,7 @@ async function assess(db: Runner, product: { id: number; title: string }, now: D
   const held = variants.some(variant => variant.centreId !== null && variant.stock > 0);
   const blockers: DeletionBlocker[] = [];
   if (count(placements) > 0) blockers.push("admin.deleteBlockedAd");
+  if (await openSponsorsFor(db, product.id, kuwaitToday(now)) > 0) blockers.push("admin.deleteBlockedSponsor");
   if (held || count(inbound) > 0) blockers.push("admin.deleteBlockedNetlet");
 
   return {

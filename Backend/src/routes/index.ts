@@ -1,4 +1,5 @@
 import { adsRouter } from "./ads.js";
+import { sponsorRouter } from "./sponsor.js";
 import { mediaRouter } from "./media.js";
 import { subscriptionsRouter } from "./subscriptions.js";
 import { supportRouter } from "./support.js";
@@ -41,6 +42,7 @@ import { aiRouter } from "./ai.js";
 
 export const appRouter = router({
   ads: adsRouter,
+  sponsor: sponsorRouter,
   media: mediaRouter,
   subscriptions: subscriptionsRouter,
   support: supportRouter,

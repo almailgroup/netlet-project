@@ -149,6 +149,8 @@ enum PortalPage: Hashable, Sendable {
     case claims
     case fulfilment
     case ads
+    /// Stores asking to be among the home page's first products (`sponsorRequests.ts`).
+    case sponsored
     case review
     case applications
     case people
@@ -237,6 +239,7 @@ enum PortalPage: Hashable, Sendable {
             case "claims": self = .claims
             case "fulfilment": self = .fulfilment
             case "ads": self = .ads
+            case "sponsored": self = .sponsored
             case "review": self = .review
             case "applications": self = .applications
             case "people": self = .people

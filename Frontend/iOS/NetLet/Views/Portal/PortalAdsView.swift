@@ -18,7 +18,21 @@ struct PortalAdsView: View {
     var body: some View {
         let actor = app.session.seller
         PortalScreen(title: l.t("admin.ads"), intro: l.t(actor?.kind == "admin" ? "ads.noteAdmin" : "ads.noteStore"), refresh: { await load() }) {
-            ForEach(rules.slots, id: \.self) { slot in
+            /* The home page's sponsored products are asked for and paid for on their own page. */
+            Button { app.open(.portal("/admin/sponsored")) } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "star.square").foregroundStyle(Brand.navy).accessibilityHidden(true)
+                    Text(l.t("ads.homeMoved") + " " + l.t("admin.sponsored")).font(.inter(13)).foregroundStyle(Brand.navy)
+                        .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(Brand.muted).accessibilityHidden(true)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
+            }
+            .buttonStyle(.tap)
+            ForEach(AdWords.bookable, id: \.self) { slot in
                 PortalCard {
                     Text(l.t(AdWords.slot(slot), ["department": l.t("ads.yourDepartment")])).font(.inter(14, .semibold)).foregroundStyle(Brand.navy)
                     Text(l.t("ads.rateLine", ["rate": (Money(amount: rules.rates[slot] ?? "0") ?? .zero).formatted(l.current), "places": "\(rules.capacity[slot] ?? 0)"]))
@@ -67,6 +81,10 @@ struct PortalAdsView: View {
 }
 
 enum AdWords {
+    /// The places a store books here: the home page's products are asked for
+    /// on their own page (`PortalSponsoredView`), so the home slot is not one.
+    static var bookable: [String] { WarehouseRules.shared.ads.slots.filter { $0 != "home" } }
+
     static func slot(_ slot: String) -> String {
         switch slot {
         case "home": return "ads.slotHome"
@@ -173,7 +191,7 @@ private struct AdBookForm: View {
     @State private var search = ""
     @State private var products: [SellerProduct] = []
     @State private var productId: Int?
-    @State private var slot = "home"
+    @State private var slot = "department"
     @State private var starts = Date().addingTimeInterval(86_400)
     @State private var days = 7
     @State private var quote: AdQuote?
@@ -210,7 +228,7 @@ private struct AdBookForm: View {
             }
             .accessibilityLabel(l.t("ads.product"))
             Text(l.t("ads.place")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
-            PortalSegmented(label: l.t("ads.place"), value: $slot, options: rules.ads.slots.map { ($0, l.t(AdWords.slot($0), ["department": l.t("ads.yourDepartment")])) })
+            PortalSegmented(label: l.t("ads.place"), value: $slot, options: AdWords.bookable.map { ($0, l.t(AdWords.slot($0), ["department": l.t("ads.yourDepartment")])) })
             if isBanner { bannerFields }
             let today = AdWords.todayInKuwait
             DatePicker(l.t("ads.startsOn"), selection: $starts, in: today...today.addingTimeInterval(Double(rules.ads.maxLeadDays) * 86_400), displayedComponents: .date)

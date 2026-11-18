@@ -81,9 +81,11 @@ struct HomeView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
             }
-            // Paid banners and placements, approved and labelled; absent when none runs today.
-            HomeBanners()
+            // The products stores sponsored lead the shelves, as the website's
+            // do — the place a store asks and pays for (`PortalSponsoredView`) —
+            // then the paid banners; each labelled, and absent when none runs today.
             SponsoredShelf(slot: "home")
+            HomeBanners()
             // The shelves, in the owner's order: each computed one leaves out
             // what a shelf above shows, and the two personal rails and
             // Previously viewed keep their own rule. The brands and the stores

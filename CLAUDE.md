@@ -5819,8 +5819,9 @@ handler, which hung the request and could take the process with it.
 
 `Shared/commerce/adBookings.ts` is the rule, pure; `Backend/src/services/adBookings.ts` the
 database half. A store's owner books one product into a place by the Kuwaiti
-day — the home shelf or the top of its department — each holding a fixed
-number a day. **The fee accrues a day at a time and comes off the payout run**
+day — the top of its department, or a banner on the home page — each
+holding a fixed number a day. The home shelf is asked for and paid for on a
+page of its own (see "Sponsored products"). **The fee accrues a day at a time and comes off the payout run**
 as a `fee` line (`payout_run_items.booking_id`), only for days the placement
 ran: cancelling before it starts is free, cancelling while it runs ends it
 today and charges today. **A store books against what it has earned**, less
@@ -5879,6 +5880,115 @@ would not show is absent too.
 `build-bootstrap.mjs` writes it `IF NOT EXISTS`. Postgres runs that inside the
 file's one transaction but refuses to *use* the value before the commit, so
 `bootstrap.test.ts` now fails on any later statement naming an added value.
+
+## Sponsored products
+
+**A store asks for one of its products to be among the home page's first
+products, NetLet approves it and asks for the payment, and the store pays —
+on the owner's word** ("vendors can choose what product they want to sponsor
+… they can request for sponsor, and the admin will check their request and
+ask them for the payment"; migration 0089, `sponsor_requests`, approved as
+shown). `Shared/commerce/sponsorRequests.ts` is the rule, pure;
+`Backend/src/services/sponsorRequests.ts` the database half,
+`services/sponsorHolds.ts` the places open requests hold, `sponsor.*` the
+API. The owner's four answers shape it:
+
+- **The store pays from its earnings or by bank transfer, its choice.** From
+  earnings it is live at once, the placement's ordinary daily fee coming off
+  the payouts as it runs (`placementRoom` under the bookings' lock and the
+  store's row `for update`, the payout run's); by transfer it pays NetLet's
+  account (`PAYOUT_FROM_IBAN`, `PAYOUT_FROM_NAME`: offered only while a valid
+  IBAN is recorded) writing the request's reference (`SP-<id>`) and gives
+  its bank's reference, and NetLet confirms it arrived.
+- **The rate card's price, which NetLet may change per request**
+  (`AD_RATES.home`, 10.000 a day): the store is quoted it, NetLet approves at
+  it or another day rate (above nothing, at most `SPONSOR_MAX_RATE`), and the
+  store is asked for that total.
+- **Home products only.** A department's top spot is still booked at once
+  from earnings and a home banner still waits for NetLet's look (see "Paid
+  placements"); the home slot is refused there (`ads.homeByRequest`) and the
+  Placements page points here.
+- **0089 as shown.** A table of its own; the placement a paid request becomes
+  is an ordinary `ad_bookings` row the home shelf draws, named by
+  `booking_id`.
+
+**Where a request stands is four states stored and one derived**: `review`
+(NetLet's to answer), `payment` (approved, the store's to pay by `pay_by`),
+`sent` (the store says it transferred), `paid`, and `declined` or
+`withdrawn` — and **lapsed is a date, never stored** (`sponsorState`): a
+request NetLet did not answer by its last day, or a payment not made by its
+last day to pay. A `sent` request never lapses: money may be on its way.
+**An open request holds its places** from the moment it is asked
+(`openSponsorHolds`, counted by `overlapping` for the home slot beside the
+bookings), so NetLet never approves days somebody else has since been sold.
+Approving after the first day asks for the days left (`approvedRun`); a
+transfer confirmed after the first day keeps every day paid for, from today
+or a day NetLet chooses (`confirmedRun`); the last day to pay defaults to
+three days and never after the first day (`defaultPayBy`).
+
+**A transfer-paid placement is written at no rate** (`daily_rate` and
+`total` 0.000), so the payout run makes no fee line for money already
+received; an earnings-paid one carries the request's rate and is charged a
+day at a time like any placement. **Stopping a running placement** is the
+store's own for an earnings-paid run and NetLet's for any; a transfer-paid one
+says what NetLet owes back for the days not shown (`refundFor`), and declining
+a `sent` request says the whole total is owed back — **NetLet sends that money
+itself**: no refund is automated, there being no gateway.
+
+**Every move is written with the state it was read in, in the predicate**
+(`unchanged`: id, status, first day), so two administrators confirming, or a
+store paying while NetLet declines, land once and the second is told
+`sponsor.moved`. Scoped in the query: a store reads and moves its own, another
+store's is "not found". The buttons are the server's answer on every row
+(`sponsorActions` plus `stop`), so each side is drawn exactly what the API
+accepts. Both sides hear of each move by a notice (`staff_sponsor_request`,
+`staff_sponsor_sent`, `seller_sponsor_payment`, `…declined`, `…not_received`,
+`…live`, `…stopped` — `kind` is text, so no migration), every move is on the
+trail (`sponsor.*`, the store's in `SELLER_ACTIONS`), and the overview counts
+what waits on NetLet (`review` and `sent`) and on the store (`payment`).
+Deleting or moving a product waits for its open requests
+(`admin.deleteBlockedSponsor`, `admin.moveBlockedSponsor`). Sponsored
+bookings are left off the Placements list and cannot be cancelled there
+(`ads.useSponsoredPage`). `sponsor.request` is the `ads` switch's entry beside
+`ads.book`; everything already asked can still be answered and paid.
+
+**The page is `/admin/sponsored`** (`ads.book`, after Placements;
+`Sponsored.tsx`, the app's `PortalSponsoredView`): for the store, how it works
+in four steps, the rate card and its earnings, the request form (a product,
+the placement calendar of the home slot, the first day and how many, a note,
+the rate card's quote and whether the days have room), and its requests; for
+NetLet, the requests to answer first. Each row is the product's photo, its run
+and price, the reference, a four-step bar (requested, payment, live, ended,
+red where it stopped), the store's note and NetLet's reply, a sentence saying
+where it stands for whoever reads it, what the store could pay from earnings,
+and — once paid — **its results**: views of the product reached from the home
+page on its days against the same number of days before it (`liftPercent`,
+`product_views`' `home` source) and orders placed on its days. Approving takes
+a day rate, a last day to pay and an optional note, and says the total;
+declining and "Not received" need a reason the store reads; the transfer
+dialog shows the account, the amount and the reference, each with Copy, and
+the bank's reference is said under its box on the press. **The home page draws
+sponsored products first**, right after the departments, above the banners —
+the place a store pays for (`Home.tsx`; the app's `HomeView`).
+
+**Closed, not broken, until 0089 is pasted**: `sponsorReady` asks
+`to_regclass` (kept once found, asked again a minute later while missing), the
+list answers `ready: false` and the page says Sponsored products are not open
+yet, every write refuses with `sponsor.unavailable`, and placements read on as
+before. `sponsorRequests.test.ts` (both halves) holds the rules and a real
+Postgres: each move and its refusals, two confirmations and a decline sent
+at once landing once, the lapse, the holds, the refunds, the results and the
+table renamed away. Walked on a production build
+against a local Postgres at 1440 in English, 390 in Arabic and 320 in English:
+a request sent, NetLet approving at 8.000 (40.000 for five days), the transfer
+with no reference refused under its box and then sent, confirmed into a
+booking at no rate, the home page's first shelf after the departments the
+sponsored lamp, Placements offering only the department and the banner; axe
+clean with every dialog open, no sideways scroll, no page errors. The app's
+answers were recorded off that server (`demo.sponsor.*`, a request in every
+state, and the `admin` variants), `testSponsoredRequestsDecode` and
+`testSponsorRulesMatchTheServers` hold them, and the CI photographs both sides
+(`107-sponsored`, `108-sponsored-netlet`).
 
 ## Payout runs
 
@@ -9369,9 +9479,11 @@ product page's total for the quantity and its words — then 1,114 KB
 1,126 KB (323 KB), paying online, the test page and the door check's
 words in both languages — then 1,132 KB (324 KB), the tax words in
 both languages — then 1,133 KB (324 KB), the untick note and its toast
-in both languages — and is 1,142 KB (329 KB) now, the default address and way
+in both languages — then 1,142 KB (327 KB), the default address and way
 to pay in Quick settings, checkout's folded rows, the overlays' motion and the
-"could not be loaded" states in both languages —
+"could not be loaded" states in both languages — and is 1,168 KB (333 KB)
+now, Sponsored products' words in both languages (about 170 sentences each;
+the page itself is a chunk of its own) —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

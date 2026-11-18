@@ -112,6 +112,7 @@ import { ACCOUNT_PLACES } from "../../../Shared/commerce/accountSearch.js";
 import {
   AD_CAPACITY, AD_RATES, AD_SLOTS, BANNER_ASPECT, BANNER_HEADLINE_MAX, BANNER_MAX_WIDTH, BANNER_MIN_WIDTH, BANNER_NOTE_MAX, MAX_AD_DAYS, MAX_AD_LEAD_DAYS,
 } from "../../../Shared/commerce/adBookings.js";
+import { PAY_WITHIN_DAYS, SPONSOR_MAX_RATE, SPONSOR_NOTE_MAX, SPONSOR_REFERENCE_MAX } from "../../../Shared/commerce/sponsorRequests.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
 export const ASSET_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Web");
@@ -389,6 +390,9 @@ export function buildResources(): Record<string, string> {
         slots: AD_SLOTS, rates: AD_RATES, capacity: AD_CAPACITY, maxDays: MAX_AD_DAYS, maxLeadDays: MAX_AD_LEAD_DAYS,
         headlineMax: BANNER_HEADLINE_MAX, noteMax: BANNER_NOTE_MAX, bannerAspect: BANNER_ASPECT, bannerMinWidth: BANNER_MIN_WIDTH, bannerMaxWidth: BANNER_MAX_WIDTH,
       },
+      /* Sponsored products (`sponsorRequests.ts`): the words' lengths, the
+         highest day rate and how long a store is given to pay. */
+      sponsor: { noteMax: SPONSOR_NOTE_MAX, referenceMax: SPONSOR_REFERENCE_MAX, maxRate: SPONSOR_MAX_RATE, payWithinDays: PAY_WITHIN_DAYS },
       /* The badges a person awards, and the floors the measured ones are
          earned by, which a store's page says in words. */
       badges: {

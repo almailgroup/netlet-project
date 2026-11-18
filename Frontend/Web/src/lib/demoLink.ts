@@ -915,6 +915,23 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "ads.book":
     case "ads.cancel":
       throw new Error("ads.notYours");
+    /* Sponsored products are asked for and paid for by a store's owner, and
+       the demo is a manager: nothing waits, and every act is refused as the
+       server refuses it. */
+    case "sponsor.waiting":
+      return { forNetLet: 0, toPay: 0 };
+    case "sponsor.quote":
+    case "sponsor.request":
+    case "sponsor.list":
+    case "sponsor.approve":
+    case "sponsor.decline":
+    case "sponsor.payFromEarnings":
+    case "sponsor.sendTransfer":
+    case "sponsor.confirmPayment":
+    case "sponsor.notReceived":
+    case "sponsor.withdraw":
+    case "sponsor.stop":
+      throw new Error("sponsor.notYours");
     /* Affiliates (3.7): the demo shopper is a guest, so there is no account to
        join with and no link anybody arrived through. */
     case "affiliates.mine":

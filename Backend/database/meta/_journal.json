@@ -624,6 +624,13 @@
       "when": 1794948639085,
       "tag": "0088_customer_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1794987010080,
+      "tag": "0089_sponsor_requests",
+      "breakpoints": true
     }
   ]
 }

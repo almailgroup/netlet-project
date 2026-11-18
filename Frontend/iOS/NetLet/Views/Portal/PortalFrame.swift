@@ -30,6 +30,7 @@ enum PortalIcons {
         "/admin/invoices": "doc.text",
         "/admin/promotions": "ticket",
         "/admin/ads": "megaphone",
+        "/admin/sponsored": "star.square",
         "/admin/affiliates": "link",
         "/admin/commission": "percent",
         "/admin/team": "person.2",

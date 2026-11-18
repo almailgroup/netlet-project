@@ -112,10 +112,9 @@ export default function Home() {
         drawn with the first paint, and with remembered shelves that put a
         dozen product cards in front of it on every returning visit. */}
     <Later>
-      {/* Paid banners (3.3.15), approved by NetLet; absent when none runs today. */}
-      <HomeBanners />
-
-      {/* Paid placements (3.3.15), on a shelf of their own and labelled. */}
+      {/* Sponsored products, on the owner's word: the first products the page
+          draws, each asked for by its store, reviewed and paid for
+          (`sponsorRequests.ts`), on a shelf of their own and labelled. */}
       <SponsoredShelf
         slot="home"
         layout="rail"
@@ -123,6 +122,9 @@ export default function Home() {
         onSave={product => toggleSaved(product.id, product.title)}
         onQuickView={setQuickProduct}
       />
+
+      {/* Paid banners (3.3.15), approved by NetLet; absent when none runs today. */}
+      <HomeBanners />
 
       {/* While the catalog loads, one shelf's outline stands where the deals
           will be, so the page does not jump; failed, it is the one line. */}

@@ -47,6 +47,7 @@ import {
 } from "../../database/schema.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { kuwaitToday } from "../../../Shared/commerce/adBookings.js";
+import { openSponsorsFor } from "./sponsorHolds.js";
 import type { MessageKey } from "../../../Shared/i18n/dictionary.js";
 import { auditActor } from "./inventory.js";
 import { recordAudit } from "./audit.js";
@@ -55,7 +56,7 @@ import { getDb } from "./db.js";
 /** Why a product cannot change stores yet. Message keys, so the editor says it. */
 export type MoveRefusal = Extract<
   MessageKey,
-  "admin.moveBlockedAd" | "admin.moveBlockedNetlet" | "admin.moveBlockedOffer" | "admin.moveSameStore" | "admin.skuTaken"
+  "admin.moveBlockedAd" | "admin.moveBlockedSponsor" | "admin.moveBlockedNetlet" | "admin.moveBlockedOffer" | "admin.moveSameStore" | "admin.skuTaken"
 >;
 
 export class MoveRefused extends Error {
@@ -100,6 +101,7 @@ export async function moveProductToVendor(actor: Actor, productId: number, vendo
       .from(adBookings)
       .where(and(eq(adBookings.productId, productId), isNull(adBookings.cancelledOn), gte(adBookings.endsOn, kuwaitToday(now))));
     if ((placements?.n ?? 0) > 0) throw new MoveRefused("admin.moveBlockedAd");
+    if (await openSponsorsFor(tx, productId, kuwaitToday(now)) > 0) throw new MoveRefused("admin.moveBlockedSponsor");
 
     const [inbound] = await tx
       .select({ n: sql<number>`count(*)::int` })

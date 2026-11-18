@@ -60,6 +60,13 @@ export const NOTICE_KINDS = [
   "staff_fraud_review",
   "staff_fraud_referral",
   "staff_device_request",
+  "staff_sponsor_request",
+  "staff_sponsor_sent",
+  "seller_sponsor_payment",
+  "seller_sponsor_declined",
+  "seller_sponsor_not_received",
+  "seller_sponsor_live",
+  "seller_sponsor_stopped",
   "account_password_changed",
   "account_email_changed",
 ] as const;
@@ -134,6 +141,17 @@ export const NOTICE_RULES: Record<NoticeKind, NoticeRule> = {
   /* A device asking for an administrator's rights, told to the owner alone,
      who decides (`Shared/auth/adminDevice.ts`). Never silenced. */
   staff_device_request: { audience: "staff", preference: null, email: true, key: "notice.staffDeviceRequest" },
+  /* Sponsored products (`sponsorRequests.ts`): a store asking for a place,
+     and saying it sent the money, told to NetLet; NetLet's answers and the
+     placement going live told to the store. Never silenced — each is money,
+     or a place on the home page somebody is waiting on. */
+  staff_sponsor_request: { audience: "staff", preference: null, email: true, key: "notice.staffSponsorRequest" },
+  staff_sponsor_sent: { audience: "staff", preference: null, email: true, key: "notice.staffSponsorSent" },
+  seller_sponsor_payment: { audience: "seller", preference: null, email: true, key: "notice.sellerSponsorPayment" },
+  seller_sponsor_declined: { audience: "seller", preference: null, email: true, key: "notice.sellerSponsorDeclined" },
+  seller_sponsor_not_received: { audience: "seller", preference: null, email: true, key: "notice.sellerSponsorNotReceived" },
+  seller_sponsor_live: { audience: "seller", preference: null, email: true, key: "notice.sellerSponsorLive" },
+  seller_sponsor_stopped: { audience: "seller", preference: null, email: true, key: "notice.sellerSponsorStopped" },
   /* A change to how the account is signed into (on the owner's word: "account
      and security" notifications stay on). Never silenced: it is how somebody
      learns that a password they did not change was changed. */

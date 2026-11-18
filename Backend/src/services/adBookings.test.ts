@@ -142,55 +142,64 @@ async function earned(): Promise<number> {
   return lines.reduce((sum, line) => sum + Number(line.vendorNet), 0);
 }
 
-const home = (startOffset: number, days: number) => ({ productId: ids.lamp, slot: "home" as const, startsOn: addDays(today, startOffset), days });
+/* The top of the lamp's department: a place a store books, at 3.000 a day, two a day.
+   The home shelf is asked for and paid for instead (`sponsorRequests.test.ts`). */
+const place = (startOffset: number, days: number) => ({ productId: ids.lamp, slot: "department" as const, startsOn: addDays(today, startOffset), days });
+const home = (startOffset: number, days: number) => ({ ...place(startOffset, days), slot: "home" as const });
 
 describe("booking against what was earned", () => {
   it("refuses a store with nothing earned, and says so before the press", async () => {
-    const quote = await ads.quotePlacement(owner(), home(1, 3));
-    expect(quote).toMatchObject({ cost: "30.000", room: "0.000", problem: "ads.notEnoughEarned" });
-    await expect(ads.bookPlacement(owner(), home(1, 3))).rejects.toMatchObject({ reason: "ads.notEnoughEarned" });
+    const quote = await ads.quotePlacement(owner(), place(1, 3));
+    expect(quote).toMatchObject({ cost: "9.000", room: "0.000", problem: "ads.notEnoughEarned" });
+    await expect(ads.bookPlacement(owner(), place(1, 3))).rejects.toMatchObject({ reason: "ads.notEnoughEarned" });
   });
 
   it("books within what was earned, and the room shrinks by the whole run", async () => {
     const net = await earned();
-    const booked = await ads.bookPlacement(owner(), home(1, 3));
-    expect(booked.total).toBe("30.000");
-    const quote = await ads.quotePlacement(owner(), home(10, 1));
-    expect(Number(quote.room)).toBeCloseTo(net - 30, 3);
+    const booked = await ads.bookPlacement(owner(), place(1, 3));
+    expect(booked.total).toBe("9.000");
+    const quote = await ads.quotePlacement(owner(), place(10, 1));
+    expect(Number(quote.room)).toBeCloseTo(net - 9, 3);
   });
 
   it("refuses a run bigger than what is left", async () => {
     await earned();
-    await ads.bookPlacement(owner(), home(1, 15));
-    await ads.bookPlacement(owner(), { ...home(1, 1), slot: "department" });
-    /* About 180 earned; 150 + 3 committed; another 30 days at 10 is too much. */
-    await expect(ads.bookPlacement(owner(), home(20, 30))).rejects.toMatchObject({ reason: "ads.notEnoughEarned" });
+    await ads.bookPlacement(owner(), place(1, 30));
+    await ads.bookPlacement(owner(), place(1, 1));
+    /* About 180 earned; 90 + 3 committed; another 30 days at 3 is too much. */
+    await expect(ads.bookPlacement(owner(), place(40, 30))).rejects.toMatchObject({ reason: "ads.notEnoughEarned" });
   });
 
   it("is an owner's: a manager is refused, and an administrator has nothing to pay from", async () => {
     await earned();
-    await expect(appRouter.createCaller(contextFor(people.manager)).ads.book(home(1, 1))).rejects.toMatchObject({ code: "FORBIDDEN" });
-    await expect(ads.bookPlacement(admin(), home(1, 1))).rejects.toMatchObject({ reason: "ads.notYours" });
+    await expect(appRouter.createCaller(contextFor(people.manager)).ads.book(place(1, 1))).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(ads.bookPlacement(admin(), place(1, 1))).rejects.toMatchObject({ reason: "ads.notYours" });
   });
 
   it("refuses another store's product, a draft, and a department booking with no department", async () => {
     await earned();
-    await expect(ads.bookPlacement(owner(), { ...home(1, 1), productId: ids.betaVase })).rejects.toMatchObject({ reason: "ads.productUnavailable" });
-    await expect(ads.bookPlacement(owner(), { ...home(1, 1), productId: ids.rug, slot: "department" })).rejects.toMatchObject({ reason: "ads.noDepartment" });
+    await expect(ads.bookPlacement(owner(), { ...place(1, 1), productId: ids.betaVase })).rejects.toMatchObject({ reason: "ads.productUnavailable" });
+    await expect(ads.bookPlacement(owner(), { ...place(1, 1), productId: ids.rug, slot: "department" })).rejects.toMatchObject({ reason: "ads.noDepartment" });
     await db.update(products).set({ status: "draft" }).where(eq(products.id, ids.lamp));
-    await expect(ads.bookPlacement(owner(), home(1, 1))).rejects.toMatchObject({ reason: "ads.productUnavailable" });
+    await expect(ads.bookPlacement(owner(), place(1, 1))).rejects.toMatchObject({ reason: "ads.productUnavailable" });
+  });
+
+  it("refuses the home shelf, which is asked for on Sponsored products", async () => {
+    await earned();
+    await expect(ads.bookPlacement(owner(), home(1, 1))).rejects.toMatchObject({ reason: "ads.homeByRequest" });
+    expect((await ads.quotePlacement(owner(), home(1, 1))).problem).toBe("ads.homeByRequest");
   });
 
   it("refuses a start in the past", async () => {
     await earned();
-    await expect(ads.bookPlacement(owner(), home(-1, 1))).rejects.toMatchObject({ reason: "ads.inPast" });
+    await expect(ads.bookPlacement(owner(), place(-1, 1))).rejects.toMatchObject({ reason: "ads.inPast" });
   });
 });
 
 describe("a place holds so many a day", () => {
   it("names the full days when a department's two places are taken", async () => {
     await earned();
-    const dept = (offset: number, days: number) => ({ ...home(offset, days), slot: "department" as const });
+    const dept = (offset: number, days: number) => ({ ...place(offset, days), slot: "department" as const });
     await ads.bookPlacement(owner(), dept(2, 2));
     await ads.bookPlacement(owner(), dept(3, 1));
     await expect(ads.bookPlacement(owner(), dept(1, 4))).rejects.toMatchObject({ reason: "ads.full", days: [addDays(today, 3)] });
@@ -202,18 +211,19 @@ describe("a place holds so many a day", () => {
 describe("the shelf", () => {
   it("shows a booking on its days, first booked first, and nothing the shop would not", async () => {
     await earned();
-    await ads.bookPlacement(owner(), home(1, 2));
-    expect(await ads.sponsoredToday("home", {}, on(0))).toEqual([]);
-    expect((await ads.sponsoredToday("home", {}, on(1))).map(product => product.handle)).toEqual(["lamp"]);
-    expect(await ads.sponsoredToday("home", {}, on(3))).toEqual([]);
+    await ads.bookPlacement(owner(), place(1, 2));
+    const shelf = (at: Date) => ads.sponsoredToday("department", { departmentSlug: "home-and-kitchen" }, at);
+    expect(await shelf(on(0))).toEqual([]);
+    expect((await shelf(on(1))).map(product => product.handle)).toEqual(["lamp"]);
+    expect(await shelf(on(3))).toEqual([]);
 
     await db.update(products).set({ status: "draft" }).where(eq(products.id, ids.lamp));
-    expect(await ads.sponsoredToday("home", {}, on(1))).toEqual([]);
+    expect(await shelf(on(1))).toEqual([]);
   });
 
   it("tops only the department it was booked for", async () => {
     await earned();
-    await ads.bookPlacement(owner(), { ...home(1, 1), slot: "department" });
+    await ads.bookPlacement(owner(), place(1, 1));
     expect((await ads.sponsoredToday("department", { departmentSlug: "home-and-kitchen" }, on(1))).map(product => product.handle)).toEqual(["lamp"]);
     expect(await ads.sponsoredToday("department", { departmentSlug: "beauty" }, on(1))).toEqual([]);
     expect(await ads.sponsoredToday("home", {}, on(1))).toEqual([]);
@@ -223,7 +233,7 @@ describe("the shelf", () => {
 describe("stopping a booking", () => {
   it("costs nothing before it starts", async () => {
     await earned();
-    const { id } = await ads.bookPlacement(owner(), home(2, 5));
+    const { id } = await ads.bookPlacement(owner(), place(2, 5));
     await ads.cancelPlacement(owner(), id, on(1));
     const [row] = (await ads.listPlacements(owner(), {}, on(10))).rows;
     expect(row).toMatchObject({ state: "cancelled", accrued: "0.000", cancellable: false });
@@ -231,16 +241,16 @@ describe("stopping a booking", () => {
 
   it("ends it today while it runs, and charges the days it ran", async () => {
     await earned();
-    const { id } = await ads.bookPlacement(owner(), home(1, 5));
+    const { id } = await ads.bookPlacement(owner(), place(1, 5));
     await ads.cancelPlacement(owner(), id, on(2));
     const [row] = (await ads.listPlacements(owner(), {}, on(10))).rows;
-    expect(row).toMatchObject({ state: "ended", accrued: "20.000" });
+    expect(row).toMatchObject({ state: "ended", accrued: "6.000" });
     await expect(ads.cancelPlacement(owner(), id, on(2))).rejects.toMatchObject({ reason: "ads.notCancellable" });
   });
 
   it("is not another store's to stop, and not even theirs to see", async () => {
     await earned();
-    const { id } = await ads.bookPlacement(owner(), home(1, 2));
+    const { id } = await ads.bookPlacement(owner(), place(1, 2));
     await expect(ads.cancelPlacement(rival(), id)).rejects.toMatchObject({ reason: "ads.notFound" });
     expect((await ads.listPlacements(rival())).rows).toEqual([]);
     await ads.cancelPlacement(admin(), id);
@@ -251,30 +261,30 @@ describe("stopping a booking", () => {
 describe("the fee comes off the payout, once", () => {
   it("takes what has accrued, records it against the booking, and takes it only once", async () => {
     const net = await earned();
-    const { id } = await ads.bookPlacement(owner(), home(1, 5));
+    const { id } = await ads.bookPlacement(owner(), place(1, 5));
 
     const [batch] = await runs.readyBatches(admin(), on(2));
-    expect(batch.lines).toContainEqual({ orderId: null, reference: `AD-${id}`, amount: "-20.000", kind: "fee" });
-    expect(Number(batch.total)).toBeCloseTo(net - 20, 3);
+    expect(batch.lines).toContainEqual({ orderId: null, reference: `AD-${id}`, amount: "-6.000", kind: "fee" });
+    expect(Number(batch.total)).toBeCloseTo(net - 6, 3);
 
     const run = await runs.preparePayout(admin(), ids.acme, on(2));
     await runs.markPayoutSent(admin(), { runId: run.id }, "BANK-1", on(2));
     const items = await db.select().from(payoutRunItems).where(eq(payoutRunItems.bookingId, id));
-    expect(items.map(item => item.amount)).toEqual(["-20.000"]);
+    expect(items.map(item => item.amount)).toEqual(["-6.000"]);
 
     /* The same day again: nothing left to take. The next day: one more day. */
     expect(await runs.readyBatches(admin(), on(2))).toEqual([]);
     const [next] = await runs.readyBatches(admin(), on(3));
-    expect(next).toMatchObject({ total: "-10.000", payable: false });
+    expect(next).toMatchObject({ total: "-3.000", payable: false });
 
     const [row] = (await ads.listPlacements(owner(), {}, on(3))).rows;
-    expect(row).toMatchObject({ accrued: "30.000", deducted: "20.000" });
+    expect(row).toMatchObject({ accrued: "9.000", deducted: "6.000" });
   });
 });
 
 describe("home banners", () => {
   const banner = (startOffset: number, days: number, extra: Partial<{ mediaId: string; headline: string; headlineAr: string | null }> = {}) => ({
-    ...home(startOffset, days),
+    ...place(startOffset, days),
     slot: "home_banner" as const,
     banner: { mediaId: media.acme, headline: "Lamps for the long evenings", headlineAr: null, ...extra },
   });
@@ -298,7 +308,7 @@ describe("home banners", () => {
     expect(await ads.bannersToday({}, on(2))).toEqual([]);
 
     /* Its full price is still committed against the store's earnings. */
-    expect(Number((await ads.quotePlacement(owner(), home(10, 1), on(2))).room)).toBeCloseTo(net - 125, 3);
+    expect(Number((await ads.quotePlacement(owner(), place(10, 1), on(2))).room)).toBeCloseTo(net - 125, 3);
     /* And the payout run takes nothing for it. */
     const [batch] = await runs.readyBatches(admin(), on(3));
     expect(batch.lines.filter((line: { kind: string }) => line.kind === "fee")).toEqual([]);
@@ -339,7 +349,7 @@ describe("home banners", () => {
     await ads.reviewBanner(admin(), { id, decision: "reject", note: "The picture is mostly text." }, on(2));
     const [row] = (await ads.listPlacements(owner(), {}, on(3))).rows;
     expect(row).toMatchObject({ state: "rejected", accrued: "0.000", cancellable: false, banner: { status: "rejected", note: "The picture is mostly text." } });
-    expect(Number((await ads.quotePlacement(owner(), home(10, 1), on(3))).room)).toBeCloseTo(net, 3);
+    expect(Number((await ads.quotePlacement(owner(), place(10, 1), on(3))).room)).toBeCloseTo(net, 3);
     await expect(ads.reviewBanner(admin(), { id, decision: "approve" }, on(3))).rejects.toMatchObject({ reason: "ads.bannerNotWaiting" });
   });
 
@@ -347,7 +357,7 @@ describe("home banners", () => {
     const net = await earned();
     const { id } = await ads.bookPlacement(owner(), banner(1, 2));
     await expect(ads.reviewBanner(admin(), { id, decision: "approve" }, on(4))).rejects.toMatchObject({ reason: "ads.bannerLapsed" });
-    expect(Number((await ads.quotePlacement(owner(), home(10, 1), on(4))).room)).toBeCloseTo(net, 3);
+    expect(Number((await ads.quotePlacement(owner(), place(10, 1), on(4))).room)).toBeCloseTo(net, 3);
     expect(await ads.countWaitingBanners(admin(), on(4))).toBe(0);
   });
 

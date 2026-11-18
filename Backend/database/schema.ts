@@ -49,6 +49,7 @@ import { SELL_UNITS as sellUnits } from "../../Shared/commerce/units.js";
 import { FULFILMENT_STATES } from "../../Shared/commerce/fulfilment.js";
 import type { SizeChart } from "../../Shared/commerce/sizeGuide.js";
 import { AD_SLOTS, type BannerStatus } from "../../Shared/commerce/adBookings.js";
+import type { SponsorPaidWith, SponsorStatus } from "../../Shared/commerce/sponsorRequests.js";
 import type { DocumentKind, DocumentStatus, DocumentType } from "../../Shared/inventory/applicationDocuments.js";
 import type { StoreDocumentKind } from "../../Shared/inventory/storeDocuments.js";
 import { SUPPORT_STATUSES, SUPPORT_TOPICS, type AnswerPart } from "../../Shared/commerce/support.js";
@@ -3317,6 +3318,61 @@ export const adBookings = pgTable(
   table => [
     index("ad_bookings_slot_idx").on(table.slot, table.startsOn, table.endsOn),
     index("ad_bookings_vendor_idx").on(table.vendorId, table.id),
+  ],
+);
+
+/**
+ * A store's request to sponsor one of its products among the home page's
+ * first products, on the owner's word (migration 0089, approved as shown).
+ * The rules are `Shared/commerce/sponsorRequests.ts`.
+ *
+ * A table of its own rather than columns on `ad_bookings`, so the code can
+ * deploy before the paste: every read of `ad_bookings` selects the columns it
+ * knows, and a missing table reads here as no requests. Once paid, a request
+ * becomes a placement in `ad_bookings` (`booking_id`), which is what the
+ * shelf draws and the payout run charges; the request keeps what was asked,
+ * what NetLet said and how it was paid. The run and its rate are copied for
+ * the reason an order's are: what NetLet asked for is a fact about that
+ * moment.
+ */
+export const sponsorRequests = pgTable(
+  "sponsor_requests",
+  {
+    id: serial("id").primaryKey(),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    productId: integer("product_id").references(() => products.id, { onDelete: "set null" }),
+    productTitle: varchar("product_title", { length: 255 }).notNull(),
+    startsOn: date("starts_on", { mode: "string" }).notNull(),
+    endsOn: date("ends_on", { mode: "string" }).notNull(),
+    /** The rate card's when asked; NetLet's when approved. */
+    dailyRate: numeric("daily_rate", { precision: 12, scale: 3 }).notNull(),
+    total: numeric("total", { precision: 12, scale: 3 }).notNull(),
+    status: varchar("status", { length: 12 }).$type<SponsorStatus>().notNull().default("review"),
+    /** The store's words to NetLet. */
+    note: varchar("note", { length: 400 }),
+    /** NetLet's words back: what to know about paying, or why not. */
+    reply: varchar("reply", { length: 400 }),
+    /** The last Kuwaiti day to pay. */
+    payBy: date("pay_by", { mode: "string" }),
+    paidWith: varchar("paid_with", { length: 12 }).$type<SponsorPaidWith>(),
+    /** The bank's reference the store gave for its transfer. */
+    paymentReference: varchar("payment_reference", { length: 80 }),
+    /** The placement it became once paid. */
+    bookingId: integer("booking_id").references(() => adBookings.id, { onDelete: "set null" }),
+    requestedBy: integer("requested_by").references(() => users.id, { onDelete: "set null" }),
+    reviewedBy: integer("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+    confirmedBy: integer("confirmed_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+  },
+  table => [
+    check("sponsor_requests_status_check", sql`${table.status} in ('review', 'payment', 'sent', 'paid', 'declined', 'withdrawn')`),
+    check("sponsor_requests_paid_with_check", sql`${table.paidWith} is null or ${table.paidWith} in ('earnings', 'transfer')`),
+    index("sponsor_requests_vendor_idx").on(table.vendorId, table.id),
+    index("sponsor_requests_open_idx").on(table.status, table.startsOn, table.endsOn),
+    uniqueIndex("sponsor_requests_booking_idx").on(table.bookingId).where(sql`${table.bookingId} is not null`),
   ],
 );
 

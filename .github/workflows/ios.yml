@@ -304,6 +304,9 @@ jobs:
             shot 103-store-delivery "$lang" storeDelivery:4 shopper
             # The driver's board: one parcel paid online, one in cash, each with the scan at the door.
             shot 106-portal-board "$lang" portal:/admin/dispatch admin
+            # Sponsored products: a store's requests in every state, and NetLet's desk.
+            shot 107-sponsored "$lang" portal:/admin/sponsored shopper
+            shot 108-sponsored-netlet "$lang" portal:/admin/sponsored admin
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

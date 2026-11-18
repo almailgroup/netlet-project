@@ -1,0 +1,14 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "cost": "50.000",
+        "dailyRate": "10.000",
+        "fullDays": [],
+        "room": "74.926",
+        "problem": null
+      }
+    }
+  }
+}

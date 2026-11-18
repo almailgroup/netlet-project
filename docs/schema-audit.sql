@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 88 tables, 893 columns, 149 indexes, 196 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 89 tables, 915 columns, 152 indexes, 202 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -98,6 +98,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('review_photos', 'created_at:nd,id:pnd,media_id:n,position:nd,review_id:n', 'review_photos_review_idx', 'media_id>media_files:c,review_id>reviews:c'),
   ('reviews', 'body,created_at:nd,hidden_at,hidden_reason,id:pnd,order_item_id:n,product_id,product_title:n,rating:n,title,updated_at:nd,user_id:n,vendor_id,vendor_replied_at,vendor_reply', 'reviews_order_item_unique:u,reviews_product_idx,reviews_user_idx,reviews_vendor_idx', 'order_item_id>order_items:c,product_id>products:n,user_id>users:c,vendor_id>vendors:n'),
   ('saved_products', 'created_at:nd,id:pnd,product_id:n,user_id:n', 'saved_products_user_id_idx,saved_products_user_product_unique:u', 'user_id>users:c'),
+  ('sponsor_requests', 'booking_id,confirmed_by,created_at:nd,daily_rate:n,ends_on:n,id:pnd,note,paid_at,paid_with,pay_by,payment_reference,product_id,product_title:n,reply,requested_by,reviewed_at,reviewed_by,sent_at,starts_on:n,status:nd,total:n,vendor_id:n', 'sponsor_requests_booking_idx:uw,sponsor_requests_open_idx,sponsor_requests_vendor_idx', 'booking_id>ad_bookings:n,confirmed_by>users:n,product_id>products:n,requested_by>users:n,reviewed_by>users:n,vendor_id>vendors:c'),
   ('staff_grants', 'capability:n,created_at:nd,granted_by,user_id:n', '', 'granted_by>users:n,user_id>users:c'),
   ('stock_movements', 'actor_id,created_at:nd,delta:n,id:pnd,note,reason:n,resulting:n,variant_id:n', 'stock_movements_created_idx,stock_movements_variant_id_idx', 'actor_id>users:n,variant_id>product_variants:c'),
   ('subscriptions', 'address_id,created_at:nd,id:pnd,interval_weeks:n,last_order_id,last_outcome,last_run_on,next_run_on:n,paused_reason,price_ceiling:n,product_id,product_title:n,quantity:n,status:nd,updated_at:nd,user_id:n,variant_id,variant_title,vendor_id', 'subscriptions_due_idx,subscriptions_one_open:uw,subscriptions_user_idx', 'address_id>customer_addresses:n,last_order_id>orders:n,product_id>products:n,user_id>users:c,variant_id>product_variants:n,vendor_id>vendors:n'),
@@ -261,7 +262,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 88 tables' AS object,
+    count(*) || ' of 89 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -275,7 +276,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 88 tables, 893 columns, 149 indexes, 196 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 89 tables, 915 columns, 152 indexes, 202 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

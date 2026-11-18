@@ -70,6 +70,17 @@ export const AUDIT_ACTIONS = [
   /* NetLet's answer on a home banner: what runs on its own front page. */
   "ads.bannerApprove",
   "ads.bannerReject",
+  /* Sponsored products: a store asking, paying, withdrawing or stopping, and
+     NetLet answering, confirming a transfer or saying it did not arrive. */
+  "sponsor.request",
+  "sponsor.approve",
+  "sponsor.decline",
+  "sponsor.withdraw",
+  "sponsor.payEarnings",
+  "sponsor.sendTransfer",
+  "sponsor.confirm",
+  "sponsor.notReceived",
+  "sponsor.stop",
   /* A guide published, taken down or deleted (3.5.3): NetLet speaking in public. */
   "guide.setStatus",
   "guide.delete",
@@ -339,6 +350,12 @@ const SELLER_ACTIONS: AuditAction[] = [
   /* A store putting a catalogue under one of its products, or taking one off. */
   "product.catalogue.add",
   "product.catalogue.remove",
+  /* A store asking to sponsor a product, paying for it, or taking it back. */
+  "sponsor.request",
+  "sponsor.payEarnings",
+  "sponsor.sendTransfer",
+  "sponsor.withdraw",
+  "sponsor.stop",
 ];
 
 /**

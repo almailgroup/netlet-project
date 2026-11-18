@@ -81,6 +81,7 @@ const AdminCommission = lazyPage(() => import("@/pages/admin/Commission"));
 const AdminDevices = lazyPage(() => import("@/pages/admin/Devices"));
 const AdminPayouts = lazyPage(() => import("@/pages/admin/Payouts"));
 const AdminAds = lazyPage(() => import("@/pages/admin/Ads"));
+const AdminSponsored = lazyPage(() => import("@/pages/admin/Sponsored"));
 const AdminSubscriptions = lazyPage(() => import("@/pages/admin/Subscriptions"));
 const AdminGuides = lazyPage(() => import("@/pages/admin/Guides"));
 const AdminSubcategoryPictures = lazyPage(() => import("@/pages/admin/SubcategoryPictures"));
@@ -333,6 +334,7 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/admin/devices", page: AdminDevices, frame: "admin" },
   { path: "/admin/payouts", page: AdminPayouts, frame: "admin" },
   { path: "/admin/ads", page: AdminAds, frame: "admin" },
+  { path: "/admin/sponsored", page: AdminSponsored, frame: "admin" },
   { path: "/admin/subscriptions", page: AdminSubscriptions, frame: "admin" },
   { path: "/admin/guides", page: AdminGuides, frame: "admin" },
   { path: "/admin/subcategory-pictures", page: AdminSubcategoryPictures, frame: "admin" },

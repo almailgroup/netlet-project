@@ -121,7 +121,7 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
   affiliates: { entries: ["affiliates.join"], audience: "everyone", defaultOn: true },
   /* Paid placements (3.3.15): off stops new bookings. One already sold runs
      out its days and is charged for them, so it keeps its place on the shelf. */
-  ads: { entries: ["ads.book"], audience: "seller", defaultOn: true },
+  ads: { entries: ["ads.book", "sponsor.request"], audience: "seller", defaultOn: true },
   /* Subscribe & Save (3.1.19): off stops new standing orders. Those already
      standing keep running and can be paused or cancelled. */
   subscriptions: { entries: ["subscriptions.create"], audience: "shopper", defaultOn: false },

@@ -155,6 +155,11 @@
           "need": "ads.book"
         },
         {
+          "href": "/admin/sponsored",
+          "label": "admin.sponsored",
+          "need": "ads.book"
+        },
+        {
           "href": "/admin/affiliates",
           "label": "admin.affiliates",
           "need": "affiliate.manage"
@@ -1430,6 +1435,12 @@
     "bannerAspect": 3,
     "bannerMinWidth": 900,
     "bannerMaxWidth": 2400
+  },
+  "sponsor": {
+    "noteMax": 400,
+    "referenceMax": 80,
+    "maxRate": "999.000",
+    "payWithinDays": 3
   },
   "badges": {
     "awarded": [

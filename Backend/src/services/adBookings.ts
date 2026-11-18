@@ -61,12 +61,13 @@ import { auditActor } from "./inventory.js";
 import { listProductsByIds } from "./catalog.js";
 import { placementRoom } from "./payoutRuns.js";
 import { getDb } from "./db.js";
+import { openSponsorHolds, sponsorReady } from "./sponsorHolds.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-/** One key for every booking: see the note on races above. */
-const BOOKING_LOCK = 3_315;
+/** One key for every booking, and every sponsored request paid for: see the note on races above. */
+export const BOOKING_LOCK = 3_315;
 
 export type AdRefusal =
   | BookingProblem
@@ -82,7 +83,9 @@ export type AdRefusal =
   | "ads.bannerShape"
   | "ads.bannerNotWaiting"
   | "ads.bannerLapsed"
-  | "ads.bannerNeedsNote";
+  | "ads.bannerNeedsNote"
+  | "ads.homeByRequest"
+  | "ads.useSponsoredPage";
 
 export class AdRefused extends Error {
   constructor(readonly reason: AdRefusal, readonly days: string[] = []) {
@@ -150,9 +153,13 @@ async function productFor(db: Db | Tx, vendorId: number, productId: number) {
   return row;
 }
 
-/** Bookings in the same place whose runs overlap `[from, to]`. */
-async function overlapping(db: Db | Tx, slot: AdSlot, categoryId: number | null, from: string, to: string) {
-  return db
+/**
+ * Bookings in the same place whose runs overlap `[from, to]` — and on the
+ * home shelf, the sponsorship requests still open, which hold their places
+ * until they are paid for, declined, withdrawn or lapse (`sponsorRequests.ts`).
+ */
+export async function overlapping(db: Db | Tx, slot: AdSlot, categoryId: number | null, from: string, to: string, today: string, exceptRequest?: number) {
+  const booked = await db
     .select({ startsOn: adBookings.startsOn, endsOn: adBookings.endsOn, dailyRate: adBookings.dailyRate, cancelledOn: adBookings.cancelledOn })
     .from(adBookings)
     .where(and(
@@ -161,6 +168,8 @@ async function overlapping(db: Db | Tx, slot: AdSlot, categoryId: number | null,
       lte(adBookings.startsOn, to),
       gte(adBookings.endsOn, from),
     ));
+  if (slot !== "home") return booked;
+  return [...booked, ...(await openSponsorHolds(db, from, to, today, exceptRequest))];
 }
 
 export type PlacementQuote = {
@@ -187,7 +196,7 @@ export async function placementCalendar(actor: Actor, request: { productId: numb
   const product = await productFor(db, vendorId, request.productId);
   if (request.slot === "department" && product.categoryId === null) throw new AdRefused("ads.noDepartment");
   const last = addDays(today, CALENDAR_DAYS - 1);
-  const existing = await overlapping(db, request.slot, product.categoryId, today, last);
+  const existing = await overlapping(db, request.slot, product.categoryId, today, last, today);
   return {
     today,
     dailyRate: AD_RATES[request.slot],
@@ -208,13 +217,15 @@ export async function quotePlacement(actor: Actor, request: PlacementRequest, no
   const days = Number.isInteger(request.days) ? request.days : 0;
   const base = { cost: quoteFor(request.slot, Math.max(0, days)), dailyRate: AD_RATES[request.slot], fullDays: [] as string[], room: fromFils(await placementRoom(db, vendorId, now)) };
 
+  /* The home shelf is asked for, never booked (`sponsorRequests.ts`). */
+  if (request.slot === "home") return { ...base, problem: "ads.homeByRequest" };
   const problem = bookingProblem(request, today);
   if (problem) return { ...base, problem };
   try {
     const product = await productFor(db, vendorId, request.productId);
     if (request.slot === "department" && product.categoryId === null) return { ...base, problem: "ads.noDepartment" };
     const ends = addDays(request.startsOn, request.days - 1);
-    const full = fullDays(await overlapping(db, request.slot, product.categoryId, request.startsOn, ends), request.startsOn, request.days, AD_CAPACITY[request.slot]);
+    const full = fullDays(await overlapping(db, request.slot, product.categoryId, request.startsOn, ends, today), request.startsOn, request.days, AD_CAPACITY[request.slot]);
     if (full.length) return { ...base, fullDays: full, problem: "ads.full" };
     if (toFils(base.cost) > toFils(base.room)) return { ...base, problem: "ads.notEnoughEarned" };
     return { ...base, problem: null };
@@ -227,6 +238,8 @@ export async function quotePlacement(actor: Actor, request: PlacementRequest, no
 /** Book a run. Every check is made again here, under the locks. */
 export async function bookPlacement(actor: Actor, request: PlacementRequest, now = new Date()): Promise<{ id: number; total: string }> {
   const vendorId = storeOf(actor);
+  /* The home shelf is asked for and paid for on the Sponsored products page. */
+  if (request.slot === "home") throw new AdRefused("ads.homeByRequest");
   const db = await handle();
   const today = kuwaitToday(now);
   const problem = bookingProblem(request, today);
@@ -243,7 +256,7 @@ export async function bookPlacement(actor: Actor, request: PlacementRequest, now
     if (request.slot === "department" && product.categoryId === null) throw new AdRefused("ads.noDepartment");
     const categoryId = request.slot === "department" ? product.categoryId : null;
 
-    const full = fullDays(await overlapping(tx, request.slot, categoryId, request.startsOn, endsOn), request.startsOn, request.days, AD_CAPACITY[request.slot]);
+    const full = fullDays(await overlapping(tx, request.slot, categoryId, request.startsOn, endsOn, today), request.startsOn, request.days, AD_CAPACITY[request.slot]);
     if (full.length) throw new AdRefused("ads.full", full);
     if (toFils(total) > await placementRoom(tx, vendorId, now)) throw new AdRefused("ads.notEnoughEarned");
 
@@ -302,6 +315,9 @@ export async function cancelPlacement(actor: Actor, bookingId: number, now = new
     .where(and(eq(adBookings.id, bookingId), scope === undefined ? undefined : eq(adBookings.vendorId, scope)))
     .limit(1);
   if (!found) throw new AdRefused("ads.notFound");
+  /* A placement a sponsorship request paid for is stopped from its request,
+     which knows how it was paid and what is owed back. */
+  if (await isSponsored(db, found.id)) throw new AdRefused("ads.useSponsoredPage");
 
   const [stopped] = await db
     .update(adBookings)
@@ -413,6 +429,14 @@ export async function countWaitingBanners(actor: Actor, now = new Date()): Promi
   return row?.n ?? 0;
 }
 
+/** Whether a placement is the one a sponsorship request paid for. */
+async function isSponsored(db: Db | Tx, bookingId: number): Promise<boolean> {
+  if (!(await sponsorReady(db))) return false;
+  const rows = await db.execute<{ linked: boolean }>(sql`select exists (select 1 from sponsor_requests where booking_id = ${bookingId}) as linked`);
+  const list = Array.isArray(rows) ? rows : (rows as { rows: { linked: boolean }[] }).rows;
+  return Boolean(list[0]?.linked);
+}
+
 export type BannerView = {
   status: BannerStatus;
   imageUrl: string | null;
@@ -463,8 +487,11 @@ export async function listPlacements(actor: Actor, request: { page?: number; pag
   const db = await handle();
   const today = kuwaitToday(now);
   const pageSize = clampPageSize(request.pageSize ?? 20);
+  /* What a sponsorship request paid for is listed on the Sponsored products page. */
+  const sponsored = await sponsorReady(db);
   const filter = and(
     scope === undefined ? undefined : eq(adBookings.vendorId, scope),
+    sponsored ? sql`not exists (select 1 from sponsor_requests where sponsor_requests.booking_id = ${outer(adBookings.id)})` : undefined,
     request.waiting
       ? and(eq(adBookings.slot, "home_banner"), eq(adBookings.bannerStatus, "pending"), isNull(adBookings.cancelledOn), gte(adBookings.endsOn, today))
       : undefined,
