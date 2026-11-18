@@ -43,6 +43,7 @@ struct PortalRouter: View {
         case .affiliates: PortalAffiliatesView()
         case .commission: PortalCommissionView()
         case .devices: PortalDevicesView()
+        case .staff: PortalStaffView()
         case .subcategoryPictures: PortalSubcategoryPicturesView()
         case .storeDocuments: PortalStoreDocumentsView()
         case .occasions: PortalOccasionsView()

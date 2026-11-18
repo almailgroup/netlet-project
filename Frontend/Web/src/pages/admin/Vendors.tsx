@@ -36,7 +36,7 @@ import { failedToLoad } from "@/lib/queryState";
 
 export default function AdminVendors() {
   usePageMeta(privatePageMeta("Vendors"));
-  return <AdminShell need={"platform.viewAll"}>{() => <VendorList />}</AdminShell>;
+  return <AdminShell need={"stores.view"}>{() => <VendorList />}</AdminShell>;
 }
 
 const FILTERS = ["all", "approved", "pending", "suspended"] as const;

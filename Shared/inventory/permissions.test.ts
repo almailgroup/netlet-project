@@ -77,8 +77,8 @@ describe("what a vendor can never do", () => {
   });
 
   it("refuses seeing the whole platform", () => {
-    expect(can(owner, "platform.viewAll")).toBe(false);
-    expect(can(admin, "platform.viewAll")).toBe(true);
+    expect(can(owner, "finance.view")).toBe(false);
+    expect(can(admin, "finance.view")).toBe(true);
   });
 });
 

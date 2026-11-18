@@ -520,6 +520,7 @@ export async function listAffiliates(actor: Actor, request: { page?: number; pag
 /** How many applications are still waiting under the old review, for the overview. */
 export async function countPendingAffiliates(actor: Actor): Promise<number> {
   if (actor.kind !== "admin") return 0;
+  try { assertCan(actor, "affiliate.manage"); } catch { return 0; }
   const db = await getDb();
   if (!db) return 0;
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(affiliates).where(eq(affiliates.status, "pending"));

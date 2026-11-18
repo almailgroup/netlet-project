@@ -192,7 +192,7 @@ struct PortalBundlesView: View {
         defer { saving = false }
         let actor = app.session.seller
         // NetLet's own sets belong to no store, which is how one spans two.
-        let vendorId = actor?.can("platform.viewAll") == true ? nil : actor?.ownVendor
+        let vendorId = actor?.can("bundles.netlet") == true ? nil : actor?.ownVendor
         let input = API.BundleInput(name: name.trimmingCharacters(in: .whitespaces), vendorId: OrNull(vendorId), bundlePrice: priced.amount,
                                     members: members.map { .init(variantId: $0.variantId, quantity: $0.quantity) })
         if await app.attempt(done: "admin.bundleSaved", fallback: "admin.saveFailed", { _ = try await app.services.api.call(API.saveBundle, input) }) {

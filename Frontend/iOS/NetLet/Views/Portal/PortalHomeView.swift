@@ -86,10 +86,14 @@ struct PortalHomeView: View {
         if let counts, actor.kind != "courier" {
             PortalSectionHeading(title: l.t("admin.atAGlance"))
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                PortalTile(value: counts.published, label: l.t("admin.countPublished"), href: "/admin/products")
-                PortalTile(value: counts.draft, label: l.t("admin.countDraft"), href: "/admin/products")
-                PortalTile(value: counts.archived, label: l.t("admin.countArchived"), href: "/admin/products")
-                if actor.can("platform.viewAll") {
+                /* A member of NetLet's team whose role opens no part of the
+                   catalogue (HR) is not shown the shelf's counts. */
+                if actor.can("product.view", vendorId: actor.ownVendor) {
+                    PortalTile(value: counts.published, label: l.t("admin.countPublished"), href: "/admin/products")
+                    PortalTile(value: counts.draft, label: l.t("admin.countDraft"), href: "/admin/products")
+                    PortalTile(value: counts.archived, label: l.t("admin.countArchived"), href: "/admin/products")
+                }
+                if actor.can("stores.view") {
                     PortalTile(value: counts.vendorsApproved, label: l.t("admin.countVendorsApproved"), href: "/admin/vendors")
                 }
             }
@@ -121,7 +125,7 @@ struct PortalHomeView: View {
                 add("admin.countPendingReview", counts.pendingReview, "/admin/review")
                 add("catalogue.waitingTile", waiting["catalogues"], "/admin/review")
             }
-            if actor.can("platform.viewAll") {
+            if actor.can("stores.view") {
                 add("admin.countVendorsPending", counts.vendorsPending, "/admin/vendors")
                 add("admin.zeroCommissionTile", counts.zeroCommission.count, counts.zeroCommission.count == 1 ? "/admin/vendors/\(counts.zeroCommission[0].id)" : "/admin/vendors")
             }
@@ -191,24 +195,24 @@ struct PortalHomeView: View {
             }
             let overview = start(true) { try await api.call(API.portalCounts, .init()) }
             let score = start(true) { try await api.call(API.storeHealth, .init()) }
-            let shelfHealth = start(!money) { try await api.call(API.shelfHealth) }
+            let shelfHealth = start(!money && who.can("product.view", vendorId: own)) { try await api.call(API.shelfHealth) }
             let offers = count("offer.answer") { try await api.call(API.offersWaiting, .init(vendorId: own)) }
-            let changes = count("platform.viewAll") { try await api.call(API.sellerChanges, .init(limit: 1)).unseen }
-            let applications = count("platform.manageUsers") { try await api.call(API.applicationsWaiting) }
+            let changes = count("audit.view") { try await api.call(API.sellerChanges, .init(limit: 1)).unseen }
+            let applications = count("stores.manage") { try await api.call(API.applicationsWaiting) }
             let returns = count("returns.handle") { try await api.call(API.returnsWaiting) }
             let warranty = count("returns.handle") { try await api.call(API.warrantyWaiting) }
             let affiliates = count("affiliate.manage") { try await api.call(API.affiliatesWaiting) }
             let proposals = count("vendor.setCommission") { try await api.call(API.proposalsWaiting) }
-            let banners = count("product.review") { try await api.call(API.bannersWaiting) }
+            let banners = count("ads.review") { try await api.call(API.bannersWaiting) }
             /* Sponsorship requests: NetLet's to answer, or the store's to pay for. */
             let sponsors = start(who.can("ads.book", vendorId: own)) { try await api.call(API.sponsorWaiting) }
             /* Catalogues a store put under a product, waiting on NetLet before they show. */
             let catalogues = count("product.review") { try await api.call(API.waitingCatalogueCount) }
             let support = count("support.answer") { try await api.call(API.supportWaiting) }
             let centres = start(who.can("fulfilment.operate")) { try await api.call(API.centreWaiting) }
-            let fraud = start(who.can("platform.viewAll")) { try await api.call(API.fraudUnseen) }
+            let fraud = start(who.can("fraud.view")) { try await api.call(API.fraudUnseen) }
             /* Product reviews the automatic check left for a person — an administrator's desk. */
-            let heldReviews = count("platform.manageUsers") { try await api.call(API.waitingReviewCount) }
+            let heldReviews = count("fraud.view") { try await api.call(API.waitingReviewCount) }
             /* Devices asking for an administrator's rights, waiting on the owner alone. */
             let devices = count("platform.devices") { try await api.call(API.devicesWaiting) }
             counts = await overview.value

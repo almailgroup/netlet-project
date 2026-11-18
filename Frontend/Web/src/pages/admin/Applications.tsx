@@ -56,7 +56,7 @@ const STATUS_LABEL: Record<string, MessageKey> = {
 
 export default function AdminApplications() {
   usePageMeta(privatePageMeta("Seller applications"));
-  return <AdminShell need="platform.manageUsers">{() => <Applications />}</AdminShell>;
+  return <AdminShell need="stores.manage">{() => <Applications />}</AdminShell>;
 }
 
 function Applications() {

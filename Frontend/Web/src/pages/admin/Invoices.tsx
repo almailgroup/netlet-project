@@ -22,7 +22,7 @@ import { privatePageMeta } from "@shared/seo";
 
 export default function AdminInvoices() {
   usePageMeta(privatePageMeta("Invoices"));
-  return <AdminShell need="platform.viewAll">{() => <Invoices />}</AdminShell>;
+  return <AdminShell need="finance.view">{() => <Invoices />}</AdminShell>;
 }
 
 function Invoices() {

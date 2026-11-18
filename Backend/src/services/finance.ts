@@ -44,7 +44,7 @@ export async function financeLines(
   /* Admin-only. Commission and the platform's own cut sit outside a vendor's
      control entirely, and so does the report of them — a vendor seeing their
      own payouts is a different feature (3.3.21) with a different scope. */
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "finance.view");
 
   const db = await getDb();
   if (!db) return { lines: [], truncated: false };

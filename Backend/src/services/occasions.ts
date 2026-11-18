@@ -276,7 +276,7 @@ async function describe(db: Db, rows: Row[], now: Date, tagged?: TaggedShelf): P
 
 /** NetLet's occasions, the newest change first, and the calendar's ten with what stands over each. */
 export async function listOccasions(actor: Actor, now = new Date()): Promise<OccasionDesk> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) return { ready: false, rows: [], calendar: [] };
   try {
@@ -341,7 +341,7 @@ async function detailOf(db: Db, row: Row, now: Date): Promise<OccasionDetail> {
 }
 
 export async function getOccasion(actor: Actor, id: number, now = new Date()): Promise<OccasionDetail> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) throw new OccasionRefused("occasions.unavailable");
   try {
@@ -381,7 +381,7 @@ function cleaned(content: OccasionContent): OccasionContent {
  * is what a shared link holds; a draft's can change.
  */
 export async function saveOccasion(actor: Actor, id: number | null, draft: OccasionDraft, now = new Date()): Promise<OccasionDetail> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) throw new OccasionRefused("occasions.unavailable");
   const content = cleaned(draft);
@@ -428,7 +428,7 @@ export async function saveOccasion(actor: Actor, id: number | null, draft: Occas
 
 /** Publish, take down, or switch a calendar occasion off. Asks the rule again, whatever the page said. */
 export async function setOccasionStatus(actor: Actor, id: number, status: OccasionStatus, now = new Date()): Promise<OccasionDetail> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) throw new OccasionRefused("occasions.unavailable");
   try {
@@ -463,7 +463,7 @@ export async function setOccasionStatus(actor: Actor, id: number, status: Occasi
  * a row that exists.
  */
 export async function hideCalendarOccasion(actor: Actor, slug: string, now = new Date()): Promise<OccasionDetail> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const calendar = occasionFromSlug(slug);
   if (!calendar) throw new OccasionRefused("occasions.cannotHide");
   const db = await getDb();
@@ -505,7 +505,7 @@ export async function hideCalendarOccasion(actor: Actor, slug: string, now = new
 
 /** Delete one for good. A calendar occasion goes back to the calendar's own. */
 export async function deleteOccasion(actor: Actor, id: number): Promise<void> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) throw new OccasionRefused("occasions.unavailable");
   try {

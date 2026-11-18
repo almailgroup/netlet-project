@@ -787,7 +787,7 @@ struct PortalCouriersView: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        let mayMintLogins = app.session.seller?.can("platform.manageUsers") == true
+        let mayMintLogins = app.session.seller?.can("delivery.assign") == true
         PortalScreen(title: l.t("admin.couriers"), intro: l.t("admin.couriersNote"), refresh: { await load() }) {
             if let companies {
                 if companies.isEmpty {

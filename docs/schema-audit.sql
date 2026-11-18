@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 89 tables, 915 columns, 152 indexes, 202 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 91 tables, 927 columns, 153 indexes, 206 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -104,6 +104,8 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('subscriptions', 'address_id,created_at:nd,id:pnd,interval_weeks:n,last_order_id,last_outcome,last_run_on,next_run_on:n,paused_reason,price_ceiling:n,product_id,product_title:n,quantity:n,status:nd,updated_at:nd,user_id:n,variant_id,variant_title,vendor_id', 'subscriptions_due_idx,subscriptions_one_open:uw,subscriptions_user_idx', 'address_id>customer_addresses:n,last_order_id>orders:n,product_id>products:n,user_id>users:c,variant_id>product_variants:n,vendor_id>vendors:n'),
   ('support_conversations', 'created_at:nd,id:pnd,last_message_at:nd,order_id,order_reference,shopper_read_at,staff_read_at,status:nd,topic:n,user_id:n', 'support_conversations_status_idx,support_conversations_user_idx', 'order_id>orders:n,user_id>users:c'),
   ('support_messages', 'answer,author:n,author_id,body,conversation_id:n,created_at:nd,id:pnd', 'support_messages_conversation_idx', 'author_id>users:n,conversation_id>support_conversations:c'),
+  ('team_members', 'added_at:nd,added_by,role_id:n,user_id:pn', '', 'added_by>users:n,role_id>team_roles:r,user_id>users:c'),
+  ('team_roles', 'areas:nd,created_at:nd,created_by,id:pnd,name,name_ar,slug,updated_at:nd', 'team_roles_slug_unique:u', 'created_by>users:n'),
   ('users', 'audit_seen_at,created_at:nd,email,id:pnd,last_signed_in:nd,name,password_hash,phone,role:nd,supabase_uid,updated_at:nd', 'users_email_unique:u,users_phone_unique:uw,users_supabase_uid_unique:uw', ''),
   ('vendor_applications', 'address_line,agreed_at,agreement_version,commission_note,contact_email,contact_phone,created_at:nd,governorate,id:pnd,identity_doc_url,licence_doc_url,licence_expires_at,licence_number,payout_iban,proposed_commission_fixed,proposed_commission_percent,rejection_reason,reviewed_at,reviewed_by,status:nd,store_name:n,store_name_ar,under_platform_licence:nd,updated_at:nd,user_id:n,vendor_id', 'vendor_applications_open_unique:uw,vendor_applications_status_idx', 'reviewed_by>users:n,user_id>users:c,vendor_id>vendors:n'),
   ('vendor_documents', 'byte_size:n,bytes:n,content_type:n,created_at:nd,expires_on,file_name:n,id:pnd,kind:n,netlet_only:nd,sha256:n,title,uploaded_by,vendor_id:n', 'vendor_documents_vendor_idx', 'uploaded_by>users:n,vendor_id>vendors:c'),
@@ -262,7 +264,7 @@ security AS (
   -- Only on Supabase, where the anon role exists: a table the anon key can
   -- read with row-level security off is readable through the Data API.
   SELECT 9 AS sort, 'security' AS area,
-    count(*) || ' of 89 tables' AS object,
+    count(*) || ' of 91 tables' AS object,
     'row-level security is off and the anon role can read them, so the anon key reads them through the Data API if it is on: see docs/SUPABASE-AUTH.md' AS finding
   FROM found_tables t
   JOIN pg_class c ON c.oid = t.rel
@@ -276,7 +278,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 89 tables, 915 columns, 152 indexes, 202 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 91 tables, 927 columns, 153 indexes, 206 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

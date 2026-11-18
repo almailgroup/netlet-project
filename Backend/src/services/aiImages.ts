@@ -241,7 +241,7 @@ export async function tryOnOffered(productId: number): Promise<boolean> {
 
 /** A picture for one step of a guide, for the administrator writing it. */
 export async function drawGuidePicture(actor: Actor, step: { title: string; body: string }): Promise<CatalogImage> {
-  if (!can(actor, "platform.configure")) throw new DrawingRefused("media.notAllowed");
+  if (!can(actor, "content.manage")) throw new DrawingRefused("media.notAllowed");
   if (!(await drawingAvailable())) throw new DrawingRefused("drawing.off");
   if (!(await takeHourlyAllowance(actor.userId, "guideDraw", MAX_GUIDE_PICTURES_PER_HOUR))) throw new DrawingRefused("drawing.tooMany");
   const drawn = await draw("guideImage", { system: GUIDE_PICTURE_SYSTEM, prompt: guidePicturePrompt(step), image: null });
@@ -256,7 +256,7 @@ export async function drawGuidePicture(actor: Actor, step: { title: string; body
  * one (`Shared/commerce/subcategoryPictures.ts`). Handed back, never kept here.
  */
 export async function drawSubcategoryPicture(actor: Actor, department: string, slug: string, reference: CatalogImage | null): Promise<CatalogImage> {
-  if (!can(actor, "platform.configure")) throw new DrawingRefused("media.notAllowed");
+  if (!can(actor, "content.manage")) throw new DrawingRefused("media.notAllowed");
   const subcategory = findSubcategory(department, slug);
   if (!subcategory) throw new DrawingRefused("subcategoryPictures.notFound");
   const style = reference ? asImage(Buffer.from(reference.data, "base64")) : null;

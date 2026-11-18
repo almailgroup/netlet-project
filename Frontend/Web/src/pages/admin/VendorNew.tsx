@@ -33,7 +33,7 @@ import { Select } from "@/components/ui/Select";
 
 export default function AdminVendorNew() {
   usePageMeta(privatePageMeta("New store"));
-  return <AdminShell need={"platform.manageUsers"}>{() => <NewStore />}</AdminShell>;
+  return <AdminShell need={"stores.manage"}>{() => <NewStore />}</AdminShell>;
 }
 
 const textarea = `${fieldClass} h-auto min-h-24 py-2.5 leading-6`;

@@ -159,10 +159,10 @@ export async function listCourierMembers(actor: Actor, courierId: number) {
 /**
  * Attach an existing account to a delivery company, by its address.
  *
- * `platform.manageUsers` as well as `delivery.assign`: giving somebody a login
- * that reaches a NetLet interface is administering NetLet, which is the same
- * line `vendors.addNewMember` draws — an owner ranks their own people, and
- * minting access is a different act.
+ * `delivery.assign`: which companies carry NetLet's parcels, and who acts for
+ * them, is the delivery desk's arrangement — a full administrator's, or a
+ * member of NetLet's team whose role opens Delivery. A delivery company's own
+ * people never reach it.
  *
  * By address rather than by account number, which is what a store's team page
  * already takes. The worry that kept it to numbers — that an address lookup
@@ -172,7 +172,6 @@ export async function listCourierMembers(actor: Actor, courierId: number) {
  */
 export async function addCourierMember(actor: Actor, courierId: number, email: string): Promise<void> {
   assertCan(actor, "delivery.assign");
-  assertCan(actor, "platform.manageUsers");
   const db = await handle();
 
   const [company] = await db.select({ id: couriers.id }).from(couriers).where(eq(couriers.id, courierId)).limit(1);
@@ -190,7 +189,6 @@ export async function addCourierMember(actor: Actor, courierId: number, email: s
 
 export async function removeCourierMember(actor: Actor, courierId: number, userId: number): Promise<void> {
   assertCan(actor, "delivery.assign");
-  assertCan(actor, "platform.manageUsers");
   const db = await handle();
   await db
     .delete(courierMembers)

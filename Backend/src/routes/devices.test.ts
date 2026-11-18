@@ -148,7 +148,7 @@ describe("an administrator's rights hold only on an authorised device", () => {
     expect(seen.role).toBe("user");
     const actor = await actorOf(seen);
     expect(actor).toMatchObject({ kind: "customer", adminLocked: true });
-    expect(can(actor, "platform.viewAll")).toBe(false);
+    expect(can(actor, "finance.view")).toBe(false);
     // Still belongs on the admin portal, which is where the device is authorised.
     expect(portalSideFor(actor)).toBe("admin");
     await expect((await callerFrom(shop, admin)).devices.desk()).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -243,7 +243,7 @@ describe("the owner decides", () => {
     await (await callerFrom(ownerDevice, owner)).devices.decide({ id: waiting.id, decision: "approve" });
     const seen = await asSeenFrom(laptop, admin);
     expect(seen.role).toBe("admin");
-    expect(can(await actorOf(seen), "platform.viewAll")).toBe(true);
+    expect(can(await actorOf(seen), "finance.view")).toBe(true);
     // An administrator who is not the owner never reaches the desk.
     await expect((await callerFrom(laptop, admin)).devices.desk()).rejects.toMatchObject({ code: "FORBIDDEN" });
 

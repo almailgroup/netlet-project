@@ -10,6 +10,7 @@ import { z } from "zod";
 import { documentFor, listInvoices, verifyDocument } from "../services/invoices.js";
 import { resolveActor } from "../services/inventory.js";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
+import { can } from "../../../Shared/inventory/permissions.js";
 
 /** The shape `invoiceNumber` writes, and nothing longer. */
 const number = z.string().regex(/^(INV|CRN)-\d{4}-\d{6,9}$/);
@@ -20,7 +21,12 @@ export const invoicesRouter = router({
     .input(z.object({ number, code: z.string().trim().min(1).max(16) }))
     .query(({ input }) => verifyDocument(input.number, input.code)),
   get: protectedProcedure.input(z.object({ number })).query(async ({ ctx, input }) => {
-    const found = await documentFor({ userId: ctx.user.id, isAdmin: ctx.user.role === "admin" }, input.number);
+    /* NetLet reads any document: a full administrator, or a member of the
+       team whose role reads the orders or the money. A role that opens
+       neither reads its own invoices, like a shopper. */
+    const actor = await resolveActor(ctx.user);
+    const netlet = actor.kind === "admin" && (can(actor, "orders.view") || can(actor, "finance.view"));
+    const found = await documentFor({ userId: ctx.user.id, isAdmin: netlet }, input.number);
     if (!found) throw new TRPCError({ code: "NOT_FOUND", message: "invoice.notFound" });
     return found;
   }),

@@ -32,9 +32,9 @@ export async function payoutReport(
   actor: Actor,
   range: { from?: Date | null; to?: Date | null } = {},
 ) {
-  /* A vendor may read their own; anything wider needs `platform.viewAll`. */
+  /* A vendor may read their own; anything wider needs `finance.view`. */
   const scoped = actor.kind === "vendor" ? actor.vendorId : undefined;
-  if (scoped === undefined) assertCan(actor, "platform.viewAll");
+  if (scoped === undefined) assertCan(actor, "finance.view");
   else assertCan(actor, "product.view", scoped);
 
   const db = await getDb();
@@ -80,7 +80,7 @@ export async function payoutReport(
  * licence of their own is not a fact NetLet should be handing out.
  */
 export async function sellersUnderPlatformLicence(actor: Actor) {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "finance.view");
   const db = await getDb();
   if (!db) return [];
   return db
@@ -103,7 +103,7 @@ export async function sellersUnderPlatformLicence(actor: Actor) {
  */
 export async function payoutDueList(actor: Actor, limit = 200) {
   const scoped = actor.kind === "vendor" ? actor.vendorId : undefined;
-  if (scoped === undefined) assertCan(actor, "platform.viewAll");
+  if (scoped === undefined) assertCan(actor, "finance.view");
   else assertCan(actor, "product.view", scoped);
 
   const db = await getDb();

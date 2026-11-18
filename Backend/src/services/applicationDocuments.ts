@@ -5,7 +5,7 @@
  *
  * **Who may read one is decided in the query.** The applicant reaches a
  * document through their own application's `user_id`, an administrator
- * through `platform.manageUsers`; anybody else's id is "not found", never
+ * through `stores.manage`; anybody else's id is "not found", never
  * "forbidden", so the answer does not confirm a civil ID exists at that
  * number. The bytes leave only through `readDocument`, never in a list.
  *
@@ -178,7 +178,7 @@ async function writeContract(
   request: { fileName: string | null; declaredType: string; bytes: Uint8Array },
   now: Date,
 ): Promise<DocumentView> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const problem = documentProblem(request.bytes, request.declaredType);
   if (problem) throw new DocumentRefused(problem);
   const type = sniffDocument(request.bytes)!;
@@ -226,7 +226,7 @@ export async function myDocuments(userId: number): Promise<DocumentView[]> {
 
 /** One application's documents, for an administrator reviewing it. */
 export async function documentsFor(actor: Actor, applicationId: number): Promise<DocumentView[]> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await handle();
   return db
     .select(VIEW)
@@ -237,7 +237,7 @@ export async function documentsFor(actor: Actor, applicationId: number): Promise
 
 /** Each listed application's documents still waiting, for the queue's rows. */
 export async function pendingCounts(actor: Actor, applicationIds: number[]): Promise<Map<number, number>> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   if (applicationIds.length === 0) return new Map();
   const db = await handle();
   const rows = await db
@@ -263,7 +263,7 @@ export async function readDocument(actor: Actor, id: number): Promise<{ fileName
     .where(eq(applicationDocuments.id, id))
     .limit(1);
   if (!row) return null;
-  if (row.owner !== actor.userId && !can(actor, "platform.manageUsers")) return null;
+  if (row.owner !== actor.userId && !can(actor, "stores.manage")) return null;
   return { fileName: row.fileName, contentType: row.contentType, bytes: row.bytes };
 }
 
@@ -280,7 +280,7 @@ export async function reviewDocument(
   request: { id: number; decision: "accept" | "reject"; note?: string | null },
   now = new Date(),
 ): Promise<DocumentStatus> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const note = (request.note ?? "").replace(/\s+/g, " ").trim().slice(0, DOCUMENT_NOTE_MAX) || null;
   if (request.decision === "reject" && !note) throw new DocumentRefused("documents.needsNote");
   const db = await handle();

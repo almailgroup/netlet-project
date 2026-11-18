@@ -249,7 +249,7 @@ export async function requestSponsor(actor: Actor, ask: SponsorAsk, now = new Da
     params: { store: store?.name ?? "", storeAr: store?.nameAr ?? "", product: made.title },
     link: "/admin/sponsored",
     dedupe: `sponsor:asked:${made.id}`,
-  });
+  }, "ads.review");
   return { id: made.id, total: made.total };
 }
 
@@ -292,7 +292,7 @@ export async function approveSponsor(
   request: { id: number; dailyRate?: string | null; payBy?: string | null; reply?: string | null },
   now = new Date(),
 ): Promise<{ startsOn: string; total: string; payBy: string }> {
-  assertCan(actor, "product.review");
+  assertCan(actor, "ads.review");
   const db = await ready();
   const today = kuwaitToday(now);
   const row = await find(db, request.id, undefined);
@@ -338,7 +338,7 @@ export async function approveSponsor(
  * transfer back, which the page says beside the press.
  */
 export async function declineSponsor(actor: Actor, request: { id: number; reply: string }, now = new Date()): Promise<{ refund: string | null }> {
-  assertCan(actor, "product.review");
+  assertCan(actor, "ads.review");
   const reply = flat(request.reply);
   if (!reply) throw new SponsorRefused("sponsor.needsReply");
   const db = await ready();
@@ -576,7 +576,7 @@ export async function sendSponsorTransfer(actor: Actor, request: { id: number; r
     params: { ...(await storeNames(db, vendorId)), product: row.productTitle, total: row.total },
     link: "/admin/sponsored",
     dedupe: `sponsor:sent:${row.id}:${now.getTime()}`,
-  });
+  }, "payouts.record");
 }
 
 /** The store takes back a request not yet paid. Nothing was charged. */
@@ -855,6 +855,18 @@ export async function listSponsors(actor: Actor, request: { view?: SponsorView; 
   }));
 
   const transferOffered = base.transfer !== null;
+  /* NetLet's buttons are each its own desk's: approving and declining the
+     Marketing area's (`ads.review`), the transfer's arrival the money's
+     (`payouts.record`). A team role is drawn only what the API takes from it. */
+  const reviews = can(actor, "ads.review");
+  const records = can(actor, "payouts.record");
+  const forActor = (actions: ReturnType<typeof sponsorActions>) => side === "store" ? actions : {
+    ...actions,
+    approve: actions.approve && reviews,
+    decline: actions.decline && reviews,
+    confirmPayment: actions.confirmPayment && records,
+    notReceived: actions.notReceived && records,
+  };
   const rows: SponsorRow[] = slice.map(({ entry, state, booking, placement }) => {
     const row = entry.request;
     const shelf = placement === "inReview" || placement === "rejected" ? null : placement;
@@ -899,7 +911,7 @@ export async function listSponsors(actor: Actor, request: { view?: SponsorView; 
             accrued: row.paidWith === "transfer" ? row.total : fromFils(feeAccrued(booking, today)),
           }
         : null,
-      actions: { ...sponsorActions(state, side, transferOffered), stop },
+      actions: { ...forActor(sponsorActions(state, side, transferOffered)), stop },
       refundIfStopped: side === "netlet" && stop && row.paidWith === "transfer" && booking
         ? refundFor({ startsOn: booking.startsOn, endsOn: booking.endsOn, dailyRate: row.dailyRate }, today)
         : null,
@@ -913,7 +925,7 @@ export async function listSponsors(actor: Actor, request: { view?: SponsorView; 
 
 /** Requests waiting on NetLet — to review, or a transfer to look for — for the overview's tile. */
 export async function countSponsorsWaiting(actor: Actor, now = new Date()): Promise<number> {
-  if (!can(actor, "product.review")) return 0;
+  if (!can(actor, "ads.review")) return 0;
   const db = await getDb();
   if (!db || !(await sponsorReady(db))) return 0;
   const today = kuwaitToday(now);

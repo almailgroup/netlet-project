@@ -58,7 +58,7 @@ export default function AdminVendorDetail() {
   usePageMeta(privatePageMeta("Store"));
   const [, params] = useRoute("/admin/vendors/:id");
   const id = Number(params?.id ?? 0);
-  return <AdminShell need={"platform.viewAll"}>{() => <VendorDetail vendorId={id} />}</AdminShell>;
+  return <AdminShell need={"stores.view"}>{() => <VendorDetail vendorId={id} />}</AdminShell>;
 }
 
 const STATUSES = ["pending", "approved", "suspended"] as const;

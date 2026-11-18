@@ -239,7 +239,7 @@ export async function createGiftCard(
   actor: Actor,
   input: { amount: string; expiresAt?: Date | null; note?: string | null },
 ): Promise<{ code: string }> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "promotion.netlet");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -291,7 +291,7 @@ export async function saveDiscountCode(
     productIds?: number[];
   },
 ): Promise<{ code: string }> {
-  const netlet = can(actor, "platform.viewAll");
+  const netlet = can(actor, "promotion.netlet");
   const scope: CodeScope = input.scope ?? "order";
   const vendorId = netlet ? (input.vendorId ?? null) : actor.kind === "vendor" ? actor.vendorId : null;
   if (!netlet) {
@@ -382,7 +382,7 @@ export type VoucherListing = {
  * store's, and no gift cards, which are NetLet's money.
  */
 export async function listVouchers(actor: Actor, limit = 100): Promise<VoucherListing> {
-  const netlet = can(actor, "platform.viewAll");
+  const netlet = can(actor, "promotion.netlet");
   if (!netlet) assertCan(actor, "promotion.manage");
   const own = !netlet && actor.kind === "vendor" ? actor.vendorId : null;
   const db = await getDb();

@@ -322,7 +322,7 @@ struct PortalPromotionsView: View {
     @Environment(LanguageSettings.self) private var l
 
     /// NetLet's whole page, or a store's own codes.
-    private var netlet: Bool { app.session.seller?.can("platform.viewAll") == true }
+    private var netlet: Bool { app.session.seller?.can("promotion.netlet") == true }
     private var ownStore: Int? { app.session.seller?.ownVendor }
     /// The store a code is for: the one chosen, or a seller's own.
     private var codeStore: Int? { netlet ? storeId : ownStore }

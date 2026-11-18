@@ -131,7 +131,7 @@ export async function guideBySlug(slug: string): Promise<PublicGuide | null> {
 /* ------------------------------------------------------------- admin --- */
 
 export async function listGuides(actor: Actor, options: { page?: number; pageSize?: number } = {}): Promise<Page<AdminGuide>> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   const pageSize = clampPageSize(options.pageSize);
   if (!db) return { rows: [], total: 0, page: 1, pageSize };
@@ -142,7 +142,7 @@ export async function listGuides(actor: Actor, options: { page?: number; pageSiz
 }
 
 export async function getGuide(actor: Actor, id: number): Promise<AdminGuide> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) throw new GuideRefused("guides.notFound");
   const [row] = await db.select().from(guides).where(eq(guides.id, id)).limit(1);
@@ -174,7 +174,7 @@ async function freeSlug(db: Db, title: string, ownId: number | null): Promise<st
  * address follows its title.
  */
 export async function saveGuide(actor: Actor, id: number | null, content: GuideContent): Promise<AdminGuide> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) throw new GuideRefused("guides.notFound");
   const now = new Date();
@@ -204,7 +204,7 @@ export async function saveGuide(actor: Actor, id: number | null, content: GuideC
 }
 
 export async function setGuideStatus(actor: Actor, id: number, status: GuideStatus): Promise<AdminGuide> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) throw new GuideRefused("guides.notFound");
   const [current] = await db.select().from(guides).where(eq(guides.id, id)).limit(1);
@@ -231,7 +231,7 @@ export async function setGuideStatus(actor: Actor, id: number, status: GuideStat
 }
 
 export async function deleteGuide(actor: Actor, id: number): Promise<void> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const db = await getDb();
   if (!db) throw new GuideRefused("guides.notFound");
   const [gone] = await db.delete(guides).where(eq(guides.id, id)).returning({ title: guides.title, status: guides.status });
@@ -252,7 +252,7 @@ export async function deleteGuide(actor: Actor, id: number): Promise<void> {
  * page's answers and the site's own labels. Handed back, never saved.
  */
 export async function draftGuide(actor: Actor, topic: string, audience: GuideAudience): Promise<GuideContent> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   const flat = topic.replace(/\s+/g, " ").trim().slice(0, GUIDE_TOPIC_MAX);
   if (!flat) throw new GuideRefused("guides.needTitle");
   if (!(await modelAvailable())) throw new GuideRefused("drawing.off");

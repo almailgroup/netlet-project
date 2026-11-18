@@ -17,6 +17,8 @@
  * answer that can disagree.
  */
 
+import { areasAllow, type TeamSeat } from "./team.js";
+
 export const VENDOR_ROLES = ["staff", "manager", "owner"] as const;
 export type VendorRole = (typeof VENDOR_ROLES)[number];
 
@@ -44,9 +46,11 @@ export type Actor =
   /**
    * A platform administrator. Not scoped to any vendor. `owner` is the shop's
    * owner (`OWNER_EMAIL`), the one account that decides which devices may
-   * carry an administrator's rights.
+   * carry an administrator's rights. `team` is a member of NetLet's team
+   * (migration 0090, `Shared/inventory/team.ts`): an administrator whose role
+   * opens only some areas of the panel. Without it, a full administrator.
    */
-  | { kind: "admin"; userId: number; owner?: true }
+  | { kind: "admin"; userId: number; owner?: true; team?: TeamSeat }
   /** Somebody acting for one vendor, at one rank. */
   | ({ kind: "vendor"; userId: number; vendorId: number; role: VendorRole } & Grants)
   /**
@@ -70,6 +74,10 @@ export type Actor =
  * change when the storage does.
  */
 export type Capability =
+  /* The portal's overview, whose tiles are each drawn by their own capability.
+     Every store rank and every area of NetLet's team reaches it; a delivery
+     company's people, whose portal is their board, do not. */
+  | "portal.home"
   | "product.view"
   | "product.create"
   | "product.edit"
@@ -97,6 +105,14 @@ export type Capability =
    * about money and stock together, which is a manager's.
    */
   | "returns.handle"
+  /*
+   * The order desk: reading a store's orders, and moving its lines (packed,
+   * shipped, cancelled) and recording the cash. `staff`, as reading the
+   * products and moving stock were, which is what they were guarded by
+   * before NetLet's team needed the desk apart from the shelf.
+   */
+  | "orders.view"
+  | "orders.manage"
   | "vendor.viewMembers"
   | "vendor.manageMembers"
   | "vendor.editProfile"
@@ -125,7 +141,38 @@ export type Capability =
      product from another — or hand its own away — would be moving stock,
      reviews and sales history between two companies' books. */
   | "product.reassign"
-  | "platform.viewAll"
+  /*
+   * NetLet-wide reads and desks, each its own so a role on NetLet's team can
+   * open one without the rest (`Shared/inventory/team.ts`). They were one
+   * `platform.viewAll`, which opened the finance panel, every store, the audit
+   * trail and fraud watch together.
+   */
+  /* The finance panel, invoices, and payouts across every store. */
+  | "finance.view"
+  /* The stores: the list and a store's page. */
+  | "stores.view"
+  /* Opening stores, deciding applications and their papers, adding a store's people. */
+  | "stores.manage"
+  /* The audit trail and what the sellers changed. */
+  | "audit.view"
+  /* Fraud watch, and the reviews waiting for a person. */
+  | "fraud.view"
+  /* NetLet's own discount codes and gift cards, beside the stores'. */
+  | "promotion.netlet"
+  /* Bundles NetLet puts together across stores. */
+  | "bundles.netlet"
+  /* NetLet's words and pictures on the shop: guides, occasions, subcategory pictures. */
+  | "content.manage"
+  /* Approving paid placements and sponsored requests. */
+  | "ads.review"
+  /* NetLet's team: who is on it and with which role (HR). */
+  | "team.manage"
+  /*
+   * A full administrator's alone, and in no area of the team: making somebody
+   * a full administrator, changing what a team role opens, and granting one
+   * capability on its own (`GRANTABLE`). Nobody on the team can reach it, so
+   * nobody can give themselves more than their role.
+   */
   | "platform.manageUsers"
   /* The feature switchboard (2.3). Turning a feature off for every store and
      every shopper at once is NetLet's decision about NetLet. */
@@ -178,7 +225,10 @@ export type Capability =
 
 /** The lowest vendor rank that clears each capability. */
 export const NEEDS: Partial<Record<Capability, VendorRole>> = {
+  "portal.home": "staff",
   "product.view": "staff",
+  "orders.view": "staff",
+  "orders.manage": "staff",
   "stock.adjust": "staff",
   "vendor.viewMembers": "staff",
   "delivery.fileClaim": "staff",
@@ -213,7 +263,16 @@ export const ADMIN_ONLY: Capability[] = [
   "vendor.approve",
   "product.review",
   "product.reassign",
-  "platform.viewAll",
+  "finance.view",
+  "stores.view",
+  "stores.manage",
+  "audit.view",
+  "fraud.view",
+  "promotion.netlet",
+  "bundles.netlet",
+  "content.manage",
+  "ads.review",
+  "team.manage",
   // Who reaches the admin panel is decided by people who are already in it.
   // A vendor owner runs their own team — `vendor.manageMembers` — and that is
   // a different question from who is an administrator of NetLet.
@@ -252,8 +311,10 @@ export function adminHeldBack(actor: Actor | null | undefined): boolean {
 
 export function can(actor: Actor, capability: Capability, vendorId?: number): boolean {
   /* Which devices carry an administrator's rights is the owner's alone. */
-  if (capability === "platform.devices") return actor.kind === "admin" && actor.owner === true;
-  if (actor.kind === "admin") return true;
+  if (capability === "platform.devices") return actor.kind === "admin" && actor.owner === true && !actor.team;
+  /* A full administrator may do anything; a member of NetLet's team what
+     their role's areas open, across every store like the administrator's. */
+  if (actor.kind === "admin") return actor.team ? areasAllow(actor.team.areas, capability) : true;
   /* A granted capability is platform-wide, like the administrator's it is cut from. */
   if (actor.grants?.includes(capability) && GRANTABLE.includes(capability)) return true;
   if (actor.kind === "customer") return false;
@@ -285,6 +346,16 @@ export function assertCan(actor: Actor, capability: Capability, vendorId?: numbe
   if (!can(actor, capability, vendorId)) {
     throw new Error(`FORBIDDEN:${capability}`);
   }
+}
+
+/** A member of NetLet's team rather than a full administrator. */
+export function onTeam(actor: Actor | null | undefined): actor is Extract<Actor, { kind: "admin" }> & { team: TeamSeat } {
+  return Boolean(actor && actor.kind === "admin" && actor.team);
+}
+
+/** A full administrator: an administrator whose rights no team role narrows. */
+export function fullAdmin(actor: Actor | null | undefined): boolean {
+  return Boolean(actor && actor.kind === "admin" && !actor.team);
 }
 
 /** Vendor ids this actor may read, or "all" for an admin. */

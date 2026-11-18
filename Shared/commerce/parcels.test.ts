@@ -137,7 +137,7 @@ describe("what a delivery company may reach", () => {
   it("is dispatch and nothing else", () => {
     expect(can(courier, "delivery.view")).toBe(true);
     expect(can(courier, "delivery.move")).toBe(true);
-    for (const capability of ["product.view", "stock.adjust", "product.edit", "platform.viewAll", "vendor.setCommission"] as const) {
+    for (const capability of ["product.view", "stock.adjust", "product.edit", "finance.view", "vendor.setCommission"] as const) {
       expect(can(courier, capability)).toBe(false);
     }
   });

@@ -66,7 +66,7 @@ function Overview({ actor }: { actor: Actor }) {
   const mayMoney = !isCourier && can(actor, "payouts.view", vendorScope);
   const [range, setRange] = useState<DashboardRange>(storedRange);
   const board = trpc.inventory.dashboard.useQuery({ range }, { enabled: mayMoney, placeholderData: previous => previous, retry: false });
-  const shelf = trpc.inventory.stockHealth.useQuery(undefined, { enabled: !isCourier && !mayMoney });
+  const shelf = trpc.inventory.stockHealth.useQuery(undefined, { enabled: !isCourier && !mayMoney && can(actor, "product.view", vendorScope) });
   const today = useToday();
   const waitingOffers = trpc.offers.waiting.useQuery(
     { vendorId: vendorScope },
@@ -77,12 +77,12 @@ function Overview({ actor }: { actor: Actor }) {
      administrator has not read. */
   const sellerChanges = trpc.inventory.sellerChanges.useQuery(
     { limit: 1 },
-    { enabled: can(actor, "platform.viewAll") },
+    { enabled: can(actor, "audit.view") },
   );
   /* Somebody waiting to be let in is the most time-sensitive thing in the
      portal: a seller who applied and heard nothing goes and sells elsewhere. */
   const waitingApplications = trpc.inventory.applications.waiting.useQuery(undefined, {
-    enabled: can(actor, "platform.manageUsers"),
+    enabled: can(actor, "stores.manage"),
   });
   /* Parcels waiting for a driver (2.2, 3.4.2), counted through the same board
      the tile links to so the two cannot disagree. */
@@ -110,16 +110,16 @@ function Overview({ actor }: { actor: Actor }) {
   /* Catalogues a store put under a product, waiting on NetLet before they show. */
   const waitingCatalogues = trpc.catalogues.waitingCount.useQuery(undefined, { enabled: can(actor, "product.review") });
   /* Home banners a store has paid for, waiting on NetLet before they can run. */
-  const waitingBanners = trpc.ads.bannersWaiting.useQuery(undefined, { enabled: can(actor, "product.review") });
+  const waitingBanners = trpc.ads.bannersWaiting.useQuery(undefined, { enabled: can(actor, "ads.review") });
   /* Sponsored products: requests and transfers waiting on NetLet, or payments waiting on this store. */
   const waitingSponsors = trpc.sponsor.waiting.useQuery(undefined, { enabled: can(actor, "ads.book") });
   /* Shoppers waiting on NetLet itself (3.5.1). */
   const waitingSupport = trpc.support.waiting.useQuery(undefined, { enabled: can(actor, "support.answer") });
   const atCentres = trpc.fulfilment.waiting.useQuery(undefined, { enabled: can(actor, "fulfilment.operate") });
   /* Fraud watch's alerts this administrator has not looked at (3.6.5). */
-  const fraudAlerts = trpc.orders.fraudUnseen.useQuery(undefined, { enabled: can(actor, "platform.viewAll") });
+  const fraudAlerts = trpc.orders.fraudUnseen.useQuery(undefined, { enabled: can(actor, "fraud.view") });
   /* Product reviews the automatic check left for a person: the fraud desk's "Waiting" view. */
-  const waitingReviews = trpc.reviews.waitingCount.useQuery(undefined, { enabled: actor.kind === "admin" });
+  const waitingReviews = trpc.reviews.waitingCount.useQuery(undefined, { enabled: actor.kind === "admin" && can(actor, "fraud.view") });
   /* Devices asking for an administrator's rights, waiting on the owner alone. */
   const waitingDevices = trpc.devices.waiting.useQuery(undefined, { enabled: can(actor, "platform.devices") });
 
@@ -149,7 +149,7 @@ function Overview({ actor }: { actor: Actor }) {
   if (!data) return <p className="text-sm text-[#536b8c]">{t("admin.loading")}</p>;
 
   const mayReview = can(actor, "product.review");
-  const maySeeVendors = can(actor, "platform.viewAll");
+  const maySeeVendors = can(actor, "stores.view");
 
   /*
    * "Waiting on you" is only the things somebody has to act on. A count of
@@ -172,8 +172,10 @@ function Overview({ actor }: { actor: Actor }) {
       href: data.zeroCommission.length === 1 ? `/admin/vendors/${data.zeroCommission[0].id}` : "/admin/vendors",
       tone: "urgent" as const,
     }] : []),
-    { label: "admin.countOutOfStock" as const, value: data.outOfStock, href: "/admin/stock", tone: "urgent" as const },
-    { label: "admin.countLowStock" as const, value: data.lowStock, href: "/admin/stock", tone: "urgent" as const },
+    ...(can(actor, "product.view", vendorScope) ? [
+      { label: "admin.countOutOfStock" as const, value: data.outOfStock, href: "/admin/stock", tone: "urgent" as const },
+      { label: "admin.countLowStock" as const, value: data.lowStock, href: "/admin/stock", tone: "urgent" as const },
+    ] : []),
     /* A shopper waiting on a price is work, and it runs out: a request nobody
        answers inside the week expires, so this belongs beside the review queue
        rather than among the standing totals. */
@@ -198,10 +200,15 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "fulfilment.toPickTile" as const, value: atCentres.data?.toPick ?? 0, href: "/admin/fulfilment", tone: "urgent" as const },
   ].filter(tile => tile.value > 0);
 
+  /* A member of NetLet's team whose role opens no part of the catalogue (HR)
+     is not shown the shelf's counts, which the server sends as nothing. */
+  const maySeeShelf = can(actor, "product.view", vendorScope);
   const standing: Tile[] = [
-    { label: "admin.countPublished" as const, value: data.published, href: "/admin/products" },
-    { label: "admin.countDraft" as const, value: data.draft, href: "/admin/products" },
-    { label: "admin.countArchived" as const, value: data.archived, href: "/admin/products" },
+    ...(maySeeShelf ? [
+      { label: "admin.countPublished" as const, value: data.published, href: "/admin/products" },
+      { label: "admin.countDraft" as const, value: data.draft, href: "/admin/products" },
+      { label: "admin.countArchived" as const, value: data.archived, href: "/admin/products" },
+    ] : []),
     ...(maySeeVendors ? [{ label: "admin.countVendorsApproved" as const, value: data.vendorsApproved, href: "/admin/vendors" }] : []),
   ];
 
@@ -262,12 +269,14 @@ function Overview({ actor }: { actor: Actor }) {
       {/* The store's own warnings (3.3.18), drawn only when it has any. */}
       {actor.kind === "vendor" ? <div className="mt-8"><StoreWarnings manage={false} /></div> : null}
 
-      <section aria-labelledby="at-a-glance" className="mt-8">
-        <SectionHeading><span id="at-a-glance">{t("admin.atAGlance")}</span></SectionHeading>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {standing.map(tile => <Tile key={tile.label} tile={tile} />)}
-        </div>
-      </section>
+      {standing.length > 0 ? (
+        <section aria-labelledby="at-a-glance" className="mt-8">
+          <SectionHeading><span id="at-a-glance">{t("admin.atAGlance")}</span></SectionHeading>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {standing.map(tile => <Tile key={tile.label} tile={tile} />)}
+          </div>
+        </section>
+      ) : null}
     </>
   );
 }

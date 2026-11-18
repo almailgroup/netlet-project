@@ -61,7 +61,7 @@ export default function AdminOccasionEditor() {
   const [, params] = useRoute("/admin/occasions/:id");
   const raw = params?.id ?? "new";
   const id = raw === "new" ? null : Number(raw);
-  return <AdminShell need="platform.configure">{() => (id === null ? <Fresh /> : <Existing key={id} id={id} />)}</AdminShell>;
+  return <AdminShell need="content.manage">{() => (id === null ? <Fresh /> : <Existing key={id} id={id} />)}</AdminShell>;
 }
 
 /** A new one: empty, or one of the calendar's occasions to take over. */

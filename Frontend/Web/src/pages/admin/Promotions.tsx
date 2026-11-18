@@ -50,12 +50,12 @@ const EMPTY_CODE = {
 export default function AdminPromotions() {
   usePageMeta(privatePageMeta("Codes and gift cards"));
   /* NetLet's whole page, or a store's own codes for its owner or manager. */
-  return <AdminShell need={["platform.viewAll", "promotion.manage"]}>{actor => <Promotions actor={actor} />}</AdminShell>;
+  return <AdminShell need={["promotion.netlet", "promotion.manage"]}>{actor => <Promotions actor={actor} />}</AdminShell>;
 }
 
 function Promotions({ actor }: { actor: Actor }) {
   const { t, tError, isArabic } = useTranslation();
-  const netlet = can(actor, "platform.viewAll");
+  const netlet = can(actor, "promotion.netlet");
   const ownStore = actor.kind === "vendor" ? actor.vendorId : null;
   const fresh = netlet ? EMPTY_CODE : { ...EMPTY_CODE, scope: "store" as CodeScope, vendorId: String(ownStore ?? ""), fundedBy: "store" as CodeFunder };
   /* Switched off (2.3): no new cards. One already sold is money somebody

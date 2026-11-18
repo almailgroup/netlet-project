@@ -50,7 +50,7 @@ import { isolate } from "@/lib/isolate";
 
 export default function AdminSubcategoryPictures() {
   usePageMeta(privatePageMeta("Subcategory pictures"));
-  return <AdminShell need="platform.configure">{() => <Desk />}</AdminShell>;
+  return <AdminShell need="content.manage">{() => <Desk />}</AdminShell>;
 }
 
 type Draft = { blob: Blob; url: string; type: StoredType };

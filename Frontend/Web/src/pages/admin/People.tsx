@@ -24,7 +24,8 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
-import { VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
+import { can, VENDOR_ROLES, type VendorRole } from "@shared/inventory/permissions";
+import { Link } from "wouter";
 import { Search, ShieldCheck, ShieldOff, UserMinus, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -33,7 +34,11 @@ import { failedToLoad } from "@/lib/queryState";
 
 export default function AdminPeople() {
   usePageMeta(privatePageMeta("People"));
-  return <AdminShell need={"platform.manageUsers"}>{actor => <People selfId={actor.userId} />}</AdminShell>;
+  return (
+    <AdminShell need={"stores.manage"}>
+      {actor => <People selfId={actor.userId} full={can(actor, "platform.manageUsers")} team={can(actor, "team.manage")} />}
+    </AdminShell>
+  );
 }
 
 const ROLE_LABEL: Record<VendorRole, MessageKey> = {
@@ -54,7 +59,13 @@ type Pending =
   | { kind: "grant" | "revoke"; userId: number; name: string }
   | { kind: "remove"; userId: number; name: string; vendorId: number; vendor: string };
 
-function People({ selfId }: { selfId: number }) {
+/**
+ * `full` is a full administrator's: making somebody one and granting one
+ * capability on its own, which no team role reaches. A member of NetLet's
+ * team whose role opens Stores sees the list for putting people in stores,
+ * and the way to the team page where their place on the team is decided.
+ */
+function People({ selfId, full, team }: { selfId: number; full: boolean; team: boolean }) {
   const { t } = useTranslation();
   const ask = useConfirmRemoval();
   const formatDate = useDateFormat();
@@ -168,6 +179,10 @@ function People({ selfId }: { selfId: number }) {
                         /* The shop's owner stays an administrator: no button the
                            server would refuse, a line saying why instead. */
                         <p className="max-w-[16rem] text-[13px] leading-5 ink-muted">{t("admin.ownerStays")}</p>
+                      ) : !full ? (
+                        person.role === "admin" && team ? (
+                          <Link href="/admin/staff" className={smallButtonClass.secondary}>{t("team.manageLink")}</Link>
+                        ) : null
                       ) : person.role === "admin" ? (
                         <button
                           type="button"
@@ -192,7 +207,7 @@ function People({ selfId }: { selfId: number }) {
                     {/* One permission on its own (3.3.9): setting commission,
                         without being an administrator. The trail then names who
                         granted it beside every rate this person sets. */}
-                    {person.role !== "admin" ? (
+                    {person.role !== "admin" && full ? (
                       <label className="mt-3 flex items-start gap-2.5 text-[13px] text-[#0a285a]">
                         <input
                           type="checkbox"

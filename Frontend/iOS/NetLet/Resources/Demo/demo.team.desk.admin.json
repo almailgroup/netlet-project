@@ -1,0 +1,183 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "ready": true,
+        "roles": [
+          {
+            "id": 1,
+            "slug": "manager",
+            "name": null,
+            "nameAr": null,
+            "areas": [
+              "catalogue",
+              "orders",
+              "delivery",
+              "customers",
+              "money",
+              "marketing",
+              "stores"
+            ],
+            "members": 0,
+            "deletable": false
+          },
+          {
+            "id": 2,
+            "slug": "finance",
+            "name": null,
+            "nameAr": null,
+            "areas": [
+              "orders",
+              "money"
+            ],
+            "members": 1,
+            "deletable": false
+          },
+          {
+            "id": 3,
+            "slug": "hr",
+            "name": null,
+            "nameAr": null,
+            "areas": [
+              "team"
+            ],
+            "members": 1,
+            "deletable": false
+          },
+          {
+            "id": 4,
+            "slug": "customerService",
+            "name": null,
+            "nameAr": null,
+            "areas": [
+              "orders",
+              "customers"
+            ],
+            "members": 1,
+            "deletable": false
+          },
+          {
+            "id": 5,
+            "slug": "catalogue",
+            "name": null,
+            "nameAr": null,
+            "areas": [
+              "catalogue"
+            ],
+            "members": 0,
+            "deletable": false
+          },
+          {
+            "id": 6,
+            "slug": "operations",
+            "name": null,
+            "nameAr": null,
+            "areas": [
+              "orders",
+              "delivery"
+            ],
+            "members": 0,
+            "deletable": false
+          },
+          {
+            "id": 7,
+            "slug": "marketing",
+            "name": null,
+            "nameAr": null,
+            "areas": [
+              "marketing"
+            ],
+            "members": 0,
+            "deletable": false
+          },
+          {
+            "id": 8,
+            "slug": null,
+            "name": "Night shift",
+            "nameAr": "المناوبة الليلية",
+            "areas": [
+              "orders",
+              "delivery"
+            ],
+            "members": 0,
+            "deletable": true
+          }
+        ],
+        "members": [
+          {
+            "userId": 2,
+            "name": "Ahmad Al-Rashid",
+            "email": "ahmad@netlet.net",
+            "roleId": null,
+            "owner": false,
+            "you": false,
+            "addedAt": null,
+            "addedBy": null,
+            "lastSignedIn": "2026-11-17T15:05:00.000Z",
+            "mayChange": true,
+            "mayRemove": true,
+            "mayMakeFull": false
+          },
+          {
+            "userId": 5,
+            "name": "Maryam",
+            "email": "maryam@netlet.net",
+            "roleId": 4,
+            "owner": false,
+            "you": false,
+            "addedAt": "2026-11-10T09:00:00.000Z",
+            "addedBy": "NetLet Owner",
+            "lastSignedIn": "2026-11-12T13:30:00.000Z",
+            "mayChange": true,
+            "mayRemove": true,
+            "mayMakeFull": true
+          },
+          {
+            "userId": 1,
+            "name": "NetLet Owner",
+            "email": "owner@netlet.test",
+            "roleId": null,
+            "owner": true,
+            "you": true,
+            "addedAt": null,
+            "addedBy": null,
+            "lastSignedIn": "2026-11-18T07:40:00.000Z",
+            "mayChange": false,
+            "mayRemove": false,
+            "mayMakeFull": false
+          },
+          {
+            "userId": 3,
+            "name": "Sara",
+            "email": "sara@netlet.net",
+            "roleId": 2,
+            "owner": false,
+            "you": false,
+            "addedAt": "2026-11-10T09:00:00.000Z",
+            "addedBy": "NetLet Owner",
+            "lastSignedIn": "2026-11-18T06:55:00.000Z",
+            "mayChange": true,
+            "mayRemove": true,
+            "mayMakeFull": true
+          },
+          {
+            "userId": 4,
+            "name": "Yousef",
+            "email": "yousef@netlet.net",
+            "roleId": 3,
+            "owner": false,
+            "you": false,
+            "addedAt": "2026-11-10T09:00:00.000Z",
+            "addedBy": "NetLet Owner",
+            "lastSignedIn": "2026-11-16T10:20:00.000Z",
+            "mayChange": true,
+            "mayRemove": true,
+            "mayMakeFull": true
+          }
+        ],
+        "mayEditRoles": true,
+        "mayMakeFull": true
+      }
+    }
+  }
+}

@@ -346,7 +346,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
         <div role="note" className="-mt-2 mb-5 flex flex-wrap items-start gap-x-3 gap-y-2 rounded-xl border border-[#ecd49a] bg-[#fff8e6] px-4 py-3 text-[14px] leading-6 text-[#5c3f0c]">
           <Info className="mt-1 size-4 shrink-0" aria-hidden />
           <p className="min-w-0 flex-1">{t(row.offerHidden === "expired" ? "admin.offerHiddenExpired" : "admin.offerHiddenMissing")}</p>
-          {can(actor, "platform.viewAll") ? (
+          {can(actor, "stores.view") ? (
             <Link href={`/admin/vendors/${row.vendorId}`} className="font-semibold whitespace-nowrap underline underline-offset-2 hover:text-[#0a285a]">
               {t("admin.offerHiddenLink")}
             </Link>

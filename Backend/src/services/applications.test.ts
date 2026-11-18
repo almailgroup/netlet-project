@@ -130,7 +130,7 @@ describe("reviewing", () => {
     expect(page.total).toBe(1);
     expect(page.rows[0].applicantEmail).toBe("seller@harbour.test");
 
-    await expect(apps.listApplications(shopperActor())).rejects.toThrow("FORBIDDEN:platform.manageUsers");
+    await expect(apps.listApplications(shopperActor())).rejects.toThrow("FORBIDDEN:stores.manage");
   });
 
   /* Approving is what creates the store — there is no second step, because a

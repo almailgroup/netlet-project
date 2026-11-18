@@ -170,7 +170,7 @@ export async function listApplications(
   actor: Actor,
   request: { status?: ApplicationState; page?: number; pageSize?: number } = {},
 ): Promise<Page<ApplicationRow>> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) return { rows: [], total: 0, page: 1, pageSize: clampPageSize(request.pageSize) };
 
@@ -238,14 +238,15 @@ export async function approveApplication(
   /** A fixed amount per sale beside (or instead of) the rate, when the applicant asked for one and it is accepted. */
   commissionFixed?: string | null,
 ): Promise<{ vendorId: number }> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const rate = commissionPercent?.trim() || DEFAULT_COMMISSION_PERCENT;
   if (!/^\d{1,3}(\.\d{1,2})?$/.test(rate) || Number.parseFloat(rate) > 100) throw new ApplicationError("application.badCommission");
   const fixed = commissionFixed?.trim() || null;
   if (fixed !== null && fixedProposalProblem(fixed)) throw new ApplicationError("application.badCommission");
   const custom = Number.parseFloat(rate) !== Number.parseFloat(DEFAULT_COMMISSION_PERCENT) || fixed !== null;
-  /* Already true of anybody who clears `platform.manageUsers`; asked anyway,
-     because this is the act the commission rule is about. */
+  /* Approving clears `stores.manage`, which a team role can hold without the
+     money's areas; a rate other than the standard one is the commission
+     desk's, so it is asked on its own. */
   if (custom) assertCan(actor, "vendor.setCommission");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
@@ -333,7 +334,7 @@ export async function approveApplication(
  * note is what makes it useful, so it is required.
  */
 export async function requestMoreDocuments(actor: Actor, applicationId: number, note: string, now = new Date()): Promise<void> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -359,7 +360,7 @@ export async function requestMoreDocuments(actor: Actor, applicationId: number, 
  * than ignoring.
  */
 export async function rejectApplication(actor: Actor, applicationId: number, reason: string, now = new Date()): Promise<void> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -378,7 +379,7 @@ export async function rejectApplication(actor: Actor, applicationId: number, rea
 
 /** How many are waiting, for the overview's "waiting on you" tile. */
 export async function countWaitingApplications(actor: Actor): Promise<number> {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) return 0;
   const [row] = await db

@@ -51,7 +51,7 @@ struct PortalOrdersView: View {
             orders = found
             failed = nil
             // The signals name other accounts' behaviour, so only an administrator asks.
-            if app.session.seller?.can("platform.viewAll") == true {
+            if app.session.seller?.can("fraud.view") == true {
                 // A high-risk order is a notice to the administrators as it is
                 // placed, and this desk is where it is looked at (3.6.5).
                 _ = try? await api.call(API.fraudSeen, .init(desk: "orders"))

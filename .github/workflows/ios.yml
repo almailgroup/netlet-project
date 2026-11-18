@@ -307,6 +307,9 @@ jobs:
             # Sponsored products: a store's requests in every state, and NetLet's desk.
             shot 107-sponsored "$lang" portal:/admin/sponsored shopper
             shot 108-sponsored-netlet "$lang" portal:/admin/sponsored admin
+            # NetLet's team: the owner's view of every person and role, and HR's.
+            shot 109-team "$lang" portal:/admin/staff admin
+            shot 110-team-hr "$lang" portal:/admin/staff hr
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

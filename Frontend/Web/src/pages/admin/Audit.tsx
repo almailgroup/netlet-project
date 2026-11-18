@@ -32,7 +32,7 @@ const roleLabel = (role: string): MessageKey => ROLE_LABEL[role] ?? "admin.roleS
 
 export default function AdminAudit() {
   usePageMeta(privatePageMeta("Audit trail"));
-  return <AdminShell need={"platform.viewAll"}>{() => <Trail />}</AdminShell>;
+  return <AdminShell need={"audit.view"}>{() => <Trail />}</AdminShell>;
 }
 
 /** The fields worth showing inline, in the order they read best. */

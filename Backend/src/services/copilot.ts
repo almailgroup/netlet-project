@@ -67,7 +67,7 @@ export async function copilotFacts(actor: Actor, now = new Date()): Promise<Copi
     quietly(() => lowStock(actor, { pageSize: COPILOT_SHELVES }, now)),
     admin ? quietly(() => overview(actor)) : Promise.resolve(null),
     may(actor, "returns.handle") ? quietly(() => countWaitingReturns(actor)) : Promise.resolve(null),
-    may(actor, "platform.manageUsers") ? quietly(() => countWaitingApplications(actor)) : Promise.resolve(null),
+    may(actor, "stores.manage") ? quietly(() => countWaitingApplications(actor)) : Promise.resolve(null),
     may(actor, "support.answer") ? quietly(() => waitingOnStaff(actor)) : Promise.resolve(null),
     may(actor, "support.answer") ? quietly(() => waitingInquiries(actor, COPILOT_INQUIRIES, now)) : Promise.resolve(null),
   ]);

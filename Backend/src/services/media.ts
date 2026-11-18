@@ -39,7 +39,10 @@ export class MediaError extends Error {
  * costs less than a photo the seller cannot add.
  */
 export async function saveUpload(actor: Actor, bytes: Uint8Array, declared: string, source: string | null = null, now = new Date()) {
-  if (!can(actor, "product.edit")) throw new MediaError("media.notAllowed");
+  /* A product's photos, and NetLet's own pictures — a guide's steps, an
+     occasion's banner, a subcategory's picture — which a member of NetLet's
+     team whose role opens Marketing puts up without the catalogue's rights. */
+  if (!can(actor, "product.edit") && !can(actor, "content.manage")) throw new MediaError("media.notAllowed");
   const problem = uploadProblem(bytes, declared);
   if (problem) throw new MediaError(problem);
   const info = sniffImage(bytes)!;

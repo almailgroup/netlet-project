@@ -67,6 +67,39 @@ struct PortalRules: Decodable, Sendable {
     var money: MoneyRules?
     var guides: GuideLimits?
     var occasions: OccasionLimits?
+    /// NetLet's team: which capabilities each area opens and the ready-made roles.
+    var team: TeamRules?
+
+    /// `Shared/inventory/team.ts`: the areas in their order, what each opens,
+    /// the ready-made roles' areas and the limits a role is held to.
+    struct TeamRules: Decodable, Sendable {
+        let areas: [String]
+        let capabilities: [String: [String]]
+        let ready: [String: [String]]
+        let readyOrder: [String]
+        let nameMax: Int
+        let maxRoles: Int
+
+        /// `areasAllow`: may a member holding these areas do this?
+        func allows(_ areas: [String], _ capability: String) -> Bool {
+            areas.contains { capabilities[$0]?.contains(capability) == true }
+        }
+
+        /// `roleProblems`: what is wrong with a role as typed, by field
+        /// (`name`, `nameAr`, `areas`) — a role NetLet makes needs a name in one
+        /// language at least, a ready-made one may keep its own, and every role
+        /// opens one area at least.
+        func problems(name: String, nameAr: String, areas chosen: [String], ready: Bool) -> [String: String] {
+            let squash = { (text: String) in text.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
+            let english = squash(name), arabic = squash(nameAr)
+            var found: [String: String] = [:]
+            if !ready && english.isEmpty && arabic.isEmpty { found["name"] = "team.nameNeeded" }
+            if english.count > nameMax { found["name"] = "team.nameTooLong" }
+            if arabic.count > nameMax { found["nameAr"] = "team.nameArTooLong" }
+            if !chosen.contains(where: { areas.contains($0) }) { found["areas"] = "team.areasNeeded" }
+            return found
+        }
+    }
 
     /// How long after the sale a seller's money comes due (`SETTLEMENT_DAYS`).
     struct Settlement: Decodable, Sendable {
@@ -95,12 +128,18 @@ struct PortalRules: Decodable, Sendable {
     /// people their board, and a store's people their own store at their rank.
     func can(_ actor: SellerIdentity, _ capability: String, vendorId: Int? = nil) -> Bool {
         /* Which devices carry an administrator's rights is the owner's alone. */
-        if capability == "platform.devices" { return actor.kind == "admin" && actor.owner == true }
+        if capability == "platform.devices" { return actor.kind == "admin" && actor.owner == true && actor.team == nil }
+        /* A full administrator may do anything; a member of NetLet's team what
+           their role's areas open, across every store. A rules file without the
+           team's areas opens nothing to a member rather than everything. */
+        if actor.kind == "admin" {
+            guard let seat = actor.team else { return true }
+            return team?.allows(seat.areas, capability) ?? false
+        }
         /* One capability an administrator granted on its own (3.3.9), and
            only one the rules let be granted. */
         if actor.grants?.contains(capability) == true, grantable?.contains(capability) == true { return true }
         switch actor.kind {
-        case "admin": return true
         case "courier": return courier.contains(capability)
         case "vendor":
             if adminOnly.contains(capability) { return false }
@@ -178,6 +217,8 @@ enum PortalPage: Hashable, Sendable {
     case couriers
     /// The owner's authorised devices (`Shared/auth/adminDevice.ts`).
     case devices
+    /// NetLet's team: who on NetLet's side opens which part of the panel (`Shared/inventory/team.ts`).
+    case staff
     /// The pictures beside the subcategories on Categories (`subcategoryPictures.ts`).
     case subcategoryPictures
     /// A store's own documents, for its owner (`Shared/inventory/storeDocuments.ts`);
@@ -258,6 +299,7 @@ enum PortalPage: Hashable, Sendable {
             case "guides": self = .guides
             case "couriers": self = .couriers
             case "devices": self = .devices
+            case "staff": self = .staff
             case "subcategory-pictures": self = .subcategoryPictures
             case "store-documents": self = .storeDocuments
             case "occasions": self = .occasions

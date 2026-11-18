@@ -61,7 +61,7 @@ type Flagged = { signal: ReviewSignal | ReferralSignal; serious: boolean; detail
 
 export default function AdminFraud() {
   usePageMeta(privatePageMeta("Fraud watch"));
-  return <AdminShell need="platform.viewAll">{() => <FraudWatch />}</AdminShell>;
+  return <AdminShell need="fraud.view">{() => <FraudWatch />}</AdminShell>;
 }
 
 function FraudWatch() {

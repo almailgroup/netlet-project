@@ -35,10 +35,11 @@ import {
   courierMembers,
   couriers,
   staffGrants,
+  teamMembers,
   vendorMembers,
   vendors,
 } from "../../database/schema.js";
-import { assertCan, GRANTABLE, type Actor, type Capability, type VendorRole } from "../../../Shared/inventory/permissions.js";
+import { assertCan, can, GRANTABLE, type Actor, type Capability, type VendorRole } from "../../../Shared/inventory/permissions.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
 import { addonProblems, storedAddon, type AddonKind } from "../../../Shared/commerce/addons.js";
 import { discountAllowed, isOffer } from "../../../Shared/inventory/discountLicence.js";
@@ -65,6 +66,7 @@ import { MAX_LISTING_SCREENS_PER_HOUR, reviewProduct as triageListing } from "..
 import { kuwaitDay } from "../../../Shared/kuwaitDay.js";
 import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
 import { productAddonFields, productAddonsBefore0083, warrantyLengthsReady, withoutLength } from "./warrantyLengths.js";
+import { teamReady, teamSeatOf } from "./teamSeats.js";
 
 /* ------------------------------------------------------------- the actor --- */
 
@@ -80,7 +82,15 @@ export async function resolveActor(
   user: { id: number; role: string; email?: string | null; adminDevice?: AdminDeviceClaim },
   vendorId?: number,
 ): Promise<Actor> {
-  if (user.role === "admin") return isOwnerEmail(user.email) ? { kind: "admin", userId: user.id, owner: true } : { kind: "admin", userId: user.id };
+  if (user.role === "admin") {
+    /* The shop's owner is always a full administrator, whatever a row says. */
+    if (isOwnerEmail(user.email)) return { kind: "admin", userId: user.id, owner: true };
+    /* A member of NetLet's team: an administrator whose role opens only some
+       areas (`Shared/inventory/team.ts`). Read with every resolution, so a
+       role changed or taken away holds from the next request. */
+    const seat = await teamSeatOf(user);
+    return seat ? { kind: "admin", userId: user.id, team: seat } : { kind: "admin", userId: user.id };
+  }
 
   /* An administrator on a device the owner has not authorised: read as a
      shopper by `authenticateRequest`, and marked so the pages can say why. */
@@ -1389,7 +1399,7 @@ async function screenSubmission(actor: Actor, productId: number): Promise<"pendi
     params: { product: row.title, store: row.store, ...(row.storeAr ? { storeAr: row.storeAr } : {}) },
     link: "/admin/review",
     dedupe: `listing:${productId}:${kuwaitDay(new Date())}`,
-  });
+  }, "product.review");
   if (flags.length) {
     await tellStaff();
     return "pending_review";
@@ -1518,7 +1528,9 @@ async function adjustStockNow(actor: Actor, variantId: number, delta: number, re
     /* NetLet's shelf is counted by NetLet (4.2): a seller cannot type a number
        into a warehouse they are not standing in. Asked under the lock, so a
        receipt handing the variant over cannot slip in between. */
-    if (row.centreId !== null && actor.kind !== "admin") throw new Error("fulfilment.netletHolds");
+    /* NetLet's shelf is counted by whoever runs its centres: a full
+       administrator, or a member of NetLet's team whose role opens Delivery. */
+    if (row.centreId !== null && !(actor.kind === "admin" && can(actor, "fulfilment.operate"))) throw new Error("fulfilment.netletHolds");
     const level = Math.max(0, row.stock + delta);
     await tx.update(productVariants).set({ stock: level }).where(eq(productVariants.id, variantId));
     return { before: row.stock, resulting: level };
@@ -1879,7 +1891,10 @@ function scopeOf(actor: Actor) {
  * nowhere to go is decoration.
  */
 export async function overview(actor: Actor) {
-  assertCan(actor, "product.view", scopeOf(actor));
+  /* Everybody who has an overview has this; each count below is drawn only for
+     a person whose role reaches it (a member of NetLet's team whose role does
+     not open the catalogue sees no product counts, and so on). */
+  assertCan(actor, "portal.home", scopeOf(actor));
   const db = await getDb();
   if (!db) {
     return { draft: 0, pendingReview: 0, published: 0, archived: 0, outOfStock: 0, lowStock: 0, vendorsPending: 0, vendorsApproved: 0, zeroCommission: [] as { id: number; name: string }[] };
@@ -1890,14 +1905,18 @@ export async function overview(actor: Actor) {
   /* The four counts need nothing from each other, so they are asked
      together: the overview's first tile waited for four reads in a row. */
   const admin = actor.kind === "admin";
+  const shelf = can(actor, "product.view", vendorId);
+  const noStock = [{ outOfStock: 0, lowStock: 0 }];
   const [byStatus, [stock], byVendorStatus, zeroCommission] = await Promise.all([
-    db
-      .select({ status: products.status, count: sql<number>`count(*)::int` })
-      .from(products)
-      .where(mine)
-      .groupBy(products.status),
+    shelf
+      ? db
+        .select({ status: products.status, count: sql<number>`count(*)::int` })
+        .from(products)
+        .where(mine)
+        .groupBy(products.status)
+      : Promise.resolve([] as { status: string; count: number }[]),
     // Stock questions are about variants, joined back to products for scope.
-    db
+    !shelf ? Promise.resolve(noStock) : db
       .select({
         outOfStock: sql<number>`count(*) filter (where ${productVariants.stock} <= 0)::int`,
         // Only variants that declare a threshold can be "low". A variant with no
@@ -1908,7 +1927,7 @@ export async function overview(actor: Actor) {
       .from(productVariants)
       .innerJoin(products, eq(productVariants.productId, products.id))
       .where(mine ? and(mine, eq(products.status, "published")) : eq(products.status, "published")),
-    admin
+    admin && can(actor, "stores.view")
       ? db
         .select({ status: vendors.status, count: sql<number>`count(*)::int` })
         .from(vendors)
@@ -1920,7 +1939,7 @@ export async function overview(actor: Actor) {
      * nobody set than one somebody chose, and it costs NetLet every sale until
      * somebody notices. Said where an administrator looks first.
      */
-    admin
+    admin && can(actor, "vendor.setCommission")
       ? db
         .select({ id: vendors.id, name: vendors.name })
         .from(vendors)
@@ -2106,7 +2125,9 @@ export type PersonRow = {
 };
 
 export async function listPeople(actor: Actor, options: { query?: string } & PageRequest = {}) {
-  assertCan(actor, "platform.manageUsers");
+  /* Finding an account is the stores' desk (putting somebody in a store) and
+     HR's (putting somebody on NetLet's team): either opens the list. */
+  if (!can(actor, "stores.manage") && !can(actor, "team.manage")) throw new Error("FORBIDDEN:stores.manage");
   const db = await getDb();
   if (!db) return emptyPage<PersonRow>(options);
 
@@ -2193,16 +2214,25 @@ export async function setUserAdmin(actor: Actor, userId: number, isAdmin: boolea
   /* The shop's owner stays an administrator, on the owner's word (`core/owner.ts`). */
   if (!isAdmin && isOwnerEmail(target.email)) throw new Error("OWNER_STAYS");
 
+  const teamTables = await teamReady(db);
   await db.transaction(async tx => {
     if (!isAdmin) {
       /* The administrators' rows are locked before they are counted. Counted
          without, two administrators revoking each other at the same moment
          each saw two and each went ahead, leaving none — the one state this
          rule exists to make impossible. Locked, the second waits, then finds
-         one. */
+         one. A member of NetLet's team is an administrator whose role narrows
+         them, so it is the *full* administrators that are counted. */
       const admins = await tx.select({ id: users.id }).from(users).where(eq(users.role, "admin")).for("update");
-      if (admins.length <= 1 && admins.some(row => row.id === userId)) throw new Error("LAST_ADMIN");
+      const seated = teamTables && admins.length
+        ? new Set((await tx.select({ id: teamMembers.userId }).from(teamMembers).where(inArray(teamMembers.userId, admins.map(row => row.id)))).map(row => row.id))
+        : new Set<number>();
+      const full = admins.filter(row => !seated.has(row.id));
+      if (full.length <= 1 && full.some(row => row.id === userId)) throw new Error("LAST_ADMIN");
     }
+    /* Made an administrator here is made a full one, and revoked is off the
+       team too: a team role left on a shopper would come back with the rights. */
+    if (teamTables) await tx.delete(teamMembers).where(eq(teamMembers.userId, userId));
     await tx.update(users).set({ role: isAdmin ? "admin" : "user" }).where(eq(users.id, userId));
   });
 
@@ -2232,7 +2262,7 @@ export async function addMemberByEmail(
   email: string,
   role: VendorRole,
 ) {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -2270,7 +2300,7 @@ export async function addMemberByEmail(
 
 /** Takes somebody out of a vendor. The account itself is untouched. */
 export async function removeMemberAsAdmin(actor: Actor, vendorId: number, userId: number) {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
   const [was] = await db
@@ -2432,7 +2462,7 @@ export async function listVendors(
   actor: Actor,
   request: PageRequest & { query?: string; status?: (typeof VENDOR_STATUSES)[number] } = {},
 ) {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "stores.view");
   const db = await getDb();
   type Row = typeof vendors.$inferSelect & { productCount: number; liveCount: number; memberCount: number };
   const noCounts = { all: 0, pending: 0, approved: 0, suspended: 0 };
@@ -2584,7 +2614,7 @@ export type NewVendorInput = StoreDetailsPatch & {
  * is worse than one that was never made, because nobody goes looking for it.
  */
 export async function createVendorWithOwner(actor: Actor, input: NewVendorInput) {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -2671,7 +2701,7 @@ export async function createVendorWithOwner(actor: Actor, input: NewVendorInput)
 
 /** One vendor in full, for the detail page. Admin only, like the list. */
 export async function getVendor(actor: Actor, vendorId: number) {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "stores.view");
   const db = await getDb();
   if (!db) return null;
   const [vendor] = await db.select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
@@ -2840,7 +2870,7 @@ export function storeDetailColumns(patch: StoreDetailsPatch) {
 export async function updateVendorProfile(actor: Actor, vendorId: number, patch: StoreDetailsPatch & {
   name?: string;
 }) {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -2880,17 +2910,17 @@ export async function updateVendorProfile(actor: Actor, vendorId: number, patch:
  * and the owner together — so a store that already existed could never gain
  * one.
  *
- * Admin only. `vendor.manageMembers` lets a vendor owner change ranks and
- * remove people within their own company, but minting an account is making a
- * NetLet login, which is `platform.manageUsers` — the same grant that governs
- * who administers the platform.
+ * NetLet's, not a store's. `vendor.manageMembers` lets a vendor owner change
+ * ranks and remove people within their own company, but minting an account
+ * is making a NetLet login, which is `stores.manage` — a full administrator's,
+ * or a member of NetLet's team whose role opens Stores.
  */
 export async function addMemberWithNewAccount(
   actor: Actor,
   vendorId: number,
   input: { email: string; password: string; name?: string | null; role: VendorRole },
 ) {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
@@ -2933,7 +2963,7 @@ export async function addMemberWithNewAccount(
  * already has the row in front of them.
  */
 export async function sendMemberPasswordReset(actor: Actor, userId: number, locale: "en" | "ar") {
-  assertCan(actor, "platform.manageUsers");
+  assertCan(actor, "stores.manage");
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 

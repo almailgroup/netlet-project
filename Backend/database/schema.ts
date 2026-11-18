@@ -3377,6 +3377,44 @@ export const sponsorRequests = pgTable(
 );
 
 /**
+ * NetLet's team (migration 0090, approved as shown): the roles the admin panel
+ * can be opened with, and who holds which. `Shared/inventory/team.ts` is the
+ * rule — what each area opens, the seven ready-made roles, and who may move
+ * whom.
+ *
+ * A role opens a list of **areas**, never a list of capabilities: an area is
+ * a group of desks, and the capabilities inside it are the code's to keep in
+ * step with the desks, so a role saved today opens tomorrow's desk of the same
+ * kind. A ready-made role carries its key (`slug`) and may keep the
+ * dictionary's name by leaving `name` null; one NetLet makes has none.
+ */
+export const teamRoles = pgTable("team_roles", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").unique(),
+  name: text("name"),
+  nameAr: text("name_ar"),
+  areas: text("areas").array().notNull().default(sql`'{}'`),
+  createdBy: integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Who on NetLet's team holds which role. The account is an administrator
+ * (`users.role = 'admin'`), so the device rule, the admin portal's address and
+ * everything else an administrator is held to apply to it; this row narrows
+ * what it may do to its role's areas. No row is a full administrator. A role
+ * somebody holds cannot be deleted under them (`restrict`); an account
+ * deleted takes its row with it.
+ */
+export const teamMembers = pgTable("team_members", {
+  userId: integer("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  roleId: integer("role_id").notNull().references(() => teamRoles.id, { onDelete: "restrict" }),
+  addedBy: integer("added_by").references(() => users.id, { onDelete: "set null" }),
+  addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Payout runs (3.3.21): money NetLet sent a seller, one row per transfer.
  *
  * What a seller is owed is always recomputed from the frozen order lines;
@@ -3983,3 +4021,4 @@ export type AffiliateRow = typeof affiliates.$inferSelect;
 export type PayoutRunRow = typeof payoutRuns.$inferSelect;
 export type InvoiceRow = typeof invoices.$inferSelect;
 export type DamageClaimRow = typeof damageClaims.$inferSelect;
+export type TeamRoleRow = typeof teamRoles.$inferSelect;

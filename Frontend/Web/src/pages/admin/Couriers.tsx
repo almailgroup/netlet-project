@@ -58,7 +58,7 @@ function Couriers({ actor }: { actor: Actor }) {
     onError: error => { setSuspending(null); refused(error); },
   });
 
-  const mayMintLogins = can(actor, "platform.manageUsers");
+  const mayMintLogins = can(actor, "delivery.assign");
 
   return (
     <>

@@ -49,7 +49,7 @@ export default function AdminGuideEditor() {
   const raw = params?.id ?? "new";
   const id = raw === "new" ? null : Number(raw);
   return (
-    <AdminShell need="platform.configure">
+    <AdminShell need="content.manage">
       {() => (id === null ? <Editor key="new" id={null} initial={EMPTY} status="draft" slug={null} /> : <Existing key={id} id={id} />)}
     </AdminShell>
   );

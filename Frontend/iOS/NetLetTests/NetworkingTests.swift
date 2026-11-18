@@ -637,7 +637,7 @@ final class FixtureDecodingTests: XCTestCase {
         let who = try await newDevice.call(API.portalIdentity, .init())
         XCTAssertEqual(who.adminLocked, true)
         XCTAssertTrue(who.inPortal, "the portal is where an install asks to be authorised")
-        XCTAssertFalse(who.can("platform.viewAll"))
+        XCTAssertFalse(who.can("finance.view"))
     }
 
     /// The install's secret: made once, the same every time it is asked for,
@@ -1121,6 +1121,23 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertFalse(rules.can(admin, "platform.devices"))
         XCTAssertTrue(rules.can(SellerIdentity(kind: "admin", userId: 1, vendorId: nil, role: nil, owner: true), "platform.devices"))
         XCTAssertEqual(PortalPage("/admin/devices"), .devices)
+        // A member of NetLet's team reaches what their role's areas open (`areasAllow`).
+        let hr = SellerIdentity(kind: "admin", userId: 3, vendorId: nil, role: nil,
+                                team: TeamSeat(roleId: 3, slug: "hr", name: nil, nameAr: nil, areas: ["team"]))
+        let finance = SellerIdentity(kind: "admin", userId: 4, vendorId: nil, role: nil,
+                                     team: TeamSeat(roleId: 2, slug: "finance", name: nil, nameAr: nil, areas: ["money", "orders"]))
+        XCTAssertTrue(rules.can(hr, "team.manage"))
+        XCTAssertFalse(rules.can(hr, "finance.view"))
+        XCTAssertFalse(rules.can(hr, "platform.manageUsers"), "making a full administrator is a full administrator's alone")
+        XCTAssertTrue(rules.can(finance, "finance.view"))
+        XCTAssertTrue(rules.can(finance, "orders.view"))
+        XCTAssertFalse(rules.can(finance, "product.edit"))
+        XCTAssertFalse(rules.can(SellerIdentity(kind: "admin", userId: 1, vendorId: nil, role: nil, owner: true,
+                                                team: TeamSeat(roleId: 1, slug: "manager", name: nil, nameAr: nil, areas: ["catalogue"])),
+                                 "platform.devices"), "the owner's Devices page is never a team member's")
+        XCTAssertEqual(PortalPage("/admin/staff"), .staff)
+        XCTAssertEqual(rules.team?.readyOrder.first, "manager")
+        XCTAssertEqual(rules.team?.ready["hr"], ["team"])
         XCTAssertTrue(rules.can(courier, "delivery.view"))
         XCTAssertFalse(rules.can(courier, "product.view"))
         XCTAssertTrue(rules.menu(for: owner).flatMap(\.links).contains { $0.href == "/admin/products" })
@@ -1303,6 +1320,39 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(PortalPage("/admin/couriers"), .couriers)
         XCTAssertEqual(PortalPage("/admin/store-documents"), .storeDocuments)
         XCTAssertEqual(PortalPage("/admin/sponsored"), .sponsored)
+    }
+
+    /// NetLet's team (migration 0090), as a real server answered the owner and
+    /// an HR member: every person on the admin side with what the reader may do
+    /// to them, the seven ready-made roles and one NetLet made, and a member's
+    /// seat on their identity, which is what `can` narrows them by.
+    func testTheTeamDeskDecodes() async throws {
+        let owner = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "admin"))
+        let desk = try await owner.call(API.teamDesk)
+        XCTAssertTrue(desk.ready)
+        XCTAssertTrue(desk.mayEditRoles)
+        XCTAssertEqual(Set(desk.roles.compactMap(\.slug)), ["manager", "finance", "hr", "customerService", "catalogue", "operations", "marketing"])
+        XCTAssertTrue(desk.roles.contains { $0.slug == nil && $0.deletable }, "a role NetLet made that nobody holds can be deleted")
+        let me = try XCTUnwrap(desk.members.first { $0.you })
+        XCTAssertTrue(me.owner)
+        XCTAssertFalse(me.mayChange, "nobody changes their own place on the team")
+        XCTAssertTrue(desk.members.contains { $0.roleId == nil && !$0.owner && $0.mayRemove }, "the owner may take another full administrator off")
+        for role in desk.roles { XCTAssertTrue(role.areas.allSatisfy { PortalRules.shared.team?.areas.contains($0) == true }) }
+
+        let hrClient = TRPCClient(configuration: client.configuration, transport: DemoTransport(variant: "hr"))
+        let hrDesk = try await hrClient.call(API.teamDesk)
+        XCTAssertFalse(hrDesk.mayEditRoles)
+        XCTAssertFalse(hrDesk.mayMakeFull)
+        XCTAssertTrue(hrDesk.members.filter { $0.roleId == nil }.allSatisfy { !$0.mayChange && !$0.mayRemove }, "HR never moves a full administrator")
+        let who = try await hrClient.call(API.portalIdentity, .init())
+        XCTAssertEqual(who.team?.slug, "hr")
+        XCTAssertTrue(who.can("team.manage"))
+        XCTAssertFalse(who.can("finance.view"))
+        XCTAssertEqual(PortalRules.shared.menu(for: who).flatMap(\.links).map(\.href).filter { $0 != "/admin" }, ["/admin/staff"])
+        var keys: [String] = ["team.title", "team.fullAdmin", "team.addTitle", "team.changeRoleTitle", "team.removeTitle", "team.saveRole"]
+        for area in PortalRules.shared.team?.areas ?? [] { keys += ["team.area.\(area)", "team.area.\(area)Note"] }
+        for slug in PortalRules.shared.team?.readyOrder ?? [] { keys.append("team.role.\(slug)") }
+        for key in keys { XCTAssertTrue(Phrasebook.shared.has(key), key) }
     }
 
     /// Sponsored products (migration 0089), as a real server answered a store

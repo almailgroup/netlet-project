@@ -106,7 +106,7 @@ function Ads({ actor }: { actor: Actor }) {
       </Notice>
 
       {actor.kind === "vendor" ? <BookForm /> : null}
-      {can(actor, "product.review") ? <BannerQueue /> : null}
+      {can(actor, "ads.review") ? <BannerQueue /> : null}
 
       <section className="mt-8" aria-labelledby="ads-bookings">
         <SectionHeading><span id="ads-bookings">{t("ads.bookings")}</span></SectionHeading>

@@ -47,7 +47,7 @@ function Bundles({ actor }: { actor: Actor }) {
   const list = trpc.inventory.bundles.list.useQuery();
   const utils = trpc.useUtils();
 
-  const mayCrossVendor = can(actor, "platform.viewAll");
+  const mayCrossVendor = can(actor, "bundles.netlet");
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [members, setMembers] = useState<Member[]>([]);

@@ -130,7 +130,7 @@ describe("one permission, granted (3.3.9)", () => {
   it("lets an employee decide and set rates, and the trail names who granted it", async () => {
     await expect(grants.setGrant(owner(), ids.clerk, "vendor.setCommission", true)).rejects.toThrow("FORBIDDEN:platform.manageUsers");
     await expect(grants.setGrant(admin(), ids.admin, "vendor.setCommission", true)).rejects.toMatchObject({ reason: "grants.isAdmin" });
-    await expect(grants.setGrant(admin(), ids.clerk, "platform.viewAll", true)).rejects.toMatchObject({ reason: "grants.notGrantable" });
+    await expect(grants.setGrant(admin(), ids.clerk, "finance.view", true)).rejects.toMatchObject({ reason: "grants.notGrantable" });
 
     const before = await inventory.resolveActor({ id: ids.clerk, role: "user" });
     expect(before).toEqual({ kind: "customer", userId: ids.clerk });

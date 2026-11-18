@@ -84,7 +84,7 @@ const PAYMENT_LABEL: Record<string, MessageKey> = {
 
 export default function AdminOrders() {
   usePageMeta(privatePageMeta("Orders"));
-  return <AdminShell need="product.view">{actor => <Orders actor={actor} />}</AdminShell>;
+  return <AdminShell need="orders.view">{actor => <Orders actor={actor} />}</AdminShell>;
 }
 
 function Orders({ actor }: { actor: Actor }) {
@@ -99,10 +99,10 @@ function Orders({ actor }: { actor: Actor }) {
    * server refuses a vendor and the question is not asked on their behalf.
    */
   const ids = (list.data?.rows ?? []).map(row => row.id);
-  const risk = trpc.orders.risk.useQuery({ ids }, { enabled: ids.length > 0 && can(actor, "platform.viewAll") });
+  const risk = trpc.orders.risk.useQuery({ ids }, { enabled: ids.length > 0 && can(actor, "fraud.view") });
   /* A high-risk order is a notice to the administrators as it is placed, and
      this page is where it is looked at, so opening it reads those. */
-  useAlertsRead("orders", can(actor, "platform.viewAll"));
+  useAlertsRead("orders", can(actor, "fraud.view"));
   const riskFor = (id: number) => risk.data?.find(entry => entry.orderId === id);
 
   return (

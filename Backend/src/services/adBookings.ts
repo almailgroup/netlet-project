@@ -356,7 +356,7 @@ export async function reviewBanner(
   request: { id: number; decision: "approve" | "reject"; note?: string | null },
   now = new Date(),
 ): Promise<{ startsOn: string; status: BannerStatus }> {
-  assertCan(actor, "product.review");
+  assertCan(actor, "ads.review");
   const db = await handle();
   const today = kuwaitToday(now);
   const note = flat(request.note).slice(0, 400) || null;
@@ -419,7 +419,7 @@ export async function reviewBanner(
 
 /** Banners waiting on NetLet that can still run, for the overview's count. */
 export async function countWaitingBanners(actor: Actor, now = new Date()): Promise<number> {
-  assertCan(actor, "product.review");
+  assertCan(actor, "ads.review");
   const db = await getDb();
   if (!db) return 0;
   const [row] = await db

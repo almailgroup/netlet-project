@@ -34,7 +34,7 @@ import { privatePageMeta } from "@shared/seo";
 
 export default function AdminOccasions() {
   usePageMeta(privatePageMeta("Occasions"));
-  return <AdminShell need="platform.configure">{() => <Desk />}</AdminShell>;
+  return <AdminShell need="content.manage">{() => <Desk />}</AdminShell>;
 }
 
 export const STATUS_LABEL: Record<OccasionStatus, MessageKey> = {

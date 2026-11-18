@@ -45,7 +45,7 @@ struct PortalStoresView: View {
 
     var body: some View {
         PortalScreen(title: l.t("admin.vendors"), intro: l.t("admin.vendorsIntro"), refresh: { await load() }) {
-            if app.session.seller?.can("platform.manageUsers") == true {
+            if app.session.seller?.can("stores.manage") == true {
                 Button { app.open(.portal("/admin/vendors/new")) } label: { Label(l.t("admin.openStoreButton"), systemImage: "storefront") }
                     .buttonStyle(PrimaryButtonStyle())
             }

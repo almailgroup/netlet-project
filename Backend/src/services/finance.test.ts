@@ -256,7 +256,7 @@ describe("the weekly payout report", () => {
   /* It names companies, and one seller learning another has no licence of
      their own is not a fact NetLet should hand out. */
   it("refuses a vendor the list of sellers under NetLet's licence", async () => {
-    await expect(payouts.sellersUnderPlatformLicence(vendorActor())).rejects.toThrow("FORBIDDEN:platform.viewAll");
+    await expect(payouts.sellersUnderPlatformLicence(vendorActor())).rejects.toThrow("FORBIDDEN:finance.view");
     await expect(payouts.sellersUnderPlatformLicence(adminActor())).resolves.toEqual([]);
   });
 });

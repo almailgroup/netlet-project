@@ -82,6 +82,7 @@ import { CLAIM_WINDOW_DAYS, MAX_CLAIM_DESCRIPTION } from "../../../Shared/commer
 import { DEPARTMENT_QUESTIONS, MAX_DESCRIPTION as MAX_BRIEF_DESCRIPTION, MAX_QUESTION, MAX_SPEC_ROWS, MAX_SUGGESTIONS } from "../../../Shared/commerce/assistant.js";
 import { GATEWAY_ROUTES, MAX_CHAT_TEXT, MAX_CHAT_TURNS, MAX_IMAGES, MAX_NOTES } from "../../../Shared/ai/gateway.js";
 import { ADMIN_ONLY, COURIER_CAPABILITIES, GRANTABLE, NEEDS, RANK } from "../../../Shared/inventory/permissions.js";
+import { AREA_CAPABILITIES, MAX_TEAM_ROLES, READY_ROLE_AREAS, READY_ROLES, ROLE_NAME_MAX, TEAM_AREAS } from "../../../Shared/inventory/team.js";
 import { ADMIN_MENU } from "../../Web/src/content/adminMenu.js";
 import { BRAND_MAX, BULK_ACTIONS, BULK_LIMIT, MAX_PERCENT, MAX_RESTOCK, MIN_PERCENT } from "../../../Shared/inventory/productBulk.js";
 import { MAX_PHOTO_CHARS, PHOTO_MAX_EDGE } from "../../../Shared/commerce/photoSearch.js";
@@ -363,6 +364,9 @@ export function buildResources(): Record<string, string> {
     "portal.json": json({ menu: ADMIN_MENU, ranks: RANK, needs: NEEDS, adminOnly: ADMIN_ONLY, courier: COURIER_CAPABILITIES,
       /* What an administrator may grant one account on its own (3.3.9). */
       grantable: GRANTABLE,
+      /* NetLet's team: what each area opens, and the ready-made roles. */
+      team: { areas: TEAM_AREAS, capabilities: AREA_CAPABILITIES, ready: READY_ROLE_AREAS, readyOrder: READY_ROLES,
+        nameMax: ROLE_NAME_MAX, maxRoles: MAX_TEAM_ROLES },
       bulk: { actions: BULK_ACTIONS, limit: BULK_LIMIT, minPercent: MIN_PERCENT, maxPercent: MAX_PERCENT, maxRestock: MAX_RESTOCK, maxBrand: BRAND_MAX },
       /* Where a line may move next (`nextStates`), so the desk offers only the
          moves the server would take; and the payout schedule's own days. */

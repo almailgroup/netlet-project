@@ -560,7 +560,7 @@ function resolve(path: string, rawInput: unknown): unknown {
      */
     /*
      * Empty in a demo, and honestly so: the demo portal signs in as a vendor
-     * `manager`, who cannot reach `platform.viewAll` — so the link is not in
+     * `manager`, who cannot reach `finance.view` — so the link is not in
      * the navigation and this is unreachable. Answered anyway, because a
      * procedure the demo cannot name throws the day the fixture's role
      * changes.
@@ -576,7 +576,7 @@ function resolve(path: string, rawInput: unknown): unknown {
      * name throws the day the fixture opts a product in.
      */
     /* Requirement 3.3.8's reads. The demo portal signs in as a vendor
-       `manager`, who cannot reach `platform.viewAll`, so neither is reachable
+       `manager`, who cannot reach `audit.view`, so neither is reachable
        — answered anyway, because a procedure the demo cannot name throws the
        day the fixture's role changes. */
     /* The demo portal signs in as a vendor `manager`, so the selling section
@@ -932,6 +932,17 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "sponsor.withdraw":
     case "sponsor.stop":
       throw new Error("sponsor.notYours");
+    /* NetLet's team is a full administrator's or HR's, and the demo is a
+       store's manager: the link is not in its menu, and the API refuses it. */
+    case "team.desk":
+    case "team.add":
+    case "team.create":
+    case "team.setRole":
+    case "team.remove":
+    case "team.roles.create":
+    case "team.roles.update":
+    case "team.roles.delete":
+      throw new Error("team.notAllowed");
     /* Affiliates (3.7): the demo shopper is a guest, so there is no account to
        join with and no link anybody arrived through. */
     case "affiliates.mine":

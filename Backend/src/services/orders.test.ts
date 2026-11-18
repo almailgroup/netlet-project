@@ -645,7 +645,7 @@ describe("moving a line through the warehouse", () => {
     const [line] = await db.select().from(orderItems).where(eq(orderItems.orderId, placed.order.id));
 
     await expect(ordersModule.setLineFulfilment(otherActor(), line.id, "shipped"))
-      .rejects.toThrow("FORBIDDEN:stock.adjust");
+      .rejects.toThrow("FORBIDDEN:orders.manage");
   });
 
   /* Partial shipment is ordinary, which is why fulfilment is per line. */
@@ -1132,7 +1132,7 @@ describe("what an order looks like from the platform's side", () => {
 
   /* The signals name other accounts' behaviour, so a seller does not get them. */
   it("refuses a vendor", async () => {
-    await expect(fraud.riskForOrders(acmeActor(), [1])).rejects.toThrow("FORBIDDEN:platform.viewAll");
+    await expect(fraud.riskForOrders(acmeActor(), [1])).rejects.toThrow("FORBIDDEN:fraud.view");
   });
 
   it("asks for nothing when given nothing", async () => {

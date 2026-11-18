@@ -57,18 +57,18 @@ const PROMPT_BUDGET = 15_500;
 
 /** The pages a proposal may open, and what each asks of the person — the menu's own `need`. */
 export const COPILOT_PAGES = {
-  "/admin": "product.view",
+  "/admin": "portal.home",
   "/admin/products": "product.view",
   "/admin/stock": "product.view",
-  "/admin/orders": "product.view",
+  "/admin/orders": "orders.view",
   "/admin/review": "product.review",
   "/admin/returns": "returns.handle",
   "/admin/support": "support.answer",
   "/admin/payouts": "payouts.view",
-  "/admin/finance": "platform.viewAll",
-  "/admin/applications": "platform.manageUsers",
-  "/admin/vendors": "platform.viewAll",
-  "/admin/audit": "platform.viewAll",
+  "/admin/finance": "finance.view",
+  "/admin/applications": "stores.manage",
+  "/admin/vendors": "stores.view",
+  "/admin/audit": "audit.view",
 } as const satisfies Record<string, Capability>;
 export type CopilotPage = keyof typeof COPILOT_PAGES;
 

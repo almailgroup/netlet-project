@@ -29,7 +29,8 @@ import {
   writeReview,
 } from "../services/reviews.js";
 import { resolveActor } from "../services/inventory.js";
-import { adminProcedure, protectedProcedure, publicProcedure, router } from "../core/trpc.js";
+import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
+import { can } from "../../../Shared/inventory/permissions.js";
 import { MAX_REVIEW_BODY, MAX_REVIEW_PHOTOS, MAX_REVIEW_TITLE, RATING_MAX, RATING_MIN, REVIEW_SORTS } from "../../../Shared/commerce/reviews.js";
 
 /** A refusal becomes a 4xx carrying a message key the page translates. */
@@ -46,6 +47,17 @@ const guard = async <T>(run: () => Promise<T>): Promise<T> => {
     throw error;
   }
 };
+
+/**
+ * Who may read and decide the reviews waiting for a person: NetLet's, by the
+ * Customers area's `fraud.view` — a full administrator, or a member of the
+ * team whose role opens it. It was `adminProcedure`, which a team role would
+ * have passed whatever it opened.
+ */
+async function moderator(user: Parameters<typeof resolveActor>[0]): Promise<void> {
+  const actor = await resolveActor(user);
+  if (actor.kind !== "admin" || !can(actor, "fraud.view")) throw new TRPCError({ code: "FORBIDDEN", message: "FORBIDDEN:fraud.view" });
+}
 
 const rating = z.number().int().min(RATING_MIN).max(RATING_MAX);
 const title = z.string().trim().max(MAX_REVIEW_TITLE).nullable().optional();
@@ -126,17 +138,26 @@ export const reviewsRouter = router({
    * one high-risk, or photos nobody could look at), oldest first, with how
    * many there are. Publishing one is `setHidden` with `hidden: false`.
    */
-  waiting: adminProcedure.query(() => waitingReviews()),
+  waiting: protectedProcedure.query(async ({ ctx }) => {
+    await moderator(ctx.user);
+    return waitingReviews();
+  }),
 
-  /** How many wait, for the overview's tile. */
-  waitingCount: adminProcedure.query(() => waitingReviewCount()),
+  /** How many wait, for the overview's tile: none for anybody who cannot answer them. */
+  waitingCount: protectedProcedure.query(async ({ ctx }) => {
+    const actor = await resolveActor(ctx.user);
+    return actor.kind === "admin" && can(actor, "fraud.view") ? waitingReviewCount() : 0;
+  }),
 
   /** Moderation. Hides rather than deletes; see `setReviewHidden`. */
-  setHidden: adminProcedure
+  setHidden: protectedProcedure
     .input(z.object({
       reviewId: rowId,
       hidden: z.boolean(),
       reason: z.string().trim().max(200).optional(),
     }))
-    .mutation(({ input }) => guard(() => setReviewHidden(input.reviewId, input.hidden, input.reason))),
+    .mutation(async ({ ctx, input }) => {
+      await moderator(ctx.user);
+      return guard(() => setReviewHidden(input.reviewId, input.hidden, input.reason));
+    }),
 });

@@ -598,6 +598,7 @@ export async function damageLedger(actor: Actor) {
  */
 export async function countOpenClaims(actor: Actor): Promise<number> {
   if (actor.kind !== "admin" && actor.kind !== "courier") return 0;
+  try { assertCan(actor, "delivery.view"); } catch { return 0; }
   const db = await handle();
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })

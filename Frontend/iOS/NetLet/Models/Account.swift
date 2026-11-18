@@ -123,9 +123,22 @@ struct SellerIdentity: Decodable, Hashable, Sendable {
     /// An administrator's rights, or a grant, held back because this install
     /// is not one the owner authorised (`Shared/auth/adminDevice.ts`).
     var adminLocked: Bool? = nil
+    /// The role a member of NetLet's team holds (`Shared/inventory/team.ts`);
+    /// an administrator with none is a full administrator.
+    var team: TeamSeat? = nil
 
     /// Somebody who belongs to a store.
     var isStoreMember: Bool { kind == "vendor" && vendorId != nil }
+}
+
+/// A member of NetLet's team's seat: their role and the areas it opens.
+struct TeamSeat: Decodable, Hashable, Sendable {
+    let roleId: Int
+    /// A ready-made role's key (`manager`, `finance`, `hr`…), or nil for one NetLet made.
+    let slug: String?
+    let name: String?
+    let nameAr: String?
+    let areas: [String]
 }
 
 /// A reply whose content the app does not need — `{ "sent": true }`,

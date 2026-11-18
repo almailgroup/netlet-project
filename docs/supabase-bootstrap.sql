@@ -2406,6 +2406,41 @@ CREATE INDEX IF NOT EXISTS "sponsor_requests_vendor_idx" ON "sponsor_requests" U
 CREATE INDEX IF NOT EXISTS "sponsor_requests_open_idx" ON "sponsor_requests" USING btree ("status","starts_on","ends_on");
 CREATE UNIQUE INDEX IF NOT EXISTS "sponsor_requests_booking_idx" ON "sponsor_requests" USING btree ("booking_id") WHERE "sponsor_requests"."booking_id" is not null;
 
+-- ===== 0090_team.sql =====
+CREATE TABLE IF NOT EXISTS "team_members" (
+	"user_id" integer PRIMARY KEY NOT NULL,
+	"role_id" integer NOT NULL,
+	"added_by" integer,
+	"added_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "team_roles" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"slug" text,
+	"name" text,
+	"name_ar" text,
+	"areas" text[] DEFAULT '{}' NOT NULL,
+	"created_by" integer,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "team_roles_slug_unique" UNIQUE("slug")
+);
+DO $$ BEGIN
+  ALTER TABLE "team_members" ADD CONSTRAINT "team_members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "team_members" ADD CONSTRAINT "team_members_role_id_team_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."team_roles"("id") ON DELETE restrict ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "team_members" ADD CONSTRAINT "team_members_added_by_users_id_fk" FOREIGN KEY ("added_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "team_roles" ADD CONSTRAINT "team_roles_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2457,6 +2492,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  90 AS migrations_in_this_file,
+  91 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

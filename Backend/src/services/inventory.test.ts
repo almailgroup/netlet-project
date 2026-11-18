@@ -667,10 +667,10 @@ describe("who reaches the admin panel", () => {
   // The escalation this blocks: a vendor owner reading, and then editing, the
   // list of who administers the platform.
   it("refuses a vendor owner entirely", async () => {
-    await expect(inv.listPeople(ownerActor())).rejects.toThrow("FORBIDDEN:platform.manageUsers");
+    await expect(inv.listPeople(ownerActor())).rejects.toThrow("FORBIDDEN:stores.manage");
     await expect(inv.setUserAdmin(ownerActor(), ids.staff, true)).rejects.toThrow("FORBIDDEN:platform.manageUsers");
     await expect(inv.addMemberByEmail(ownerActor(), ids.acme, "staff@acme.test", "manager"))
-      .rejects.toThrow("FORBIDDEN:platform.manageUsers");
+      .rejects.toThrow("FORBIDDEN:stores.manage");
   });
 
   it("grants and revokes administrator", async () => {
@@ -1033,8 +1033,8 @@ describe("the audit trail", () => {
     /* Every seller's activity, so a vendor reading it would be reading their
        competitors'. */
     it("refuses a vendor owner entirely", async () => {
-      await expect(audit.sellerChangesForAdmin(ownerActor())).rejects.toThrow("FORBIDDEN:platform.viewAll");
-      await expect(audit.markAuditSeen(ownerActor())).rejects.toThrow("FORBIDDEN:platform.viewAll");
+      await expect(audit.sellerChangesForAdmin(ownerActor())).rejects.toThrow("FORBIDDEN:audit.view");
+      await expect(audit.markAuditSeen(ownerActor())).rejects.toThrow("FORBIDDEN:audit.view");
     });
   });
 

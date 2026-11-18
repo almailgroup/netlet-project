@@ -146,6 +146,15 @@ export const AUDIT_ACTIONS = [
      default (`Shared/commerce/tax.ts`). The switch and the rate are
      `platform.setFeature` and `platform.setSetting`. */
   "product.setTax",
+  /* NetLet's team (`Shared/inventory/team.ts`): somebody put on it with a
+     role, given another, or taken off; and a role made, changed or deleted —
+     who may open which part of the admin panel. */
+  "team.add",
+  "team.setRole",
+  "team.remove",
+  "team.role.create",
+  "team.role.update",
+  "team.role.delete",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
@@ -159,7 +168,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "occasion" | "return" | "proposal" | "order" | "device";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "occasion" | "return" | "proposal" | "order" | "device" | "teamRole";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;
@@ -195,6 +204,13 @@ export const CHAIN_ACTIONS: ReadonlySet<AuditAction> = new Set([
   /* Who gave whom a capability, which is the chain 3.3.9 asks for by name. */
   "user.grant",
   "user.revokeGrant",
+  /* Who reaches which part of the admin panel, and who let them. */
+  "team.add",
+  "team.setRole",
+  "team.remove",
+  "team.role.create",
+  "team.role.update",
+  "team.role.delete",
   /* A warning counts towards suspension, so who was allowed to issue it matters. */
   "vendor.warn",
   "vendor.withdrawWarning",
@@ -246,7 +262,9 @@ async function authorisedBy(
     .from(auditLog)
     .where(
       and(
-        eq(auditLog.action, "user.setAdmin"),
+        /* Made an administrator, put on NetLet's team, or given the role they
+           hold now: whichever came last is who let them do this. */
+        inArray(auditLog.action, ["user.setAdmin", "team.add", "team.setRole"]),
         eq(auditLog.subjectId, actorId),
         /* The grant, not the revocation: `user.setAdmin` records both, and a
            demotion followed by a promotion would otherwise name whoever took
@@ -289,7 +307,7 @@ export async function recordAudit(actor: AuditActor, record: AuditRecord): Promi
 /**
  * Reading it back.
  *
- * Admin-only, enforced by the caller's `platform.viewAll` guard. Newest first,
+ * Admin-only, enforced by the caller's `audit.view` guard. Newest first,
  * because the question is almost always "what just happened".
  */
 export async function listAudit(options: {
@@ -410,12 +428,12 @@ export async function sellerChanges(options: { since?: Date | null; vendorId?: n
  * The seller changes waiting for this administrator, and how many are new.
  *
  * Guarded here rather than in the router alone, next to the query it protects
- * — the rule the whole data layer follows. `platform.viewAll`, because this is
+ * — the rule the whole data layer follows. `audit.view`, because this is
  * every seller's activity and a vendor reading it would be reading their
  * competitors'.
  */
 export async function sellerChangesForAdmin(actor: Actor, limit = 100) {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "audit.view");
   const db = await getDb();
   if (!db) return { rows: [], unseen: 0, seenAt: null };
 
@@ -437,7 +455,7 @@ export async function sellerChangesForAdmin(actor: Actor, limit = 100) {
  * somewhere else is a badge that hides work.
  */
 export async function markAuditSeen(actor: Actor): Promise<void> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "audit.view");
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ auditSeenAt: new Date() }).where(eq(users.id, actor.userId));

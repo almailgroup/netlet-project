@@ -73,9 +73,9 @@ beforeEach(async () => {
 
 describe("who writes guides", () => {
   it("is NetLet alone: a store's owner is refused every act", async () => {
-    await expect(mod.listGuides(manager)).rejects.toThrow("FORBIDDEN:platform.configure");
-    await expect(mod.saveGuide(manager, null, content())).rejects.toThrow("FORBIDDEN:platform.configure");
-    await expect(mod.draftGuide(manager, "returns", "shopper")).rejects.toThrow("FORBIDDEN:platform.configure");
+    await expect(mod.listGuides(manager)).rejects.toThrow("FORBIDDEN:content.manage");
+    await expect(mod.saveGuide(manager, null, content())).rejects.toThrow("FORBIDDEN:content.manage");
+    await expect(mod.draftGuide(manager, "returns", "shopper")).rejects.toThrow("FORBIDDEN:content.manage");
   });
 });
 

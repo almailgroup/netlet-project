@@ -536,7 +536,7 @@ export type CashOutRow = {
  * silently — the rule every other guard in this codebase follows.
  */
 export async function pendingCashOuts(actor: Actor, limit = 200): Promise<CashOutRow[]> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "finance.view");
   const db = await getDb();
   if (!db) return [];
 
@@ -576,7 +576,7 @@ export async function pendingCashOuts(actor: Actor, limit = 200): Promise<CashOu
  * cannot both be told they were the one who paid it.
  */
 export async function settleCashOut(actor: Actor, entryId: number): Promise<boolean> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "payouts.record");
   const db = await getDb();
   if (!db) return false;
 

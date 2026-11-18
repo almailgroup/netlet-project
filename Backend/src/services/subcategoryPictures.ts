@@ -45,7 +45,7 @@ export async function subcategoryPictures(): Promise<SubcategoryPictures> {
  * row goes with it.
  */
 export async function setSubcategoryPicture(actor: Actor, department: string, slug: string, path: string | null): Promise<SubcategoryPictures> {
-  assertCan(actor, "platform.configure");
+  assertCan(actor, "content.manage");
   if (!findSubcategory(department, slug)) throw new SubcategoryPictureRefused("subcategoryPictures.notFound");
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");

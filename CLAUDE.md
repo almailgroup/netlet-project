@@ -3848,7 +3848,7 @@ beats a silent local-time conversion inside the arithmetic, and the fix when it
 matters is a timezone an admin chooses.
 
 `Backend/src/services/finance.ts` is the database half, outside `db.ts` for the reason
-`profile.ts` and `orders.ts` are, and it guards with `platform.viewAll` — a
+`profile.ts` and `orders.ts` are, and it guards with `finance.view` — a
 vendor sees their own figures on their own pages, and the platform's cut across
 every seller is not one of them. The router's `guard` is what turns that
 refusal into a 403, and `report` was the one procedure in the file that skipped
@@ -7640,6 +7640,93 @@ the one place the storefront's signed-out-guest rule is bent, because a sign-in
 wall would show nothing of the thing being demonstrated. `/admin/people` is
 admin-only, so in the demo it correctly refuses.
 
+## NetLet's team
+
+**An administrator can be a full administrator or a member of NetLet's team
+holding a role, on the owner's word** ("the admin can assign roles to the
+people that can get access to the admin panel, like Manager, Finance, HR";
+migration 0090, `team_roles` and `team_members`, approved as shown;
+`Shared/inventory/team.ts` the rule, `Backend/src/services/team.ts` and
+`teamSeats.ts` the database half, `team.*` the API). A member is
+`users.role = 'admin'` with a `team_members` row; an administrator with no
+row is a full administrator, as every administrator was before. The owner's
+four answers shape it:
+
+- **Ready-made roles and NetLet's own.** Manager, Finance, HR, Customer
+  service, Catalogue, Operations and Marketing come ready (`READY_ROLES`,
+  written insert-only the first time an instance opens the desk, `ON
+  CONFLICT (slug) DO NOTHING`), and a full administrator renames any, changes
+  what it opens, or makes a new one by ticking areas (at most
+  `MAX_TEAM_ROLES`). A ready-made role is changed, never deleted; one NetLet
+  made is deleted only while nobody holds it (the foreign key is `restrict`).
+- **A role is areas, and an area is capabilities.** Nine areas —
+  catalogue, orders, delivery, customers, money, marketing, stores, team,
+  settings — each a list in `AREA_CAPABILITIES`, and `can()` asks
+  `areasAllow` for an administrator carrying a seat: the same pure function
+  the server guards with and both clients filter the menu by, so a hidden link
+  and a refused request cannot disagree. **The capabilities were split to make
+  that possible**: `platform.viewAll` is gone, and in its place are
+  `portal.home`, `orders.view` and `orders.manage` (which a store's staff hold
+  too), and the administrator-only `finance.view`, `stores.view`,
+  `stores.manage`, `audit.view`, `fraud.view`, `promotion.netlet`,
+  `bundles.netlet`, `content.manage`, `ads.review` and `team.manage`. Every
+  guard that read `platform.viewAll` or `platform.manageUsers` as "an
+  administrator" asks the one it meant now.
+- **HR manages the members; a full administrator alone the roles and the full
+  administrators** (`teamMoveRefusal`). Anybody whose role opens Team adds
+  people with a role, changes a role-holder's role and takes them off; never a
+  full administrator, never makes one, never their own row (or HR could give
+  themselves Manager), and never what a role opens. `platform.manageUsers` is
+  no area's, so making a full administrator, the roles themselves and the
+  one-capability grants stay a full administrator's. **The owner
+  (`OWNER_EMAIL`) is always full**, whatever a row says, and the Devices page
+  is the owner's on any seat.
+- **Signing in is an administrator's**: a member signs in only at
+  admin.netlet.net and each new device waits on the Devices page, because a
+  member is an administrator to `portalSideFor`, the device gate and every
+  sign-in door.
+
+**Who is asking is read once per request** (`teamSeatOf`, memoised on the
+request's `ctx.user` in a `WeakMap`) and handed to `resolveActor`, which every
+procedure already called. **It fails closed**: before 0090 is pasted there can
+be no member, so a missing table reads as no seat and every administrator
+keeps the rights they had (`teamReady`, asked again a minute later while
+missing); any other failure throws rather than reading a member as full.
+**NetLet keeps one full administrator**: taking the last one off (to a role or
+off the team) is refused under a lock on the administrators' rows, counting
+those without a seat, so two full administrators demoting each other at once
+leave one. Removing a member makes the account a shopper's again and keeps
+it. **Staff notices go where a role reaches** (`staffWhoCan`: every full
+administrator and each member whose areas hold the notice's capability — a
+flagged listing to `product.review`, fraud to `fraud.view`, a sponsorship to
+`ads.review`). Every move is on the trail (`team.add`, `team.setRole`,
+`team.remove`, `team.role.create`, `.update`, `.delete`), and a member's own
+changes name who put them on the team, the chain the trail reads from
+`user.setAdmin` and now also from `team.add` and `team.setRole`.
+
+**The desk is `/admin/staff`, "NetLet team"** (`team.manage`, in the menu
+beside People; `pages/admin/Staff.tsx`, the app's `PortalStaffView`): People —
+add by an account's email or with a new account and its password, each
+person's role as a choice where it is drawn (asked first), what it opens,
+when they were added and by whom and when they last signed in, Take off the
+team (asked first) — and Roles, each with what it opens and how many hold it,
+and for a full administrator New role and Edit (both names, the areas ticked,
+`roleProblems` under each box with Save, the server's own rule). Every row
+carries what the server says the reader may do to it (`mayChange`,
+`mayRemove`, `mayMakeFull`), so the page draws only what the API accepts.
+**People shows Make and Revoke administrator to a full administrator only**;
+anybody else on it is pointed at NetLet team. **The overview is gated by the
+same areas**: a member whose role opens no catalogue (HR) is not shown the
+shelf's counts or asked for them. Closed, not broken, until 0090 is pasted:
+the desk says the team is not open yet and every administrator stays full.
+`team.test.ts` drives it through the real router against a real Postgres
+(the seat, HR's limits, the roles, the last-full race, the notices, the trail,
+the tables renamed away); `Shared/inventory/team.test.ts` the rule. The app's
+answers were recorded off that server (`demo.team.desk.admin.json`,
+`.hr.json`, `demo.inventory.me.hr.json`), `testTheTeamDeskDecodes` reads them,
+`PortalRules.can` mirrors `areasAllow` from `portal.json`'s `team`, and the CI
+photographs the owner's and HR's desk (`109-team`, `110-team-hr`).
+
 ## Managing products
 
 **Adding a product is one form and one press.** "New product" used to create a
@@ -9481,9 +9568,11 @@ words in both languages — then 1,132 KB (324 KB), the tax words in
 both languages — then 1,133 KB (324 KB), the untick note and its toast
 in both languages — then 1,142 KB (327 KB), the default address and way
 to pay in Quick settings, checkout's folded rows, the overlays' motion and the
-"could not be loaded" states in both languages — and is 1,168 KB (333 KB)
-now, Sponsored products' words in both languages (about 170 sentences each;
-the page itself is a chunk of its own) —
+"could not be loaded" states in both languages — then 1,168 KB (333 KB),
+Sponsored products' words in both languages (about 170 sentences each;
+the page itself is a chunk of its own) — and is 1,184 KB (338 KB) now,
+NetLet team's words in both languages and the areas' table, which
+`permissions.ts` imports for `can()` (the page is a chunk of its own) —
 nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one

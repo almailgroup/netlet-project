@@ -374,7 +374,7 @@ export type InvoiceListRow = InvoiceSummary & { orderReference: string };
 
 /** Every document NetLet has issued, newest first, for an administrator. */
 export async function listInvoices(actor: Actor, request: { page?: number; pageSize?: number; query?: string | null } = {}): Promise<Page<InvoiceListRow>> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "finance.view");
   const db = await getDb();
   const pageSize = clampPageSize(request.pageSize);
   if (!db) return { rows: [], total: 0, page: 1, pageSize };

@@ -270,7 +270,7 @@ export class BundleError extends Error {
  * Create or replace a bundle.
  *
  * A vendor may only bundle **their own** goods; a cross-vendor bundle is
- * NetLet's own merchandising and takes `platform.viewAll`. That is the same
+ * NetLet's own merchandising and takes `bundles.netlet`. That is the same
  * split the discount codes make, and for the same reason: a seller who could
  * put another shop's product into a discounted set would be spending money
  * that is not theirs.
@@ -290,7 +290,7 @@ export async function saveBundle(
   const db = await getDb();
   if (!db) throw new Error("Database is not configured");
 
-  if (input.vendorId === null) assertCan(actor, "platform.viewAll");
+  if (input.vendorId === null) assertCan(actor, "bundles.netlet");
   else assertCan(actor, "product.edit", input.vendorId);
 
   /*
@@ -303,7 +303,7 @@ export async function saveBundle(
   if (input.id) {
     const [current] = await db.select({ vendorId: bundles.vendorId }).from(bundles).where(eq(bundles.id, input.id)).limit(1);
     if (!current) throw new BundleError("bundle.unknown");
-    if (current.vendorId === null) assertCan(actor, "platform.viewAll");
+    if (current.vendorId === null) assertCan(actor, "bundles.netlet");
     else assertCan(actor, "product.edit", current.vendorId);
   }
 
@@ -374,7 +374,7 @@ export async function listBundles(actor: Actor): Promise<BundleView[]> {
   const db = await getDb();
   if (!db) return [];
   if (actor.kind === "admin") {
-    assertCan(actor, "platform.viewAll");
+    assertCan(actor, "bundles.netlet");
     return loadBundles(db);
   }
   /* A shopper has no store to list bundles for, and `assertCan` would refuse
@@ -392,7 +392,7 @@ export async function setBundleActive(actor: Actor, bundleId: number, active: bo
   const [row] = await db.select({ vendorId: bundles.vendorId }).from(bundles).where(eq(bundles.id, bundleId)).limit(1);
   if (!row) throw new BundleError("bundle.unknown");
 
-  if (row.vendorId === null) assertCan(actor, "platform.viewAll");
+  if (row.vendorId === null) assertCan(actor, "bundles.netlet");
   else assertCan(actor, "product.edit", row.vendorId);
 
   await db.update(bundles).set({ active }).where(eq(bundles.id, bundleId));

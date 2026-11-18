@@ -1388,7 +1388,7 @@ export async function listOrdersFor(
   actor: Actor,
   request: { page?: number; pageSize?: number } = {},
 ): Promise<Page<SellerOrderRow>> {
-  assertCan(actor, "product.view", actor.kind === "vendor" ? actor.vendorId : undefined);
+  assertCan(actor, "orders.view", actor.kind === "vendor" ? actor.vendorId : undefined);
 
   const db = await getDb();
   if (!db) return emptyPage<SellerOrderRow>(request.pageSize);
@@ -1461,7 +1461,7 @@ export async function listOrdersFor(
  * of theirs. An admin gets all of it.
  */
 export async function getOrderFor(actor: Actor, orderId: number) {
-  assertCan(actor, "product.view", actor.kind === "vendor" ? actor.vendorId : undefined);
+  assertCan(actor, "orders.view", actor.kind === "vendor" ? actor.vendorId : undefined);
 
   const db = await getDb();
   if (!db) return null;
@@ -1624,7 +1624,7 @@ async function moveLine(
   const [line] = await db.select().from(orderItems).where(eq(orderItems.id, lineId)).limit(1);
   if (!line) throw new Error("NOT_FOUND");
 
-  assertCan(actor, "stock.adjust", line.vendorId ?? undefined);
+  assertCan(actor, "orders.manage", line.vendorId ?? undefined);
   /* A line off NetLet's shelf is NetLet's to pack (4.2): the seller is not
      holding the box, so their "packed" would be a claim about NetLet's floor. */
   if (actor.kind !== "customer" && !mayMoveLine(line.centreId, actor.kind)) throw new FulfilmentRefused("fulfilment.netletShips");
@@ -1900,7 +1900,9 @@ export async function recordCashCollected(actor: Actor, orderId: number): Promis
   if (!order) return false;
 
   /* Scoped like every other order read: a vendor may only touch an order that
-     holds one of their lines, and the guard is beside the query. */
+     holds one of their lines, and the guard is beside the query. Recording the
+     cash is the order desk's act, not only reading it. */
+  assertCan(actor, "orders.manage", actor.kind === "vendor" ? actor.vendorId : undefined);
   const scope = await getOrderFor(actor, orderId);
   if (!scope) return false;
 

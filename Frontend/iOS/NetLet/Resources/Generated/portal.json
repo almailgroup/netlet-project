@@ -6,7 +6,7 @@
         {
           "href": "/admin",
           "label": "admin.overview",
-          "need": "product.view"
+          "need": "portal.home"
         }
       ]
     },
@@ -46,12 +46,12 @@
         {
           "href": "/admin/subcategory-pictures",
           "label": "subpics.title",
-          "need": "platform.configure"
+          "need": "content.manage"
         },
         {
           "href": "/admin/occasions",
           "label": "occasions.title",
-          "need": "platform.configure"
+          "need": "content.manage"
         }
       ]
     },
@@ -61,7 +61,7 @@
         {
           "href": "/admin/orders",
           "label": "admin.orders",
-          "need": "product.view"
+          "need": "orders.view"
         },
         {
           "href": "/admin/dispatch",
@@ -117,7 +117,7 @@
         {
           "href": "/admin/guides",
           "label": "guides.adminTitle",
-          "need": "platform.configure"
+          "need": "content.manage"
         },
         {
           "href": "/admin/membership",
@@ -132,7 +132,7 @@
         {
           "href": "/admin/finance",
           "label": "admin.finance",
-          "need": "platform.viewAll"
+          "need": "finance.view"
         },
         {
           "href": "/admin/payouts",
@@ -142,12 +142,15 @@
         {
           "href": "/admin/invoices",
           "label": "admin.invoices",
-          "need": "platform.viewAll"
+          "need": "finance.view"
         },
         {
           "href": "/admin/promotions",
           "label": "admin.promotions",
-          "need": "promotion.manage"
+          "need": [
+            "promotion.netlet",
+            "promotion.manage"
+          ]
         },
         {
           "href": "/admin/ads",
@@ -187,17 +190,22 @@
         {
           "href": "/admin/vendors",
           "label": "admin.vendors",
-          "need": "platform.viewAll"
+          "need": "stores.view"
         },
         {
           "href": "/admin/applications",
           "label": "admin.applications",
-          "need": "platform.manageUsers"
+          "need": "stores.manage"
+        },
+        {
+          "href": "/admin/staff",
+          "label": "team.title",
+          "need": "team.manage"
         },
         {
           "href": "/admin/people",
           "label": "admin.people",
-          "need": "platform.manageUsers"
+          "need": "stores.manage"
         },
         {
           "href": "/admin/devices",
@@ -207,12 +215,12 @@
         {
           "href": "/admin/audit",
           "label": "admin.audit",
-          "need": "platform.viewAll"
+          "need": "audit.view"
         },
         {
           "href": "/admin/fraud",
           "label": "fraud.title",
-          "need": "platform.viewAll"
+          "need": "fraud.view"
         },
         {
           "href": "/admin/subscriptions",
@@ -233,7 +241,10 @@
     "owner": 2
   },
   "needs": {
+    "portal.home": "staff",
     "product.view": "staff",
+    "orders.view": "staff",
+    "orders.manage": "staff",
     "stock.adjust": "staff",
     "vendor.viewMembers": "staff",
     "delivery.fileClaim": "staff",
@@ -257,7 +268,16 @@
     "vendor.approve",
     "product.review",
     "product.reassign",
-    "platform.viewAll",
+    "finance.view",
+    "stores.view",
+    "stores.manage",
+    "audit.view",
+    "fraud.view",
+    "promotion.netlet",
+    "bundles.netlet",
+    "content.manage",
+    "ads.review",
+    "team.manage",
     "platform.manageUsers",
     "platform.configure",
     "platform.devices",
@@ -274,6 +294,143 @@
   "grantable": [
     "vendor.setCommission"
   ],
+  "team": {
+    "areas": [
+      "catalogue",
+      "orders",
+      "delivery",
+      "customers",
+      "money",
+      "marketing",
+      "stores",
+      "team",
+      "settings"
+    ],
+    "capabilities": {
+      "catalogue": [
+        "portal.home",
+        "product.view",
+        "product.create",
+        "product.edit",
+        "product.publish",
+        "product.delete",
+        "stock.adjust",
+        "product.review",
+        "product.reassign",
+        "bundles.netlet",
+        "stores.view"
+      ],
+      "orders": [
+        "portal.home",
+        "orders.view",
+        "orders.manage",
+        "returns.handle",
+        "offer.answer",
+        "product.view",
+        "stores.view"
+      ],
+      "delivery": [
+        "portal.home",
+        "delivery.view",
+        "delivery.move",
+        "delivery.assign",
+        "delivery.fileClaim",
+        "delivery.decideClaims",
+        "fulfilment.operate",
+        "orders.view",
+        "stores.view"
+      ],
+      "customers": [
+        "portal.home",
+        "support.answer",
+        "membership.manage",
+        "fraud.view",
+        "orders.view"
+      ],
+      "money": [
+        "portal.home",
+        "finance.view",
+        "payouts.view",
+        "payouts.record",
+        "vendor.setCommission",
+        "affiliate.manage",
+        "orders.view",
+        "stores.view"
+      ],
+      "marketing": [
+        "portal.home",
+        "promotion.manage",
+        "promotion.netlet",
+        "ads.book",
+        "ads.review",
+        "content.manage",
+        "product.view",
+        "stores.view"
+      ],
+      "stores": [
+        "portal.home",
+        "stores.view",
+        "stores.manage",
+        "vendor.approve",
+        "vendor.editProfile",
+        "vendor.viewMembers",
+        "vendor.manageMembers",
+        "product.view"
+      ],
+      "team": [
+        "portal.home",
+        "team.manage"
+      ],
+      "settings": [
+        "portal.home",
+        "platform.configure",
+        "audit.view"
+      ]
+    },
+    "ready": {
+      "manager": [
+        "catalogue",
+        "orders",
+        "delivery",
+        "customers",
+        "money",
+        "marketing",
+        "stores"
+      ],
+      "finance": [
+        "money",
+        "orders"
+      ],
+      "hr": [
+        "team"
+      ],
+      "customerService": [
+        "orders",
+        "customers"
+      ],
+      "catalogue": [
+        "catalogue"
+      ],
+      "operations": [
+        "delivery",
+        "orders"
+      ],
+      "marketing": [
+        "marketing"
+      ]
+    },
+    "readyOrder": [
+      "manager",
+      "finance",
+      "hr",
+      "customerService",
+      "catalogue",
+      "operations",
+      "marketing"
+    ],
+    "nameMax": 40,
+    "maxRoles": 40
+  },
   "bulk": {
     "actions": [
       "publish",

@@ -1,0 +1,19 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "kind": "admin",
+        "userId": 2,
+        "team": {
+          "roleId": 3,
+          "slug": "hr",
+          "name": null,
+          "nameAr": null,
+          "areas": [
+            "team"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -875,6 +875,9 @@ struct PortalPeopleView: View {
         }
     }
 
+    /// A full administrator, who alone makes or revokes one (`platform.manageUsers`).
+    private var full: Bool { app.session.seller?.can("platform.manageUsers") == true }
+
     private func personCard(_ person: PortalPerson) -> some View {
         let isSelf = person.id == app.session.user?.id
         return PortalCard {
@@ -902,6 +905,13 @@ struct PortalPeopleView: View {
                     .font(.inter(13))
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
+            } else if !full {
+                /* Who administers NetLet, and with which role, is NetLet team's
+                   page; only a full administrator makes or revokes one here. */
+                if person.role == "admin", app.session.seller?.can("team.manage") == true {
+                    Button { app.open(.portal("/admin/staff")) } label: { Label(l.t("team.manageLink"), systemImage: "person.badge.key") }
+                        .buttonStyle(PortalSmallButtonStyle())
+                }
             } else if person.role == "admin" {
                 Button { asking = .revoke(person) } label: { Label(l.t("admin.revokeAdmin"), systemImage: "shield.slash") }
                     .buttonStyle(PortalSmallButtonStyle(kind: .danger))

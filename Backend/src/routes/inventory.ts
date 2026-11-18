@@ -335,8 +335,8 @@ export const inventoryRouter = router({
    *
    * The applicant's half is `protectedProcedure` and scoped by `ctx.user.id`
    * inside the data layer; the reviewer's half is guarded by
-   * `platform.manageUsers` beside its query — approving one creates a store
-   * and attaches an owner, which is exactly what that grant is for.
+   * `stores.manage` beside its query — approving one creates a store and
+   * attaches an owner, which is exactly what the Stores area is for.
    */
   /**
    * Bundles (3.3.11).
@@ -1111,17 +1111,17 @@ export const inventoryRouter = router({
   /**
    * Who reaches the admin panel.
    *
-   * Every procedure here needs `platform.manageUsers`, which no vendor rank
-   * can reach — a vendor owner runs their own team through `vendors.members`,
-   * which is a different question and a different guard.
+   * Finding accounts and putting them in stores is `stores.manage`; making a
+   * full administrator and granting one capability is `platform.manageUsers`,
+   * a full administrator's alone. No vendor rank reaches either — a vendor
+   * owner runs their own team through `vendors.members`.
    */
   /**
    * The audit trail, admin only.
    *
-   * Guarded by `platform.viewAll` rather than a capability of its own: seeing
-   * every vendor's sensitive operations is the same reach as seeing every
-   * vendor, and a separate capability would be a second thing to forget to
-   * check.
+   * Guarded by `audit.view`, which a team role opens with the Settings
+   * area: every store's and every administrator's sensitive operations,
+   * which a role that runs the catalogue or the money has no need to read.
    */
   audit: protectedProcedure
     .input(z.object({
@@ -1133,7 +1133,7 @@ export const inventoryRouter = router({
     .query(async ({ ctx, input }) => {
       const actor = await resolveActor(ctx.user);
       return guard(async () => {
-        assertCan(actor, "platform.viewAll");
+        assertCan(actor, "audit.view");
         return listAudit({
           action: input?.action as AuditAction | undefined,
           subjectType: input?.subjectType,
@@ -1258,9 +1258,8 @@ export const inventoryRouter = router({
     /**
      * Opens a store, with its owner's login if one was given.
      *
-     * Admin only — `platform.manageUsers`, the same grant that administers
-     * NetLet — because this both creates a company and hands somebody a
-     * password for it.
+     * NetLet's only — `stores.manage` — because this both creates a company
+     * and hands somebody a password for it.
      */
     create: protectedProcedure
       .input(z.object({
@@ -1326,8 +1325,8 @@ export const inventoryRouter = router({
     /**
      * Creates a login for this store and attaches it, in one call.
      *
-     * Admin only: `vendor.manageMembers` lets an owner rank and unrank their
-     * own people, but minting a NetLet account is `platform.manageUsers`.
+     * NetLet's only: `vendor.manageMembers` lets an owner rank and unrank
+     * their own people, but minting a NetLet account is `stores.manage`.
      */
     addNewMember: protectedProcedure
       .input(z.object({

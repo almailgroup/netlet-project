@@ -63,6 +63,8 @@ import { emailConfigured, noticeEmail, sendEmail, siteOrigin } from "../core/ema
 import { domainOfShopHost, isPortalPath, portalDomain, portalUrl } from "../../../Shared/portal.js";
 import { describeError } from "../core/describeError.js";
 import { getDb } from "./db.js";
+import { staffWhoCan } from "./teamSeats.js";
+import type { Capability } from "../../../Shared/inventory/permissions.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -672,12 +674,15 @@ export async function tellAccountChanged(userId: number, what: "password" | "ema
  * admin". In the inbox each reads at `/account/notifications`, and by email
  * where email is configured.
  */
-export async function notifyStaff(notice: Omit<Notice, "userId">): Promise<void> {
+export async function notifyStaff(notice: Omit<Notice, "userId">, need: Capability): Promise<void> {
   try {
     const db = await getDb();
     if (!db) return;
-    const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
-    await notifyQuietly(admins.map(admin => ({ ...notice, userId: admin.id })));
+    /* Every full administrator, and every member of NetLet's team whose role
+       reaches the desk the notice is about (`need`): a fraud alert is not
+       the catalogue's, nor a flagged listing the finance desk's. */
+    const staff = await staffWhoCan(db, need);
+    await notifyQuietly(staff.map(userId => ({ ...notice, userId })));
   } catch (error) {
     console.error(`[notices] could not tell the administrators: ${describeError(error)}`);
   }

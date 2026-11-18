@@ -47,7 +47,7 @@ export type OrderRisk = { orderId: number; risk: RiskLevel; flags: Flag[] };
  * not a separate view of which orders exist.
  */
 export async function riskForOrders(actor: Actor, orderIds: number[]): Promise<OrderRisk[]> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "fraud.view");
   const db = await getDb();
   if (!db || orderIds.length === 0) return [];
   return judgeOrders(db, orderIds);
@@ -178,7 +178,7 @@ export type ReviewWatchRow = {
  * address, who works for the store.
  */
 export async function reviewWatch(actor: Actor, limit = WATCH_LIMIT): Promise<ReviewWatchRow[]> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "fraud.view");
   const db = await getDb();
   if (!db) return [];
   return judgeReviews(db, { limit });
@@ -285,7 +285,7 @@ export type ReferralWatchRow = {
  * order that went back, a referrer bringing in more than a week can explain.
  */
 export async function referralWatch(actor: Actor, limit = WATCH_LIMIT): Promise<ReferralWatchRow[]> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "fraud.view");
   const db = await getDb();
   if (!db) return [];
   return judgeReferrals(db, { limit });
@@ -399,7 +399,7 @@ export async function alertIfRiskyOrder(orderId: number): Promise<void> {
     if (judged?.risk !== "high") return;
     const [order] = await db.select({ reference: orders.reference }).from(orders).where(eq(orders.id, orderId)).limit(1);
     if (!order) return;
-    await notifyStaff({ kind: "staff_fraud_order", params: { reference: order.reference }, link: "/admin/orders", dedupe: `fraud:order:${orderId}` });
+    await notifyStaff({ kind: "staff_fraud_order", params: { reference: order.reference }, link: "/admin/orders", dedupe: `fraud:order:${orderId}` }, "fraud.view");
   });
 }
 
@@ -414,7 +414,7 @@ export async function alertIfRiskyReview(reviewId: number): Promise<RiskLevel | 
     const [judged] = await judgeReviews(db, { limit: 1, reviewId });
     found.risk = judged?.risk ?? null;
     if (judged?.risk !== "high") return;
-    await notifyStaff({ kind: "staff_fraud_review", params: { product: judged.productTitle }, link: "/admin/fraud", dedupe: `fraud:review:${reviewId}` });
+    await notifyStaff({ kind: "staff_fraud_review", params: { product: judged.productTitle }, link: "/admin/fraud", dedupe: `fraud:review:${reviewId}` }, "fraud.view");
   });
   return found.risk;
 }
@@ -424,7 +424,7 @@ export async function alertIfRiskyReferral(referredUserId: number): Promise<void
   await quietly(`the referral of account ${referredUserId}`, async db => {
     const [judged] = await judgeReferrals(db, { limit: 1, referredId: referredUserId });
     if (judged?.risk !== "high") return;
-    await notifyStaff({ kind: "staff_fraud_referral", link: "/admin/fraud", dedupe: `fraud:referral:${judged.id}` });
+    await notifyStaff({ kind: "staff_fraud_referral", link: "/admin/fraud", dedupe: `fraud:referral:${judged.id}` }, "fraud.view");
   });
 }
 
@@ -434,7 +434,7 @@ export async function alertIfRiskyReferral(referredUserId: number): Promise<void
  * count is work, not a rolling window that never reaches zero.
  */
 export async function fraudUnseen(actor: Actor): Promise<Record<AlertDesk, number>> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "fraud.view");
   const db = await getDb();
   if (!db) return { orders: 0, watch: 0 };
   const rows = await db
@@ -447,7 +447,7 @@ export async function fraudUnseen(actor: Actor): Promise<Record<AlertDesk, numbe
 }
 
 export async function markFraudSeen(actor: Actor, desk: AlertDesk): Promise<void> {
-  assertCan(actor, "platform.viewAll");
+  assertCan(actor, "fraud.view");
   const db = await getDb();
   if (!db) return;
   await db

@@ -184,10 +184,10 @@ describe("one of the calendar's occasions", () => {
 describe("the desk", () => {
   it("is NetLet's alone", async () => {
     for (const actor of [owner(), shopper()]) {
-      await expect(desk.listOccasions(actor)).rejects.toThrow("FORBIDDEN:platform.configure");
-      await expect(desk.saveOccasion(actor, null, draft())).rejects.toThrow("FORBIDDEN:platform.configure");
-      await expect(desk.hideCalendarOccasion(actor, "winter")).rejects.toThrow("FORBIDDEN:platform.configure");
-      await expect(desk.deleteOccasion(actor, 1)).rejects.toThrow("FORBIDDEN:platform.configure");
+      await expect(desk.listOccasions(actor)).rejects.toThrow("FORBIDDEN:content.manage");
+      await expect(desk.saveOccasion(actor, null, draft())).rejects.toThrow("FORBIDDEN:content.manage");
+      await expect(desk.hideCalendarOccasion(actor, "winter")).rejects.toThrow("FORBIDDEN:content.manage");
+      await expect(desk.deleteOccasion(actor, 1)).rejects.toThrow("FORBIDDEN:content.manage");
     }
   });
 

@@ -20,7 +20,7 @@ import { privatePageMeta } from "@shared/seo";
 
 export default function AdminGuides() {
   usePageMeta(privatePageMeta("Guides"));
-  return <AdminShell need="platform.configure">{() => <List />}</AdminShell>;
+  return <AdminShell need="content.manage">{() => <List />}</AdminShell>;
 }
 
 function List() {

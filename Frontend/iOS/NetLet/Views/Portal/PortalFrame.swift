@@ -40,6 +40,7 @@ enum PortalIcons {
         "/admin/applications": "list.clipboard",
         "/admin/people": "person.crop.circle.badge.checkmark",
         "/admin/devices": "iphone",
+        "/admin/staff": "person.badge.key",
         "/admin/audit": "scroll",
         "/admin/fraud": "eye",
         "/admin/subscriptions": "repeat",

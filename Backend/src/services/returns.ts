@@ -317,9 +317,8 @@ export async function listReturns(actor: Actor, filter: { open?: boolean } = {})
 /** Requests waiting on this actor, for a tile that hides at zero. */
 export async function countWaitingReturns(actor: Actor): Promise<number> {
   if (actor.kind !== "admin" && actor.kind !== "vendor") return 0;
-  if (actor.kind === "vendor") {
-    try { assertCan(actor, "returns.handle", actor.vendorId); } catch { return 0; }
-  }
+  /* A store's rank, or a team role that opens Orders: anybody else has none waiting. */
+  try { assertCan(actor, "returns.handle", actor.kind === "vendor" ? actor.vendorId : undefined); } catch { return 0; }
   const db = await handle();
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })

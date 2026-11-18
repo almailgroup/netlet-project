@@ -27,9 +27,10 @@ import { DEMO_MODE } from "@/lib/demoMode";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { can, type Actor, type Capability } from "@shared/inventory/permissions";
+import { roleName } from "@shared/inventory/team";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { ADMIN_MENU } from "@/content/adminMenu";
-import { ArrowLeft, LogOut, BadgeCheck, Eye, BookOpen, Boxes, Building2, CalendarHeart, ClipboardCheck, ClipboardList, Coins, FileText, FolderLock, Gauge, Images, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, Rocket, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, Users, Warehouse } from "lucide-react";
+import { ArrowLeft, LogOut, BadgeCheck, Eye, BookOpen, Boxes, Building2, CalendarHeart, ClipboardCheck, ClipboardList, Coins, FileText, FolderLock, Gauge, Images, Handshake, Landmark, LayoutGrid, LifeBuoy, Megaphone, Menu, MonitorSmartphone, PackageSearch, Percent, Receipt, Repeat, Rocket, RotateCcw, ScanEye, ScrollText, ShieldAlert, ShieldCheck, Sparkles, Store, Ticket, ToggleRight, Truck, Upload, UserCog, Users, Warehouse } from "lucide-react";
 import { isActiveHref, JumpButton, MenuDrawer, PageJump, Sidebar, useJumpShortcut, useRail, type FrameGroup } from "@/components/admin/frame";
 import { CopilotPanel } from "@/components/admin/CopilotPanel";
 import { usePageEntrance } from "@/hooks/usePageEntrance";
@@ -59,9 +60,23 @@ const ROLE_LABEL: Record<string, MessageKey> = {
  * it could be.
  */
 export function roleLabelKey(actor: Actor): MessageKey {
-  if (actor.kind === "admin") return "admin.roleAdmin";
+  if (actor.kind === "admin") return actor.team ? "team.member" : "admin.roleAdmin";
   if (actor.kind === "courier") return "admin.roleCourier";
   return ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
+}
+
+/**
+ * What this person is, in words: a member of NetLet's team by their role's
+ * own name ("Finance", or what a full administrator renamed it), anybody else
+ * by `roleLabelKey`.
+ */
+export function roleLabelText(actor: Actor, t: (key: MessageKey) => string, locale: "en" | "ar"): string {
+  if (actor.kind === "admin" && actor.team) {
+    const name = roleName(actor.team, locale);
+    if ("key" in name) return t(name.key);
+    if (name.text) return name.text;
+  }
+  return t(roleLabelKey(actor));
 }
 
 /** Each menu link's icon, by the page it opens. */
@@ -98,6 +113,7 @@ const MENU_ICONS: Record<string, ReactNode> = {
   "/admin/store-documents": <FolderLock className="size-4" />,
   "/admin/vendors": <Store className="size-4" />,
   "/admin/applications": <ClipboardList className="size-4" />,
+  "/admin/staff": <UserCog className="size-4" />,
   "/admin/people": <ShieldCheck className="size-4" />,
   "/admin/devices": <MonitorSmartphone className="size-4" />,
   "/admin/audit": <ScrollText className="size-4" />,
@@ -162,7 +178,7 @@ export const FRAME_FRESH_MS = 60_000;
 
 /** The frame, mounted once round every `/admin` page (see `App`). */
 export function AdminLayout({ children }: { children: ReactNode }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [location] = useLocation();
   const enter = usePageEntrance(location);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -317,7 +333,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   /* The co-pilot reads what the shelf and the money pages read, so it is for
      an administrator and a store's people — not a delivery company's, nor an
      employee let in by one grant. */
-  const copilot = actor.kind === "admin" || (actor.kind === "vendor" && can(actor, "product.view", actor.vendorId));
+  const copilot = (actor.kind === "admin" || actor.kind === "vendor") && can(actor, "product.view", actor.kind === "vendor" ? actor.vendorId : undefined);
+  const roleLabel = roleLabelText(actor, t, locale);
   const who = user?.name || user?.email || "";
 
   return (
@@ -374,7 +391,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                 <span aria-hidden className="grid size-9 place-items-center rounded-full bg-[#0a285a] text-[13px] font-bold text-white">{initialsOf(who)}</span>
                 <span className="min-w-0 leading-tight">
                   <span className="block max-w-40 truncate text-[13px] font-semibold text-[#0a285a]">{who ? <bdi>{who}</bdi> : t("shell.account")}</span>
-                  <span className="block text-[12px] ink-muted">{t(roleLabelKey(actor))}</span>
+                  <span className="block text-[12px] ink-muted">{roleLabel}</span>
                 </span>
               </div>
               {PORTAL_SIDE ? (

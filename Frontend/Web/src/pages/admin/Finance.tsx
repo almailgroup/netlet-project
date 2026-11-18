@@ -37,7 +37,7 @@ import { toast } from "sonner";
 
 export default function AdminFinance() {
   usePageMeta(privatePageMeta("Finance"));
-  return <AdminShell need="platform.viewAll">{() => <Finance />}</AdminShell>;
+  return <AdminShell need="finance.view">{() => <Finance />}</AdminShell>;
 }
 
 function Finance() {

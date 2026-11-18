@@ -692,7 +692,7 @@ final class ApprovedRoundRuleTests: XCTestCase {
         let clerk = SellerIdentity(kind: "customer", userId: 9, vendorId: nil, role: nil, grants: ["vendor.setCommission"])
         XCTAssertTrue(clerk.inPortal)
         XCTAssertTrue(clerk.can("vendor.setCommission"))
-        XCTAssertFalse(clerk.can("platform.viewAll"))
+        XCTAssertFalse(clerk.can("finance.view"))
         XCTAssertFalse(SellerIdentity(kind: "customer", userId: 9, vendorId: nil, role: nil).inPortal)
         XCTAssertEqual(PortalPage("/admin/commission"), .commission)
     }

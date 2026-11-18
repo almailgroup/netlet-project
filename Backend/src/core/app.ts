@@ -488,12 +488,12 @@ export function createApp(): Express {
       try { fileName = decodeURIComponent(String(req.headers["x-netlet-file-name"] ?? "")) || null; } catch { fileName = null; }
       /* NetLet attaching the final contract to somebody's application (3.3.1):
          an administrator, naming the application. Refused for anybody else by
-         the service, which asks `platform.manageUsers`. */
+         the service, which asks `stores.manage`. */
       if (kind === "contract") {
         const applicationId = String(req.headers["x-netlet-application-id"] ?? "");
         if (!/^\d{1,9}$/.test(applicationId)) { res.status(400).json({ error: "documents.notFound" }); return; }
         const actor = await resolveActor(user);
-        if (!can(actor, "platform.manageUsers")) { res.status(403).json({ error: "documents.notFound" }); return; }
+        if (!can(actor, "stores.manage")) { res.status(403).json({ error: "documents.notFound" }); return; }
         const attached = await attachContract(actor, Number(applicationId), { fileName, declaredType: req.headers["content-type"] ?? "", bytes: new Uint8Array(req.body) });
         res.status(201).json(attached);
         return;
