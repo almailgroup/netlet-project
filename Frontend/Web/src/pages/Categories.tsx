@@ -18,7 +18,9 @@
  *    subcategory's picture and its name, ending on "View all", which is the
  *    whole department. A second press, or another department, folds it. One
  *    is open at a time, and which is the address's (`?dept=`, replaced rather
- *    than pushed), so a link opens the page as it was shared.
+ *    than pushed), so a link opens the page as it was shared. **The page
+ *    glides as it opens**, until the tile is just under the header and the
+ *    list has the screen under it (`lib/revealScroll.ts`).
  * 3. **A subcategory is a link to its products** (`/category/<slug>?sub=`),
  *    the department page narrowed to it, which leads with the filter chips
  *    and the stores that sell it and floats the Sort | Filter pill.
@@ -40,7 +42,7 @@ import { ChevronRight, Menu } from "lucide-react";
 import { PageSearchMissed, usePageTerm } from "@/components/layout/PageSearch";
 import { StoreMark, StoreRating, type StoreCardData } from "@/components/store/StoreCard";
 import { textsMatch } from "@shared/commerce/search";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { SubcategoryIcon } from "@/components/browse/SubcategoryIcon";
 import { DepartmentArt } from "@/components/browse/DepartmentArt";
@@ -52,6 +54,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";
 import { appPath } from "@/lib/basePath";
+import { glideTileIntoView } from "@/lib/revealScroll";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
 import { ALL_DEPARTMENTS, DEPARTMENTS, type Department } from "@shared/commerce/departments";
@@ -84,13 +87,19 @@ export default function Categories() {
    * layout shift of 0.05 on a wide screen. Any press after that unfolds.
    */
   const [arrivedOpen, setArrivedOpen] = useState(() => opened?.slug ?? null);
+  const grid = useRef<HTMLUListElement>(null);
+  /* The department a press has just opened, which the page glides up to, and where its tile was on the screen. */
+  const pressed = useRef<{ slug: string; top: number } | null>(null);
 
   const toggle = (slug: string) => {
     setArrivedOpen(null);
     if (opened?.slug === slug) {
+      pressed.current = null;
       setClosing(slug);
       navigate("/categories", { replace: true });
     } else {
+      const top = grid.current?.querySelector(`[data-slug="${slug}"]`)?.getBoundingClientRect().top ?? 0;
+      pressed.current = { slug, top };
       setClosing(null);
       navigate(`/categories?dept=${slug}`, { replace: true });
     }
@@ -103,20 +112,40 @@ export default function Categories() {
   const shownIndex = shown ? tiles.indexOf(shown.slug) : -1;
   const listAfter = shownIndex < 0 ? -1 : Math.min(tiles.length - 1, Math.floor(shownIndex / columns) * columns + columns - 1);
 
-  /* An opened department whose list starts low on the screen is brought up
-     to its tile, so its subcategories are in view. */
-  const grid = useRef<HTMLUListElement>(null);
-  useEffect(() => {
+  /*
+   * A press on a department glides the page until its tile is just under the
+   * header, and its subcategories unfold into the screen under it — every
+   * press, on the owner's word (`glideTileIntoView`). A page that arrived
+   * with one open (a home tile, a shared link, Back) is left where it is
+   * unless the list starts low on the screen: Back has put the page back
+   * where the shopper had it, and moving it again would undo that. That is
+   * asked once Back's own restore has run (`ScrollMemory`, a task later).
+   *
+   * Before the paint, the tile pressed is held where it was on the screen:
+   * another department's list open above it goes in the same render, and
+   * the page shrank under the shopper by that list's height — a jump of
+   * several hundred pixels at the press, before the glide had begun.
+   */
+  useLayoutEffect(() => {
     if (!opened) return;
+    const tileOf = () => grid.current?.querySelector<HTMLElement>(`[data-slug="${opened.slug}"]`) ?? null;
+    const press = pressed.current;
+    if (press?.slug === opened.slug) {
+      pressed.current = null;
+      const tile = tileOf();
+      if (!tile) return;
+      const moved = tile.getBoundingClientRect().top - press.top;
+      if (moved) window.scrollTo({ top: window.scrollY + moved, behavior: "instant" });
+      return glideTileIntoView(tile);
+    }
+    let stop: (() => void) | undefined;
     const timer = window.setTimeout(() => {
-      const tile = grid.current?.querySelector<HTMLElement>(`[data-slug="${opened.slug}"]`);
+      const tile = tileOf();
       const list = document.getElementById("category-panel");
-      if (!tile || !list) return;
-      if (list.getBoundingClientRect().top < window.innerHeight * 0.7) return;
-      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      tile.scrollIntoView({ block: "start", behavior: still ? "instant" : "smooth" });
+      if (!tile || !list || list.getBoundingClientRect().top < window.innerHeight * 0.7) return;
+      stop = glideTileIntoView(tile);
     }, 60);
-    return () => window.clearTimeout(timer);
+    return () => { window.clearTimeout(timer); stop?.(); };
   }, [opened]);
 
   const countLine = (count: number) =>
@@ -127,7 +156,9 @@ export default function Categories() {
       <Breadcrumbs trail={[{ label: t("nav.categories") }]} />
       <PageHeading title={t("nav.categories")} />
       {term ? <PageResults term={term} countLine={countLine} pictures={pictures.data} /> : (
-        <ul ref={grid} aria-label={t("nav.categories")} className="grid grid-cols-3 gap-x-3 gap-y-5 sm:gap-x-4 lg:grid-cols-6 lg:gap-x-5">
+        /* No anchoring inside the grid: a list closing above the tile pressed
+           made the browser pull the page back a step before the glide began. */
+        <ul ref={grid} aria-label={t("nav.categories")} className="grid grid-cols-3 gap-x-3 gap-y-5 [overflow-anchor:none] sm:gap-x-4 lg:grid-cols-6 lg:gap-x-5">
           {tiles.map((slug, index) => {
             const department = DEPARTMENTS.find(entry => entry.slug === slug) ?? null;
             return [

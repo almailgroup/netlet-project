@@ -8526,8 +8526,37 @@ the page on it, a subcategory found its products. **The list's unfolding is
 its height** (`.cat-unfold`: a grid row from `0fr` to `1fr` over 300ms, so
 what is below moves with it, and the same folding back before it leaves; a
 cut under reduced motion; the app's a spring with an opacity), and its rows
-rise in 40ms apart (`.cat-rise`, `RiseIn`). An opened department whose list
-starts low on the screen is scrolled up to its tile. Measured at 320, 390
+rise in 40ms apart (`.cat-rise`, `RiseIn`). **Every press on a department
+glides the page until its tile is just under the header, on the owner's
+word** ("when you tap on a category, it should automatically scroll down
+showing the sub categories … when you tap on any category"), so its list
+unfolds into the screen rather than past the tab bar. It scrolled only when
+the list started below 70% of the screen, so a department in the first rows
+unfolded half off a phone's foot and the page did nothing. On the web
+(`lib/revealScroll.ts`) the glide is driven frame by frame for 420ms, never
+`scrollIntoView`: while the list unfolds the page is shorter than it will
+be, and a smooth scroll to a place past its foot is cut short where the page
+ends at that moment. Each frame asks where the tile is now and steps toward
+it, eased out; a wheel, a touch or a key stops it; reduced motion jumps. Two
+things that only a frame-by-frame trail showed: **another department's list
+open above the one pressed goes in the same render**, and the page shrank
+under the shopper by its height — the pressed tile is held where it was on
+the screen in a layout effect before the paint, then glides; and **the
+browser's scroll anchoring pulled the page back a step at the press**, so
+the grid carries `overflow-anchor: none`. A page that arrives with one open
+(a home tile, a shared link, Back) still moves only when the list starts
+low, and only after Back's own restore has run, so Back keeps its place. In
+the app (`DepartmentBrowser`) a press, and a department opened from a home
+tile, scrolls to a mark above its row by the pinned search row's height
+(`RowMark`, placed by its alignment, which is layout), with `.smooth(0.45)`
+and none under Reduce Motion; `CategoriesUITests` presses a low department,
+a first-row one and one below an open list, and checks each lands under the
+search row with its first subcategory above the tab bar. The web's glide was
+walked at 320, 390 and 1440 in both languages and under reduced motion
+(`.scratch/cat-glide.mjs`, reading the tile's place every frame): every
+press lands the tile 12px under the header or the page at its foot, the tile
+moves one way only, Back returns to where it was, axe clean and no sideways
+scroll. Measured at 320, 390
 and 1440 in both languages (`.scratch/cat-flow.mjs`): ten rows under
 Electronics' row and eight under Style's, a second press folding them, a row
 landing on its products with the filter chips, then two 84px store circles

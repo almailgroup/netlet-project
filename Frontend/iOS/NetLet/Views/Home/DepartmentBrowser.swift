@@ -48,36 +48,45 @@ struct DepartmentBrowser: View {
     var body: some View {
         let departments = ReferenceData.shared.departments
         let rows = Self.rows(departments.map(\.slug) + [Self.all], columns)
-        VStack(alignment: .leading, spacing: 18) {
-            ForEach(rows, id: \.self) { row in
-                TileGrid(spacing: 12, columns: columns) {
-                    ForEach(row, id: \.self) { slug in
-                        if let department = departments.first(where: { $0.slug == slug }) {
-                            tile(department)
-                        } else {
-                            allTile
+        ScrollViewReader { proxy in
+            VStack(alignment: .leading, spacing: 18) {
+                ForEach(rows, id: \.self) { row in
+                    TileGrid(spacing: 12, columns: columns) {
+                        ForEach(row, id: \.self) { slug in
+                            if let department = departments.first(where: { $0.slug == slug }) {
+                                tile(department, proxy: proxy)
+                            } else {
+                                allTile
+                            }
                         }
                     }
-                }
-                if let opened, row.contains(opened), let department = departments.first(where: { $0.slug == opened }) {
-                    subcategoryList(department)
-                        .transition(still ? .opacity : .asymmetric(insertion: .opacity.combined(with: .offset(y: -8)), removal: .opacity))
+                    .background(alignment: .top) { RowMark(id: Self.mark(row)) }
+                    if let opened, row.contains(opened), let department = departments.first(where: { $0.slug == opened }) {
+                        subcategoryList(department)
+                            .transition(still ? .opacity : .asymmetric(insertion: .opacity.combined(with: .offset(y: -8)), removal: .opacity))
+                    }
                 }
             }
+            .task {
+                if let kept = try? await app.services.api.call(API.subcategoryPictures) { pictures = kept }
+            }
+            .onAppear { applyPreset(proxy) }
+            .onChange(of: app.categoriesOpen) { applyPreset(proxy) }
         }
-        .task {
-            if let kept = try? await app.services.api.call(API.subcategoryPictures) { pictures = kept }
-        }
-        .onAppear(perform: applyPreset)
-        .onChange(of: app.categoriesOpen) { applyPreset() }
     }
 
-    /// A department opened from elsewhere: a search result on this page, or
-    /// the screenshots' `categories:<slug>`.
-    private func applyPreset() {
+    /// A department opened from elsewhere: a home tile, a search result on
+    /// this page, or the screenshots' `categories:<slug>` — open, and brought
+    /// up under the search row once the tab is on screen, as a press would.
+    private func applyPreset(_ proxy: ScrollViewProxy) {
         guard let preset = app.categoriesOpen else { return }
         app.categoriesOpen = nil
-        opened = preset.split(separator: "/").first.map(String.init)
+        guard let slug = preset.split(separator: "/").first.map(String.init) else { return }
+        opened = slug
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            reveal(slug, proxy)
+        }
     }
 
     /// The slugs in rows of `count`, the last row as long as what is left.
@@ -85,18 +94,46 @@ struct DepartmentBrowser: View {
         stride(from: 0, to: slugs.count, by: max(count, 1)).map { Array(slugs[$0..<min($0 + count, slugs.count)]) }
     }
 
-    private func toggle(_ slug: String) {
-        withAnimation(opening) { opened = opened == slug ? nil : slug }
+    /// Opens or folds a department. **Opening one glides the page until its
+    /// row is just under the search row, on the owner's word** ("when you tap
+    /// on a category, it should automatically scroll down showing the sub
+    /// categories … when you tap on any category"): its subcategories unfold
+    /// into the screen under it rather than past the tab bar. The scroll is
+    /// asked for a turn later, once the list is in the layout — and a list
+    /// another department had open above has gone from it.
+    private func toggle(_ slug: String, proxy: ScrollViewProxy) {
+        let opens = opened != slug
+        withAnimation(opening) { opened = opens ? slug : nil }
+        guard opens else { return }
+        Task { @MainActor in reveal(slug, proxy) }
     }
+
+    /// Brings the row holding `slug` up under the search row.
+    private func reveal(_ slug: String, _ proxy: ScrollViewProxy) {
+        let slugs = ReferenceData.shared.departments.map(\.slug) + [Self.all]
+        guard let row = Self.rows(slugs, columns).first(where: { $0.contains(slug) }) else { return }
+        let glide: Animation? = still ? nil : .smooth(duration: 0.45)
+        withAnimation(glide) {
+            proxy.scrollTo(Self.mark(row), anchor: .top)
+        }
+    }
+
+    /// The id of a row's mark (`RowMark`), by its first department.
+    private static func mark(_ row: [String]) -> String { "categories-row-\(row.first ?? "")" }
+
+    /// How far above a row its mark sits: the pinned search row (64 points,
+    /// `SearchRow`) and a little room, so scrolling the mark to the top of
+    /// the page leaves the row's tiles just under the search row.
+    fileprivate static let clearance: CGFloat = 64 + 12
 
     // MARK: The tiles
 
     /// One department as its picture with its name under it, which opens and
     /// closes its subcategories.
-    private func tile(_ department: Department) -> some View {
+    private func tile(_ department: Department, proxy: ScrollViewProxy) -> some View {
         let open = opened == department.slug
         return Button {
-            toggle(department.slug)
+            toggle(department.slug, proxy: proxy)
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 face(department.slug, open: open)
@@ -217,6 +254,21 @@ struct DepartmentBrowser: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(spoken ?? title)
         .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// A point `DepartmentBrowser.clearance` above a row of tiles, which the page
+/// scrolls to the top: placed there by its alignment, which is layout — so the
+/// row comes to rest just under the pinned search row rather than behind it.
+private struct RowMark: View {
+    let id: String
+
+    var body: some View {
+        Color.clear
+            .frame(width: 1, height: 1)
+            .alignmentGuide(.top) { $0[.top] + DepartmentBrowser.clearance }
+            .id(id)
+            .accessibilityHidden(true)
     }
 }
 
