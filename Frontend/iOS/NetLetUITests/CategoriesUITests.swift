@@ -25,7 +25,7 @@ final class CategoriesUITests: XCTestCase {
         let app = launch()
         assertPressReveals("Electronics", firstRow: "Mobile phones", movesAtLeast: 20, in: app)
         // Electronics' list is open above the Baby tiles now; Baby is under it.
-        let baby = onScreen(app.buttons["Baby"], in: app, scrolling: true)
+        let baby = onScreen(buttons("Baby", in: app), in: app, scrolling: true)
         assertPressReveals("Baby", firstRow: "Diapers & wipes", movesAtLeast: 0, in: app, tile: baby)
     }
 
@@ -35,7 +35,7 @@ final class CategoriesUITests: XCTestCase {
     /// under the search row, `movesAtLeast` points higher than it was, and
     /// its first subcategory row is on the screen above the tab bar.
     private func assertPressReveals(_ name: String, firstRow: String, movesAtLeast distance: CGFloat, in app: XCUIApplication, tile given: XCUIElement? = nil, file: StaticString = #filePath, line: UInt = #line) {
-        guard let tile = given ?? onScreen(app.buttons[name], in: app, scrolling: false) else {
+        guard let tile = given ?? onScreen(buttons(name, in: app), in: app, scrolling: false) else {
             return XCTFail("No \(name) tile on the screen.", file: file, line: line)
         }
         let before = tile.frame.minY
@@ -61,8 +61,13 @@ final class CategoriesUITests: XCTestCase {
 
     /// Where the pinned search row ends: its field's foot and the row's own padding.
     private func searchRowFoot(in app: XCUIApplication) -> CGFloat {
-        let field = app.descendants(matching: .any)["Search categories and stores"].firstMatch
+        let field = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Search categories and stores")).firstMatch
         return field.exists ? field.frame.maxY + 10 : app.windows.firstMatch.frame.minY + 120
+    }
+
+    /// Every button whose name is `name` — a tile's words, the art being hidden.
+    private func buttons(_ name: String, in app: XCUIApplication) -> XCUIElementQuery {
+        app.buttons.matching(NSPredicate(format: "label == %@", name))
     }
 
     /// The first match of `query` a finger can press, swiping the page up a

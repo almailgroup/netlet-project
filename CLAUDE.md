@@ -11576,7 +11576,10 @@ decimal (51.1) where the departments' are whole, and the model read both as
 representable" — read the shared rule's rounding, not the field's name. And
 **an Apple class is read from its headers, not remembered**: the catalogues'
 first build asked `PDFDocument.isUnlocked`, which does not exist (it is
-`isLocked`), and lost that push's TestFlight build. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
+`isLocked`), and lost that push's TestFlight build. And **`app.buttons["Baby"]` is an element, not a query**: a UI test helper that takes an
+`XCUIElementQuery` is handed `app.buttons.matching(NSPredicate(format: "label == %@", name))`,
+and `.firstMatch` is asked of a query — the Categories glide's first push
+lost its build to the first. None of these shows anywhere but on macOS, so a push is not done until its iOS run is
 green. After the tests the same job installs the app and photographs
 every screen the workflow names, the portal's desks included, in both languages (`-NetLetOpen`, `-NetLetDemoAs shopper`,
 Debug only) as the `ios-previews` artifact. Run by hand with `share`, it also
