@@ -8547,11 +8547,18 @@ the grid carries `overflow-anchor: none`. A page that arrives with one open
 (a home tile, a shared link, Back) still moves only when the list starts
 low, and only after Back's own restore has run, so Back keeps its place. In
 the app (`DepartmentBrowser`) a press, and a department opened from a home
-tile, scrolls to a mark above its row by the pinned search row's height
-(`RowMark`, placed by its alignment, which is layout), with `.smooth(0.45)`
-and none under Reduce Motion; `CategoriesUITests` presses a low department,
-a first-row one and one below an open list, and checks each lands under the
-search row with its first subcategory above the tab bar. The web's glide was
+tile, scrolls the row's mark — a view of no height at the row's top, in the
+layout — to an anchor the search row's height and 12 under the top of what
+the page shows (`revealAnchor`: that distance as a fraction of the page's
+visible height, which `ShopPage` hands down as `pageViewport`), with
+`.smooth(0.45)` and none under Reduce Motion. **The first build put the mark
+above the row with an alignment guide in the row's background and scrolled
+it to the top; the scroll took it to be at the row's top**, and every row
+landed under the search row at the safe area's top (iOS run 295) — a scroll
+target is placed by where it is in the layout, never by a guide or an
+offset. `CategoriesUITests` presses a low department, a first-row one and
+one below an open list, and checks each lands under the search row with its
+first subcategory above the tab bar. The web's glide was
 walked at 320, 390 and 1440 in both languages and under reduced motion
 (`.scratch/cat-glide.mjs`, reading the tile's place every frame): every
 press lands the tile 12px under the header or the page at its foot, the tile

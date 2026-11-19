@@ -59,10 +59,15 @@ final class CategoriesUITests: XCTestCase {
         XCTAssertLessThan(row.frame.maxY, tabBarTop, "\(firstRow) is under the tab bar. \(note)", file: file, line: line)
     }
 
-    /// Where the pinned search row ends: its field's foot and the row's own padding.
+    /// Where the pinned search row ends. The element named by the field's
+    /// words is the text inside it, shorter than the row, so its foot is not
+    /// the row's: the row is 64 points (`SearchRow.height`) with the field in
+    /// its middle, so its foot is half that under the words' middle. Taken
+    /// from the words' foot plus the row's padding, the first run read 115
+    /// where the row ends at 126.
     private func searchRowFoot(in app: XCUIApplication) -> CGFloat {
         let field = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Search categories and stores")).firstMatch
-        return field.exists ? field.frame.maxY + 10 : app.windows.firstMatch.frame.minY + 120
+        return field.exists ? field.frame.midY + 64 / 2 : app.windows.firstMatch.frame.minY + 126
     }
 
     /// Every button whose name is `name` — a tile's words, the art being hidden.

@@ -34,6 +34,8 @@ struct DepartmentBrowser: View {
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
     @Environment(\.horizontalSizeClass) private var sizeClass
+    /// How tall the page shows, for the scroll's anchor (`revealAnchor`).
+    @Environment(\.pageViewport) private var viewport
 
     /// The last tile, which opens every department's page rather than a list.
     private static let all = "all"
@@ -51,16 +53,24 @@ struct DepartmentBrowser: View {
         ScrollViewReader { proxy in
             VStack(alignment: .leading, spacing: 18) {
                 ForEach(rows, id: \.self) { row in
-                    TileGrid(spacing: 12, columns: columns) {
-                        ForEach(row, id: \.self) { slug in
-                            if let department = departments.first(where: { $0.slug == slug }) {
-                                tile(department, proxy: proxy)
-                            } else {
-                                allTile
+                    VStack(alignment: .leading, spacing: 0) {
+                        // The row's mark: nothing, at the row's top, in the
+                        // layout itself, so where the scroll finds it is where
+                        // the row is (`reveal`).
+                        Color.clear
+                            .frame(height: 0)
+                            .id(Self.mark(row))
+                            .accessibilityHidden(true)
+                        TileGrid(spacing: 12, columns: columns) {
+                            ForEach(row, id: \.self) { slug in
+                                if let department = departments.first(where: { $0.slug == slug }) {
+                                    tile(department, proxy: proxy)
+                                } else {
+                                    allTile
+                                }
                             }
                         }
                     }
-                    .background(alignment: .top) { RowMark(id: Self.mark(row)) }
                     if let opened, row.contains(opened), let department = departments.first(where: { $0.slug == opened }) {
                         subcategoryList(department)
                             .transition(still ? .opacity : .asymmetric(insertion: .opacity.combined(with: .offset(y: -8)), removal: .opacity))
@@ -114,17 +124,30 @@ struct DepartmentBrowser: View {
         guard let row = Self.rows(slugs, columns).first(where: { $0.contains(slug) }) else { return }
         let glide: Animation? = still ? nil : .smooth(duration: 0.45)
         withAnimation(glide) {
-            proxy.scrollTo(Self.mark(row), anchor: .top)
+            proxy.scrollTo(Self.mark(row), anchor: Self.revealAnchor(viewport: viewport))
         }
     }
 
-    /// The id of a row's mark (`RowMark`), by its first department.
+    /// The id of a row's mark, by its first department.
     private static func mark(_ row: [String]) -> String { "categories-row-\(row.first ?? "")" }
 
-    /// How far above a row its mark sits: the pinned search row (64 points,
-    /// `SearchRow`) and a little room, so scrolling the mark to the top of
-    /// the page leaves the row's tiles just under the search row.
-    fileprivate static let clearance: CGFloat = 64 + 12
+    /// How far under the top of what the page shows a pressed row comes to
+    /// rest: the pinned search row (`SearchRow.height`) and a little room.
+    static var clearance: CGFloat { SearchRow.height + 12 }
+
+    /// The scroll's anchor that leaves a row's mark `clearance` under the top
+    /// of what the page shows. A scroll anchor names the same point of the
+    /// view and of the page, and the mark has no height, so the point is the
+    /// mark itself and a fraction of the page's height. **The first build
+    /// scrolled a mark placed `clearance` above the row by an alignment guide
+    /// in the row's background to the top, and the scroll took the mark to be
+    /// at the row's top**: every row landed under the search row, at the
+    /// screen's safe-area top (`CategoriesUITests`, iOS run 295). With no
+    /// height to go by, it is the top.
+    static func revealAnchor(viewport: CGFloat) -> UnitPoint {
+        guard viewport > clearance else { return .top }
+        return UnitPoint(x: 0.5, y: clearance / viewport)
+    }
 
     // MARK: The tiles
 
@@ -254,21 +277,6 @@ struct DepartmentBrowser: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(spoken ?? title)
         .accessibilityAddTraits(.isButton)
-    }
-}
-
-/// A point `DepartmentBrowser.clearance` above a row of tiles, which the page
-/// scrolls to the top: placed there by its alignment, which is layout — so the
-/// row comes to rest just under the pinned search row rather than behind it.
-private struct RowMark: View {
-    let id: String
-
-    var body: some View {
-        Color.clear
-            .frame(width: 1, height: 1)
-            .alignmentGuide(.top) { $0[.top] + DepartmentBrowser.clearance }
-            .id(id)
-            .accessibilityHidden(true)
     }
 }
 

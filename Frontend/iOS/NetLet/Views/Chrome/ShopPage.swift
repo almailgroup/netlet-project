@@ -126,6 +126,7 @@ struct ShopPage<Content: View>: View {
                         Section {
                             PageTopMarker()
                             content()
+                                .environment(\.pageViewport, screen.size.height)
                         } header: {
                             if header { SearchRow(back: logo ? nil : back, reach: logoReaches ? 0 : statusBar, pageSearch: pageSearch) }
                         }
@@ -270,6 +271,21 @@ private enum ShopPageTop {
     /// How far down the logo row's 58 points the search row takes over the
     /// status bar's glass: past the logo and the location, into the padding.
     static let logoHandover: CGFloat = 50
+}
+
+/// How tall the part of a shop page that shows is: the scroll view's height
+/// inside the safe areas, as `ShopPage` measures it. The part of the page that
+/// scrolls something to a place on the screen reads it (`DepartmentBrowser`),
+/// because a scroll anchor between the top and the foot is a fraction of it.
+private struct PageViewportKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+extension EnvironmentValues {
+    var pageViewport: CGFloat {
+        get { self[PageViewportKey.self] }
+        set { self[PageViewportKey.self] = newValue }
+    }
 }
 
 /// Nothing behind the tab bar but the page itself, on the owner's word: on
@@ -426,6 +442,9 @@ struct LogoRow: View {
 /// typed the microphone and the camera stand where clear would, each only
 /// where it works, and a hairline keeps them apart from the navy search disc.
 struct SearchRow: View {
+    /// How tall the row is: the 44-point field and 10 above and below it.
+    static let height: CGFloat = 44 + 2 * 10
+
     /// A pushed screen's way back, when there is no logo row to carry it.
     var back: (() -> Void)?
     /// How far its glass reaches up behind the status bar — the status bar's
