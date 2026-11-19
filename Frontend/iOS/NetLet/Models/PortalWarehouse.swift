@@ -214,6 +214,8 @@ struct BundleRow: Decodable, Identifiable, Hashable, Sendable {
 
     let id: Int
     let name: String
+    /// The store the set belongs to, or nil for one of NetLet's own.
+    let vendorId: Int?
     let bundlePrice: Money
     let separately: Money
     let active: Bool

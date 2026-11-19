@@ -28,13 +28,22 @@ struct PortalBundlesView: View {
     @Environment(LanguageSettings.self) private var l
 
     private var separately: Money { Money(fils: members.reduce(0) { $0 + $1.price.fils * $1.quantity }) }
+    /// What this person may change, by the capability each save asks: a
+    /// store's own sets are `product.edit` for that store, NetLet's are
+    /// `bundles.netlet`. A team role that only reads the catalogue reads.
+    private func mayChange(_ vendorId: Int?) -> Bool {
+        guard let seller = app.session.seller else { return false }
+        if let vendorId { return seller.can("product.edit", vendorId: vendorId) }
+        return seller.can("bundles.netlet")
+    }
+    private var mayMake: Bool { mayChange(app.session.seller?.kind == "vendor" ? app.session.seller?.ownVendor : nil) }
     private var priced: Money? { UploadPlan.isAmount(price.trimmingCharacters(in: .whitespaces)) ? Money(amount: price.trimmingCharacters(in: .whitespaces)) : nil }
 
     var body: some View {
         let saving = priced.map { separately - $0 }
         let noSaving = members.count >= 2 && saving.map { $0.fils <= 0 } == true
         PortalScreen(title: l.t("admin.bundles"), intro: l.t("admin.bundlesNote"), refresh: { await load() }) {
-            PortalCard {
+            if mayMake { PortalCard {
                 Text(l.t("admin.bundleNew")).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
                 LabeledField(label: l.t("admin.bundleName"), text: Binding(get: { name }, set: { name = String($0.prefix(200)) }))
                 LabeledField(label: l.t("admin.bundlePrice"), text: Binding(get: { price }, set: { price = $0.filter { ("0"..."9").contains($0) || $0 == "." } }),
@@ -51,7 +60,7 @@ struct PortalBundlesView: View {
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(self.saving || name.trimmingCharacters(in: .whitespaces).isEmpty || priced == nil || members.count < 2 || noSaving)
-            }
+            } }
             PortalSectionHeading(title: l.t("admin.bundleListTitle"))
             if let bundles {
                 if bundles.isEmpty {
@@ -151,12 +160,14 @@ struct PortalBundlesView: View {
             ForEach(Array(bundle.members.enumerated()), id: \.offset) { _, member in
                 Text("· \(member.productTitle)").font(.inter(13)).foregroundStyle(Brand.body)
             }
-            Button(l.t(bundle.active ? "admin.bundleTakeOff" : "admin.bundlePutOn")) {
-                Task {
-                    if await app.attempt(fallback: "admin.saveFailed", { _ = try await app.services.api.call(API.setBundleActive, .init(id: bundle.id, active: !bundle.active)) }) { await load() }
+            if mayChange(bundle.vendorId) {
+                Button(l.t(bundle.active ? "admin.bundleTakeOff" : "admin.bundlePutOn")) {
+                    Task {
+                        if await app.attempt(fallback: "admin.saveFailed", { _ = try await app.services.api.call(API.setBundleActive, .init(id: bundle.id, active: !bundle.active)) }) { await load() }
+                    }
                 }
+                .buttonStyle(PortalSmallButtonStyle(kind: bundle.active ? .danger : .secondary))
             }
-            .buttonStyle(PortalSmallButtonStyle(kind: bundle.active ? .danger : .secondary))
         }
     }
 

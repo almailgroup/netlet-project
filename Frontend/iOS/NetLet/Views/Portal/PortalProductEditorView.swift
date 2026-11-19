@@ -133,8 +133,9 @@ struct PortalProductEditorView: View {
             section("commission", l.t("admin.productCommission")) {
                 CommissionSection(product: product) { await reload() }
             }
-        } else if mayEdit {
-            /* A store asking for a rate of its own (3.3.2); NetLet decides. */
+        } else if mayEdit && actor?.kind == "vendor" {
+            /* A store asking for a rate of its own (3.3.2); NetLet decides.
+               A store's alone: NetLet's own people set a rate or do not. */
             section("propose", l.t("commission.proposeTitle")) {
                 ProposeCommissionSection(product: product, mayStoreWide: actor?.can("vendor.editProfile", vendorId: product.vendorId) == true)
             }

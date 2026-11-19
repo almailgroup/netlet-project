@@ -11689,6 +11689,13 @@ is the walkthrough. Data-layer tests run against a real
 Postgres in-process via PGlite, applying the generated migration verbatim, so
 `ON CONFLICT` arbiters and enum types are genuinely exercised.
 
+**A component can be rendered in a test** with `react-dom/server`'s
+`renderToStaticMarkup` inside wouter's `<Router ssrPath="/">`
+(`CardGallery.test.ts`, with `createElement` so the file stays `.ts`).
+`vitest.config.ts` uses React's automatic JSX runtime for that, as the Vite
+build does, and a component that reads a provider (`useTranslation` reads
+`CustomerContext`) needs the provider round it or the hook mocked.
+
 **`docs/schema-audit.sql` is the other half: did it all land?** One read-only
 statement, generated from the latest Drizzle snapshot by
 `Backend/scripts/build-schema-audit.mjs`, that names every table, column, NOT NULL,

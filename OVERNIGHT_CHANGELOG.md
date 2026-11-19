@@ -107,7 +107,28 @@ heading, which CLAUDE.md asks against.
     shopper at 390 and 320 in both languages and at 1440 in Arabic: **0
     findings**.
 
-### Queued
+## Morning wrap-up — 08:20 UTC
 
-- Push the app's half of 4 and 5 once TestFlight 292 is up.
-- The two dictionary-touching visual fixes above, after the same run.
+iOS 292 and TestFlight 270 were green, so the app's half could go:
+
+17. **The app's half of 4 and 5.** Bundles draws the new-set form and Take
+    off only for who may save them (a store's own sets for its people,
+    NetLet's for `bundles.netlet`), and the product editor's commission
+    proposal is a store's alone — the website's rule from 4 and 5.
+18. **A card with no photo said "Image processing"**, a status report
+    about something that was not happening. It draws a bag on the card's
+    white, as the bag's own lines do, and the key is gone from the
+    dictionary. A test renders the card with no photo and with one
+    (`CardGallery.test.ts`); it failed on the old card for the right
+    reason. Rendering a component in a test needed React's own JSX runtime
+    in `vitest.config.ts`, which the Vite build already used.
+
+### Left for the owner
+
+- **The home page's app section** (switched off by default, `appBanner`)
+  still has an eyebrow, a slogan for a heading and a button that only
+  says the app is not out yet. CLAUDE.md asks against all three, but what
+  it should say depends on when the app is on the App Store, so it was
+  left as it is: with the switch off, no shopper sees it.
+- Task 136, the iOS home page that sometimes ignores a drag after launch,
+  is still open; tonight's runs did not see it.

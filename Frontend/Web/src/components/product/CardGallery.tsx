@@ -26,11 +26,10 @@
  * preview and on the product page. So the arrows take no focus — not even from
  * the click that presses them — and the dots are drawn for the eye alone.
  */
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { Thumb } from "@/components/product/Thumb";
-import { useTranslation } from "@/hooks/useTranslation";
 import { useLongPress } from "@/hooks/useLongPress";
 import type { Image } from "@shared/commerce/types";
 
@@ -54,7 +53,6 @@ export function CardGallery({ images, href, title, frameClassName, photoClassNam
    */
   dotsAtStart?: boolean;
 }) {
-  const { t } = useTranslation();
   const hold = useLongPress(onLongPress);
   const photos = images.slice(0, CARD_PHOTOS);
   const many = photos.length > 1;
@@ -113,7 +111,10 @@ export function CardGallery({ images, href, title, frameClassName, photoClassNam
                 : <div className={`w-full ${photoClassName}`} />}
             </div>
           )) : (
-            <div className={`grid place-items-center px-3 text-center text-[12px] font-semibold ink-muted ${photoClassName}`}>{t("product.imageProcessing")}</div>
+            /* A product with no photo yet is a bag on the card's white, as
+               the bag's own lines draw one: it said "Image processing",
+               which is a status report, and nothing was processing. */
+            <Thumb src={null} alt="" className={`w-full ${photoClassName}`} fallbackClassName="text-[#8aa0bd]" icon={<ShoppingBag className="size-[22%] max-h-12 min-h-6 min-w-6 max-w-12" />} />
           )}
         </div>
       </Link>

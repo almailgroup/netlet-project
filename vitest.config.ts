@@ -12,6 +12,10 @@ export default defineConfig({
       "@assets": path.resolve(templateRoot, "attached_assets"),
     },
   },
+  /* React's own JSX runtime, as the Vite build uses: without it esbuild
+     writes React.createElement, and a component a test renders fails with
+     "React is not defined", since no page imports React for JSX. */
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
     // Every layer, so a test cannot be silently skipped by living beside the
