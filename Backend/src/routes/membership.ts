@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "../../../Shared/commerce/membership.js";
-import { MembershipRefused, endMembership, getTerms, grantMembership, listMemberships, myMembership, programmeReport, setTerms } from "../services/membership.js";
+import { MembershipRefused, buyMembership, endMembership, getTerms, grantMembership, listMemberships, myMembership, programmeReport, setPointsPrice, setTerms } from "../services/membership.js";
 import { resolveActor } from "../services/inventory.js";
 import { rowId } from "../core/schemas.js";
 import { protectedProcedure, router } from "../core/trpc.js";
@@ -47,4 +47,15 @@ export const membershipRouter = router({
     .mutation(async ({ ctx, input }) => guard(async () => setTerms(await resolveActor(ctx.user), { freeDeliveryOver: input.freeDeliveryOver || null }))),
 
   report: protectedProcedure.query(async ({ ctx }) => guard(async () => programmeReport(await resolveActor(ctx.user)))),
+
+  /* Buy whole months with the account's own NetLet points (4.1). Over the
+     rule's ceiling, so the rule names the problem rather than zod. */
+  buy: protectedProcedure
+    .input(z.object({ months: z.number().int().min(0).max(MAX_GRANT_MONTHS + 1) }))
+    .mutation(({ ctx, input }) => guard(() => buyMembership(ctx.user.id, input.months))),
+
+  /* What a month costs in points; "0" takes memberships off sale. */
+  setPointsPrice: protectedProcedure
+    .input(z.object({ pointsPerMonth: z.string().trim().max(12) }))
+    .mutation(async ({ ctx, input }) => guard(async () => setPointsPrice(await resolveActor(ctx.user), input.pointsPerMonth))),
 });

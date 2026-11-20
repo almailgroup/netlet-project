@@ -116,6 +116,8 @@ export const POINT_REASONS = [
   "invite_commission",
   "product_referral_reversal",
   "invite_commission_reversal",
+  /* Months of NetLet membership bought with points (4.1, on the owner's word). */
+  "membership_bought",
 ] as const;
 export type PointReason = (typeof POINT_REASONS)[number];
 

@@ -200,12 +200,16 @@ describe("bundles", () => {
     await expect(bundles.setBundleActive(shopperActor(), ids.acmeBundle, false)).rejects.toThrow();
   });
 
-  it("refuses a seller editing another's set, and one that spans two shops", async () => {
+  it("refuses a seller editing another's set, and asks the other shop about one that spans two", async () => {
     const members = [{ variantId: ids.acmeVariant, quantity: 1 }, { variantId: ids.boltVariant, quantity: 1 }];
-    /* Their own store, but somebody else's goods inside it. */
-    await expect(bundles.saveBundle(acmeActor(), {
-      name: "Sneaky", vendorId: ids.acme, bundlePrice: "15.000", members,
-    })).rejects.toThrow();
+    /* Their own store with somebody else's goods beside their own is made by
+       arrangement (3.3.11, on the owner's word), and that store is asked.
+       Somebody else's goods alone are refused in bundleAgreements.test.ts. */
+    const { id } = await bundles.saveBundle(acmeActor(), {
+      name: "Arranged", vendorId: ids.acme, bundlePrice: "15.000", members,
+    });
+    const asked = await bundles.listAskedBundles(boltActor());
+    expect(asked.find(view => view.id === id)?.myState).toBe("waiting");
     /* A set with no store behind it is NetLet's to make, not a seller's. */
     await expect(bundles.saveBundle(acmeActor(), {
       name: "Platform", vendorId: null, bundlePrice: "15.000", members,

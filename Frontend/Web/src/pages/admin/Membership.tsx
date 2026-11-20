@@ -16,7 +16,8 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
-import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "@shared/commerce/membership";
+import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE, pointsPriceOf } from "@shared/commerce/membership";
+import { latinDigits } from "@shared/commerce/kuwaitAddress";
 import { privatePageMeta } from "@shared/seo";
 import { Select } from "@/components/ui/Select";
 
@@ -37,6 +38,7 @@ function Desk() {
         <div className="grid gap-5 lg:grid-cols-2">
           <Grant />
           <Terms />
+          <PointsPrice />
         </div>
         <Grants />
       </div>
@@ -82,6 +84,41 @@ function Terms() {
           {() => (
             <Field label={t("membership.freeOverLabel")} hint={t("membership.freeOverHint")} error={ok ? undefined : t("offers.badAmount")}>
               <input dir="ltr" inputMode="decimal" placeholder="0.000" value={value} onChange={event => setDraft(event.target.value)} className={`${fieldClass} max-w-xs`} />
+            </Field>
+          )}
+        </QueryGate>
+      </Card>
+    </form>
+  );
+}
+
+/**
+ * What a month of membership costs in NetLet points (4.1, on the owner's word:
+ * "with NetLet points"). Points are already money inside NetLet, so they are
+ * the one way a shopper can pay before a payment provider is connected; 0
+ * takes memberships off sale and leaves granting as it was.
+ */
+function PointsPrice() {
+  const { t, tError } = useTranslation();
+  const utils = trpc.useUtils();
+  const terms = trpc.membership.terms.useQuery();
+  const [draft, setDraft] = useState<string | null>(null);
+  const save = trpc.membership.setPointsPrice.useMutation({
+    onSuccess: () => { toast.success(t("admin.saved")); setDraft(null); void utils.membership.terms.invalidate(); },
+    onError: error => toast.error(tError(error.message)),
+  });
+  const value = draft ?? String(terms.data?.pointsPerMonth ?? "");
+  const ok = pointsPriceOf(value) !== null;
+  return (
+    <form onSubmit={event => { event.preventDefault(); if (ok) save.mutate({ pointsPerMonth: value.trim() }); }}>
+      <Card
+        title={t("membership.pointsPriceTitle")}
+        footer={<button type="submit" disabled={!ok || save.isPending || draft === null || !terms.data} className={buttonClass.primary}>{t("admin.save")}</button>}
+      >
+        <QueryGate queries={[terms]}>
+          {() => (
+            <Field label={t("membership.pointsPriceLabel")} hint={t("membership.pointsPriceHint")} error={ok ? undefined : t("membership.badPrice")}>
+              <input dir="ltr" inputMode="numeric" placeholder="0" value={value} onChange={event => setDraft(latinDigits(event.target.value).replace(/[^\d]/g, ""))} className={`${fieldClass} max-w-xs`} />
             </Field>
           )}
         </QueryGate>

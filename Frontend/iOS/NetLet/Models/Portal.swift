@@ -73,6 +73,8 @@ struct PortalRules: Decodable, Sendable {
     var occasions: OccasionLimits?
     /// NetLet's team: which capabilities each area opens and the ready-made roles.
     var team: TeamRules?
+    /// A store's answer to a set made with its products (`bundleAnswerProblem`).
+    var bundles: BundleRules?
 
     /// `Shared/inventory/team.ts`: the areas in their order, what each opens,
     /// the ready-made roles' areas and the limits a role is held to.

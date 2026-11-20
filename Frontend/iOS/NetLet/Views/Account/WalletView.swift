@@ -119,6 +119,7 @@ struct WalletView: View {
         case "invite_commission": return "rewards.reasonInviteCommission"
         case "product_referral_reversal": return "rewards.reasonProductReferralReversal"
         case "invite_commission_reversal": return "rewards.reasonInviteCommissionReversal"
+        case "membership_bought": return "rewards.reasonMembership"
         default: return "rewards.reasonAdminAdjustment"
         }
     }

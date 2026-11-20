@@ -1,0 +1,82 @@
+{
+  "result": {
+    "data": {
+      "json": [
+        {
+          "id": 1,
+          "name": "Living room set",
+          "nameAr": null,
+          "vendorId": 1,
+          "bundlePrice": "54.000",
+          "active": true,
+          "ownerName": "Acme",
+          "agreement": {
+            "asked": [
+              {
+                "vendorId": 2,
+                "vendorName": "Beta Home",
+                "state": "waiting",
+                "note": null,
+                "decidedAt": null
+              },
+              {
+                "vendorId": 3,
+                "vendorName": "Gamma",
+                "state": "declined",
+                "note": "The vase cannot go below 9.000",
+                "decidedAt": "2026-11-20T19:27:30.524Z"
+              }
+            ],
+            "agreed": false,
+            "declined": true
+          },
+          "members": [
+            {
+              "variantId": 1,
+              "vendorId": 1,
+              "quantity": 1,
+              "unitPrice": "20.000",
+              "productHandle": "item-1",
+              "productTitle": "Brass lamp",
+              "variantTitle": "Default",
+              "vendorName": "Acme",
+              "availableForSale": true,
+              "bundleUnitPrice": "18.000",
+              "lineTotal": "18.000"
+            },
+            {
+              "variantId": 2,
+              "vendorId": 2,
+              "quantity": 1,
+              "unitPrice": "30.000",
+              "productHandle": "item-2",
+              "productTitle": "Wool rug",
+              "variantTitle": "Default",
+              "vendorName": "Beta Home",
+              "availableForSale": true,
+              "bundleUnitPrice": "27.000",
+              "lineTotal": "27.000"
+            },
+            {
+              "variantId": 3,
+              "vendorId": 3,
+              "quantity": 1,
+              "unitPrice": "10.000",
+              "productHandle": "item-3",
+              "productTitle": "Glass vase",
+              "variantTitle": "Default",
+              "vendorName": "Gamma",
+              "availableForSale": true,
+              "bundleUnitPrice": "9.000",
+              "lineTotal": "9.000"
+            }
+          ],
+          "separately": "60.000",
+          "saving": "6.000",
+          "crossVendor": true,
+          "myState": "waiting"
+        }
+      ]
+    }
+  }
+}

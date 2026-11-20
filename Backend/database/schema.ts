@@ -2634,6 +2634,39 @@ export const bundleItems = pgTable(
   table => [uniqueIndex("bundle_items_unique").on(table.bundleId, table.variantId)]
 );
 
+/**
+ * A store's answer to a set another store made with its products (3.3.11,
+ * "with other sellers' products by arrangement"; migration 0091, approved by
+ * the owner).
+ *
+ * **Waiting is the absence of a row.** Every store whose product is in a set
+ * that another store owns is asked; the row is its answer, `agreed` or
+ * `declined`. A set is on sale only while every store asked has agreed, and
+ * the rows go when its price or items change, so a store is never held to a
+ * set it did not see. Read through `Shared/commerce/bundles.ts`'s
+ * `bundleAgreement`, which also covers a product moved to another store: that
+ * store has no row, so the set waits for it.
+ */
+export const bundleAgreements = pgTable(
+  "bundle_agreements",
+  {
+    id: serial("id").primaryKey(),
+    bundleId: integer("bundle_id").notNull().references(() => bundles.id, { onDelete: "cascade" }),
+    vendorId: integer("vendor_id").notNull().references(() => vendors.id, { onDelete: "cascade" }),
+    /** `agreed` or `declined` (a check); waiting has no row. */
+    state: varchar("state", { length: 10 }).notNull(),
+    /** The store's words to the store that asked; needed to decline. */
+    note: text("note"),
+    decidedBy: integer("decided_by").references(() => users.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex("bundle_agreements_unique").on(table.bundleId, table.vendorId),
+    index("bundle_agreements_vendor_idx").on(table.vendorId),
+    check("bundle_agreements_state_check", sql`${table.state} in ('agreed', 'declined')`),
+  ],
+);
+
 /* ---------------------------------------------------- seller applications --- */
 
 /**

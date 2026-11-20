@@ -209,11 +209,36 @@ struct UploadPlan: Sendable {
 struct BundleRow: Decodable, Identifiable, Hashable, Sendable {
     struct Member: Decodable, Hashable, Sendable {
         let productTitle: String
+        /// The product's Arabic title, where it has one; absent from an older answer.
+        var productTitleAr: String? = nil
         let vendorId: Int?
+        /* Optional: a recording made before sets by arrangement carries none. */
+        let variantId: Int?
+        let quantity: Int?
+        /// What one costs on its own, and inside the set.
+        let unitPrice: Money?
+        let bundleUnitPrice: Money?
+    }
+
+    /// Each store asked about a set made with its products (3.3.11), and its answer.
+    struct Agreement: Decodable, Hashable, Sendable {
+        struct Asked: Decodable, Hashable, Sendable {
+            let vendorId: Int
+            let vendorName: String?
+            var vendorNameAr: String? = nil
+            /// "waiting", "agreed" or "declined".
+            let state: String
+            let note: String?
+        }
+
+        let asked: [Asked]
+        let agreed: Bool
+        let declined: Bool
     }
 
     let id: Int
     let name: String
+    var nameAr: String? = nil
     /// The store the set belongs to, or nil for one of NetLet's own.
     let vendorId: Int?
     let bundlePrice: Money
@@ -221,6 +246,33 @@ struct BundleRow: Decodable, Identifiable, Hashable, Sendable {
     let active: Bool
     let crossVendor: Bool
     let members: [Member]
+    /// The store that made it, by name, and by its Arabic name where it has one.
+    let ownerName: String?
+    var ownerNameAr: String? = nil
+    let agreement: Agreement?
+    /// On `inventory.bundles.asked` alone: this store's own answer.
+    let myState: String?
+}
+
+/// `bundleAnswerProblem` in Swift (3.3.11): declining needs words, because
+/// the store that asked has to know what would change the answer; agreeing
+/// needs none. The limit comes from `portal.json`.
+struct BundleRules: Decodable, Sendable {
+    let noteMax: Int
+
+    static var shared: BundleRules { PortalRules.shared.bundles ?? BundleRules(noteMax: 500) }
+
+    func answerProblem(_ state: String, _ note: String?) -> String? {
+        let words = (note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if words.count > noteMax { return "bundle.noteTooLong" }
+        if state == "declined" && words.isEmpty { return "bundle.declineNeedsNote" }
+        return nil
+    }
+}
+
+/// How many sets other stores made with this store's products wait on its answer.
+struct BundlesWaiting: Decodable, Sendable {
+    let count: Int
 }
 
 // MARK: - Dispatch
@@ -569,6 +621,16 @@ extension API {
     static let bundleRows = Procedure<NoInput, [BundleRow]>(query: "inventory.bundles.list")
     static let saveBundle = Procedure<BundleInput, Acknowledged>(mutation: "inventory.bundles.save")
     static let setBundleActive = Procedure<ActiveFlag, Acknowledged>(mutation: "inventory.bundles.setActive")
+    /// Sets other stores made with this store's products, and its answer to each (3.3.11).
+    static let bundlesAsked = Procedure<NoInput, [BundleRow]>(query: "inventory.bundles.asked")
+    static let bundlesWaiting = Procedure<NoInput, BundlesWaiting>(query: "inventory.bundles.waiting")
+    struct BundleAnswerInput: Encodable, Sendable {
+        let bundleId: Int
+        /// "agreed" or "declined".
+        let state: String
+        let note: String?
+    }
+    static let answerBundle = Procedure<BundleAnswerInput, Acknowledged>(mutation: "inventory.bundles.answer")
 
     // Import
     struct ImportRow: Encodable, Sendable {

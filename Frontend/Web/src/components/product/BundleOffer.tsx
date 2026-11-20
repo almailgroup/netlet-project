@@ -24,9 +24,11 @@ import { toast } from "sonner";
 import { PURCHASE_TONE } from "@/lib/purchaseStyle";
 
 export function BundleOffer({ variantId }: { variantId: string | undefined }) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const money = useMoney();
   const { addItem } = useCart();
+  /* A set, its items and its stores are named in the page's language where they have a name in it. */
+  const inLanguage = (english: string | null, arabic: string | null | undefined) => (locale === "ar" && arabic ? arabic : english) ?? "";
   const [adding, setAdding] = useState<number | null>(null);
   /* Said to a screen reader; the eye has the header's count, which hops. */
   const [said, setSaid] = useState("");
@@ -47,17 +49,17 @@ export function BundleOffer({ variantId }: { variantId: string | undefined }) {
 
       {rows.map(bundle => (
         <div key={bundle.id} className="rounded-[1.1rem] border border-[#d5dfeb] bg-white/70 p-4">
-          <p dir="auto" className="font-extrabold text-[#0a285a]">{bundle.name}</p>
+          <p dir="auto" className="font-extrabold text-[#0a285a]">{inLanguage(bundle.name, bundle.nameAr)}</p>
 
           <ul className="mt-2 space-y-1">
             {bundle.members.map(member => (
               <li key={member.variantId} className="text-[13px] leading-5 text-[#536b8c]">
-                <span dir="auto">{member.productTitle}</span>
+                <span dir="auto">{inLanguage(member.productTitle, member.productTitleAr)}</span>
                 {member.quantity > 1 ? <span> ×{member.quantity}</span> : null}
                 {/* Named per member, because two parcels from two sellers is
                     what actually turns up. */}
                 {bundle.crossVendor && member.vendorName ? (
-                  <span dir="auto" className="ink-muted"> · {member.vendorName}</span>
+                  <span dir="auto" className="ink-muted"> · {inLanguage(member.vendorName, member.vendorNameAr)}</span>
                 ) : null}
               </li>
             ))}
@@ -84,7 +86,7 @@ export function BundleOffer({ variantId }: { variantId: string | undefined }) {
                 for (const member of bundle.members) {
                   await addItem(String(member.variantId), member.quantity, { reveal: false, bundleId: bundle.id });
                 }
-                setSaid(t("bundle.added", { name: bundle.name }));
+                setSaid(t("bundle.added", { name: inLanguage(bundle.name, bundle.nameAr) }));
               } catch {
                 toast.error(t("cart.addFailed"));
               } finally {

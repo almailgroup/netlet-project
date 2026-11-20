@@ -450,6 +450,9 @@
     "maxRestock": 100000,
     "maxBrand": 60
   },
+  "bundles": {
+    "noteMax": 500
+  },
   "fulfilment": {
     "pending": [
       "preparing",

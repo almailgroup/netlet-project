@@ -24,6 +24,7 @@ import { MAX_SUBSCRIPTION_PERCENT } from "../../../Shared/commerce/subscriptions
 import { acceptableImageUrl } from "../../../Shared/commerce/media.js";
 import { SELL_UNITS } from "../../../Shared/commerce/units.js";
 import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
+import { BUNDLE_NOTE_MAX } from "../../../Shared/commerce/bundles.js";
 import {
   addMemberByEmail,
   addMemberWithNewAccount,
@@ -98,7 +99,15 @@ import {
 import { DocumentRefused, deleteDocument, documentsFor, myDocuments, reviewDocument } from "../services/applicationDocuments.js";
 import { DOCUMENT_NOTE_MAX } from "../../../Shared/inventory/applicationDocuments.js";
 import { APPLICATION_STATES, MAX_COMMISSION_NOTE } from "../../../Shared/inventory/sellerApplication.js";
-import { BundleError, listBundles, saveBundle, setBundleActive } from "../services/bundles.js";
+import {
+  BundleError,
+  answerBundle,
+  bundlesAwaitingAnswer,
+  listAskedBundles,
+  listBundles,
+  saveBundle,
+  setBundleActive,
+} from "../services/bundles.js";
 import { deleteProduct, deletionCheck } from "../services/productDeletion.js";
 import { moveProductToVendor } from "../services/productMove.js";
 import { productTaxStatus, setProductTax } from "../services/tax.js";
@@ -373,6 +382,26 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const actor = await resolveActor(ctx.user);
         return guard(() => bundleGuard(() => setBundleActive(actor, input.id, input.active)));
+      }),
+
+    /** Sets other stores made with this store's products, and its answer to each. */
+    asked: protectedProcedure.query(async ({ ctx }) => guard(async () =>
+      listAskedBundles(await resolveActor(ctx.user)))),
+
+    /** How many of those wait on this store's answer, for the overview. */
+    waiting: protectedProcedure.query(async ({ ctx }) => guard(async () =>
+      ({ count: await bundlesAwaitingAnswer(await resolveActor(ctx.user)) }))),
+
+    /** Agree to give up a share of the store's price inside another store's set, or say no. */
+    answer: protectedProcedure
+      .input(z.object({
+        bundleId: rowId,
+        state: z.enum(["agreed", "declined"]),
+        note: z.string().max(BUNDLE_NOTE_MAX).nullable().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const actor = await resolveActor(ctx.user);
+        return guard(() => bundleGuard(() => answerBundle(actor, input)));
       }),
   }),
 

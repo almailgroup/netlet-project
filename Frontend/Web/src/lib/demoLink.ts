@@ -588,7 +588,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       return { ok: true };
 
     case "inventory.myStore":
-      return { id: 1, name: "Demo Store", autoPublish: false };
+      return { id: 1, name: "Demo Store", slug: "demo-store", autoPublish: false };
 
     case "inventory.sellerChanges":
       return { rows: [], unseen: 0, seenAt: null };
@@ -653,9 +653,13 @@ function resolve(path: string, rawInput: unknown): unknown {
        on the shelf that cannot be bought. */
     case "commerce.bundlesForVariant":
     case "inventory.bundles.list":
+    case "inventory.bundles.asked":
       return [];
+    case "inventory.bundles.waiting":
+      return { count: 0 };
     case "inventory.bundles.save":
     case "inventory.bundles.setActive":
+    case "inventory.bundles.answer":
       throw new Error("admin.saveFailed");
 
     /* The demo signs in as a vendor `manager` who already has a store, so the
@@ -867,17 +871,20 @@ function resolve(path: string, rawInput: unknown): unknown {
       throw new Error("fulfilment.notFound");
     /* Membership (4.1): the demo shopper is a guest and the demo portal a seller. */
     case "membership.mine":
-      return { member: false, until: null, freeDeliveryOver: null };
+      return { member: false, until: null, freeDeliveryOver: null, pointsPerMonth: 0, points: 0 };
     case "membership.list":
       return { rows: [], total: 0, page: 1, pageSize: DEFAULT_PAGE_SIZE };
     case "membership.terms":
-      return { freeDeliveryOver: null };
+      return { freeDeliveryOver: null, pointsPerMonth: 0 };
     case "membership.report":
       return { members: 0, orders: 0, waived: "0.000" };
     case "membership.grant":
     case "membership.end":
     case "membership.setTerms":
+    case "membership.setPointsPrice":
       throw new Error("membership.notFound");
+    case "membership.buy":
+      throw new Error("membership.notForSale");
     /* No model in the demo, through the branch a deployment with no key takes. */
     case "support.draftAvailable":
       return false;

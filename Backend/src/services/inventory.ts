@@ -311,13 +311,13 @@ export async function setProductSizeClass(actor: Actor, productId: number, sizeC
  * Null for an administrator, who acts for NetLet rather than for a store, and
  * for a shopper who is in none.
  */
-export async function myStore(actor: Actor): Promise<{ id: number; name: string; autoPublish: boolean } | null> {
+export async function myStore(actor: Actor): Promise<{ id: number; name: string; slug: string; autoPublish: boolean } | null> {
   if (actor.kind !== "vendor") return null;
   assertCan(actor, "vendor.viewMembers", actor.vendorId);
   const db = await getDb();
   if (!db) return null;
   const [row] = await db
-    .select({ id: vendors.id, name: vendors.name, autoPublish: vendors.autoPublish })
+    .select({ id: vendors.id, name: vendors.name, slug: vendors.slug, autoPublish: vendors.autoPublish })
     .from(vendors)
     .where(eq(vendors.id, actor.vendorId))
     .limit(1);

@@ -291,8 +291,12 @@ describe("the health check, actually executed", () => {
       DROP TABLE damage_claims;
     `);
     const rows = await report(db);
+    /* Counted from the newest snapshot, so a new table does not need this
+       line rewritten: one dropped out of all of them. */
+    const snapshots = readdirSync(path.join(root, "Backend/database/meta")).filter(name => /^\d+_snapshot\.json$/.test(name)).sort();
+    const tables = Object.keys(JSON.parse(readFileSync(path.join(root, "Backend/database/meta", snapshots.at(-1)!), "utf-8")).tables).length;
     expect(flagged(rows)).toEqual([
-      "fail Tables the code expects: 90 of 91",
+      `fail Tables the code expects: ${tables - 1} of ${tables}`,
       "warn Published products hidden by their store: 1",
       "fail Shown products priced at zero: 1",
       "warn Shown products with no photo: 1",

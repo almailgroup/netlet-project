@@ -1233,42 +1233,102 @@ enum CountryNames {
     }
 }
 
-/// A member's card on the account's front page — the web's `MembershipCard`:
-/// until when, and what it gives. Drawn only for a member, since nobody can
-/// buy one yet and an offer of one would be an advert for nothing.
+/// The account's membership card — the web's `MembershipCard`: a member's
+/// months and what they give, and, once NetLet sets a price in points, whole
+/// months to buy with NetLet points (4.1, on the owner's word), a member to add
+/// more. Buying asks first, saying the points it spends.
 struct MembershipCard: View {
     @State private var membership: MyMembership?
+    @State private var months = 1
+    @State private var asking = false
+    @State private var buying = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let membership, membership.member, let until = membership.until {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(l.t("membership.cardTitle"), systemImage: "checkmark.seal.fill")
-                        .font(.inter(16, .heavy))
-                        .foregroundStyle(Brand.navy)
-                        .accessibilityAddTraits(.isHeader)
-                    Text(l.t("membership.until", ["date": OrderWording.date(until, language: l.current)]))
-                        .font(.inter(13, .semibold))
-                        .foregroundStyle(Brand.muted)
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(benefits(membership), id: \.self) { line in
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text("•").foregroundStyle(Brand.navy.opacity(0.4)).accessibilityHidden(true)
-                                Text(line).font(.inter(14)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                    .padding(.top, 4)
-                }
-                .padding(16)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)))
-                .padding(.top, 16)
+            if let membership, (membership.member && membership.until != nil) || (membership.pointsPerMonth ?? 0) > 0 {
+                card(membership)
+                    .padding(.top, 16)
             }
         }
-        .task { membership = try? await app.services.api.call(API.myMembership) }
+        .task { await load() }
+        .alert(l.t("membership.buyTitle"), isPresented: $asking) {
+            Button(l.t("membership.buyConfirm", ["cost": count(cost)])) { Task { await buy() } }
+            Button(l.t("common.cancel"), role: .cancel) {}
+        } message: {
+            Text(l.t("membership.buyBody", ["months": "\(months)", "cost": count(cost)]))
+        }
+    }
+
+    private var price: Int { membership?.pointsPerMonth ?? 0 }
+    private var balance: Int { membership?.points ?? 0 }
+    private var cost: Int { MembershipRules.cost(price, months) }
+    private func count(_ value: Int) -> String { PointsFormat.count(value, l.current) }
+
+    private func card(_ membership: MyMembership) -> some View {
+        let problem = price > 0 ? MembershipRules.buyProblem(pointsPerMonth: price, months: months, balance: balance) : nil
+        return VStack(alignment: .leading, spacing: 8) {
+            Label(l.t(membership.member ? "membership.cardTitle" : "membership.offerTitle"), systemImage: "checkmark.seal.fill")
+                .font(.inter(16, .heavy))
+                .foregroundStyle(Brand.navy)
+                .accessibilityAddTraits(.isHeader)
+            if membership.member, let until = membership.until {
+                Text(l.t("membership.until", ["date": OrderWording.date(until, language: l.current)]))
+                    .font(.inter(13, .semibold))
+                    .foregroundStyle(Brand.muted)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(benefits(membership), id: \.self) { line in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("•").foregroundStyle(Brand.navy.opacity(0.4)).accessibilityHidden(true)
+                        Text(line).font(.inter(14)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(.top, 4)
+            if price > 0 {
+                Divider().padding(.vertical, 4)
+                Text(l.t("membership.pointsPerMonthLine", ["points": count(price)])).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                Picker(l.t("membership.monthsLabel"), selection: $months) {
+                    ForEach(MembershipRules.monthChoices, id: \.self) { choice in
+                        Text(l.t("membership.monthsOption", ["months": "\(choice)"])).tag(choice)
+                    }
+                }
+                .pickerStyle(.segmented)
+                Text(l.t(problem == "membership.notEnoughPoints" ? "membership.notEnoughPointsLine" : "membership.costLine", ["cost": count(cost), "points": count(balance)]))
+                    .font(.inter(12))
+                    .foregroundStyle(problem == "membership.notEnoughPoints" ? Brand.danger : Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    asking = true
+                } label: {
+                    if buying { ProgressView().tint(.white) } else { Text(l.t(membership.member ? "membership.addMonths" : "membership.buy")) }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(problem != nil || buying)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)))
+    }
+
+    private func load() async {
+        membership = try? await app.services.api.call(API.myMembership)
+    }
+
+    private func buy() async {
+        buying = true
+        defer { buying = false }
+        var answer: BoughtMembership?
+        let done = await app.attempt(fallback: "admin.saveFailed") {
+            answer = try await app.services.api.call(API.buyMembership, .init(months: months))
+        }
+        if done, let answer {
+            app.toast(l.t("membership.bought", ["date": OrderWording.date(answer.endsAt, language: l.current)]))
+            await load()
+        }
     }
 
     private func benefits(_ membership: MyMembership) -> [String] {

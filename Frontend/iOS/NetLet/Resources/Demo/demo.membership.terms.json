@@ -2,7 +2,8 @@
   "result": {
     "data": {
       "json": {
-        "freeDeliveryOver": null
+        "freeDeliveryOver": null,
+        "pointsPerMonth": 0
       }
     }
   }

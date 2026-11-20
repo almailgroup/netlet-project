@@ -87,6 +87,9 @@ struct SellerProduct: Decodable, Identifiable, Hashable, Sendable {
 struct OwnStore: Decodable, Sendable {
     let id: Int
     let name: String
+    /// The store's public address; absent from a recording made before it
+    /// was answered. A set's "Other stores" search leaves its own out by it.
+    var slug: String? = nil
     let autoPublish: Bool
 }
 

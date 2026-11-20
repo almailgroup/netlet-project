@@ -9,11 +9,11 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { cartItems, carts, orderItems, orders, productVariants, products, users, vendors } from "../../database/schema.js";
+import { auditLog, cartItems, carts, memberships, orderItems, orders, pointEntries, productVariants, products, users, vendors } from "../../database/schema.js";
 import type { Actor } from "../../../Shared/inventory/permissions.js";
 
 let db: ReturnType<typeof drizzle>;
@@ -161,5 +161,55 @@ describe("a seller's member price", () => {
     expect(variant.memberPrice).toBeNull();
     /* And the save did not touch the stock. */
     expect(variant.stock).toBeGreaterThan(0);
+  });
+});
+
+describe("buying with points", () => {
+  async function shopperWith(points: number) {
+    const [user] = await db.insert(users).values({ email: `buyer-${Math.random().toString(36).slice(2)}@shop.test` }).returning();
+    if (points > 0) await db.insert(pointEntries).values({ userId: user.id, points, reason: "admin_adjustment", pot: "points" });
+    return user.id;
+  }
+
+  it("is not for sale until NetLet sets a price, and only NetLet sets it", async () => {
+    const buyer = await shopperWith(50_000);
+    await expect(membership.buyMembership(buyer, 1)).rejects.toMatchObject({ reason: "membership.notForSale" });
+    expect(await membership.myMembership(buyer)).toMatchObject({ pointsPerMonth: 0, points: 0 });
+    await expect(membership.setPointsPrice(manager(), "5000")).rejects.toThrow("FORBIDDEN:membership.manage");
+    await expect(membership.setPointsPrice(admin(), "5.5")).rejects.toMatchObject({ reason: "membership.badPrice" });
+    expect(await membership.setPointsPrice(admin(), "5000")).toEqual({ pointsPerMonth: 5000 });
+    const [audit] = await db.select().from(auditLog).where(eq(auditLog.action, "membership.setPrice"));
+    expect(audit).toBeTruthy();
+    expect(await membership.myMembership(buyer)).toMatchObject({ member: false, pointsPerMonth: 5000, points: 50_000 });
+  });
+
+  it("spends the points, queues the months and makes the shopper a member", async () => {
+    await membership.setPointsPrice(admin(), "5000");
+    const buyer = await shopperWith(12_000);
+    const bought = await membership.buyMembership(buyer, 2);
+    expect(bought.points).toBe(10_000);
+    const mine = await membership.myMembership(buyer);
+    expect(mine).toMatchObject({ member: true, points: 2_000 });
+    const [row] = await db.select().from(memberships).where(eq(memberships.userId, buyer));
+    expect(row.source).toBe("points");
+    const spent = await db.select().from(pointEntries).where(and(eq(pointEntries.userId, buyer), eq(pointEntries.reason, "membership_bought")));
+    expect(spent.map(entry => entry.points)).toEqual([-10_000]);
+  });
+
+  it("refuses more months than the points pay for, and a bad number of months", async () => {
+    await membership.setPointsPrice(admin(), "5000");
+    const buyer = await shopperWith(4_999);
+    await expect(membership.buyMembership(buyer, 1)).rejects.toMatchObject({ reason: "membership.notEnoughPoints" });
+    await expect(membership.buyMembership(buyer, 13)).rejects.toMatchObject({ reason: "membership.badMonths" });
+    expect((await membership.myMembership(buyer)).member).toBe(false);
+  });
+
+  it("cannot spend the same points twice when pressed twice at once", async () => {
+    await membership.setPointsPrice(admin(), "5000");
+    const buyer = await shopperWith(5_000);
+    const results = await Promise.allSettled([membership.buyMembership(buyer, 1), membership.buyMembership(buyer, 1)]);
+    expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+    expect(await db.select().from(memberships).where(eq(memberships.userId, buyer))).toHaveLength(1);
+    expect((await membership.myMembership(buyer)).points).toBe(0);
   });
 });

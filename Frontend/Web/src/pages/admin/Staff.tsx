@@ -162,7 +162,7 @@ function People({ desk }: { desk: Desk }) {
                         value={member.roleId === null ? FULL : String(member.roleId)}
                         aria-label={t("team.changeRoleLabel", { name: isolate(name) })}
                         disabled={busy}
-                        className={`${fieldClass} h-9 w-auto min-w-44 text-[13px]`}
+                        className={`${fieldClass} h-9 min-w-44 text-[13px]`}
                         onChange={event => {
                           const value = event.target.value;
                           const roleId = value === FULL ? null : Number(value);

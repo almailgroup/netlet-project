@@ -237,6 +237,9 @@ struct MembershipPage: Decodable, Sendable {
 
 struct MembershipTerms: Decodable, Sendable {
     var freeDeliveryOver: String? = nil
+    /// The price of a month in NetLet points; 0 is not for sale. Absent from
+    /// a recording made before membership could be bought.
+    var pointsPerMonth: Int? = nil
 }
 
 struct MembershipReport: Decodable, Sendable {
@@ -328,6 +331,16 @@ extension API {
     }
 
     static let setMembershipTerms = Procedure<FreeOver, Acknowledged>(mutation: "membership.setTerms")
+
+    struct PointsPrice: Encodable, Sendable {
+        let pointsPerMonth: String
+    }
+
+    struct PointsPriceSet: Decodable, Sendable {
+        let pointsPerMonth: Int
+    }
+
+    static let setMembershipPointsPrice = Procedure<PointsPrice, PointsPriceSet>(mutation: "membership.setPointsPrice")
 
     struct Grant: Encodable, Sendable {
         let email: String

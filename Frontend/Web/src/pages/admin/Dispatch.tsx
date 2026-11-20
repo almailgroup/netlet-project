@@ -246,7 +246,7 @@ function Dispatch({ actor }: { actor: Actor }) {
                                     courierId: event.target.value ? Number(event.target.value) : null,
                                   })
                                 }
-                                className={`${fieldClass} me-auto h-9 w-auto max-w-full text-[13px]`}
+                                className={`${fieldClass} me-auto h-9 text-[13px]`}
                               >
                                 <option value="">{t("dispatch.unassigned")}</option>
                                 {(companies.data ?? [])

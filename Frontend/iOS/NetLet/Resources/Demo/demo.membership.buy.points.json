@@ -1,0 +1,21 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "startsAt": "2026-11-20T19:38:50.361Z",
+        "endsAt": "2027-02-20T19:38:50.361Z",
+        "points": 7500
+      },
+      "meta": {
+        "values": {
+          "startsAt": [
+            "Date"
+          ],
+          "endsAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -723,6 +723,7 @@ struct PortalMembershipView: View {
     @State private var report: MembershipReport?
     @State private var terms: MembershipTerms?
     @State private var freeOver: String?
+    @State private var pointsDraft: String?
     @State private var grants: MembershipPage?
     @State private var currentOnly = true
     @State private var page = 1
@@ -754,6 +755,7 @@ struct PortalMembershipView: View {
             }
             grantForm
             termsForm
+            pointsPriceForm
             grantList
         }
         .task { await load() }
@@ -799,6 +801,26 @@ struct PortalMembershipView: View {
                 Button(l.t("admin.save")) { Task { await saveTerms() } }
                     .buttonStyle(PortalSmallButtonStyle(kind: .primary))
                     .disabled(busy || !floorOk || freeOver == nil || terms == nil)
+            }
+        }
+    }
+
+    private var pointsText: String { pointsDraft ?? terms?.pointsPerMonth.map { String($0) } ?? "" }
+
+    /// The price of a month in points — the web's "Buying with points" card:
+    /// 0 takes membership off sale, and nothing is offered to shoppers until
+    /// it is above nothing.
+    private var pointsPriceForm: some View {
+        let ok = MembershipRules.pointsPrice(pointsText) != nil
+        return PortalCard {
+            Text(l.t("membership.pointsPriceTitle")).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+            LabeledField(label: l.t("membership.pointsPriceLabel"), text: Binding(get: { pointsText }, set: { pointsDraft = $0 }), placeholder: "0",
+                         hint: l.t("membership.pointsPriceHint"), problem: ok ? nil : l.t("membership.badPrice"), keyboard: .numberPad, leftToRight: true)
+            HStack {
+                Spacer()
+                Button(l.t("admin.save")) { Task { await savePointsPrice() } }
+                    .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                    .disabled(busy || !ok || pointsDraft == nil || terms == nil)
             }
         }
     }
@@ -890,6 +912,18 @@ struct PortalMembershipView: View {
             _ = try await app.services.api.call(API.setMembershipTerms, .init(freeDeliveryOver: value))
         }) {
             freeOver = nil
+            terms = (try? await app.services.api.call(API.membershipTerms)) ?? terms
+        }
+    }
+
+    private func savePointsPrice() async {
+        guard let points = MembershipRules.pointsPrice(pointsText) else { return }
+        busy = true
+        defer { busy = false }
+        if await app.attempt(done: "admin.saved", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.setMembershipPointsPrice, .init(pointsPerMonth: String(points)))
+        }) {
+            pointsDraft = nil
             terms = (try? await app.services.api.call(API.membershipTerms)) ?? terms
         }
     }

@@ -32,7 +32,7 @@ import { isMessageKey } from "../../../Shared/i18n/dictionary.js";
  * `app.ts` was already writing.
  *
  * Only `INTERNAL_SERVER_ERROR` is touched. Every refusal this codebase raises
- * deliberately — `bundle.notYours`, `dispatch.badMove`, `order.outOfStock` —
+ * deliberately — `bundle.needsYours`, `dispatch.badMove`, `order.outOfStock` —
  * is a `BAD_REQUEST` or a `FORBIDDEN` carrying a message key the page
  * translates, and rewriting those would throw away the only thing they say.
  */

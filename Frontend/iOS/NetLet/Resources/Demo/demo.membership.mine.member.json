@@ -1,0 +1,20 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "member": true,
+        "until": "2027-02-20T19:38:50.361Z",
+        "freeDeliveryOver": null,
+        "pointsPerMonth": 2500,
+        "points": 1900
+      },
+      "meta": {
+        "values": {
+          "until": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -233,17 +233,27 @@ struct ProductBundle: Decodable, Identifiable, Sendable {
     struct Member: Decodable, Hashable, Sendable {
         let variantId: Int
         let productTitle: String
+        /// The Arabic names, where there are any; absent from an older answer.
+        var productTitleAr: String? = nil
         let quantity: Int
         let vendorName: String?
+        var vendorNameAr: String? = nil
     }
 
     let id: Int
     let name: String
+    var nameAr: String? = nil
     let crossVendor: Bool
     let bundlePrice: Money
     let separately: Money
     let saving: Money
     let members: [Member]
+}
+
+/// A name in the page's language where it has one: a set's, an item's, a store's.
+func inLanguage(_ english: String, _ arabic: String?, _ language: Language) -> String {
+    if language == .ar, let arabic, !arabic.isEmpty { return arabic }
+    return english
 }
 
 /// Something bought with this product, and how often (`together.forProduct`).

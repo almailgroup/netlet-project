@@ -4812,6 +4812,69 @@ given to it at the sale, and with none the store carries them itself, the board
 marks them "the store delivers" and `assignParcel` refuses to hand one to
 anybody (`dispatch.storeDelivers`). Each store's page sets it under Delivery.
 
+## Sets made by arrangement
+
+**A store's set may hold another store's product, and that store says yes
+first, on the owner's word** (3.3.11, migration 0091, `bundle_agreements`,
+approved as shown). `Shared/commerce/bundles.ts` holds the rule beside the
+price split, pure; `Backend/src/services/bundles.ts` the database half.
+
+- **It must hold one of the store's own** (`bundle.needsYours`), and every
+  store in it must be selling (`bundle.storeUnavailable`); NetLet's own sets
+  across stores ask nobody, as before. The builder finds another store's
+  product by searching the shop (`search.products`, a Segmented "Your
+  products" | "Other stores"), and says before Save that the other stores
+  will be asked. **"Other stores" leaves the store's own products out**, by
+  its address (`inventory.myStore` answers the slug now): the shop's search
+  finds both stores' watches, and a store's own picked from there was drawn
+  as somebody else's to agree to. The shop's search leaves the refurbished
+  section out, so a refurbished product cannot go in a set from there.
+- **Waiting is the absence of an answer**: one row per set and asked store,
+  `agreed` or `declined`, and `bundleAgreement` derives who was asked from the
+  set's members as they are now, so a store that leaves the set leaves its
+  answer behind with nothing to clean up. **The set is not on sale and prices
+  nothing in a bag until every asked store has agreed** — `loadBundles`'s
+  `onlySellable` and `bundlePricing` both ask it, on the read, the permit's
+  rule — and a store's set shows its saving only while every member store's
+  permit is valid.
+- **A new price or a change of items takes every answer back**
+  (`bundleChangeNeedsAsking`, inside the save's transaction), and each store
+  is asked again by a notice whose dedupe key carries the set's version; a new
+  name keeps the answers.
+- **The asked store answers on its own Bundles page** (`bundles.asked`,
+  `bundles.answer`): the set, who made it, its own lines with their share of
+  the price, and Agree, or Decline with words the owner reads
+  (`bundleAnswerProblem`: a decline needs them, at most `BUNDLE_NOTE_MAX`). It
+  may change its mind either way. Only a store in the set may answer, never
+  its owner (`bundle.notAsked`). Each answer is on the trail (`bundle.agree`,
+  `bundle.decline`, in `SELLER_ACTIONS`), the owner is told
+  (`seller_bundle_agreed`, `seller_bundle_declined`), and the overview counts
+  the sets waiting on the store (`bundles.waiting`).
+- **A set waiting on a store wears "Waiting for agreement"**
+  (`admin.bundleAwaitingPill`) where it wore "On the shelf": its own switch
+  is on and it is not on sale, and the green pill over "Not on sale until
+  every store in it agrees" said both.
+- **A set, its items and its stores are named in the page's language**: the
+  answer carries `nameAr`, `ownerNameAr`, `productTitleAr` and
+  `vendorNameAr` (the asked stores' too), and the product page's offer, the
+  portal's page and the app choose (`inLanguage`), where the Arabic page
+  read the set's English name, "Thermal flask" and "Gadget Hub".
+- **Closed, not broken, until 0091 is pasted**: a missing table refuses a set
+  with another store's product (`bundle.arrangementUnavailable`) and lists
+  nothing asked, and a store's own sets work as they did.
+
+`bundleAgreements.test.ts` holds it against a real Postgres. Walked on a
+production build against a local Postgres at 1440 in English, 390 in Arabic
+and 320 in English: a set with Gadget Hub's watch saved, "Other stores"
+leaving Acme's own watch out, the decline waiting for its words and its words
+read by the owner, a change of mind to Agree, a points price typed in
+Arabic-Indic digits, three months bought for 7,500 points and Escape buying
+nothing; axe clean, no sideways scroll. The app's portal
+is the same page (`PortalBundlesView`: the source choice, the asked card, the
+decline alert held to `BundleRules`, exported in `portal.json`), recorded off
+the real service (`demo.inventory.bundles.*`) and decoded by
+`BundleAgreementTests`.
+
 ## Fulfilled by NetLet
 
 `Shared/commerce/netletFulfilment.ts` is the rule, pure; `Backend/src/services/netletFulfilment.ts`
@@ -4857,10 +4920,34 @@ that adds to `stock`, not by the walk.
 ## Membership
 
 `Shared/commerce/membership.ts` is the rule, pure; `Backend/src/services/membership.ts` the
-database half; `/admin/membership` NetLet's desk. It is 4.1, "built now,
-activated later": every benefit exists, and **buying** waits on payments — so
-nothing offers a membership to anybody, and NetLet grants them, by email, in
-whole months queued end to end.
+database half; `/admin/membership` NetLet's desk. It is 4.1: every benefit
+exists, NetLet grants months by email, queued end to end, and **a shopper buys
+them with NetLet points, on the owner's word** ("with NetLet points", offered
+beside waiting for a card service).
+
+**NetLet sets the price, and with none nothing is offered.** What a month costs
+in points is one number on the desk ("Buying with points", `setPointsPrice`, on
+the trail as `membership.setPrice`), kept in `platform_settings` under
+`membership:pointsPerMonth` — outside `SETTINGS`, which `resolveSettings`
+ignores, so no migration and no row on the features page; 0, or no row, takes
+membership off sale. `pointsPriceOf` reads it as NetLet types it (whole points,
+Arabic-Indic digits folded, at most `MAX_POINTS_PER_MONTH`). From then
+`membership.mine` answers the price and the shopper's spendable points, and
+the account page's card (`MembershipCard` on the web, the same name in the app)
+offers 1, 3, 6 or 12 months — "Add months" for a member — with what they cost
+against what the shopper holds, red when it is not enough, and asks first
+(`ConfirmDialog`, the system's alert), naming the points it spends.
+**`buyMembership` asks `buyProblem` again under a lock on the account's row**
+(`for update`), reads the balance there, and in one transaction queues the
+months after any the account has (`grantWindow`, `source` "points") and writes
+a `membership_bought` entry for the cost, so two presses at once spend once
+(`membership.test.ts` sends them together). The wallet names the entry. Points
+are already money inside NetLet, so this is a way to pay rather than a button
+waiting on a payment provider; a card waits with 3.2.1. `membership.buy` is the
+`membership` switch's entry beside `membership.grant`, so switching it off stops
+buying and leaves members their months. The app's desk sets the price too, and
+its recordings (`demo.membership.*.points`, `.member`) were made off the real
+service; `MembershipPointsTests` holds the rule on the TypeScript's cases.
 
 **Free delivery is NetLet's cost, recorded.** Each seller charges their own
 delivery, so a member's is not the seller's to give: the seller's fee stands in
@@ -7928,6 +8015,14 @@ tracked headers over tables, and four different "nothing here" boxes. A list is
 a table from `md` up and cards below it; a filter is `Segmented` (buttons with
 `aria-pressed` in a named group — it narrows a list, so it is not a tablist).
 
+**A width written after `fieldClass` does nothing**: it carries `w-full`, and
+Tailwind writes `w-full` after every numbered width and `w-auto`, so
+`${fieldClass} w-16` is full width. The bundle builder's quantity box took a
+phone's row and left the item's name and price a column one letter wide; the
+commission table's, the packing rate's and the application's boxes were full
+width too. A narrower box says `max-w-*`, which holds beside `w-full`, or sits
+in a box of its own; `fieldWidth.test.ts` fails on a dead width.
+
 Two things in it were found by looking, not by reading. **A right-hand header
 cell needs `thEnd`, not `th` plus `text-end`**: the two utilities tie and
 whichever Tailwind wrote later wins, so "Balance" sat at the left of its
@@ -9660,10 +9755,11 @@ in both languages — then 1,142 KB (327 KB), the default address and way
 to pay in Quick settings, checkout's folded rows, the overlays' motion and the
 "could not be loaded" states in both languages — then 1,168 KB (333 KB),
 Sponsored products' words in both languages (about 170 sentences each;
-the page itself is a chunk of its own) — and is 1,184 KB (338 KB) now,
+the page itself is a chunk of its own) — then 1,184 KB (338 KB),
 NetLet team's words in both languages and the areas' table, which
 `permissions.ts` imports for `can()` (the page is a chunk of its own) —
-nearly
+and is 1,193 KB (340 KB) now, the words for sets made by arrangement and
+for buying membership with points in both languages — nearly
 all of it the dictionary — the seller agreement, the notices and the guides'
 words in both languages (see the dictionary note below for why it stays one
 module): the

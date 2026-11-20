@@ -67,6 +67,9 @@ export const NOTICE_KINDS = [
   "seller_sponsor_not_received",
   "seller_sponsor_live",
   "seller_sponsor_stopped",
+  "seller_bundle_asked",
+  "seller_bundle_agreed",
+  "seller_bundle_declined",
   "account_password_changed",
   "account_email_changed",
 ] as const;
@@ -152,6 +155,11 @@ export const NOTICE_RULES: Record<NoticeKind, NoticeRule> = {
   seller_sponsor_not_received: { audience: "seller", preference: null, email: true, key: "notice.sellerSponsorNotReceived" },
   seller_sponsor_live: { audience: "seller", preference: null, email: true, key: "notice.sellerSponsorLive" },
   seller_sponsor_stopped: { audience: "seller", preference: null, email: true, key: "notice.sellerSponsorStopped" },
+  /* A set made by arrangement (3.3.11): a store asked to give up a share of
+     its price inside another store's set, and the owner told the answer. */
+  seller_bundle_asked: { audience: "seller", preference: null, email: true, key: "notice.sellerBundleAsked" },
+  seller_bundle_agreed: { audience: "seller", preference: null, email: true, key: "notice.sellerBundleAgreed" },
+  seller_bundle_declined: { audience: "seller", preference: null, email: true, key: "notice.sellerBundleDeclined" },
   /* A change to how the account is signed into (on the owner's word: "account
      and security" notifications stay on). Never silenced: it is how somebody
      learns that a password they did not change was changed. */

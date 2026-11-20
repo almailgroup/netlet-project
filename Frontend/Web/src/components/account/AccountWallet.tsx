@@ -48,6 +48,7 @@ const REASON_LABEL: Record<string, MessageKey> = {
   referred_welcome: "rewards.reasonReferredWelcome",
   spent_on_order: "rewards.reasonSpentOnOrder",
   cashed_out: "rewards.reasonCashedOut",
+  membership_bought: "rewards.reasonMembership",
   admin_adjustment: "rewards.reasonAdminAdjustment",
   order_cancelled: "rewards.reasonOrderCancelled",
   order_changed: "rewards.reasonOrderChanged",

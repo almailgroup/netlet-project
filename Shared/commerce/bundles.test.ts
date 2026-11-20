@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  BUNDLE_NOTE_MAX, bundleAgreement, bundleAnswerProblem, bundleChangeNeedsAsking,
   bundleComplete, chargedTotal, isCrossVendor, isSellableBundle, savingOf, separatelyTotal,
   splitBundlePrice, type Bundle, type BundleMember,
 } from "./bundles.js";
@@ -119,5 +120,58 @@ describe("whether the basket still holds it", () => {
   it("refuses a short quantity", () => {
     const pair = bundle({ members: [member({ variantId: 1, unitPrice: "10.000", quantity: 3 })] });
     expect(bundleComplete(pair, [{ variantId: 1, quantity: 2 }])).toBe(false);
+  });
+});
+
+describe("sets made by arrangement", () => {
+  const set = [{ vendorId: 1 }, { vendorId: 2 }, { vendorId: 2 }, { vendorId: 3 }];
+
+  it("asks every other store once, waiting until it answers", () => {
+    const view = bundleAgreement(1, set, []);
+    expect(view.asked).toEqual([
+      { vendorId: 2, state: "waiting" },
+      { vendorId: 3, state: "waiting" },
+    ]);
+    expect(view.agreed).toBe(false);
+    expect(view.declined).toBe(false);
+  });
+
+  it("is agreed only when every store asked has agreed", () => {
+    expect(bundleAgreement(1, set, [{ vendorId: 2, state: "agreed" }]).agreed).toBe(false);
+    expect(bundleAgreement(1, set, [{ vendorId: 2, state: "agreed" }, { vendorId: 3, state: "agreed" }]).agreed).toBe(true);
+  });
+
+  it("says when one store declined", () => {
+    const view = bundleAgreement(1, set, [{ vendorId: 2, state: "agreed" }, { vendorId: 3, state: "declined" }]);
+    expect(view.agreed).toBe(false);
+    expect(view.declined).toBe(true);
+  });
+
+  it("ignores an answer from a store no longer in the set", () => {
+    const view = bundleAgreement(1, [{ vendorId: 1 }, { vendorId: 4 }], [{ vendorId: 2, state: "agreed" }]);
+    expect(view.asked).toEqual([{ vendorId: 4, state: "waiting" }]);
+    expect(view.agreed).toBe(false);
+  });
+
+  it("asks nobody about a store's own set or NetLet's", () => {
+    expect(bundleAgreement(1, [{ vendorId: 1 }, { vendorId: 1 }], [])).toEqual({ asked: [], agreed: true, declined: false });
+    expect(bundleAgreement(null, set, [])).toEqual({ asked: [], agreed: true, declined: false });
+  });
+
+  it("asks again when the price or the items change, not the name", () => {
+    const before = { bundlePrice: "90.000", members: [{ variantId: 1, quantity: 1 }, { variantId: 2, quantity: 2 }] };
+    expect(bundleChangeNeedsAsking(before, { ...before })).toBe(false);
+    expect(bundleChangeNeedsAsking(before, { ...before, bundlePrice: "90" })).toBe(false);
+    expect(bundleChangeNeedsAsking(before, { ...before, bundlePrice: "89.500" })).toBe(true);
+    expect(bundleChangeNeedsAsking(before, { ...before, members: [{ variantId: 2, quantity: 2 }, { variantId: 1, quantity: 1 }] })).toBe(false);
+    expect(bundleChangeNeedsAsking(before, { ...before, members: [{ variantId: 1, quantity: 1 }, { variantId: 2, quantity: 3 }] })).toBe(true);
+    expect(bundleChangeNeedsAsking(before, { ...before, members: [{ variantId: 1, quantity: 1 }, { variantId: 3, quantity: 2 }] })).toBe(true);
+  });
+
+  it("needs words to decline and none to agree", () => {
+    expect(bundleAnswerProblem("agreed", null)).toBeNull();
+    expect(bundleAnswerProblem("declined", "  ")).toBe("bundle.declineNeedsNote");
+    expect(bundleAnswerProblem("declined", "Our margin is too thin")).toBeNull();
+    expect(bundleAnswerProblem("agreed", "x".repeat(BUNDLE_NOTE_MAX + 1))).toBe("bundle.noteTooLong");
   });
 });

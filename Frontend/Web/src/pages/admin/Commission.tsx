@@ -194,10 +194,10 @@ function StoreRates() {
                           <tr key={row.id} className="border-t border-[#eef1f5]">
                             <td className="px-4 py-2.5"><bdi className="font-semibold text-[#0a285a]">{row.name}</bdi></td>
                             <td className="px-4 py-2.5">
-                              <input dir="ltr" inputMode="decimal" aria-label={`${t("admin.commissionPercent")}: ${row.name}`} value={draft.percent} onChange={event => set({ percent: event.target.value })} className={`${fieldClass} h-9 w-24`} />
+                              <input dir="ltr" inputMode="decimal" aria-label={`${t("admin.commissionPercent")}: ${row.name}`} value={draft.percent} onChange={event => set({ percent: event.target.value })} className={`${fieldClass} h-9 max-w-24`} />
                             </td>
                             <td className="px-4 py-2.5">
-                              <input dir="ltr" inputMode="decimal" placeholder="0.000" aria-label={`${t("admin.commissionFixed")}: ${row.name}`} value={draft.fixed} onChange={event => set({ fixed: event.target.value })} className={`${fieldClass} h-9 w-28`} />
+                              <input dir="ltr" inputMode="decimal" placeholder="0.000" aria-label={`${t("admin.commissionFixed")}: ${row.name}`} value={draft.fixed} onChange={event => set({ fixed: event.target.value })} className={`${fieldClass} h-9 max-w-28`} />
                             </td>
                             <td className="px-4 py-2.5 text-end">
                               <button

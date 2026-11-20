@@ -690,7 +690,7 @@ function VendorTeam({ vendorId }: { vendorId: number }) {
                 aria-label={t("admin.memberRole")}
                 value={member.role}
                 onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
-                className={`${fieldClass} w-auto`}
+                className={fieldClass}
               >
                 {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
               </Select>

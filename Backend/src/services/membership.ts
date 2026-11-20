@@ -8,16 +8,35 @@
  * delivery. A shopper reads only their own membership.
  */
 import { and, desc, eq, gt, gte, isNull, lte, sql } from "drizzle-orm";
-import { memberships, membershipTerms, orders, users } from "../../database/schema.js";
-import { MAX_GRANT_NOTE, grantWindow, memberUntil, validMonths, type MembershipRow } from "../../../Shared/commerce/membership.js";
+import { memberships, membershipTerms, orders, platformSettings, pointEntries, users } from "../../database/schema.js";
+import {
+  MAX_GRANT_NOTE,
+  buyProblem,
+  grantWindow,
+  memberUntil,
+  membershipCost,
+  pointsPriceOf,
+  validMonths,
+  type MembershipRow,
+} from "../../../Shared/commerce/membership.js";
 import { assertCan, type Actor } from "../../../Shared/inventory/permissions.js";
 import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/pagination.js";
 import { KUWAIT_OFFSET_MS } from "../../../Shared/kuwaitDay.js";
+import { recordAudit } from "./audit.js";
 import { getDb } from "./db.js";
+import { auditActor } from "./inventory.js";
+import { balanceFor } from "./referral.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
-export type MembershipRefusal = "membership.noSuchAccount" | "membership.badMonths" | "membership.notFound" | "membership.badAmount";
+export type MembershipRefusal =
+  | "membership.noSuchAccount"
+  | "membership.badMonths"
+  | "membership.notFound"
+  | "membership.badAmount"
+  | "membership.badPrice"
+  | "membership.notForSale"
+  | "membership.notEnoughPoints";
 
 export class MembershipRefused extends Error {
   constructor(readonly reason: MembershipRefusal) {
@@ -51,13 +70,64 @@ export async function freeDeliveryOver(db: Db): Promise<string | null> {
   return row?.over ?? null;
 }
 
-export type MyMembership = { member: boolean; until: Date | null; freeDeliveryOver: string | null };
+/** Where NetLet's price in points per month is kept: one row of the settings table, outside the switchboard's list. */
+const POINTS_PRICE_KEY = "membership:pointsPerMonth";
+
+/** What a month of membership costs in points; 0 is not for sale. */
+export async function pointsPerMonth(db: Db | Parameters<Parameters<Db["transaction"]>[0]>[0]): Promise<number> {
+  const [row] = await db.select({ value: platformSettings.value }).from(platformSettings).where(eq(platformSettings.key, POINTS_PRICE_KEY)).limit(1);
+  return row ? pointsPriceOf(row.value) ?? 0 : 0;
+}
+
+export type MyMembership = {
+  member: boolean;
+  until: Date | null;
+  freeDeliveryOver: string | null;
+  /** What a month costs in points, or 0 while memberships are not for sale. */
+  pointsPerMonth: number;
+  /** The points the account may spend now, so the page says whether it is enough. */
+  points: number;
+};
 
 /** The shopper's own membership, for the account page. Nothing about a non-member's history leaks: it is "not a member". */
 export async function myMembership(userId: number, now = new Date()): Promise<MyMembership> {
   const db = await handle();
   const until = memberUntil(await rowsFor(db, userId), now);
-  return { member: until !== null, until, freeDeliveryOver: until ? await freeDeliveryOver(db) : null };
+  const price = await pointsPerMonth(db);
+  return {
+    member: until !== null,
+    until,
+    freeDeliveryOver: until ? await freeDeliveryOver(db) : null,
+    pointsPerMonth: price,
+    points: price > 0 ? await balanceFor(db as never, userId, "points", now) : 0,
+  };
+}
+
+/**
+ * Buy months of membership with points (4.1). Under a lock on the account's
+ * row, the price and the balance are read again and the problem asked again,
+ * so two presses at once cannot spend the same points twice; the points come
+ * off as a `membership_bought` entry and the months are queued after any the
+ * account already has, in one transaction.
+ */
+export async function buyMembership(userId: number, months: number, now = new Date()): Promise<{ startsAt: Date; endsAt: Date; points: number }> {
+  const db = await handle();
+  return db.transaction(async tx => {
+    const [locked] = await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1).for("update");
+    if (!locked) throw new MembershipRefused("membership.noSuchAccount");
+    const price = await pointsPerMonth(tx);
+    const balance = await balanceFor(tx as never, userId, "points", now);
+    const problem = buyProblem({ pointsPerMonth: price, months, balance });
+    if (problem) throw new MembershipRefused(problem);
+    const cost = membershipCost(price, months);
+    const window = grantWindow(await rowsFor(tx, userId), months, now);
+    const [row] = await tx
+      .insert(memberships)
+      .values({ userId, ...window, source: "points", grantedBy: null, note: null, createdAt: now })
+      .returning({ id: memberships.id, startsAt: memberships.startsAt, endsAt: memberships.endsAt });
+    await tx.insert(pointEntries).values({ userId, points: -cost, reason: "membership_bought", pot: "points", createdAt: now });
+    return { startsAt: row.startsAt, endsAt: row.endsAt, points: cost };
+  });
 }
 
 /**
@@ -129,9 +199,34 @@ export async function listMemberships(actor: Actor, request: { current?: boolean
   };
 }
 
-export async function getTerms(actor: Actor): Promise<{ freeDeliveryOver: string | null }> {
+export async function getTerms(actor: Actor): Promise<{ freeDeliveryOver: string | null; pointsPerMonth: number }> {
   assertCan(actor, "membership.manage");
-  return { freeDeliveryOver: await freeDeliveryOver(await handle()) };
+  const db = await handle();
+  return { freeDeliveryOver: await freeDeliveryOver(db), pointsPerMonth: await pointsPerMonth(db) };
+}
+
+/**
+ * Set what a month costs in points; 0 takes memberships off sale. On the
+ * trail, being a price every shopper pays.
+ */
+export async function setPointsPrice(actor: Actor, value: string): Promise<{ pointsPerMonth: number }> {
+  assertCan(actor, "membership.manage");
+  const points = pointsPriceOf(value);
+  if (points === null) throw new MembershipRefused("membership.badPrice");
+  const db = await handle();
+  const before = await pointsPerMonth(db);
+  await db
+    .insert(platformSettings)
+    .values({ key: POINTS_PRICE_KEY, value: String(points), updatedBy: actor.userId, updatedAt: new Date() })
+    .onConflictDoUpdate({ target: platformSettings.key, set: { value: String(points), updatedBy: actor.userId, updatedAt: new Date() } });
+  await recordAudit(await auditActor(actor), {
+    action: "membership.setPrice",
+    subjectType: "setting",
+    subjectLabel: POINTS_PRICE_KEY,
+    before: { pointsPerMonth: before },
+    after: { pointsPerMonth: points },
+  });
+  return { pointsPerMonth: points };
 }
 
 /** Set where free delivery starts; blank is every order. */

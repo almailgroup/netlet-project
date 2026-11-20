@@ -23,6 +23,7 @@
  *     pnpm ios:resources            # write the files
  *     pnpm ios:resources --check    # fail when they are stale
  */
+import { BUNDLE_NOTE_MAX } from "../../../Shared/commerce/bundles.js";
 import { ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_TABS } from "../../../Shared/commerce/orderFilters.js";
 import { DISPLAY_CURRENCIES, REFERENCE_RATES, RATES_AS_OF, minorDigits } from "../../../Shared/commerce/currency.js";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -368,6 +369,8 @@ export function buildResources(): Record<string, string> {
       team: { areas: TEAM_AREAS, capabilities: AREA_CAPABILITIES, ready: READY_ROLE_AREAS, readyOrder: READY_ROLES,
         nameMax: ROLE_NAME_MAX, maxRoles: MAX_TEAM_ROLES },
       bulk: { actions: BULK_ACTIONS, limit: BULK_LIMIT, minPercent: MIN_PERCENT, maxPercent: MAX_PERCENT, maxRestock: MAX_RESTOCK, maxBrand: BRAND_MAX },
+      /* A store's answer to a set another store made with its products (3.3.11). */
+      bundles: { noteMax: BUNDLE_NOTE_MAX },
       /* Where a line may move next (`nextStates`), so the desk offers only the
          moves the server would take; and the payout schedule's own days. */
       fulfilment: Object.fromEntries(FULFILMENT_STATES.map(state => [state, nextStates(state)])),

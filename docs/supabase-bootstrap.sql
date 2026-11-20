@@ -2441,6 +2441,32 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0091_bundle_agreements.sql =====
+CREATE TABLE IF NOT EXISTS "bundle_agreements" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"bundle_id" integer NOT NULL,
+	"vendor_id" integer NOT NULL,
+	"state" varchar(10) NOT NULL,
+	"note" text,
+	"decided_by" integer,
+	"decided_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "bundle_agreements_state_check" CHECK ("bundle_agreements"."state" in ('agreed', 'declined'))
+);
+DO $$ BEGIN
+  ALTER TABLE "bundle_agreements" ADD CONSTRAINT "bundle_agreements_bundle_id_bundles_id_fk" FOREIGN KEY ("bundle_id") REFERENCES "public"."bundles"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "bundle_agreements" ADD CONSTRAINT "bundle_agreements_vendor_id_vendors_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "bundle_agreements" ADD CONSTRAINT "bundle_agreements_decided_by_users_id_fk" FOREIGN KEY ("decided_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE UNIQUE INDEX IF NOT EXISTS "bundle_agreements_unique" ON "bundle_agreements" USING btree ("bundle_id","vendor_id");
+CREATE INDEX IF NOT EXISTS "bundle_agreements_vendor_idx" ON "bundle_agreements" USING btree ("vendor_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2492,6 +2518,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  91 AS migrations_in_this_file,
+  92 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -222,6 +222,8 @@ extension API {
 
     /// Whether the shopper signed in holds a membership (`membership.mine`).
     static let myMembership = Procedure<NoInput, MyMembership>(query: "membership.mine")
+    struct MonthsInput: Encodable, Sendable { let months: Int }
+    static let buyMembership = Procedure<MonthsInput, BoughtMembership>(mutation: "membership.buy")
 }
 
 /// The membership the shopper holds (`membership.mine`): whether, until
@@ -230,4 +232,40 @@ struct MyMembership: Decodable, Sendable {
     let member: Bool
     var until: Date? = nil
     var freeDeliveryOver: String? = nil
+    /// What a month costs in NetLet points, 0 while memberships are not for
+    /// sale; absent from an answer recorded before they could be bought.
+    var pointsPerMonth: Int? = nil
+    /// The points the account may spend now.
+    var points: Int? = nil
+}
+
+/// Months of membership bought with points (`membership.buy`).
+struct BoughtMembership: Decodable, Sendable {
+    let endsAt: Date
+    let points: Int
+}
+
+/// `buyProblem` in Swift (4.1): what stands in the way of buying months with
+/// points, first the price, then the months, then the balance; the server asks
+/// it again under a lock on the account.
+enum MembershipRules {
+    static let monthChoices = [1, 3, 6, 12]
+    static let maxPointsPerMonth = 1_000_000
+
+    /// A price in points as NetLet types it — whole points, Arabic-Indic digits
+    /// read as digits — or nil when it is not one: `pointsPriceOf`.
+    static func pointsPrice(_ text: String) -> Int? {
+        let trimmed = PhoneNumber.foldDigits(text).trimmingCharacters(in: .whitespaces)
+        guard (1...7).contains(trimmed.count), trimmed.allSatisfy({ $0.isASCII && $0.isNumber }), let points = Int(trimmed) else { return nil }
+        return points <= maxPointsPerMonth ? points : nil
+    }
+
+    static func cost(_ pointsPerMonth: Int, _ months: Int) -> Int { max(0, pointsPerMonth) * max(0, months) }
+
+    static func buyProblem(pointsPerMonth: Int, months: Int, balance: Int) -> String? {
+        if pointsPerMonth <= 0 { return "membership.notForSale" }
+        if months < 1 || months > 12 { return "membership.badMonths" }
+        if balance < cost(pointsPerMonth, months) { return "membership.notEnoughPoints" }
+        return nil
+    }
 }

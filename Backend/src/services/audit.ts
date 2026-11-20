@@ -81,6 +81,12 @@ export const AUDIT_ACTIONS = [
   "sponsor.confirm",
   "sponsor.notReceived",
   "sponsor.stop",
+  /* A store's answer to a set another store made with its products (3.3.11):
+     the moment it agrees to give up a share of its own price, or says no. */
+  "bundle.agree",
+  "bundle.decline",
+  /* What a month of membership costs in points (4.1): a price every shopper pays. */
+  "membership.setPrice",
   /* A guide published, taken down or deleted (3.5.3): NetLet speaking in public. */
   "guide.setStatus",
   "guide.delete",
@@ -168,7 +174,7 @@ export type AuditActor = {
 
 export type AuditRecord = {
   action: AuditAction;
-  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "occasion" | "return" | "proposal" | "order" | "device" | "teamRole";
+  subjectType: "vendor" | "product" | "user" | "session" | "variant" | "claim" | "feature" | "setting" | "affiliate" | "payout" | "payoutFile" | "placement" | "guide" | "occasion" | "return" | "proposal" | "order" | "device" | "teamRole" | "bundle";
   subjectId?: number | null;
   subjectLabel?: string | null;
   vendorId?: number | null;
@@ -374,6 +380,8 @@ const SELLER_ACTIONS: AuditAction[] = [
   "sponsor.sendTransfer",
   "sponsor.withdraw",
   "sponsor.stop",
+  "bundle.agree",
+  "bundle.decline",
 ];
 
 /**

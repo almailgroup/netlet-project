@@ -178,3 +178,83 @@ export function bundleComplete(bundle: Pick<Bundle, "members">, inBasket: { vari
     return line !== undefined && line.quantity >= member.quantity;
   });
 }
+
+/* ------------------------------------------------ sets made by arrangement --- */
+
+/**
+ * A store's answer to a set another store made with its products (3.3.11,
+ * "with other sellers' products by arrangement", on the owner's word).
+ *
+ * **Waiting is the absence of an answer.** The stores asked are every store
+ * with a product in the set except the one that owns it, read from the
+ * members as they are now — so a product handed to another store since is
+ * that store's to agree to, and an answer a store gave before it left the set
+ * counts for nothing.
+ */
+export type AgreementState = "waiting" | "agreed" | "declined";
+
+export type BundleAnswer = { vendorId: number; state: "agreed" | "declined" };
+
+export type BundleAgreement = {
+  /** The stores asked, in the order their products first appear. */
+  asked: { vendorId: number; state: AgreementState }[];
+  /** Whether the set may be on sale as far as the stores in it are concerned. */
+  agreed: boolean;
+  /** One store said no; the owner has to change the set or take it down. */
+  declined: boolean;
+};
+
+export function bundleAgreement(
+  ownerVendorId: number | null,
+  members: Pick<BundleMember, "vendorId">[],
+  answers: BundleAnswer[],
+): BundleAgreement {
+  /* NetLet's own sets commit no store's margin by arrangement: NetLet made
+     them, and the stores' terms with NetLet cover them, as before. */
+  if (ownerVendorId === null) return { asked: [], agreed: true, declined: false };
+  const asked: { vendorId: number; state: AgreementState }[] = [];
+  for (const member of members) {
+    if (member.vendorId === null || member.vendorId === ownerVendorId) continue;
+    if (asked.some(entry => entry.vendorId === member.vendorId)) continue;
+    const answer = answers.find(entry => entry.vendorId === member.vendorId);
+    asked.push({ vendorId: member.vendorId, state: answer?.state ?? "waiting" });
+  }
+  return {
+    asked,
+    agreed: asked.every(entry => entry.state === "agreed"),
+    declined: asked.some(entry => entry.state === "declined"),
+  };
+}
+
+/**
+ * Whether a change to a set takes back every answer given about it: its price
+ * or what is in it, and nothing else. A store agreed to give up a share of
+ * its own price inside a particular set at a particular figure; renaming the
+ * set changes neither.
+ */
+export function bundleChangeNeedsAsking(
+  before: { bundlePrice: string; members: { variantId: number; quantity: number }[] },
+  after: { bundlePrice: string; members: { variantId: number; quantity: number }[] },
+): boolean {
+  if (compareMoney(before.bundlePrice, after.bundlePrice) !== 0) return true;
+  if (before.members.length !== after.members.length) return true;
+  return after.members.some(member => {
+    const was = before.members.find(entry => entry.variantId === member.variantId);
+    return was === undefined || was.quantity !== member.quantity;
+  });
+}
+
+/** The most a store may write when it declines or answers. */
+export const BUNDLE_NOTE_MAX = 500;
+
+/**
+ * What stands in the way of a store's answer, as a message key, or null.
+ * Declining needs words, because the store that asked has to know what would
+ * change the answer; agreeing needs none.
+ */
+export function bundleAnswerProblem(state: "agreed" | "declined", note: string | null | undefined): string | null {
+  const words = (note ?? "").trim();
+  if (words.length > BUNDLE_NOTE_MAX) return "bundle.noteTooLong";
+  if (state === "declined" && words.length === 0) return "bundle.declineNeedsNote";
+  return null;
+}

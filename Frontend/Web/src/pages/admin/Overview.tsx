@@ -113,6 +113,8 @@ function Overview({ actor }: { actor: Actor }) {
   const waitingBanners = trpc.ads.bannersWaiting.useQuery(undefined, { enabled: can(actor, "ads.review") });
   /* Sponsored products: requests and transfers waiting on NetLet, or payments waiting on this store. */
   const waitingSponsors = trpc.sponsor.waiting.useQuery(undefined, { enabled: can(actor, "ads.book") });
+  /* Sets other stores made with this store's products, waiting on its answer (3.3.11). */
+  const askedBundles = trpc.inventory.bundles.waiting.useQuery(undefined, { enabled: actor.kind === "vendor" && can(actor, "product.edit", actor.vendorId) });
   /* Shoppers waiting on NetLet itself (3.5.1). */
   const waitingSupport = trpc.support.waiting.useQuery(undefined, { enabled: can(actor, "support.answer") });
   const atCentres = trpc.fulfilment.waiting.useQuery(undefined, { enabled: can(actor, "fulfilment.operate") });
@@ -192,6 +194,7 @@ function Overview({ actor }: { actor: Actor }) {
     { label: "admin.bannersWaiting" as const, value: waitingBanners.data ?? 0, href: "/admin/ads", tone: "urgent" as const },
     { label: "admin.sponsorsWaiting" as const, value: waitingSponsors.data?.forNetLet ?? 0, href: "/admin/sponsored", tone: "urgent" as const },
     { label: "admin.sponsorsToPay" as const, value: waitingSponsors.data?.toPay ?? 0, href: "/admin/sponsored", tone: "urgent" as const },
+    { label: "admin.bundlesAskedTile" as const, value: askedBundles.data?.count ?? 0, href: "/admin/bundles", tone: "urgent" as const },
     { label: "support.waitingTile" as const, value: waitingSupport.data ?? 0, href: "/admin/support", tone: "urgent" as const },
     { label: "fraud.ordersTile" as const, value: fraudAlerts.data?.orders ?? 0, href: "/admin/orders", tone: "urgent" as const },
     { label: "fraud.watchTile" as const, value: fraudAlerts.data?.watch ?? 0, href: "/admin/fraud", tone: "urgent" as const },

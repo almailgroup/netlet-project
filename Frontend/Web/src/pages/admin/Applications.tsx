@@ -201,7 +201,7 @@ function Applications() {
                                   inputMode="decimal"
                                   value={rates[row.id] ?? String(Number(DEFAULT_COMMISSION_PERCENT))}
                                   onChange={event => setRates({ ...rates, [row.id]: event.target.value })}
-                                  className={`${fieldClass} mt-1.5 h-9 w-24`}
+                                  className={`${fieldClass} mt-1.5 h-9 max-w-24`}
                                 />
                               </div>
                               {/* A fixed amount per sale (3.3.2), beside the rate or instead of it. */}
@@ -214,7 +214,7 @@ function Applications() {
                                   placeholder="0.000"
                                   value={fixedRates[row.id] ?? ""}
                                   onChange={event => setFixedRates({ ...fixedRates, [row.id]: event.target.value })}
-                                  className={`${fieldClass} mt-1.5 h-9 w-28`}
+                                  className={`${fieldClass} mt-1.5 h-9 max-w-28`}
                                 />
                               </div>
                               {row.proposedCommissionPercent || row.proposedCommissionFixed ? (

@@ -39,6 +39,7 @@
  */
 import { compareMoney, toFils, fromFils } from "../money.js";
 import type { DeliveryQuote } from "./delivery.js";
+import { latinDigits } from "./kuwaitAddress.js";
 
 /** The longest one grant may run, so a typo cannot hand out a decade. */
 export const MAX_GRANT_MONTHS = 12;
@@ -111,4 +112,41 @@ export function waiveDelivery(quote: DeliveryQuote, goodsTotal: string, freeOver
     return fee > 0n ? { ...row, fee: "0.000", free: true, toFree: null, waived: row.fee } : { ...row, toFree: null };
   });
   return { perVendor, total: "0.000", waived: fromFils(waived) };
+}
+
+/* --------------------------------------------- bought with NetLet points --- */
+
+/**
+ * A membership bought with NetLet points (4.1, on the owner's word: "with
+ * NetLet points"). Points are already money inside NetLet — one point is a
+ * fil at checkout — so they are the one way to pay that needs no payment
+ * provider. NetLet sets a price in points per month; nothing set (0) means
+ * memberships are not for sale and are only granted, as before.
+ */
+export const MAX_POINTS_PER_MONTH = 1_000_000;
+
+/** A price in points as NetLet types it, Arabic-Indic digits read as digits, or null when it is not one. */
+export function pointsPriceOf(value: string): number | null {
+  const trimmed = latinDigits(value).trim();
+  if (!/^\d{1,7}$/.test(trimmed)) return null;
+  const points = Number(trimmed);
+  return points <= MAX_POINTS_PER_MONTH ? points : null;
+}
+
+/** What `months` cost at `pointsPerMonth`. */
+export function membershipCost(pointsPerMonth: number, months: number): number {
+  return Math.max(0, Math.trunc(pointsPerMonth)) * Math.max(0, Math.trunc(months));
+}
+
+/**
+ * What stands in the way of buying, as a message key, or null. The server
+ * asks it again under a lock on the account, against the balance as it is
+ * then, so two presses cannot spend the same points twice.
+ */
+export function buyProblem(input: { pointsPerMonth: number; months: number; balance: number }):
+  "membership.notForSale" | "membership.badMonths" | "membership.notEnoughPoints" | null {
+  if (input.pointsPerMonth <= 0) return "membership.notForSale";
+  if (!validMonths(input.months)) return "membership.badMonths";
+  if (input.balance < membershipCost(input.pointsPerMonth, input.months)) return "membership.notEnoughPoints";
+  return null;
 }

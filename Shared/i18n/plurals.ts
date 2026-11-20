@@ -58,6 +58,22 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
     en: { one: "1 month" },
     ar: { one: "شهر واحد", two: "شهران", many: "{count} شهراً", other: "{count} شهر" },
   },
+  /* ------------------------------------------------- membership by points --- */
+  "membership.monthsOption": {
+    param: "months",
+    en: { one: "1 month" },
+    ar: { one: "شهر واحد", two: "شهران", many: "{months} شهراً", other: "{months} شهر" },
+  },
+  "membership.buyBody": {
+    param: "months",
+    en: { one: "1 month of membership for {cost} points. The points come off your balance now." },
+    ar: {
+      one: "عضوية شهر واحد مقابل {cost} نقطة. تُخصم النقاط من رصيدك الآن.",
+      two: "عضوية شهرين مقابل {cost} نقطة. تُخصم النقاط من رصيدك الآن.",
+      many: "عضوية {months} شهراً مقابل {cost} نقطة. تُخصم النقاط من رصيدك الآن.",
+      other: "عضوية {months} شهر مقابل {cost} نقطة. تُخصم النقاط من رصيدك الآن.",
+    },
+  },
   /* ---------------------------------------------------- store documents --- */
   "storeDocs.expiresIn": {
     param: "count",

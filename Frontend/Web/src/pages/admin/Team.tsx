@@ -110,7 +110,7 @@ function Team({ actor }: { actor: Actor }) {
                           onChange={event => setRole.mutate({ vendorId, userId: member.userId, role: event.target.value as VendorRole })}
                           aria-label={t("admin.memberRole")}
                           disabled={setRole.isPending}
-                          className={`${fieldClass} h-9 w-auto text-[13px]`}
+                          className={`${fieldClass} h-9 text-[13px]`}
                         >
                           {VENDOR_ROLES.map(role => <option key={role} value={role}>{t(ROLE_LABEL[role])}</option>)}
                         </Select>

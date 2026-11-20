@@ -129,10 +129,10 @@ export const FEATURES: Record<FeatureKey, FeatureDefinition> = {
      What is already on its way is still counted in, what NetLet holds still
      sells, and sold lines are still picked and packed. */
   fulfilment: { entries: ["fulfilment.announce"], audience: "seller", defaultOn: true },
-  /* NetLet membership (4.1): off stops new grants. A member's membership
+  /* NetLet membership (4.1): off stops new grants and purchases. A member's membership
      runs out its time with every benefit — it was given, and taking it back
      with a switch would be keeping a promise only while it was convenient. */
-  membership: { entries: ["membership.grant"], audience: "shopper", defaultOn: true },
+  membership: { entries: ["membership.grant", "membership.buy"], audience: "shopper", defaultOn: true },
   /* The browser's own recogniser; there is no entry, only the microphone in the
      search box, which is drawn only in a browser that can listen. */
   voiceSearch: { entries: [], audience: "shopper", defaultOn: true },

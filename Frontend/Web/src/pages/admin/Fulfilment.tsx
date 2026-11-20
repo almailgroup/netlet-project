@@ -537,7 +537,7 @@ function PackRate({ centreId, rate, name }: { centreId: number; rate: string | n
     <form className="flex items-center gap-1.5" onSubmit={event => { event.preventDefault(); if (ok) save.mutate({ id: centreId, rate: value.trim() || null }); }}>
       <label className="text-[13px] font-semibold text-[#0a285a]">
         <span className="sr-only">{t("fulfilment.packRateFor", { centre: name })}</span>
-        <input dir="ltr" inputMode="decimal" value={value} placeholder={t("fulfilment.packRatePlaceholder")} aria-invalid={!ok} onChange={event => setValue(event.target.value)} className={`${fieldClass} h-9 w-28`} />
+        <input dir="ltr" inputMode="decimal" value={value} placeholder={t("fulfilment.packRatePlaceholder")} aria-invalid={!ok} onChange={event => setValue(event.target.value)} className={`${fieldClass} h-9 max-w-28`} />
       </label>
       <button type="submit" disabled={!ok || save.isPending} className={smallButtonClass.secondary}>{t("fulfilment.setRate")}</button>
     </form>

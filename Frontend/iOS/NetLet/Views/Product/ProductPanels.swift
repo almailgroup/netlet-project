@@ -684,9 +684,9 @@ struct BundlesPanel: View {
                     Text(l.t("bundle.heading")).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
                     ForEach(bundles) { bundle in
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(bundle.name).font(.inter(15, .bold)).foregroundStyle(Brand.ink)
+                            Text(inLanguage(bundle.name, bundle.nameAr, l.current)).font(.inter(15, .bold)).foregroundStyle(Brand.ink)
                             ForEach(bundle.members, id: \.variantId) { member in
-                                Text("· \(member.productTitle)\(member.quantity > 1 ? " ×\(member.quantity)" : "")\(bundle.crossVendor ? member.vendorName.map { " · \($0)" } ?? "" : "")")
+                                Text("· \(inLanguage(member.productTitle, member.productTitleAr, l.current))\(member.quantity > 1 ? " ×\(member.quantity)" : "")\(bundle.crossVendor ? member.vendorName.map { " · \(inLanguage($0, member.vendorNameAr, l.current))" } ?? "" : "")")
                                     .font(.inter(13))
                                     .foregroundStyle(Brand.body)
                             }
@@ -725,8 +725,8 @@ struct BundlesPanel: View {
         let lines = bundle.members.map { API.CartLine(variantId: "\($0.variantId)", quantity: $0.quantity, bundleId: bundle.id) }
         if await app.cart.add(lines: lines) {
             Haptics.succeeded()
-            announce(l.t("bundle.added", ["name": bundle.name]))
-            app.toast(l.t("bundle.added", ["name": bundle.name]))
+            announce(l.t("bundle.added", ["name": inLanguage(bundle.name, bundle.nameAr, l.current)]))
+            app.toast(l.t("bundle.added", ["name": inLanguage(bundle.name, bundle.nameAr, l.current)]))
         } else {
             Haptics.refused()
             app.toast(l.t("cart.addFailed"))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { grantWindow, isActive, memberPriceFor, memberPriceProblem, memberUntil, validMonths, waiveDelivery } from "./membership.js";
+import { MAX_POINTS_PER_MONTH, buyProblem, grantWindow, isActive, memberPriceFor, memberPriceProblem, memberUntil, membershipCost, pointsPriceOf, validMonths, waiveDelivery } from "./membership.js";
 
 const day = (n: number) => new Date(Date.UTC(2026, 9, n));
 const row = (id: number, from: Date, to: Date, cancelledAt: Date | null = null) => ({ id, startsAt: from, endsAt: to, cancelledAt });
@@ -64,5 +64,27 @@ describe("a member's delivery", () => {
 
   it("is paid like anybody's under NetLet's minimum", () => {
     expect(waiveDelivery(quote, "42.000", "50.000")).toEqual({ ...quote, waived: "0.000" });
+  });
+});
+
+describe("bought with points", () => {
+  it("reads a price in whole points, nothing over the ceiling", () => {
+    expect(pointsPriceOf(" 5000 ")).toBe(5000);
+    expect(pointsPriceOf("0")).toBe(0);
+    expect(pointsPriceOf("٥٠٠٠")).toBe(5000);
+    expect(pointsPriceOf("5.5")).toBeNull();
+    expect(pointsPriceOf("-1")).toBeNull();
+    expect(pointsPriceOf(String(MAX_POINTS_PER_MONTH + 1))).toBeNull();
+  });
+
+  it("costs the price times the months", () => {
+    expect(membershipCost(5000, 3)).toBe(15_000);
+  });
+
+  it("says what stands in the way, first the price, then the months, then the points", () => {
+    expect(buyProblem({ pointsPerMonth: 0, months: 1, balance: 1e9 })).toBe("membership.notForSale");
+    expect(buyProblem({ pointsPerMonth: 5000, months: 0, balance: 1e9 })).toBe("membership.badMonths");
+    expect(buyProblem({ pointsPerMonth: 5000, months: 2, balance: 9_999 })).toBe("membership.notEnoughPoints");
+    expect(buyProblem({ pointsPerMonth: 5000, months: 2, balance: 10_000 })).toBeNull();
   });
 });

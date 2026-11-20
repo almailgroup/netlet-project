@@ -4,7 +4,10 @@ import UniformTypeIdentifiers
 // MARK: - Bundles
 
 /// Sets sold together for less — the web's `/admin/bundles`. A set saves
-/// something or it is refused; NetLet's own sets may span two stores.
+/// something or it is refused; NetLet's own sets may span two stores, and a
+/// store's may hold another store's product by arrangement (3.3.11): that
+/// store agrees or declines under "Asked of your store", and the set is on
+/// sale only once every store in it has agreed.
 struct PortalBundlesView: View {
     struct Member: Identifiable, Hashable {
         let variantId: Int
@@ -13,6 +16,9 @@ struct PortalBundlesView: View {
         let price: Money
         let image: String?
         var quantity: Int
+        /// Picked from another store's shelf, whose answer the set waits for.
+        var fromShop = false
+        var vendorName: String? = nil
         var id: Int { variantId }
     }
 
@@ -23,6 +29,15 @@ struct PortalBundlesView: View {
     @State private var members: [Member] = []
     @State private var term = ""
     @State private var results: [SellerProduct] = []
+    /// "mine" or "shop": a store's own shelf, or the shop's other stores.
+    @State private var source = "mine"
+    @State private var shopResults: [Product] = []
+    /// The store's own address, so "Other stores" leaves its own products to
+    /// "Your products": a product of its own is nobody else's to agree to.
+    @State private var ownSlug: String?
+    @State private var asked: [BundleRow] = []
+    @State private var declining: BundleRow?
+    @State private var declineNote = ""
     @State private var saving = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -54,6 +69,10 @@ struct PortalBundlesView: View {
                     Text(l.t("admin.bundleNoItems")).font(.inter(13)).foregroundStyle(Brand.muted)
                 }
                 ForEach(members) { member in memberRow(member) }
+                let fromShops = Array(Set(members.filter(\.fromShop).compactMap(\.vendorName))).sorted()
+                if !fromShops.isEmpty {
+                    PortalNotice(text: l.t("admin.bundleAskedNote", ["stores": fromShops.joined(separator: ", ")]))
+                }
                 finder
                 Button { Task { await save() } } label: {
                     if self.saving { ProgressView().tint(.white) } else { Text(l.t("admin.bundleSave")) }
@@ -61,6 +80,11 @@ struct PortalBundlesView: View {
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(self.saving || name.trimmingCharacters(in: .whitespaces).isEmpty || priced == nil || members.count < 2 || noSaving)
             } }
+            if !asked.isEmpty {
+                PortalSectionHeading(title: l.t("admin.bundleAskedTitle"))
+                Text(l.t("admin.bundleAskedHint")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                ForEach(asked) { bundle in askedCard(bundle) }
+            }
             PortalSectionHeading(title: l.t("admin.bundleListTitle"))
             if let bundles {
                 if bundles.isEmpty {
@@ -76,6 +100,89 @@ struct PortalBundlesView: View {
         }
         .task { await load() }
         .onChange(of: term) { Task { await find() } }
+        .onChange(of: source) { Task { await find() } }
+        .alert(l.t("admin.bundleDeclineTitle"), isPresented: Binding(get: { declining != nil }, set: { if !$0 { declining = nil } })) {
+            TextField(l.t("admin.bundleDeclineNote"), text: $declineNote)
+            Button(l.t("admin.bundleDecline"), role: .destructive) {
+                if let bundle = declining { Task { await answer(bundle, state: "declined") } }
+            }
+            .disabled(BundleRules.shared.answerProblem("declined", declineNote) != nil)
+            Button(l.t("common.cancel"), role: .cancel) { declining = nil }
+        } message: {
+            Text(l.t("admin.bundleDeclineBody", ["name": inLanguage(declining?.name ?? "", declining?.nameAr, l.current)]))
+        }
+    }
+
+    /// Each store asked about a set made with its products, and its answer.
+    @ViewBuilder
+    private func agreementLines(_ bundle: BundleRow) -> some View {
+        if let agreement = bundle.agreement, !agreement.asked.isEmpty {
+            Text(l.t(agreement.agreed ? "admin.bundleAllAgreed" : "admin.bundleNotYetAgreed")).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+            FlowLayout(spacing: 6) {
+                ForEach(agreement.asked, id: \.vendorId) { entry in
+                    let store = ["store": inLanguage(entry.vendorName ?? "", entry.vendorNameAr, l.current)]
+                    switch entry.state {
+                    case "agreed": StatusPill(label: l.t("admin.bundleStoreAgreed", store), tone: .done)
+                    case "declined": StatusPill(label: l.t("admin.bundleStoreDeclined", store), tone: .stopped)
+                    default: StatusPill(label: l.t("admin.bundleStoreWaiting", store), tone: .waiting)
+                    }
+                }
+            }
+            ForEach(agreement.asked.filter { $0.state == "declined" && !($0.note ?? "").isEmpty }, id: \.vendorId) { entry in
+                Text("\(l.t("admin.bundleTheirWords", ["store": inLanguage(entry.vendorName ?? "", entry.vendorNameAr, l.current)])) \(entry.note ?? "")").font(.inter(13)).foregroundStyle(Brand.body)
+            }
+        }
+    }
+
+    /// A set another store made with this store's products: its share, and Agree or Decline.
+    private func askedCard(_ bundle: BundleRow) -> some View {
+        let own = app.session.seller?.ownVendor
+        let mayAnswer = own.map { app.session.seller?.can("product.edit", vendorId: $0) == true } ?? false
+        let state = bundle.myState ?? "waiting"
+        return PortalCard {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(inLanguage(bundle.name, bundle.nameAr, l.current)).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
+                    Text(l.t("admin.bundleMadeBy", ["store": inLanguage(bundle.ownerName ?? "", bundle.ownerNameAr, l.current)])).font(.inter(13)).foregroundStyle(Brand.muted)
+                    Text("\(bundle.bundlePrice.formatted(l.current)) · \(l.t("admin.bundleSeparately", ["amount": bundle.separately.formatted(l.current)]))").font(.inter(13)).foregroundStyle(Brand.body)
+                }
+                Spacer()
+                switch state {
+                case "agreed": StatusPill(label: l.t("admin.bundleYouHaveAgreed"), tone: .done)
+                case "declined": StatusPill(label: l.t("admin.bundleYouHaveDeclined"), tone: .stopped)
+                default: StatusPill(label: l.t("admin.bundleWaitingOnYou"), tone: .waiting)
+                }
+            }
+            ForEach(Array(bundle.members.filter { $0.vendorId == own }.enumerated()), id: \.offset) { _, member in
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("\((member.quantity ?? 1) > 1 ? "\(member.quantity ?? 1) × " : "")\(inLanguage(member.productTitle, member.productTitleAr, l.current))").font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                    if let price = member.unitPrice, let share = member.bundleUnitPrice {
+                        Text(l.t("admin.bundleYourShare", ["price": price.formatted(l.current), "share": share.formatted(l.current)])).font(.inter(12)).foregroundStyle(Brand.muted)
+                    }
+                }
+            }
+            if mayAnswer {
+                HStack(spacing: 8) {
+                    if state != "agreed" {
+                        Button(l.t("admin.bundleAgree")) { Task { await answer(bundle, state: "agreed") } }
+                            .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                    }
+                    if state != "declined" {
+                        Button(l.t("admin.bundleDecline")) { declineNote = ""; declining = bundle }
+                            .buttonStyle(PortalSmallButtonStyle(kind: .danger))
+                    }
+                }
+            }
+        }
+    }
+
+    private func answer(_ bundle: BundleRow, state: String) async {
+        let note = declineNote.trimmingCharacters(in: .whitespacesAndNewlines)
+        let input = API.BundleAnswerInput(bundleId: bundle.id, state: state, note: state == "declined" ? note : nil)
+        if await app.attempt(done: state == "agreed" ? "admin.bundleYouAgreed" : "admin.bundleYouDeclined", fallback: "admin.saveFailed", { _ = try await app.services.api.call(API.answerBundle, input) }) {
+            declining = nil
+            await load()
+        }
     }
 
     /// What the set comes to bought separately, and what it saves.
@@ -112,6 +219,57 @@ struct PortalBundlesView: View {
 
     @ViewBuilder
     private var finder: some View {
+        if app.session.seller?.kind == "vendor" {
+            Picker(l.t("admin.bundleSource"), selection: $source) {
+                Text(l.t("admin.bundleSourceMine")).tag("mine")
+                Text(l.t("admin.bundleSourceShop")).tag("shop")
+            }
+            .pickerStyle(.segmented)
+        }
+        if source == "shop" {
+            shopFinder
+        } else {
+            ownFinder
+        }
+    }
+
+    /// Another store's shelf, by the shop's own search: only what any shopper
+    /// sees, so a store never reads another's stock, costs or terms.
+    @ViewBuilder
+    private var shopFinder: some View {
+        LabeledField(label: l.t("admin.bundleSearchShop"), text: $term, hint: l.t("admin.bundleSearchShopHint"))
+        if term.trimmingCharacters(in: .whitespaces).count >= 2 {
+            if shopResults.isEmpty {
+                Text(l.t("admin.bundleNoResults")).font(.inter(13)).foregroundStyle(Brand.muted)
+            }
+            ForEach(shopResults) { product in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(product.title).font(.inter(14, .semibold)).foregroundStyle(Brand.navy)
+                    if let store = product.vendor { Text(store).font(.inter(12)).foregroundStyle(Brand.muted) }
+                    FlowLayout(spacing: 6) {
+                        ForEach(product.variants.filter(\.availableForSale), id: \.id) { variant in
+                            let variantId = Int(variant.id) ?? 0
+                            let option = variant.title == "Default" ? nil : variant.title
+                            let inSet = members.contains { $0.variantId == variantId }
+                            Button {
+                                add(Member(variantId: variantId, title: product.title, option: option, price: variant.price, image: product.images.first?.url, quantity: 1, fromShop: true, vendorName: product.vendor))
+                            } label: {
+                                Label([option, variant.price.formatted(l.current), inSet ? "(\(l.t("admin.bundleInSet")))" : nil].compactMap { $0 }.joined(separator: " · "), systemImage: "plus")
+                            }
+                            .buttonStyle(PortalSmallButtonStyle())
+                            .accessibilityLabel(l.t("admin.bundleAddThis", ["name": product.title]))
+                        }
+                    }
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.pearl.opacity(0.6)))
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var ownFinder: some View {
         LabeledField(label: l.t("admin.bundleSearch"), text: $term, hint: l.t("admin.bundleSearchHint"))
         if term.trimmingCharacters(in: .whitespaces).count >= 2 {
             if results.isEmpty {
@@ -146,7 +304,7 @@ struct PortalBundlesView: View {
         PortalCard {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(bundle.name).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
+                    Text(inLanguage(bundle.name, bundle.nameAr, l.current)).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
                     Text("\(bundle.bundlePrice.formatted(l.current)) · \(l.t("admin.bundleSeparately", ["amount": bundle.separately.formatted(l.current)]))").font(.inter(13)).foregroundStyle(Brand.body)
                 }
                 Spacer()
@@ -154,12 +312,18 @@ struct PortalBundlesView: View {
                     if bundle.crossVendor {
                         StatusPill(label: l.t("admin.bundleCrossVendor", ["count": "\(Set(bundle.members.compactMap(\.vendorId)).count)"]), tone: .shipped)
                     }
-                    StatusPill(label: l.t(bundle.active ? "admin.bundleActive" : "admin.bundleInactive"), tone: bundle.active ? .done : .waiting)
+                    // A set the other stores have not all agreed to is not on sale, whatever its own switch says.
+                    if bundle.active, bundle.agreement?.agreed == false {
+                        StatusPill(label: l.t("admin.bundleAwaitingPill"), tone: .waiting)
+                    } else {
+                        StatusPill(label: l.t(bundle.active ? "admin.bundleActive" : "admin.bundleInactive"), tone: bundle.active ? .done : .waiting)
+                    }
                 }
             }
             ForEach(Array(bundle.members.enumerated()), id: \.offset) { _, member in
-                Text("· \(member.productTitle)").font(.inter(13)).foregroundStyle(Brand.body)
+                Text("· \(inLanguage(member.productTitle, member.productTitleAr, l.current))").font(.inter(13)).foregroundStyle(Brand.body)
             }
+            agreementLines(bundle)
             if mayChange(bundle.vendorId) {
                 Button(l.t(bundle.active ? "admin.bundleTakeOff" : "admin.bundlePutOn")) {
                     Task {
@@ -184,13 +348,27 @@ struct PortalBundlesView: View {
         guard query.count >= 2 else { results = []; return }
         try? await Task.sleep(for: .milliseconds(250))
         guard query == term.trimmingCharacters(in: .whitespaces) else { return }
-        results = (try? await app.services.api.call(API.sellerProducts, .init(pageSize: 6, query: query)))?.rows ?? results
+        if source == "shop" {
+            if ownSlug == nil, app.session.seller?.kind == "vendor" {
+                ownSlug = ((try? await app.services.api.call(API.myStore)) ?? nil)?.slug
+            }
+            if let found = (try? await app.services.api.call(API.search, .init(q: query, locale: l.current.rawValue, limit: 8)))?.products {
+                shopResults = Array(found.filter { ownSlug == nil || $0.vendorSlug != ownSlug }.prefix(6))
+            }
+        } else {
+            results = (try? await app.services.api.call(API.sellerProducts, .init(pageSize: 6, query: query)))?.rows ?? results
+        }
     }
 
     private func load() async {
         do {
             bundles = try await app.services.api.call(API.bundleRows)
             failed = nil
+            /* What other stores asked of this one: a store's alone, and never
+               in the way of its own list, so a failure here is no answer. */
+            if app.session.seller?.kind == "vendor" {
+                asked = (try? await app.services.api.call(API.bundlesAsked)) ?? asked
+            }
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, bundles == nil { failed = failure }
@@ -202,8 +380,9 @@ struct PortalBundlesView: View {
         saving = true
         defer { saving = false }
         let actor = app.session.seller
-        // NetLet's own sets belong to no store, which is how one spans two.
-        let vendorId = actor?.can("bundles.netlet") == true ? nil : actor?.ownVendor
+        // NetLet's own sets belong to no store; a store's carries its own,
+        // and may hold another store's product by arrangement.
+        let vendorId = actor?.kind == "vendor" ? actor?.ownVendor : nil
         let input = API.BundleInput(name: name.trimmingCharacters(in: .whitespaces), vendorId: OrNull(vendorId), bundlePrice: priced.amount,
                                     members: members.map { .init(variantId: $0.variantId, quantity: $0.quantity) })
         if await app.attempt(done: "admin.bundleSaved", fallback: "admin.saveFailed", { _ = try await app.services.api.call(API.saveBundle, input) }) {
