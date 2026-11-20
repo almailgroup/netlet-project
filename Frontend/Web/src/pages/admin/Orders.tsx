@@ -21,8 +21,8 @@
  */
 import { useFeature } from "@/hooks/useFeature";
 import { AdminShell, FRAME_FRESH_MS } from "@/components/admin/AdminShell";
-import { Pager } from "@/components/admin/Pager";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/ui/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, EmptyState, fieldClass, isolate, PageHeader, Pill, SkeletonRows, smallButtonClass, textareaClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";

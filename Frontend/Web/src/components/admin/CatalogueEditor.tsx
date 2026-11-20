@@ -18,7 +18,7 @@ import { FileText, LoaderCircle, Paperclip, Trash2, Upload } from "lucide-react"
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Card, Field, Notice, Pill, buttonClass, fieldClass, isolate, smallButtonClass } from "@/components/admin/ui";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { CatalogueActions } from "@/components/product/ProductCatalogues";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";

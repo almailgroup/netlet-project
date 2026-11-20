@@ -19,7 +19,7 @@
  * audited act, and a separate Save for a single switch is a press nobody needs.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { StoreAvatar, StoreStatusPill } from "@/components/admin/StoreAvatar";
 import { StoreDocuments } from "@/components/admin/StoreDocuments";
 import { StoreWarnings } from "@/components/admin/StoreWarnings";

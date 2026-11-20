@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ar, directionFor, en, endsOnDot, LOCALES, messages, translate, type MessageKey } from "./dictionary.js";
+import { directionFor, endsOnDot, LOCALES, messages, translate, type MessageKey } from "./dictionary.js";
+import { ar, en } from "./everyMessage.js";
 
 describe("dictionary completeness", () => {
   it("translates every key — a gap would show an English word mid-sentence", () => {
@@ -171,7 +172,7 @@ describe("dictionary hygiene", () => {
         // The dictionary defines the keys; it cannot also be what justifies them.
         // The iOS app's Swift asks for keys too (`l.t("cart.title")`), and the
         // JSON copy it reads is left out for the dictionary's own reason.
-        else if (/\.(tsx?|swift)$/.test(entry.name) && !full.endsWith(path.join("i18n", "dictionary.ts"))) {
+        else if (/\.(tsx?|swift)$/.test(entry.name) && !/i18n\/(dictionary|portalMessages|laterMessages)\.ts$/.test(full)) {
           sources.push(readFileSync(full, "utf-8"));
         }
       }

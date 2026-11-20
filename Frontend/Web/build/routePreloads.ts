@@ -46,7 +46,14 @@ export function patternSource(pattern: string): string {
 type Chunk = { fileName: string; imports: string[]; isEntry: boolean; facadeModuleId: string | null; moduleIds?: string[] };
 
 /** The table for a built bundle: each route's page chunk and its static imports, less the main bundle's own. */
-export function routeTable(routes: [string, string][], chunks: Chunk[], base: string): RouteTableResult {
+/**
+ * `alongside` names modules every page needs beside its own code, by the end
+ * of their path: the shop's later words (`Shared/i18n/laterMessages.ts`),
+ * which `lazyPage` fetches with every page and which no page imports, so the
+ * chunk graph alone would leave them for a second round trip after the app
+ * had started — the wait this table exists to remove.
+ */
+export function routeTable(routes: [string, string][], chunks: Chunk[], base: string, alongside: string[] = []): RouteTableResult {
   const byName = new Map(chunks.map(chunk => [chunk.fileName, chunk]));
   const closure = (start: string[], into = new Set<string>()) => {
     for (const file of start) {
@@ -75,7 +82,8 @@ export function routeTable(routes: [string, string][], chunks: Chunk[], base: st
       unplaced.push(pattern);
       continue;
     }
-    const wanted = [...closure([page.fileName])].filter(file => !already.has(file));
+    const withIt = alongside.flatMap(module => chunks.filter(chunk => !chunk.isEntry && chunk.moduleIds?.some(id => id.endsWith(module))).map(chunk => chunk.fileName));
+    const wanted = [...closure([page.fileName, ...withIt])].filter(file => !already.has(file));
     if (wanted.length) table.push([patternSource(pattern), wanted.map(indexOf)]);
   }
   return { table: { base, files, routes: table }, unplaced };

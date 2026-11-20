@@ -19,7 +19,8 @@ import { useFeature } from "@/hooks/useFeature";
 import { useCustomer } from "@/contexts/CustomerContext";
 import { trpc } from "@/lib/trpc";
 import type { Product } from "@shared/commerce/types";
-import { lazy, Suspense, useDeferredValue, useMemo, useState } from "react";
+import { Suspense, useDeferredValue, useMemo, useState } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { DepartmentCards } from "@/components/home/DepartmentCards";
 import { HomeBanners } from "@/components/home/HomeBanners";
 import { HomeHero } from "@/components/home/HomeHero";
@@ -32,7 +33,7 @@ import { RecommendedRail } from "@/components/product/RecommendedRail";
 import { useLocation } from "wouter";
 
 /* Fetched on the first preview, not with the page: most visits open none. */
-const QuickView = lazy(() => import("@/components/product/QuickView").then(module => ({ default: module.QuickView })));
+const QuickView = lazyPage(async () => ({ default: (await import("@/components/product/QuickView")).QuickView }));
 import { SponsoredShelf } from "@/components/product/SponsoredShelf";
 import { SITE_URL, usePageMeta } from "@/hooks/usePageMeta";
 import { homeMeta } from "@shared/seo";

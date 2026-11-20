@@ -17,7 +17,7 @@
  */
 import { PackageSearch, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { STATUS_LABEL } from "@/components/account/LineReturn";
 import { PANEL } from "@/components/account/profileParts";
 import { BUTTON_PLAIN, BUTTON_PRIMARY, EmptyState } from "@/components/layout/Page";

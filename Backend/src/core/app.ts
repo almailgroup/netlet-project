@@ -13,6 +13,10 @@
  * serves them and the function should never be woken to hand back a .js file.
  */
 import { handleSmsHook } from "./smsHook.js";
+/* Every word beside the first download's, so anything the server says in
+   words can say any of them (`Shared/i18n/laterMessages.ts`, `portalMessages.ts`). */
+import "../../../Shared/i18n/laterMessages.js";
+import "../../../Shared/i18n/portalMessages.js";
 import express, { type Express } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routes/index.js";

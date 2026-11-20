@@ -16,7 +16,7 @@ import { AlertTriangle, Info } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { buttonClass, Card, Field, fieldClass, PageHeader, SkeletonCards } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";

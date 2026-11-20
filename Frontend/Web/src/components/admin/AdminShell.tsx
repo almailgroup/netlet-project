@@ -21,6 +21,10 @@
  * guards with. A hidden link is a courtesy, never a control: the server
  * refuses regardless, so the two cannot drift into a button that 403s.
  */
+/* The portal's own words, which the shop's first download leaves out
+   (`Shared/i18n/portalMessages.ts`). Every portal page imports this file, so
+   they are added to `translate` before any of them is drawn. */
+import "@shared/i18n/portalMessages";
 import { buttonClass, PageHeader, SkeletonCards } from "@/components/admin/ui";
 import { useAuth } from "@/hooks/useAuth";
 import { DEMO_MODE } from "@/lib/demoMode";
@@ -42,28 +46,7 @@ import { PORTAL_SIDE, portalHref } from "@/lib/portalHost";
 import { portalSideFor, type PortalSide } from "@shared/portal";
 import { DeviceGate } from "@/components/admin/DeviceGate";
 import { PortalUnreachable } from "@/pages/SignIn";
-
-const ROLE_LABEL: Record<string, MessageKey> = {
-  admin: "admin.roleAdmin",
-  owner: "admin.roleOwner",
-  manager: "admin.roleManager",
-  staff: "admin.roleStaff",
-};
-
-/**
- * What this person is, in the header.
- *
- * A delivery company has no rank — its people all do the same job — so it is
- * answered by *kind* rather than falling through to the `staff` default, which
- * was calling a driver a store's staff member. The fallback stays for a vendor
- * membership with a rank this build does not know, where "staff" is the least
- * it could be.
- */
-export function roleLabelKey(actor: Actor): MessageKey {
-  if (actor.kind === "admin") return actor.team ? "team.member" : "admin.roleAdmin";
-  if (actor.kind === "courier") return "admin.roleCourier";
-  return ROLE_LABEL[(actor as { role?: string }).role ?? "staff"];
-}
+import { roleLabelKey } from "@/lib/roleLabel";
 
 /**
  * What this person is, in words: a member of NetLet's team by their role's

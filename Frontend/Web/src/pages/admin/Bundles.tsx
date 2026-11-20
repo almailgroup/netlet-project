@@ -17,7 +17,7 @@
  * the shop without anybody editing it — said here so that is not a mystery.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, Notice, PageHeader, Pill, Segmented, SectionHeading, SkeletonRows, smallButtonClass, textareaClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { BUNDLE_NOTE_MAX, bundleAnswerProblem } from "@shared/commerce/bundles";

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { catalogExample } from "./LiveSearch";
-import { ar, en, type MessageKey } from "@shared/i18n/dictionary";
+import type { MessageKey } from "@shared/i18n/dictionary";
+import { ar, en } from "@shared/i18n/everyMessage";
 import type { Product } from "@shared/commerce/types";
 
 const typed = (...types: (string | null)[]) => types.map(productType => ({ productType }) as Product);

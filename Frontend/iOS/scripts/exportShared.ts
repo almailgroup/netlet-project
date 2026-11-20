@@ -8,9 +8,11 @@
  * committed file differs from what this would write — the rule
  * `docs/schema-audit.sql` already follows.
  *
- * Every string the app shows is a key in `Shared/i18n/dictionary.ts`, in both
- * languages, so the dictionary's own tests (no untranslated Arabic, the same
- * placeholders on both sides, no key nothing uses) cover the app's copy too.
+ * Every string the app shows is a key in `Shared/i18n/dictionary.ts` or, for
+ * the portal, `portalMessages.ts`, in both languages, so the dictionary's own
+ * tests (no untranslated Arabic, the same placeholders on both sides, no key
+ * nothing uses) cover the app's copy too. The app reads them as one file, in
+ * key order, so a key moving between the two files changes nothing here.
  *
  * The web's pictures come across the same way (`buildAssets`): the logo, the
  * department art, each subcategory's own picture, NetLet's street and the
@@ -28,7 +30,7 @@ import { ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_TABS } from "../../../Shared/com
 import { DISPLAY_CURRENCIES, REFERENCE_RATES, RATES_AS_OF, minorDigits } from "../../../Shared/commerce/currency.js";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { en, ar } from "../../../Shared/i18n/dictionary.js";
+import { en, ar } from "../../../Shared/i18n/everyMessage.js";
 import { PLURAL_FORMS } from "../../../Shared/i18n/plurals.js";
 import { COMMON_PASSWORDS, MIN_PASSWORD_LENGTH } from "../../../Shared/auth/passwordStrength.js";
 import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
@@ -199,10 +201,14 @@ export function buildAssets(): { files: Record<string, string>; manifest: { logo
 
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 
+/** A table's entries sorted by key, so where a key is written does not move it. */
+const inKeyOrder = (table: Record<string, string>) =>
+  Object.fromEntries(Object.entries(table).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+
 /** Each file the app reads, by name, with the text it should hold. */
 export function buildResources(): Record<string, string> {
   return {
-    "dictionary.json": json({ en, ar }),
+    "dictionary.json": json({ en: inKeyOrder(en), ar: inKeyOrder(ar) }),
     "plurals.json": json(PLURAL_FORMS),
     "departments.json": json(
       /* Each with its subcategories — the Categories tab's panel. The server

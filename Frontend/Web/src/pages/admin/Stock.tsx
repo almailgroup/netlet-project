@@ -20,8 +20,8 @@
  * that moves stock — takes a reorder point and a delivery where it stands.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Pager } from "@/components/admin/Pager";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/ui/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, compactFieldClass, EmptyState, PageHeader, Pill, SectionHeading, SkeletonRows, smallButtonClass, surfaceClass, tableClass } from "@/components/admin/ui";
 import { SHOP_TIME_ZONE, useDateTimeFormat } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";

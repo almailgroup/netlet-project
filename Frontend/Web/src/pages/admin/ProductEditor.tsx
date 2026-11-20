@@ -17,7 +17,7 @@ import { STOCK_REASONS, stockMoveProblem } from "@shared/inventory/stockMoves";
 import { SizeChartEditor } from "@/components/admin/SizeChartEditor";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Thumb } from "@/components/product/Thumb";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { trpc } from "@/lib/trpc";
 import { AddonsEditor, addonsToSend, editorAddons, firstAddonProblem, type EditorAddon } from "@/components/admin/AddonsEditor";

@@ -39,4 +39,19 @@ describe("the route preload table", () => {
     expect(table.files).toEqual(["assets/Product.js", "assets/shared.js", "assets/Category.js"]);
     expect(table.routes).toEqual([["^/products/[^/]+/?$", [0, 1]], ["^/search/?$", [2, 1]]]);
   });
+
+  it("preloads the shop's later words with every page, which no page imports", () => {
+    /* `lazyPage` fetches them beside each page's own code, so without this a
+       page opened first waited a round trip for its words after the app had
+       started. */
+    const chunks = [
+      { fileName: "assets/index.js", imports: [], isEntry: true, facadeModuleId: "/src/main.tsx" },
+      { fileName: "assets/Category.js", imports: [], isEntry: false, facadeModuleId: "/x/src/pages/Category.tsx" },
+      { fileName: "assets/laterMessages.js", imports: ["assets/dictionary.js"], isEntry: false, facadeModuleId: null, moduleIds: ["/x/Shared/i18n/laterMessages.ts"] },
+      { fileName: "assets/dictionary.js", imports: [], isEntry: false, facadeModuleId: null },
+    ];
+    const { table } = routeTable([["/search", "/pages/Category.tsx"]], chunks, "/", ["/Shared/i18n/laterMessages.ts"]);
+    expect(table.files).toEqual(["assets/Category.js", "assets/laterMessages.js", "assets/dictionary.js"]);
+    expect(table.routes).toEqual([["^/search/?$", [0, 1, 2]]]);
+  });
 });

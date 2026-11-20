@@ -23,7 +23,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { ImagePlus, LoaderCircle, Sparkles, Square, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, Card, Notice, PageHeader, smallButtonClass } from "@/components/admin/ui";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";

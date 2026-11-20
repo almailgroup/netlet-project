@@ -28,8 +28,8 @@
  * every order (`Shared/commerce/orderFilters.ts`), never over one page.
  */
 import { isOnlineMethod } from "@shared/commerce/onlinePayment";
-import { QueryGate } from "@/components/admin/QueryGate";
-import { Pager } from "@/components/admin/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
+import { Pager } from "@/components/ui/Pager";
 import { Thumb } from "@/components/product/Thumb";
 import { ParcelCare } from "@/components/account/ParcelCare";
 import { LineReturnStatus } from "@/components/account/LineReturn";

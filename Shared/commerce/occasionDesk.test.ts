@@ -14,7 +14,7 @@ import {
   type CuratedOccasion,
   type OccasionContent,
 } from "./occasionDesk";
-import { en } from "../i18n/dictionary";
+import { en } from "../i18n/everyMessage";
 
 const content = (extra: Partial<OccasionContent> = {}): OccasionContent => ({
   slug: "white-friday",

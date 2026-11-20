@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { Link, useLocation, useRoute } from "wouter";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { BackLink, buttonClass, Card, Field, fieldClass, Notice, PageHeader, Pill, Segmented, smallButtonClass, textareaClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { usePageMeta } from "@/hooks/usePageMeta";

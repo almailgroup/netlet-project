@@ -20,8 +20,8 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Copy, Landmark, Megaphone, Wallet } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Pager } from "@/components/admin/Pager";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/ui/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { PlacementCalendar, useDay, useRun } from "@/components/admin/PlacementCalendar";
 import {
   Card,

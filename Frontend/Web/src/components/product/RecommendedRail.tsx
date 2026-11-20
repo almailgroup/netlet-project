@@ -53,7 +53,7 @@
  * own title and note, drawn on the same rule.
  */
 import { ProductCard } from "@/components/product/ProductCard";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { useCart } from "@/contexts/CartContext";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";

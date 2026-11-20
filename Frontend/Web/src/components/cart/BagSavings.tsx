@@ -47,14 +47,15 @@ import { giftCardPayment, normaliseCode, settle } from "@shared/commerce/voucher
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { subtractMoney } from "@shared/money";
 import { Check, ChevronDown, Gift, LoaderCircle, Ticket, X } from "lucide-react";
-import { Suspense, lazy, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { Unfold } from "@/components/ui/Unfold";
 import { createPortal } from "react-dom";
 import { Link } from "wouter";
 import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 import { isolate } from "@/lib/isolate";
 
-const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
+const AuthDialog = lazyPage(() => import("@/components/auth/AuthDialog"));
 
 const QUOTE_OPTIONS = { refetchOnWindowFocus: false, retry: false, staleTime: 60_000 } as const;
 

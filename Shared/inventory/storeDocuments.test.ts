@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { en } from "../i18n/dictionary.js";
+import { en } from "../i18n/everyMessage.js";
 import {
   EXPIRY_SOON_DAYS,
   STORE_DOCUMENT_KINDS,

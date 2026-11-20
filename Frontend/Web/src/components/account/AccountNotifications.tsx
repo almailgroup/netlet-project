@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Ban, Bell, CheckCircle2, LifeBuoy, Package, RotateCcw, ShoppingBag, Sparkles, Store, Tag, TriangleAlert, Truck, Wallet, XCircle, type LucideIcon } from "lucide-react";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { useAuth } from "@/hooks/useAuth";
 import { useDateTimeFormat } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";

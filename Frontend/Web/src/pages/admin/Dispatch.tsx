@@ -23,7 +23,7 @@
  * rather than send a motorcycle for a sofa.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { EmptyState, fieldClass, PageHeader, Pill, Segmented, SectionHeading, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";

@@ -10,7 +10,7 @@
  * vendor sees their own products and no platform-wide vendor counts at all.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";

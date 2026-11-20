@@ -13,8 +13,8 @@
  * at any level — otherwise a vendor owner could promote themselves.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
-import { Pager } from "@/components/admin/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
+import { Pager } from "@/components/ui/Pager";
 import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";

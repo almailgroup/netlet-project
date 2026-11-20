@@ -18,8 +18,8 @@
  * control entirely because it is NetLet's side of the deal.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
-import { Pager } from "@/components/admin/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
+import { Pager } from "@/components/ui/Pager";
 import { EmptyState, fieldClass, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass, Toggle } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";

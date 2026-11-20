@@ -22,7 +22,7 @@ import { ArrowDown, ArrowUp, ImagePlus, LoaderCircle, Plus, Search, Trash2, X } 
 import { toast } from "sonner";
 import { useLocation, useRoute } from "wouter";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { BackLink, buttonClass, Card, Field, fieldClass, Notice, PageHeader, Pill, smallButtonClass, Toggle } from "@/components/admin/ui";
 import { Thumb } from "@/components/product/Thumb";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -46,7 +46,7 @@ import {
   type OccasionStatus,
 } from "@shared/commerce/occasionDesk";
 import { foldTag, occasionFromSlug } from "@shared/commerce/occasions";
-import { ar, en } from "@shared/i18n/dictionary";
+import { translate } from "@shared/i18n/dictionary";
 import { privatePageMeta } from "@shared/seo";
 import { STATUS_LABEL, STATUS_TONE, SeasonPill } from "./Occasions";
 import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
@@ -67,7 +67,7 @@ export default function AdminOccasionEditor() {
 /** A new one: empty, or one of the calendar's occasions to take over. */
 function Fresh() {
   const from = occasionFromSlug(new URLSearchParams(window.location.search).get("from"));
-  const initial: OccasionContent = from ? { ...EMPTY, slug: from.slug, title: en[from.label], titleAr: ar[from.label] } : EMPTY;
+  const initial: OccasionContent = from ? { ...EMPTY, slug: from.slug, title: translate("en", from.label), titleAr: translate("ar", from.label) } : EMPTY;
   return <Editor key={from?.slug ?? "new"} id={null} initial={initial} products={[]} status="draft" taking={Boolean(from)} />;
 }
 

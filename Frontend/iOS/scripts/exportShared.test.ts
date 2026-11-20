@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { en } from "../../../Shared/i18n/dictionary.js";
+import { en } from "../../../Shared/i18n/everyMessage.js";
 import { ADMIN_ONLY, COURIER_CAPABILITIES, NEEDS } from "../../../Shared/inventory/permissions.js";
 import { SETTING_KEYS } from "../../../Shared/settings.js";
 import { staleResources } from "./exportShared.js";

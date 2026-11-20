@@ -4,7 +4,8 @@ import type { Product } from "@shared/commerce/types";
 import { Thumb } from "@/components/product/Thumb";
 import { useFeature } from "@/hooks/useFeature";
 import { ArrowRight, Camera, Clock, CornerDownLeft, LoaderCircle, Mic, Search, Sparkles, Store, Tag, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { Link, useLocation } from "wouter";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { EMPTY_FILTERS, productsInCategory, searchPath, searchWithTerm } from "@shared/commerce/browse";
@@ -31,8 +32,8 @@ import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
  * when one is opened for review — not in the bundle every shopper downloads
  * first. Both switches start off, so for most visitors they never load.
  */
-const VoiceSearchPanel = lazy(() => import("@/components/search/SearchModes").then(module => ({ default: module.VoiceSearchPanel })));
-const PhotoSearchPanel = lazy(() => import("@/components/search/SearchModes").then(module => ({ default: module.PhotoSearchPanel })));
+const VoiceSearchPanel = lazyPage(async () => ({ default: (await import("@/components/search/SearchModes")).VoiceSearchPanel }));
+const PhotoSearchPanel = lazyPage(async () => ({ default: (await import("@/components/search/SearchModes")).PhotoSearchPanel }));
 const reviewingSearchModes = () => /^(voice|photo)-/.test(new URLSearchParams(window.location.search).get("searchTest") ?? "");
 
 /**

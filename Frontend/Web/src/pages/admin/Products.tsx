@@ -31,8 +31,8 @@
 import { conditionOf } from "@shared/commerce/condition";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { DeleteProductDialog } from "@/components/admin/DeleteProductDialog";
-import { Pager } from "@/components/admin/Pager";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/ui/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { PageHeader, SkeletonRows, buttonClass, fieldClass, smallButtonClass } from "@/components/admin/ui";
 import { Thumb } from "@/components/product/Thumb";

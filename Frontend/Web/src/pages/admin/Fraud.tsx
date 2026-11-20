@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearch } from "wouter";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { EmptyState, fieldClass, isolate, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateTimeFormat } from "@/hooks/useDateFormat";

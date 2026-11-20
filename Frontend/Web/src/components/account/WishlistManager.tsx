@@ -26,7 +26,7 @@
  * columns, so the secrecy survives somebody rewriting this file.
  */
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { Thumb } from "@/components/product/Thumb";
 import { appPath } from "@/lib/basePath";
 import { formatMoney } from "@/lib/format";

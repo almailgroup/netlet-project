@@ -19,8 +19,8 @@
  * vendor regardless of what any of this renders.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Pager } from "@/components/admin/Pager";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/ui/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { StoreAvatar, StoreStatusPill } from "@/components/admin/StoreAvatar";
 import { PageHeader, SkeletonRows, buttonClass, fieldClass } from "@/components/admin/ui";
 import { useTranslation } from "@/hooks/useTranslation";

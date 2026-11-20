@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { EmptyState, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass, fieldClass } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";

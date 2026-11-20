@@ -28,7 +28,9 @@ function routePreloads(): Plugin {
         if (!bundle) return [];
         const chunks = Object.values(bundle).filter((item): item is Rollup.OutputChunk => item.type === "chunk");
         const routes = routesFromApp(readFileSync(path.resolve(import.meta.dirname, "Frontend", "Web", "src", "App.tsx"), "utf8"));
-        const { table, unplaced } = routeTable(routes, chunks, base);
+        /* `lazyPage` fetches the shop's later words beside every page, so
+           every page preloads them too. */
+        const { table, unplaced } = routeTable(routes, chunks, base, ["/Shared/i18n/laterMessages.ts"]);
         if (unplaced.length) console.warn(`[route preloads] no chunk found for ${unplaced.join(", ")}`);
         return [
           /* `portal` is the domain the portals hang from (`Shared/portal.ts`), so

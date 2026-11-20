@@ -12,8 +12,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Pager } from "@/components/admin/Pager";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/ui/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { EmptyState, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";

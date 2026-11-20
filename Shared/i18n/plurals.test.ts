@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ar, en, translate, type MessageKey } from "./dictionary";
+import { translate, type MessageKey } from "./dictionary";
+import { ar, en } from "./everyMessage";
 import { PLURAL_FORMS, pluralCategory } from "./plurals";
 import { RETURN_WINDOW_DAYS } from "../commerce/returns";
 import { ASK_WINDOW_DAYS } from "../commerce/priceOffers";

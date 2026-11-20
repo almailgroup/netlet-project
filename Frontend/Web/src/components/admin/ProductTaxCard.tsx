@@ -11,7 +11,7 @@ import { LoaderCircle, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, Notice, buttonClass } from "@/components/admin/ui";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { rateLabel } from "@shared/commerce/tax";

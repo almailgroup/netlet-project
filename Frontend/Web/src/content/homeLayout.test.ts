@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { categoryRail, dealsDrawn, departmentTabs, homeRailDefinitions, MAX_OCCASIONS, MAX_SHELF_PRODUCTS, MAX_TABBED_PRODUCTS, MEGA_DEAL_PERCENT, MIN_SHELF_PRODUCTS, shelvesFor } from "./homeLayout";
-import { en, type MessageKey } from "@shared/i18n/dictionary";
+import type { MessageKey } from "@shared/i18n/dictionary";
+import { en } from "@shared/i18n/everyMessage";
 import type { Product } from "@shared/commerce/types";
 import { DEPARTMENTS } from "@shared/commerce/departments";
 

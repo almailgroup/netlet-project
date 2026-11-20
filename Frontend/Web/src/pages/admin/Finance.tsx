@@ -24,7 +24,7 @@ import { isolate, Notice, PageHeader, smallButtonClass, surfaceClass } from "@/c
 import { SERIES } from "@/components/admin/charts";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PayoutsDue } from "@/components/admin/PayoutsDue";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { useTranslation, useMoney } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";

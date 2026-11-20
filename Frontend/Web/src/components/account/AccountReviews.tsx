@@ -17,7 +17,7 @@
  */
 import { useState } from "react";
 import { PackageSearch } from "lucide-react";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { StarRow } from "@/components/product/ProductReviews";
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";

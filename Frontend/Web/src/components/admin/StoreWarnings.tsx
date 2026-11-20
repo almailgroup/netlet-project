@@ -12,7 +12,7 @@ import { AlertTriangle, LoaderCircle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Card, Field, Pill, isolate, smallButtonClass, textareaClass, buttonClass } from "@/components/admin/ui";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
 import { useDateFormat } from "@/hooks/useDateFormat";

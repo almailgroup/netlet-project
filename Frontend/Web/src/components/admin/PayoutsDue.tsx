@@ -2,7 +2,7 @@
  * When each order's money is due to its seller (3.3.21) — on the finance panel
  * for NetLet and on the payouts page for a store's own manager, from one copy.
  */
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { cell, head, Scroller } from "@/components/admin/FinanceTable";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";

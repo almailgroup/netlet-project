@@ -6,7 +6,7 @@
  * every store's together.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { RangeControl, useViewRange, ViewsReportView } from "@/components/admin/ProductViews";
 import { fieldClass, PageHeader, SkeletonCards } from "@/components/admin/ui";
 import { Select } from "@/components/ui/Select";

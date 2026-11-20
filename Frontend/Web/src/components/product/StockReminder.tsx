@@ -15,7 +15,8 @@
  * they see.
  */
 import { BellRing, Check, LoaderCircle } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { useAuth } from "@/hooks/useAuth";
 import { useStockReminder } from "@/hooks/useStockReminder";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -25,7 +26,7 @@ import { trpc } from "@/lib/trpc";
 // Fetched when a guest presses the button, never with the page: a card wears
 // this, and cards are in what every shopper downloads first. Imported plainly,
 // it put the whole sign-in form there (70 KB of the main bundle, measured).
-const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
+const AuthDialog = lazyPage(() => import("@/components/auth/AuthDialog"));
 
 export function StockReminder({ productId, title, tone = "card", className = "" }: {
   productId: string;

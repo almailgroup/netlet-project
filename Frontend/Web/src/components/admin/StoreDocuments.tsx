@@ -22,7 +22,7 @@ import { Download, FileImage, FileText, Lock, LoaderCircle, Paperclip, Trash2, U
 import { useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Card, Field, Notice, Pill, Toggle, buttonClass, fieldClass, isolate, smallButtonClass, surfaceClass } from "@/components/admin/ui";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { useFileSize } from "@/components/account/DocumentUploads";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";

@@ -37,14 +37,15 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { NoticeDot } from "@/components/ui/CountBadge";
 import { ProfileAvatar, useProfilePhoto } from "@/components/account/ProfileAvatar";
 import { Bell, ChevronDown, Heart, LayoutDashboard, LifeBuoy, LogOut, MapPin, Package, Store, UserRound } from "lucide-react";
-import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
 /* Fetched when somebody asks to sign in: the header is on every page, and most
    visits never open the dialog. */
-const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
+const AuthDialog = lazyPage(() => import("@/components/auth/AuthDialog"));
 
 /** The first word of a display name, or null when there is nothing to show. */
 export function firstName(name: string | null | undefined): string | null {

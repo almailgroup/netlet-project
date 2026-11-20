@@ -48,13 +48,14 @@ import { WishlistManager } from "@/components/account/WishlistManager";
 import { GiftFinder } from "@/pages/GiftList";
 import { CARD } from "@/components/layout/Page";
 import { useAuth } from "@/hooks/useAuth";
-import { lazy, Suspense, useState } from "react";
+import { Suspense, useState } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { createPortal } from "react-dom";
 import { Link, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 
-const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
+const AuthDialog = lazyPage(() => import("@/components/auth/AuthDialog"));
 
 type SavedTab = "saved" | "wishlists";
 

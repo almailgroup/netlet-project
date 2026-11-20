@@ -41,7 +41,7 @@ import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { formatCount } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
 import { isolate } from "@/lib/isolate";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 
 const REASON_LABEL: Record<string, MessageKey> = {
   referrer_bonus: "rewards.reasonReferrerBonus",

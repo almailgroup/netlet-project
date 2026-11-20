@@ -28,7 +28,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState } from "react";
 import { BadgeCheck, ChevronLeft, ChevronRight, LoaderCircle, Star, X } from "lucide-react";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { Select } from "@/components/ui/Select";
 import { StarRow as Stars } from "@/components/ui/StarRow";
 import { Thumb } from "@/components/product/Thumb";

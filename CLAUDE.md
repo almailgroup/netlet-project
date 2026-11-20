@@ -9758,11 +9758,13 @@ Sponsored products' words in both languages (about 170 sentences each;
 the page itself is a chunk of its own) — then 1,184 KB (338 KB),
 NetLet team's words in both languages and the areas' table, which
 `permissions.ts` imports for `can()` (the page is a chunk of its own) —
-and is 1,193 KB (340 KB) now, the words for sets made by arrangement and
-for buying membership with points in both languages — nearly
-all of it the dictionary — the seller agreement, the notices and the guides'
-words in both languages (see the dictionary note below for why it stays one
-module): the
+then 1,193 KB (340 KB), the words for sets made by arrangement and
+for buying membership with points in both languages — then 893 KB
+(260 KB), **the portal's words having left it**, and is 594 KB (178 KB) now,
+**the shop's later pages' words having left it too** (see "The words are three
+files" below) — what is left the shop's frame, the home page and the words
+they and the shared rules ask for:
+the
 shop's frame, the page template and the navigation layer (see "One frame, one
 template") are on every page, so they belong in it, and so is the home page's
 front door, which is its first paint, and the shop assistant's button (4 KB
@@ -9901,11 +9903,60 @@ reads `innerText` every frame costs a busy page a tenth of a second itself —
 the first comparison here, made against numbers from earlier in the day,
 showed regressions that two alternating runs did not.
 
-**The dictionary is deliberately still one module.** Both languages are about
-a fifth of what is left, and splitting them would put a second request in
-front of the first paint for whichever language is not bundled — on a phone,
-that round trip costs more than the bytes save. Kuwait-first means the Arabic
-visitor is not the one to make wait.
+**The dictionary's two languages are still one module.** Both languages are
+about a fifth of what is left, and splitting them would put a second request
+in front of the first paint for whichever language is not bundled — on a
+phone, that round trip costs more than the bytes save. Kuwait-first means the
+Arabic visitor is not the one to make wait.
+
+**The words are three files, cut by who draws them, not by language**
+(`Shared/i18n/messagePlacement.ts` says which file a key belongs in, and
+`messagePlacement.test.ts` holds it). The first download carried the whole
+dictionary — 5,761 keys, about 340 KB of its 1,193 KB gzipped — and spelled
+out a fifth of them:
+
+- **`dictionary.ts`**, about 1,400 keys: what the first download may draw —
+  every word spelled by a file `main.tsx` imports without a lazy page between
+  (`firstDownload`, the static import closure), and every word in `Shared` and
+  on the server, whose rules hand keys to whatever page is up (a refusal the
+  bag toasts, a notice, a problem said under a box).
+- **`laterMessages.ts`**, about 2,000: the shop's other words — the product
+  page's, the bag's, checkout's, sign-in's, the account's — spelled out only by
+  pages, dialogs and drawers the shop fetches later. **`lazyPage` waits for it
+  beside every piece's own code** (`laterWords`), so nothing it fetches is
+  drawn before its words are here; that is why nothing in the shop fetches a
+  component any other way (React's own `lazy` was in nine places, and each
+  would have drawn its sign-in dialog or panel as keys), and the test refuses
+  one. The route table preloads it with every page a link can open first
+  (`routeTable`'s `alongside`), so a product landing fetches it in parallel
+  with its own code rather than a round trip after the app starts; a home
+  landing never waits for it, and gets it while the browser is idle with the
+  product and department pages.
+- **`portalMessages.ts`**, about 2,300: the words only `pages/admin` and
+  `components/admin` spell out or build from a prefix
+  (`` `vendorStatus.${status}` ``). The portal's frame (`AdminShell`) imports
+  it, and every portal page imports `AdminShell`. That rule needs the portal
+  folders to be the portal, so no other file imports them but the router's
+  lazy pages: the account page imported `roleLabelKey` from `AdminShell`,
+  which put the frame, the menu, the page jump and the co-pilot into the
+  shop's account chunk (`lib/roleLabel.ts` now), and `QueryGate` and `Pager`,
+  which the shop draws, moved to `components/ui/`.
+
+Each adds its words to `translate` as it loads (`addMessages`), and
+`MessageKey` is still every key, so `t()` is checked as before;
+`everyMessage.ts` is all three, for the dictionary's tests and the iOS export,
+which writes the app's one `dictionary.json` in key order so a key moving
+between files changes nothing there; the server imports all three. **Which
+file a key lives in is checked, never remembered**: a key the first download,
+`Shared` or the server asks for (spelled out, built from a prefix — any dotted
+string that is not itself a key counts as one — or in `plurals.ts`) must be in
+`dictionary.ts`; one only later shop pages ask for must not be there, where
+every shopper downloads it for nothing; one only the portal asks for goes to
+the portal's file. A new word fails the test until it is in its file, and the
+test says which. Measured on a production build with the later chunk held back
+two seconds, sampling the page every 50ms: a product landing, a move from the
+home page to a department and the sign-in dialog drew no key as itself, in
+both languages; the full sweep found nothing on any route as any role.
 
 ## Deploys
 

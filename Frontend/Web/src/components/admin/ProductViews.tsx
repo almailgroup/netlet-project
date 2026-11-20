@@ -15,7 +15,7 @@
 import { Kpi, Panel, useDayLabel } from "@/components/admin/Dashboard";
 import { Legend, SegmentedBar, SERIES, SERIES_GREY, TrendChart } from "@/components/admin/charts";
 import { Card, fieldClass, Notice, Pill, Segmented, SkeletonCards, surfaceClass, tableClass } from "@/components/admin/ui";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { trpc } from "@/lib/trpc";
 import { Select } from "@/components/ui/Select";
 import { Thumb } from "@/components/product/Thumb";

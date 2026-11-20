@@ -19,7 +19,7 @@ import { CalendarDays, EyeOff, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, EmptyState, Notice, PageHeader, Pill, SectionHeading, smallButtonClass, surfaceClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { MAX_OCCASIONS, MIN_SHELF_PRODUCTS } from "@/content/homeLayout";

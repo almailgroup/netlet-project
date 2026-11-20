@@ -25,7 +25,7 @@ import { Ban, Check, LoaderCircle, Monitor, Pencil, ShieldOff, Smartphone, Undo2
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, EmptyState, fieldClass, isolate, Notice, PageHeader, Pill, SectionHeading, smallButtonClass, Stat, StatGrid, tableClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateTimeFormat } from "@/hooks/useDateFormat";

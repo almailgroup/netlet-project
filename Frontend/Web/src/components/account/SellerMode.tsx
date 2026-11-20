@@ -18,7 +18,7 @@
  * told which hat they are putting on before they press anything.
  */
 import { ArrowRight, Store } from "lucide-react";
-import { roleLabelKey } from "@/components/admin/AdminShell";
+import { roleLabelKey } from "@/lib/roleLabel";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
 import { usePortalDoor } from "@/hooks/usePortalDoor";

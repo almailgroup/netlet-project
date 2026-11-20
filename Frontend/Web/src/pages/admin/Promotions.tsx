@@ -20,7 +20,7 @@
  */
 import { useFeature } from "@/hooks/useFeature";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, Card, EmptyState, Field, fieldClass, Notice, PageHeader, Pill, SectionHeading, SkeletonRows, smallButtonClass, tableClass } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";

@@ -18,7 +18,7 @@
  * line a vendor owner cannot cross when they add their own people.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, PageHeader, Pill, SkeletonCards, smallButtonClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { usePageMeta } from "@/hooks/usePageMeta";

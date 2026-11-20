@@ -15,8 +15,8 @@
  * can act on is an application that comes back unchanged.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Pager } from "@/components/admin/Pager";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/ui/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, EmptyState, fieldClass, Notice, PageHeader, Pill, SkeletonCards, smallButtonClass } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { usePageMeta } from "@/hooks/usePageMeta";

@@ -13,7 +13,7 @@ import { useState } from "react";
 import { Trash2, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { Card, EmptyState, fieldClass, isolate, Notice, PageHeader, Pill, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { trpc } from "@/lib/trpc";

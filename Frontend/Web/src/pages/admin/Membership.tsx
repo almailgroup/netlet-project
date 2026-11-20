@@ -8,8 +8,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { Pager } from "@/components/admin/Pager";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { Pager } from "@/components/ui/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, Card, EmptyState, Field, fieldClass, isolate, PageHeader, Pill, Segmented, smallButtonClass, Stat, StatGrid } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";

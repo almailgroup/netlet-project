@@ -19,8 +19,16 @@
  * advance, and React holds a lazy component's first reveal for about 300ms
  * even when its code is already here, so the first press on the cart opened
  * the drawer a third of a second late however fast the phone.
+ *
+ * **It is also how the shop's later words arrive** (`laterWords`): every page,
+ * dialog and drawer outside the first download is fetched here, and waits for
+ * `Shared/i18n/laterMessages.ts` beside its own code, so it is never drawn
+ * before its words are. That is why nothing in the shop fetches a component
+ * any other way — not React's own `lazy` — and `messagePlacement.test.ts`
+ * holds it.
  */
 import { createElement, lazy, type ComponentType, type ReactElement } from "react";
+import { laterWords } from "@/lib/laterWords";
 
 /** What the prefetcher and the router need from a page whose code may not be here yet. */
 export type Preloadable = {
@@ -37,8 +45,8 @@ export function lazyPage<P extends object = object>(load: () => Promise<{ defaul
   let loaded: ComponentType<P> | null = null;
   let pending: Promise<{ default: ComponentType<P> }> | null = null;
   const preload = () => {
-    pending ??= load().then(
-      module => {
+    pending ??= Promise.all([load(), laterWords()]).then(
+      ([module]) => {
         loaded = module.default;
         return module;
       },

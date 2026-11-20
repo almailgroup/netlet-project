@@ -16,7 +16,7 @@ import type { MessageKey } from "@shared/i18n/dictionary";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 
 const STATE_LABEL: Record<string, MessageKey> = {
   pending: "offers.statusPending",

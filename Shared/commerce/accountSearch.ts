@@ -10,7 +10,7 @@
  * place where it lives on that platform; the rule that matches is
  * `textsMatch`, the shop's own folding and stemming.
  */
-import { messages, type MessageKey } from "../i18n/dictionary.js";
+import { messages, type ShopMessageKey as MessageKey } from "../i18n/dictionary.js";
 import { textsMatch } from "./search.js";
 
 export type AccountPlace = {

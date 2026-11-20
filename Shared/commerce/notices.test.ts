@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { en, ar } from "../i18n/dictionary.js";
+import { en, ar } from "../i18n/everyMessage.js";
 import { translate } from "../i18n/dictionary.js";
 import { defaultNotificationPreferences, type NotificationKind } from "../customer.js";
 import {

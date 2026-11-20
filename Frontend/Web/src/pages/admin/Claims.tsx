@@ -13,7 +13,7 @@
  * from the order desk, where the lines are, rather than from here.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { EmptyState, fieldClass, isolate, PageHeader, Pill, Segmented, SectionHeading, SkeletonRows, smallButtonClass, tableClass, textareaClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { usePageMeta } from "@/hooks/usePageMeta";

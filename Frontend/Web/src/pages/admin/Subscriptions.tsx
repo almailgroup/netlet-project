@@ -10,7 +10,7 @@
  */
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, Notice, PageHeader, Stat, StatGrid } from "@/components/admin/ui";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { useTranslation } from "@/hooks/useTranslation";

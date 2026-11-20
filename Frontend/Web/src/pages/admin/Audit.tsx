@@ -10,7 +10,7 @@
  * label.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { EmptyState, isolate, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass } from "@/components/admin/ui";
 import { useDateTimeFormat } from "@/hooks/useDateFormat";
 import { trpc } from "@/lib/trpc";

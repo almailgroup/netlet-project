@@ -13,7 +13,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { CheckCircle2, LifeBuoy, MessageCircle, Phone, Sparkles } from "lucide-react";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";

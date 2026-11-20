@@ -29,10 +29,11 @@ import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import type { CartItem } from "@shared/commerce/types";
 import { BadgePercent, ShoppingBag, X } from "lucide-react";
-import { Suspense, lazy, useEffect, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { createPortal } from "react-dom";
 
-const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
+const AuthDialog = lazyPage(() => import("@/components/auth/AuthDialog"));
 
 export function LineDiscount({ item, title }: { item: CartItem; title: string }) {
   const { t } = useTranslation();

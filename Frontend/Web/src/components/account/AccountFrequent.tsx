@@ -33,7 +33,7 @@ import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { Link } from "wouter";
 import { Check, ListRestart, PackageSearch, ShoppingBag, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { PANEL } from "@/components/account/profileParts";
 import { StockReminder } from "@/components/product/StockReminder";
 import { QuantityStepper } from "@/components/cart/QuantityStepper";

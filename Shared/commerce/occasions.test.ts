@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { en, ar } from "../i18n/dictionary.js";
+import { en, ar } from "../i18n/everyMessage.js";
 import { foldTag, hijriMonthDay, inWindow, isOccasionProduct, kuwaitMonthDay, OCCASIONS, occasionFromSlug, occasionsOn, productsForOccasion } from "./occasions.js";
 
 const on = (iso: string) => occasionsOn(new Date(iso)).map(occasion => occasion.slug);

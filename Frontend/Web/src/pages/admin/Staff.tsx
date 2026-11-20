@@ -19,7 +19,7 @@ import { Check, KeyRound, LoaderCircle, Pencil, Plus, Trash2, UserMinus, UserPlu
 import { useId, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { buttonClass, Card, EmptyState, Field, fieldClass, Notice, PageHeader, PasswordBox, Pill, Segmented, SkeletonRows, smallButtonClass, surfaceClass } from "@/components/admin/ui";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";

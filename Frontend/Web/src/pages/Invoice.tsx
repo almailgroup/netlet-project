@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { appPath } from "@/lib/basePath";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { PAGE_SPACE, PageHeading } from "@/components/layout/Page";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageMeta } from "@/hooks/usePageMeta";

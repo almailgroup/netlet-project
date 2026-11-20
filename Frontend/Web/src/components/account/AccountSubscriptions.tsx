@@ -15,7 +15,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { toast } from "sonner";
-import { QueryGate } from "@/components/admin/QueryGate";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { Thumb } from "@/components/product/Thumb";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useDateFormat } from "@/hooks/useDateFormat";

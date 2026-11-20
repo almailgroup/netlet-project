@@ -7,8 +7,8 @@
  * separate message they may never see.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
-import { QueryGate } from "@/components/admin/QueryGate";
-import { Pager } from "@/components/admin/Pager";
+import { QueryGate } from "@/components/ui/QueryGate";
+import { Pager } from "@/components/ui/Pager";
 import { buttonClass, EmptyState, PageHeader, Pill, SkeletonRows, smallButtonClass, textareaClass } from "@/components/admin/ui";
 import { Thumb } from "@/components/product/Thumb";
 import { trpc } from "@/lib/trpc";

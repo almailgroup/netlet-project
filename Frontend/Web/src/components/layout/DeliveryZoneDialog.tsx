@@ -37,12 +37,13 @@ import { trpc } from "@/lib/trpc";
 import { MAX_ADDRESSES, addressLineIn } from "@shared/commerce/addresses";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { Check, MapPin, Pencil, Plus, X } from "lucide-react";
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { lazyPage } from "@/lib/lazyPage";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Link } from "wouter";
 
-const AuthDialog = lazy(() => import("@/components/auth/AuthDialog"));
+const AuthDialog = lazyPage(() => import("@/components/auth/AuthDialog"));
 
 type Row = { id: number; label: string; governorate?: string | null; addressLine?: string | null };
 
