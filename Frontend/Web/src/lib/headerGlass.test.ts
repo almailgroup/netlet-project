@@ -1,57 +1,54 @@
 /**
- * The wide header's glass at rest stops at the bar's foot.
+ * The shop's glass samples only what is behind its own surface.
  *
- * Its bend reaches 40px past the bar so the warp leaves no bites in the rim,
- * and at the top of the page those 40px are the department row: the navy App
- * Store badge under the cart was blurred and warped up into the bar as a blue
- * haze, which the owner reported from a screenshot. Measured at 1440 the
- * bar's foot strayed up to 47 colour steps from its own colour; with the bend
- * stopping at the foot at rest it strays 3. Once the page moves (`data-stuck`)
- * the bend reaches down again for what passes beneath, and the phone's search
- * sheet keeps its own rule.
+ * It was warped by an SVG turbulence displacement (`#netlet-glass`) and its
+ * blurring layer reached 40px past the surface so the warp left no bites in
+ * the rim. Photographed over the shop, that warp was what made the glass look
+ * dirty: it pulled a card's edge up beside the logo as a grey smudge, broke
+ * the hero's colours into patches, and blurred the department row's navy App
+ * Store badge up into the bar as a blue haze, which the owner reported from a
+ * screenshot. The owner asked for the glass to be cleaner, and it is a plain
+ * blur and a tint now, with the light on the face.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-const css = readFileSync(path.resolve(import.meta.dirname, "../index.css"), "utf-8");
+const src = path.resolve(import.meta.dirname, "..");
+const css = readFileSync(path.join(src, "index.css"), "utf-8");
 
-/** The body of every `@media (min-width: 1024px)` block, braces balanced. */
-function wideBlocks(source: string): string[] {
-  const blocks: string[] = [];
-  const opener = /@media \(min-width: 1024px\)\s*\{/g;
-  for (let match = opener.exec(source); match; match = opener.exec(source)) {
-    let depth = 1;
-    let at = match.index + match[0].length;
-    const start = at;
-    while (depth > 0 && at < source.length) {
-      if (source[at] === "{") depth++;
-      else if (source[at] === "}") depth--;
-      at++;
-    }
-    blocks.push(source.slice(start, at - 1));
-  }
-  return blocks;
+/** Every rule whose selector names the glass's blurring layer, as `[selector, body]`. */
+function bendRules(source: string): [string, string][] {
+  return [...source.matchAll(/([^{}]*\.glass-bar-bend[^{}]*)\{([^}]*)\}/g)].map(match => [match[1].trim(), match[2]]);
 }
 
-describe("the wide header's glass at rest", () => {
-  const blocks = wideBlocks(css);
+function sources(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap(entry => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return sources(full);
+    return /\.(tsx?|css)$/.test(entry.name) && !entry.name.endsWith(".test.ts") ? [readFileSync(full, "utf-8")] : [];
+  });
+}
 
-  it("reads the stylesheet's wide-screen blocks", () => {
+describe("the shop's glass", () => {
+  const rules = bendRules(css);
+
+  it("reads the glass's rules", () => {
     /* A guard that finds nothing passes; count what it read. */
-    expect(blocks.length).toBeGreaterThan(3);
+    expect(rules.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("stops the bend at the bar's foot while nothing passes under it", () => {
-    const rest = blocks
-      .map(block => /\.sticky-header:not\(\[data-stuck\]\):not\(\[data-search-open\]\)\s*>\s*\.glass-bar-surface\s*>\s*\.glass-bar-bend\s*\{([^}]*)\}/.exec(block)?.[1])
-      .find(Boolean);
-    expect(rest).toBeDefined();
-    expect(rest).toMatch(/bottom:\s*0\s*;/);
+  it("never reaches past its own surface", () => {
+    const reaching = rules.filter(([, body]) => /\binset:\s*-|\b(?:top|bottom|left|right):\s*-/.test(body));
+    expect(reaching).toEqual([]);
   });
 
-  it("still reaches past the bar once the page moves", () => {
-    /* The base rule: the reach the rest rule takes back only at rest. */
-    expect(css).toMatch(/\.glass-bar-bend\s*\{\s*display:\s*block;\s*inset:\s*-40px;/);
+  it("is never warped by a filter", () => {
+    expect(rules.filter(([, body]) => /\bfilter:\s*url\(/.test(body.replace(/backdrop-filter:[^;]*;/g, "")))).toEqual([]);
+    expect(sources(src).some(file => file.includes("netlet-glass"))).toBe(false);
+  });
+
+  it("blurs what passes beneath it", () => {
+    expect(rules.some(([, body]) => /(?:^|[^-])backdrop-filter:\s*blur\(/.test(body))).toBe(true);
   });
 });

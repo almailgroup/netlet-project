@@ -259,7 +259,6 @@ export const en = {
   "home.viewAll": "View all",
   "home.shopByCategory": "Shop by category",
   "browse.priceFrom": "From {min}",
-  "browse.browseEverything": "Browse everything",
   "browse.showResults": "Show {count} results",
   /* What a failure says to somebody who cannot act on the reason. The reason
      itself goes to the server log, and to an administrator's own screen. */
@@ -1734,7 +1733,6 @@ export const ar: Record<ShopMessageKey, string> = {
   "home.viewAll": "عرض الكل",
   "home.shopByCategory": "تسوّق حسب القسم",
   "browse.priceFrom": "من {min}",
-  "browse.browseEverything": "تصفّح كل المنتجات",
   "browse.showResults": "عرض {count} نتيجة",
   "error.serverProblem": "حدث خطأ لدينا. حاول مرة أخرى.",
   "error.invalidText": "يحتوي النص على حرف لا يمكننا حفظه. احذفه وحاول مرة أخرى.",

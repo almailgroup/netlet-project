@@ -101,37 +101,46 @@ that takes a navy ring on focus. No pseudo-elements on them, and no
 `backdrop-filter` on any control.
 
 **The header bar's background is the one piece of glass, on the owner's
-word** — the bar, never its controls, which stay solid. It is ui-layouts'
-Liquid Glass recipe laid along a bar (`.glass-bar` in `index.css`): a layer
-that blurs and saturates what passes under it and is then warped by an SVG
-turbulence displacement (`#netlet-glass`, drawn in `StoreHeader`), under a
-white tint with a bright rim. Four things make it safe where the old glass was
-not. **The layers sit inside the header, behind its contents**, never as a
+word** — the bar, never its controls, which stay solid (`.glass-bar` in
+`index.css`): a layer that blurs (24px; a phone keeps its 18) and saturates
+(165%) what passes under it, under a face carrying the white tint and the light — a lit top edge fading
+over its first 10px, a bright line along the top and a softer one along the
+foot. **The layers sit inside the header, behind its contents**, never as a
 filter on `<header>`, which would make the bar the containing block for every
 fixed overlay inside it (the department picker's list was measured opening
-under its button, the search panel under the field). **The warped layer
-reaches 40px past the bar and is clipped**, because a displacement pulls in
-transparent pixels at the edges of what it filters and a bar's rim showed them
-as ragged bites. **At rest on a wide screen it stops at the bar's foot, on the
-owner's word** ("don't let its fade be on the header at all"): those 40px were
-the department row, and the navy App Store badge — or a department's navy
-pill — was blurred and warped up into the bar as a blue haze beside the cart.
-Nothing passes under the bar at rest, so a bite there shows the same ground;
-once the page moves (`data-stuck`) it reaches down again. Measured at 1440:
-the bar's foot strayed up to 47 steps from its own colour (57 in Arabic) and
-now strays 3. **The tint keeps the bar's words at 4.5:1** over the darkest
-thing that passes under them, the navy Deals band — 72% white at the top, 58%
-at the foot, about 5:1 there — and nothing on the bar is in the muted ink.
-**Below `lg` the tint is 60% and 45%, on the owner's word**, who asked for the
-phone's bar and tab bar to read more like glass. It holds there because of what
-a phone's bar carries: its logo row scrolls away before anything passes under
-it, the search row that stays is a solid white field, and the tab bar's words
-are near-black rather than navy. The wide bar keeps 72 and 58, because its
-navy words sit on the glass over the Deals band and would fall to about 4:1.
-**The warp runs only under a fine pointer**: it is recomputed on every frame of
-a scroll, so a phone gets the blur and the tint without it, and only a browser
-with no `backdrop-filter` gets the solid white bar. The department row under it
-wears the tint alone, so the two read as one surface at rest.
+under its button, the search panel under the field).
+
+**It is clean glass, on the owner's word** ("it can be a lot better and
+cleaner"). It was ui-layouts' Liquid Glass recipe, its blur warped by an SVG
+turbulence displacement (`#netlet-glass`) that reached 40px past the bar so the
+warp left no bites in the rim. Photographed over the shop with the GPU flags
+below, the warp was what looked dirty: it pulled a card's edge up beside the
+logo as a grey smudge, broke the hero's lit shop windows into patches, and —
+reaching under the bar's foot at rest — blurred the department row's navy App
+Store badge up into the bar as a blue haze beside the cart, which the owner
+reported first (it had been held back to the foot at rest for that). Now
+**the glass samples only what is behind its own surface**: no filter, no
+reach, no displacement recomputed on every frame of a scroll, and the same
+glass in every browser that blurs. A little more blur and a little less
+saturation than before turn what passes beneath into one even wash, and the
+wide bar's foot, while the page moves under it, is a crisp hairline over a soft
+shadow — the edge of a pane rather than a smudge. A rounded surface (the tab
+bar, the search panel, the assistant, the photo's control) has a thin bright
+rim all round and a touch of depth at its foot. `headerGlass.test.ts` fails on
+a blurring layer that reaches past its surface or wears a filter (it failed on
+the warp). **The tint keeps the bar's words at 4.5:1** over the darkest thing
+that passes under them — 72% white at the top, 58% at the foot; measured by
+hiding the bar's ink and reading the darkest pixel behind it every 150px down
+the home page at 1440, navy keeps 5.6:1 at worst (5.4 under the warp) — and
+nothing on the bar is in the muted ink. **Below `lg` the tint is 60% and 45%,
+on the owner's word**, who asked for the phone's bar and tab bar to read more
+like glass. It holds there because of what a phone's bar carries: its logo row
+scrolls away before anything passes under it, the search row that stays is a
+solid white field, and the tab bar's words are near-black rather than navy. The
+wide bar keeps 72 and 58, because its navy words sit on the glass over the
+Deals band and would fall to about 4:1. Only a browser with no
+`backdrop-filter` gets the solid white bar. The department row under it wears
+the tint alone, so the two read as one surface at rest.
 
 **It shows for everybody, the reduce-transparency setting included, on the
 owner's word.** It went solid under `prefers-reduced-transparency: reduce` at
@@ -205,8 +214,8 @@ so an iPhone gets the same pill lifted rather than a pill with a thick foot;
 the department page's Sort | Filter pill and the footer's clearance add the
 safe area to match. **A rounded bar's blur keeps to its own
 corners** (`border-radius: inherit`, `inset: 0`) rather than trusting the bar's
-clip, which Safari has not always applied to a backdrop filter; it reaches past
-them only for the warp, under a fine pointer, which no phone has.
+clip, which Safari has not always applied to a backdrop filter — every glass
+layer's rule now, since nothing reaches past its surface.
 
 **It slides out of the way on a scroll down, and back on a scroll up — on the
 owner's word, and never on the first pixel.** `lib/tabBarScroll.ts` is the
@@ -1153,8 +1162,12 @@ this device's recent searches (`lib/recentSearches.ts`, never sent anywhere,
 with Clear) and the departments with something on sale. **It was redrawn on the
 owner's word**, who found it plain: the recent searches are chips (six in two
 lines, not six lines), the departments are the home page's own art as tiles
-with each one's count (`commerce.departmentCounts`, "All departments" last,
-three to a row on a phone and six wide), and a row of shortcuts closes it —
+with each one's count (`commerce.departmentCounts`, "All departments" last
+with no second line, its name saying what it holds), three to a row and six
+only where the panel itself is 36rem wide (`@xl`, a container query — by the
+window, a 1024 screen's narrow field made 44px tiles whose counts ran into the
+next tile, and "Browse everything" spilled past its tile at 320 and 1440), and
+a row of shortcuts closes it —
 Today's deals only while the home page draws that shelf (`dealsDrawn`, the
 header's own answer), New arrivals and Stores. **On a phone it is a sheet the
 width of the screen hung from the header's foot, with the page dimmed under
@@ -1292,8 +1305,8 @@ pill is never a button that can only apologise.
 **The dropdown is liquid glass, on the owner's word, and everything with
 words on it is a white plate.** It was a solid sheet once, because the
 department rail read through an 82% white with text straight on it. It now
-wears the header's recipe (`.glass-bar-surface` with `.glass-bar-round`, the
-warp under a fine pointer) at a tint of its own — `.glass-panel`, an even 70%,
+wears the header's recipe (`.glass-bar-surface` with `.glass-bar-round`, its
+rim all round) at a tint of its own — `.glass-panel`, an even 70%,
 thicker than the bar's because its headings sit on the glass — in a frame
 round the scroller, so the layers do not scroll away with the content. Chips,
 tiles, shortcuts and the typed results are white at 80–90% over it. Measured by hiding
@@ -1514,7 +1527,7 @@ so the outline `cart` is used.
 **The plus, the stepper and the folded square wear the tab bar's Liquid
 Glass, on the owner's word** ("make the adding to cart design Liquid Glass,
 just like the bottom menu"): the same layers as `MobileTabBar`
-(`glass-bar-surface` behind the content, the warp under a fine pointer only)
+(`glass-bar-surface` behind the content, with the rounded rim)
 at a tint of their own, `.glass-chip`'s even 70%, with near-black ink
 (`#16181d`) — the tab bar's, which keeps 4.5:1 over whatever the photo is,
 where navy on a navy photo would not. **And the count is a box** (on the
@@ -4302,7 +4315,7 @@ once opened.
 
 **Both wear the header's liquid glass, on the owner's word.** The panel is the
 search panel's recipe — `.glass-bar-surface` inside it, behind its contents,
-warped under a fine pointer, at `.glass-panel`'s even 70% — so the page shows
+at `.glass-panel`'s even 70% — so the page shows
 through it blurred; on a phone, where it is a sheet over the page, the page it
 covers shows through instead. **Everything with words on it is a plate of
 white** (each answer, each starter, the box, the product's chip) except the

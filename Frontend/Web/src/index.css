@@ -1661,33 +1661,43 @@ html[dir="rtl"] .nav-progress {
 }
 /*
  * The header bar's liquid glass — the bar's background and nothing on it —
- * and, on the owner's word, the phone's bottom tab bar's too.
+ * and, on the owner's word, the phone's bottom tab bar's, the search panel's,
+ * the shop assistant's and the card photo's add-to-cart control's.
  *
- * The recipe is ui-layouts' Liquid Glass card (MIT): a "bend" layer that blurs
- * what is behind it and is then warped by an SVG turbulence displacement
- * (`#netlet-glass`, drawn in `StoreHeader`), and a face over it with the tint
- * and a light rim. Adapted for a bar that sticks over a scrolling page:
+ * Two layers inside the surface, behind its contents: a "bend" that blurs and
+ * saturates what passes beneath, and a "face" with the tint and the light. The
+ * layers sit inside the header rather than as a filter on `<header>`, because
+ * a backdrop-filter there would make the bar the containing block for every
+ * fixed overlay inside it (see Chrome).
  *
- * - The layers sit inside the header, behind its contents, rather than as a
- *   filter on `<header>`: a backdrop-filter there would make the bar the
- *   containing block for every fixed overlay inside it (see Chrome).
- * - The bend reaches 40px past the bar on every side and the surface clips
- *   it, because a displacement pulls in transparent pixels at the edges of
- *   whatever it filters — on a bar that read as ragged bites in its rim.
+ * **Clean glass, on the owner's word** ("it can be a lot better and cleaner").
+ * It was ui-layouts' Liquid Glass recipe: the bend was warped by an SVG
+ * turbulence displacement and reached 40px past the surface so the warp left
+ * no bites in its rim. Photographed over the shop, the warp was what made the
+ * glass look dirty — it pulled a card's edge up beside the logo as a grey
+ * smudge, broke the hero's colours into patches, and blurred the department
+ * row's navy into the bar until the bar's foot was held back at rest. Now the
+ * bend samples only what is behind its own surface, a little more blur (24px
+ * on a wide screen; a phone keeps its 18) and a little less saturation (165%)
+ * turn what passes beneath into one even wash, and the face carries the
+ * light: a lit top edge fading over its first 10px, a bright line along the
+ * top and a softer one along the foot — and, on a rounded surface, a thin
+ * bright rim all round with a touch of depth at its foot. No filter, no reach, no per-frame displacement, and the same
+ * glass in every browser that blurs.
+ *
  * - The tint (72% white at the top, 58% at the foot; 60% and 45% on a phone,
  *   below) is thin enough to read as glass and strong enough that the bar's
- *   navy words keep 4.5:1 over the darkest thing that passes under them, the
- *   navy Deals band (about 5:1 at the foot). Nothing on the bar is in the
- *   muted ink, which would not.
- * - The warp runs only under a fine pointer. It is recomputed on every frame
- *   of every scroll, and a phone — what this shop sells to — gets the blur
- *   and the tint without it.
+ *   navy words keep 4.5:1 over the darkest thing that passes under them
+ *   (5.5:1 at worst, measured scrolling the home page at 1440). Nothing on
+ *   the bar is in the muted ink, which would not.
  * - Solid white only where the browser has no backdrop-filter. It was solid
  *   too wherever the system asks for less transparency, and the owner asked
  *   for it to show for everybody: in Chrome and Edge on Windows that setting
  *   is the "Transparency effects" switch, which was off on the owner's own
  *   machine, so the glass they had asked for never appeared for them. The
  *   tint is what keeps the bar's words at 4.5:1, and it stays.
+ * - Never an opacity, a clip or a filter on the surface itself: any of those
+ *   makes it a backdrop root, and the blur turns to plain white.
  */
 .glass-bar-surface {
   position: absolute;
@@ -1702,6 +1712,7 @@ html[dir="rtl"] .nav-progress {
 .glass-bar-bend,
 .glass-bar-face {
   position: absolute;
+  inset: 0;
   display: none;
   border-radius: inherit;
 }
@@ -1714,25 +1725,32 @@ html[dir="rtl"] .nav-progress {
   }
   .glass-bar-bend {
     display: block;
-    inset: -40px;
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
-    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(165%);
+    backdrop-filter: blur(24px) saturate(165%);
   }
   .glass-bar-face {
     display: block;
-    inset: 0;
     /* The tint's two ends as registered colours (`@property` above), so a
        change of tint glides rather than cuts — the search sheet thickens the
        header's as it grows out of it. */
     --glass-top: rgb(255 255 255 / 0.72);
     --glass-foot: rgb(255 255 255 / 0.58);
-    background: linear-gradient(180deg, var(--glass-top) 0%, var(--glass-foot) 100%);
-    /* The rim: a bright top edge and a softer lower one, ui-layouts' inset
-       highlights laid along a bar rather than round a card. */
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.35) 0, rgb(255 255 255 / 0) 10px),
+      linear-gradient(180deg, var(--glass-top) 0%, var(--glass-foot) 100%);
+    /* The light: a bright line along the top, a softer one along the foot. */
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.95),
-      inset 0 2px 6px rgb(255 255 255 / 0.35),
-      inset 0 -1px 0 rgb(255 255 255 / 0.6);
+      inset 0 1px 0 rgb(255 255 255 / 0.9),
+      inset 0 -1px 0 rgb(255 255 255 / 0.7);
+  }
+  /* A rounded surface — the tab bar, a panel, the assistant, the photo's
+     control — has a thin bright rim all round and a touch of depth at its
+     foot, so it reads as a piece of glass rather than a tinted hole. */
+  .glass-bar-round > .glass-bar-face {
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.5),
+      inset 0 1.5px 0 rgb(255 255 255 / 0.95),
+      inset 0 -10px 18px -14px rgb(10 40 90 / 0.18);
   }
   /* The row under the bar is the bar's colour at rest. */
   .glass-bar-row {
@@ -1750,6 +1768,13 @@ html[dir="rtl"] .nav-progress {
    * anything dark reaches it.
    */
   @media (max-width: 1023.98px) {
+    /* A phone keeps the 18px blur it always had: a larger radius costs more
+       on every frame of a scroll, on the mid-range phones this shop sells
+       to, and at a phone's size the two look the same. */
+    .glass-bar-bend {
+      -webkit-backdrop-filter: blur(18px) saturate(165%);
+      backdrop-filter: blur(18px) saturate(165%);
+    }
     .glass-bar-face {
       --glass-top: rgb(255 255 255 / 0.6);
       --glass-foot: rgb(255 255 255 / 0.45);
@@ -1776,50 +1801,20 @@ html[dir="rtl"] .nav-progress {
    * word ("make the adding to cart design Liquid Glass, just like the bottom
    * menu"): the same even 70% as the panel, because its count is words on the
    * glass and a product photo can be dark behind it — near-black keeps 8:1
-   * over a black photo. A small surface, drawn only on a touch screen, where
-   * the blur runs without the warp.
+   * over a black photo.
    */
   .glass-chip .glass-bar-face {
     --glass-top: rgb(255 255 255 / 0.7);
     --glass-foot: rgb(255 255 255 / 0.7);
   }
 }
-/* A rounded bar's blur keeps to its own corners rather than trusting the
-   bar's clip, which Safari has not always applied to a backdrop filter. It
-   reaches past them only for the warp, under a fine pointer — never on the
-   phones the tab bar is drawn for. */
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass-bar-round .glass-bar-bend {
-    inset: 0;
-  }
-}
-@media (hover: hover) and (pointer: fine) {
-  .glass-bar-bend {
-    filter: url(#netlet-glass);
-  }
-  .glass-bar-round .glass-bar-bend {
-    inset: -40px;
-    border-radius: 0;
-  }
-}
-/* A soft shadow under the glass while the page passes beneath it. */
+/* While the page passes beneath it, the wide bar's foot is a crisp hairline
+   over a soft shadow, the edge of a pane rather than a smudge. */
 @media (min-width: 1024px) {
   .sticky-header.glass-bar[data-stuck] {
-    box-shadow: 0 8px 24px rgb(10 40 90 / 0.08);
-  }
-  /*
-   * At rest the glass stops at the bar's foot, on the owner's word ("don't
-   * let its fade be on the header at all"). The bend reaches 40px past the
-   * bar so its warp leaves no bites in the rim, and at the top of the page
-   * those 40px are the department row: the navy App Store badge, or a
-   * department's navy pill, was blurred and warped up into the bar's foot as
-   * a blue haze beside the cart. Nothing passes under the bar at rest — what
-   * is behind it is the page's own ground, so a bite shows the same ground —
-   * and once the page moves (`data-stuck`) the bend reaches down again for
-   * what passes beneath.
-   */
-  .sticky-header:not([data-stuck]):not([data-search-open]) > .glass-bar-surface > .glass-bar-bend {
-    bottom: 0;
+    box-shadow:
+      0 1px 0 rgb(10 40 90 / 0.07),
+      0 10px 28px -6px rgb(10 40 90 / 0.12);
   }
 }
 
@@ -1972,9 +1967,9 @@ html[data-page-arriving] .assistant-launcher {
  * - `bottom`, never a clip or a fade on the surface: a clip-path, opacity or
  *   filter on anything holding the blur makes it a backdrop root, and the
  *   blur then sees nothing — the glass would turn to plain white mid-move.
- * - The blur keeps to its own rounded corners while open (`inset: 0`), the
- *   tab bar's rule, because Safari has not always clipped a backdrop filter
- *   to a rounded parent; a fine pointer keeps the warp's reach, as there.
+ * - The blur keeps to its own rounded corners while open (`inset: 0` and
+ *   `border-radius: inherit`, every glass layer's rule), because Safari has
+ *   not always clipped a backdrop filter to a rounded parent.
  * - The shadow falls downward only, under the sheet's foot.
  */
 @media (max-width: 1023.98px) {
@@ -2035,19 +2030,6 @@ html[data-page-arriving] .assistant-launcher {
   .search-dim-fold {
     pointer-events: none;
     animation: search-undim 240ms ease forwards;
-  }
-}
-@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  @media (max-width: 1023.98px) {
-    .sticky-header[data-search-open] > .glass-bar-surface > .glass-bar-bend {
-      inset: 0;
-    }
-  }
-  @media (max-width: 1023.98px) and (hover: hover) and (pointer: fine) {
-    .sticky-header[data-search-open] > .glass-bar-surface > .glass-bar-bend {
-      inset: -40px;
-      border-radius: 0;
-    }
   }
 }
 /* A wide screen's panel is a card under the field: it drops a few pixels into

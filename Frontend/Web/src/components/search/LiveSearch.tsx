@@ -505,8 +505,11 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
     ...DEPARTMENTS.filter(entry => inStock(entry.name)).map(entry => ({ slug: entry.slug, query: entry.name, label: entry.label, counted: true })),
     { slug: "all", query: ALL_DEPARTMENTS.query, label: ALL_DEPARTMENTS.label, counted: false },
   ];
+  /* "All departments" says what it holds, and its line stays empty: the line is
+     there to keep the row one height, and "Browse everything" was wider than
+     a tile at every width but a phone's, spilling past its edges. */
   const countLine = (slug: string, counted: boolean) => {
-    if (!counted) return t("browse.browseEverything");
+    if (!counted) return "";
     if (!counts.data) return "";
     const count = counts.data[slug] ?? 0;
     return count === 0 ? t("browse.countNone") : count === 1 ? t("browse.countOne") : t("browse.countMany", { count });
@@ -643,8 +646,8 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
         {/*
           Liquid glass, on the owner's word — the header's own recipe
           (`.glass-bar-surface` in index.css: a blur that saturates what passes
-          under it, warped under a fine pointer, beneath a white tint with a
-          bright rim) at 70%, because this panel carries headings straight on
+          under it, beneath a white tint with a lit top edge and a bright
+          rim) at 70%, because this panel carries headings straight on
           the glass. On a phone it is the header's glass itself, grown down
           behind the sheet (the effect above), so the sheet draws none; on a
           wide screen the panel is a card under the field with layers of its
@@ -716,9 +719,12 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                   </div>
                 </section>
               ) : null}
-              <section>
+              {/* Six across only where the panel itself has the room, never by the
+                  window's width: under a 1024 window's narrow field six made
+                  44px tiles, and their counts ran into the next tile. */}
+              <section className="@container">
                 <h2 className="pb-2 text-[14px] font-bold text-[#0a285a]">{t("header.shopByDepartment")}</h2>
-                <ul className="grid grid-cols-3 gap-2 lg:grid-cols-6">
+                <ul className="grid grid-cols-3 gap-2 @xl:grid-cols-6">
                   {tiles.map(tile => (
                     <li key={tile.slug} className="min-w-0">
                       <Link
@@ -730,7 +736,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
                         <DepartmentArt slug={tile.slug} className="aspect-[4/3] w-full" />
                         <span className="mt-1.5 line-clamp-2 text-[13px] font-bold leading-tight text-[#0a285a]">{t(tile.label)}</span>
                         {/* One line on every tile, so the row keeps one height while the counts arrive. */}
-                        <span className="mt-0.5 h-4 truncate text-[12px] leading-4 ink-muted">{countLine(tile.slug, tile.counted)}</span>
+                        <span className="mt-0.5 h-4 max-w-full truncate text-[12px] leading-4 ink-muted">{countLine(tile.slug, tile.counted)}</span>
                       </Link>
                     </li>
                   ))}

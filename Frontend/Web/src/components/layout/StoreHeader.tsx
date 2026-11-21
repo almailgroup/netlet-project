@@ -302,12 +302,6 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
           <span className="glass-bar-bend" />
           <span className="glass-bar-face" />
         </span>
-        <svg aria-hidden focusable="false" className="pointer-events-none absolute size-0 overflow-hidden">
-          <filter id="netlet-glass" x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox" colorInterpolationFilters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.003 0.007" numOctaves={1} seed={7} result="turbulence" />
-            <feDisplacementMap in="SourceGraphic" in2="turbulence" scale={70} xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </svg>
         {logoRow ? phoneTop : null}
         {/* The same room above the field as below it, because once the logo
             row has gone this row is the whole bar: it had 4px over the field

@@ -294,6 +294,7 @@ export const laterEn = {
   "header.continueShopping": "Continue shopping",
 
   // --- home ----------------------------------------------------------
+  "browse.browseEverything": "Browse everything",
   "browse.priceUpTo": "Up to {max}",
   "browse.priceRange": "{min} to {max}",
   "browse.resultsRegion": "Products",
@@ -2412,6 +2413,7 @@ export const laterAr: Record<LaterMessageKey, string> = {
   "header.continueShopping": "متابعة التسوق",
 
   // --- home ----------------------------------------------------------
+  "browse.browseEverything": "تصفّح كل المنتجات",
   "browse.priceUpTo": "حتى {max}",
   "browse.priceRange": "من {min} إلى {max}",
   "browse.resultsRegion": "المنتجات",

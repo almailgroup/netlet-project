@@ -6,7 +6,7 @@
  * between pages and a reload.
  *
  * **It wears the header's liquid glass, on the owner's word** — the same
- * layers (`.glass-bar-surface`, warped under a fine pointer) at the search
+ * layers (`.glass-bar-surface`, a blur under a tint and a rim) at the search
  * panel's even 70% (`.glass-panel`), so the page shows through it blurred.
  * The layers sit inside the panel behind its contents, never as a filter on
  * the panel, and the panel's entrance moves it by a transform and fades only

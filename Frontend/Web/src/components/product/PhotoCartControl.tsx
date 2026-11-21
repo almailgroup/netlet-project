@@ -25,8 +25,7 @@
  * the adding to cart design Liquid Glass, just like the bottom menu"): the
  * tab bar's layers (`glass-bar-surface`), its rim and its near-black ink, at
  * an even 70% white (`.glass-chip`) — thicker than the bar's, because the
- * count is words on the glass and a photo can be dark behind it. A phone
- * blurs without the warp, as the tab bar does.
+ * count is words on the glass and a photo can be dark behind it.
  *
  * **The count is typed, on the owner's word** ("pick a custom amount … by
  * tapping on the number and editing the value"): the stepper's number is the
