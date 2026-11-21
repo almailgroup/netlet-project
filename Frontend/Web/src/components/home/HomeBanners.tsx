@@ -54,7 +54,7 @@ export function HomeBanners() {
     <section className="container pt-2 sm:pt-4" aria-roledescription={t("ads.carousel")} aria-labelledby="home-banners-title">
       <h2 id="home-banners-title" className="sr-only">{t("ads.bannersTitle")}</h2>
       <div className="relative">
-        <ul ref={track} className="hide-scrollbar flex snap-x snap-mandatory overflow-x-auto rounded-2xl border border-[#e1e7ef] bg-white">
+        <ul ref={track} className="hide-scrollbar flex snap-x snap-mandatory overflow-x-auto overflow-y-hidden rounded-2xl border border-[#e1e7ef] bg-white">
           {banners.map((banner, index) => (
             <li
               key={banner.id}

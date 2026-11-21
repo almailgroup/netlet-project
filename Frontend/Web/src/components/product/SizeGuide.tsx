@@ -121,7 +121,7 @@ function Dialog({ productId, chart, availableSizes, onChooseSize, onClose }: {
           </button>
         </div>
 
-        <div role="region" tabIndex={0} aria-label={t("sizeGuide.chartLabel")} className="mt-4 overflow-x-auto">
+        <div role="region" tabIndex={0} aria-label={t("sizeGuide.chartLabel")} className="mt-4 overflow-x-auto overflow-y-hidden">
           <table className="w-full text-[12px] text-[#0a285a]">
             <caption className="pb-2 text-start text-[12px] font-semibold ink-muted">{t("sizeGuide.chartCaption")}</caption>
             <thead>

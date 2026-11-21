@@ -79,7 +79,7 @@ export function SponsoredShelf({ slot, departmentSlug, layout, saved, onSave, on
         <span className="text-[12px] font-semibold ink-muted">{t("ads.sponsored")}</span>
       </div>
       <p className="mt-0.5 max-w-prose text-[12px] ink-muted">{t("ads.disclosure")}</p>
-      <div className="hide-scrollbar mt-4 flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">{cards}</div>
+      <div className="hide-scrollbar mt-4 flex gap-3 overflow-x-auto overflow-y-hidden pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">{cards}</div>
     </section>
   );
 }

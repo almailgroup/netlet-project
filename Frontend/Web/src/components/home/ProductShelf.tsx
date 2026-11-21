@@ -76,7 +76,7 @@ function DepartmentTabRow({ title, total, tabs, chosen, onChoose }: { title: str
     <div
       role="group"
       aria-label={t("home.shelfTabs", { title })}
-      className="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+      className="-mx-4 mt-3 flex gap-2 overflow-x-auto overflow-y-hidden px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
     >
       {[null, ...tabs].map(tab => {
         const pressed = (tab?.slug ?? null) === chosen;
@@ -167,7 +167,11 @@ export function TabbedShelf({ id, title, titleText, products, layout, ranked = f
             ))}
           </ul>
         ) : (
-          <div ref={scroll.trackRef} className="hide-scrollbar mt-4 flex snap-x gap-3 overflow-x-auto scroll-smooth pb-1">
+          /* Never scrolls up and down (markup.test.ts), and clips at its
+             padding: 4px above for a hovered card's 3px lift, which was cut
+             flat, and 24px below for its shadow, given back by the margin so
+             the shelf sits where it did. */
+          <div ref={scroll.trackRef} className="hide-scrollbar -mb-5 mt-3 flex snap-x gap-3 overflow-x-auto overflow-y-hidden scroll-smooth pb-6 pt-1">
             {visible.map((product, index) => (
               /* Four to a row from lg up, whatever the container's width, so a shelf fills its row. */
               <div key={`${id}-${product.id}`} className={`shrink-0 snap-start ${ranked ? "flex w-[200px] items-end sm:w-[235px]" : "w-[164px] sm:w-[195px]"} lg:w-[calc((100%-2.25rem)/4)]`}>

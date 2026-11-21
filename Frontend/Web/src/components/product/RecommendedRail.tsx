@@ -124,7 +124,7 @@ export function RecommendedRail({ saved, onSave, onQuickView, quiet = false, dea
               ) : null}
             </div>
 
-            <div className="hide-scrollbar flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
+            <div className="hide-scrollbar flex gap-3 overflow-x-auto overflow-y-hidden pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
               {data.items.slice(0, 4).map(item => (
                 <div key={item.product.id} className="min-w-[172px] sm:min-w-[195px] lg:min-w-0">
                   <ProductCard

@@ -117,7 +117,7 @@ function SearchShelf({ term, onNavigate }: { term: string; onNavigate?: () => vo
           {[0, 1, 2].map(slot => <span key={slot} className="h-[186px] w-[136px] shrink-0 animate-pulse rounded-2xl bg-[#eef2f8]" />)}
         </div>
       ) : products.length ? (
-        <ul className="-mx-1 mt-2 flex snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 pb-1 [scrollbar-width:thin]">
+        <ul className="-mx-1 mt-2 flex snap-x gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain px-1 pb-1 [scrollbar-width:thin]">
           {products.map(product => (
             <li key={product.id} className="relative w-[136px] shrink-0 snap-start">
               <Link

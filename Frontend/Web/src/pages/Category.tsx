@@ -533,7 +533,7 @@ export default function Category() {
         {refurbished && category === "all" && refurbishedDepartments.length > 1 ? (
           <nav
             aria-label={t("refurbished.departments")}
-            className="-mx-4 -mt-1 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+            className="-mx-4 -mt-1 mb-4 flex gap-2 overflow-x-auto overflow-y-hidden px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
           >
             {refurbishedDepartments.map(({ department, count }) => (
               <Link
@@ -555,7 +555,7 @@ export default function Category() {
           <div
             role="group"
             aria-label={t("categories.subcategories")}
-            className="-mx-4 -mt-2 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+            className="-mx-4 -mt-2 mb-4 flex gap-2 overflow-x-auto overflow-y-hidden px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
           >
             {[null, ...subChips].map(entry => {
               const pressed = (entry?.slug ?? null) === (filters.sub ?? null);
@@ -584,7 +584,7 @@ export default function Category() {
           <div
             role="group"
             aria-label={t("browse.filterBy")}
-            className="-mx-4 -mt-1 mb-1 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]"
+            className="-mx-4 -mt-1 mb-1 flex gap-2 overflow-x-auto overflow-y-hidden px-4 pb-1 [scrollbar-width:none]"
           >
             {groups.map(group => {
               const Icon = group.key.startsWith("option:") ? SlidersHorizontal : GROUP_ICONS[group.key as keyof typeof GROUP_ICONS];

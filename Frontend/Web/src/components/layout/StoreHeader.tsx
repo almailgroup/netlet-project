@@ -367,7 +367,7 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
           {/* The departments scroll sideways once there are more than the row
               holds — thirteen do not fit at 1024 — while Deals and the app
               badge keep their place at its end. */}
-          <div className="hide-scrollbar -my-1 flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-1">
+          <div className="hide-scrollbar -my-1 flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overflow-y-hidden py-1">
           {categoryRail.filter(department => inStock(department.query) || activeDepartment === department.query).map(department => {
             const current = !onDeals && activeDepartment === department.query;
             const lead = department.query === ALL_DEPARTMENTS.query;

@@ -101,7 +101,7 @@ function VendorList() {
             className={`${fieldClass} ps-10`}
           />
         </div>
-        <div role="group" aria-label={t("admin.filterStatus")} className="hide-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-[#eef1f5] p-1">
+        <div role="group" aria-label={t("admin.filterStatus")} className="hide-scrollbar flex gap-1 overflow-x-auto overflow-y-hidden rounded-xl bg-[#eef1f5] p-1">
           {FILTERS.map(option => (
             <button
               key={option}

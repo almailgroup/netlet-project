@@ -28,7 +28,7 @@ export function GuideShelf() {
             {t("guides.all")}<ChevronRight className="size-4 rtl:-scale-x-100" aria-hidden />
           </Link>
         </div>
-        <ul className="hide-scrollbar mt-4 grid auto-cols-[82%] grid-flow-col gap-3 overflow-x-auto pb-1 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
+        <ul className="hide-scrollbar mt-4 grid auto-cols-[82%] grid-flow-col gap-3 overflow-x-auto overflow-y-hidden pb-1 sm:auto-cols-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
           {list.map(guide => <li key={guide.slug} className="min-w-0"><GuideCard guide={guide} /></li>)}
         </ul>
       </div>

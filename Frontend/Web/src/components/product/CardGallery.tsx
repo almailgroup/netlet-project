@@ -99,7 +99,7 @@ export function CardGallery({ images, href, title, frameClassName, photoClassNam
           ref={scroller}
           tabIndex={-1}
           onScroll={many ? onScroll : undefined}
-          className={many ? "hide-scrollbar flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain" : undefined}
+          className={many ? "hide-scrollbar flex snap-x snap-mandatory overflow-x-auto overflow-y-hidden overscroll-x-contain" : undefined}
         >
           {photos.length ? photos.map((photo, at) => (
             <div key={`${photo.url}-${at}`} className="w-full shrink-0 snap-start snap-always overflow-hidden">

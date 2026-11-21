@@ -165,7 +165,7 @@ export function QuickView({ product: incoming, onClose }: { product: Product | n
                   : <div className="aspect-square" />}
               </a>
               {product.images.length > 1 ? (
-                <div className="hide-scrollbar mx-auto mt-3 flex max-w-[min(100%,60vh)] gap-2 overflow-x-auto">
+                <div className="hide-scrollbar mx-auto mt-3 flex max-w-[min(100%,60vh)] gap-2 overflow-x-auto overflow-y-hidden">
                   {product.images.slice(0, 6).map((item, index) => (
                     <button
                       key={`${item.url}-${index}`}

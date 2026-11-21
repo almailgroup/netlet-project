@@ -105,7 +105,7 @@ export function SavedForLater({ className = "" }: { className?: string }) {
         </div>
       </div>
       <p aria-live="polite" className="sr-only">{said}</p>
-      <ul ref={scroll.trackRef} className="hide-scrollbar -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 sm:mx-0 sm:scroll-px-0 sm:px-0">
+      <ul ref={scroll.trackRef} className="hide-scrollbar -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto overflow-y-hidden scroll-px-4 px-4 pb-1 sm:mx-0 sm:scroll-px-0 sm:px-0">
         {outlined
           ? Array.from({ length: Math.min(ids.length, 3) }, (_, index) => <SavedCardOutline key={index} />)
           : products.map(product => <SavedCard key={product.id} product={product} onMove={() => move(product)} onRemove={() => unsave(product.id)} />)}

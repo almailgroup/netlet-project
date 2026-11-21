@@ -68,7 +68,7 @@ export function DepartmentCards() {
           the row while they fit, and scroll once they do not. */}
       <ul
         ref={scroll.trackRef}
-        className="hide-scrollbar -mx-4 mt-4 flex snap-x gap-2.5 overflow-x-auto scroll-px-4 px-4 pb-1 pt-0.5 sm:mx-0 sm:scroll-px-0 sm:gap-4 sm:px-0"
+        className="hide-scrollbar -mx-4 mt-4 flex snap-x gap-2.5 overflow-x-auto overflow-y-hidden scroll-px-4 px-4 pb-1 pt-0.5 sm:mx-0 sm:scroll-px-0 sm:gap-4 sm:px-0"
       >
         {cards.map(card => (
           <li key={card.slug} className="w-[104px] shrink-0 snap-start min-[390px]:w-[112px] sm:w-[148px] lg:min-w-[150px] lg:flex-[1_0_0]">

@@ -144,7 +144,7 @@ export function SizeChartEditor({ productId, chart, variantOptions, mayEdit }: {
             </fieldset>
           </div>
 
-          <div role="region" tabIndex={0} aria-label={t("sizeGuide.tableCaption")} className="relative mt-4 overflow-x-auto">
+          <div role="region" tabIndex={0} aria-label={t("sizeGuide.tableCaption")} className="relative mt-4 overflow-x-auto overflow-y-hidden">
             <table className="min-w-full text-[12px]">
               <caption className="sr-only">{t("sizeGuide.tableCaption")}</caption>
               <thead>

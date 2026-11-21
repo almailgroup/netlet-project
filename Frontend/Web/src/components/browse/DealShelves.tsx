@@ -57,7 +57,7 @@ function Shelf({ shelf, saved, onSave, onQuickView }: { shelf: DealShelf } & Omi
           ) : null}
         </div>
       </div>
-      <ul ref={scroll.trackRef} className="hide-scrollbar -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto scroll-smooth px-4 pb-1 sm:mx-0 sm:px-0">
+      <ul ref={scroll.trackRef} className="hide-scrollbar -mx-4 -mb-5 mt-2 flex snap-x gap-3 overflow-x-auto overflow-y-hidden scroll-smooth px-4 pb-6 pt-1 sm:mx-0 sm:px-0">
         {shelf.products.map(product => (
           <li key={product.id} className="w-[164px] shrink-0 snap-start sm:w-[195px] lg:w-[calc((100%-2.25rem)/4)]">
             <ProductCard

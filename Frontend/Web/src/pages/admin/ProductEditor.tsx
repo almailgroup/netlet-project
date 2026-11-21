@@ -370,7 +370,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
             there is room and across the top where there is not. */}
         <nav aria-label={t("admin.onThisPage")} className="min-w-0 xl:sticky xl:top-24">
           <p className="hidden text-[12px] font-semibold ink-muted xl:block">{t("admin.onThisPage")}</p>
-          <ul className="hide-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 pb-1 xl:mx-0 xl:mt-2 xl:flex-col xl:overflow-visible xl:px-0">
+          <ul className="hide-scrollbar -mx-1 flex gap-1 overflow-x-auto overflow-y-hidden px-1 pb-1 xl:mx-0 xl:mt-2 xl:flex-col xl:overflow-visible xl:px-0">
             {sections.map(section => (
               <li key={section.id} className="shrink-0">
                 <a

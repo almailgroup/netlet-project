@@ -289,7 +289,7 @@ export default function Store() {
                 </form>
               ) : null}
               {departments.length > 1 ? (
-                <div role="group" aria-label={t("stores.departments")} className="hide-scrollbar flex min-w-0 gap-2 overflow-x-auto pb-1">
+                <div role="group" aria-label={t("stores.departments")} className="hide-scrollbar flex min-w-0 gap-2 overflow-x-auto overflow-y-hidden pb-1">
                   {[{ key: "", name: "", count: inCondition.length }, ...departments].map(entry => (
                     <button
                       key={entry.key || "all"}

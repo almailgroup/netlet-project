@@ -260,3 +260,63 @@ describe("hover", () => {
     expect(strays).toEqual([]);
   });
 });
+
+/**
+ * A row that scrolls sideways never scrolls up and down.
+ *
+ * `overflow-x: auto` alone makes `overflow-y` auto too, so anything that
+ * sticks out of a row by a pixel lets a trackpad or a wheel scroll the row
+ * vertically and cut its cards off. The owner met it on Bestsellers: the big
+ * outlined places are set at a line height of 0.8, so each figure's text box
+ * hangs 20px under its own box (13px on a phone), and the row scrolled down by
+ * those 20px. Every sideways row says `overflow-y-hidden` beside it, or names
+ * the vertical scroll it means to have.
+ */
+describe("sideways rows", () => {
+  /** Every `.tsx` under the client, the `ui/` folders included. */
+  function everySource(): [string, string][] {
+    const root = path.resolve(import.meta.dirname, "../..");
+    const out: [string, string][] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith(".tsx")) out.push([path.relative(root, full), withoutComments(readFileSync(full, "utf-8"))]);
+      }
+    };
+    walk(path.join(root, "src"));
+    return out;
+  }
+
+  /** The class string each sideways scroll sits in: back to its opening quote, on to the same quote. */
+  function sidewaysClasses(source: string): string[] {
+    const found: string[] = [];
+    for (const match of source.matchAll(/\boverflow-x-(?:auto|scroll)\b/g)) {
+      const before = source.slice(0, match.index);
+      const open = Math.max(before.lastIndexOf('"'), before.lastIndexOf("`"), before.lastIndexOf("'"));
+      const quote = source[open];
+      const close = source.indexOf(quote, match.index);
+      found.push(source.slice(open + 1, close === -1 ? undefined : close));
+    }
+    return found;
+  }
+
+  const rows = everySource().flatMap(([file, source]) => sidewaysClasses(source).map(classes => [file, classes] as const));
+
+  it("reads every sideways row", () => {
+    /* A guard that finds nothing passes; count what it read. */
+    expect(rows.length).toBeGreaterThanOrEqual(25);
+  });
+
+  it("keeps each from scrolling vertically", () => {
+    const offenders = rows
+      .filter(([, classes]) => !/\boverflow-y-(?:hidden|auto|scroll)\b/.test(classes))
+      .map(([file, classes]) => `${file}: ${classes}`);
+    expect(offenders).toEqual([]);
+  });
+
+  it("finds the class string a sideways scroll belongs to", () => {
+    expect(sidewaysClasses(`<ul className="flex overflow-x-auto pb-1">`)).toEqual(["flex overflow-x-auto pb-1"]);
+    expect(sidewaysClasses("<ul className={`flex overflow-x-auto ${extra}`}>")).toEqual(["flex overflow-x-auto ${extra}"]);
+  });
+});

@@ -48,7 +48,7 @@ export function StoresSellingRow({ stores, hrefFor, pending = false }: { stores:
   return (
     <section aria-labelledby="stores-selling" className="mb-5 mt-2">
       <h2 id="stores-selling" className="mb-3 text-[19px] font-extrabold tracking-[-.01em] text-[#0a285a] sm:text-xl">{t("browse.shopByStore")}</h2>
-      <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:gap-4 sm:px-0">
+      <ul className="-mx-4 flex gap-3 overflow-x-auto overflow-y-hidden px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:gap-4 sm:px-0">
         {stores.map(store => (
           <li key={store.slug} className="w-[84px] shrink-0 sm:w-[104px]">
             <Link

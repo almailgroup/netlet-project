@@ -211,7 +211,7 @@ function SellerBlock({ seller, money }: { seller: InvoiceSeller; money: (amount:
       <Registration licence={seller.licence} underPlatformLicence={seller.underPlatformLicence} />
       {/* Scrolls inside itself on a phone, as the finance tables do, with a
           name and a tab stop so a keyboard can reach the last column. */}
-      <div role="region" tabIndex={0} aria-label={t("invoice.itemsOf", { name: seller.name })} className="mt-3 overflow-x-auto">
+      <div role="region" tabIndex={0} aria-label={t("invoice.itemsOf", { name: seller.name })} className="mt-3 overflow-x-auto overflow-y-hidden">
         <table className="w-full min-w-[480px] text-[12px]">
           <thead>
             <tr className="border-b border-[#e6e9ef] text-start">

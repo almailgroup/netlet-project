@@ -2513,6 +2513,21 @@ both languages, and any other width asked for — `en@1024`) is what finds
 these; the widths between a phone and a laptop (768, 1024) are where a layout
 built for both ends breaks.
 
+**A row that scrolls sideways never scrolls up and down, on the owner's
+word** ("remove the vertical scroll from here"). `overflow-x: auto` alone
+makes `overflow-y` auto too, so a row that anything sticks out of by a pixel
+scrolls vertically under a trackpad or a wheel and cuts its cards off. On
+Bestsellers the big outlined places are set at a line height of 0.8, so each
+figure's text box hangs 20px under its own box (13px on a phone), and the row
+scrolled down by those 20px. Every sideways row says `overflow-y-hidden`
+beside `overflow-x-auto` — thirty of them, the portal's tables included — and
+`markup.test.ts` fails on one that does not (it counts what it read, and
+failed on the rows before the fix). A breakpoint's `overflow-visible` still
+wins, being later in the stylesheet. **And a product row clips at its padding,
+so it keeps room for a hovered card**: 4px above for the 3px lift, which was
+cut flat across the card's top edge, and 24px below for its shadow, given back
+by a negative margin so nothing moved (`ProductShelf`, `DealShelves`).
+
 ## Removing asks first
 
 **Anything a shopper keeps asks before it is taken away, on the owner's

@@ -51,7 +51,7 @@ export function TextTabs<Id extends string>({ items, value, onChange, label }: {
         ref={row}
         role="group"
         aria-label={label}
-        className="relative flex gap-6 overflow-x-auto px-4 [scrollbar-width:none] sm:px-0"
+        className="relative flex gap-6 overflow-x-auto overflow-y-hidden px-4 [scrollbar-width:none] sm:px-0"
       >
         {line ? (
           <span

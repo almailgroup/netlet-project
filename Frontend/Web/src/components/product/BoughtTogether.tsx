@@ -51,7 +51,7 @@ export function BoughtTogether({ productId, saved, onSave, onQuickView }: {
       <h2 className="text-xl font-extrabold text-[#0a285a] sm:text-2xl">{t("together.heading")}</h2>
       <p className="mt-2 max-w-prose text-sm ink-muted">{t("together.note")}</p>
 
-      <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
+      <div className="hide-scrollbar mt-6 flex gap-3 overflow-x-auto overflow-y-hidden pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
         {items.map(item => (
           <div key={item.product.id} className="min-w-[172px] sm:min-w-[195px] lg:min-w-0">
             <ProductCard
