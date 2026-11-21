@@ -114,11 +114,13 @@ export function AppDownloadLink({ className = "" }: { className?: string }) {
            press never closes it under the pointer. Escape, leaving and a
            press elsewhere close it. */
         onClick={show}
-        className="flex shrink-0 items-center rounded-[9px] p-0"
+        className="flex shrink-0 items-center rounded-[8px] p-0"
       >
         {/* Apple's own words, drawn in English on either page: its name
-            carries them, so somebody steering by voice can say what they see. */}
-        <img src={badgeUrl} alt={t("appDownload.badge")} width={122} height={36} loading="eager" decoding="async" className="h-9 w-auto" />
+            carries them, so somebody steering by voice can say what they see.
+            The row's own height, 32px, the department pills' — at 36 it
+            filled the row and read as a second button stacked under the cart. */}
+        <img src={badgeUrl} alt={t("appDownload.badge")} width={108} height={32} loading="eager" decoding="async" className="h-8 w-auto" />
       </button>
       <div
         id={cardId}

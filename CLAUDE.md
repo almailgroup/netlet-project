@@ -112,7 +112,14 @@ fixed overlay inside it (the department picker's list was measured opening
 under its button, the search panel under the field). **The warped layer
 reaches 40px past the bar and is clipped**, because a displacement pulls in
 transparent pixels at the edges of what it filters and a bar's rim showed them
-as ragged bites. **The tint keeps the bar's words at 4.5:1** over the darkest
+as ragged bites. **At rest on a wide screen it stops at the bar's foot, on the
+owner's word** ("don't let its fade be on the header at all"): those 40px were
+the department row, and the navy App Store badge — or a department's navy
+pill — was blurred and warped up into the bar as a blue haze beside the cart.
+Nothing passes under the bar at rest, so a bite there shows the same ground;
+once the page moves (`data-stuck`) it reaches down again. Measured at 1440:
+the bar's foot strayed up to 47 steps from its own colour (57 in Arabic) and
+now strays 3. **The tint keeps the bar's words at 4.5:1** over the darkest
 thing that passes under them, the navy Deals band — 72% white at the top, 58%
 at the foot, about 5:1 there — and nothing on the bar is in the muted ink.
 **Below `lg` the tint is 60% and 45%, on the owner's word**, who asked for the
@@ -2080,7 +2087,11 @@ sent the badge to put there instead, "in the NetLet blue" —
 `#0a285a` and its grey shine taken off. Its name is the words it draws,
 "Download on the App Store", which the Arabic name carries first (WCAG 2.5.3).
 Apple's marketing guidelines ask for the badge in black or white; navy is the
-owner's choice. A pointer resting on it, the keyboard reaching it or a press
+owner's choice. **It is the row's own height, 32px, after a hairline, on the
+owner's word** ("make it look cleaner and more professional"): at 36 it filled
+the row and read as a second navy button stacked under the cart, and the
+hairline sets it apart from the shop's own links, being an offer rather than a
+place in the shop. A pointer resting on it, the keyboard reaching it or a press
 opens the card — the QR code with NetLet's mark in its middle (correction level
 H, so the mark hides nothing the code needs), "Download the NetLet app", "Scan
 the QR code to download", the same navy badge as its button, and "For iOS

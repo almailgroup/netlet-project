@@ -407,7 +407,10 @@ export function StoreHeader({ activeDepartment, logoRow = true, pageSearch = nul
             </Link>
           ) : null}
           {/* The app, under the cart, on the owner's word: its QR card opens
-              for a pointer resting on it (`AppDownloadLink`). */}
+              for a pointer resting on it (`AppDownloadLink`). A hairline sets
+              it apart from the shop's own links, being an offer and not a
+              place in the shop. */}
+          <span aria-hidden className="mx-2 h-5 w-px shrink-0 bg-[#0a285a]/[.12]" />
           <AppDownloadLink className="shrink-0" />
         </div>
       </nav>
