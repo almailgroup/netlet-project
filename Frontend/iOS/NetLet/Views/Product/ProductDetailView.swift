@@ -555,7 +555,7 @@ private struct ProductPage: View {
     private var stickyBar: some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(product.title).font(.inter(12)).foregroundStyle(Brand.muted).lineLimit(1)
+                Text(product.title).font(.inter(12)).foregroundStyle(Brand.ink).lineLimit(1)
                 if let quote {
                     Text(l.price(quote.total)).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
                         .lineLimit(1)

@@ -10513,6 +10513,46 @@ row of a department's chips, seen by enlarging the picture and raising its
 contrast, which is how to look at any glass. The header's own, outside any
 scroll, were whole.
 
+**The app's own glass is clean too, on the owner's word** ("do the same
+liquid glass cleanup in the iOS app"), after the website's. Read off the CI's
+pictures with the near-whites stretched: the product page's header was 243
+over a page of 250 — **the glass greyer than what it sat on** — and the cart's
+floating Checkout bar darkened toward its foot. Two causes. The frosted
+surfaces (`GlassSurface`: the header's rows, the floating bars, the
+assistant's sheet) blurred through `.ultraThinMaterial`, and the system's
+materials keep their vibrancy by pulling white toward grey, which a 45% tint
+let show; they blur through UIKit's `.light` effect now (`GlassBlur`), which
+Apple documents as lighter than what is under it — the web's bend, a blur and
+a saturation with the white all in the face. And the floating bars' shadow
+was drawn under the glass, so the glass blurred its own shadow; it is cast
+outside the edge only now (`OuterShadow`: the shape casts it and is cut away
+in a compositing group, CSS's `box-shadow`). **The figures are what the eye
+gets**: the light blur lays down a white of its own (`GlassBlur.ownWhite`,
+taken as 30%), so the face adds only the rest (`GlassBlur.face`) and 60 and 45
+read as the web's 60 and 45. The rest is the web's face: the light along a
+surface's top (a glow over 10 points and a bright line), a bright line over
+the search row's navy hairline, and on the capsule a thin bright rim all
+round, a brighter line along its top and a touch of depth at its foot, behind
+`MobileTabBar`'s black rim. **The floating bars are an even 70%**, the web's
+panel and chip, because words sit straight on them, and those words are in
+the dark ink now — the cart bar's "Total" and the buy bar's product name were
+the muted ink, which no glass keeps at 4.5:1 over a dark photo. **The grey
+`.regularMaterial` bars at the foot** of checkout, a new listing, the pin
+picker and the co-pilot are the clean glass at 82% under a navy hairline
+(`glassBar()`). **A UIKit blur is never clipped by SwiftUI**: a clip or mask
+on an effect view, or on anything holding one, can stop it rendering, so
+`RoundedBlurView` rounds its own corners and only the face is clipped; the
+search sheet, which unrolls by a clip, keeps the material (`material: true`,
+at 70% the grey is a level or two), and so do the iOS 17 and 18 drawings of
+the photo's control and `.frost`, which sit inside a card's clip.
+**`GlassUITests` reads it off a screenshot**: a Debug-only screen
+(`-NetLetOpen glassProbe`, `GlassProbe`) draws the header's glass, the blur
+alone and the capsule over the page's ground and over black; the test fails if
+any is greyer than the ground under it or if the dark ink or navy falls under
+4.5:1 on the capsule over black, and notes what each measured (`TEST-NOTE
+glass`) — the blur alone over black is `ownWhite`, which is how a wrong guess
+at it would be seen. Not yet seen on a phone from this sandbox.
+
 **The Deals tab has a moment of its own, on the owner's word** ("when you tap
 on the deals icon in the bottom menu, it would display a cool animation for
 deals", then "work on the deals animation to make it better. Add a sound

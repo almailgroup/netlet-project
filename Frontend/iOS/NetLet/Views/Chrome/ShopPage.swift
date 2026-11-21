@@ -485,7 +485,13 @@ struct SearchRow: View {
             GlassSurface(top: reach > 0 ? 0.6 : 0.53, foot: 0.45, rim: false, reach: reach)
         )
         .overlay(alignment: .bottom) {
-            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1)
+            // The edge of a pane: a bright line along the glass's foot over
+            // the navy hairline, the web's phone header.
+            VStack(spacing: 0) {
+                Rectangle().fill(Color.white.opacity(0.7)).frame(height: 1)
+                Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1)
+            }
+            .allowsHitTesting(false)
         }
     }
 

@@ -175,8 +175,7 @@ private struct CheckoutForm: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(.regularMaterial)
-            .overlay(alignment: .top) { Divider() }
+            .glassBar()
             .accessibilityElement(children: .contain)
             .accessibilityLabel(l.t("checkout.placeBar"))
             }

@@ -266,7 +266,7 @@ struct CopilotSheet: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.regularMaterial)
+        .glassBar()
     }
 
     // MARK: Asking

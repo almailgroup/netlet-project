@@ -29,6 +29,15 @@ struct NetLetApp: App {
         AppAway.watch(left: { [weak model] in model?.appLeft() }, returned: { [weak model] in model?.appReturned() })
     }
 
+    /// `-NetLetOpen glassProbe`, Debug only: `GlassUITests`' swatches over
+    /// the whole app.
+    private var glassProbe: AnyView? {
+        #if DEBUG
+        if UserDefaults.standard.string(forKey: "NetLetOpen") == "glassProbe" { return AnyView(GlassProbe()) }
+        #endif
+        return nil
+    }
+
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -39,6 +48,9 @@ struct NetLetApp: App {
                         .scaleEffect(opening && !revealed && !UIAccessibility.isReduceMotionEnabled ? 1.08 : 1)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                         .zIndex(0.5)
+                }
+                if let glassProbe {
+                    glassProbe.zIndex(2)
                 }
                 if opening {
                     LaunchSplash(revealing: {

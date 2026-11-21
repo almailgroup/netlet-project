@@ -100,8 +100,7 @@ private struct NewListingForm: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.regularMaterial)
-        .overlay(alignment: .top) { Divider() }
+        .glassBar()
     }
 
     @ViewBuilder private func busyLabel(_ busy: Bool, _ key: String) -> some View {

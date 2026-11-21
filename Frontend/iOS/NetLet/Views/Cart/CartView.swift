@@ -282,7 +282,7 @@ struct CartView: View {
         return HStack(spacing: 8) {
             AllChoice(cart: cart, compact: true)
             VStack(alignment: .trailing, spacing: 2) {
-                Text(l.t("cart.total")).font(.inter(12)).foregroundStyle(Brand.muted)
+                Text(l.t("cart.total")).font(.inter(12)).foregroundStyle(Brand.ink)
                 Text(l.price(cart.total)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)

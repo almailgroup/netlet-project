@@ -459,7 +459,7 @@ struct PinPickerSheet: View {
             }
         }
         .padding(16)
-        .background(.regularMaterial)
+        .glassBar()
     }
 
     /// Reads the address at `pin` once the map has rested a moment.

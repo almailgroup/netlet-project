@@ -105,7 +105,7 @@ private struct SearchSheet: View {
             // own keyboard sits on the glass now, one surface from the field
             // to the keys.
             .background {
-                GlassSurface(top: 0.7, foot: 0.7)
+                GlassSurface(top: 0.7, foot: 0.7, material: true)
                     .ignoresSafeArea()
             }
             // It grows down out of the header and folds back into it — the

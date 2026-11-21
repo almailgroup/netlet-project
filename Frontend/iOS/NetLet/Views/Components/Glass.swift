@@ -2,17 +2,29 @@ import SwiftUI
 
 /// The web's liquid glass (`.glass-bar-surface` in `index.css`): what passes
 /// under it blurred and brightened, under a white tint that is thicker at the
-/// top than the foot, with a bright rim along its top edge.
+/// top than the foot.
 ///
 /// The tint is the phone's — 60% white at the top and 45% at the foot, the
 /// figures the owner chose for the phone's bar and tab bar — and is what keeps
 /// the words on it legible over anything dark that scrolls under them. Every
 /// control drawn on it stays solid; the glass is only ever the background.
+///
+/// **Clean glass, on the owner's word** ("do the same liquid glass cleanup in
+/// the iOS app"), after the website's. It blurred through the system's
+/// `.ultraThinMaterial`, which keeps its vibrancy by pulling white toward
+/// grey: read off the CI's pictures, the product page's header was 243 over a
+/// page of 250 — the glass greyer than what it sat on — and the cart's
+/// floating bar darkened toward its foot. The blur is now UIKit's light one
+/// (`GlassBlur`), which only ever lightens, as the web's does, and the
+/// figures here are what the eye gets: the face under them is worked out from
+/// the light blur's own white (`GlassBlur.face`), so 60 and 45 read as the
+/// web's 60 and 45. `GlassUITests` reads both off a screenshot.
 struct GlassSurface: View {
     var top: Double = 0.6
     var foot: Double = 0.45
-    /// The bright top edge — only where the surface is the top of the glass,
-    /// or two rows of one header read as two strips.
+    /// The light along the top edge — a bright line and a glow fading over
+    /// its first 10 points, the web's face — only where the surface is the
+    /// top of the glass, or two rows of one header read as two strips.
     var rim = true
     /// How far the same glass reaches up past the view's top — behind the
     /// status bar, for the header row at the top of the screen — at the top's
@@ -20,32 +32,184 @@ struct GlassSurface: View {
     /// of glass meeting under the status bar drew a line where they met, and
     /// the strip above read darker than the row (the owner's screenshot).
     var reach: CGFloat = 0
+    /// Its corners. The blur rounds itself and the face is clipped on its
+    /// own, never the whole surface (see `GlassBlur`).
+    var corners: GlassCorners = .square
+    /// Inside a SwiftUI clip of its own — the search sheet's unroll — the
+    /// surface keeps the system's material, which a clip cannot break.
+    var material = false
 
     var body: some View {
         ZStack {
-            Rectangle().fill(.ultraThinMaterial)
-            VStack(spacing: 0) {
-                Color.white.opacity(top).frame(height: reach)
-                LinearGradient(colors: [Color.white.opacity(top), Color.white.opacity(foot)], startPoint: .top, endPoint: .bottom)
+            if material {
+                Rectangle().fill(.ultraThinMaterial)
+            } else {
+                GlassBlur(corners: corners).allowsHitTesting(false)
             }
+            shaped(tint)
         }
         .padding(.top, -reach)
+    }
+
+    /// The white laid over the blur: over the light blur only what it does
+    /// not lay down itself.
+    private var faceTop: Double { material ? top : GlassBlur.face(top) }
+    private var faceFoot: Double { material ? foot : GlassBlur.face(foot) }
+
+    private var tint: some View {
+        VStack(spacing: 0) {
+            Color.white.opacity(faceTop).frame(height: reach)
+            LinearGradient(colors: [Color.white.opacity(faceTop), Color.white.opacity(faceFoot)], startPoint: .top, endPoint: .bottom)
+        }
         .overlay(alignment: .top) {
-            if rim { Rectangle().fill(Color.white.opacity(0.95)).frame(height: 1) }
+            if rim {
+                // The web's face: a glow over the first 10 points and a bright
+                // line along the very top.
+                LinearGradient(colors: [Color.white.opacity(0.35), Color.white.opacity(0)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: 10)
+                    .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.9)).frame(height: 1) }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    /// The face in the surface's corners — the face alone, never the blur.
+    @ViewBuilder private func shaped<V: View>(_ face: V) -> some View {
+        switch corners {
+        case .square: face
+        case .capsule: face.clipShape(Capsule())
+        case .radius(let radius): face.clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
         }
     }
 }
 
-/// The same glass inside a capsule, with the tab bar's hairline rim and its
-/// soft shadow — `MobileTabBar`'s floating pill.
+/// A glass surface's corners.
+enum GlassCorners: Sendable {
+    case square
+    case capsule
+    case radius(CGFloat)
+}
+
+/// What passes under the glass, blurred and saturated and made a little
+/// lighter — never darker: UIKit's `.light` blur, which Apple documents as
+/// lighter than what is under it. That is the website's bend
+/// (`.glass-bar-bend`: a blur and a saturation, the white all in the face).
+/// The system's materials pull white toward grey to keep their vibrancy, and
+/// under a tint of 45% that grey showed.
+///
+/// **It rounds itself** (a corner radius on the effect view), because a
+/// SwiftUI clip or mask on a UIKit effect view, or on anything holding one,
+/// can stop the blur rendering: nothing that wears it is clipped by SwiftUI.
+/// It takes no touches, so a drag that starts on the glass is the page's.
+struct GlassBlur: UIViewRepresentable {
+    var corners: GlassCorners = .square
+
+    /// The white the light blur lays down itself, as a fraction — what
+    /// `GlassUITests` reads over black ("blur alone"). The face only adds the
+    /// rest.
+    nonisolated static var ownWhite: Double { 0.3 }
+
+    /// The face that, over the light blur, gives `total` white in all.
+    nonisolated static func face(_ total: Double) -> Double {
+        max(0, min(1, (total - ownWhite) / (1 - ownWhite)))
+    }
+
+    func makeUIView(context: Context) -> RoundedBlurView {
+        let view = RoundedBlurView(effect: UIBlurEffect(style: .light))
+        view.isUserInteractionEnabled = false
+        view.corners = corners
+        return view
+    }
+
+    func updateUIView(_ view: RoundedBlurView, context: Context) {
+        view.corners = corners
+    }
+}
+
+/// An effect view that rounds its own corners — the one clip UIKit's blur
+/// keeps rendering under.
+final class RoundedBlurView: UIVisualEffectView {
+    var corners: GlassCorners = .square {
+        didSet { setNeedsLayout() }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        switch corners {
+        case .square:
+            layer.cornerRadius = 0
+            clipsToBounds = false
+        case .capsule:
+            layer.cornerCurve = .circular
+            layer.cornerRadius = min(bounds.width, bounds.height) / 2
+            clipsToBounds = true
+        case .radius(let radius):
+            layer.cornerCurve = .continuous
+            layer.cornerRadius = radius
+            clipsToBounds = true
+        }
+    }
+}
+
+/// The same glass inside a capsule — the cart's floating Checkout bar and the
+/// product page's buy bar — with `MobileTabBar`'s rim and shadow and the web's
+/// rounded face: a thin bright rim all round, a brighter line along the top
+/// and a touch of depth at the foot, so it reads as a piece of glass rather
+/// than a tinted hole. An even 70%, the web's panel and chip, because words
+/// sit straight on it; they are in the dark ink, never the muted one.
 struct GlassCapsule: View {
     var body: some View {
-        GlassSurface()
-            .clipShape(Capsule())
-            .overlay(Capsule().strokeBorder(Color.black.opacity(0.12), lineWidth: 1))
-            .overlay(Capsule().inset(by: 1).strokeBorder(Color.white.opacity(0.6), lineWidth: 1))
-            .shadow(color: Brand.navy.opacity(0.12), radius: 14, x: 0, y: 8)
-            .shadow(color: Brand.navy.opacity(0.06), radius: 1.5, x: 0, y: 1)
+        GlassSurface(top: 0.7, foot: 0.7, rim: false, corners: .capsule)
+            .overlay {
+                ZStack {
+                    Capsule().inset(by: 1).fill(LinearGradient(stops: [
+                        .init(color: Brand.navy.opacity(0), location: 0.82),
+                        .init(color: Brand.navy.opacity(0.06), location: 1),
+                    ], startPoint: .top, endPoint: .bottom))
+                    Capsule().inset(by: 1).strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
+                    Capsule().inset(by: 1).strokeBorder(LinearGradient(colors: [Color.white.opacity(0.95), Color.white.opacity(0)], startPoint: .top, endPoint: .center), lineWidth: 1.5)
+                    Capsule().strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
+                }
+                .allowsHitTesting(false)
+            }
+            .background { OuterShadow(shape: Capsule()) }
+    }
+}
+
+/// The shadow a floating piece of glass casts, outside its edge only — the
+/// web's `box-shadow`. A shadow drawn under the glass is part of what the glass
+/// blurs, and the cart's bar went grey toward its foot with its own shadow
+/// seen through it. The shape casts it and is then cut away (a compositing
+/// group, `destinationOut`), a point wider than itself so no dark fringe is
+/// left at its edge.
+struct OuterShadow<S: InsettableShape>: View {
+    let shape: S
+
+    var body: some View {
+        ZStack {
+            shape.fill(Color.black).shadow(color: Brand.navy.opacity(0.12), radius: 14, x: 0, y: 8)
+            shape.fill(Color.black).shadow(color: Brand.navy.opacity(0.06), radius: 1.5, x: 0, y: 1)
+            shape.inset(by: -1).fill(Color.black).blendMode(.destinationOut)
+        }
+        .compositingGroup()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+extension View {
+    /// A bar at the foot of a page or a sheet in the clean glass: even 82%,
+    /// thick enough for the muted words some of them carry, with the light
+    /// along its top and a hairline above it — where `.regularMaterial` drew a
+    /// grey bar under a system divider.
+    func glassBar() -> some View {
+        background {
+            GlassSurface(top: 0.82, foot: 0.82)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .overlay(alignment: .top) {
+            Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1).allowsHitTesting(false)
+        }
     }
 }
 
