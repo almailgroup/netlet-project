@@ -685,36 +685,38 @@ private struct TrackMap: View {
     }
 }
 
-/// The order's invoice and any credit notes, each opening the document.
+/// The order's receipt, its invoice and any credit notes — the receipt made
+/// on the press (`OrderReceiptPDF`), each document opening itself.
 struct OrderDocumentsList: View {
     let documents: [OrderDocument]
+    let receipt: OrderReceiptModel
+    let makeReceipt: () -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        if !documents.isEmpty {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(l.t("invoice.documents")).font(.headline).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
-                ForEach(documents) { document in
-                    Button {
-                        app.open(.invoice(number: document.number))
-                    } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "doc.text").foregroundStyle(Brand.navy)
-                            Text(l.t(document.isCredit ? "invoice.creditNoteNumber" : "invoice.invoiceNumber", ["number": document.number]))
-                                .font(.inter(14, .semibold))
-                                .foregroundStyle(Brand.navy)
-                            Spacer()
-                            Image(systemName: "chevron.forward").font(.footnote).foregroundStyle(Brand.chevron).flipsForRightToLeftLayoutDirection(true)
-                        }
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
+        VStack(alignment: .leading, spacing: 4) {
+            Text(l.t(documents.isEmpty ? "receipt.title" : "receipt.heading")).font(.headline).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+            OrderReceiptButton(model: receipt, make: makeReceipt)
+            ForEach(documents) { document in
+                Button {
+                    app.open(.invoice(number: document.number))
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "doc.text").foregroundStyle(Brand.navy)
+                        Text(l.t(document.isCredit ? "invoice.creditNoteNumber" : "invoice.invoiceNumber", ["number": document.number]))
+                            .font(.inter(14, .semibold))
+                            .foregroundStyle(Brand.navy)
+                        Spacer()
+                        Image(systemName: "chevron.forward").font(.footnote).foregroundStyle(Brand.chevron).flipsForRightToLeftLayoutDirection(true)
                     }
-                    .buttonStyle(.tap)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.tap)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .card()
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
     }
 }

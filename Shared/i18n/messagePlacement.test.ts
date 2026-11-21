@@ -84,10 +84,11 @@ describe("where each word lives", () => {
     const bare = shopWebFiles().filter(file => !file.endsWith("lib/lazyPage.ts") && /(^|[^\w.])lazy\(/.test(read(file)));
     expect(bare).toEqual([]);
     /* Every fetch of the app's own code from a shop file is a lazyPage's,
-       but for three, each for its reason: the demo's answers, which draw no
-       words; the later words themselves; and the portal's frame, whose two
-       uses are both lazyPage's. */
-    const allowed = [/@\/lib\/demoLink/, /^\s*words \?\?= import\("@shared\/i18n\/laterMessages"\)/, /^const loadAdminFrame = \(\) => import\(/];
+       but for four, each for its reason: the demo's answers, which draw no
+       words; the later words themselves; the portal's frame, whose two uses
+       are both lazyPage's; and the order receipt's drawer, which lays out
+       words it is handed already made. */
+    const allowed = [/@\/lib\/demoLink/, /await import\("@\/lib\/orderReceiptPdf"\)/, /^\s*words \?\?= import\("@shared\/i18n\/laterMessages"\)/, /^const loadAdminFrame = \(\) => import\(/];
     const loose = shopWebFiles().flatMap(file => read(file).split("\n")
       .filter(line => /import\(\s*["'](@\/|@shared\/|\.\.?\/)/.test(line) && !/lazyPage\(/.test(line) && !allowed.some(rule => rule.test(line)))
       .map(line => `${file}: ${line.trim()}`));

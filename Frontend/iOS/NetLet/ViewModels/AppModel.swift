@@ -603,9 +603,10 @@ final class AppModel {
             orderSheet = "payment"
             presetPayMethod = "knet"
             accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
-        case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress", "orderPayment":
+        case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress", "orderPayment", "receipt":
             // `track:`, `refund:`, `rate:`, `warranty:`, `modify:`, `help:`,
-            // `orderAddress:` and `orderPayment:` open the order with that sheet up.
+            // `orderAddress:` and `orderPayment:` open the order with that sheet up;
+            // `receipt:` with its receipt made and shown in Quick Look.
             guard let value else { return }
             selectedTab = .account
             orderSheet = parts[0] == "order" ? nil : parts[0] == "orderAddress" ? "address" : parts[0] == "orderPayment" ? "payment" : parts[0]

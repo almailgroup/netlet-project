@@ -2322,3 +2322,227 @@ html[data-page-arriving] .assistant-launcher {
     transform: scaleY(0);
   }
 }
+
+/*
+ * My orders' journey (`OrderJourney`), on the owner's word: one road from the
+ * store's box to the shopper's house. While it is got ready the box turns
+ * over inside a ring of dashes; on the way the van drives the road to the
+ * house, the road filling navy behind it, and the house waits; delivered, the
+ * road and the house are green and the house wears a tick. The van rides on a
+ * white plate so the road's dashes never run through it, and it faces the way
+ * it drives — the house is at the start of the line on the Arabic page.
+ * Still for somebody who asked for less motion: the van stands half-way.
+ */
+.order-journey {
+  --journey-done: #0a285a;
+  --journey-wait: #c6d1e0;
+}
+.order-journey[data-stage="delivered"] {
+  --journey-done: #2f7d3a;
+}
+.journey-stop {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 2px solid var(--journey-wait);
+  border-radius: 9999px;
+  background: #fff;
+  color: #8a99b0;
+}
+.order-journey .journey-box {
+  border-color: var(--journey-done);
+  color: var(--journey-done);
+}
+.order-journey[data-stage="processing"] .journey-box {
+  border-color: #e0a92e;
+  background: #fff8dc;
+  color: #705523;
+}
+.order-journey[data-stage="delivered"] .journey-house {
+  border-color: var(--journey-done);
+  background: var(--journey-done);
+  color: #fff;
+}
+.journey-tick {
+  position: absolute;
+  top: -5px;
+  inset-inline-end: -5px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--journey-done);
+  color: #fff;
+  box-shadow: 0 0 0 2px #fff;
+}
+.order-journey[data-stage="delivered"] .journey-house .journey-tick {
+  background: #fff;
+  color: var(--journey-done);
+  box-shadow: 0 0 0 2px var(--journey-done);
+}
+.journey-ring {
+  position: absolute;
+  inset: -6px;
+  border: 2px dashed transparent;
+  border-radius: 9999px;
+}
+.order-journey[data-stage="processing"] .journey-ring {
+  border-color: #e0a92e;
+}
+.journey-road {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  margin-inline: 4px;
+  border-radius: 9999px;
+  background: repeating-linear-gradient(90deg, var(--journey-wait) 0 7px, transparent 7px 12px);
+  container-type: inline-size;
+}
+/* The fill grows and the van drives by transforms alone, against the road's
+   own width (`cqi`, the road being a size container), so twenty orders moving
+   cost the page no layout. */
+.journey-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: var(--journey-done);
+  scale: 0 1;
+  transform-origin: left center;
+}
+[dir="rtl"] .journey-fill {
+  transform-origin: right center;
+}
+.order-journey[data-stage="onTheWay"] .journey-fill {
+  scale: 0.5 1;
+}
+.order-journey[data-stage="delivered"] .journey-fill {
+  scale: 1 1;
+}
+.journey-van {
+  --van-to: calc(100cqi - 32px);
+  --van-half: calc(50cqi - 16px);
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 26px;
+  border-radius: 9999px;
+  background: #fff;
+  color: #8a99b0;
+  translate: 0 -50%;
+}
+[dir="rtl"] .journey-van {
+  --van-to: calc(32px - 100cqi);
+  --van-half: calc(16px - 50cqi);
+}
+.order-journey[data-stage="onTheWay"] .journey-van {
+  translate: var(--van-half) -50%;
+  color: var(--journey-done);
+}
+/* The house's ring while it waits for the van, a ring of its own that grows
+   and fades rather than a shadow repainted every frame. */
+.order-journey .journey-house::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  border: 2px solid rgb(10 40 90 / 0.3);
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .order-journey[data-stage="processing"] .journey-ring {
+    animation: journey-spin 3.2s linear infinite;
+  }
+  .order-journey[data-stage="processing"] .journey-box-icon {
+    animation: journey-bob 1.4s ease-in-out infinite alternate;
+  }
+  .order-journey[data-stage="onTheWay"] .journey-van {
+    animation: journey-drive 3.4s cubic-bezier(0.45, 0.05, 0.35, 1) infinite;
+  }
+  .order-journey[data-stage="onTheWay"] .journey-van svg {
+    animation: journey-bump 0.3s ease-in-out infinite alternate;
+  }
+  .order-journey[data-stage="onTheWay"] .journey-fill {
+    animation: journey-road 3.4s cubic-bezier(0.45, 0.05, 0.35, 1) infinite;
+  }
+  .order-journey[data-stage="onTheWay"] .journey-house::after {
+    animation: journey-wait 1.7s ease-out infinite;
+  }
+  .order-journey[data-stage="delivered"] .journey-house .journey-tick {
+    animation: journey-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  }
+}
+@keyframes journey-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+@keyframes journey-bob {
+  from {
+    translate: 0 1px;
+    rotate: -6deg;
+  }
+  to {
+    translate: 0 -2px;
+    rotate: 6deg;
+  }
+}
+@keyframes journey-drive {
+  0% {
+    translate: 0 -50%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  80% {
+    translate: var(--van-to) -50%;
+    opacity: 1;
+  }
+  100% {
+    translate: var(--van-to) -50%;
+    opacity: 0;
+  }
+}
+@keyframes journey-road {
+  0% {
+    scale: 0 1;
+    opacity: 1;
+  }
+  80% {
+    scale: 1 1;
+    opacity: 1;
+  }
+  100% {
+    scale: 1 1;
+    opacity: 0;
+  }
+}
+@keyframes journey-bump {
+  to {
+    translate: 0 -1.5px;
+  }
+}
+@keyframes journey-wait {
+  0% {
+    scale: 1;
+    opacity: 0.9;
+  }
+  100% {
+    scale: 1.55;
+    opacity: 0;
+  }
+}
+@keyframes journey-pop {
+  from {
+    scale: 0;
+  }
+}

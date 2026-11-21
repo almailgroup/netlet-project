@@ -31,6 +31,7 @@ import {
   Check,
   CircleX,
   CreditCard,
+  FileDown,
   LifeBuoy,
   MapPin,
   MoreHorizontal,
@@ -56,6 +57,7 @@ import { OrderPayment } from "@/components/account/OrderPayment";
 import { HandoverCard, PaidOnlineNote } from "@/components/account/OrderHandover";
 import { WarrantyClaims, WarrantyForm } from "@/components/account/OrderWarranty";
 import { OrderHelp } from "@/components/account/OrderHelp";
+import { useOrderReceipt } from "@/components/account/OrderReceipt";
 import { useCart } from "@/contexts/CartContext";
 import { useFeature } from "@/hooks/useFeature";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -148,6 +150,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
     onSuccess: () => { setAsking(false); toast.success(t("orders.cancelDone")); refresh(); },
     onError: error => { setAsking(false); toast.error(tError(error.message)); refresh(); },
   });
+  const receipt = useOrderReceipt();
   const again = trpc.orders.buyAgain.useMutation({
     onSuccess: async answer => {
       if (answer.cartId) await adoptCart(answer.cartId);
@@ -204,6 +207,8 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
   if (detail.paymentChange.open) actions.push({ key: "payment", icon: <CreditCard className="size-[18px]" aria-hidden />, label: t("orders.changePayment"), run: () => controls.open({ kind: "payment" }) });
   if (changeable) actions.push({ key: "modify", icon: <PencilLine className="size-[18px]" aria-hidden />, label: t("orders.modify"), run: () => controls.open({ kind: "modify" }) });
   if (rebuyable) actions.push({ key: "again", icon: <ShoppingBag className="size-[18px]" aria-hidden />, label: t("orders.buyAgainAll"), run: () => again.mutate({ reference, cartId }) });
+  /* The receipt as a PDF, every order's (on the owner's word). */
+  actions.push({ key: "receipt", icon: <FileDown className="size-[18px]" aria-hidden />, label: t("receipt.download"), run: () => void receipt.download(detail) });
   actions.push({ key: "help", icon: <LifeBuoy className="size-[18px]" aria-hidden />, label: t("orders.getHelp"), run: () => controls.open({ kind: "help" }) });
   if (detail.cancel.cancellable) actions.push({ key: "cancel", icon: <CircleX className="size-[18px]" aria-hidden />, label: t("orders.cancelOrder"), danger: true, run: () => setAsking(true) });
 

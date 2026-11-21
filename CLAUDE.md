@@ -3400,6 +3400,74 @@ widened the page at 320 until it was allowed to wrap). Orders is the first tile,
 opening their account on a shop is usually asking where a parcel is, not
 changing a display name.
 
+**Under each order on My orders is where it is, drawn as a road, on the
+owner's word** ("a design for their status of delivery below them — if it's
+on the way, a delivery icon animation to the house; if it's still
+processing, a processing animation — simple for the user to understand"):
+`OrderJourney` on the web and in the app, the store's box at the road's
+start, the shopper's house at its end, and three words under it —
+Processing, On the way, Delivered — the one it is at in the order's own
+phrase ("Being prepared", "2 of 3 delivered", "Delivered 19 November"). It
+replaced the status pill at the top of the row. **Processing**: the box is
+amber and rocks inside a turning ring of dashes. **On the way**: the box has
+its tick, and a van on a white plate drives the road to the house every 3.4
+seconds, the road filling navy behind it and a ring going out from the
+house. **Delivered**: the road and the house are green, the house with a
+tick. A cancelled or returned order has no road, only its word on a pale
+pill. `journeyStage` (`Shared/commerce/orderReceipt.ts`) is the rule, read
+off `orderProgress` (part-delivered is still on the way); the app's
+`ReceiptRules.journeyStage`, on the same cases. **The web's motion is
+transforms and opacities alone**: the fill grows by `scale` and the van
+drives by `translate` against the road's own width (`cqi`, the road a size
+container), so twenty orders moving cost the page no layout; the house's ring
+is a ring of its own that grows and fades, never an animated shadow. **The
+app's is a pure function of the clock** (`JourneyMotion`, tested at its
+keyframes), drawn by a timeline that runs only while something moves; the
+road is laid out left to right and mirrored by hand on the Arabic page, so
+the van drives toward the house on the left there and faces it. Under
+reduced motion nothing moves and the van stands half-way. A screen reader
+hears an ordered list with the current step marked (`aria-current`) on the
+web and one element in the app — "Order status", then where it is.
+
+**An opened order's receipt can be saved as a PDF, on the owner's word**
+("an export to PDF option that will show all the details of your order in
+the form of a receipt"): "Download receipt (PDF)" under the order, above its
+invoice (the card is "Receipt and invoice" now), and in the order's ⋯ on both
+platforms. It carries the order's number, when it was placed, where it is,
+how it is paid, where it goes (the name, the number, the address, the
+governorate, the notes), each item with its option, its store, the quantity
+at its price, its own code or that it was cancelled or returned, then the
+till's sum in `settle`'s order — goods, delivery (free said as free), tax,
+the order's code, the points, the gift card, the total — and how it stands
+with the money in a band of its own: paid, paid online, refunded, cancelled,
+or what is still to pay at the door, less than the total once something in
+it was cancelled (`receiptRows`, `receiptPayment` in
+`Shared/commerce/orderReceipt.ts`; `ReceiptRules` in Swift on the same
+cases). **Every figure is the one the order froze**; nothing is recomputed.
+**A gift card's code is printed as its last four characters**
+(`maskedCardCode`), being a bearer value in a file that gets forwarded. The
+rule returns kinds rather than message keys, so the receipt's words stay in
+`laterMessages.ts` and out of the first download. **The website draws the
+receipt on a canvas and the canvas is the PDF's one page**
+(`lib/orderReceiptPdf.ts`, `pdf-lib` fetched on the press — the
+messagePlacement test allows that one dynamic import, the drawer laying out
+words it is handed already made): the browser shapes Arabic and lays out
+right-to-left text, which `pdf-lib` cannot, so the Arabic receipt reads as
+the page does; one tall page A4's width, at 2.5 times its size so it prints
+sharp. **The app draws it with `ImageRenderer` into a PDF context**
+(`OrderReceiptPDF`, `ReceiptPage`), so its words stay words — shaped by the
+system, searchable — and shows it in Quick Look, where Share and Save to
+Files are. The file is `NetLet-receipt-<reference>.pdf`
+(`receiptFileName`). Walked on a production build against a local Postgres
+seeded with an order in every stage, at 320, 390 and 1440 in both languages:
+the van moving and on the road, the road mirrored on the Arabic page, still
+and half-way under reduced motion, the receipt downloaded as a PDF from the
+button and the ⋯ in both languages and read back as pictures, axe clean and
+no sideways scroll. `OrderReceiptTests` decodes the recorded order and draws
+it into a one-page PDF A4 wide whose text holds the order's number; the CI
+photographs it in Quick Look (`111-order-receipt`, `-NetLetOpen receipt:`).
+Not yet seen on a phone from this sandbox.
+
 `Backend/src/services/orders.ts` had `listOrdersForUser` and `getOrderForUser` from the day
 the tables landed and **nothing could call them** — there was no router, so the
 page had no way to ask. `Backend/src/routes/orders.ts` is that missing half. Every

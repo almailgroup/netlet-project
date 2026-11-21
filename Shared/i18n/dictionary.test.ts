@@ -48,6 +48,9 @@ describe("dictionary completeness", () => {
       // A bank's bulk-payment portal asks for these by their format names, so
       // the buttons and the note name them as the portal does — the CSV reason.
       "admin.payoutFilesNote", "admin.payoutDownloadCsv", "admin.payoutDownloadXml",
+      // The receipt is saved as a PDF, and the file a phone or a browser then
+      // shows is named that way in Arabic too — the CSV reason.
+      "receipt.download",
       // Names the variable an administrator sets in the deployment's settings,
       // which is spelled the same in every language — the `https` reason.
       "features.why.noGateway",

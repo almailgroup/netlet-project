@@ -30,6 +30,8 @@ struct OrderActionsBar: View {
     let reload: () async -> Void
     /// The sheet over the order, shared with each item's ⋯.
     @Binding var sheet: OrderSheet?
+    /// Make the order's receipt as a PDF (`OrderReceiptPDF`).
+    var onReceipt: (() -> Void)? = nil
     /// Rate one item, in its sheet.
     var onRate: ((OrderLine) -> Void)? = nil
     @Environment(AppModel.self) private var app
@@ -74,6 +76,9 @@ struct OrderActionsBar: View {
                     if detail.mayBuyAgain {
                         Button { Haptics.action(); Task { await buyAgain() } } label: { Label(l.t("orders.buyAgainAll"), systemImage: "bag") }
                             .disabled(rebuying)
+                    }
+                    if let onReceipt {
+                        Button { Haptics.action(); onReceipt() } label: { Label(l.t("receipt.download"), systemImage: "arrow.down.doc") }
                     }
                     Button { open(.help) } label: { Label(l.t("orders.getHelp"), systemImage: "lifepreserver") }
                     if detail.cancel.cancellable {

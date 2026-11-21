@@ -40,10 +40,9 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useSlotWords } from "@/hooks/useSlotWords";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useReturnWindow } from "@/hooks/useReturnWindow";
-import type { OrderProgress } from "@shared/commerce/orderProgress";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { rateLabel } from "@shared/commerce/tax";
-import { CalendarDays, ChevronDown, ChevronLeft, CircleCheck, CircleX, Clock, FileText, Package, PackageSearch, RotateCcw, Search, Star, Truck, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, FileText, PackageSearch, RotateCcw, Search, Star, X, type LucideIcon } from "lucide-react";
 import { cameFrom, goBack } from "@/lib/inAppBack";
 import { Link, useLocation, useSearch } from "wouter";
 import { useEffect, useId, useRef, useState } from "react";
@@ -59,6 +58,8 @@ import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/rev
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
 import { OrderAfterSales, OrderLineMenu, OrderLinePanel } from "@/components/account/OrderActions";
+import { OrderJourney } from "@/components/account/OrderJourney";
+import { ReceiptButton } from "@/components/account/OrderReceipt";
 
 /**
  * The words for each state, and its colour.
@@ -90,42 +91,6 @@ export function Pill({ label, className, icon: Icon }: { label: string; classNam
       {label}
     </span>
   );
-}
-
-/**
- * Where the order is, which is what the list leads with.
- *
- * Payment used to be the badge, and for a cash order that read "awaiting
- * payment" on every row until a driver had been to the door — true, and not
- * the question. The colours are the line states' own, so an order and its
- * lines say "on the way" in one colour.
- */
-const PROGRESS: Record<OrderProgress["kind"], { icon: LucideIcon; className: string }> = {
-  received: { icon: Clock, className: FULFILMENT.pending.className },
-  preparing: { icon: Package, className: FULFILMENT.preparing.className },
-  onTheWay: { icon: Truck, className: FULFILMENT.shipped.className },
-  partlyDelivered: { icon: Truck, className: FULFILMENT.shipped.className },
-  delivered: { icon: CircleCheck, className: FULFILMENT.delivered.className },
-  cancelled: { icon: CircleX, className: FULFILMENT.cancelled.className },
-  returned: { icon: RotateCcw, className: FULFILMENT.returned.className },
-};
-
-function ProgressPill({ progress }: { progress: OrderProgress }) {
-  const { t } = useTranslation();
-  const formatDate = useDateFormat();
-  const label = (() => {
-    switch (progress.kind) {
-      case "received": return t(progress.preordered ? "orders.progressPreordered" : "orders.progressReceived");
-      case "preparing": return t("orders.progressPreparing");
-      case "onTheWay": return t("orders.progressOnTheWay");
-      case "partlyDelivered": return t("orders.progressPartly", { delivered: progress.delivered, of: progress.of });
-      case "delivered": return progress.at ? t("orders.progressDeliveredOn", { date: formatDate(progress.at) }) : t("orders.progressDelivered");
-      case "cancelled": return t("orders.progressCancelled");
-      case "returned": return t("orders.progressReturned");
-    }
-  })();
-  const look = PROGRESS[progress.kind];
-  return <Pill label={label} className={look.className} icon={look.icon} />;
 }
 
 /**
@@ -434,13 +399,15 @@ export function AccountOrders() {
                     >
                       <OrderPhoto photo={summary?.photos[0] ?? null} more={Math.max(0, (summary?.lineCount ?? 1) - 1)} />
                       <span className="min-w-0 flex-1">
-                        {summary ? <ProgressPill progress={summary.progress} /> : <Pill label={t(payment.label)} className={payment.className} />}
+                        {/* Where it is, under the products now (`OrderJourney`);
+                            a server older than the summary says only how it is paid. */}
+                        {summary ? null : <Pill label={t(payment.label)} className={payment.className} />}
                         {/* What it is, by the first thing in it — nobody knows
                             their own order by its number. The title is the
                             seller's words, isolated so a Latin name sits
                             right on the Arabic page. */}
                         {summary?.first ? (
-                          <span className="mt-2 block truncate text-[15px] font-bold text-[#0a285a]">
+                          <span className="block truncate text-[15px] font-bold text-[#0a285a]">
                             <bdi>{summary.first.title}</bdi>
                             {summary.lineCount > 1 ? <span className="font-semibold text-[#3d5170]"> {t("orders.andMore", { count: summary.lineCount - 1 })}</span> : null}
                           </span>
@@ -461,6 +428,15 @@ export function AccountOrders() {
                       </span>
                       <ChevronDown className={`mt-1 size-5 shrink-0 ink-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
                     </button>
+
+                    {/* Where it is on its way to the door, under its products,
+                        on the owner's word: the box got ready, the van on the
+                        road to the house, the house reached. */}
+                    {summary ? (
+                      <div className="-mt-1 px-4 pb-4 sm:px-5">
+                        <OrderJourney progress={summary.progress} />
+                      </div>
+                    ) : null}
 
                     {/* Request a refund from the list, on the owner's word: on an
                         order with something that can still go back — delivered,
@@ -683,12 +659,14 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
               {t("orders.taxIncluded", { rate: rateLabel(data.tax.rate), amount: formatMoney(data.tax.amount, { currencyCode: data.order.currency, locale }) })}
             </p>
           ) : null}
-          {/* The invoice and any credit notes (3.6.6), once the money has
-              been collected — the moment the sale completes. */}
-          {data.documents.length > 0 ? (
+          {/* The receipt, every order's (on the owner's word), and the
+              invoice and any credit notes (3.6.6) once the money has been
+              collected — the moment the sale completes. */}
+          {(
             <section aria-labelledby={`docs-${reference}`} className="mt-5 border-t border-[#e7edf5] pt-4">
-              <h4 id={`docs-${reference}`} className="type-label ink-muted">{t("invoice.documents")}</h4>
+              <h4 id={`docs-${reference}`} className="type-label ink-muted">{t(data.documents.length > 0 ? "receipt.heading" : "receipt.title")}</h4>
               <ul className="mt-2 flex flex-wrap gap-2">
+                <li><ReceiptButton detail={data} /></li>
                 {data.documents.map(document => (
                   <li key={document.number}>
                     <Link href={`/invoices/${document.number}`} className="glass type-control pressable inline-flex items-center gap-1.5 rounded-full px-3 py-1.5">
@@ -699,7 +677,7 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                 ))}
               </ul>
             </section>
-          ) : null}
+          )}
           <ParcelCare reference={reference} currency={data.order.currency} parcels={data.parcels} />
           {rating ? (
             <ReviewDialog

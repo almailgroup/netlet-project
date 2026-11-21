@@ -1,3 +1,4 @@
+import QuickLook
 import SwiftUI
 
 /// The shopper's orders, each led by what is in it and where it is — the
@@ -420,6 +421,15 @@ struct OrderRow: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            summaryRow
+            // Where it is on its way to the door, under the order, on the
+            // owner's word — the web's `OrderJourney`.
+            OrderJourney(progress: order.summary.progress)
+        }
+    }
+
+    private var summaryRow: some View {
         HStack(alignment: .top, spacing: 12) {
             Color.clear
                 .frame(width: 64, height: 64)
@@ -436,7 +446,6 @@ struct OrderRow: View {
                     }
                 }
             VStack(alignment: .leading, spacing: 5) {
-                OrderProgressPill(progress: order.summary.progress)
                 if let first = order.summary.first {
                     let more = order.summary.lineCount - 1
                     Text(first.title + (more > 0 ? " " + l.t("orders.andMore", ["count": "\(more)"]) : ""))
@@ -467,7 +476,7 @@ struct OrderRow: View {
                 .foregroundStyle(Brand.muted)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.top, 6)
     }
 
     /// How it is paid, said only where it tells somebody something (`OrderTotal`).
@@ -483,26 +492,6 @@ struct OrderRow: View {
         case "pending_payment" where order.shownTotal.fils > 0: return l.t("orders.payOnDelivery")
         default: return nil
         }
-    }
-}
-
-/// Where an order is, as a pill with its icon — the web's `ProgressPill`.
-struct OrderProgressPill: View {
-    let progress: OrderProgress
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        let look: (String, OrderTone) = {
-            switch progress.kind {
-            case "preparing": return ("shippingbox", .preparing)
-            case "onTheWay", "partlyDelivered": return ("truck.box", .shipped)
-            case "delivered": return ("checkmark.circle", .done)
-            case "cancelled": return ("xmark.circle", .stopped)
-            case "returned": return ("arrow.uturn.backward", .over)
-            default: return ("clock", .waiting)
-            }
-        }()
-        StatusPill(label: OrderWording.progress(progress, language: l), tone: look.1, systemImage: look.0)
     }
 }
 
@@ -522,6 +511,8 @@ struct OrderDetailView: View {
     @State private var sheet: OrderSheet?
     /// The item whose return form is open under it.
     @State private var returning: Int?
+    /// The order's receipt as a PDF, made on the press and shown in Quick Look.
+    @State private var receipt = OrderReceiptModel()
 
     var body: some View {
         ModelHost(make: { OrderDetailViewModel(reference: reference, service: app.services.orders) }) { model in
@@ -540,15 +531,21 @@ struct OrderDetailView: View {
                     } else {
                         LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
                             VStack(alignment: .leading, spacing: 16) {
-                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet) { line in
+                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet, onReceipt: { makeReceipt(detail) }) { line in
                                     rating = target(line)
                                 }
                                 lines(detail, reload: { await model.load() })
-                                OrderDocumentsList(documents: detail.documents)
+                                OrderDocumentsList(documents: detail.documents, receipt: receipt) { makeReceipt(detail) }
                                 if detail.hasShipped { TrackingPanel(reference: reference) }
                                 ParcelCareSection(reference: reference, detail: detail, reload: { await model.load() })
                                 totals(detail.order, tax: detail.tax)
                                 delivery(detail.order)
+                            }
+                            .onAppear {
+                                // The screenshots' `receipt:` hook: the receipt made and shown.
+                                guard app.orderSheet == "receipt" else { return }
+                                app.orderSheet = nil
+                                makeReceipt(detail)
                             }
                         }
                     }
@@ -563,6 +560,14 @@ struct OrderDetailView: View {
                 ReviewSheet(target: target) { Task { await model.load() } }
                     .languageDirection()
             }
+            .quickLookPreview($receipt.shown)
+        }
+    }
+
+    /// The receipt, made and shown; a toast if it could not be drawn.
+    private func makeReceipt(_ detail: OrderDetail) {
+        Task {
+            if await receipt.make(detail, language: l) == false { app.toast(l.t("receipt.failed")) }
         }
     }
 

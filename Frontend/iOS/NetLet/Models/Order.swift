@@ -230,6 +230,23 @@ struct OrderRecord: Decodable, Hashable, Sendable {
     let deliveryZoneId: String?
     let addressLine: String?
     let placedAt: Date
+    /// What the receipt prints beside its figures — the code the order used,
+    /// the points it spent, the gift card's code and the driver's notes, as the
+    /// order froze them. Absent from a recording older than the receipt.
+    var discountCode: String? = nil
+    var pointsSpent: Int? = nil
+    var giftCardCode: String? = nil
+    var addressNotes: String? = nil
+
+    /// Its figures for the receipt's sum (`ReceiptRules.rows`).
+    var receiptFigures: ReceiptRules.Figures {
+        ReceiptRules.Figures(
+            itemsTotal: itemsTotal, deliveryTotal: deliveryTotal, grandTotal: grandTotal,
+            discountCode: discountCode, discountValue: discountValue,
+            pointsSpent: pointsSpent ?? 0, pointsValue: pointsValue,
+            giftCardCode: giftCardCode, giftCardValue: giftCardValue
+        )
+    }
 }
 
 /// A line as it was sold: every figure was frozen at the moment of sale.
@@ -272,6 +289,10 @@ struct OrderLine: Decodable, Identifiable, Hashable, Sendable {
     /// The line's own discount code and what it took, as frozen (0074).
     var discountCode: String? = nil
     var discountAmount: Money? = nil
+    /// When it arrived, and whether it was a pre-order — what the receipt's
+    /// status is read off (`ReceiptRules.progress`, the server's `orderProgress`).
+    var deliveredAt: Date? = nil
+    var preordered: Bool? = nil
 
     /// "Rate this item" is drawn for a line with no review that may be rated.
     var mayRate: Bool { review == nil && reviewEligibility?.allowed == true }
