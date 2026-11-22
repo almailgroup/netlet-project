@@ -47,15 +47,25 @@ final class OrderFiltersUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Clear all"].exists, "Clear all stayed with nothing chosen.")
     }
 
-    /// Swipes the chip row toward its end until `element` can take a press,
-    /// and says where it was if it never could.
+    /// Swipes the chip row toward its end until `element` is wholly on the
+    /// screen inside it, and says where it was if it never was.
+    ///
+    /// Reach is read from the frames, never `isHittable`: XCUI cannot answer
+    /// that for an element wholly off the screen — run 303 stopped on "Failed
+    /// to determine hittability of "Sort" Button: Activation point invalid" at
+    /// the first ask — and the row draws its chips past its own frame
+    /// (`glassRow`), so a drawn chip is not one a finger reaches.
     private func reveal(_ element: XCUIElement, _ app: XCUIApplication) {
         let row = app.descendants(matching: .any).matching(identifier: "order-filter-chips").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "The chip row is not drawn: \(chipLabels(app))")
-        for _ in 0..<6 where !element.isHittable {
+        func inReach() -> Bool {
+            let shown = row.frame.intersection(app.frame).insetBy(dx: 4, dy: -8)
+            return element.exists && !shown.isNull && shown.contains(element.frame)
+        }
+        for _ in 0..<6 where !inReach() {
             row.swipeLeft()
         }
-        XCTAssertTrue(element.isHittable, "\(element.label) never came into reach at \(element.frame): \(chipLabels(app))")
+        XCTAssertTrue(inReach(), "\(element.label) never came into reach at \(element.frame) in the row's \(row.frame): \(chipLabels(app))")
     }
 
     private func chip(_ app: XCUIApplication, _ name: String) -> XCUIElement {
