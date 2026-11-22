@@ -47,6 +47,7 @@ struct OrderFilterChips: View {
         .padding(.horizontal, -16)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("orders.filtersLabel"))
+        .accessibilityIdentifier("order-filter-chips")
         .sheet(item: $open) { group in
             OrderFilterSheet(group: group, model: model)
                 .presentationDetents(group == .when ? [.large] : [.medium, .large])

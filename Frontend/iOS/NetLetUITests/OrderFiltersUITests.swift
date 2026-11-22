@@ -27,7 +27,12 @@ final class OrderFiltersUITests: XCTestCase {
         let dated = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Date, 2026")).firstMatch
         XCTAssertTrue(dated.waitForExistence(timeout: 10), "The Date chip does not say 2026: \(chipLabels(app))")
 
-        chip(app, "Sort").tap()
+        // The row scrolls sideways and Sort starts past the screen's edge
+        // (run 302 tapped it at x 507 on a 402-point screen), so the row is
+        // swiped along to it as a thumb would.
+        let sort = chip(app, "Sort")
+        reveal(sort, app)
+        sort.tap()
         let oldest = app.buttons["Oldest first"]
         XCTAssertTrue(oldest.waitForExistence(timeout: 10), "The Sort sheet offered no Oldest first.")
         oldest.tap()
@@ -36,9 +41,21 @@ final class OrderFiltersUITests: XCTestCase {
 
         let clear = app.buttons["Clear all"]
         XCTAssertTrue(clear.waitForExistence(timeout: 5), "Clear all is not drawn while chips are chosen.")
+        reveal(clear, app)
         clear.tap()
         XCTAssertTrue(chip(app, "Date").waitForExistence(timeout: 10), "Clear all did not put the Date chip back: \(chipLabels(app))")
         XCTAssertFalse(app.buttons["Clear all"].exists, "Clear all stayed with nothing chosen.")
+    }
+
+    /// Swipes the chip row toward its end until `element` can take a press,
+    /// and says where it was if it never could.
+    private func reveal(_ element: XCUIElement, _ app: XCUIApplication) {
+        let row = app.descendants(matching: .any).matching(identifier: "order-filter-chips").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "The chip row is not drawn: \(chipLabels(app))")
+        for _ in 0..<6 where !element.isHittable {
+            row.swipeLeft()
+        }
+        XCTAssertTrue(element.isHittable, "\(element.label) never came into reach at \(element.frame): \(chipLabels(app))")
     }
 
     private func chip(_ app: XCUIApplication, _ name: String) -> XCUIElement {
