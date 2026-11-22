@@ -11,15 +11,46 @@ struct OrderPage: Decodable, Sendable {
     var counts: [String: Int]? = nil
     /// Whether the filters read as far back as they may (`ORDER_SCAN_CEILING`).
     var atCeiling: Bool? = nil
+    /// What there is to choose from — the stores bought from, the years
+    /// ordered in, the first order's day — over every order. Absent from an
+    /// older server, which draws no chips.
+    var facets: OrderFacets? = nil
 }
 
-/// What My orders' tools ask the server for (`orders.list`'s view, q and
-/// period, `Shared/commerce/orderFilters.ts`): the server filters over every
-/// order, so a chip's number is what pressing it shows.
+/// The choices My orders' chips offer (`orders.list`'s `facets`).
+struct OrderFacets: Decodable, Hashable, Sendable {
+    struct Store: Decodable, Hashable, Sendable, Identifiable {
+        let id: Int
+        let name: String
+        let nameAr: String?
+        let count: Int
+    }
+
+    let stores: [Store]
+    let years: [Int]
+    let firstDay: String?
+}
+
+/// What My orders' tools ask the server for (`orders.list`'s view, search,
+/// period or days, store, payment, total and order —
+/// `Shared/commerce/orderFilters.ts`): the server filters over every order,
+/// so a tab's number is what pressing it shows.
 struct OrderFilters: Hashable, Sendable {
     var view = "all"
     var q = ""
     var period = "all"
+    /// Two Kuwaiti days of the shopper's own (`yyyy-MM-dd`), either open; a
+    /// year is its first and last day.
+    var from: String?
+    var to: String?
+    /// A store bought from, by its id.
+    var store: Int?
+    /// "all", "cod" or "online".
+    var payment = "all"
+    /// "all" or one of the total's bands (`ORDER_TOTALS`).
+    var total = "all"
+    /// "newest", "oldest", "highest" or "lowest".
+    var sort = "newest"
 }
 
 /// An order in the list, led by where it is rather than how it is paid —

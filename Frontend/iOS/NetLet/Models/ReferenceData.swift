@@ -474,6 +474,18 @@ struct Rules: Decodable, Sendable {
         var filterTabs: [String]? = nil
         var filterPeriods: [String]? = nil
         var searchMax: Int? = nil
+        /// The chips' other choices: the orders of the list, how it was paid
+        /// and the total's bands, in dinars (`ORDER_SORTS`, `ORDER_PAYMENTS`,
+        /// `ORDER_TOTALS`, `ORDER_TOTAL_BANDS`).
+        var filterSorts: [String]? = nil
+        var filterPayments: [String]? = nil
+        var filterTotals: [String]? = nil
+        var totalBands: [String: TotalBand]? = nil
+
+        struct TotalBand: Decodable, Sendable {
+            let min: Int?
+            let max: Int?
+        }
 
         static let fallback = Orders(
             returnKinds: ["refund", "exchange"],

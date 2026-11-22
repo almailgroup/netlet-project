@@ -3368,35 +3368,74 @@ Cancelled and Reviews — the chosen one dark with a short rounded line under it
 (sliding to the next in the app), the rest muted, a hairline under the row.
 No counts, icons or chips: the first version had them and the picture has
 none. The tabs are `aria-pressed` buttons in a named group (the `Segmented`
-rule: they narrow a list). **The search icon opens the search and the period**
-under the tabs, on the orders' own views — a search by the order's number
-(whole or in part, with or without its dashes) or by anything in it, and how
-far back to look (any time, 30, 90 and 180 days, a year); closing it clears
-both, so nothing narrows the list out of sight, and an address carrying either
-opens with it shown. **A view is read off `orderProgress`, never a second
+rule: they narrow a list). **The search icon opens the search** under the
+tabs, on the orders' own views — a search by the order's number (whole or in
+part, with or without its dashes) or by anything in it; closing it clears it,
+so nothing narrows the list out of sight, and an address carrying words opens
+with it shown. **Under the tabs, a row of chips: Date, Store, Payment, Total
+and Sort, on the owner's word** ("a filter option at the top of the my order
+page in which the user can set custom dates … give the user as many options as
+you can, but keep it as user friendly as possible"; `OrderFilterChips` on the
+web and in the app), the department page's chip-and-sheet: each chip names
+what it holds once something is chosen ("Date, 2025", "Sort, Oldest first",
+its name first so voice control can say what it sees) and keeps a navy rim
+then, and a press opens a short sheet of that chip's choices where a press
+applies one and puts the sheet away — a phone's sheet from the foot of the
+screen, a card from `sm` (`useOverlay`, focus on its Close; the app's
+`.sheet(item:)`). **Date** is any time, 30, 90 and 180 days and a year as
+pills, This month and Last month, every year the shopper ordered in ("By
+year", a year chosen as its first and last day, so it is one rule), and two
+days of their own (`From` and `To`, the browser's or the phone's own date
+picker, held to Kuwait's days from the first order's day to today, applied by
+"Show orders"; on the web a day missing or the two the wrong way round is said
+under the box with focus on it, and the server swaps two days that arrive the
+wrong way round anyway). **Store** is drawn only once the shopper has bought
+from more than one (or one is chosen), each store with how many orders hold
+it. **Payment** is cash on delivery or paid online (`isOnlineMethod`).
+**Total** is four bands in whole dinars (`ORDER_TOTAL_BANDS`: under 10, 10 to
+50, 50 to 100, over 100, measured in fils). **Sort** is newest, oldest, highest
+and lowest total, ties kept in the order given. Clear all ends the row while
+anything is chosen, and leaves the tab and the search. **The choices are read
+over every order**, never only the ones the filters leave (`orders.list`'s
+`facets`: the stores with their counts, the Kuwaiti years, the first order's
+day), so a chip can always be changed back. The date counts once among what
+narrows the list and the order of it never (`narrowingCount`), so "nothing
+matches" is said only when something does narrow it. **A view is read off `orderProgress`, never a second
 rule** (`viewOfProgress` in `Shared/commerce/orderFilters.ts`): received and
 being prepared are Processing, on the way and part-delivered Shipped, an order
 that came back whole Delivered (its return is under Returns). **The server
-filters over every order the shopper has** (`orders.list` with `view`, `q` and
-`period`; `filterOrders`, pure, over up to `ORDER_SCAN_CEILING` of their
+filters over every order the shopper has** (`orders.list` with `view`, `q`,
+`period`, `from`, `to`, `store`, `payment`, `total` and `sort`; `filterOrders`,
+pure, over up to `ORDER_SCAN_CEILING` of their
 newest, and says when it reached it), because a filter over the twenty on the
 page says "none" about the twenty-first — the admin lists' rule; it still
 answers each view's count, which tells "nothing matches" from "no orders yet".
 The search folds and stems as the shop's search does (`searchWords`: "ساعه"
 finds "ساعة ذكية", "watches" finds "Smart watch", "cha" the word it starts).
-The filters live in the address (`?view=`, `?q=`, `?period=`, replaced rather
-than pushed), the search sent once typing pauses and the box never
-overwritten by its own search coming back; nothing matching says so with
-Clear filters. The page draws its own bar, so `Account.tsx` draws no section
-heading over it. The app's tabs, periods and search length are exported to
-`rules.json` (`orders.filterTabs`, `filterPeriods`, `searchMax`).
-`orders.test.ts` filters a real database by view, search and period with the
-counts; `orderFilters.test.ts` holds the rule and the tabs' order. Measured at
+The filters live in the address (`?view=`, `?q=`, `?period=`, `?from=`,
+`?to=`, `?store=`, `?pay=`, `?total=`, `?sort=`, replaced rather than pushed),
+the search sent once typing pauses and the box never overwritten by its own
+search coming back; nothing matching says so with Clear filters, and a
+narrowed list says how many it found. The page draws its own bar, so
+`Account.tsx` draws no section heading over it. The app's tabs, periods,
+sorts, payments, total bands and search length are exported to `rules.json`
+(`orders.filterTabs`, `filterPeriods`, `filterSorts`, `filterPayments`,
+`filterTotals`, `totalBands`, `searchMax`), and `OrderFilterRules` is the
+little the app has to know before it asks (a calendar day, a year's two days,
+this month and last, the count that narrows), on the TypeScript's cases.
+`orders.test.ts` filters a real database by view, search, period, two days, a
+store, a payment and a total, sorts it and reads the facets;
+`orderFilters.test.ts` holds the rule and the tabs' order; the app's
+`OrderFiltersUITests` chooses a year and Oldest first and clears both. Measured at
 320, 390 and 1440 in both languages: the tabs in order, the search opened by
 its icon with focus in the box, a number found by five of its letters, a miss
 offering Clear filters, closing the search restoring every order, Returns and
-Reviews in place, axe clean, no sideways scroll (a review row's long reason
-widened the page at 320 until it was allowed to wrap). Orders is the first tile, ahead of the settings: somebody
+Reviews in place, each chip's sheet with focus on its Close, a year, two days
+and a store narrowing the list and their chips saying so, two days the wrong
+way round refused under the box, Clear all, axe clean with every sheet open,
+no sideways scroll (a review row's long reason widened the page at 320 until
+it was allowed to wrap, and the Date sheet's periods are pills, since a row
+each made it taller than a phone). Orders is the first tile, ahead of the settings: somebody
 opening their account on a shop is usually asking where a parcel is, not
 changing a display name.
 
@@ -3408,26 +3447,48 @@ processing, a processing animation — simple for the user to understand"):
 start, the shopper's house at its end, and three words under it —
 Processing, On the way, Delivered — the one it is at in the order's own
 phrase ("Being prepared", "2 of 3 delivered", "Delivered 19 November"). It
-replaced the status pill at the top of the row. **Processing**: the box is
-amber and rocks inside a turning ring of dashes. **On the way**: the box has
-its tick, and a van on a white plate drives the road to the house every 3.4
-seconds, the road filling navy behind it and a ring going out from the
-house. **Delivered**: the road and the house are green, the house with a
-tick. A cancelled or returned order has no road, only its word on a pale
-pill. `journeyStage` (`Shared/commerce/orderReceipt.ts`) is the rule, read
-off `orderProgress` (part-delivered is still on the way); the app's
-`ReceiptRules.journeyStage`, on the same cases. **The web's motion is
-transforms and opacities alone**: the fill grows by `scale` and the van
-drives by `translate` against the road's own width (`cqi`, the road a size
-container), so twenty orders moving cost the page no layout; the house's ring
-is a ring of its own that grows and fades, never an animated shadow. **The
-app's is a pure function of the clock** (`JourneyMotion`, tested at its
-keyframes), drawn by a timeline that runs only while something moves; the
-road is laid out left to right and mirrored by hand on the Arabic page, so
-the van drives toward the house on the left there and faces it. Under
-reduced motion nothing moves and the van stands half-way. A screen reader
+replaced the status pill at the top of the row. **It is a little street of
+NetLet's own drawing, made richer on the owner's word** ("high quality
+animations and icons … an animation for the shipping car if the product is on
+processing … its tires running, going to its destination"): NetLet's store
+(an orange-and-white awning, two windows, a door) at the road's start, the
+shopper's house under the logo's orange roof at its end, and NetLet's navy
+van with the orange stripe, a lit headlamp and spoked wheels. The pictures are
+drawn for it (SVG on the web, `JourneyArt` in a `Canvas` in the app, in the
+same coordinates) rather than taken from an icon set, so the wheels can turn.
+**Processing**: the van waits outside the store with its engine running — its
+body shivers and puffs rise from the exhaust — while kraft parcels hop from
+the store's door into its back one after another, the van dipping on its
+front wheel as each lands, and an amber disc turns on the store's corner.
+**On the way**: the store has its tick and the van drives the road to the
+house every 3.6 seconds, wheels turning (a turn every 0.42s), its body riding
+the bumps, puffs and two speed lines behind it, the road filling navy, while
+an orange pin bobs over the house and its window glows. **Delivered**: the van
+has gone and the parcel stands at the door; the road and the house's tick are
+green, and as the order is drawn the parcel drops in, the tick pops and a
+burst of eight rays goes off round the house — once, never on a loop. A cancelled or
+returned order has no road, only its word on a pale pill. `journeyStage`
+(`Shared/commerce/orderReceipt.ts`) is the rule, read off `orderProgress`
+(part-delivered is still on the way); the app's `ReceiptRules.journeyStage`,
+on the same cases. **The web's motion is transforms and opacities alone**: the
+fill grows by `scale` and the van drives by `translate` against the road's own
+width (`cqi`, the road a size container), so twenty orders moving cost the
+page no layout. **The scene is drawn left to right and mirrored whole on the
+Arabic page** (`direction: ltr` on `.journey-scene` and `scale: -1 1` under
+`rtl`; the app's `Canvas` flipped): mirroring a row that already ran right to
+left flipped it twice and put the store at the house's end, which the walk
+found by measuring which side the store was on. Only the ticks are turned
+back, so they read as ticks. **The app's is a pure function of the clock**
+(`JourneyMotion`: the drive, the hop, the dip, the puffs, the streaks and the
+landing as arithmetic, tested at the web's keyframes), drawn by a timeline
+that runs only while something moves and, for a delivered order, only for
+its landing (`landedAt`). Under reduced motion nothing moves: the van stands outside the
+store or half-way, and a delivered order is drawn landed. A screen reader
 hears an ordered list with the current step marked (`aria-current`) on the
-web and one element in the app — "Order status", then where it is.
+web and one element in the app — "Order status", then where it is. The CI
+photographs every stage in both languages (`-NetLetOpen journeyProbe`,
+`JourneyProbe`, Debug only, `112-order-journey`), since the recorded orders
+hold none on the road.
 
 **An opened order's receipt can be saved as a PDF, on the owner's word**
 ("an export to PDF option that will show all the details of your order in

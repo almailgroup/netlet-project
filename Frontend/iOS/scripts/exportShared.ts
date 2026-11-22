@@ -26,7 +26,9 @@
  *     pnpm ios:resources --check    # fail when they are stale
  */
 import { BUNDLE_NOTE_MAX } from "../../../Shared/commerce/bundles.js";
-import { ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_TABS } from "../../../Shared/commerce/orderFilters.js";
+import {
+  ORDER_PAYMENTS, ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_SORTS, ORDER_TABS, ORDER_TOTAL_BANDS, ORDER_TOTALS,
+} from "../../../Shared/commerce/orderFilters.js";
 import { DISPLAY_CURRENCIES, REFERENCE_RATES, RATES_AS_OF, minorDigits } from "../../../Shared/commerce/currency.js";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -311,6 +313,10 @@ export function buildResources(): Record<string, string> {
         filterTabs: ORDER_TABS,
         filterPeriods: ORDER_PERIODS,
         searchMax: ORDER_SEARCH_MAX,
+        filterSorts: ORDER_SORTS,
+        filterPayments: ORDER_PAYMENTS,
+        filterTotals: ORDER_TOTALS,
+        totalBands: ORDER_TOTAL_BANDS,
       },
       ai: {
         chatPath: GATEWAY_ROUTES.chat,

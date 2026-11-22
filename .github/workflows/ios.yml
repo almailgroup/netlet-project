@@ -205,6 +205,8 @@ jobs:
             shot 62-order-refund "$lang" refund:NL-20261001-J7MWY shopper
             # The order's receipt as a PDF in Quick Look, and My orders' road under each order.
             shot 111-order-receipt "$lang" receipt:NL-20261001-J7MWY shopper
+            # My orders' street at every stage, the van on the road among them.
+            shot 112-order-journey "$lang" journeyProbe ""
             shot 63-returns "$lang" section:returns shopper
             shot 28-invoice "$lang" page:invoices/INV-2026-000002 shopper
             shot 29-assistant "$lang" chat ""

@@ -477,6 +477,42 @@ describe("reading orders back", () => {
     expect(paged.atCeiling).toBe(false);
   });
 
+  /* The chips under the tabs, on the owner's word: two days of their own or a
+     year, a store, how it was paid, what it came to and the order — and the
+     choices, read over every order whatever else is chosen. */
+  it("filters by two days, a store, how it was paid and its total, sorts, and offers the choices", async () => {
+    const both = await twoVendorOrder();
+    const kettle = await ordersModule.placeOrder(await basket([{ variantId: ids.kettleVariant, quantity: 1 }], ids.shopper), { ...DETAILS, userId: ids.shopper });
+    const lamp = await ordersModule.placeOrder(await basket([{ variantId: ids.lampVariant, quantity: 1 }], ids.shopper), { ...DETAILS, userId: ids.shopper });
+    /* Midnight in Kuwait on 1 October is 21:00 on 30 September UTC. */
+    await db.update(orders).set({ placedAt: new Date("2025-06-01T09:00:00Z") }).where(eq(orders.id, both.order.id));
+    await db.update(orders).set({ placedAt: new Date("2026-09-30T21:30:00Z") }).where(eq(orders.id, kettle.order.id));
+    await db.update(orders).set({ placedAt: new Date("2026-10-20T10:00:00Z"), paymentMethod: "knet" }).where(eq(orders.id, lamp.order.id));
+
+    const october = await ordersModule.listOrdersForUser(ids.shopper, { from: "2026-10-01", to: "2026-10-31" });
+    expect(october.rows.map(row => row.reference).sort()).toEqual([kettle.order.reference, lamp.order.reference].sort());
+    expect(october.counts.all).toBe(2);
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { from: "2025-01-01", to: "2025-12-31" })).rows.map(row => row.reference))
+      .toEqual([both.order.reference]);
+
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { store: ids.other })).rows.map(row => row.reference).sort())
+      .toEqual([both.order.reference, kettle.order.reference].sort());
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { payment: "online" })).rows.map(row => row.reference)).toEqual([lamp.order.reference]);
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { payment: "cod" })).total).toBe(2);
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { total: "50to100" })).rows.map(row => row.reference)).toEqual([both.order.reference]);
+
+    const highest = await ordersModule.listOrdersForUser(ids.shopper, { sort: "highest" });
+    const totals = highest.rows.map(row => Number(row.grandTotal));
+    expect(totals).toEqual([...totals].sort((a, b) => b - a));
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { sort: "oldest" })).rows[0].reference).toBe(both.order.reference);
+
+    /* The choices stay whatever is chosen, so a chip can be changed back. */
+    const narrowed = await ordersModule.listOrdersForUser(ids.shopper, { store: ids.acme, payment: "online" });
+    expect(narrowed.facets.stores.map(store => [store.name, store.count])).toEqual([["Acme", 2], ["Other", 2]]);
+    expect(narrowed.facets.years).toEqual([2026, 2025]);
+    expect(narrowed.facets.firstDay).toBe("2025-06-01");
+  });
+
   /* The list a shopper scans leads with what is in an order and where it is,
      not whether a cash order has been paid yet. */
   it("says what each order holds and how far it has got", async () => {

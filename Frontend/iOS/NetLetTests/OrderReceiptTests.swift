@@ -38,15 +38,68 @@ final class OrderReceiptTests: XCTestCase {
         let arrived = JourneyMotion.drive(at: JourneyMotion.tripSeconds * 0.8)
         XCTAssertEqual(arrived.distance, 1, accuracy: 0.0001)
         XCTAssertEqual(arrived.vanOpacity, 1, accuracy: 0.0001)
-        let fading = JourneyMotion.drive(at: JourneyMotion.tripSeconds * 0.9)
+        // The web's keyframes: gone by 94%.
+        let fading = JourneyMotion.drive(at: JourneyMotion.tripSeconds * 0.87)
         XCTAssertEqual(fading.distance, 1, accuracy: 0.0001)
         XCTAssertEqual(fading.vanOpacity, 0.5, accuracy: 0.0001)
         XCTAssertEqual(fading.roadOpacity, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(JourneyMotion.drive(at: JourneyMotion.tripSeconds * 0.95).vanOpacity, 0, accuracy: 0.0001)
         // Half-way along the drive, half-way along the road.
         XCTAssertEqual(JourneyMotion.drive(at: JourneyMotion.tripSeconds * 0.4).distance, 0.5, accuracy: 0.0001)
-        // Still (Reduce Motion): the van stands half-way.
-        XCTAssertEqual(JourneyMotion(time: nil).drive.distance, 0.5)
-        XCTAssertEqual(JourneyMotion(time: nil).wait.opacity, 0)
+        // Still (Reduce Motion): the van half-way, nothing turning, no parcel in the air.
+        let still = JourneyMotion(time: nil)
+        XCTAssertEqual(still.drive.distance, 0.5)
+        XCTAssertEqual(still.wheel, 0)
+        XCTAssertEqual(still.dip, 0)
+        XCTAssertTrue(still.puffs(onTheWay: true).isEmpty)
+        XCTAssertEqual(JourneyMotion.hop(phase: still.loadPhase).opacity, 0, accuracy: 0.0001)
+    }
+
+    /// The wheels turn a whole turn every 0.42s, so a picture a fifth of a turn later differs.
+    func testTheWheelsTurnAndThePuffsTrailBehind() {
+        XCTAssertEqual(JourneyMotion(time: 0).wheel, 0, accuracy: 0.0001)
+        XCTAssertEqual(JourneyMotion(time: 0.21).wheel, 180, accuracy: 0.0001)
+        XCTAssertEqual(JourneyMotion(time: 0.42).wheel, 0, accuracy: 0.0001)
+        // On the road the puffs go back behind the van; while it waits they rise.
+        let driving = JourneyMotion(time: 10.3).puffs(onTheWay: true)
+        XCTAssertEqual(driving.count, 3)
+        XCTAssertTrue(driving.allSatisfy { $0.x <= 0 && $0.opacity <= 0.8 })
+        let waiting = JourneyMotion(time: 10.3).puffs(onTheWay: false)
+        XCTAssertTrue(waiting.allSatisfy { $0.y <= 0 })
+        XCTAssertEqual(JourneyMotion(time: 0).streaks().count, 2)
+    }
+
+    /// A parcel hops from the store's door into the van's back: the web's `journey-hop` keyframes.
+    func testAParcelHopsFromTheStoreIntoTheVan() {
+        let leaving = JourneyMotion.hop(phase: 0)
+        XCTAssertEqual(leaving.x, -24)
+        XCTAssertEqual(leaving.opacity, 0)
+        let top = JourneyMotion.hop(phase: 0.45)
+        XCTAssertEqual(top.x, -8, accuracy: 0.0001)
+        XCTAssertEqual(top.y, -17, accuracy: 0.0001)
+        XCTAssertEqual(top.opacity, 1, accuracy: 0.0001)
+        let landed = JourneyMotion.hop(phase: 0.9)
+        XCTAssertEqual(landed.x, 7, accuracy: 0.0001)
+        XCTAssertEqual(landed.scale, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(landed.opacity, 0, accuracy: 0.0001)
+        // The van dips as it lands and is level again before the next.
+        XCTAssertEqual(JourneyMotion.dip(phase: 0.56), -3, accuracy: 0.0001)
+        XCTAssertEqual(JourneyMotion.dip(phase: 0.9), 0, accuracy: 0.0001)
+    }
+
+    /// Delivered: the parcel set down, the tick popped, the burst over — and drawn so from the start under Reduce Motion.
+    func testADeliveredOrderArrivesOnce() {
+        let first = JourneyMotion.landing(0)
+        XCTAssertEqual(first.parcelOpacity, 0)
+        XCTAssertEqual(first.tickScale, 0)
+        XCTAssertEqual(first.parcelDrop, -14, accuracy: 0.0001)
+        let mid = JourneyMotion.landing(0.5)
+        XCTAssertGreaterThan(mid.burstOpacity, 0)
+        let done = JourneyMotion.landing(1)
+        XCTAssertEqual(done.parcelOpacity, 1)
+        XCTAssertEqual(done.parcelDrop, 0, accuracy: 0.0001)
+        XCTAssertEqual(done.tickScale, 1, accuracy: 0.0001)
+        XCTAssertEqual(done.burstOpacity, 0)
     }
 
     func testTheProgressIsReadOffTheLinesAsTheServerReadsIt() {

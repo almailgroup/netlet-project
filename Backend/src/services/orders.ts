@@ -49,7 +49,10 @@ import {
 import type { Pool } from "../../../Shared/commerce/preorder.js";
 import { nextStates } from "../../../Shared/commerce/fulfilment.js";
 import { orderProgress, type OrderProgress } from "../../../Shared/commerce/orderProgress.js";
-import { filterOrders, ORDER_SCAN_CEILING, type OrderCounts, type OrderPeriod, type OrderView } from "../../../Shared/commerce/orderFilters.js";
+import {
+  filterOrders, ORDER_SCAN_CEILING, orderYears, storesOf, type OrderCounts, type OrderFilterSet,
+} from "../../../Shared/commerce/orderFilters.js";
+import { kuwaitDay } from "../../../Shared/kuwaitDay.js";
 import { shopperCancelState, type CancelRefusal } from "../../../Shared/commerce/orderCancel.js";
 import { stepsForOrder, type OrderTrack } from "../../../Shared/commerce/orderTracking.js";
 import { isDeliverySpeed, speedForLine } from "../../../Shared/commerce/deliverySpeed.js";
@@ -1236,7 +1239,8 @@ export async function ordersOnTheWay(userId: number): Promise<{ count: number; l
  */
 /**
  * A shopper's orders, a page at a time, under the filters at the top of My
- * orders (`Shared/commerce/orderFilters.ts`): a view, a search and a period.
+ * orders (`Shared/commerce/orderFilters.ts`): a view, a search, a period or
+ * two days, a store, how it was paid, what it came to, and the order.
  *
  * **The filters are applied over every order the shopper has, here**, never
  * over the page the client holds — a filter on twenty rows says "none" about
@@ -1245,17 +1249,33 @@ export async function ordersOnTheWay(userId: number): Promise<{ count: number; l
  * rule the row's pill uses, filtered, counted per view, and only the page left
  * is read whole. At most `ORDER_SCAN_CEILING`, newest first, and the answer
  * says when it reached it.
+ *
+ * **The choices come with the answer** (`facets`): the stores the shopper has
+ * bought from with how many orders each was in, the years they ordered in and
+ * the day of their first order, read over every order and never the filtered
+ * few — a choice that vanished the moment another chip was set could not be
+ * changed back.
  */
+export type OrderFacets = {
+  stores: { id: number; name: string; nameAr: string | null; count: number }[];
+  years: number[];
+  firstDay: string | null;
+};
+
 export async function listOrdersForUser(
   userId: number,
-  request: { page?: number; pageSize?: number; view?: OrderView; q?: string; period?: OrderPeriod } = {},
-): Promise<Page<OrderRow> & { counts: OrderCounts; atCeiling: boolean }> {
+  request: { page?: number; pageSize?: number } & OrderFilterSet = {},
+): Promise<Page<OrderRow> & { counts: OrderCounts; atCeiling: boolean; facets: OrderFacets }> {
   const noCounts: OrderCounts = { all: 0, processing: 0, onTheWay: 0, delivered: 0, cancelled: 0 };
+  const noFacets: OrderFacets = { stores: [], years: [], firstDay: null };
   const db = await getDb();
-  if (!db) return { ...emptyPage<OrderRow>(request.pageSize), counts: noCounts, atCeiling: false };
+  if (!db) return { ...emptyPage<OrderRow>(request.pageSize), counts: noCounts, atCeiling: false, facets: noFacets };
 
   const scanned = await db
-    .select({ id: orders.id, reference: orders.reference, status: orders.status, placedAt: orders.placedAt })
+    .select({
+      id: orders.id, reference: orders.reference, status: orders.status, placedAt: orders.placedAt,
+      paymentMethod: orders.paymentMethod, grandTotal: orders.grandTotal,
+    })
     .from(orders)
     .where(eq(orders.userId, userId))
     // `placedAt` is not unique — a bulk import or two orders in the same
@@ -1273,6 +1293,8 @@ export async function listOrdersForUser(
         preordered: orderItems.preordered,
         productTitle: orderItems.productTitle,
         variantTitle: orderItems.variantTitle,
+        vendorId: orderItems.vendorId,
+        vendorName: orderItems.vendorName,
       })
       .from(orderItems)
       .where(inArray(orderItems.orderId, heads.map(head => head.id)))
@@ -1287,9 +1309,29 @@ export async function listOrdersForUser(
       placedAt: head.placedAt,
       progress: orderProgress(head, own),
       titles: own.flatMap(line => [line.productTitle, line.variantTitle ?? ""]).filter(Boolean),
+      stores: own.map(line => ({ id: line.vendorId, name: line.vendorName })),
+      paymentMethod: head.paymentMethod,
+      grandTotal: head.grandTotal,
     };
   });
-  const { shown, counts } = filterOrders(filed, { view: request.view, q: request.q, period: request.period });
+  const { shown, counts } = filterOrders(filed, {
+    view: request.view, q: request.q, period: request.period, from: request.from, to: request.to,
+    store: request.store, payment: request.payment, total: request.total, sort: request.sort,
+  });
+
+  /* The stores by the name their orders froze, and the Arabic one the store
+     keeps today, since an order froze only one. */
+  const stores = storesOf(filed);
+  const arabic = stores.length
+    ? new Map((await db.select({ id: vendors.id, nameAr: vendors.nameAr }).from(vendors).where(inArray(vendors.id, stores.map(store => store.id))))
+      .map(row => [row.id, row.nameAr?.trim() || null]))
+    : new Map<number, string | null>();
+  const oldest = filed.at(-1);
+  const facets: OrderFacets = {
+    stores: stores.map(store => ({ ...store, nameAr: arabic.get(store.id) ?? null })),
+    years: orderYears(filed),
+    firstDay: oldest ? kuwaitDay(new Date(oldest.placedAt)) : null,
+  };
 
   const total = shown.length;
   const pageSize = clampPageSize(request.pageSize);
@@ -1310,6 +1352,7 @@ export async function listOrdersForUser(
     pageSize,
     counts,
     atCeiling,
+    facets,
   };
 }
 

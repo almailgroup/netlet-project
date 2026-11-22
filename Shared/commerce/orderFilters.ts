@@ -24,6 +24,9 @@
  */
 import type { OrderProgress } from "./orderProgress.js";
 import { foldText, searchWords } from "./search.js";
+import { toFils } from "../money.js";
+import { DAY_ONLY, endOfKuwaitDay, kuwaitDay } from "../kuwaitDay.js";
+import { isOnlineMethod } from "./onlinePayment.js";
 
 export const ORDER_VIEWS = ["all", "processing", "onTheWay", "delivered", "cancelled"] as const;
 export type OrderView = (typeof ORDER_VIEWS)[number];
@@ -39,6 +42,163 @@ export type OrderTab = (typeof ORDER_TABS)[number];
 /** How far back to look, in days; "all" is every order. */
 export const ORDER_PERIODS = ["all", "30", "90", "180", "365"] as const;
 export type OrderPeriod = (typeof ORDER_PERIODS)[number];
+
+/**
+ * The rest of the filters, on the owner's word ("a filter option at the top of
+ * the my order page in which the user can set custom dates … give the user as
+ * many options as you can, but keep it as user friendly as possible"): a
+ * chip each under the tabs, every one a short list of choices.
+ *
+ * - **When**: the periods above, a year the shopper ordered in, or two days of
+ *   their own (`from`, `to`, Kuwaiti calendar days, both kept). A year is
+ *   those two days set to its first and last, so a bookmark of "2025" is the
+ *   same address as the dates typed by hand.
+ * - **Store**: one of the stores the shopper has bought from, with how many
+ *   orders each was in.
+ * - **How it was paid**: cash at the door, or paid online.
+ * - **What it came to**: four bands of the order's total as placed.
+ * - **Order**: newest or oldest first, or by the total either way.
+ */
+export const ORDER_SORTS = ["newest", "oldest", "highest", "lowest"] as const;
+export type OrderSort = (typeof ORDER_SORTS)[number];
+
+export const ORDER_PAYMENTS = ["all", "cod", "online"] as const;
+export type OrderPayment = (typeof ORDER_PAYMENTS)[number];
+
+export const ORDER_TOTALS = ["all", "under10", "10to50", "50to100", "over100"] as const;
+export type OrderTotal = (typeof ORDER_TOTALS)[number];
+
+/** Each band of the total, in whole dinars, from its first fils up to (and not
+    including) its last: an order of exactly KWD 50 is in 50 to 100. */
+export const ORDER_TOTAL_BANDS: Record<Exclude<OrderTotal, "all">, { min: number | null; max: number | null }> = {
+  under10: { min: null, max: 10 },
+  "10to50": { min: 10, max: 50 },
+  "50to100": { min: 50, max: 100 },
+  over100: { min: 100, max: null },
+};
+
+export function isOrderSort(value: unknown): value is OrderSort {
+  return typeof value === "string" && (ORDER_SORTS as readonly string[]).includes(value);
+}
+
+export function isOrderPayment(value: unknown): value is OrderPayment {
+  return typeof value === "string" && (ORDER_PAYMENTS as readonly string[]).includes(value);
+}
+
+export function isOrderTotal(value: unknown): value is OrderTotal {
+  return typeof value === "string" && (ORDER_TOTALS as readonly string[]).includes(value);
+}
+
+/** A calendar day as a date box sends it, and one the calendar has: "2026-02-30" is not. */
+export function isCalendarDay(value: unknown): value is string {
+  if (typeof value !== "string" || !DAY_ONLY.test(value)) return false;
+  const when = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(when.getTime()) && when.toISOString().slice(0, 10) === value;
+}
+
+/**
+ * The moments two days bound, as Kuwait counts them: from the first moment of
+ * `from` to the last of `to`, either left open. Two days the wrong way round
+ * are the days between them — somebody who picked the later day first meant
+ * the same span — and a day that is not one is left open rather than refusing
+ * the list.
+ */
+export function dayBounds(from?: string | null, to?: string | null): { start: Date | null; end: Date | null } {
+  let first = isCalendarDay(from) ? from : null;
+  let last = isCalendarDay(to) ? to : null;
+  if (first && last && first > last) [first, last] = [last, first];
+  return {
+    start: first ? new Date(Date.parse(`${first}T00:00:00+03:00`)) : null,
+    end: last ? endOfKuwaitDay(last) : null,
+  };
+}
+
+/** A year's first and last day, which is how a year is chosen. */
+export function yearRange(year: number): { from: string; to: string } {
+  return { from: `${year}-01-01`, to: `${year}-12-31` };
+}
+
+/** The year two days are exactly, or null: how the chip knows to say "2025". */
+export function yearOfRange(from?: string | null, to?: string | null): number | null {
+  if (!isCalendarDay(from) || !isCalendarDay(to)) return null;
+  const year = Number(from.slice(0, 4));
+  return from === `${year}-01-01` && to === `${year}-12-31` ? year : null;
+}
+
+/** The years the shopper ordered in, as Kuwait counts them, newest first. */
+export function orderYears(orders: readonly { placedAt: Date | string }[]): number[] {
+  const years = new Set(orders.map(order => Number(kuwaitDay(new Date(order.placedAt)).slice(0, 4))));
+  return [...years].sort((a, b) => b - a);
+}
+
+/** How an order was paid, by its chosen way: anything but cash is online. */
+export function paymentOf(paymentMethod: string | null | undefined): Exclude<OrderPayment, "all"> {
+  return isOnlineMethod(paymentMethod) ? "online" : "cod";
+}
+
+/** Whether an order's total is in a band. */
+export function inTotalBand(total: string, band: OrderTotal): boolean {
+  if (band === "all") return true;
+  const { min, max } = ORDER_TOTAL_BANDS[band];
+  const fils = toFils(total);
+  return (min === null || fils >= BigInt(min) * 1000n) && (max === null || fils < BigInt(max) * 1000n);
+}
+
+export type OrderStoreOption = { id: number; name: string; count: number };
+
+/**
+ * The stores the shopper has bought from, each with how many orders it was
+ * in, the most first and then by name; a store's name is the one its latest
+ * order froze. A store whose row has gone (no id) is not a choice.
+ */
+export function storesOf(orders: readonly { stores?: readonly { id: number | null; name: string | null }[] }[]): OrderStoreOption[] {
+  const found = new Map<number, OrderStoreOption>();
+  for (const order of orders) {
+    const seen = new Set<number>();
+    for (const store of order.stores ?? []) {
+      if (store.id === null || seen.has(store.id)) continue;
+      seen.add(store.id);
+      const entry = found.get(store.id);
+      if (entry) entry.count += 1;
+      else found.set(store.id, { id: store.id, name: store.name?.trim() || "", count: 1 });
+    }
+  }
+  return [...found.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name) || a.id - b.id);
+}
+
+/** The list in the order asked for. Ties keep the order given, which is newest first. */
+export function sortOrders<T extends { grandTotal?: string }>(orders: readonly T[], sort: OrderSort = "newest"): T[] {
+  if (sort === "newest") return [...orders];
+  if (sort === "oldest") return [...orders].reverse();
+  const indexed = orders.map((order, index) => ({ order, index, fils: toFils(order.grandTotal ?? "0") }));
+  indexed.sort((a, b) => {
+    if (a.fils !== b.fils) return (sort === "highest" ? a.fils < b.fils : a.fils > b.fils) ? 1 : -1;
+    return a.index - b.index;
+  });
+  return indexed.map(entry => entry.order);
+}
+
+/** Every filter on the page but the tab, as the address and the API carry them. */
+export type OrderFilterSet = {
+  view?: OrderView;
+  q?: string;
+  period?: OrderPeriod;
+  from?: string | null;
+  to?: string | null;
+  store?: number | null;
+  payment?: OrderPayment;
+  total?: OrderTotal;
+  sort?: OrderSort;
+};
+
+/** How many of the chips' filters are set — the date counting once, the order of the list never. */
+export function narrowingCount(filters: OrderFilterSet): number {
+  const dated = (filters.period && filters.period !== "all") || isCalendarDay(filters.from) || isCalendarDay(filters.to);
+  return (dated ? 1 : 0)
+    + (filters.store ? 1 : 0)
+    + (filters.payment && filters.payment !== "all" ? 1 : 0)
+    + (filters.total && filters.total !== "all" ? 1 : 0);
+}
 
 /**
  * How many of a shopper's orders the filters read, newest first. Far past what
@@ -116,25 +276,42 @@ export type FilterableOrder = {
   progress: OrderProgress;
   /** What is in it, by the lines' own titles. */
   titles: readonly string[];
+  /** The stores its lines came from, by the id and the name each line froze. */
+  stores?: readonly { id: number | null; name: string | null }[];
+  /** How it is paid: "cod", or the online way chosen. */
+  paymentMethod?: string | null;
+  /** What it came to as placed. */
+  grandTotal?: string;
 };
 
 /**
- * The orders a view, a search and a period leave, in the order given (newest
- * first), and how many each view holds under the same search and period — so
- * a chip's number is what pressing it shows.
+ * The orders the filters leave, in the order asked for (newest first unless
+ * told otherwise), and how many each view holds under every other filter — so
+ * a tab's number is what pressing it shows.
  */
 export function filterOrders<T extends FilterableOrder>(
   orders: readonly T[],
-  filters: { view?: OrderView; q?: string; period?: OrderPeriod },
+  filters: OrderFilterSet,
   now: Date = new Date(),
 ): { shown: T[]; counts: OrderCounts } {
   const since = periodStart(filters.period ?? "all", now);
+  const { start, end } = dayBounds(filters.from, filters.to);
   const q = filters.q ?? "";
-  const kept = orders.filter(order =>
-    (since === null || new Date(order.placedAt).getTime() >= since.getTime()) && matchesOrderSearch(q, order));
+  const payment = filters.payment ?? "all";
+  const total = filters.total ?? "all";
+  const kept = orders.filter(order => {
+    const placed = new Date(order.placedAt).getTime();
+    return (since === null || placed >= since.getTime())
+      && (start === null || placed >= start.getTime())
+      && (end === null || placed <= end.getTime())
+      && (!filters.store || (order.stores ?? []).some(store => store.id === filters.store))
+      && (payment === "all" || paymentOf(order.paymentMethod) === payment)
+      && (total === "all" || inTotalBand(order.grandTotal ?? "0", total))
+      && matchesOrderSearch(q, order);
+  });
   const counts: OrderCounts = { all: kept.length, processing: 0, onTheWay: 0, delivered: 0, cancelled: 0 };
   for (const order of kept) counts[viewOfProgress(order.progress)] += 1;
   const view = filters.view ?? "all";
-  const shown = view === "all" ? kept : kept.filter(order => viewOfProgress(order.progress) === view);
-  return { shown, counts };
+  const viewed = view === "all" ? kept : kept.filter(order => viewOfProgress(order.progress) === view);
+  return { shown: sortOrders(viewed, filters.sort ?? "newest"), counts };
 }

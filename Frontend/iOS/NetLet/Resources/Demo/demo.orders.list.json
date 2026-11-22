@@ -641,7 +641,33 @@
           "delivered": 2,
           "cancelled": 0
         },
-        "atCeiling": false
+        "atCeiling": false,
+        "facets": {
+          "stores": [
+            {
+              "id": 2,
+              "name": "Acme Electronics",
+              "count": 9,
+              "nameAr": null
+            },
+            {
+              "id": 3,
+              "name": "Dar Home",
+              "count": 1,
+              "nameAr": null
+            },
+            {
+              "id": 4,
+              "name": "Gulf Grocers",
+              "count": 1,
+              "nameAr": null
+            }
+          ],
+          "years": [
+            2026
+          ],
+          "firstDay": "2026-10-01"
+        }
       },
       "meta": {
         "values": {

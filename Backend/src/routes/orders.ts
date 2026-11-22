@@ -53,7 +53,9 @@ import { externalPath } from "../../../Shared/portal.js";
 import { handoverScanPath, ONLINE_METHODS } from "../../../Shared/commerce/onlinePayment.js";
 import { finishTestPayment, paymentForShopper, PaymentRefused, startTestPayment } from "../services/onlinePayments.js";
 import { portalDomainFor, portalOriginFor } from "../core/portalAddress.js";
-import { ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_VIEWS } from "../../../Shared/commerce/orderFilters.js";
+import {
+  isCalendarDay, ORDER_PAYMENTS, ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_SORTS, ORDER_TOTALS, ORDER_VIEWS,
+} from "../../../Shared/commerce/orderFilters.js";
 
 /** The lines a shopper asks to change: each named once, a quantity of nought taking it out. */
 const lineChanges = z
@@ -97,9 +99,11 @@ export const ordersRouter = router({
    */
   /**
    * The shopper's orders under the filters at the top of My orders — a view,
-   * a search by number or by what is in it, and how far back — with how many
-   * each view holds (`Shared/commerce/orderFilters.ts`). Applied over every
-   * order on the server, never over one page.
+   * a search by number or by what is in it, how far back or between which
+   * days, a store, how it was paid, what it came to and the order of the list
+   * — with how many each view holds and the stores and years there are to
+   * choose from (`Shared/commerce/orderFilters.ts`). Applied over every order
+   * on the server, never over one page.
    */
   list: protectedProcedure
     .input(z.object({
@@ -108,6 +112,14 @@ export const ordersRouter = router({
       view: z.enum(ORDER_VIEWS).optional(),
       q: z.string().trim().max(ORDER_SEARCH_MAX).optional(),
       period: z.enum(ORDER_PERIODS).optional(),
+      /* Kuwaiti calendar days; one the calendar does not have is refused
+         rather than read as the day after it. */
+      from: z.string().refine(isCalendarDay).optional(),
+      to: z.string().refine(isCalendarDay).optional(),
+      store: rowId.optional(),
+      payment: z.enum(ORDER_PAYMENTS).optional(),
+      total: z.enum(ORDER_TOTALS).optional(),
+      sort: z.enum(ORDER_SORTS).optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
       const page = await listOrdersForUser(ctx.user.id, input ?? {});

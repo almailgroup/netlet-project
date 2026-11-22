@@ -196,6 +196,8 @@ final class OrdersViewModel {
     /// How many orders each view holds under the search and period (the chips).
     private(set) var counts: [String: Int]?
     private(set) var atCeiling = false
+    /// The chips' choices — stores, years, the first day — over every order.
+    private(set) var facets: OrderFacets?
     /// The chip pressed: a view of the orders, or "returns" or "reviews".
     private(set) var tab: String
     /// The search and the period, sent with every page.
@@ -227,7 +229,11 @@ final class OrdersViewModel {
     /// Whether the chip pressed is a view of the orders, which the search and the period narrow.
     var onOrders: Bool { !["returns", "reviews"].contains(tab) }
     /// Whether anything narrows the list, so an empty answer is "nothing matches" rather than "no orders".
-    var narrowed: Bool { filters.view != "all" || !filters.q.isEmpty || filters.period != "all" }
+    var narrowed: Bool { filters.view != "all" || !filters.q.isEmpty || chipsNarrow }
+    /// Whether any chip narrows the list (the order of it narrows nothing).
+    var chipsNarrow: Bool { OrderFilterRules.narrowingCount(filters) > 0 }
+    /// Whether the chips are worth drawing: the shopper has ordered, or something is chosen.
+    var showsChips: Bool { !(facets?.years.isEmpty ?? true) || chipsNarrow || filters.sort != "newest" }
     /// The Returns chip's number: every return asked for.
     var returnsCount: Int? { returns.value?.count }
     /// The Reviews chip's number: what can still be rated.
@@ -251,17 +257,32 @@ final class OrdersViewModel {
         await load()
     }
 
-    func choose(period next: String) async {
-        guard next != filters.period else { return }
-        filters.period = next
+    /// A chip's choice, then the list it leaves.
+    func choose(_ change: (inout OrderFilters) -> Void) async {
+        var next = filters
+        change(&next)
+        guard next != filters else { return }
+        filters = next
         await load()
     }
 
-    /// The search row closed: its words and its period go with it.
+    /// Every chip back as it was, the order of the list too; the tab and the search stay.
+    func clearChips() async {
+        await choose { filters in
+            filters.period = "all"
+            filters.from = nil
+            filters.to = nil
+            filters.store = nil
+            filters.payment = "all"
+            filters.total = "all"
+            filters.sort = "newest"
+        }
+    }
+
+    /// The search row closed: its words go with it.
     func clearSearch() async {
-        guard !filters.q.isEmpty || filters.period != "all" else { return }
+        guard !filters.q.isEmpty else { return }
         filters.q = ""
-        filters.period = "all"
         await load()
     }
 
@@ -283,6 +304,7 @@ final class OrdersViewModel {
             total = first.total
             counts = first.counts
             atCeiling = first.atCeiling ?? false
+            if let found = first.facets { facets = found }
             orders = .loaded(first.rows)
         } catch {
             guard mine == asked else { return }

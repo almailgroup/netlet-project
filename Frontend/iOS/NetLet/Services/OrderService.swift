@@ -26,7 +26,13 @@ struct OrderService: OrderServicing {
             pageSize: 20,
             view: filters.view == "all" ? nil : filters.view,
             q: q.isEmpty ? nil : q,
-            period: filters.period == "all" ? nil : filters.period
+            period: filters.period == "all" ? nil : filters.period,
+            from: filters.from,
+            to: filters.to,
+            store: filters.store,
+            payment: filters.payment == "all" ? nil : filters.payment,
+            total: filters.total == "all" ? nil : filters.total,
+            sort: filters.sort == "newest" ? nil : filters.sort
         ))
     }
 

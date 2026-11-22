@@ -23,9 +23,13 @@
  * holds — All, Processing, On the way, Delivered, Cancelled — then Returns and
  * Reviews, which moved here from the account's home (`AccountReturns`,
  * `AccountReviews`, drawn in place); a search by the order's number or what is
- * in it; and how far back to look. All of it is in the address (`?view=`,
- * `?q=`, `?period=`), the browse pages' rule, and decided by the server over
- * every order (`Shared/commerce/orderFilters.ts`), never over one page.
+ * in it; and the chips under the tabs (`OrderFilterChips`) — when it was
+ * placed (a period, a year or two days of the shopper's own), the store, how
+ * it was paid, what it came to, and the order of the list. All of it is in
+ * the address (`?view=`, `?q=`, `?period=`, `?from=`, `?to=`, `?store=`,
+ * `?pay=`, `?total=`, `?sort=`), the browse pages' rule, and decided by the
+ * server over every order (`Shared/commerce/orderFilters.ts`), never over one
+ * page.
  */
 import { isOnlineMethod } from "@shared/commerce/onlinePayment";
 import { QueryGate } from "@/components/ui/QueryGate";
@@ -45,15 +49,15 @@ import { rateLabel } from "@shared/commerce/tax";
 import { CalendarDays, ChevronDown, ChevronLeft, FileText, PackageSearch, RotateCcw, Search, Star, X, type LucideIcon } from "lucide-react";
 import { cameFrom, goBack } from "@/lib/inAppBack";
 import { Link, useLocation, useSearch } from "wouter";
-import { useEffect, useId, useRef, useState } from "react";
-import { Select } from "@/components/ui/Select";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { TextTabs } from "@/components/ui/TextTabs";
 import { AccountReturns } from "@/components/account/AccountReturns";
 import { AccountReviews } from "@/components/account/AccountReviews";
 import {
-  isOrderPeriod, isOrderTab, isOrderView, ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_TABS,
-  type OrderPeriod, type OrderTab,
+  isCalendarDay, isOrderPayment, isOrderPeriod, isOrderSort, isOrderTab, isOrderTotal, isOrderView, narrowingCount,
+  ORDER_SEARCH_MAX, ORDER_TABS, type OrderTab,
 } from "@shared/commerce/orderFilters";
+import { OrderFilterChips, type OrderFacets, type OrderFilterChange, type OrderFilterState } from "@/components/account/OrderFilters";
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
@@ -122,14 +126,6 @@ const TAB_LABEL: Record<OrderTab, MessageKey> = {
   reviews: "orders.viewReviews",
 };
 
-const PERIOD_LABEL: Record<OrderPeriod, MessageKey> = {
-  all: "orders.periodAll",
-  "30": "orders.period30",
-  "90": "orders.period90",
-  "180": "orders.period180",
-  "365": "orders.period365",
-};
-
 /**
  * The top of the page, drawn to the owner's reference (a shop's "Your
  * orders"): a bar with the way back at its start, "Your orders" in its middle
@@ -138,17 +134,17 @@ const PERIOD_LABEL: Record<OrderPeriod, MessageKey> = {
  * Cancelled, Reviews — the chosen one dark with a short rounded line under
  * it, the rest muted, a hairline under the row. The tabs are `aria-pressed`
  * buttons in a named group (they narrow a list, the portal's `Segmented`
- * rule, not a tablist). The search icon opens the search and the period under
- * the tabs, on the orders' own views; closing it clears both, so nothing
- * narrows the list out of sight.
+ * rule, not a tablist). The search icon opens the search under the tabs, on
+ * the orders' own views; closing it clears it, so nothing narrows the list
+ * out of sight. The chips under them (`OrderFilterChips`) are always there,
+ * each saying what it holds.
  */
-function OrdersTop({ tab, onTab, q, onSearch, period, onPeriod }: {
+function OrdersTop({ tab, onTab, q, onSearch, chips }: {
   tab: OrderTab;
   onTab: (tab: OrderTab) => void;
   q: string;
   onSearch: (q: string) => void;
-  period: OrderPeriod;
-  onPeriod: (period: OrderPeriod) => void;
+  chips: ReactNode;
 }) {
   const { t } = useTranslation();
   const viewing = isOrderView(tab);
@@ -157,8 +153,8 @@ function OrdersTop({ tab, onTab, q, onSearch, period, onPeriod }: {
   const backLabel = !from || from.split("?")[0] === "/account" ? t("account.backToAccount") : t("nav.back");
   const panelId = useId();
   const box = useRef<HTMLInputElement>(null);
-  const [opened, setOpened] = useState(Boolean(q) || period !== "all");
-  const searching = viewing && (opened || Boolean(q) || period !== "all");
+  const [opened, setOpened] = useState(Boolean(q));
+  const searching = viewing && (opened || Boolean(q));
 
   /* What is typed, sent to the address once typing pauses. The box follows
      the address only when something else changed it (Clear filters), never
@@ -180,7 +176,6 @@ function OrdersTop({ tab, onTab, q, onSearch, period, onPeriod }: {
       setOpened(false);
       setTyped("");
       sent.current = "";
-      onPeriod("all");
       onSearch("");
     } else {
       setOpened(true);
@@ -253,16 +248,9 @@ function OrdersTop({ tab, onTab, q, onSearch, period, onPeriod }: {
               </button>
             ) : null}
           </label>
-          <Select
-            value={period}
-            onChange={event => onPeriod(isOrderPeriod(event.target.value) ? event.target.value : "all")}
-            aria-label={t("orders.periodLabel")}
-            className="h-11 w-auto min-w-[9.5rem] shrink-0 rounded-xl border border-[#d5dfeb] bg-white px-3 text-[14px] font-semibold text-[#0a285a]"
-          >
-            {ORDER_PERIODS.map(entry => <option key={entry} value={entry}>{t(PERIOD_LABEL[entry])}</option>)}
-          </Select>
         </div>
       </div>
+      {viewing ? chips : null}
     </div>
   );
 }
@@ -294,10 +282,25 @@ export function AccountOrders() {
   const query = new URLSearchParams(search);
   const rawTab = query.get("view");
   const tab: OrderTab = isOrderTab(rawTab) ? rawTab : "all";
-  const rawPeriod = query.get("period");
-  const period: OrderPeriod = isOrderPeriod(rawPeriod) ? rawPeriod : "all";
   const q = (query.get("q") ?? "").slice(0, ORDER_SEARCH_MAX);
-  const setFilters = (changes: Partial<Record<"view" | "q" | "period", string | null>>) => {
+  /* The chips' choices; anything the address carries that is not one reads as unset. */
+  const rawPeriod = query.get("period");
+  const rawFrom = query.get("from");
+  const rawTo = query.get("to");
+  const rawStore = Number(query.get("store"));
+  const rawPay = query.get("pay");
+  const rawTotal = query.get("total");
+  const rawSort = query.get("sort");
+  const chosen: OrderFilterState = {
+    period: isOrderPeriod(rawPeriod) ? rawPeriod : "all",
+    from: isCalendarDay(rawFrom) ? rawFrom : null,
+    to: isCalendarDay(rawTo) ? rawTo : null,
+    store: Number.isInteger(rawStore) && rawStore > 0 && rawStore <= 2_147_483_647 ? rawStore : null,
+    payment: isOrderPayment(rawPay) ? rawPay : "all",
+    total: isOrderTotal(rawTotal) ? rawTotal : "all",
+    sort: isOrderSort(rawSort) ? rawSort : "newest",
+  };
+  const setFilters = (changes: Partial<Record<"view" | "q", string | null>> & OrderFilterChange) => {
     const next = new URLSearchParams(window.location.search);
     for (const [key, value] of Object.entries(changes)) {
       if (!value || (key === "view" && value === "all") || (key === "period" && value === "all")) next.delete(key);
@@ -325,12 +328,28 @@ export function AccountOrders() {
 
   const viewing = isOrderView(tab);
   const list = trpc.orders.list.useQuery(
-    { page, view: viewing ? tab : "all", q: q || undefined, period: period === "all" ? undefined : period },
+    {
+      page,
+      view: viewing ? tab : "all",
+      q: q || undefined,
+      period: chosen.period === "all" ? undefined : chosen.period,
+      from: chosen.from ?? undefined,
+      to: chosen.to ?? undefined,
+      store: chosen.store ?? undefined,
+      payment: chosen.payment === "all" ? undefined : chosen.payment,
+      total: chosen.total === "all" ? undefined : chosen.total,
+      sort: chosen.sort === "newest" ? undefined : chosen.sort,
+    },
     /* The last answer stays drawn while the next filter is asked, so the
        chips and the list never blink to an outline under the press. */
     { placeholderData: previous => previous },
   );
-  const filtered = Boolean(q) || period !== "all" || tab !== "all";
+  const narrowing = narrowingCount(chosen) > 0;
+  const filtered = Boolean(q) || narrowing || tab !== "all";
+  const clearEverything = () => setFilters({ view: null, q: null, period: null, from: null, to: null, store: null, pay: null, total: null, sort: null });
+  /* The choices come with the answer; before the first, nothing to choose from. */
+  const facets: OrderFacets = list.data?.facets ?? { stores: [], years: [], firstDay: null };
+  const hasOrders = facets.years.length > 0 || narrowing || chosen.sort !== "newest";
 
   const tools = (
     <OrdersTop
@@ -338,8 +357,7 @@ export function AccountOrders() {
       onTab={next => setFilters({ view: next })}
       q={q}
       onSearch={onSearch}
-      period={period}
-      onPeriod={next => setFilters({ period: next })}
+      chips={hasOrders ? <OrderFilterChips state={chosen} facets={facets} onChange={setFilters} /> : null}
     />
   );
 
@@ -367,14 +385,20 @@ export function AccountOrders() {
         ) : null;
         if (!data || data.total === 0) {
           /* Nothing under these filters is not the same as no orders at all. */
-          return filtered && ((data?.counts.all ?? 0) > 0 || Boolean(q) || period !== "all")
-            ? <>{linked}<NoMatch onClear={() => setFilters({ view: null, q: null, period: null })} /></>
+          return filtered && ((data?.counts.all ?? 0) > 0 || Boolean(q) || narrowing)
+            ? <>{linked}<NoMatch onClear={clearEverything} /></>
             : <>{linked}<EmptyOrders /></>;
         }
 
         return (
           <>
             {linked}
+            {/* How many the filters left, while anything narrows the list. */}
+            {Boolean(q) || narrowing ? (
+              <p className="mb-3 text-[13px] font-semibold text-[#3d5170]" aria-live="polite">
+                {t("orders.foundCount", { count: data.total })}
+              </p>
+            ) : null}
             {/*
               A real list, so assistive tech announces "list, 3 items" before
               reading them. A stack of <article>s in a <div> is three unrelated

@@ -30,10 +30,14 @@ struct NetLetApp: App {
     }
 
     /// `-NetLetOpen glassProbe`, Debug only: `GlassUITests`' swatches over
-    /// the whole app.
+    /// the whole app; `journeyProbe`, My orders' street at every stage.
     private var glassProbe: AnyView? {
         #if DEBUG
-        if UserDefaults.standard.string(forKey: "NetLetOpen") == "glassProbe" { return AnyView(GlassProbe()) }
+        switch UserDefaults.standard.string(forKey: "NetLetOpen") {
+        case "glassProbe": return AnyView(GlassProbe())
+        case "journeyProbe": return AnyView(JourneyProbe())
+        default: break
+        }
         #endif
         return nil
     }

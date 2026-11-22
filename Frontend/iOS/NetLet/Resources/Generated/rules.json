@@ -472,7 +472,43 @@
       "180",
       "365"
     ],
-    "searchMax": 80
+    "searchMax": 80,
+    "filterSorts": [
+      "newest",
+      "oldest",
+      "highest",
+      "lowest"
+    ],
+    "filterPayments": [
+      "all",
+      "cod",
+      "online"
+    ],
+    "filterTotals": [
+      "all",
+      "under10",
+      "10to50",
+      "50to100",
+      "over100"
+    ],
+    "totalBands": {
+      "under10": {
+        "min": null,
+        "max": 10
+      },
+      "10to50": {
+        "min": 10,
+        "max": 50
+      },
+      "50to100": {
+        "min": 50,
+        "max": 100
+      },
+      "over100": {
+        "min": 100,
+        "max": null
+      }
+    }
   },
   "ai": {
     "chatPath": "/api/ai/chat",

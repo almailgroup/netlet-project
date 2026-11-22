@@ -469,6 +469,16 @@ enum API {
         var q: String?
         /// One of `ORDER_PERIODS`; nil is any time.
         var period: String?
+        /// Kuwaiti days, `yyyy-MM-dd`; nil leaves that end open.
+        var from: String?
+        var to: String?
+        var store: Int?
+        /// "cod" or "online"; nil is either.
+        var payment: String?
+        /// One of `ORDER_TOTALS` but "all"; nil is any total.
+        var total: String?
+        /// One of `ORDER_SORTS` but "newest"; nil is newest first.
+        var sort: String?
     }
 
     struct Reference: Encodable, Sendable {

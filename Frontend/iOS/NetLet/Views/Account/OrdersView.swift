@@ -144,8 +144,9 @@ struct OrdersView: View {
 /// that scrolls sideways — the chosen one dark with a short rounded line under
 /// it that slides to the next, the rest muted, a hairline under the row. A tab
 /// says it is chosen (`isSelected`), the web's `aria-pressed`. The search icon
-/// opens the search and the period under the tabs on the orders' own views;
-/// closing it clears both, so nothing narrows the list out of sight.
+/// opens the search under the tabs on the orders' own views; closing it clears
+/// it, so nothing narrows the list out of sight. The chips under the tabs
+/// (`OrderFilterChips`) are always there, each saying what it holds.
 private struct OrdersTop: View {
     let model: OrdersViewModel
     @Environment(AppModel.self) private var app
@@ -158,21 +159,20 @@ private struct OrdersTop: View {
     @FocusState private var searching: Bool
 
     private var tabs: [String] { ReferenceData.shared.rules.orders?.filterTabs ?? ["all", "processing", "onTheWay", "delivered", "returns", "cancelled", "reviews"] }
-    private var periods: [String] { ReferenceData.shared.rules.orders?.filterPeriods ?? ["all", "30", "90", "180", "365"] }
     private var searchMax: Int { ReferenceData.shared.rules.orders?.searchMax ?? 80 }
-    /// Whether the search row shows: opened, or holding something that narrows the list.
-    private var searchShown: Bool { model.onOrders && (opened || !model.filters.q.isEmpty || model.filters.period != "all") }
+    /// Whether the search row shows: opened, or holding words that narrow the list.
+    private var searchShown: Bool { model.onOrders && (opened || !model.filters.q.isEmpty) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             bar
             tabRow
             if searchShown {
-                HStack(spacing: 8) {
-                    searchField
-                    periodMenu
-                }
-                .transition(.opacity)
+                searchField
+                    .transition(.opacity)
+            }
+            if model.onOrders, model.showsChips {
+                OrderFilterChips(model: model)
             }
         }
         // The search sent once typing pauses; the box follows the model only
@@ -298,40 +298,6 @@ private struct OrdersTop: View {
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(searching ? Brand.navy : Brand.line, lineWidth: searching ? 1.5 : 1))
     }
 
-    private var periodMenu: some View {
-        Menu {
-            ForEach(periods, id: \.self) { period in
-                Button {
-                    Haptics.tap()
-                    Task { await model.choose(period: period) }
-                } label: {
-                    if model.filters.period == period {
-                        Label(l.t(Self.periodLabel(period)), systemImage: "checkmark")
-                    } else {
-                        Text(l.t(Self.periodLabel(period)))
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 6) {
-                Text(l.t(Self.periodLabel(model.filters.period)))
-                    .font(.inter(14, .semibold))
-                    .foregroundStyle(Brand.navy)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Brand.muted)
-            }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
-            .fixedSize()
-        }
-        .accessibilityLabel(l.t("orders.periodLabel"))
-        .accessibilityValue(l.t(Self.periodLabel(model.filters.period)))
-    }
-
     static func label(_ tab: String) -> String {
         switch tab {
         case "processing": return "orders.viewProcessing"
@@ -341,16 +307,6 @@ private struct OrdersTop: View {
         case "returns": return "orders.viewReturns"
         case "reviews": return "orders.viewReviews"
         default: return "orders.viewAll"
-        }
-    }
-
-    static func periodLabel(_ period: String) -> String {
-        switch period {
-        case "30": return "orders.period30"
-        case "90": return "orders.period90"
-        case "180": return "orders.period180"
-        case "365": return "orders.period365"
-        default: return "orders.periodAll"
         }
     }
 }
