@@ -39,6 +39,17 @@ export type PluralEntry = {
 };
 
 export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
+  /* ------------------------------------------ choosing an order's items --- */
+  "orders.chosenCount": {
+    param: "count",
+    en: { one: "1 item chosen" },
+    ar: { one: "تم اختيار منتج واحد", two: "تم اختيار منتجين", many: "تم اختيار {count} منتجاً", other: "تم اختيار {count} منتج" },
+  },
+  "track.parcelCount": {
+    param: "count",
+    en: { one: "1 parcel" },
+    ar: { one: "طرد واحد", two: "طردان", many: "{count} طرداً", other: "{count} طرد" },
+  },
   /* ------------------------------------------- warranty and installation --- */
   "addon.warrantyYearsName": {
     param: "count",

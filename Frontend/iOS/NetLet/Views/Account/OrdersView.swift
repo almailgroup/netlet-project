@@ -469,10 +469,14 @@ struct OrderDetailView: View {
     @State private var returning: Int?
     /// The order's receipt as a PDF, made on the press and shown in Quick Look.
     @State private var receipt = OrderReceiptModel()
+    /// The items chosen by their circles, the cart's own (on the owner's word).
+    @State private var chosen: Set<Int> = []
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         ModelHost(make: { OrderDetailViewModel(reference: reference, service: app.services.orders) }) { model in
-            ShopPage(header: false, refresh: { await model.load() }, viewSource: "account") {
+            // The assistant steps aside while the bar of the chosen items has the foot.
+            ShopPage(header: false, refresh: { await model.load() }, assistant: chosen.isEmpty, viewSource: "account") {
                 VStack(alignment: .leading, spacing: 16) {
                     BackLink(label: l.t("invoice.back"))
                         .padding(.bottom, -8)
@@ -487,9 +491,9 @@ struct OrderDetailView: View {
                     } else {
                         LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
                             VStack(alignment: .leading, spacing: 16) {
-                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet, onReceipt: { makeReceipt(detail) }) { line in
+                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet, onReceipt: { makeReceipt(detail) }, onRate: { line in
                                     rating = target(line)
-                                }
+                                }, chosen: $chosen)
                                 lines(detail, reload: { await model.load() })
                                 OrderDocumentsList(documents: detail.documents, receipt: receipt) { makeReceipt(detail) }
                                 if detail.hasShipped { TrackingPanel(reference: reference) }
@@ -508,8 +512,23 @@ struct OrderDetailView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
-                .padding(.bottom, 48)
+                // Room under the last card while the bar of the chosen items is up.
+                .padding(.bottom, chosen.isEmpty ? 48 : 170)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .overlay(alignment: .bottom) {
+                ZStack(alignment: .bottom) {
+                    if let detail = model.detail.value, !chosen.isEmpty {
+                        ChosenItemsBar(detail: detail, chosen: $chosen) { offer in
+                            run(offer, detail: detail)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 12)
+                        .floatsAtFoot()
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .animation(still ? nil : .snappy(duration: 0.25), value: chosen.isEmpty)
             }
             .task { await model.load() }
             .sheet(item: $rating) { target in
@@ -525,6 +544,54 @@ struct OrderDetailView: View {
         Task {
             if await receipt.make(detail, language: l) == false { app.toast(l.t("receipt.failed")) }
         }
+    }
+
+    /// What a press on the bar does: one item's act as its ⋯ does it, several
+    /// at once over the order — and the item's return form opens under it.
+    private func run(_ offer: OrderSelection.Offer, detail: OrderDetail) {
+        let ids = offer.lineIds
+        let one = ids.count == 1 ? ids.first : nil
+        func open(_ kind: OrderSheet.Kind, remove: Bool = false) {
+            sheet = one.map { OrderSheet(kind: kind, lineId: $0, remove: remove) } ?? OrderSheet(kind: kind, lineIds: ids, remove: remove)
+        }
+        switch offer.action {
+        case .track: open(.track)
+        case .return:
+            returning = ids.first
+        case .refund: sheet = OrderSheet(kind: .refund, lineIds: ids)
+        case .warranty: open(.warranty)
+        case .quantity: open(.modify)
+        case .cancelItems: open(.modify, remove: true)
+        case .rate:
+            let lines = detail.lines.map { (id: $0.id, reviewed: $0.review != nil) }
+            if let first = OrderSelection.firstToRate(lines, among: ids), let line = detail.lines.first(where: { $0.id == first }) {
+                rating = target(line)
+            }
+        case .buyAgain:
+            Task { await buyAgain(ids, detail: detail) }
+        case .help:
+            sheet = chosen.count == 1 ? OrderSheet(kind: .help, lineId: chosen.first) : OrderSheet(kind: .help)
+        }
+    }
+
+    /// The chosen items back in the bag, each at what was ordered of it and
+    /// today's price; one no longer for sale is left out and said.
+    private func buyAgain(_ ids: [Int], detail: OrderDetail) async {
+        let lines = detail.lines.filter { ids.contains($0.id) && $0.variantId != nil }
+        var added = 0
+        for line in lines {
+            if let variant = line.variantId, await app.cart.add(variantId: String(variant), quantity: line.quantity) { added += 1 }
+        }
+        guard added > 0 else {
+            Haptics.refused()
+            app.toast(l.t("orders.buyAgainNone"))
+            return
+        }
+        Haptics.succeeded()
+        chosen.subtract(ids)
+        var said = l.t("orders.buyAgainDone", ["count": "\(added)"])
+        if added < ids.count { said += "\n" + l.t("orders.buyAgainSomeLeft") }
+        app.toast(said)
     }
 
     private func target(_ line: OrderLine) -> ReviewTarget {
@@ -557,7 +624,14 @@ struct OrderDetailView: View {
             }
             ForEach(detail.lines) { line in
                 VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: 10) {
+                        // Chosen for the bar's acts, the cart's own circle (on the owner's word).
+                        ChoiceCircle(state: chosen.contains(line.id) ? .all : .none, label: l.t("select.item", ["name": line.productTitle])) { on in
+                            if on { chosen.insert(line.id) } else { chosen.remove(line.id) }
+                        }
+                        .padding(.leading, -12)
+                        .padding(.trailing, -4)
+                        .padding(.top, 6)
                         Color.clear
                             .frame(width: 56, height: 56)
                             .overlay { RemoteImage(reference: line.photo) }
@@ -611,6 +685,12 @@ struct OrderDetailView: View {
         }
         .card()
         .onAppear {
+            // The screenshots' `orderChosen:` hook: every item chosen, the bar up.
+            if app.orderSheet == "chooseAll" {
+                app.orderSheet = nil
+                chosen = Set(detail.lines.map(\.id))
+                return
+            }
             // The orders list's "Rate your items": the first item to rate, in its sheet.
             guard app.orderSheet == "rate" else { return }
             app.orderSheet = nil

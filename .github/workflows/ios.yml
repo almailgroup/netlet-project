@@ -207,6 +207,10 @@ jobs:
             shot 111-order-receipt "$lang" receipt:NL-20261001-J7MWY shopper
             # My orders' street at every stage, the van on the road among them.
             shot 112-order-journey "$lang" journeyProbe ""
+            # An order with every item chosen: the bar of what they allow; and
+            # the tracker on an order on its way, the road moving to the house.
+            shot 113-order-chosen "$lang" orderChosen:NL-20261001-J7MWY shopper
+            shot 114-order-track-road "$lang" track:NL-20261104-HMGQQ ontheway
             shot 63-returns "$lang" section:returns shopper
             shot 28-invoice "$lang" page:invoices/INV-2026-000002 shopper
             shot 29-assistant "$lang" chat ""

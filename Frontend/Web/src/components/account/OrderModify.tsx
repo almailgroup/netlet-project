@@ -28,11 +28,13 @@ import type { ChangeQuote } from "@shared/commerce/orderChanges";
 const CARD = "mt-3 rounded-2xl border border-[#d5dfeb] bg-white p-4";
 const STEP = "grid size-11 place-items-center rounded-full border border-[#d5dfeb] bg-white text-[#0a285a] disabled:opacity-40 pointer-fine:size-8";
 
-export function OrderModify({ reference, detail, lineId, remove = false, onDone, onCancel }: {
+export function OrderModify({ reference, detail, lineId, lineIds, remove = false, onDone, onCancel }: {
   reference: string;
   detail: Detail;
   /** From an item's ⋯: that item alone. */
   lineId?: number;
+  /** From the bar over the items the shopper chose: those items. */
+  lineIds?: readonly number[];
   /** "Cancel this item": it starts at none, for the shopper to review. */
   remove?: boolean;
   onDone: () => void;
@@ -41,8 +43,11 @@ export function OrderModify({ reference, detail, lineId, remove = false, onDone,
   const { t, tError, locale } = useTranslation();
   const ids = useId();
   const utils = trpc.useUtils();
-  const lines = detail.lines.filter(line => line.changeable && (lineId === undefined || line.id === lineId));
-  const [wanted, setWanted] = useState<Record<number, number>>(() => (remove && lineId !== undefined ? { [lineId]: 0 } : {}));
+  const lines = detail.lines.filter(line => line.changeable && (lineId === undefined || line.id === lineId) && (!lineIds || lineIds.includes(line.id)));
+  /* "Cancel": every item it is about starts at none, for the shopper to review. */
+  const [wanted, setWanted] = useState<Record<number, number>>(() =>
+    remove && (lineId !== undefined || lineIds) ? Object.fromEntries(lines.map(line => [line.id, 0])) : {},
+  );
   const [quote, setQuote] = useState<ChangeQuote | null>(null);
   const [asking, setAsking] = useState(false);
   const money = (amount: string) => formatMoney(amount, { currencyCode: detail.order.currency, locale });
@@ -85,20 +90,21 @@ export function OrderModify({ reference, detail, lineId, remove = false, onDone,
   return (
     <section aria-labelledby={`${ids}-title`} className={CARD}>
       <h4 id={`${ids}-title`} className="text-[14px] font-extrabold text-[#0a285a]">
-        {t(lineId === undefined ? "orders.modify" : remove ? "orders.cancelItem" : "orders.changeQuantity")}
+        {t(lineId === undefined && !lineIds ? "orders.modify" : remove ? (lines.length > 1 ? "orders.chosenCancelTitle" : "orders.cancelItem") : "orders.changeQuantity")}
       </h4>
       <p className="mt-1 text-[12px] leading-5 ink-muted">{t("orders.modifyNote")}</p>
       <ul className="mt-3 space-y-3">
         {lines.map(line => {
           const now = wanted[line.id] ?? line.quantity;
           return (
-            <li key={line.id} className="flex items-center gap-3 rounded-xl border border-[#e7edf5] p-3">
+            /* The stepper wraps under the name on a narrow phone rather than leaving the name no room. */
+            <li key={line.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-[#e7edf5] p-3">
               <Thumb src={line.photo ?? null} alt="" className="size-12 shrink-0 rounded-lg border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-4" />} />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-32">
                 <p dir="auto" className="line-clamp-2 text-[13px] font-bold leading-5 text-[#0a285a]">{line.productTitle}</p>
                 <p className="text-[12px] ink-muted">{now === 0 ? t("orders.modifyRemoving") : t("orders.modifyOrdered", { count: line.quantity })}</p>
               </div>
-              <div className="flex shrink-0 items-center gap-1.5" role="group" aria-label={t("orders.modifyQuantity", { item: line.productTitle })}>
+              <div className="ms-auto flex shrink-0 items-center gap-1.5" role="group" aria-label={t("orders.modifyQuantity", { item: line.productTitle })}>
                 <button type="button" onClick={() => set(line.id, Math.max(0, now - 1))} disabled={now === 0} aria-label={now === 1 ? t("orders.modifyRemove") : t("orders.modifyLess")} className={STEP}>
                   {now === 1 ? <Trash2 className="size-4" aria-hidden /> : <Minus className="size-4" aria-hidden />}
                 </button>

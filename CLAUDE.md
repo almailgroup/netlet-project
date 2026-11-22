@@ -3789,6 +3789,69 @@ languages: tracking open on the moving order with its sentence, the refund
 approved automatically, the cancel returning every unit and closing the order,
 axe clean on all three, no sideways scroll.
 
+**Each parcel is drawn the way the delivery apps draw one, on the owner's
+word** ("enhance the tracking order UI, make it better"; `ParcelTracker` on
+the web, `ParcelStepsCard` in the app): the items in it by their photos (three
+or four, then "+N"), the store and where it goes, then where it is now in
+large type — "On the way", or "Delivered" with the day — on a pale plate with
+the store's estimate under it (green, or the accent ink and a pale orange
+plate once it is later than the estimate, the success green once it has
+arrived), then the four steps as one row of pictures: the order, the box, the
+van, the house. Those behind it are navy, the one it is at the brand's orange
+with navy on it (4.65:1) and a ring spreading from it every 1.8 seconds, those
+ahead pale; the road between them is navy where travelled, pale ahead, and
+**a dash moving toward the house while the parcel is on the way** — a
+background's place on the web (`.track-road-moving`, reversed on the Arabic
+page, where the house is at the left) and a shape's dash phase in the app,
+which mirrors itself there. The house turns green on arrival. The row runs in
+the page's direction and the van is mirrored with it. Opacity, scale and that
+dash alone, and still under reduced motion (Reduce Motion in the app). Each
+step keeps its sentence to a screen reader (done, now, still to come) and the
+current one is `aria-current="step"` (`.isSelected` in the app). Two
+screenshots show it (`61-order-track`, and `114-order-track-road` on an order
+on its way).
+
+**An opened order's items are chosen like the cart's lines, and the chosen
+items get every act they allow, on the owner's word** ("when you select a
+specific order, it should let you choose the product, just like in the cart
+page, and it should give you all the options"). A circle beside each item —
+the cart's own `ChoiceCircle` — and All beside "In this order" (the minus
+when some are chosen), and while anything is chosen a bar of presses: on a
+phone it floats over the tab bar (`PhoneActionBar` on the web, which puts the
+assistant aside; `ChosenItemsBar` in the app, `floatsAtFoot`, with
+`ShopPage(assistant:)` off), on a wide screen it sticks to the window's foot
+while the order is on screen. It says how many are chosen, has Clear, and
+offers **every act the chosen items allow and none they do not**:
+`Shared/commerce/orderSelection.ts` (`selectionOffers`, pure; the app's
+`OrderSelection`, on the same cases) reads the facts the server already sent
+on `orders.get` — each line's return window, warranty and review eligibility,
+whether it can still change, whether it is still for sale — and answers, in
+the bar's order, Track, Return (one item: its own form, refund or exchange)
+or Refund (several: one refund across the ones that can go back), Warranty,
+Quantity (an item of more than one, before a driver has it), Rate, Buy again,
+Help and Cancel (last, in red), each with how many of the chosen it is about
+when that is not all of them ("Refund (1)"). **One item's act opens where its
+⋯ would** — under the item on the web, its sheet in the app — and several open
+over the items with only those (the tracker narrowed to their parcels, the
+refund with them ticked, the change form with them at none for Cancel, "Cancel
+these items"); the web brings what opened into view and focuses its first
+box, since the bar floats over the foot. Rate opens the first not yet reviewed
+(`firstToRate`); Buy again puts each back in the bag at what was ordered of it
+and today's price, saying when something was left out; Help is about the item
+when one is chosen and the order otherwise. **What was done takes the choice
+with it**: a panel or sheet that completes clears the circles; closing one
+keeps them. Nothing here decides — every press is the item's own procedure,
+which asks again under a lock. The ⋯ menus stay. The quantity form's stepper
+now wraps under the item's name on a narrow phone (`basis-32`, the flex rule
+below), where at 320 it had left the name no room. `OrderSelectionUITests`
+chooses the recorded order's item, checks the bar's acts, opens the tracker
+from it and clears; the CI photographs an order with every item chosen
+(`113-order-chosen`, `-NetLetOpen orderChosen:<ref>`). Walked on a production
+build against a local Postgres at 320, 390 and 1440 in both languages
+(`.scratch/order-pick-walk.mjs`): one item's acts, All's, a refund or a
+cancel opening with the chosen items, the tracker's ring and moving road, the
+steps running the page's way, axe clean with the bar up, no sideways scroll.
+
 **Before a driver has it, an item can come out or a quantity go down**
 (`Shared/commerce/orderChanges.ts` the rule, pure; `Backend/src/services/orderChanges.ts`
 the database half; `OrderModify` on the web, `OrderModifySheet` in the app), on

@@ -102,17 +102,19 @@ export function WarrantyClaims({ detail, onChanged }: { detail: Detail; onChange
  * The form: which item, what is wrong, and photos if they help. Opened from
  * an item's ⋯ it is about that item alone (`lineId`).
  */
-export function WarrantyForm({ reference, detail, lineId, onDone, onCancel }: {
+export function WarrantyForm({ reference, detail, lineId, lineIds, onDone, onCancel }: {
   reference: string;
   detail: Detail;
   lineId?: number;
+  /** From the bar over the items the shopper chose: one of those. */
+  lineIds?: readonly number[];
   onDone: () => void;
   onCancel: () => void;
 }) {
   const { t, tError } = useTranslation();
   const ask = useConfirmRemoval();
   const ids = useId();
-  const eligible = detail.lines.filter(line => line.warrantyEligibility.allowed && (lineId === undefined || line.id === lineId));
+  const eligible = detail.lines.filter(line => line.warrantyEligibility.allowed && (lineId === undefined || line.id === lineId) && (!lineIds || lineIds.includes(line.id)));
   const [chosen, setChosen] = useState<number | null>(eligible.length === 1 ? eligible[0].id : null);
   const [problem, setProblem] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);

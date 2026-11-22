@@ -61,7 +61,7 @@ import { OrderFilterChips, type OrderFacets, type OrderFilterChange, type OrderF
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
-import { OrderAfterSales, OrderLineMenu, OrderLinePanel } from "@/components/account/OrderActions";
+import { OrderAfterSales, OrderLineChoice, OrderLineMenu, OrderLinePanel } from "@/components/account/OrderActions";
 import { OrderJourney } from "@/components/account/OrderJourney";
 import { ReceiptButton } from "@/components/account/OrderReceipt";
 
@@ -499,7 +499,7 @@ export function AccountOrders() {
                       </div>
                     ) : null}
 
-                    <div id={`order-${order.id}-lines`} hidden={!open} className="border-t border-[#e7edf5] px-5 py-4">
+                    <div id={`order-${order.id}-lines`} hidden={!open} className="border-t border-[#e7edf5] px-4 py-4 sm:px-5">
                       {open ? (
                         <OrderLines
                           key={refundRef === order.reference ? "refund" : rateRef === order.reference ? "rate" : "plain"}
@@ -614,8 +614,10 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;
               return (
                 <li key={line.id}>
-                  <div className="flex gap-3">
-                  <Thumb src={line.photo ?? null} alt="" className="size-14 shrink-0 rounded-xl border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-5" />} />
+                  <div className="flex gap-2 min-[360px]:gap-3">
+                  {/* Chosen for the bar's acts, the cart's own circle (on the owner's word). */}
+                  <span className="self-start pt-1.5 pointer-fine:pt-3"><OrderLineChoice line={line} /></span>
+                  <Thumb src={line.photo ?? null} alt="" className="size-12 shrink-0 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
                       <p dir="auto" className="type-product line-clamp-2 min-w-0 flex-1 pt-1.5 text-sm text-[#0a285a]">{line.productTitle}</p>

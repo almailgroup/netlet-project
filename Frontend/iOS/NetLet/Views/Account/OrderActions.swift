@@ -1,13 +1,15 @@
 import SwiftUI
 
-/// What is open over the order — a sheet, and from an item's ⋯ the item it
-/// is about (`lineId`); "Cancel this item" opens the change at none (`remove`).
+/// What is open over the order — a sheet, and which items it is about: from
+/// an item's ⋯ that item (`lineId`), from the bar over the items the shopper
+/// chose those items (`lineIds`); cancelling opens the change at none (`remove`).
 struct OrderSheet: Identifiable, Hashable {
     enum Kind: String { case track, refund, warranty, modify, address, payment, help }
     let kind: Kind
     var lineId: Int? = nil
+    var lineIds: [Int]? = nil
     var remove = false
-    var id: String { "\(kind.rawValue)-\(lineId ?? 0)-\(remove)" }
+    var id: String { "\(kind.rawValue)-\(lineId ?? 0)-\((lineIds ?? []).map(String.init).joined(separator: "."))-\(remove)" }
 }
 
 /// The opened order as an after-sales centre, on the owner's word — the
@@ -34,6 +36,9 @@ struct OrderActionsBar: View {
     var onReceipt: (() -> Void)? = nil
     /// Rate one item, in its sheet.
     var onRate: ((OrderLine) -> Void)? = nil
+    /// The items chosen by their circles (on the owner's word): the All circle
+    /// beside "In this order" chooses every one.
+    var chosen: Binding<Set<Int>>? = nil
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     /// What an answer from NetLet AI pointed at, opened once the help sheet is down.
@@ -49,11 +54,21 @@ struct OrderActionsBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                Text(l.t("orders.inThisOrder"))
-                    .font(.inter(15, .heavy))
-                    .foregroundStyle(Brand.navy)
-                    .accessibilityAddTraits(.isHeader)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 0) {
+                    // Every item at once, the cart's All; its circle lines up with the items' own.
+                    if let chosen {
+                        let all = detail.lines.map(\.id)
+                        ChoiceCircle(state: OrderSelection.state(all: all, chosen: chosen.wrappedValue), label: l.t("orders.chooseAllItems")) { on in
+                            chosen.wrappedValue = on ? Set(all) : []
+                        }
+                        .padding(.leading, -12)
+                    }
+                    Text(l.t("orders.inThisOrder"))
+                        .font(.inter(15, .heavy))
+                        .foregroundStyle(Brand.navy)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 Menu {
                     if trackable {
                         Button { open(.track) } label: { Label(l.t("orders.track"), systemImage: "shippingbox") }
@@ -129,14 +144,19 @@ struct OrderActionsBar: View {
         switch which.kind {
         case .track:
             if let steps = detail.steps {
-                TrackOrderSheet(reference: reference, steps: steps, lines: detail.lines, lineId: which.lineId)
+                TrackOrderSheet(reference: reference, steps: steps, lines: detail.lines, lineId: which.lineId, lineIds: which.lineIds)
             }
         case .refund:
-            RefundSheet(reference: reference, lines: refundable, done: { Task { await reload() } })
+            RefundSheet(
+                reference: reference,
+                lines: which.lineIds.map { ids in refundable.filter { ids.contains($0.id) } } ?? refundable,
+                initial: which.lineIds,
+                done: { done() }
+            )
         case .warranty:
-            WarrantySheet(reference: reference, detail: detail, lineId: which.lineId, done: { Task { await reload() } })
+            WarrantySheet(reference: reference, detail: detail, lineId: which.lineId, lineIds: which.lineIds, done: { done() })
         case .modify:
-            OrderModifySheet(reference: reference, detail: detail, lineId: which.lineId, remove: which.remove, done: { Task { await reload() } })
+            OrderModifySheet(reference: reference, detail: detail, lineId: which.lineId, lineIds: which.lineIds, remove: which.remove, done: { done() })
         case .address:
             OrderAddressSheet(reference: reference, detail: detail, done: { Task { await reload() } })
         case .payment:
@@ -167,6 +187,12 @@ struct OrderActionsBar: View {
     private func open(_ kind: OrderSheet.Kind) {
         Haptics.action()
         sheet = OrderSheet(kind: kind)
+    }
+
+    /// What was done is done with the items it was about: the choice goes too.
+    private func done() {
+        if let chosen { chosen.wrappedValue = [] }
+        Task { await reload() }
     }
 
     /// Whether this order offers what a sheet is for — a hook or an answer
@@ -350,18 +376,25 @@ struct TrackOrderSheet: View {
     let lines: [OrderLine]
     /// From an item's ⋯: the parcel that item is in.
     var lineId: Int? = nil
+    /// From the bar over the chosen items: the parcels they are in.
+    var lineIds: [Int]? = nil
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
 
     private var parcels: [ParcelSteps] {
-        guard let lineId else { return steps.parcels }
-        return steps.parcels.filter { $0.lineIds.contains(lineId) }
+        guard let about = lineId.map({ [$0] }) ?? lineIds else { return steps.parcels }
+        return steps.parcels.filter { parcel in parcel.lineIds.contains { about.contains($0) } }
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    if parcels.count > 1 {
+                        Text(l.t("track.parcelCount", ["count": "\(parcels.count)"]))
+                            .font(.inter(13, .semibold))
+                            .foregroundStyle(Brand.muted)
+                    }
                     ForEach(parcels) { parcel in
                         ParcelStepsCard(parcel: parcel, placedAt: steps.placedAt, lines: lines)
                     }
@@ -391,8 +424,14 @@ struct TrackOrderSheet: View {
     }
 }
 
-/// One parcel's steps: placed, being prepared, on the way, delivered — dated
-/// only where the date is a fact.
+/// Where one parcel is, drawn as the web's `ParcelTracker`, on the owner's word
+/// ("enhance the tracking order UI, make it better"): the items in it by their
+/// photos, where it is now in large type with the store's estimate under it,
+/// and the four steps as one row of pictures — the order, the box, the van,
+/// the house — the ones behind it navy, the one it is at in the brand's orange
+/// with a ring spreading from it, the road on to the house a moving dash
+/// while it is on the way, the house green once it has arrived. Only facts
+/// are dated. Still under Reduce Motion.
 struct ParcelStepsCard: View {
     let parcel: ParcelSteps
     let placedAt: Date
@@ -400,90 +439,161 @@ struct ParcelStepsCard: View {
     @Environment(LanguageSettings.self) private var l
 
     private static let labels = ["track.placed", "track.preparing", "track.onTheWay", "track.delivered"]
+    private static let symbols = ["doc.text.fill", "shippingbox.fill", "truck.box.fill", "house.fill"]
+    /// How many of a parcel's items are drawn by their photos before a "+N".
+    private static let photos = 3
+
+    private var arrived: Bool { parcel.step == "delivered" }
 
     var body: some View {
-        let names = parcel.lineIds.compactMap { id in lines.first { $0.id == id }?.productTitle }
-        VStack(alignment: .leading, spacing: 4) {
-            Text(parcel.vendorName.map { l.t("track.from", ["store": $0]) } ?? l.t("track.parcel"))
-                .font(.inter(15, .bold))
-                .foregroundStyle(Brand.navy)
-            if !names.isEmpty {
-                Text(names.joined(separator: " · "))
-                    .font(.inter(13))
-                    .foregroundStyle(Brand.muted)
-                    .lineLimit(2)
-            }
-            if parcel.fast || parcel.destinationLabel != nil {
-                HStack(spacing: 10) {
-                    if parcel.fast { Label(l.t("track.fast"), systemImage: "bolt.fill") }
-                    if let label = parcel.destinationLabel { Text(l.t("track.to", ["label": label])) }
+        let inside = parcel.lineIds.compactMap { id in lines.first { $0.id == id } }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                photoStack(inside)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(parcel.vendorName.map { l.t("track.from", ["store": "\u{2068}\($0)\u{2069}"]) } ?? l.t("track.parcel"))
+                        .font(.inter(14, .heavy))
+                        .foregroundStyle(Brand.navy)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if !inside.isEmpty {
+                        Text(inside.map(\.productTitle).joined(separator: " · "))
+                            .font(.inter(12))
+                            .foregroundStyle(Brand.muted)
+                            .lineLimit(1)
+                    }
+                    if parcel.fast || parcel.destinationLabel != nil {
+                        HStack(spacing: 8) {
+                            if parcel.fast {
+                                Label(l.t("track.fast"), systemImage: "bolt.fill")
+                                    .font(.inter(12, .bold))
+                                    .foregroundStyle(Brand.accentInk)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(Brand.accentWash))
+                            }
+                            if let label = parcel.destinationLabel {
+                                Label(l.t("track.to", ["label": "\u{2068}\(label)\u{2069}"]), systemImage: "mappin")
+                                    .font(.inter(12, .semibold))
+                                    .foregroundStyle(Brand.navy)
+                            }
+                        }
+                        .padding(.top, 2)
+                    }
                 }
-                .font(.inter(13, .semibold))
-                .foregroundStyle(Brand.navy)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(Self.labels.enumerated()), id: \.offset) { index, key in
-                    stepRow(index: index, label: l.t(key))
+            status
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(0..<Self.labels.count, id: \.self) { index in
+                    stepColumn(index)
+                        .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.top, 8)
-            if let promise = promiseLine {
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+    }
+
+    /// The items by their photos: how a parcel is recognised.
+    private func photoStack(_ inside: [OrderLine]) -> some View {
+        let shown = inside.count > Self.photos ? Array(inside.prefix(Self.photos - 1)) : inside
+        return HStack(spacing: -12) {
+            ForEach(shown) { line in
+                Color.white
+                    .frame(width: 44, height: 44)
+                    .overlay { RemoteImage(reference: line.photo) }
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Color.white, lineWidth: 2))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1).padding(-1))
+            }
+            if inside.count > Self.photos {
+                Text("+\(inside.count - (Self.photos - 1))")
+                    .font(.inter(12, .heavy))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Brand.navy))
+                    .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Color.white, lineWidth: 2))
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// Where it is now, in words, and when the store says it comes.
+    private var status: some View {
+        let promise = arrived ? nil : promiseLine
+        let headline = arrived
+            ? (parcel.deliveredAt.map { l.t("track.deliveredOn", ["date": DeliveryLine.shortDay($0, l.current)]) } ?? l.t("track.delivered"))
+            : l.t(Self.labels[min(max(parcel.reached, 0), Self.labels.count - 1)])
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(headline)
+                .font(.inter(18, .heavy))
+                .foregroundStyle(arrived ? Brand.success : Brand.navy)
+            if let promise {
                 Text(promise.text)
                     .font(.inter(13, .semibold))
                     .foregroundStyle(promise.late ? Brand.accentInk : Brand.success)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 6)
             }
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(arrived ? Brand.successFill : promise?.late == true ? Brand.accentWash : Brand.tint))
+        .accessibilityElement(children: .combine)
     }
 
-    private func stepRow(index: Int, label: String) -> some View {
+    /// One step: its picture on the road, its name, and its date where that is a fact.
+    private func stepColumn(_ index: Int) -> some View {
         let reached = parcel.reached
-        let done = index < reached || (index == reached && parcel.step == "delivered")
+        let done = index < reached || (index == reached && arrived)
         let now = index == reached && !done
         let last = index == Self.labels.count - 1
+        let label = l.t(Self.labels[index])
         var day: String?
         if index == 0 {
             day = DeliveryLine.shortDay(placedAt, l.current)
-        } else if last, let arrived = parcel.deliveredAt {
-            day = DeliveryLine.shortDay(arrived, l.current)
+        } else if last, let at = parcel.deliveredAt {
+            day = DeliveryLine.shortDay(at, l.current)
         }
         let date = day
         let state = l.t(done ? "track.stepDone" : now ? "track.stepNow" : "track.stepNext", ["step": label])
-        return HStack(alignment: .top, spacing: 12) {
-            VStack(spacing: 0) {
-                ZStack {
-                    if done {
-                        Circle().fill(Brand.navy)
-                        Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
-                    } else {
-                        Circle().fill(Color.white)
-                        Circle().strokeBorder(now ? Brand.navy : Brand.line, lineWidth: 2)
-                        if now { Circle().fill(Brand.navy).frame(width: 8, height: 8) }
-                    }
+        return VStack(spacing: 6) {
+            ZStack {
+                // The road: this step's half of the way in from the one before, and out to the next.
+                HStack(spacing: 0) {
+                    TrackRoad(state: index == 0 ? .blank : road(into: index))
+                    TrackRoad(state: last ? .blank : road(into: index + 1))
                 }
-                .frame(width: 20, height: 20)
-                if !last {
-                    Rectangle()
-                        .fill(index < reached ? Brand.navy : Brand.line)
-                        .frame(width: 2, height: 14)
-                }
+                .frame(height: 3)
+                TrackStepDot(symbol: Self.symbols[index], done: done, now: now, home: last)
             }
+            .frame(height: 36)
             Text(label)
-                .font(.inter(14, now ? .bold : done ? .semibold : .medium))
+                .font(.inter(12, now ? .heavy : done ? .bold : .semibold))
                 .foregroundStyle(now || done ? Brand.navy : Brand.muted)
-                .frame(minHeight: 20)
-            Spacer(minLength: 8)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 2)
             if let date {
-                Text(date).font(.inter(13)).foregroundStyle(Brand.muted).frame(minHeight: 20)
+                Text(date)
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(date.map { "\(state), \($0)" } ?? state)
+        .accessibilityAddTraits(now ? .isSelected : [])
+    }
+
+    /// The road into a step: travelled, being travelled, or still ahead.
+    private func road(into index: Int) -> TrackRoad.State {
+        if index <= parcel.reached { return .travelled }
+        if index == parcel.reached + 1 && parcel.step == "onTheWay" { return .moving }
+        return .ahead
     }
 
     /// The seller's word on when, said as theirs.
@@ -504,11 +614,92 @@ struct ParcelStepsCard: View {
     }
 }
 
+/// A step's picture: navy once passed, the brand's orange with a ring
+/// spreading from it where the parcel is, pale ahead — the house green once
+/// the parcel is there.
+private struct TrackStepDot: View {
+    let symbol: String
+    let done: Bool
+    let now: Bool
+    let home: Bool
+    @Environment(\.accessibilityReduceMotion) private var still
+    @State private var spread = false
+
+    var body: some View {
+        ZStack {
+            if now {
+                Circle()
+                    .stroke(Brand.orange, lineWidth: 2)
+                    .scaleEffect(spread ? 1.6 : 1)
+                    .opacity(spread ? 0 : 0.75)
+            }
+            Circle().fill(done ? (home ? Brand.success : Brand.navy) : now ? Brand.orange : Brand.photo)
+            if !done && !now { Circle().strokeBorder(Brand.cardLine, lineWidth: 1) }
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(done ? Color.white : now ? Brand.navy : Brand.chevron)
+                .flipsForRightToLeftLayoutDirection(symbol.hasPrefix("truck"))
+        }
+        .frame(width: 36, height: 36)
+        .onAppear {
+            guard now, !still else { return }
+            withAnimation(.easeOut(duration: 1.8).repeatForever(autoreverses: false)) { spread = true }
+        }
+    }
+}
+
+/// Half the road between two steps. A Shape, so on the Arabic page it is
+/// drawn mirrored and its dash moves toward the house there too.
+private struct TrackRoad: View {
+    enum State { case blank, travelled, moving, ahead }
+    let state: State
+    @Environment(\.accessibilityReduceMotion) private var still
+    @SwiftUI.State private var phase: CGFloat = 0
+
+    var body: some View {
+        switch state {
+        case .blank:
+            Color.clear
+        case .travelled:
+            Rectangle().fill(Brand.navy)
+        case .ahead:
+            Rectangle().fill(Brand.line)
+        case .moving:
+            ZStack {
+                Rectangle().fill(Brand.line)
+                RoadDash(phase: phase).fill(Brand.navy)
+            }
+            .onAppear {
+                guard !still else { return }
+                withAnimation(.linear(duration: 1.1).repeatForever(autoreverses: false)) { phase = -28 }
+            }
+        }
+    }
+}
+
+private struct RoadDash: Shape {
+    var phase: CGFloat
+    var animatableData: CGFloat {
+        get { phase }
+        set { phase = newValue }
+    }
+
+    /// The dashes themselves, so the phase is drawn on every frame of the animation.
+    func path(in rect: CGRect) -> Path {
+        var line = Path()
+        line.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        line.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        return line.strokedPath(StrokeStyle(lineWidth: rect.height, dash: [8, 6], dashPhase: phase))
+    }
+}
+
 /// "Request a refund": which items, why, a note — one return request per item
 /// with the refund chosen, each decided as the per-item form's is.
 struct RefundSheet: View {
     let reference: String
     let lines: [OrderLine]
+    /// The items chosen on the page, ticked to start.
+    var initial: [Int]? = nil
     let done: () -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -578,7 +769,13 @@ struct RefundSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .onAppear { if lines.count == 1 { chosen = [lines[0].id] } }
+        .onAppear {
+            if let initial {
+                chosen = Set(lines.map(\.id).filter { initial.contains($0) })
+            } else if lines.count == 1 {
+                chosen = [lines[0].id]
+            }
+        }
     }
 
     private func itemRow(_ line: OrderLine) -> some View {
@@ -639,5 +836,116 @@ struct RefundSheet: View {
         app.toast(l.t("orders.refundSent"))
         done()
         dismiss()
+    }
+}
+
+/// What can be done with the items chosen on an opened order, on the owner's
+/// word — the web's `ChosenBar`: every act they allow and none they do not
+/// (`OrderSelection`), as a row of presses over the page's foot, each saying
+/// how many of the chosen it is about when that is not all of them. The
+/// screen runs what is pressed (`OrderDetailView.run`).
+struct ChosenItemsBar: View {
+    let detail: OrderDetail
+    @Binding var chosen: Set<Int>
+    let run: (OrderSelection.Offer) -> Void
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    /// A pale red under the cancel's picture (#fdeceb).
+    private static let dangerWash = Color(red: 253 / 255, green: 236 / 255, blue: 235 / 255)
+
+    var body: some View {
+        let lines = OrderSelection.lines(detail, chosen: chosen, returnsOn: app.features.isOn("returns"))
+        let offers = OrderSelection.offers(lines, cancelled: detail.steps?.cancelled ?? false)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text(l.t("orders.chosenCount", ["count": "\(chosen.count)"]))
+                    .font(.inter(13, .heavy))
+                    .foregroundStyle(Brand.navy)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Button {
+                    chosen = []
+                } label: {
+                    Label(l.t("orders.chosenClear"), systemImage: "xmark")
+                        .font(.inter(13, .bold))
+                        .foregroundStyle(Brand.navy)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.tap)
+            }
+            .padding(.leading, 8)
+            .padding(.trailing, 4)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 2) {
+                    ForEach(offers, id: \.action) { offer in
+                        let some = chosen.count > 1 && offer.lineIds.count < chosen.count
+                        let danger = offer.action == .cancelItems
+                        Button {
+                            run(offer)
+                        } label: {
+                            VStack(spacing: 5) {
+                                Image(systemName: Self.symbol(offer.action))
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .flipsForRightToLeftLayoutDirection(offer.action == .track || offer.action == .return || offer.action == .refund)
+                                    .frame(width: 42, height: 42)
+                                    .background(Circle().fill(danger ? Self.dangerWash : Brand.tint))
+                                    .accessibilityHidden(true)
+                                Text(l.t(Self.key(offer.action)) + (some ? " (\(offer.lineIds.count))" : ""))
+                                    .font(.inter(12, .bold))
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .foregroundStyle(danger ? Brand.danger : Brand.navy)
+                            .frame(width: 76)
+                            .padding(.vertical, 4)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.tap)
+                    }
+                }
+                .padding(.horizontal, 2)
+            }
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Brand.navy.opacity(0.18), radius: 15, y: 8)
+        )
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(l.t("orders.chosenBar"))
+    }
+
+    /// Each act's picture.
+    static func symbol(_ action: OrderSelection.Action) -> String {
+        switch action {
+        case .track: return "truck.box"
+        case .return, .refund: return "arrow.uturn.backward"
+        case .warranty: return "checkmark.shield"
+        case .quantity: return "square.and.pencil"
+        case .rate: return "star"
+        case .buyAgain: return "bag"
+        case .help: return "lifepreserver"
+        case .cancelItems: return "xmark.circle"
+        }
+    }
+
+    /// Each act's word on the bar — short, for a row of them.
+    static func key(_ action: OrderSelection.Action) -> String {
+        switch action {
+        case .track: return "orders.pickTrack"
+        case .return: return "orders.pickReturn"
+        case .refund: return "orders.pickRefund"
+        case .warranty: return "orders.pickWarranty"
+        case .quantity: return "orders.pickQuantity"
+        case .rate: return "orders.pickRate"
+        case .buyAgain: return "orders.pickBuyAgain"
+        case .help: return "orders.pickHelp"
+        case .cancelItems: return "orders.pickCancel"
+        }
     }
 }

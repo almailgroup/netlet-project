@@ -603,6 +603,12 @@ final class AppModel {
             orderSheet = "payment"
             presetPayMethod = "knet"
             accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
+        case "orderChosen":
+            // The order with every item chosen: the bar of what they allow.
+            guard let value else { return }
+            selectedTab = .account
+            orderSheet = "chooseAll"
+            accountPath = NavigationPath([Route.orders, Route.order(reference: value)])
         case "order", "track", "refund", "rate", "warranty", "modify", "help", "orderAddress", "orderPayment", "receipt":
             // `track:`, `refund:`, `rate:`, `warranty:`, `modify:`, `help:`,
             // `orderAddress:` and `orderPayment:` open the order with that sheet up;

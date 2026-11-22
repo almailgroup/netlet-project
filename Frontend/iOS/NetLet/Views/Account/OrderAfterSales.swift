@@ -130,6 +130,8 @@ struct WarrantySheet: View {
     let detail: OrderDetail
     /// From an item's ⋯: that item alone.
     var lineId: Int? = nil
+    /// From the bar over the chosen items: one of those.
+    var lineIds: [Int]? = nil
     let done: () -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -142,7 +144,9 @@ struct WarrantySheet: View {
     @State private var sending = false
 
     private var rules: Rules.AfterSales.Warranty { ReferenceData.shared.rules.afterSalesRules.warranty }
-    private var lines: [OrderLine] { detail.warrantyClaimable.filter { lineId == nil || $0.id == lineId } }
+    private var lines: [OrderLine] {
+        detail.warrantyClaimable.filter { (lineId == nil || $0.id == lineId) && (lineIds == nil || lineIds?.contains($0.id) == true) }
+    }
 
     /// `problemIssue`, the server's own refusal asked early.
     private var issue: String? {
@@ -280,7 +284,9 @@ struct OrderModifySheet: View {
     let detail: OrderDetail
     /// From an item's ⋯: that item alone.
     var lineId: Int? = nil
-    /// "Cancel this item": it starts at none, for the shopper to review.
+    /// From the bar over the chosen items: those items.
+    var lineIds: [Int]? = nil
+    /// "Cancel": every item it is about starts at none, for the shopper to review.
     var remove = false
     let done: () -> Void
     @Environment(AppModel.self) private var app
@@ -291,7 +297,10 @@ struct OrderModifySheet: View {
     @State private var asking = false
     @State private var applying = false
 
-    private var lines: [OrderLine] { detail.changeableLines.filter { lineId == nil || $0.id == lineId } }
+    private var lines: [OrderLine] {
+        guard detail.change.changeable else { return [] }
+        return detail.changeableLines.filter { (lineId == nil || $0.id == lineId) && (lineIds == nil || lineIds?.contains($0.id) == true) }
+    }
 
     private var changes: [API.LineChange] {
         lines.compactMap { line in
@@ -345,7 +354,7 @@ struct OrderModifySheet: View {
                 .padding(16)
             }
             .background(Brand.ground)
-            .navigationTitle(l.t(lineId == nil ? "orders.modify" : remove ? "orders.cancelItem" : "orders.changeQuantity"))
+            .navigationTitle(l.t(lineId == nil && lineIds == nil ? "orders.modify" : remove ? (lines.count > 1 ? "orders.chosenCancelTitle" : "orders.cancelItem") : "orders.changeQuantity"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -356,7 +365,8 @@ struct OrderModifySheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .onAppear {
-            if remove, let lineId, wanted[lineId] == nil { wanted[lineId] = 0 }
+            guard remove, lineId != nil || lineIds != nil else { return }
+            for line in lines where wanted[line.id] == nil { wanted[line.id] = 0 }
         }
     }
 
