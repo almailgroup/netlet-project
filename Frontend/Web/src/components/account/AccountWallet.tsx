@@ -2,10 +2,13 @@
  * The Wallet, on the account page, on the owner's word ("instead of NetLet
  * points … rename it to wallet, and store everything there, from NetLet
  * points to anything else related to wallet"): everything the account holds
- * that is worth money, in one place. It opens on the points (3.1.14, 3.1.15)
- * — the balance with the coin and converting it to money (`PointsWallet`) —
- * then the saved cards (`SavedCards`, which was the Payment methods page),
- * the two ways to earn, and the history behind the number. The points page
+ * that is worth money, in one place. **It opens on the saved cards
+ * (`SavedCards`, which was the Payment methods page) and keeps the NetLet
+ * points at the bottom, also on the owner's word** ("it should show you the
+ * saved cards first and NetLet points at the bottom"): under their own
+ * heading, the balance with the coin and converting it to money
+ * (`PointsWallet`, 3.1.14, 3.1.15), the two ways to earn, and the history
+ * behind the number. The points page
  * (`/account/rewards`) and Payment methods (`/account/payments`) were two
  * addresses; both open this page now (`MOVED` in `Account.tsx`).
  *
@@ -79,8 +82,10 @@ export function AccountWallet() {
 
         return (
           <div className="space-y-3">
-            <PointsWallet view={view} />
             <SavedCards />
+
+            <h3 className="px-1 pt-2 text-[15px] font-bold text-[#0a285a]">{t("account.points")}</h3>
+            <PointsWallet view={view} />
 
             <section aria-labelledby="ways-to-earn" className="space-y-3">
               <h3 id="ways-to-earn" className="px-1 pt-2 text-[15px] font-bold text-[#0a285a]">{t("rewards.waysToEarn")}</h3>

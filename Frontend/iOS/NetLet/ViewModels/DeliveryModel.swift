@@ -119,27 +119,11 @@ final class DeliveryModel {
         }
     }
 
-    /// The way to pay every order starts from, as the account keeps it.
+    /// The way to pay every order starts from, as the account keeps it —
+    /// checkout's "Your default". Quick settings no longer changes it, on the
+    /// owner's word ("remove the payment method from the quick settings").
     var payment: String {
         accountDefaults.flatMap { CustomerDefaults.startingPayment($0.payment, choosable: $0.choosable) } ?? "cod"
-    }
-
-    /// What can be chosen as the default way to pay now.
-    var choosablePayments: [String] { accountDefaults?.choosable ?? ["cod"] }
-
-    /// Keeps `method` as the account's way to pay; false when it was refused.
-    @discardableResult
-    func setPayment(_ method: String) async -> Bool {
-        guard choosablePayments.contains(method) else { return false }
-        do {
-            _ = try await api.call(API.setDefaultPayment, .init(method: method))
-            if let kept = accountDefaults {
-                accountDefaults = CustomerDefaults(ready: kept.ready, addressId: kept.addressId, governorate: kept.governorate, payment: method, choosable: kept.choosable)
-            }
-            return true
-        } catch {
-            return false
-        }
     }
 
     /// A governorate alone — a guest's, or an account's with no address there.

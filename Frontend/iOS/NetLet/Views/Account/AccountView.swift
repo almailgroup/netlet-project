@@ -316,9 +316,13 @@ struct AccountView: View {
     }
 
     /// The Wallet as a tile beside Frequently bought, on the owner's word
-    /// ("instead of NetLet points … rename it to wallet") — the coin, the
-    /// words "NetLet points" and the balance where the other tiles have their
-    /// pictures. It opens the Wallet, which holds the saved cards too.
+    /// ("instead of NetLet points … rename it to wallet"). **It shows what the
+    /// Wallet holds, each with its own icon, also on the owner's word** ("add
+    /// more icons for the Wallet, not only NetLet points"): the saved cards —
+    /// a white card on a navy disc, on pale sky, and how many — and the points — the coin on pale
+    /// orange and the balance — side by side where the other tiles have their
+    /// pictures, in the Wallet's own order. The words are the tile's name to
+    /// VoiceOver; the Wallet names each.
     private var pointsTile: some View {
         Button {
             app.push(.wallet)
@@ -326,30 +330,20 @@ struct AccountView: View {
             VStack(alignment: .leading, spacing: 0) {
                 TileTitle(text: l.t("account.wallet"))
                 Spacer(minLength: 12)
-                GeometryReader { box in
-                    // What it counts is a small line over the figure: "1,200
-                    // points" on one line broke onto two in a tile.
-                    HStack(spacing: 10) {
-                        PointsCoin(size: 32)
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(l.t("account.points"))
-                                .font(.inter(12, .semibold))
-                                .foregroundStyle(ProfileInk.pointsWords)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                            Text(points.map { PointsFormat.count($0, l.current) } ?? "—")
-                                .font(.inter(22, .heavy))
-                                .foregroundStyle(Brand.navy)
-                                .monospacedDigit()
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.6)
-                        }
+                HStack(spacing: 6) {
+                    walletChip(ground: ProfileInk.cardsGround, value: PointsFormat.count(WalletTile.savedCards, l.current)) {
+                        Image(systemName: "creditcard.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .scaleEffect(x: l.current == .ar ? -1 : 1)
+                            .frame(width: 24, height: 24)
+                            .background(Circle().fill(Brand.navy))
                     }
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity, minHeight: box.size.width * 0.29 * 4 / 3, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(ProfileInk.pointsGround))
+                    walletChip(ground: ProfileInk.pointsGround, value: points.map { PointsFormat.count($0, l.current) } ?? "—") {
+                        PointsCoin(size: 24)
+                    }
                 }
-                .aspectRatio(2.6, contentMode: .fit)
+                .accessibilityHidden(true)
             }
             .padding(14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -357,7 +351,23 @@ struct AccountView: View {
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(PressFillStyle(cornerRadius: 24))
-        .accessibilityLabel("\(l.t("account.wallet")), \(points.map { l.t("rewards.balance", ["points": PointsFormat.count($0, l.current)]) } ?? "")")
+        .accessibilityLabel(WalletTile.label(points: points, l))
+    }
+
+    /// One thing the Wallet holds: its icon over its figure, on its own ground.
+    private func walletChip<Icon: View>(ground: Color, value: String, @ViewBuilder icon: () -> Icon) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            icon()
+            Text(value)
+                .font(.inter(16, .heavy))
+                .foregroundStyle(Brand.navy)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+        }
+        .padding(6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(ground))
     }
 
     private func affiliatePromo(_ offer: AffiliateOffer) -> some View {
@@ -515,8 +525,23 @@ enum ProfileInk {
     static let signOutRed = Color(red: 194 / 255, green: 54 / 255, blue: 42 / 255)
     /// The points tile's warm ground behind the coin, the web's `#fff6ef`.
     static let pointsGround = Color(red: 1, green: 246 / 255, blue: 239 / 255)
-    /// "NetLet points" over the figure on that ground, the web's `#7a4a2e`.
-    static let pointsWords = Color(red: 122 / 255, green: 74 / 255, blue: 46 / 255)
+    /// The saved cards' pale sky on the Wallet tile, the web's `#eef3fa`.
+    static let cardsGround = Color(red: 238 / 255, green: 243 / 255, blue: 250 / 255)
+}
+
+/// What the account home's Wallet tile says (`AccountView.pointsTile`).
+enum WalletTile {
+    /// How many cards the Wallet holds: none, until a payment provider keeps
+    /// them as tokens (`SavedCardsCard`), when this is the count of those.
+    static let savedCards = 0
+
+    /// The tile's name to VoiceOver: the Wallet, its cards and its points.
+    @MainActor
+    static func label(points: Int?, _ l: LanguageSettings) -> String {
+        var parts = [l.t("account.wallet"), l.t("payments.noCards")]
+        if let points { parts.append(l.t("rewards.balance", ["points": PointsFormat.count(points, l.current)])) }
+        return parts.joined(separator: ", ")
+    }
 }
 
 /// The dashed line between two rows of a card, inset as the reference draws it.

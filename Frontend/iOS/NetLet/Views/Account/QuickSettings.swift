@@ -10,12 +10,13 @@ import SwiftUI
 /// somebody could pick and then be delivered nothing in would be a control
 /// that lies. Each is the phone's own name for it, in the page's language.
 ///
-/// **And what every order starts from** (0088, on the owner's word: "set or
-/// change their default delivery address" and "their default payment method"
-/// in Settings): the address book as choices — choosing one is the header
-/// sheet's own choice, kept on the account (`DeliveryModel.choose`) — and the
-/// ways to pay, cash on delivery choosable and the rest drawn as coming,
-/// checkout's rule until a card service is wired.
+/// **And where every order goes** (0088, on the owner's word: "set or change
+/// their default delivery address" in Settings): the address book as choices —
+/// choosing one is the header sheet's own choice, kept on the account
+/// (`DeliveryModel.choose`). **The way to pay is not here, on the owner's
+/// word** ("remove the payment method from the quick settings"): checkout
+/// opens on the account's default with Change, and what the account keeps
+/// that is worth money is the Wallet's.
 struct QuickSettingsCard: View {
     @Environment(LanguageSettings.self) private var l
     @Environment(AppModel.self) private var app
@@ -33,8 +34,6 @@ struct QuickSettingsCard: View {
             countryRow
             DashedRule()
             addressRow
-            DashedRule()
-            paymentRow
             DashedRule()
             CurrencyRow()
             DashedRule()
@@ -170,41 +169,6 @@ struct QuickSettingsCard: View {
                 .accessibilityLabel(l.t("quick.deliveryAddress"))
                 .accessibilityValue(chosen?.label ?? l.t("home.chooseAreaShort"))
             }
-        }
-        .padding(.vertical, 12)
-        .frame(minHeight: 64)
-    }
-
-    /// Cash on delivery, and the ways that are coming drawn as they will be.
-    private var paymentRow: some View {
-        let delivery = app.delivery
-        let current = delivery.payment
-        return HStack(spacing: 14) {
-            rowLabel("creditcard", "quick.paymentMethod")
-            Menu {
-                ForEach(CustomerDefaults.paymentMethods, id: \.self) { method in
-                    Button {
-                        Haptics.tap()
-                        Task {
-                            if await delivery.setPayment(method) {
-                                app.toast(l.t("defaults.paymentSaved", ["method": l.t(CustomerDefaults.nameKey(method))]))
-                            }
-                        }
-                    } label: {
-                        let text = l.t(CustomerDefaults.nameKey(method)) + (method == "cod" ? "" : " · " + l.t("checkout.paySoon"))
-                        if method == current {
-                            Label(text, systemImage: "checkmark")
-                        } else {
-                            Text(text)
-                        }
-                    }
-                    .disabled(!delivery.choosablePayments.contains(method))
-                }
-            } label: {
-                chip(l.t(CustomerDefaults.nameKey(current)))
-            }
-            .accessibilityLabel(l.t("quick.paymentMethod"))
-            .accessibilityValue(l.t(CustomerDefaults.nameKey(current)))
         }
         .padding(.vertical, 12)
         .frame(minHeight: 64)

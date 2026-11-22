@@ -271,22 +271,26 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           loading={false}
           empty=""
           waiting={null}
-          label={rewards.data ? `${t("account.wallet")}, ${t("rewards.balance", { points: formatCount(rewards.data.balance, locale) })}` : undefined}
+          label={[
+            t("account.wallet"),
+            t("payments.noCards"),
+            ...(rewards.data ? [t("rewards.balance", { points: formatCount(rewards.data.balance, locale) })] : []),
+          ].join(", ")}
           body={
-            /* The coin, what it counts and the number: "1,200 points" on one
-               line broke onto two in a phone's half-width tile, so the words
-               are a small line over the figure. */
-            <span aria-hidden className="mt-3 flex aspect-[4/1.3] items-center gap-2 overflow-hidden rounded-xl bg-[#fff6ef] px-2 min-[360px]:gap-2.5 min-[360px]:px-3">
-              <PointsCoin size={28} />
-              <span className="flex min-w-0 flex-col">
-                {/* Under 360px the words do not fit beside the coin; the coin says it there. */}
-                <span className="hidden truncate text-[12px] font-semibold leading-4 text-[#7a4a2e] min-[360px]:block">{t("account.points")}</span>
-                {/* Shrinks with a narrow phone rather than being cut: "1,…" on
-                    a 320px screen said nothing. */}
-                <span className="min-w-0 whitespace-nowrap text-[clamp(15px,5.2vw,22px)] font-extrabold leading-tight tabular-nums text-[#0a285a]">
-                  {rewards.data ? formatCount(rewards.data.balance, locale) : "—"}
+            /* What the Wallet holds, each with its own icon, on the owner's
+               word ("add more icons for the Wallet, not only NetLet points"):
+               the saved cards on pale sky and how many, then the coin on pale
+               orange and the balance — the Wallet's own order. The words are
+               the tile's name to a screen reader; the Wallet names each. */
+            <span aria-hidden className="mt-3 grid grid-cols-2 gap-1.5">
+              <WalletChip ground="bg-[#eef3fa]" value={formatCount(SAVED_CARDS, locale)}>
+                <span className="grid size-6 place-items-center rounded-full bg-[#0a285a] text-white">
+                  <CreditCard className="size-3.5 rtl:-scale-x-100" strokeWidth={2.4} />
                 </span>
-              </span>
+              </WalletChip>
+              <WalletChip ground="bg-[#fff6ef]" value={rewards.data ? formatCount(rewards.data.balance, locale) : "—"}>
+                <PointsCoin size={24} />
+              </WalletChip>
             </span>
           }
         />
@@ -514,6 +518,23 @@ function RowLink({ row, waiting, value = null }: { row: Row; waiting: string | n
  * saved or frequently bought things — or a line saying there is nothing yet;
  * or a body of its own (the points' coin and balance) in the same place.
  */
+/** How many cards the Wallet holds: none, until a payment provider keeps them
+ *  as tokens (`SavedCards`), when this is the count of those. */
+const SAVED_CARDS = 0;
+
+/** One thing the Wallet holds on its tile: its icon over its figure. */
+function WalletChip({ ground, value, children }: { ground: string; value: string; children: ReactNode }) {
+  return (
+    <span className={`flex min-w-0 flex-col justify-center gap-1 overflow-hidden rounded-xl px-2 py-2 ${ground}`}>
+      {children}
+      {/* Shrinks with a narrow phone rather than being cut. */}
+      <span className="min-w-0 whitespace-nowrap text-[clamp(13px,4.2vw,18px)] font-extrabold leading-tight tabular-nums text-[#0a285a]">
+        {value}
+      </span>
+    </span>
+  );
+}
+
 function PreviewTile({ href, title, photos, loading, empty, waiting, body: own, label }: {
   href: string;
   title: string;

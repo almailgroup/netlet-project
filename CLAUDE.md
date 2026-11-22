@@ -2783,12 +2783,15 @@ on the owner's word** ("make Frequently bought and NetLet points … like My
 orders and Saved items, so all should be in four boxes"): "My orders" and
 "Saved items", then "Frequently bought" and "Wallet" — the first three
 showing the last four pictures (`orders.list`'s own photos, the hearts read by
-id, `frequent.list`'s products) or saying there is nothing yet, the Wallet the
-coin, "NetLet points" and the balance on a pale orange plate (the words left
-off under 360px, where they do not fit beside the coin). **Every tile is the height of the
+id, `frequent.list`'s products) or saying there is nothing yet, **the Wallet
+what it holds, each with its own icon, on the owner's word** ("add more icons
+for the Wallet, not only NetLet points"): a white card on a navy disc over how
+many cards are saved, on pale sky, beside the coin over the balance, on pale
+orange — the Wallet's own order (`WalletChip`, the app's `walletChip`; the
+words are the tile's name to a screen reader). **Every tile is the height of the
 tallest** (`auto-rows-fr`; the app's `TileGrid`), with its picture at the
 foot, because "Frequently bought" wraps on a 320px phone and a row of its own
-height read as a broken grid; the balance shrinks with the screen rather than
+height read as a broken grid; a figure shrinks with the screen rather than
 being cut ("1,…" at 320). Then Quick settings, the membership card, every
 section as a row in white cards — an outline icon, the name, what is waiting,
 a chevron — with dashed lines between; then the seller card and the
@@ -2816,7 +2819,11 @@ set or change their default delivery address in Settings" and "their default
 payment method"; migration 0088, `customer_defaults`;
 `Shared/commerce/customerDefaults.ts` the rule,
 `Backend/src/services/customerDefaults.ts` the database half,
-`customer.defaults.*`). **The default address is the address in use** — the
+`customer.defaults.*`). **The way to pay left Quick settings, on the owner's
+word** ("remove the payment method from the quick settings"): it is
+checkout's question, which opens on the account's default with Change, so the
+server's `customer.defaults.setPayment` stays for an installed app that still
+sends it and no page draws it. **The default address is the address in use** — the
 header's, the cart's, checkout's (`addressInUse`) — because an account with a
 "default" in one place and an "in use" in another is one somebody has to keep
 in step by hand: choosing an address anywhere (the header's book, Quick
@@ -2868,9 +2875,12 @@ its line naming tracking, cancelling and the refund. **The Wallet is
 everything the account holds that is worth money, on the owner's word**
 ("instead of NetLet points … rename it to wallet, and store everything there,
 from NetLet points to anything else related to wallet"; `/account/wallet`,
-`AccountWallet`; the app's `WalletView`): the points' balance with the coin
-and converting it (`PointsWallet`), the saved cards (`SavedCards`, the app's
-`SavedCardsCard`), the two ways to earn and the points history. It was two
+`AccountWallet`; the app's `WalletView`): **the saved cards first and the
+NetLet points at the bottom, on the owner's word** ("it should show you the
+saved cards first and NetLet points at the bottom") — the saved cards
+(`SavedCards`, the app's `SavedCardsCard`), then under "NetLet points" the
+balance with the coin and converting it (`PointsWallet`), the two ways to earn
+and the points history. It was two
 pages, the points (`/account/rewards`) and Payment methods
 (`/account/payments`); both addresses open the Wallet (`MOVED` in
 `Account.tsx`, the app's `Route.from`), and Payment methods is no longer a

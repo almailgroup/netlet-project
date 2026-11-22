@@ -14,19 +14,18 @@
  * - **Language** is the two buttons Preferences had, each written in its own
  *   language so whoever needs it can read it.
  *
- * And what every order starts from, on the owner's word ("allow customers to
- * set or change their default delivery address in Settings" and "their default
- * payment method"), kept on the account (0088,
- * `Shared/commerce/customerDefaults.ts`):
+ * And where every order goes, on the owner's word ("allow customers to set or
+ * change their default delivery address in Settings"), kept on the account
+ * (0088, `Shared/commerce/customerDefaults.ts`): **Delivery address** is the
+ * address book as choices. Choosing one is the header's own choice — the area
+ * and the address in use, written to the account by `CustomerContext` — so
+ * the header, the cart and checkout start from it at once. An address with no
+ * governorate cannot price a delivery and is offered disabled, saying why; an
+ * empty book is a link to add one.
  *
- * - **Delivery address** is the address book as choices. Choosing one is the
- *   header's own choice — the area and the address in use, written to the
- *   account by `CustomerContext` — so the header, the cart and checkout start
- *   from it at once. An address with no governorate cannot price a delivery
- *   and is offered disabled, saying why; an empty book is a link to add one.
- * - **Payment method** offers cash on delivery and draws KNET, a card and
- *   Apple Pay as coming, none of them choosable, checkout's rule until a card
- *   service is wired.
+ * **The way to pay is not here, on the owner's word** ("remove the payment
+ * method from the quick settings"): checkout opens on the account's default
+ * with Change, and what the account keeps that is worth money is the Wallet's.
  */
 import { CurrencySelect } from "@/components/ui/CurrencySelect";
 import { Select } from "@/components/ui/Select";
@@ -35,15 +34,11 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { pressHaptic } from "@/lib/haptics";
 import { flagOf, HOME_COUNTRY, SHOP_COUNTRIES } from "@shared/commerce/country";
-import { PAYMENT_METHODS, type PaymentMethod } from "@shared/commerce/customerDefaults";
-import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { rememberAddress } from "@/lib/lastAddress";
-import { trpc } from "@/lib/trpc";
-import { Banknote, Coins, Globe, Languages, MapPin, Plus } from "lucide-react";
+import { Coins, Globe, Languages, MapPin, Plus } from "lucide-react";
 import type { ReactNode } from "react";
-import { toast } from "sonner";
 import { Link } from "wouter";
 
 export function countryName(code: string, locale: string): string {
@@ -74,9 +69,6 @@ export function QuickSettings() {
         </Row>
         <Row icon={<MapPin className="size-[22px]" strokeWidth={1.75} />} label={t("quick.deliveryAddress")} labelFor="quick-address">
           <AddressChoice />
-        </Row>
-        <Row icon={<Banknote className="size-[22px]" strokeWidth={1.75} />} label={t("quick.paymentMethod")} labelFor="quick-payment">
-          <PaymentChoice />
         </Row>
         <Row icon={<Coins className="size-[22px]" strokeWidth={1.75} />} label={t("currency.title")} labelFor="quick-currency">
           <CurrencySelect id="quick-currency" className={FIELD} />
@@ -109,14 +101,6 @@ export function QuickSettings() {
     </section>
   );
 }
-
-/** The way each method is named, checkout's own words. */
-export const PAYMENT_NAME: Record<PaymentMethod, MessageKey> = {
-  cod: "checkout.payCod",
-  knet: "checkout.payKnet",
-  card: "checkout.payCard",
-  apple_pay: "checkout.payApple",
-};
 
 /** The address book as choices; choosing one is the address the shop delivers to, kept on the account. */
 function AddressChoice() {
@@ -153,39 +137,6 @@ function AddressChoice() {
       {book.map(row => (
         <option key={row.id} value={String(row.id)} disabled={!row.governorate}>
           {[row.label, zoneOf(row.governorate) ?? t("quick.noArea")].join(" · ")}
-        </option>
-      ))}
-    </Select>
-  );
-}
-
-/** Cash on delivery, and the ways that are coming drawn as they will be. */
-function PaymentChoice() {
-  const { t } = useTranslation();
-  const utils = trpc.useUtils();
-  const defaults = trpc.customer.defaults.get.useQuery(undefined, { staleTime: 60_000, retry: false });
-  const save = trpc.customer.defaults.setPayment.useMutation({
-    onSuccess: async () => { await utils.customer.defaults.get.invalidate(); },
-    onError: error => toast.error(isMessageKey(error.message) ? t(error.message) : t("defaults.failed")),
-  });
-  const choosable = defaults.data?.choosable ?? ["cod"];
-  const value = save.variables?.method ?? defaults.data?.payment ?? "cod";
-  return (
-    <Select
-      id="quick-payment"
-      value={value}
-      aria-label={t("quick.paymentMethod")}
-      className={FIELD}
-      onChange={event => {
-        const method = PAYMENT_METHODS.find(entry => entry === event.target.value);
-        if (!method || method === value) return;
-        pressHaptic();
-        save.mutate({ method });
-      }}
-    >
-      {PAYMENT_METHODS.map(method => (
-        <option key={method} value={method} disabled={!choosable.includes(method)}>
-          {`${t(PAYMENT_NAME[method])}${method === "cod" ? "" : ` · ${t("checkout.paySoon")}`}`}
         </option>
       ))}
     </Select>

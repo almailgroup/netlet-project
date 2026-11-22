@@ -2,11 +2,12 @@ import SwiftUI
 
 /// The Wallet — the web's `AccountWallet`, on the owner's word ("instead of
 /// NetLet points … rename it to wallet, and store everything there"): the
-/// points' balance with the coin and converting it to money (`PointsWallet`),
-/// the saved cards (`SavedCardsCard`, which was the Payment methods screen),
-/// the two ways to earn — affiliate marketing first, on the owner's word, then
-/// inviting a friend — and the history behind the number. The web's
-/// `/account/rewards` and `/account/payments` both open it (`Route.from`).
+/// saved cards first (`SavedCardsCard`, which was the Payment methods screen),
+/// then the NetLet points at the bottom, also on the owner's word — the
+/// balance with the coin and converting it to money (`PointsWallet`), the two
+/// ways to earn (affiliate marketing first, then inviting a friend) and the
+/// history behind the number. The web's `/account/rewards` and
+/// `/account/payments` both open it (`Route.from`).
 struct WalletView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -26,8 +27,17 @@ struct WalletView: View {
 
     private func content(_ view: Rewards, reload: @escaping () async -> Void) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            PointsWallet(view: view, reload: reload)
+            // The saved cards first and the points under them, on the owner's
+            // word ("it should show you the saved cards first and NetLet points
+            // at the bottom") — the points with their ways to earn and history.
             SavedCardsCard()
+
+            Text(l.t("account.points"))
+                .font(.inter(15, .bold))
+                .foregroundStyle(Brand.navy)
+                .padding(.top, 6)
+                .accessibilityAddTraits(.isHeader)
+            PointsWallet(view: view, reload: reload)
 
             Text(l.t("rewards.waysToEarn"))
                 .font(.inter(15, .bold))
