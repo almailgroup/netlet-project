@@ -5,7 +5,7 @@ import SwiftUI
 /// order under the thumb. **Where it goes is the cart's alone, on the owner's
 /// word** ("remove the Deliver to and Deliver this elsewhere options from the
 /// checkout page entirely"): the address in use is the cart's first card and
-/// each line's own is its delivery button (`LineDestinationButton`). Disabled, the button says what is still missing above
+/// each line's own is chosen from its "⋯" (`lineAddressPicker`). Disabled, the button says what is still missing above
 /// it, first reason first, and a press on the sentence goes to the fix.
 ///
 /// **It confirms; it does not ask, on the owner's word** — the governorate,
@@ -557,7 +557,7 @@ private struct PaymentMethods: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(DeliveryAddressCard.pale))
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.accentWash))
                 }
                 Group {
                     option(icon: AnyView(Text("KNET").font(.inter(11, .heavy))), title: l.t("checkout.payKnet"), note: l.t("checkout.payKnetNote"), soon: true)

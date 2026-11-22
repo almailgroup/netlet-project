@@ -313,7 +313,7 @@ private struct SizeGuideSheet: View {
 /// "Ask for a better price" — the web's `PriceOfferPanel`: one line until
 /// pressed; a request standing is drawn open, being something the shopper is
 /// waiting on, with Withdraw. `embedded` is the same panel inside the cart
-/// line's sheet (`LineDiscountButton`): always open, with no heading of its
+/// line's sheet (`linePricePicker`): always open, with no heading of its
 /// own, and a guest's Sign in handed to the sheet so it goes down first.
 struct PriceRequestPanel: View {
     let variantId: String

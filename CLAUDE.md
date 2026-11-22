@@ -2216,8 +2216,8 @@ path on. **A delivery row names the store in the page's language**
 **Each line can go to an address of its own, on the owner's word** ("add a
 delivery icon below the 3-dots menu for each product in the cart … to choose a
 specific delivery address for that individual product"). A delivery button
-sits under every line's "⋯" (`LineDestination`; `LineDestinationButton` in the
-app) and opens the saved addresses — "The order's main address" first, naming
+sits under every line's "⋯" on the web (`LineDestination`; in the app it is a
+row of the "⋯" menu, "Where it goes", `lineAddressPicker`) and opens the saved addresses — "The order's main address" first, naming
 the address in use, then the rest, then "Add an address" — as the same menu the
 "⋯" opens (`LinePopover`, which both now draw: a sheet on a phone, a small menu
 from `sm`, the WAI-ARIA menu with `menuitemradio` rows). **Every line goes
@@ -4804,7 +4804,7 @@ nothing has to run here either.
 **It can be asked from a line of the bag, on the owner's word** ("a discount
 icon next to each individual product … applies exclusively to that row"):
 `LineDiscount` is a tag under the line's delivery button that opens the panel
-`embedded` in a sheet (the app's `LineDiscountButton`), drawn only where the
+`embedded` in a sheet (in the app a row of the line's "⋯", `linePricePicker`), drawn only where the
 seller takes requests on that variant. An agreed price is this shopper's price
 for that variant, so it lowers that line and no other, and the line says
 "Your agreed price · listed at …". **A code that takes money off one product
@@ -10805,7 +10805,9 @@ keeps its rows and its store cards: this is the app's alone.
 pages searches itself" under Browsing). On Categories and the Deals page the
 header's search row draws `PageSearchField` in place of the shop's field
 (`ShopPage`'s `pageSearch`); the Profile and Cart tabs, which have no header,
-draw it at their top. Categories answers with `CategoriesResults` (a
+draw it at their top — the cart only from five lines or with words already
+typed (`CartView.searchFrom`, on the owner's word: a short bag was pushed down
+by a field with nothing to search). Categories answers with `CategoriesResults` (a
 department opens the page on it, `categoriesOpen`), the Profile tab with
 `AccountSearchResults` over `ACCOUNT_PLACES` from `rules.json`
 (`AccountSearch`, `accountPlacesMatching` on its own cases), the cart narrows
@@ -10866,6 +10868,54 @@ changed in that frame too — the scroll's own content included; each is the
 overlay's own animation now. **A position read during a scroll is never state,
 only what it decides; and an animation goes on the view that moves**, never on
 a page.
+
+**The footer is in the safe area and solid, on the owner's word** ("content is
+bleeding through behind them"). The total and Checkout were an `.overlay` on the
+page in a 70% glass capsule 8 points above the tab bar, so the scroll view knew
+nothing of it: the lines scrolled under its glass and through the gap, and the
+page's own Checkout came back while still half under the tab bar (the footer
+left once the button's *top* was 8 points above the bar). Now it is a
+`.safeAreaInset(edge: .bottom)` — the page's end clears it — drawn on
+`Brand.ground` with a hairline and a soft shadow along its top, reaching down
+behind the tab bar, and flush on the bar's top edge, so nothing scrolling shows
+through it, the strip under it or the tab bar's glass while it is up. It shows
+while any of the page's own Checkout is under the tab bar — the button's
+*foot*, against `pageBottom`, which is measured round the inset rather than
+inside it, so it holds still while the footer comes and goes — and goes while a
+keyboard is up (`CartView.footerShown`), so the inset never holds an empty band
+over the keys. The page's own button is no longer faded while the footer is up
+(a solid footer covers it); it is only hidden from VoiceOver then, so one
+Checkout is read.
+
+**A line's name row holds the "⋯" alone, on the owner's word** ("a huge
+vertical gap"): it held three 44 × 36 buttons stacked down its end — the menu,
+the truck for where it goes and the tag for a better price — so a one-line
+name's row was about 108 points tall and the price sat far below it. Where it
+goes and a better price are rows of the "⋯" now ("Where it goes", "Ask for a
+better price" — the latter only where the seller takes requests,
+`LinePriceRequests`), their sheets the row's own (`lineAddressPicker`,
+`linePricePicker`, view modifiers in `CartParts.swift`), and what either has
+set is a badge under the name (`LineBadges`: "Going to Office", "Your agreed
+price · listed at …"), a press on it opening its sheet. The menu sizes itself to
+its rows (`sheetFit`), so Remove stays in view with seven. **The total shares a
+row with the stepper where both fit** (`PriceAndStepper`, one `Layout` that
+measures and places with one rule, never `ViewThatFits`, which would make a
+second stepper and with it a second typed box), "each" under the row, and **the
+stepper's `compact` is real now**: 36 tall, minus and plus 36 × 36 and the box
+38 × 28 (110 wide, which fits beside a total in the 205 points a 393-point
+phone leaves the line; 118 did not), where `compact: true` had changed
+nothing — the product page, the preview and Frequently bought pass it too and
+match. **The summary says Free in green for a delivery that costs nothing**
+(`SummaryCard.deliveryValue`, both of its delivery rows): grouped by store it
+printed the sum, and a whole dinar loses its decimals, so free delivery read
+"KWD 0". Its rows are Inter, not the system's `.subheadline` and `.headline`.
+The reminder card and the address pin wear `Brand.accentWash` (and
+`Brand.accentLine`), and the "nothing chosen" line `Brand.danger`, where each
+was its own RGB. **Checkout's words stay navy, the owner's choice once the figures were
+set out**: white was asked for "for crisp contrast", and white on the brand
+orange is 3.08:1 where navy is 4.65:1 (`AccentButtonStyle`). `CartUITests` holds the line's rise from its "⋯" to its
+stepper, the stepper's height, the search's absence on a one-line bag and the
+menu's rows; `CartSummaryTests` the Free rule in both languages.
 **Checkout pressed with no address opens the book and goes on once one is
 chosen**, giving up three seconds after the book closes without one. The
 stepper's minus is a bin at one, and **every line has a "⋯" beside its name**
@@ -10873,7 +10923,8 @@ stepper's minus is a bin at one, and **every line has a "⋯" beside its name**
 Save for later (into Saved, `SavedModel.save`, with Undo in the toast for a
 plain line — `AppModel.toast(_:undo:)`), Move to wishlist (the heart's
 question, `WishSheet` over a `WishTarget`, the line out only once it is on a
-list, signed in only), Share, View product and Remove. What was chosen runs in
+list, signed in only), Where it goes and Ask for a better price (each a sheet
+of the line's own), Share, View product and Remove. What was chosen runs in
 the sheet's `onDismiss`, so the wishlist's sheet is never asked for over it.
 The line carries `productId` and `deliverySpeed` now, as the web's does, and
 the recorded demo bag has both.
@@ -10885,8 +10936,7 @@ use (and a book with nothing in the area starts from the one used last,
 (`Validation.savedAddressProblem`, the web checkout's blockers in their order,
 tested), with a line-only address sent as its line. The screen has no "Deliver
 to" and no destinations, the web's rule — the cart chooses both, the line's own
-on its delivery button (`LineDestinationButton`, a sheet of the saved
-addresses under the line's "⋯") — and is a box for the driver's number only
+from its "⋯" (`lineAddressPicker`, a sheet of the saved addresses) — and is a box for the driver's number only
 when neither the address nor the account has one, each store's lines with its
 delivery and the day it arrives (`DeliveryLine.arrival` and `.slowest`, the
 web's `arrivalFor` and `slowestSpeed`), the code, the gift card and the points

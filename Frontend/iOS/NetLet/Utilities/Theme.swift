@@ -18,6 +18,8 @@ enum Brand {
     static let accentInk = Color(red: 164 / 255, green: 74 / 255, blue: 43 / 255)
     /// The pale orange an icon in the accent ink sits on (#fdf3ee).
     static let accentWash = Color(red: 253 / 255, green: 243 / 255, blue: 238 / 255)
+    /// The rim of a card on that pale orange (#f0d3c6): the bag's reminder.
+    static let accentLine = Color(red: 240 / 255, green: 211 / 255, blue: 198 / 255)
     /// The orange's words over navy, where darkening it would make it worse.
     static let accentOnDark = Color(red: 255 / 255, green: 171 / 255, blue: 133 / 255)
     static let success = Color(red: 47 / 255, green: 93 / 255, blue: 51 / 255)

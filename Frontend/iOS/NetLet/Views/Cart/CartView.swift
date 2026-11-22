@@ -15,10 +15,14 @@ import SwiftUI
 /// it, opens it or takes it out.
 struct CartView: View {
     @Binding var path: NavigationPath
+    /// The top of the tab bar, where the page's room ends. Measured round the
+    /// footer's inset rather than inside it, so it holds still while the
+    /// footer comes and goes and the two cannot chase each other.
     @State private var pageBottom: CGFloat = .infinity
-    /// Whether the page's own Checkout is below the screen, which is when the
-    /// bar floats. Only the flip is state: the button's position was, and the
-    /// whole bag was drawn again on every frame of a scroll.
+    /// Whether any of the page's own Checkout is still under the tab bar,
+    /// which is when the footer stands in for it. Only the flip is state: the
+    /// button's position was, and the whole bag was drawn again on every frame
+    /// of a scroll.
     @State private var checkoutBelow = false
     /// Checkout was pressed with no address: go on once one is chosen.
     @State private var continuing = false
@@ -32,10 +36,22 @@ struct CartView: View {
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var still
 
+    /// The bag's search, only once there is a list to search, on the owner's
+    /// word: five lines or more, or words already typed. A short bag was
+    /// pushed down by a field nobody needed.
+    static let searchFrom = 5
+
+    /// The footer's Checkout stands in for the page's own while that one is
+    /// under the tab bar, and goes while a keyboard is up, so its inset never
+    /// holds an empty band over the keys.
+    private var footerShown: Bool {
+        !(app.cart.cart?.isEmpty ?? true) && checkoutBelow && !app.keyboardUp
+    }
+
     var body: some View {
         let cart = app.cart.cart
-        let barShown = !(cart?.isEmpty ?? true) && checkoutBelow
-        // The assistant steps aside while Checkout floats in its corner.
+        let barShown = footerShown
+        // The assistant steps aside while Checkout has the foot of the page.
         ShopPage(root: true, header: false, refresh: { await app.cart.refresh() }, assistant: !barShown, viewSource: "account") {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top, spacing: 12) {
@@ -51,7 +67,7 @@ struct CartView: View {
                     CartSavedButton(path: $path)
                 }
                 Color.clear.frame(height: 20)
-                if let cart, !cart.isEmpty {
+                if let cart, !cart.isEmpty, cart.items.count >= Self.searchFrom || !term.isEmpty {
                     PageSearchField(search: PageSearch(text: $term, placeholder: "search.inCart"))
                         .padding(.bottom, 12)
                 }
@@ -85,16 +101,15 @@ struct CartView: View {
             .padding(.bottom, 48)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear { pageBottom = proxy.frame(in: .global).maxY }
-                    .onChange(of: proxy.frame(in: .global).maxY) { _, bottom in pageBottom = bottom }
-            }
-        }
-        .overlay(alignment: .bottom) {
-            // The bar's own animation, never the page's: an animation on the
-            // whole bag animated whatever else changed in that frame with it.
+        // Checkout's footer is in the safe area, not over the page, on the
+        // owner's word: an overlay the scroll view knew nothing of let the
+        // lines scroll under its 70% glass and through the 8-point gap above
+        // the tab bar. Now the page's end clears it, and it is solid ground
+        // with a hairline and a soft shadow along its top, reaching down
+        // behind the tab bar, so nothing scrolling shows through either. The
+        // footer's own animation, never the page's: an animation on the whole
+        // bag animated whatever else changed in that frame with it.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             ZStack(alignment: .bottom) {
                 if let cart, barShown {
                     bar(cart)
@@ -103,6 +118,13 @@ struct CartView: View {
                 }
             }
             .animation(still ? nil : .easeOut(duration: 0.2), value: barShown)
+        }
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { pageBottom = proxy.frame(in: .global).maxY }
+                    .onChange(of: proxy.frame(in: .global).maxY) { _, bottom in pageBottom = bottom }
+            }
         }
         .task(id: l.current) { await app.cart.refresh() }
         .task(id: app.session.isSignedIn) {
@@ -191,8 +213,8 @@ struct CartView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 253 / 255, green: 243 / 255, blue: 238 / 255)))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 240 / 255, green: 211 / 255, blue: 198 / 255), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.accentWash))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.accentLine, lineWidth: 1))
             }
             if let groups {
                 ForEach(groups) { group in
@@ -222,21 +244,11 @@ struct CartView: View {
                     .foregroundStyle(Brand.muted)
                     .fixedSize(horizontal: false, vertical: true)
                 checkoutButton(cart)
-                    .background {
-                        GeometryReader { proxy in
-                            Color.clear
-                                .onChange(of: proxy.frame(in: .global).minY > pageBottom - 8, initial: true) { _, below in
-                                    if below != checkoutBelow { checkoutBelow = below }
-                                }
-                        }
-                    }
-                    // While the floating bar stands in for it, this one is
-                    // behind the tab bar, and its orange showed through the
-                    // glass as an orange tab bar. The floating bar is the
-                    // button then, to the eye and to VoiceOver alike.
-                    .opacity(checkoutBelow ? 0 : 1)
-                    .accessibilityHidden(checkoutBelow)
-                    .animation(.easeOut(duration: 0.18), value: checkoutBelow)
+                    // While the footer stands in for it, the footer's is the
+                    // one VoiceOver reads. To the eye it needs no hiding now:
+                    // the footer is solid, so this one's orange no longer
+                    // shows through the glass as an orange tab bar.
+                    .accessibilityHidden(footerShown)
             }
             .card()
             // Under Checkout, on the owner's word: the bag and what it costs
@@ -263,18 +275,29 @@ struct CartView: View {
             }
             .buttonStyle(AccentButtonStyle())
             .opacity(count > 0 ? 1 : 0.5)
+            // Whether any of it is under the tab bar — its foot, not its top,
+            // so the footer leaves only once the whole button is in view, and
+            // the button alone, not the note under it.
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onChange(of: proxy.frame(in: .global).maxY > pageBottom, initial: true) { _, below in
+                            if below != checkoutBelow { checkoutBelow = below }
+                        }
+                }
+            }
             if count == 0 {
                 Text(l.t("order.nothingChosen"))
                     .font(.inter(12, .bold))
-                    .foregroundStyle(Color(red: 140 / 255, green: 47 / 255, blue: 34 / 255))
+                    .foregroundStyle(Brand.danger)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
             }
         }
     }
 
-    /// The total and Checkout over the tab bar while the page's own button is
-    /// still below the screen; they leave as it comes up to meet them.
+    /// All, the total and Checkout on solid ground above the tab bar while the
+    /// page's own button is under it; they leave once it has come up whole.
     private func bar(_ cart: Cart) -> some View {
         // The reference's foot: All, what the ticked lines come to, and
         // Checkout counting them.
@@ -298,9 +321,19 @@ struct CartView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(GlassCapsule())
-        .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
+        .background {
+            // Solid, and down behind the tab bar, so no line shows through
+            // the footer, the strip under it or the tab bar's glass while it
+            // is up; the shadow is the shape's own, cast up over the page.
+            Rectangle()
+                .fill(Brand.ground)
+                .shadow(color: Brand.navy.opacity(0.08), radius: 8, x: 0, y: -2)
+                .ignoresSafeArea(edges: .bottom)
+        }
+        .overlay(alignment: .top) {
+            Rectangle().fill(Brand.cardLine).frame(height: 1).allowsHitTesting(false)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("cart.bar"))
     }
@@ -440,17 +473,34 @@ private struct ParcelLine: View {
     }
 }
 
-/// One line: its photo and name (both to the product), what it is and what it
-/// costs under the name, then its trip and its stepper — the web's `BagLine`.
-/// The total sits under the name rather than at the stepper's end, because on
-/// a narrow phone the two did not fit on one line.
+/// One line: its photo and name (both to the product), what it is, what it
+/// costs and its stepper — the web's `BagLine`.
+///
+/// **The name's row holds the "⋯" and nothing else, on the owner's word.**
+/// It held three 44 × 36 buttons stacked down its end — the menu, where the
+/// line goes and a better price — so a one-line name's row was about 108
+/// points tall and the price sat far below it. Where it goes and a better
+/// price are in the menu now (`LineMenuButton`), what either has set is a badge
+/// under the name (`LineBadges`), and their sheets are this row's own.
+///
+/// **The price and the stepper share a row where both fit**
+/// (`PriceAndStepper`), the stepper at its end and 36 tall (`compact`); on a
+/// narrow phone the stepper goes under the price.
 struct CartLineRow: View {
     let item: CartItem
+    /// The line's own address sheet, asked for from its "⋯" or its badge.
+    @State private var choosingAddress = false
+    /// The better-price sheet, likewise.
+    @State private var askingPrice = false
+    /// Whether the seller takes price requests on this variant, which is when
+    /// the "⋯" offers one (`LinePriceRequests`).
+    @State private var takesRequests = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         let title = item.title(l.current)
+        let signedIn = app.session.isSignedIn
         HStack(alignment: .top, spacing: 12) {
             // In this checkout, or unticked to Saved for later (`UntickToSaved`).
             ChoiceCircle(state: item.chosen == false ? .none : .all, label: l.t("cart.chooseLine", ["name": title])) { chosen in
@@ -470,8 +520,8 @@ struct CartLineRow: View {
             .buttonStyle(.tap)
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                // The stepper's minus is a bin at one, and the menu beside the
-                // name holds the rest of what can be done with the line.
+                // The name, and the "⋯" at its end — one button, so the row
+                // is the name's height. The stepper's minus is a bin at one.
                 HStack(alignment: .top, spacing: 4) {
                     NavigationLink(value: Route.product(handle: item.productHandle)) {
                         Text(title)
@@ -482,13 +532,12 @@ struct CartLineRow: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .buttonStyle(.tap)
-                    // The menu, under it where this line goes, and a better
-                    // price for this line alone — each on the owner's word.
-                    VStack(spacing: 0) {
-                        LineMenuButton(item: item, title: title)
-                        LineDestinationButton(item: item, title: title)
-                        LineDiscountButton(item: item, title: title)
-                    }
+                    LineMenuButton(
+                        item: item,
+                        title: title,
+                        onAddress: signedIn ? { choosingAddress = true } : nil,
+                        onPrice: takesRequests ? { askingPrice = true } : nil
+                    )
                     .padding(.top, -8)
                     .padding(.trailing, -10)
                 }
@@ -501,23 +550,33 @@ struct CartLineRow: View {
                 if let bundle = item.bundleName {
                     Text(bundle).font(.inter(12)).foregroundStyle(Brand.accentInk)
                 }
-                if let destination = item.destination {
-                    Text(l.t("address.sendingTo", ["label": destination.label])).font(.inter(12)).foregroundStyle(Brand.muted)
+                // Where it goes and an agreed price, only once either is set.
+                LineBadges(
+                    item: item,
+                    title: title,
+                    changesAddress: signedIn,
+                    changesPrice: takesRequests,
+                    onAddress: { choosingAddress = true },
+                    onPrice: { askingPrice = true }
+                )
+                PriceAndStepper(gap: 8) {
+                    Text(l.price(item.lineTotal))
+                        .font(.inter(15, .heavy))
+                        .foregroundStyle(Brand.navy)
+                    stepper(title)
                 }
-                Text(l.price(item.lineTotal))
-                    .font(.inter(15, .heavy))
-                    .foregroundStyle(Brand.navy)
-                    .padding(.top, 2)
-                // What one costs, once there is more than one.
+                .padding(.top, 2)
+                // What one costs, once there is more than one — under the
+                // row, so the total alone has to fit beside the stepper.
                 if item.quantity > 1 {
                     Text(l.t("cart.each", ["price": l.price(item.unitPrice)]))
                         .font(.inter(12))
                         .foregroundStyle(Brand.muted)
                 }
-                // A price agreed with the seller, or a member's, named as what
-                // it is — never struck through, which is an advertised saving.
-                if let listed = item.agreedFrom {
-                    Text(l.t(item.priceReason == "member" ? "membership.priceFrom" : "offers.agreedFrom", ["price": l.price(listed)]))
+                // A member's price, named as what it is — never struck through,
+                // which is an advertised saving. An agreed one is a badge above.
+                if item.priceReason == "member", let listed = item.agreedFrom {
+                    Text(l.t("membership.priceFrom", ["price": l.price(listed)]))
                         .font(.inter(11, .bold))
                         .foregroundStyle(Brand.accentInk)
                 }
@@ -547,32 +606,152 @@ struct CartLineRow: View {
                 }
                 // No more than there is of it (`BagStock`), and a line asking
                 // for more than is left says so before checkout.
-                let lines = app.cart.cart?.items ?? [item]
-                QuantityStepper(
-                    quantity: item.quantity,
-                    maximum: BagStock.lineCeiling(item, in: lines),
-                    name: title,
-                    busy: app.cart.busyLine == item.lineId,
-                    compact: true,
-                    typed: true
-                ) { next in
-                    Task {
-                        // The bin at one and a typed zero ask first, on the owner's word.
-                        if next == 0 {
-                            guard await RemovalQuestion.cart(title, l) else { return }
-                            announce(l.t("cart.removedName", ["name": title]))
-                        }
-                        if !(await app.cart.setQuantity(lineId: item.lineId, to: next)) { app.toast(l.t("cart.updateFailed")) }
-                    }
-                }
-                .padding(.top, 6)
-                if let left = BagStock.shortLines(lines)[item.lineId] {
+                if let left = BagStock.shortLines(app.cart.cart?.items ?? [item])[item.lineId] {
                     Text(left == 0 ? l.t("cart.lineSoldOut") : l.t("cart.lineShort", ["count": "\(left)"]))
                         .font(.inter(12, .bold))
                         .foregroundStyle(Brand.danger)
                         .padding(.top, 4)
                 }
             }
+            .linePricePicker(item: item, title: title, open: $askingPrice)
+        }
+        .lineAddressPicker(item: item, title: title, open: $choosingAddress)
+        .task(id: item.variantId) { takesRequests = await LinePriceRequests.taken(item, app: app) }
+    }
+
+    /// The line's stepper: no more than there is of it (`BagStock`), and the
+    /// bin at one and a typed zero ask first, on the owner's word.
+    private func stepper(_ title: String) -> some View {
+        let lines = app.cart.cart?.items ?? [item]
+        return QuantityStepper(
+            quantity: item.quantity,
+            maximum: BagStock.lineCeiling(item, in: lines),
+            name: title,
+            busy: app.cart.busyLine == item.lineId,
+            compact: true,
+            typed: true
+        ) { next in
+            Task {
+                if next == 0 {
+                    guard await RemovalQuestion.cart(title, l) else { return }
+                    announce(l.t("cart.removedName", ["name": title]))
+                }
+                if !(await app.cart.setQuantity(lineId: item.lineId, to: next)) { app.toast(l.t("cart.updateFailed")) }
+            }
+        }
+    }
+}
+
+/// A line's price beside its stepper where both fit, the stepper at the
+/// row's end and the two centred on each other; where they do not — a narrow
+/// phone, a long converted price — the stepper goes under the price. One of
+/// each either way, never two copies to pick from (`ViewThatFits` would make
+/// a second stepper, and with it a second typed box), so the box keeps its
+/// focus whichever way the row is laid out. Placed by leading and trailing
+/// edges, so the Arabic page mirrors it as `FlowLayout` is mirrored.
+private struct PriceAndStepper: Layout {
+    var gap: CGFloat = 8
+    var stacked: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 2 else { return .zero }
+        let price = subviews[0].sizeThatFits(.unspecified)
+        let stepper = subviews[1].sizeThatFits(.unspecified)
+        let side = price.width + gap + stepper.width
+        let width = proposal.width ?? side
+        if fits(side, in: width) {
+            return CGSize(width: width.isFinite ? width : side, height: max(price.height, stepper.height))
+        }
+        let wrapped = subviews[0].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        return CGSize(width: width, height: wrapped.height + stacked + stepper.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        let price = subviews[0].sizeThatFits(.unspecified)
+        let stepper = subviews[1].sizeThatFits(.unspecified)
+        if fits(price.width + gap + stepper.width, in: bounds.width) {
+            let height = max(price.height, stepper.height)
+            subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.minY + (height - price.height) / 2), proposal: ProposedViewSize(price))
+            subviews[1].place(at: CGPoint(x: bounds.maxX - stepper.width, y: bounds.minY + (height - stepper.height) / 2), proposal: ProposedViewSize(stepper))
+        } else {
+            let wrapped = subviews[0].sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
+            subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.minY), proposal: ProposedViewSize(width: bounds.width, height: wrapped.height))
+            subviews[1].place(at: CGPoint(x: bounds.minX, y: bounds.minY + wrapped.height + stacked), proposal: ProposedViewSize(stepper))
+        }
+    }
+
+    /// One rule for measuring and placing, half a point of slack for a
+    /// fractional width, so the two never choose different arrangements.
+    private func fits(_ needed: CGFloat, in width: CGFloat) -> Bool {
+        needed <= width + 0.5
+    }
+}
+
+/// What a line carries of its own, as badges under its name, drawn only once
+/// it is set, on the owner's word: an address of its own ("Going to Office")
+/// and a price agreed with the seller. A press on either opens its sheet where
+/// it can be changed; a guest's address or a price the seller no longer takes
+/// requests on is the badge alone. Setting either is the line's "⋯".
+private struct LineBadges: View {
+    let item: CartItem
+    let title: String
+    let changesAddress: Bool
+    let changesPrice: Bool
+    let onAddress: () -> Void
+    let onPrice: () -> Void
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        // Any reason but a member's: a member's price is said in words below.
+        let agreed = item.priceReason == "member" ? nil : item.agreedFrom
+        if item.destination != nil || agreed != nil {
+            FlowLayout(spacing: 6) {
+                if let destination = item.destination {
+                    badge(
+                        "truck.box.fill",
+                        l.t("address.sendingTo", ["label": destination.label]),
+                        hint: l.t("address.forLine", ["name": title]),
+                        action: changesAddress ? onAddress : nil
+                    )
+                }
+                if let agreed {
+                    badge(
+                        "tag.fill",
+                        l.t("offers.agreedFrom", ["price": l.price(agreed)]),
+                        hint: l.t("offers.forLine", ["name": title]),
+                        action: changesPrice ? onPrice : nil
+                    )
+                }
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    @ViewBuilder
+    private func badge(_ symbol: String, _ text: String, hint: String, action: (() -> Void)?) -> some View {
+        let face = HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .scaleEffect(x: l.current == .ar ? -1 : 1)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.inter(12, .semibold))
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(Brand.navy)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.tint))
+        if let action {
+            Button(action: action) {
+                face.contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.tap)
+            .accessibilityHint(hint)
+        } else {
+            face
         }
     }
 }
@@ -649,7 +828,10 @@ struct SummaryCard: View {
                 row(l.t("checkout.lineCodesTitle"), "−" + l.price(off), faint: updating)
             }
             if grouped {
-                row(l.t("cart.delivery"), l.price(cart.delivery.total), faint: updating)
+                // Nothing to pay is said as Free, in green as each store's row
+                // says it — it read "KWD 0", a whole dinar losing its decimals.
+                let delivery = Self.deliveryValue(cart.delivery.total, l)
+                row(l.t("cart.delivery"), delivery.text, tone: delivery.free ? Brand.success : Brand.navy, faint: updating)
             }
             // Tax (0087), added on the goods while NetLet charges it.
             if let tax = cart.tax, !tax.amount.isZero {
@@ -663,16 +845,13 @@ struct SummaryCard: View {
             }
             ForEach(Array((grouped ? [] : cart.delivery.perVendor).enumerated()), id: \.offset) { _, line in
                 let name = line.storeName(l.current)
+                let delivery = Self.deliveryValue(line.fee, free: line.free, l)
                 VStack(alignment: .leading, spacing: 4) {
-                    row(
-                        line.label(l),
-                        line.free || line.fee.isZero ? l.t("cart.deliveryFree") : l.price(line.fee),
-                        faint: updating
-                    )
+                    row(line.label(l), delivery.text, tone: delivery.free ? Brand.success : Brand.navy, faint: updating)
                     if let toFree = line.toFree, !toFree.isZero {
                         Text(line.destinationLabel.map { l.t("address.toFreeAt", ["amount": l.price(toFree), "name": name, "label": $0]) }
                             ?? l.t("cart.deliveryToFree", ["amount": l.price(toFree), "name": name]))
-                            .font(.caption)
+                            .font(.inter(12))
                             .foregroundStyle(Brand.accentInk)
                     }
                 }
@@ -689,15 +868,30 @@ struct SummaryCard: View {
         }
     }
 
-    private func row(_ label: String, _ value: String, bold: Bool = false, faint: Bool = false) -> some View {
-        HStack {
-            Text(label).foregroundStyle(bold ? Brand.ink : Brand.muted)
-            Spacer()
-            Text(value).foregroundStyle(Brand.navy)
+    /// What a delivery reads: Free when there is nothing to pay — said as each
+    /// store's row says it, and drawn green — else its figure. Grouped by store
+    /// the summary printed the sum as it was, and a whole dinar loses its
+    /// decimals, so free delivery read "KWD 0".
+    @MainActor
+    static func deliveryValue(_ fee: Money, free: Bool = false, _ l: LanguageSettings) -> (text: String, free: Bool) {
+        let none = free || fee.isZero
+        return (none ? l.t("cart.deliveryFree") : l.price(fee), none)
+    }
+
+    /// A figure and what it is, in Inter as the rest of the bag is — it was
+    /// the system's `.subheadline` and `.headline`.
+    private func row(_ label: String, _ value: String, tone: Color = Brand.navy, bold: Bool = false, faint: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(bold ? .inter(16, .heavy) : .inter(14))
+                .foregroundStyle(bold ? Brand.ink : Brand.muted)
+            Spacer(minLength: 12)
+            Text(value)
+                .font(bold ? .inter(17, .heavy) : .inter(14, .semibold))
+                .foregroundStyle(tone)
                 .opacity(faint ? 0.5 : 1)
                 .animation(.easeOut(duration: 0.15), value: faint)
         }
-        .font(bold ? .headline.weight(.bold) : .subheadline)
     }
 }
 

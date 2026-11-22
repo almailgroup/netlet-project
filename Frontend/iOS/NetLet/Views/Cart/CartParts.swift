@@ -26,7 +26,7 @@ struct DeliveryAddressCard: View {
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(Brand.accentInk)
                 .frame(width: 40, height: 40)
-                .background(Circle().fill(Self.pale))
+                .background(Circle().fill(Brand.accentWash))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(l.t("home.deliverTo"))
@@ -72,8 +72,6 @@ struct DeliveryAddressCard: View {
         .task(id: signedIn) { await app.delivery.refresh(signedIn: signedIn) }
     }
 
-    static let pale = Color(red: 253 / 255, green: 243 / 255, blue: 238 / 255)
-
     @ViewBuilder
     private func filled(_ address: SavedAddress) -> some View {
         let name = address.contactName?.trimmingCharacters(in: .whitespaces).nilIfEmpty
@@ -114,7 +112,15 @@ struct DeliveryAddressCard: View {
 
 /// What can be done with one line of the bag, behind its "⋯", on the owner's
 /// word — the web's `LineMenu`: keep it for later, move it to a wishlist,
-/// share it, open it, or take it out.
+/// choose where it goes, ask for a better price, share it, open it, or take it
+/// out.
+///
+/// **Where it goes and a better price are in this menu, on the owner's word**:
+/// they were two more 44 × 36 buttons stacked under the "⋯" beside the name,
+/// which made the name's row about 108 points tall and pushed the price far
+/// down a one-line line. What either has set shows on the line as a badge
+/// (`LineBadges`), and the sheets are the line's own (`lineAddressPicker`,
+/// `linePricePicker`); this menu only asks for them, once it has gone down.
 ///
 /// **Save for later moves the line into Saved** — the hearts — where the cart
 /// lists it under the bag (`SavedForLaterRow`) with a way back; not a list of
@@ -132,12 +138,16 @@ struct DeliveryAddressCard: View {
 struct LineMenuButton: View {
     let item: CartItem
     let title: String
+    /// Choose where this line goes: signed in, there being a book to choose from.
+    var onAddress: (() -> Void)? = nil
+    /// Ask the seller for a better price: where the seller takes requests.
+    var onPrice: (() -> Void)? = nil
     @State private var open = false
     @State private var chosen: LineAction?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
-    enum LineAction { case later, wishlist, view, remove }
+    enum LineAction { case later, wishlist, address, price, view, remove }
 
     var body: some View {
         Button {
@@ -155,7 +165,9 @@ struct LineMenuButton: View {
             LineMenuSheet(
                 item: item,
                 title: title,
-                wishlist: item.productId != nil && app.session.isSignedIn && app.features.isOn("wishlists")
+                wishlist: item.productId != nil && app.session.isSignedIn && app.features.isOn("wishlists"),
+                address: onAddress != nil,
+                price: onPrice != nil
             ) { action in
                 chosen = action
                 open = false
@@ -200,6 +212,10 @@ struct LineMenuButton: View {
             app.wishAsking = WishTarget(productId: productId, title: title, start: .lists, onWished: {
                 Task { if !(await app.cart.setQuantity(lineId: lineId, to: 0)) { app.toast(refused) } }
             })
+        case .address:
+            onAddress?()
+        case .price:
+            onPrice?()
         case .view:
             app.push(.product(handle: item.productHandle))
         case .remove:
@@ -218,6 +234,8 @@ private struct LineMenuSheet: View {
     let item: CartItem
     let title: String
     let wishlist: Bool
+    let address: Bool
+    let price: Bool
     let choose: (LineMenuButton.LineAction) -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -250,6 +268,12 @@ private struct LineMenuSheet: View {
                     if wishlist {
                         row("gift", l.t("cart.moveToWishlist")) { choose(.wishlist) }
                     }
+                    if address {
+                        row("truck.box", l.t("address.lineShort"), mirrored: true) { choose(.address) }
+                    }
+                    if price {
+                        row("tag", l.t("offers.heading"), mirrored: true) { choose(.price) }
+                    }
                     ShareLink(item: app.services.configuration.url(path: ReferralCode.productPath(handle: item.productHandle, code: app.memberCode))) {
                         label("square.and.arrow.up", l.t("cart.shareItem"))
                     }
@@ -259,21 +283,26 @@ private struct LineMenuSheet: View {
                 }
                 .padding(.vertical, 6)
             }
+            // As tall as its rows, now that there can be seven: at the medium
+            // detent Remove from cart, the last, fell below the sheet's foot.
+            .sheetFit(initial: 460)
         }
         .background(Color.white)
-        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
 
-    private func row(_ symbol: String, _ text: String, danger: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) { label(symbol, text, danger: danger) }
+    private func row(_ symbol: String, _ text: String, danger: Bool = false, mirrored: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) { label(symbol, text, danger: danger, mirrored: mirrored) }
             .buttonStyle(PressFillStyle(cornerRadius: 0, strength: Haptics.actionStrength))
     }
 
-    private func label(_ symbol: String, _ text: String, danger: Bool = false) -> some View {
+    /// `mirrored` turns a picture that faces a way — the truck, the tag — to
+    /// face the Arabic page's way, as the line's own buttons did.
+    private func label(_ symbol: String, _ text: String, danger: Bool = false, mirrored: Bool = false) -> some View {
         HStack(spacing: 14) {
             Image(systemName: symbol)
                 .font(.system(size: 17, weight: .medium))
+                .scaleEffect(x: mirrored && l.current == .ar ? -1 : 1)
                 .frame(width: 24)
                 .accessibilityHidden(true)
             Text(text).font(.inter(15, .semibold))
@@ -286,50 +315,34 @@ private struct LineMenuSheet: View {
     }
 }
 
+/// What the address sheet chose, done once it has gone down.
+enum LineDestinationChoice: Equatable { case address(Int?), add }
+
 /// Where one line goes, on the owner's word ("add a delivery icon below the
 /// 3-dots menu for each product in the cart"): the web's `LineDestination`.
 /// Every line goes where the order goes — the address in use, the cart's first
 /// card — until it is told otherwise here; the choice is the line's own
 /// (`commerce.setDestination`, kept on the bag's line and frozen on the
-/// order's), said under its name as "Going to …". Navy while the line is going
-/// somewhere of its own. A guest has no book, so no button.
-struct LineDestinationButton: View {
+/// order's), said on the line as a "Going to …" badge (`LineBadges`). It is
+/// asked for from the line's "⋯" (where it goes) or the badge — it was a truck
+/// button of its own under the "⋯", which stretched the name's row. A guest
+/// has no book, so the menu does not offer it.
+private struct LineAddressPicker: ViewModifier {
     let item: CartItem
     let title: String
-    @State private var open = false
-    /// What the sheet chose, done once it has gone down.
-    @State private var chosen: Choice?
+    @Binding var open: Bool
+    @State private var chosen: LineDestinationChoice?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
-    enum Choice: Equatable { case address(Int?), add }
-
-    var body: some View {
-        let main = app.delivery.inUse?.id
-        let current = item.destination?.id
-        let own = current != nil && current != main
-        if app.session.isSignedIn {
-            Button {
-                open = true
-            } label: {
-                Image(systemName: own ? "truck.box.fill" : "truck.box")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(own ? Brand.navy : Brand.muted)
-                    .scaleEffect(x: l.current == .ar ? -1 : 1)
-                    .frame(width: 44, height: 36)
-                    .contentShape(Rectangle())
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $open, onDismiss: run) {
+            LineDestinationSheet(item: item, title: title) { choice in
+                chosen = choice
+                open = false
             }
-            .buttonStyle(PressFillStyle(cornerRadius: 12))
-            .accessibilityLabel(l.t("address.forLine", ["name": title]))
-            .accessibilityValue(item.destination?.label ?? l.t("address.orderAddress"))
-            .sheet(isPresented: $open, onDismiss: run) {
-                LineDestinationSheet(item: item, title: title) { choice in
-                    chosen = choice
-                    open = false
-                }
-                .environment(\.layoutDirection, l.layoutDirection)
-                .buttonStyle(HapticDefaultStyle())
-            }
+            .environment(\.layoutDirection, l.layoutDirection)
+            .buttonStyle(HapticDefaultStyle())
         }
     }
 
@@ -338,12 +351,13 @@ struct LineDestinationButton: View {
         chosen = nil
         let app = self.app
         let lineId = item.lineId
+        let refused = l.t("cart.updateFailed")
         switch choice {
         case .address(let id):
             Task {
                 if !(await app.cart.setDestination(lineId: lineId, addressId: id)) {
                     Haptics.refused()
-                    app.toast(l.t("cart.updateFailed"))
+                    app.toast(refused)
                 }
             }
         case .add:
@@ -356,58 +370,54 @@ struct LineDestinationButton: View {
 /// to each individual product … applies exclusively to that row"): the web's
 /// `LineDiscount`. It is the price request (`PriceRequestPanel`, 3.1.13) asked
 /// from the line — what the seller agrees is this shopper's price for that
-/// variant, so it lowers that line alone. Drawn only where the seller takes
-/// requests on the variant and `priceOffers` is on; navy while an agreed price
-/// is on the line. A guest is shown it and signs in once the sheet is down.
-struct LineDiscountButton: View {
+/// variant, so it lowers that line alone. Offered from the line's "⋯" only where
+/// the seller takes requests on the variant and `priceOffers` is on
+/// (`LinePriceRequests`), and from the agreed price's badge once there is one.
+/// A guest is shown it and signs in once the sheet is down.
+private struct LinePricePicker: ViewModifier {
     let item: CartItem
     let title: String
-    @State private var taken = false
-    @State private var open = false
+    @Binding var open: Bool
     @State private var signIn = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
-    var body: some View {
-        let agreed = item.priceReason == "agreed" && item.agreedFrom != nil
-        VStack(spacing: 0) {
-            if taken {
-                Button {
-                    open = true
-                } label: {
-                    Image(systemName: agreed ? "tag.fill" : "tag")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(agreed ? Brand.navy : Brand.muted)
-                        .scaleEffect(x: l.current == .ar ? -1 : 1)
-                        .frame(width: 44, height: 36)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressFillStyle(cornerRadius: 12))
-                .accessibilityLabel(l.t("offers.forLine", ["name": title]))
-                .sheet(isPresented: $open, onDismiss: {
-                    if signIn {
-                        signIn = false
-                        app.authPresented = true
-                    }
-                }) {
-                    LineDiscountSheet(item: item, title: title) {
-                        signIn = true
-                        open = false
-                    }
-                    .environment(\.layoutDirection, l.layoutDirection)
-                    .buttonStyle(HapticDefaultStyle())
-                }
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $open, onDismiss: {
+            if signIn {
+                signIn = false
+                app.authPresented = true
             }
+        }) {
+            LineDiscountSheet(item: item, title: title) {
+                signIn = true
+                open = false
+            }
+            .environment(\.layoutDirection, l.layoutDirection)
+            .buttonStyle(HapticDefaultStyle())
         }
-        .task(id: item.variantId) { await load() }
+    }
+}
+
+extension View {
+    /// The line's own address sheet, up while `open` is.
+    func lineAddressPicker(item: CartItem, title: String, open: Binding<Bool>) -> some View {
+        modifier(LineAddressPicker(item: item, title: title, open: open))
     }
 
-    private func load() async {
-        guard app.features.isOn("priceOffers"), let id = Int(item.variantId), id > 0 else {
-            taken = false
-            return
-        }
-        taken = (try? await app.services.api.call(API.priceRequestsOpen, .init(variantIds: [id])))?.contains(id) ?? false
+    /// The line's better-price sheet, up while `open` is.
+    func linePricePicker(item: CartItem, title: String, open: Binding<Bool>) -> some View {
+        modifier(LinePricePicker(item: item, title: title, open: open))
+    }
+}
+
+/// Whether the seller takes price requests on a line's variant — the one
+/// question that decides whether its "⋯" offers a better price.
+enum LinePriceRequests {
+    @MainActor
+    static func taken(_ item: CartItem, app: AppModel) async -> Bool {
+        guard app.features.isOn("priceOffers"), let id = Int(item.variantId), id > 0 else { return false }
+        return (try? await app.services.api.call(API.priceRequestsOpen, .init(variantIds: [id])))?.contains(id) ?? false
     }
 }
 
@@ -464,7 +474,7 @@ private struct LineDiscountSheet: View {
 private struct LineDestinationSheet: View {
     let item: CartItem
     let title: String
-    let choose: (LineDestinationButton.Choice) -> Void
+    let choose: (LineDestinationChoice) -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 

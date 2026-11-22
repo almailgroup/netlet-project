@@ -143,11 +143,19 @@ struct SavingBadge: View {
 /// placeholder, and what is typed is the line's quantity once the keyboard is
 /// put away (`TypedQuantity`, the web's `typedQuantity`) — nothing typed
 /// changes nothing, zero takes the line out, over the ceiling is held to it.
+///
+/// **`compact` is 36 tall** (minus and plus 36 × 36, the box 38 × 28, 110
+/// wide in all), on the owner's word, where it was 44 and the flag did
+/// nothing: a bag line sets it beside its price — in the 205 points a
+/// 393-point phone leaves the line, which 118 did not — and the product page,
+/// the preview and Frequently bought draw the same one, since the product
+/// page's stepper is the cart's.
 struct QuantityStepper: View {
     let quantity: Int
     let maximum: Int
     var name = ""
     var busy = false
+    /// The bag line's size, 36 tall; 44 otherwise.
     var compact = false
     var typed = false
     /// The minus at one is the bin and zero takes the line out — the bag's
@@ -166,7 +174,7 @@ struct QuantityStepper: View {
                 change(quantity - 1)
             } label: {
                 Image(systemName: quantity <= 1 && removes ? "trash" : "minus")
-                    .frame(width: 44, height: 44)
+                    .frame(width: press.width, height: press.height)
             }
             .buttonStyle(.action)
             .disabled(!removes && quantity <= 1)
@@ -175,13 +183,13 @@ struct QuantityStepper: View {
                 TextField("\(quantity)", text: $draft)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
-                    .font(.inter(16, .bold))
+                    .font(.inter(compact ? 15 : 16, .bold))
                     .monospacedDigit()
                     .foregroundStyle(Brand.navy)
                     .focused($typing)
-                    .frame(width: 42, height: 34)
-                    .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(typing ? Color.white : Brand.navy.opacity(0.06)))
-                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Brand.navy, lineWidth: typing ? 1.5 : 0))
+                    .frame(width: compact ? 38 : 42, height: compact ? 28 : 34)
+                    .background(RoundedRectangle(cornerRadius: compact ? 8 : 9, style: .continuous).fill(typing ? Color.white : Brand.navy.opacity(0.06)))
+                    .overlay(RoundedRectangle(cornerRadius: compact ? 8 : 9, style: .continuous).strokeBorder(Brand.navy, lineWidth: typing ? 1.5 : 0))
                     .onAppear { draft = "\(quantity)" }
                     .onChange(of: quantity) { _, next in if !typing { draft = "\(next)" } }
                     .onChange(of: draft) { _, text in
@@ -204,7 +212,7 @@ struct QuantityStepper: View {
                 if quantity >= maximum { sayStockLimit(maximum, app: app, l: l) } else { change(quantity + 1) }
             } label: {
                 Image(systemName: "plus")
-                    .frame(width: 44, height: 44)
+                    .frame(width: press.width, height: press.height)
                     // Faint at the limit, never dead: pressed, it says why.
                     .opacity(quantity >= maximum ? 0.4 : 1)
             }
@@ -215,6 +223,9 @@ struct QuantityStepper: View {
         .disabled(busy && !typing)
         .liquidGlass(.clear)
     }
+
+    /// The minus's and the plus's size.
+    private var press: CGSize { compact ? CGSize(width: 36, height: 36) : CGSize(width: 44, height: 44) }
 
     /// The typed number, once the keyboard is put away.
     private func commit() {
