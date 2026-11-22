@@ -20,8 +20,11 @@ final class OrderSelectionUITests: XCTestCase {
         ]
         app.launch()
 
-        let circle = app.buttons["Choose USB-C charger 65W"]
+        // The circle is a toggle (`.isToggle`), which XCUITest reports as a
+        // toggle rather than a button, so it is found by its name alone.
+        let circle = named(app, "Choose USB-C charger 65W")
         XCTAssertTrue(circle.waitForExistence(timeout: 20), "The order's item has no circle: \(labels(app))")
+        XCTAssertTrue(named(app, "Choose every item in this order").exists, "The order has no All circle: \(labels(app))")
         XCTAssertFalse(app.staticTexts["1 item chosen"].exists, "The bar is up before anything is chosen.")
         circle.tap()
 
@@ -47,7 +50,15 @@ final class OrderSelectionUITests: XCTestCase {
         wait(for: [gone], timeout: 4)
     }
 
+    private func named(_ app: XCUIApplication, _ label: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
+    }
+
+    /// Every named element on screen with its type, so a miss says what was there.
     private func labels(_ app: XCUIApplication) -> String {
-        app.buttons.allElementsBoundByIndex.prefix(40).map(\.label).joined(separator: " | ")
+        app.descendants(matching: .any).allElementsBoundByIndex.prefix(80)
+            .filter { !$0.label.isEmpty }
+            .map { "\($0.label) [\($0.elementType.rawValue)]" }
+            .joined(separator: " | ")
     }
 }

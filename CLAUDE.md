@@ -3846,7 +3846,10 @@ now wraps under the item's name on a narrow phone (`basis-32`, the flex rule
 below), where at 320 it had left the name no room. `OrderSelectionUITests`
 chooses the recorded order's item, checks the bar's acts, opens the tracker
 from it and clears; the CI photographs an order with every item chosen
-(`113-order-chosen`, `-NetLetOpen orderChosen:<ref>`). Walked on a production
+(`113-order-chosen`, `-NetLetOpen orderChosen:<ref>`). **A `ChoiceCircle` is
+not in `app.buttons`**: it carries `.isToggle`, which XCUITest reports as a
+toggle, so the first run of that test could not find the circle that was on
+screen; a test finds one by its label over every element type. Walked on a production
 build against a local Postgres at 320, 390 and 1440 in both languages
 (`.scratch/order-pick-walk.mjs`): one item's acts, All's, a refund or a
 cancel opening with the chosen items, the tracker's ring and moving road, the
