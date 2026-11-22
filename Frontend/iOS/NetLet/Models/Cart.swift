@@ -50,6 +50,23 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
         return next
     }
 
+    /// What this checkout saves, said once under the total: each chosen
+    /// line's own price below the shelf's (`agreedFrom` — an agreed, member or
+    /// subscriber price, per unit, so times its quantity), what the lines'
+    /// codes take off, and a member's free delivery. Every part is a figure
+    /// the server already sent and the line already shows; this only adds
+    /// them up, the way the summary says each. It is never a strikethrough
+    /// or a percentage, which are the advertised claim a permit governs.
+    var savings: Money {
+        let lines = chosenItems.reduce(0) { sum, item in
+            guard let listed = item.agreedFrom, listed.fils > item.unitPrice.fils else { return sum }
+            return sum + (listed.fils - item.unitPrice.fils) * item.quantity
+        }
+        let codes = max(0, codeDiscount?.fils ?? 0)
+        let waived = max(0, delivery.memberWaived?.fils ?? 0)
+        return Money(fils: lines + codes + waived, currencyCode: total.currencyCode)
+    }
+
     /// The plain line for a variant — no extras, no bundle — which is the one a
     /// card or a product page adds to and the one its count describes.
     func plainLine(for variantId: String) -> CartItem? {

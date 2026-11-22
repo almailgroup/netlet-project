@@ -2085,6 +2085,8 @@ export const laterEn = {
   // --- the iOS app (Frontend/iOS), where it has no web sentence to share
   "ios.error.signIn": "Sign in to do that.",
   "ios.home.earlierShelf": "NetLet can't be reached just now, so this is what it showed earlier today.",
+  "ios.cart.savingTotal": "You're saving {amount} on this order",
+  "ios.cart.savingShort": "You save {amount}",
   "ios.account.moreTitle": "Help and information",
   "ios.tutorial.skip": "Skip",
   "ios.tutorial.skipHint": "Closes the tutorial and opens the shop.",
@@ -4260,6 +4262,8 @@ export const laterAr: Record<LaterMessageKey, string> = {
   // --- the iOS app (Frontend/iOS), where it has no web sentence to share
   "ios.error.signIn": "سجّل الدخول للقيام بذلك.",
   "ios.home.earlierShelf": "تعذّر الوصول إلى نت‑لت الآن، فهذا ما عرضه في وقت سابق اليوم.",
+  "ios.cart.savingTotal": "توفّر {amount} في هذا الطلب",
+  "ios.cart.savingShort": "توفّر {amount}",
   "ios.account.moreTitle": "المساعدة والمعلومات",
   "ios.tutorial.skip": "تخطّي",
   "ios.tutorial.skipHint": "يغلق الشرح ويفتح المتجر.",

@@ -10916,6 +10916,24 @@ set out**: white was asked for "for crisp contrast", and white on the brand
 orange is 3.08:1 where navy is 4.65:1 (`AccentButtonStyle`). `CartUITests` holds the line's rise from its "⋯" to its
 stepper, the stepper's height, the search's absence on a one-line bag and the
 menu's rows; `CartSummaryTests` the Free rule in both languages.
+**Then more, on the owner's word** ("work on improving it more"). **The bag
+says what it saves**: "You're saving KWD 0.950 on this order" on a pale green
+plate under the total, and "You save …" under the footer's total
+(`Cart.savings`: each chosen line's own price below the shelf's —
+`agreedFrom`, per unit, so times its quantity — the lines' codes and a
+member's free delivery, all figures the server sent and the line already
+shows, only added up; never a strikethrough or a percentage, the advertised
+claim a permit governs). **Its figures roll** to their new digits
+(`.numericText()`, the product page's total's): a line's total, the summary,
+the footer's total and saving, Checkout's count and the title's. **A line
+going or coming fades while the bag closes up or makes room** — the bin,
+Remove, a tick to Saved, Move to cart — keyed to the lines' ids on `filled`
+alone, so a scroll, a quantity or the footer never animates the page. **An
+empty bag offers Previously viewed** under Saved for later (the home page's
+`RecentlyViewedRail`, drawn only with some history). The motion is a cut
+under Reduce Motion. `CartSummaryTests` holds the sum on the recorded bag (its
+code), an agreed price per unit and a line left out; `CartUITests` that the
+summary says it.
 **Checkout pressed with no address opens the book and goes on once one is
 chosen**, giving up three seconds after the book closes without one. The
 stepper's minus is a bin at one, and **every line has a "⋯" beside its name**

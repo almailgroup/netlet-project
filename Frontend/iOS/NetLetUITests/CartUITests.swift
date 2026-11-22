@@ -40,6 +40,11 @@ final class CartUITests: XCTestCase {
         // A one-line bag has nothing to search.
         XCTAssertFalse(app.textFields["Search your cart"].exists, "A one-line bag still draws its search field.")
 
+        // The recorded bag's RICE10 takes 0.950 off, and the summary says so once.
+        let saving = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "You're saving")).firstMatch
+        XCTAssertTrue(saving.waitForExistence(timeout: 5), "The summary does not say what the bag saves.")
+        XCTAssertTrue(saving.label.contains("0.950"), "The saving is not the code's 0.950: \(saving.label)")
+
         // And the menu offers where it goes, Remove last and in view.
         menu.tap()
         let remove = app.buttons["Remove from cart"]

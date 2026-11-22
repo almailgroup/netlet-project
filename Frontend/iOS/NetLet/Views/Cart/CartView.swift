@@ -61,6 +61,8 @@ struct CartView: View {
                             Text(l.t("cart.itemCount", ["count": "\(cart.itemCount)"]))
                                 .font(.inter(15))
                                 .foregroundStyle(Brand.body)
+                                .contentTransition(.numericText())
+                                .animation(still ? nil : .snappy(duration: 0.25), value: cart.itemCount)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -94,6 +96,12 @@ struct CartView: View {
                     ) { app.goHome() }
                     .card(padding: 0)
                     SavedForLaterRow()
+                    // An empty bag offers the way back to what was being
+                    // looked at — the home page's own Previously viewed, from
+                    // this phone's history, drawn only when there is some.
+                    // The shelf runs to the screen's edges, as on the home page.
+                    RecentlyViewedRail()
+                        .padding(.horizontal, -16)
                 }
             }
             .padding(.horizontal, 16)
@@ -219,12 +227,16 @@ struct CartView: View {
             if let groups {
                 ForEach(groups) { group in
                     CartStoreCard(group: group, path: $path)
+                        .transition(.opacity)
                 }
             } else if !lines.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(lines) { item in
-                        CartLineRow(item: item)
-                        if item.id != lines.last?.id { Divider().padding(.vertical, 12) }
+                        VStack(spacing: 0) {
+                            CartLineRow(item: item)
+                            if item.id != lines.last?.id { Divider().padding(.vertical, 12) }
+                        }
+                        .transition(.opacity)
                     }
                 }
                 .card()
@@ -258,6 +270,11 @@ struct CartView: View {
                 SavedForLaterRow(topPadding: 12)
             }
         }
+        // A line going or coming — the bin, Remove, a tick moving it to Saved,
+        // Move to cart — fades while everything under it closes up or makes
+        // room, rather than the page jumping. Keyed to the lines alone, so a
+        // scroll, a quantity or the footer never animates the bag.
+        .animation(still ? nil : .easeInOut(duration: 0.28), value: cart.items.map(\.lineId))
     }
 
     /// Checkout, counting what is ticked; with nothing ticked it is faint and
@@ -270,6 +287,8 @@ struct CartView: View {
             } label: {
                 HStack(spacing: 8) {
                     Text(l.t("cart.checkoutCount", ["count": "\(count)"]))
+                        .contentTransition(.numericText())
+                        .animation(still ? nil : .snappy(duration: 0.25), value: count)
                     Image(systemName: "arrow.forward").font(.system(size: 14, weight: .semibold))
                 }
             }
@@ -302,6 +321,7 @@ struct CartView: View {
         // The reference's foot: All, what the ticked lines come to, and
         // Checkout counting them.
         let count = cart.checkoutCount
+        let saved = cart.savings
         return HStack(spacing: 8) {
             AllChoice(cart: cart, compact: true)
             VStack(alignment: .trailing, spacing: 2) {
@@ -309,11 +329,28 @@ struct CartView: View {
                 Text(l.price(cart.total)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                    .contentTransition(.numericText())
+                    .animation(still ? nil : .snappy(duration: 0.25), value: cart.total)
                     .opacity(app.cart.syncing ? 0.5 : 1)
+                // What it saves, under what it comes to (`Cart.savings`).
+                if !saved.isZero {
+                    Text(l.t("ios.cart.savingShort", ["amount": l.price(saved)]))
+                        .font(.inter(11, .bold))
+                        .foregroundStyle(Brand.success)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                        .contentTransition(.numericText())
+                        .animation(still ? nil : .snappy(duration: 0.25), value: saved)
+                        .opacity(app.cart.syncing ? 0.5 : 1)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
-            Button(l.t("cart.checkoutCount", ["count": "\(count)"])) {
+            Button {
                 if count > 0 { goToCheckout() } else { Haptics.refused() }
+            } label: {
+                Text(l.t("cart.checkoutCount", ["count": "\(count)"]))
+                    .contentTransition(.numericText())
+                    .animation(still ? nil : .snappy(duration: 0.25), value: count)
             }
             .buttonStyle(AccentButtonStyle())
             .fixedSize()
@@ -423,8 +460,13 @@ private struct CartStoreCard: View {
             Divider().overlay(Brand.cardLine)
             VStack(spacing: 0) {
                 ForEach(group.items) { item in
-                    CartLineRow(item: item).padding(.vertical, 14)
-                    if item.id != group.items.last?.id { Divider().overlay(Brand.cardLine) }
+                    // A line taken out or moved to Saved fades as the card
+                    // closes up round it (`CartView.filled`'s animation).
+                    VStack(spacing: 0) {
+                        CartLineRow(item: item).padding(.vertical, 14)
+                        if item.id != group.items.last?.id { Divider().overlay(Brand.cardLine) }
+                    }
+                    .transition(.opacity)
                 }
             }
             .padding(.horizontal, 16)
@@ -497,6 +539,7 @@ struct CartLineRow: View {
     @State private var takesRequests = false
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         let title = item.title(l.current)
@@ -560,9 +603,12 @@ struct CartLineRow: View {
                     onPrice: { askingPrice = true }
                 )
                 PriceAndStepper(gap: 8) {
+                    // Rolls to the new figure as the stepper moves it.
                     Text(l.price(item.lineTotal))
                         .font(.inter(15, .heavy))
                         .foregroundStyle(Brand.navy)
+                        .contentTransition(.numericText())
+                        .animation(still ? nil : .snappy(duration: 0.25), value: item.lineTotal)
                     stepper(title)
                 }
                 .padding(.top, 2)
@@ -814,9 +860,11 @@ struct SummaryCard: View {
     /// answers — the web's `syncing`.
     var updating = false
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         let count = l.t("cart.itemCount", ["count": String(cart.itemCount)])
+        let saved = cart.savings
         VStack(spacing: 10) {
             Text(l.t("checkout.orderSummary"))
                 .font(.inter(17, .heavy))
@@ -865,6 +913,29 @@ struct SummaryCard: View {
                     .foregroundStyle(Brand.navy)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // What this checkout saves, once there is something to say: the
+            // lines' own prices, their codes and a member's delivery, added up
+            // (`Cart.savings`) — each already shown where it is, said once here.
+            if !saved.isZero {
+                HStack(spacing: 8) {
+                    Image(systemName: "tag.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .scaleEffect(x: l.current == .ar ? -1 : 1)
+                        .accessibilityHidden(true)
+                    Text(l.t("ios.cart.savingTotal", ["amount": l.price(saved)]))
+                        .font(.inter(13, .bold))
+                        .contentTransition(.numericText())
+                        .animation(still ? nil : .snappy(duration: 0.25), value: saved)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(Brand.success)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.successFill))
+                .opacity(updating ? 0.5 : 1)
+                .accessibilityElement(children: .combine)
+            }
         }
     }
 
@@ -886,9 +957,13 @@ struct SummaryCard: View {
                 .font(bold ? .inter(16, .heavy) : .inter(14))
                 .foregroundStyle(bold ? Brand.ink : Brand.muted)
             Spacer(minLength: 12)
+            // A figure that changes rolls to its new digits, as the product
+            // page's total does, rather than cutting.
             Text(value)
                 .font(bold ? .inter(17, .heavy) : .inter(14, .semibold))
                 .foregroundStyle(tone)
+                .contentTransition(.numericText())
+                .animation(still ? nil : .snappy(duration: 0.25), value: value)
                 .opacity(faint ? 0.5 : 1)
                 .animation(.easeOut(duration: 0.15), value: faint)
         }
