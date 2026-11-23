@@ -552,6 +552,14 @@ private struct ProductPage: View {
     /// The price and the same two buttons, over the tab bar once the page's
     /// own have gone up under the header (`StickyBuyBar`) — the same pair,
     /// a size smaller.
+    ///
+    /// **The buttons' words are never cut, on the owner's word** (a picture
+    /// of the bar reading "Add…" and "Bu…"). The name and price beside them
+    /// took an equal claim to the width, so a short name still squeezed both
+    /// buttons. The buttons are laid out first now (`layoutPriority`) at
+    /// their own width, with their icons while both fit whole and without on
+    /// a phone too narrow for that (`ViewThatFits`); the price is never cut
+    /// (`fixedSize`), and only the product's name gives way.
     private var stickyBar: some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
@@ -559,33 +567,23 @@ private struct ProductPage: View {
                 if let quote {
                     Text(l.price(quote.total)).font(.inter(16, .heavy)).foregroundStyle(Brand.navy)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .fixedSize()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if soldOut {
-                StockReminderButton(product: product, style: .bar)
-            } else {
-                HStack(spacing: 8) {
-                    Button {
-                        Task { await add(openCheckout: false) }
-                    } label: {
-                        AddToCartLabel(title: bagLine != nil ? l.t("product.viewCart") : l.t("product.addToCart"), adding: model.adding, done: added, iconSize: 13)
-                            .padding(.horizontal, 14)
-                            .frame(minHeight: 42)
+            Group {
+                if soldOut {
+                    StockReminderButton(product: product, style: .bar).fixedSize()
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        stickyButtons(icons: true, inset: 14)
+                        stickyButtons(icons: false, inset: 14)
+                        stickyButtons(icons: false, inset: 10)
                     }
-                    .buttonStyle(AddToCartStyle(done: added, size: 14))
-                    Button {
-                        Task { await add(openCheckout: true) }
-                    } label: {
-                        BuyNowLabel(title: buyLabel, iconSize: 12)
-                            .padding(.horizontal, 14)
-                            .frame(minHeight: 42)
-                    }
-                    .buttonStyle(BuyNowStyle(size: 14))
+                    .disabled(model.variant?.availableForSale != true && bagLine == nil)
                 }
-                .disabled(model.variant?.availableForSale != true && bagLine == nil)
             }
+            .layoutPriority(1)
         }
         .animation(still ? nil : .spring(duration: 0.3, bounce: 0.25), value: added)
         .padding(.leading, 18)
@@ -596,6 +594,28 @@ private struct ProductPage: View {
         .padding(.bottom, 8)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("product.buyBar", ["name": product.title]))
+    }
+
+    /// The bar's pair at one width: with or without their icons, at an inset.
+    private func stickyButtons(icons: Bool, inset: CGFloat) -> some View {
+        HStack(spacing: 8) {
+            Button {
+                Task { await add(openCheckout: false) }
+            } label: {
+                AddToCartLabel(title: bagLine != nil ? l.t("product.viewCart") : l.t("product.addToCart"), adding: model.adding, done: added, iconSize: 13, icon: icons, holdsWidth: true)
+                    .padding(.horizontal, inset)
+                    .frame(minHeight: 42)
+            }
+            .buttonStyle(AddToCartStyle(done: added, size: 14))
+            Button {
+                Task { await add(openCheckout: true) }
+            } label: {
+                BuyNowLabel(title: buyLabel, iconSize: 12, icon: icons)
+                    .padding(.horizontal, inset)
+                    .frame(minHeight: 42)
+            }
+            .buttonStyle(BuyNowStyle(size: 14))
+        }
     }
 
     // MARK: After the decision

@@ -11477,6 +11477,21 @@ the floating bar over the tab bar is the same pair a size smaller, 42 points.
 The SKU and the department are one quiet line under the store rather than two.
 The web's product page keeps its white pair (`PURCHASE_TONE`).
 
+**The floating bar says both buttons whole, on the owner's word** (a picture of
+it reading "Add…" and "Bu…"). The product's name and price beside the pair
+took an equal claim to the width (`frame(maxWidth: .infinity)` against two
+buttons whose words could shrink), so even a four-letter name squeezed both
+buttons to about 85 and 75 points where their words need about 124 and 103.
+The pair is laid out first now (`layoutPriority(1)`) at its own width, with
+its bag and bolt while both fit whole and without them on a phone too narrow
+for that (`ViewThatFits`, a smaller inset last); the price is never cut
+(`fixedSize`) and only the name gives way. Add to cart keeps its words' room
+while "Added" shows (`AddToCartLabel`'s `holdsWidth`), so the tick never
+changes the bar's layout. `BuyBarUITests` scrolls a product until the bar
+shows and checks both buttons are as wide as their words in both languages,
+inside the bar and apart. The website's phone bar was measured at 320, 375
+and 390 in both languages with nothing cut, and is as it was.
+
 **The home page is one block in the frame's lazy stack, and that is its
 scrolling, on the owner's word** ("I can't scroll, it stops"). Every shelf
 was a row of the lazy stack of its own, made as it neared the screen and

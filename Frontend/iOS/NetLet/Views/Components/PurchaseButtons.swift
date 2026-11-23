@@ -52,6 +52,13 @@ struct AddToCartLabel: View {
     var adding = false
     var done = false
     var iconSize: CGFloat = 15
+    /// Whether the bag is drawn beside the words: the floating buy bar leaves
+    /// it off on a phone too narrow for both buttons' words whole.
+    var icon = true
+    /// Whether the words keep their room while the tick shows, so the button
+    /// never changes width — the floating bar, whose layout is chosen by what
+    /// fits, would otherwise change under the tick.
+    var holdsWidth = false
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
@@ -59,20 +66,25 @@ struct AddToCartLabel: View {
             if done {
                 Label(l.t("ios.product.added"), systemImage: "checkmark")
                     .transition(.scale(scale: 0.8).combined(with: .opacity))
+                if holdsWidth { words.hidden().accessibilityHidden(true) }
             } else {
-                HStack(spacing: 7) {
-                    if adding {
-                        ProgressView().tint(.white).controlSize(.small)
-                    } else {
-                        Image(systemName: "bag").font(.system(size: iconSize, weight: .semibold))
-                    }
-                    Text(title)
-                }
-                .transition(.scale(scale: 0.8).combined(with: .opacity))
+                words
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
             }
         }
         .lineLimit(1)
         .minimumScaleFactor(0.75)
+    }
+
+    private var words: some View {
+        HStack(spacing: 7) {
+            if adding {
+                ProgressView().tint(.white).controlSize(.small)
+            } else if icon {
+                Image(systemName: "bag").font(.system(size: iconSize, weight: .semibold))
+            }
+            Text(title)
+        }
     }
 }
 
@@ -80,10 +92,12 @@ struct AddToCartLabel: View {
 struct BuyNowLabel: View {
     let title: String
     var iconSize: CGFloat = 14
+    /// Whether the bolt is drawn beside the words (`AddToCartLabel.icon`).
+    var icon = true
 
     var body: some View {
         HStack(spacing: 7) {
-            Image(systemName: "bolt.fill").font(.system(size: iconSize, weight: .semibold))
+            if icon { Image(systemName: "bolt.fill").font(.system(size: iconSize, weight: .semibold)) }
             Text(title)
         }
         .lineLimit(1)
