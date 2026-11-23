@@ -68,13 +68,17 @@ final class OrderSelectionUITests: XCTestCase {
         ]
         app.launch()
 
-        let title = app.staticTexts["USB-C charger 65W"].firstMatch
-        XCTAssertTrue(title.waitForExistence(timeout: 20), "The order's item has no name on screen: \(labels(app))")
+        // The item's own row: its circle, then its photo and its name to the
+        // circle's right on the English page. The press lands on the name,
+        // 120 points past the circle's middle, never on the circle itself.
+        let circle = named(app, "Choose USB-C charger 65W")
+        XCTAssertTrue(circle.waitForExistence(timeout: 20), "The order's item has no circle: \(labels(app))")
+        let onTheName = circle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 120, dy: 0))
         let count = app.staticTexts["1 item chosen"]
         XCTAssertFalse(count.exists, "The bar is up before anything is chosen.")
-        title.tap()
+        onTheName.tap()
         XCTAssertTrue(count.waitForExistence(timeout: 6), "A press on the item's name did not choose it: \(labels(app))")
-        title.tap()
+        onTheName.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: count)
         wait(for: [gone], timeout: 4)
     }

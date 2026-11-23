@@ -34,7 +34,26 @@ final class KeyboardUITests: XCTestCase {
 
         // The keyboard goes, and the number typed is the quantity.
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch)
-        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 6), .completed, "The keyboard stayed up after Done.")
+        if XCTWaiter().wait(for: [gone], timeout: 6) != .completed {
+            // It stayed up once in its history (iOS run for b4dbaed, 65s
+            // against its usual 29), with nothing on the product page
+            // changed; it still fails, and now says what it saw: every Done
+            // on screen, whether the box still has focus, and whether a
+            // second press puts the keyboard away.
+            let dones = app.buttons.matching(NSPredicate(format: "label == %@ OR identifier == %@", "Done", "Done")).allElementsBoundByIndex
+                .map { "\($0.frame) hittable=\($0.isHittable)" }
+            let focused = (box.value(forKey: "hasKeyboardFocus") as? Bool) ?? false
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = "keyboard stayed up after Done"
+            shot.lifetime = .keepAlways
+            add(shot)
+            done.tap()
+            let again = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.keyboards.firstMatch)
+            let second = XCTWaiter().wait(for: [again], timeout: 4) == .completed
+            print("TEST-NOTE keyboard stayed after Done: dones=\(dones) boxFocus=\(focused) value=\(box.value ?? "nil") secondPress=\(second ? "put it away" : "still up")")
+            XCTFail("The keyboard stayed up after Done.")
+            return
+        }
         let applied = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "3"), object: box)
         XCTAssertEqual(XCTWaiter().wait(for: [applied], timeout: 6), .completed, "Done put the keyboard away but the 3 typed was not applied.")
     }
