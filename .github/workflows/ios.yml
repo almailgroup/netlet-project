@@ -166,7 +166,7 @@ jobs:
           }
           for lang in en ar; do
             shot 01-home "$lang" home ""
-            shot 02-department "$lang" department:grocery ""
+            shot 02-department "$lang" department:electronics ""
             shot 03-product "$lang" product:basmati-rice-5kg ""
             shot 04-search "$lang" search:rice ""
             shot 05-sign-in "$lang" account ""

@@ -461,7 +461,8 @@ final class AppModel {
         switch parts[0] {
         case "department":
             selectedTab = .categories
-            categoriesPath = NavigationPath([Route.department(slug: value)])
+            // A department the shop does not show (Grocery, for now) is the whole shop.
+            categoriesPath = NavigationPath([Route.department(slug: ReferenceData.shared.hiddenFromShop(value) ? nil : value)])
         case "chat":
             // `chat:product-handle` opens it about that product, on its page.
             if let value {

@@ -4,8 +4,8 @@ import XCTest
 /// ("when you select a specific order, it should let you choose the product,
 /// just like in the cart page, and it should give you all the options"): a
 /// circle beside each item brings a bar of Liquid Glass over the page's foot
-/// with every act the chosen items allow — and the whole order's once every
-/// item is chosen; neither the item nor the order has a ⋯ — Track opens the
+/// with every act the chosen items allow — and the whole order's, whatever is
+/// chosen; neither the item nor the order has a ⋯ — Track opens the
 /// tracker for them, and Clear puts the bar away. The recorded order holds one delivered item that can still
 /// go back, be claimed on and be rated.
 final class OrderSelectionUITests: XCTestCase {
@@ -81,6 +81,37 @@ final class OrderSelectionUITests: XCTestCase {
         onTheName.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: count)
         wait(for: [gone], timeout: 4)
+    }
+
+    /// One item of several chosen offers the whole order's acts too, on the
+    /// owner's word ("these options should show even if one is selected; keep
+    /// as many options as there is for the user"): the owner's screenshots
+    /// had one of two items offer Track, Buy again, Help and Cancel, and both
+    /// offer eight. The recorded pending order holds a lamp (three of it) and
+    /// a kettle, neither with a driver yet, on an order that may still change
+    /// its address, its way to pay or be cancelled.
+    func testOneItemOfSeveralOffersTheOrdersActsToo() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-NetLetDemo", "YES", "-netlet.language", "en", "-NetLetUITest", "YES",
+            "-NetLetOpen", "order:NL-AS-PENDING", "-NetLetDemoAs", "pending",
+        ]
+        app.launch()
+
+        let circle = named(app, "Choose Copper Kettle")
+        XCTAssertTrue(circle.waitForExistence(timeout: 20), "The kettle has no circle: \(labels(app))")
+        XCTAssertEqual(named(app, "Choose Harbour Desk Lamp").exists, true, "The lamp has no circle: \(labels(app))")
+        circle.tap()
+        XCTAssertTrue(app.staticTexts["1 item chosen"].waitForExistence(timeout: 6), "Choosing the kettle brought no bar: \(labels(app))")
+        for act in ["Track", "Change order", "Buy again", "Address", "Payment", "Receipt", "Help", "Cancel item", "Cancel order"] {
+            XCTAssertTrue(app.buttons[act].exists, "One item chosen does not offer \(act): \(labels(app))")
+        }
+        // The kettle is one of its kind, so it has no quantity of its own to lower.
+        XCTAssertFalse(app.buttons["Quantity"].exists, "The bar offers a quantity for one of a kind.")
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "one item of two chosen"
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     private func named(_ app: XCUIApplication, _ label: String) -> XCUIElement {

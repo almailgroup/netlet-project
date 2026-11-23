@@ -10,10 +10,12 @@
  * options as well"). Chosen, an item can be tracked, returned or exchanged,
  * claimed on, lowered or cancelled before a driver has it, bought again,
  * rated and asked about; one item's act is drawn under that item
- * (`OrderLinePanel`), several over the items. With every item chosen the bar
- * also has what only the whole order can have done: the order's change form,
- * its address, its way to pay, its receipt and cancelling the order. Each
- * item had a ⋯ of its own for a while, and so did the order.
+ * (`OrderLinePanel`), several over the items. Whatever is chosen, one item
+ * included, the bar also has what only the whole order can have done: the
+ * order's change form, its address, its way to pay, its receipt and
+ * cancelling the order (on the owner's word: "keep as many options as there
+ * is"; they waited for every item to be chosen once). Each item had a ⋯ of
+ * its own for a while, and so did the order.
  *
  * **Nothing here decides.** Each action is drawn from the server's own answer
  * about this order — `cancel` (`shopperCancelState`), `change` and
@@ -25,6 +27,7 @@
  * that refuses.
  */
 import { createContext, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
   CircleX,
@@ -421,7 +424,7 @@ const PICK_LABEL: Record<SelectionAction, MessageKey> = {
   rate: "orders.pickRate",
   buyAgain: "orders.pickBuyAgain",
   help: "orders.pickHelp",
-  cancelItems: "orders.pickCancel",
+  cancelItems: "orders.pickCancelItem",
   modify: "orders.pickModify",
   address: "orders.pickAddress",
   payment: "orders.pickPayment",
@@ -472,6 +475,7 @@ function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
   const { detail, chosen, choose, open, rate } = useControls();
   const returnsOn = useFeature("returns");
   const wide = useMediaQuery("(min-width: 1024px)");
+  const eightAcross = useMediaQuery("(min-width: 640px)");
   const [buying, setBuying] = useState(false);
   const count = chosen.length;
   /* What was last on the bar, kept while it slides away. */
@@ -489,10 +493,15 @@ function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
     })),
     {
       cancelled: detail.steps.cancelled,
-      /* Every item chosen: the whole order's acts too. */
-      whole: chosenState(detail.lines.map(line => line.id), chosen) === "all"
-        ? { address: detail.changeAddress.changeable, payment: detail.paymentChange.open, cancellable: detail.cancel.cancellable }
-        : null,
+      /* The whole order's acts whatever is chosen, one item included (on the
+         owner's word); with every item chosen they stand in for the items'. */
+      whole: {
+        modifiable: detail.change.changeable && detail.lines.some(line => line.changeable),
+        address: detail.changeAddress.changeable,
+        payment: detail.paymentChange.open,
+        cancellable: detail.cancel.cancellable,
+      },
+      everyChosen: chosenState(detail.lines.map(line => line.id), chosen) === "all",
     },
   );
   const shown = useRef(offers);
@@ -571,7 +580,7 @@ function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
                   {PICK_ICON[offer.action]}
                 </span>
                 <span className="text-[12px] font-bold leading-[1.2]">
-                  {t(PICK_LABEL[offer.action])}
+                  {t(offer.action === "cancelItems" && offer.lineIds.length > 1 ? "orders.pickCancelItems" : PICK_LABEL[offer.action])}
                   {some ? <span className="font-semibold"> ({offer.lineIds.length})</span> : null}
                 </span>
               </button>
@@ -596,9 +605,17 @@ function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
   }
   return (
     <>
-      {/* Room under the last item, so the bar never covers it — two rows of
-          options when there are more than four. */}
-      {count > 0 ? <div aria-hidden className={shown.current.length > 4 ? "h-44 sm:h-24" : "h-24"} /> : null}
+      {/* Room at the page's foot while the bar is up, so whatever is under it
+          — this order's last item, or the orders listed after it — can be
+          scrolled clear: about 80px a row of options, four to a row on a phone
+          and eight from `sm`. At the foot of `<main>` rather than under this
+          order, where the orders after it were left under the bar. */}
+      {count > 0 && typeof document !== "undefined"
+        ? createPortal(
+            <div aria-hidden style={{ height: 16 + 80 * Math.ceil(shown.current.length / (eightAcross ? 8 : 4)) }} />,
+            document.getElementById("main") ?? document.body,
+          )
+        : null}
       <PhoneActionBar shown={count > 0} label={t("orders.chosenBar")} glass>{body}</PhoneActionBar>
     </>
   );

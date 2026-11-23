@@ -12,8 +12,12 @@ import Foundation
 /// **The bar is the one way in, on the owner's word** ("remove all these 3
 /// dot buttons; instead put their options here — when you select all, it
 /// should show you all the options, and when you select individually, it
-/// should show you the options as well"): with every item chosen it also
-/// offers what only the whole order can have done (`Whole`).
+/// should show you the options as well"). It also offers what only the whole
+/// order can have done (`Whole`) — whatever is chosen, one item included, on
+/// the owner's word ("these options should show even if one is selected; keep
+/// as many options as there is for the user"). Only with every item chosen do
+/// the order's acts stand in for the items' (the change form for the
+/// quantity, cancelling the order for cancelling them all).
 enum OrderSelection {
     /// One chosen item, as the page already knows it.
     struct Line: Equatable, Sendable {
@@ -35,15 +39,16 @@ enum OrderSelection {
     /// The acts in the bar's order — the cancel last, apart. `return` is one
     /// item's own form (refund or exchange); `refund` is one refund across
     /// several. `modify`, `address`, `payment`, `receipt` and `cancelOrder`
-    /// are the whole order's, offered only while every item is chosen:
-    /// `modify` stands in for `quantity`, `cancelOrder` for `cancelItems`.
+    /// are the whole order's, offered whatever is chosen; with every item
+    /// chosen `modify` stands in for `quantity`, `cancelOrder` for `cancelItems`.
     enum Action: String, CaseIterable, Sendable {
         case track, `return`, refund, warranty, quantity, modify, rate, buyAgain, address, payment, receipt, help, cancelItems, cancelOrder
     }
 
-    /// What the whole order allows now, from the server's answer — given only
-    /// while every item is chosen.
+    /// What the whole order allows now, from the server's answer.
     struct Whole: Equatable, Sendable {
+        /// The order's change form has something it may still change.
+        var modifiable = false
         /// The delivery address can still move.
         var address = false
         /// The way to pay can still change.
@@ -58,8 +63,9 @@ enum OrderSelection {
         let lineIds: [Int]
     }
 
-    static func offers(_ chosen: [Line], cancelled: Bool, whole: Whole? = nil) -> [Offer] {
+    static func offers(_ chosen: [Line], cancelled: Bool, whole: Whole? = nil, everyChosen: Bool = false) -> [Offer] {
         guard !chosen.isEmpty else { return [] }
+        let all = whole != nil && everyChosen
         let every = chosen.map(\.id)
         var offers: [Offer] = []
         func add(_ action: Action, _ test: (Line) -> Bool) {
@@ -72,11 +78,8 @@ enum OrderSelection {
         if !cancelled { add(.track) { $0.fulfilment != "cancelled" } }
         add(chosen.count == 1 ? .return : .refund) { $0.returnable }
         add(.warranty) { $0.warranty }
-        if whole != nil {
-            add(.modify) { $0.changeable }
-        } else {
-            add(.quantity) { $0.changeable && $0.quantity > 1 }
-        }
+        if !all { add(.quantity) { $0.changeable && $0.quantity > 1 } }
+        if let whole { addWhole(.modify, whole.modifiable) }
         add(.rate) { $0.rateable }
         add(.buyAgain) { $0.rebuyable }
         if let whole {
@@ -85,11 +88,10 @@ enum OrderSelection {
             addWhole(.receipt, true)
         }
         add(.help) { _ in true }
-        if whole?.cancellable == true {
-            addWhole(.cancelOrder, true)
-        } else {
-            add(.cancelItems) { $0.changeable }
-        }
+        // The chosen items that may be cancelled, and the order itself when it
+        // may be cancelled whole — with every item chosen, the same act.
+        if !(all && whole?.cancellable == true) { add(.cancelItems) { $0.changeable } }
+        if whole?.cancellable == true { addWhole(.cancelOrder, true) }
         return offers
     }
 
@@ -103,6 +105,24 @@ enum OrderSelection {
     static func firstToRate(_ lines: [(id: Int, reviewed: Bool)], among lineIds: [Int]) -> Int? {
         let among = lines.filter { lineIds.contains($0.id) }
         return (among.first { !$0.reviewed } ?? among.first)?.id
+    }
+
+    /// What the bar offers for this choice on this order — the rule over the
+    /// server's answer, every item's facts and the whole order's.
+    @MainActor
+    static func offers(_ detail: OrderDetail, chosen: Set<Int>, returnsOn: Bool) -> [Offer] {
+        let whole = Whole(
+            modifiable: detail.mayModify,
+            address: detail.changeAddress.changeable,
+            payment: detail.paymentChange.open,
+            cancellable: detail.cancel.cancellable
+        )
+        return offers(
+            lines(detail, chosen: chosen, returnsOn: returnsOn),
+            cancelled: detail.steps?.cancelled ?? false,
+            whole: whole,
+            everyChosen: state(all: detail.lines.map(\.id), chosen: chosen) == .all
+        )
     }
 
     /// The facts the rule reads, from the server's answer about the order.

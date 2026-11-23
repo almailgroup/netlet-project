@@ -753,11 +753,8 @@ struct ChosenItemsBar: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        let lines = OrderSelection.lines(detail, chosen: chosen, returnsOn: app.features.isOn("returns"))
-        // Every item chosen: the whole order's acts too.
-        let every = OrderSelection.state(all: detail.lines.map(\.id), chosen: chosen) == .all
-        let whole = every ? OrderSelection.Whole(address: detail.changeAddress.changeable, payment: detail.paymentChange.open, cancellable: detail.cancel.cancellable) : nil
-        let offers = OrderSelection.offers(lines, cancelled: detail.steps?.cancelled ?? false, whole: whole)
+        // The items' acts and the whole order's, whatever is chosen.
+        let offers = OrderSelection.offers(detail, chosen: chosen, returnsOn: app.features.isOn("returns"))
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(l.t("orders.chosenCount", ["count": "\(chosen.count)"]))
@@ -818,7 +815,7 @@ struct ChosenItemsBar: View {
                     .frame(width: 44, height: 44)
                     .liquidGlass(danger ? .danger : .frost, in: Circle())
                     .accessibilityHidden(true)
-                Text(l.t(Self.key(offer.action)) + (some ? " (\(offer.lineIds.count))" : ""))
+                Text(l.t(Self.key(offer)) + (some ? " (\(offer.lineIds.count))" : ""))
                     .font(.inter(12, .bold))
                     .foregroundStyle(danger ? Brand.dangerOnGlass : Brand.navy)
                     .multilineTextAlignment(.center)
@@ -850,7 +847,12 @@ struct ChosenItemsBar: View {
         }
     }
 
-    /// Each act's word on the bar — short, for a row of them.
+    /// Each act's word on the bar — short, for a row of them. Cancelling
+    /// the chosen items says item or items, beside cancelling the order.
+    static func key(_ offer: OrderSelection.Offer) -> String {
+        offer.action == .cancelItems && offer.lineIds.count > 1 ? "orders.pickCancelItems" : key(offer.action)
+    }
+
     static func key(_ action: OrderSelection.Action) -> String {
         switch action {
         case .track: return "orders.pickTrack"
@@ -861,7 +863,7 @@ struct ChosenItemsBar: View {
         case .rate: return "orders.pickRate"
         case .buyAgain: return "orders.pickBuyAgain"
         case .help: return "orders.pickHelp"
-        case .cancelItems: return "orders.pickCancel"
+        case .cancelItems: return "orders.pickCancelItem"
         case .modify: return "orders.pickModify"
         case .address: return "orders.pickAddress"
         case .payment: return "orders.pickPayment"

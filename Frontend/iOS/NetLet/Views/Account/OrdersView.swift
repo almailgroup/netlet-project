@@ -515,8 +515,8 @@ struct OrderDetailView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 // Room under the last card while the bar of the chosen items is
-                // up — two rows of options when every item is chosen.
-                .padding(.bottom, chosen.isEmpty ? 48 : 260)
+                // up: its head and about 91 points a row of four options.
+                .padding(.bottom, chosen.isEmpty ? 48 : barRoom(model.detail.value))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .overlay(alignment: .bottom) {
@@ -542,6 +542,14 @@ struct OrderDetailView: View {
         }
     }
 
+    /// The room the bar of the chosen items needs under the last card: its
+    /// head and about 91 points for each row of four options it holds.
+    private func barRoom(_ detail: OrderDetail?) -> CGFloat {
+        guard let detail else { return 260 }
+        let count = OrderSelection.offers(detail, chosen: chosen, returnsOn: app.features.isOn("returns")).count
+        return 96 + 91 * CGFloat(max(1, (count + 3) / 4))
+    }
+
     /// The receipt, made and shown; a toast if it could not be drawn.
     private func makeReceipt(_ detail: OrderDetail) {
         Task {
@@ -565,7 +573,7 @@ struct OrderDetailView: View {
         case .warranty: open(.warranty)
         case .quantity: open(.modify)
         case .cancelItems: open(.modify, remove: true)
-        // The whole order's, with every item chosen.
+        // The whole order's, whatever is chosen.
         case .modify: sheet = OrderSheet(kind: .modify)
         case .address: sheet = OrderSheet(kind: .address)
         case .payment: sheet = OrderSheet(kind: .payment)

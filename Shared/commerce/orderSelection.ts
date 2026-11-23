@@ -9,9 +9,20 @@
  * dot buttons; instead put their options here — when you select all, it
  * should show you all the options, and when you select individually, it
  * should show you the options as well"). Each item had a ⋯, and so did the
- * order; with every item chosen the bar also offers what only the whole order
- * can have done (`WholeOrder`): change the order, its address or its way to
- * pay, its receipt, and cancelling the order itself.
+ * order. The bar also offers what only the whole order can have done
+ * (`WholeOrder`): change the order, its address or its way to pay, its
+ * receipt, and cancelling the order itself.
+ *
+ * **Those are offered whatever is chosen, one item included, on the owner's
+ * word** ("these options should show even if one is selected; keep as many
+ * options as there is for the user"). They waited for every item to be
+ * chosen, so choosing one item of two offered Track, Buy again, Help and
+ * Cancel, and choosing both offered eight. With one item chosen of several,
+ * the bar offers both that item's acts and the order's: its quantity and the
+ * order's change form, cancelling the item and cancelling the order. Only
+ * with every item chosen do the order's stand in for the items' — the order's
+ * change form for the quantity, cancelling the order for cancelling them all —
+ * since there they would do the same.
  *
  * Pure, and the app's `OrderSelection` is the same rule on the same cases, so
  * a choice offers the same acts on both. **It decides nothing the server does
@@ -45,9 +56,9 @@ export type ChosenLine = {
  * - `return`: one item, its return or exchange form.
  * - `refund`: several, one refund asked across the ones that can go back.
  * - `modify`, `address`, `payment`, `receipt`, `cancelOrder`: the whole
- *   order's, offered only while every item is chosen (`WholeOrder`).
- *   `modify` is the order's change form, standing in for `quantity`;
- *   `cancelOrder` cancels the order itself, standing in for `cancelItems`.
+ *   order's (`WholeOrder`), offered whatever is chosen. `modify` is the
+ *   order's change form and `cancelOrder` cancels the order itself; with
+ *   every item chosen they stand in for `quantity` and `cancelItems`.
  */
 export const SELECTION_ACTIONS = [
   "track", "return", "refund", "warranty", "quantity", "modify", "rate", "buyAgain",
@@ -58,11 +69,10 @@ export type SelectionAction = (typeof SELECTION_ACTIONS)[number];
 /** An act and the chosen items it is about — some of them, or all. */
 export type SelectionOffer = { action: SelectionAction; lineIds: number[] };
 
-/**
- * What the whole order allows now, from the server's own answer on
- * `orders.get` — given only while every item is chosen.
- */
+/** What the whole order allows now, from the server's own answer on `orders.get`. */
 export type WholeOrder = {
+  /** The order's change form has something it may still change (`change.changeable` and a line that may). */
+  modifiable: boolean;
   /** The delivery address can still move (`changeAddress.changeable`). */
   address: boolean;
   /** The way to pay can still change (`paymentChange.open`). */
@@ -71,9 +81,19 @@ export type WholeOrder = {
   cancellable: boolean;
 };
 
-export function selectionOffers(chosen: readonly ChosenLine[], order: { cancelled: boolean; whole?: WholeOrder | null }): SelectionOffer[] {
+export function selectionOffers(
+  chosen: readonly ChosenLine[],
+  order: {
+    cancelled: boolean;
+    /** The order's own facts; without them only the items' acts are offered. */
+    whole?: WholeOrder | null;
+    /** Every item of the order is chosen, so the order's acts stand in for the items'. */
+    everyChosen?: boolean;
+  },
+): SelectionOffer[] {
   if (chosen.length === 0) return [];
   const whole = order.whole ?? null;
+  const all = Boolean(whole && order.everyChosen);
   const every = chosen.map(line => line.id);
   const offers: SelectionOffer[] = [];
   const add = (action: SelectionAction, test: (line: ChosenLine) => boolean) => {
@@ -89,9 +109,10 @@ export function selectionOffers(chosen: readonly ChosenLine[], order: { cancelle
   add(chosen.length === 1 ? "return" : "refund", line => line.returnable);
   add("warranty", line => line.warranty);
   /* Lowering a quantity needs more than one of it; the whole order's change
-     form lowers or takes out any item that may still change. */
-  if (whole) add("modify", line => line.changeable);
-  else add("quantity", line => line.changeable && line.quantity > 1);
+     form lowers or takes out any item that may still change, and stands in
+     for it once every item is chosen. */
+  if (!all) add("quantity", line => line.changeable && line.quantity > 1);
+  if (whole) addWhole("modify", whole.modifiable);
   add("rate", line => line.rateable);
   add("buyAgain", line => line.rebuyable);
   if (whole) {
@@ -102,9 +123,10 @@ export function selectionOffers(chosen: readonly ChosenLine[], order: { cancelle
   }
   /* Help is always there: about the one item, or about the order. */
   add("help", () => true);
-  /* The order itself when it may be cancelled whole, else the items that may. */
+  /* The chosen items that may be cancelled, and the order itself when it may
+     be cancelled whole — which, with every item chosen, is the same act. */
+  if (!(all && whole?.cancellable)) add("cancelItems", line => line.changeable);
   if (whole?.cancellable) addWhole("cancelOrder", true);
-  else add("cancelItems", line => line.changeable);
   return offers;
 }
 

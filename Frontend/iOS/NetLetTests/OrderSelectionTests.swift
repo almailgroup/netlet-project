@@ -50,34 +50,67 @@ final class OrderSelectionTests: XCTestCase {
         XCTAssertEqual(actions([OrderSelection.Line(id: 5)], cancelled: true), ["buyAgain", "help"])
     }
 
-    private func wholeActions(_ chosen: [OrderSelection.Line], _ whole: OrderSelection.Whole = .init(), cancelled: Bool = false) -> [String] {
-        OrderSelection.offers(chosen, cancelled: cancelled, whole: whole).map(\.action.rawValue)
+    private func wholeActions(_ chosen: [OrderSelection.Line], _ whole: OrderSelection.Whole = .init(), every: Bool = true, cancelled: Bool = false) -> [String] {
+        OrderSelection.offers(chosen, cancelled: cancelled, whole: whole, everyChosen: every).map(\.action.rawValue)
     }
+
+    private let open = OrderSelection.Whole(modifiable: true, address: true, payment: true, cancellable: true)
 
     func testEveryItemChosenAddsTheOrdersOwnActsAndCancelsTheOrderItself() {
         XCTAssertEqual(
-            wholeActions([waiting, single], .init(address: true, payment: true, cancellable: true)),
+            wholeActions([waiting, single], open),
             ["track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelOrder"]
         )
     }
 
-    func testEveryItemChosenOffersOnlyWhatTheOrderAllowsTheReceiptAlways() {
+    /// The owner's screenshots: one item of an unpaid order of two offered
+    /// Track, Buy again, Help and Cancel, and both offered eight.
+    func testOneChosenItemOfSeveralIsOfferedTheOrdersActsTooAndBothCancels() {
+        XCTAssertEqual(
+            wholeActions([single], open, every: false),
+            ["track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems", "cancelOrder"]
+        )
+        XCTAssertEqual(
+            wholeActions([waiting], open, every: false),
+            ["track", "quantity", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems", "cancelOrder"]
+        )
+        let one = Set(wholeActions([single], open, every: false))
+        for action in wholeActions([waiting, single], open) {
+            XCTAssertTrue(one.contains(action) || action == "cancelOrder", action)
+        }
+    }
+
+    func testTheOrdersActsAreAboutEverythingChosenTheItemsAboutTheItem() {
+        let offers = OrderSelection.offers([waiting], cancelled: false, whole: open, everyChosen: false)
+        let about = Dictionary(uniqueKeysWithValues: offers.map { ($0.action.rawValue, $0.lineIds) })
+        XCTAssertEqual(about["cancelItems"], [1])
+        XCTAssertEqual(about["cancelOrder"], [1])
+        XCTAssertEqual(about["modify"], [1])
+    }
+
+    func testOnlyWhatTheOrderAllowsIsOfferedTheReceiptAlways() {
         XCTAssertEqual(wholeActions([arrived]), ["track", "return", "warranty", "rate", "buyAgain", "receipt", "help"])
+        XCTAssertEqual(wholeActions([arrived], every: false), ["track", "return", "warranty", "rate", "buyAgain", "receipt", "help"])
         XCTAssertEqual(wholeActions([gone], cancelled: true), ["receipt", "help"])
+    }
+
+    func testTheOrdersChangeFormIsOfferedWhileAnyItemOfTheOrderMayChange() {
+        XCTAssertTrue(wholeActions([arrived], .init(modifiable: true), every: false).contains("modify"))
+        XCTAssertFalse(wholeActions([arrived], .init(modifiable: false), every: false).contains("modify"))
     }
 
     func testEveryItemChosenCancelsTheItemsThatMayWhenTheOrderCannotBeCancelledWhole() {
         XCTAssertEqual(
-            wholeActions([waiting, arrived], .init(address: true)),
+            wholeActions([waiting, arrived], .init(modifiable: true, address: true)),
             ["track", "refund", "warranty", "modify", "rate", "buyAgain", "address", "receipt", "help", "cancelItems"]
         )
-        let offers = OrderSelection.offers([waiting, arrived], cancelled: false, whole: .init())
+        let offers = OrderSelection.offers([waiting, arrived], cancelled: false, whole: .init(modifiable: true), everyChosen: true)
         XCTAssertEqual(offers.first { $0.action == .cancelItems }?.lineIds, [1])
-        XCTAssertEqual(offers.first { $0.action == .modify }?.lineIds, [1])
+        XCTAssertEqual(offers.first { $0.action == .modify }?.lineIds, [1, 3])
         XCTAssertEqual(offers.first { $0.action == .receipt }?.lineIds, [1, 3])
     }
 
-    func testTheOrdersActsWaitUntilEveryItemIsChosen() {
+    func testOnlyTheItemsActsWithoutTheOrdersFacts() {
         XCTAssertEqual(actions([waiting, single]), ["track", "quantity", "buyAgain", "help", "cancelItems"])
         XCTAssertFalse(actions([waiting, single]).contains("receipt"))
     }

@@ -57,38 +57,70 @@ describe("what the chosen items of an order offer", () => {
   });
 });
 
-describe("what every item chosen offers: the whole order's acts too", () => {
-  const whole = (facts: Partial<{ address: boolean; payment: boolean; cancellable: boolean }> = {}) => ({
+describe("the whole order's acts, whatever is chosen", () => {
+  const whole = (facts: Partial<{ modifiable: boolean; address: boolean; payment: boolean; cancellable: boolean }> = {}) => ({
+    modifiable: false,
     address: false,
     payment: false,
     cancellable: false,
     ...facts,
   });
-  const wholeActions = (chosen: ChosenLine[], facts = {}, cancelled = false) =>
-    selectionOffers(chosen, { cancelled, whole: whole(facts) }).map(offer => offer.action);
+  const open = { modifiable: true, address: true, payment: true, cancellable: true };
+  const wholeActions = (chosen: ChosenLine[], facts = {}, everyChosen = true, cancelled = false) =>
+    selectionOffers(chosen, { cancelled, whole: whole(facts), everyChosen }).map(offer => offer.action);
 
-  it("adds the order's change form, address, way to pay and receipt, and cancels the order itself", () => {
-    expect(wholeActions([waiting, single], { address: true, payment: true, cancellable: true })).toEqual([
+  it("with every item chosen, the order's change form, address, way to pay and receipt, and cancels the order itself", () => {
+    expect(wholeActions([waiting, single], open)).toEqual([
       "track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelOrder",
     ]);
   });
 
+  /* The owner's screenshots: an unpaid order of two, nothing with a driver.
+     One chosen offered Track, Buy again, Help and Cancel; both offered eight. */
+  it("offers one chosen item of several the order's acts too, and both cancels", () => {
+    expect(wholeActions([single], open, false)).toEqual([
+      "track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems", "cancelOrder",
+    ]);
+    /* Its own quantity beside the order's change form, when there is more than one of it. */
+    expect(wholeActions([waiting], open, false)).toEqual([
+      "track", "quantity", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems", "cancelOrder",
+    ]);
+    /* Never fewer than with every item chosen. */
+    const one = new Set(wholeActions([single], open, false));
+    for (const action of wholeActions([waiting, single], open)) expect(one.has(action) || action === "cancelOrder").toBe(true);
+  });
+
+  it("says the order's acts are about everything chosen, the item's about the item", () => {
+    const offers = selectionOffers([waiting], { cancelled: false, whole: whole(open), everyChosen: false });
+    const about = Object.fromEntries(offers.map(offer => [offer.action, offer.lineIds]));
+    expect(about.cancelItems).toEqual([1]);
+    expect(about.cancelOrder).toEqual([1]);
+    expect(about.modify).toEqual([1]);
+  });
+
   it("offers only what the order allows now, the receipt always", () => {
     expect(wholeActions([arrived])).toEqual(["track", "return", "warranty", "rate", "buyAgain", "receipt", "help"]);
-    expect(wholeActions([gone], {}, true)).toEqual(["receipt", "help"]);
+    expect(wholeActions([arrived], {}, false)).toEqual(["track", "return", "warranty", "rate", "buyAgain", "receipt", "help"]);
+    expect(wholeActions([gone], {}, true, true)).toEqual(["receipt", "help"]);
+  });
+
+  it("offers the order's change form while any item of the order may change, the chosen one or not", () => {
+    /* A delivered item chosen on an order whose other item may still change. */
+    expect(wholeActions([arrived], { modifiable: true }, false)).toContain("modify");
+    expect(wholeActions([arrived], { modifiable: false }, false)).not.toContain("modify");
   });
 
   it("cancels the items that may change when the order cannot be cancelled whole", () => {
-    expect(wholeActions([waiting, arrived], { address: true })).toEqual([
+    expect(wholeActions([waiting, arrived], { modifiable: true, address: true })).toEqual([
       "track", "refund", "warranty", "modify", "rate", "buyAgain", "address", "receipt", "help", "cancelItems",
     ]);
-    const offers = selectionOffers([waiting, arrived], { cancelled: false, whole: whole() });
+    const offers = selectionOffers([waiting, arrived], { cancelled: false, whole: whole({ modifiable: true }), everyChosen: true });
     expect(offers.find(offer => offer.action === "cancelItems")?.lineIds).toEqual([1]);
-    expect(offers.find(offer => offer.action === "modify")?.lineIds).toEqual([1]);
+    expect(offers.find(offer => offer.action === "modify")?.lineIds).toEqual([1, 3]);
     expect(offers.find(offer => offer.action === "receipt")?.lineIds).toEqual([1, 3]);
   });
 
-  it("keeps the order's acts off the bar until every item is chosen", () => {
+  it("offers the items' acts alone when the order's facts are not given", () => {
     expect(actions([waiting, single])).toEqual(["track", "quantity", "buyAgain", "help", "cancelItems"]);
     expect(actions([waiting, single])).not.toContain("receipt");
   });

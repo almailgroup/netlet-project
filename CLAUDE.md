@@ -3511,7 +3511,7 @@ hold none on the road.
 ("an export to PDF option that will show all the details of your order in
 the form of a receipt"): "Download receipt (PDF)" under the order, above its
 invoice (the card is "Receipt and invoice" now), and as Receipt on the bar
-of the chosen items once every item is chosen, on both platforms. It carries the order's number, when it was placed, where it is,
+of the chosen items whatever is chosen, on both platforms. It carries the order's number, when it was placed, where it is,
 how it is paid, where it goes (the name, the number, the address, the
 governorate, the notes), each item with its option, its store, the quantity
 at its price, its own code or that it was cancelled or returned, then the
@@ -3720,14 +3720,31 @@ track it (its own parcel), return or exchange it, claim its warranty, change
 its quantity or cancel it before a driver has it, rate it or edit the review,
 buy it again, and get help with it; what that opens is drawn under the item
 (`OrderLinePanel`) or, in the app, a sheet about that item alone (`OrderSheet`
-with its `lineId`). **What is about the whole order is the bar's too, once
-every item is chosen** — the All circle beside "In this order" does it in one
-press — on the owner's word ("remove all these 3 dot buttons; instead put
-their options here — when you select all, it should show you all the
-options"): the order's change form (Change order), its delivery address, its
-way to pay, its receipt, and Cancel order, behind its question, in place of
-cancelling the items (`WholeOrder` in `orderSelection.ts`; the order had its
-own ⋯ of those until then). A quiet line under "In this order" says to choose
+with its `lineId`). **What is about the whole order is the bar's too** —
+the order's change form (Change order), its delivery address, its way to pay,
+its receipt, and Cancel order, behind its question (`WholeOrder` in
+`orderSelection.ts`; the order had its own ⋯ of those until then), on the
+owner's word ("remove all these 3 dot buttons; instead put their options
+here"). **They are offered whatever is chosen, one item included, on the
+owner's word** ("when one product is selected the options shown are limited,
+but when 2 are selected it shows many options … these options should show
+even if one is selected; keep as many options as there is for the user"):
+they waited for every item to be chosen, so one item of an unpaid order of two
+offered Track, Buy again, Help and Cancel, and both offered eight. Now one
+item of several offers its own acts and the order's together — its Quantity
+beside Change order, **Cancel item** beside **Cancel order** (the item's
+cancel is named so, "Cancel items" for several, `orders.pickCancelItem(s)`,
+since a bare "Cancel" beside "Cancel order" said nothing) — nine on that
+order, in rows of four. Only with every item chosen do the order's stand in
+for the items' (`everyChosen`): Change order for Quantity, Cancel order for
+cancelling them all, since there they would do the same; the All circle beside
+"In this order" chooses them all in one press. Change order is offered while
+any item of the order may change, the chosen one or not (`modifiable`, the
+change form being the order's). **The room the bar needs is at the page's
+foot** (portalled to the end of `<main>`, about 80px a row): it sat under the
+opened order, and the orders listed after it could not be scrolled clear of
+the bar. The app's order is a page of its own and keeps the room under its
+last card (`barRoom`, about 91 points a row). A quiet line under "In this order" says to choose
 items while none is (`orders.chooseHint`). An item's review and its return's state stay on the item, being what is
 true rather than something to do. **Nothing on the page decides**: each button is drawn from the server's own answer on `orders.get` —
 `cancel`, `change`, `changeAddress`, each line's `returnState`,
@@ -3847,7 +3864,7 @@ whether it can still change, whether it is still for sale — and answers, in
 the bar's order, Track, Return (one item: its own form, refund or exchange)
 or Refund (several: one refund across the ones that can go back), Warranty,
 Quantity (an item of more than one, before a driver has it), Rate, Buy again,
-Help and Cancel (last, in red), each with how many of the chosen it is about
+Help and Cancel item (last, in red), each with how many of the chosen it is about
 when that is not all of them ("Refund (1)"). **One item's act opens about
 that item** — under it on the web, its sheet in the app — and several open
 over the items with only those (the tracker narrowed to their parcels, the
@@ -3941,7 +3958,7 @@ hands the order over in one step**.
   online, with something still coming that has not arrived. `paymentChangeState`
   is that window now (it was the cancel window), on `orders.get` as
   `paymentChange`, with `live` (the `testPayments` switch on and the tables
-  pasted) and `paidOnline`. Live, the bar's Payment, with every item chosen,
+  pasted) and `paidOnline`. Live, the bar's Payment,
   (`OrderPayment` on the web, `OrderPaymentSheet` in the app) marks KNET, a
   card and Apple Pay "Test" and says before the press that the page takes no
   money; Pay opens it. Not live, it is the mockup it was: the ways drawn as
@@ -11337,7 +11354,7 @@ the logo row and the cart's title opens Saved items with the hearts counted.
 **The after-sales centre is the app's too, sheet for sheet**
 (`OrderActionsBar`, `Views/Account/OrderAfterSales.swift`), behind the bar of
 the chosen items (`ChosenItemsBar`, the same sheets scoped to one item by
-`OrderSheet.lineId`, the whole order's with every item chosen; cancelling
+`OrderSheet.lineId`, the whole order's whatever is chosen; cancelling
 items opens the change at none, `remove`, and Cancel order asks first); the screenshots name the confirmation's two
 (`-NetLetOpen confirmOrder`, `orderPlaced:<ref>`, 78 and 79): Warranty, Modify
 order (the quote, then Confirm at the figure it showed, asked again on
