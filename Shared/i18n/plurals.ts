@@ -173,16 +173,6 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
       other: "من {count} متجر",
     },
   },
-  "cart.movedToSaved": {
-    param: "count",
-    en: { one: "1 item moved to Saved for later" },
-    ar: {
-      one: "نُقل منتج واحد إلى «محفوظ لوقت لاحق»",
-      two: "نُقل منتجان إلى «محفوظ لوقت لاحق»",
-      many: "نُقل {count} منتجاً إلى «محفوظ لوقت لاحق»",
-      other: "نُقل {count} منتج إلى «محفوظ لوقت لاحق»",
-    },
-  },
   "cart.itemCount": {
     param: "count",
     en: { one: "1 item" },

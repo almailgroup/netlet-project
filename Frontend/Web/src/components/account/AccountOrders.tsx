@@ -61,7 +61,7 @@ import { OrderFilterChips, type OrderFacets, type OrderFilterChange, type OrderF
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
-import { OrderAfterSales, OrderLineChoice, OrderLinePanel } from "@/components/account/OrderActions";
+import { OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLineRow } from "@/components/account/OrderActions";
 import { OrderJourney } from "@/components/account/OrderJourney";
 import { ReceiptButton } from "@/components/account/OrderReceipt";
 
@@ -614,7 +614,8 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
               const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;
               return (
                 <li key={line.id}>
-                  <div className="flex gap-2 min-[360px]:gap-3">
+                  {/* A press anywhere on the item chooses it (on the owner's word). */}
+                  <OrderLineRow line={line}>
                   {/* Chosen for the bar's acts, the cart's own circle (on the owner's word). */}
                   <span className="self-start pt-1.5 pointer-fine:pt-3"><OrderLineChoice line={line} /></span>
                   <Thumb src={line.photo ?? null} alt="" className="size-12 shrink-0 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
@@ -664,15 +665,15 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                     {line.review ? <LineReview review={line.review} /> : null}
                     <LineReturnStatus reference={reference} currency={data.order.currency} line={line} requests={data.returns} />
                   </div>
-                  </div>
-                  {/* What the item's ⋯ opened, the item's full width. */}
+                  </OrderLineRow>
+                  {/* What the bar opened for this item, the item's full width. */}
                   <OrderLinePanel line={line} />
                 </li>
               );
             })}
 
-            {/* How a return works, said once at the foot. Each item's ⋯ offers
-                the return where one is open; this is the policy behind it. */}
+            {/* How a return works, said once at the foot. A chosen item's bar
+                offers the return where one is open; this is the policy behind it. */}
             <li className="rounded-xl bg-[#e7edf5] p-4">
               <p className="text-xs leading-5 ink-muted">{t(returnsOn ? "returns.howTo" : "returns.howToPaused", { days: String(data.windowDays) })}</p>
             </li>

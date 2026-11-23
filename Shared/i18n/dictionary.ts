@@ -1155,7 +1155,6 @@ export const en = {
   "delivery.noStore": "That store is no longer in your cart.",
   "delivery.slotNotOffered": "That day or time isn't offered for this store any more. Choose another.",
   "delivery.slotUnavailable": "Choosing a delivery day isn't open yet.",
-  "cart.movedToSaved": "{count} items moved to Saved for later",
 
   // --- saved ---------------------------------------------------------
   "saved.andWishlists": "Saved items and wishlists",
@@ -2629,7 +2628,6 @@ export const ar: Record<ShopMessageKey, string> = {
   "delivery.noStore": "هذا المتجر لم يعد في سلتك.",
   "delivery.slotNotOffered": "هذا اليوم أو الوقت لم يعد متاحاً لهذا المتجر. اختر غيره.",
   "delivery.slotUnavailable": "اختيار يوم التوصيل غير متاح بعد.",
-  "cart.movedToSaved": "نُقلت {count} منتجات إلى «محفوظ لوقت لاحق»",
 
   // --- saved ---------------------------------------------------------
   "saved.andWishlists": "المحفوظات وقوائم الأمنيات",

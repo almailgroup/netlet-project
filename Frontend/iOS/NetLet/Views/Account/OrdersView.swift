@@ -674,6 +674,23 @@ struct OrderDetailView: View {
                         // is chosen: the item has no ⋯ of its own (on the owner's word).
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    // A press anywhere on the item — its photo, its name, its
+                    // price — chooses it or puts it back, on the owner's word
+                    // ("when you tap on its name or anywhere near that specific
+                    // product, it should automatically choose it"). The circle
+                    // is still the one control VoiceOver meets; it is a button,
+                    // so a press on it is its own and never counted twice.
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        Haptics.tap()
+                        if chosen.contains(line.id) { chosen.remove(line.id) } else { chosen.insert(line.id) }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Brand.navy.opacity(chosen.contains(line.id) ? 0.05 : 0))
+                            .padding(-6)
+                    )
+                    .animation(.easeOut(duration: 0.15), value: chosen.contains(line.id))
                     LineReviewRow(line: line)
                     LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload, open: Binding(
                         get: { returning == line.id },

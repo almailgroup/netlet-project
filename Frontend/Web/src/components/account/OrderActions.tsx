@@ -65,6 +65,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useFeature } from "@/hooks/useFeature";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useShortDayFormat } from "@/hooks/useDateFormat";
+import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { MAX_RETURN_NOTE, RETURN_REASONS, type ReturnReason } from "@shared/commerce/returnRequests";
 import { TRACK_STEPS, type ParcelTrack, type TrackStep } from "@shared/commerce/orderTracking";
@@ -373,6 +374,40 @@ export function OrderLineChoice({ line }: { line: Line }) {
       onToggle={next => choose([line.id], next)}
       className="-ms-2.5 pointer-fine:-ms-1.5"
     />
+  );
+}
+
+/** What a press inside the row does itself — the circle, a link, a button, a box. */
+const OWN_PRESS = "a, button, input, select, textarea, label, summary, [role='button'], [role='link'], [role='checkbox'], [role='radio'], [contenteditable='true']";
+
+/**
+ * An item's row: **a press anywhere on it chooses it, or puts it back**, on
+ * the owner's word ("when you tap on its name or anywhere near that specific
+ * product, it should automatically choose it"). The circle stays the one
+ * control the keyboard and a screen reader meet (`OrderLineChoice`); the row
+ * is the pointer's and the finger's larger target. A press on something
+ * inside the row that does a thing of its own — a link, a review's button —
+ * does that thing alone, and a press that ends a text selection selects.
+ */
+export function OrderLineRow({ line, children }: { line: Line; children: ReactNode }) {
+  const { chosen, choose } = useControls();
+  const on = chosen.includes(line.id);
+  return (
+    <div
+      data-chosen={on ? "" : undefined}
+      onClick={event => {
+        const target = event.target as Element | null;
+        if (target?.closest(OWN_PRESS)) return;
+        if ((window.getSelection?.()?.toString() ?? "") !== "") return;
+        pressHaptic();
+        choose([line.id], !on);
+      }}
+      className={`-mx-2 flex cursor-pointer gap-2 rounded-2xl px-2 py-1.5 transition-colors duration-150 min-[360px]:gap-3 ${
+        on ? "bg-[#0a285a]/[.05]" : "hover:bg-[#0a285a]/[.06]"
+      }`}
+    >
+      {children}
+    </div>
   );
 }
 

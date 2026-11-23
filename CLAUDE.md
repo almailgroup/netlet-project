@@ -2280,26 +2280,27 @@ languages: one line left out turning its store's circle empty and All's to a
 minus, the subtotal and Checkout counting the rest, checkout showing only the
 chosen lines with the note, axe clean, no sideways scroll.
 
-**Unticking moves a line to Saved for later, on the owner's word**
-("automatically move products to Save for Later when unchecked in the cart").
-A line's circle, a store's or All unticked takes those lines out of the bag
-and into Saved — the hearts, listed under Checkout as "Saved for later" with
-Move to cart — rather than leaving them in the bag left out; a line under the
-summary's All says so ("Untick an item to move it to Saved for later.").
-`untickPlan` in `cartChoice.ts` is the rule (the app's `CartChoice.untick`, on
-the same cases): a set moves whole; Undo is offered only when every line moved
-can be added again as it was — no extras, not a set's, the line menu's own
-rule — and puts the products back out of Saved; a line whose product the bag
-does not say is left out of checkout as before, a set holding one kept
-together. It is a move, so nothing is asked first. **The skip list stays, for
-Buy now**: the lines it leaves out are drawn unticked, and ticking one chooses
-it. One line's toast names it; more say how many (`cart.movedToSaved`, counted
-by the plural forms). `useUntickToSaved` on the web, `UntickToSaved` in the
-app. Walked on a production build at 320, 390 and 1440 in both languages
-(`.scratch/untick-walk.mjs`): a line under Saved for later with Undo and back
-again, a store's three lines moved with a counted toast, All emptying the bag
-into Saved for later, Buy now's leftover ticked back in, axe clean and no
-sideways scroll.
+**Unticking a line leaves it in the bag, on the owner's word, and that is a
+reversal** ("when I unselect a product, it should unselect that from the cart
+and only show the price of the selected products, so that I can buy the
+selected products"). For one round, unticking a line, a store or All moved
+those lines out of the bag and into Saved for later, also on the owner's word
+("automatically move products to Save for Later when unchecked"); the owner
+then met it as a line vanishing from the cart and asked why. Now a circle
+unticked only puts the line on the skip list (`chooseLines`, the app's
+`CartChoice.choose`): it stays in its store's card, drawn unticked, and the
+subtotal, each store's delivery, the total and "Checkout (n)" count what is
+still ticked; ticking it again brings it back into the price. Saved for later
+is the line menu's "Save for later" alone, which is a move the shopper asks
+for by name. The note under All, the untick plan, its toasts and its Undo went
+with it (`useUntickToSaved`, `UntickToSaved`, `cart.untickNote`,
+`cart.movedToSaved`). `cartChoice.test.ts` and `CartChoiceTests` untick every
+line and check each is still in the bag with none chosen. Walked on a
+production build at 320, 390 and 1440 in both languages
+(`.scratch/untick-walk.mjs`): a line unticked staying in its card with the
+total counting the rest, a store's three unticked and still there, All
+unticked leaving every line and Checkout off, ticking one back pricing it,
+Saved for later unchanged throughout, axe clean and no sideways scroll.
 
 **Codes, gift cards and points are checkout's alone, on the owner's word**
 ("display three distinct options: a discount code input, a gift card input, a
@@ -3820,7 +3821,14 @@ items get every act they allow, on the owner's word** ("when you select a
 specific order, it should let you choose the product, just like in the cart
 page, and it should give you all the options"). A circle beside each item —
 the cart's own `ChoiceCircle` — and All beside "In this order" (the minus
-when some are chosen), and while anything is chosen a bar of presses: on a
+when some are chosen). **A press anywhere on the item chooses it or puts it
+back, on the owner's word** ("when you tap on its name or anywhere near that
+specific product, it should automatically choose it"): its photo, name, price
+and lines are one target (`OrderLineRow` on the web, an `onTapGesture` over the
+item's row in the app, the chosen row on a faint navy wash), and a press on a
+link or button inside it does that alone; the circle stays the one control a
+keyboard, a screen reader and VoiceOver meet. While anything is chosen a bar of
+presses: on a
 phone it floats over the tab bar (`PhoneActionBar` on the web, which puts the
 assistant aside; `ChosenItemsBar` in the app, `floatsAtFoot`, with
 `ShopPage(assistant:)` off), on a wide screen it sticks to the window's foot

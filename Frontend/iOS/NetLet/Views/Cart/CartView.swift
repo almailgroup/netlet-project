@@ -242,14 +242,7 @@ struct CartView: View {
                 .card()
             }
             VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 2) {
-                    AllChoice(cart: cart)
-                    // What unticking does, said once where the circles are.
-                    Text(l.t("cart.untickNote"))
-                        .font(.inter(12))
-                        .foregroundStyle(Brand.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                AllChoice(cart: cart)
                 SummaryCard(cart: cart, grouped: groups != nil, updating: app.cart.syncing)
                 Text(l.t("cart.checkoutNote"))
                     .font(.inter(12))
@@ -417,13 +410,14 @@ private struct CartStoreCard: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 0) {
-                    // Every line of this store in together, or to Saved for later together.
+                    // Every line of this store in together, or out of checkout together —
+                    // an unticked line stays in the bag (on the owner's word).
                     let ids = group.items.map(\.lineId)
                     ChoiceCircle(
                         state: CartChoice.state(CartChoice.lines(app.cart.cart?.items ?? []), app.cart.skip, of: ids),
                         label: l.t("cart.chooseStore", ["name": group.store.name(l.current)])
                     ) { chosen in
-                        if chosen { app.cart.choose(ids, chosen: true) } else { UntickToSaved.run(ids, app: app, l: l) }
+                        app.cart.choose(ids, chosen: chosen)
                     }
                     .padding(.leading, -12)
                     Button {
@@ -545,9 +539,9 @@ struct CartLineRow: View {
         let title = item.title(l.current)
         let signedIn = app.session.isSignedIn
         HStack(alignment: .top, spacing: 12) {
-            // In this checkout, or unticked to Saved for later (`UntickToSaved`).
+            // In this checkout, or left out of it — still in the bag.
             ChoiceCircle(state: item.chosen == false ? .none : .all, label: l.t("cart.chooseLine", ["name": title])) { chosen in
-                if chosen { app.cart.choose([item.lineId], chosen: true) } else { UntickToSaved.run([item.lineId], app: app, l: l) }
+                app.cart.choose([item.lineId], chosen: chosen)
             }
             .padding(.leading, -12)
             .padding(.trailing, -12)
@@ -982,7 +976,7 @@ private struct AllChoice: View {
         let ids = cart.items.map(\.lineId)
         HStack(spacing: 0) {
             ChoiceCircle(state: CartChoice.state(CartChoice.lines(cart.items), app.cart.skip, of: ids), label: l.t("cart.chooseAllName")) { chosen in
-                if chosen { app.cart.choose(ids, chosen: true) } else { UntickToSaved.run(ids, app: app, l: l) }
+                app.cart.choose(ids, chosen: chosen)
             }
             .padding(.leading, -12)
             // The word is the eye's; the circle's name says it whole.

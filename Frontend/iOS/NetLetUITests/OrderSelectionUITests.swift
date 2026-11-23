@@ -56,6 +56,29 @@ final class OrderSelectionUITests: XCTestCase {
         wait(for: [gone], timeout: 4)
     }
 
+    /// A press on the item's name chooses it, and a second puts it back, on
+    /// the owner's word ("when you tap on its name or anywhere near that
+    /// specific product, it should automatically choose it") — the circle is
+    /// no longer the only place to press.
+    func testAPressOnTheItemsNameChoosesIt() {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-NetLetDemo", "YES", "-netlet.language", "en", "-NetLetUITest", "YES",
+            "-NetLetOpen", "order:NL-20261001-J7MWY", "-NetLetDemoAs", "shopper",
+        ]
+        app.launch()
+
+        let title = app.staticTexts["USB-C charger 65W"].firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 20), "The order's item has no name on screen: \(labels(app))")
+        let count = app.staticTexts["1 item chosen"]
+        XCTAssertFalse(count.exists, "The bar is up before anything is chosen.")
+        title.tap()
+        XCTAssertTrue(count.waitForExistence(timeout: 6), "A press on the item's name did not choose it: \(labels(app))")
+        title.tap()
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: count)
+        wait(for: [gone], timeout: 4)
+    }
+
     private func named(_ app: XCUIApplication, _ label: String) -> XCUIElement {
         app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
     }
