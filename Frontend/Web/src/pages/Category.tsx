@@ -56,7 +56,7 @@ import {
   type FilterGroupKey,
 } from "@shared/commerce/browse";
 import type { Product } from "@shared/commerce/types";
-import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
+import { ALL_DEPARTMENTS, SHOP_DEPARTMENTS, hiddenFromShop } from "@shared/commerce/departments";
 import { categoryMessageKey } from "@/content/homeLayout";
 import { departmentMeta, privatePageMeta, refurbishedMeta } from "@shared/seo";
 import { findSubcategory, subcategoriesOf, subcategoryName } from "@shared/commerce/subcategories";
@@ -134,6 +134,13 @@ export default function Category() {
 
   const slug = onSearchPage ? "all" : refurbished ? refurbishedParams?.slug ?? "all" : params?.slug ?? "all";
   const basePath = onSearchPage ? "/search" : refurbished ? refurbishedPath(slug) : `/category/${slug}`;
+  /* Grocery's old address is the whole shop, and says so in the address too:
+     the shop shows no Grocery while it waits for NetLet Groceries, on the
+     owner's word, and a link already shared still lands somewhere useful. */
+  useEffect(() => {
+    if (!hiddenFromShop(slug)) return;
+    navigate(`${refurbished ? refurbishedPath("all") : "/category/all"}${window.location.search}`, { replace: true });
+  }, [slug, refurbished, navigate]);
 
   // wouter's `location` is the path only, so the query string is read from the
   // browser. Keyed off `location` as well so a navigation that only changes the
@@ -147,7 +154,7 @@ export default function Category() {
   const term = searchTermFrom(queryString);
 
   const categories = useMemo(
-    () => knownCategories(DEPARTMENTS.map(department => department.name), catalog),
+    () => knownCategories(SHOP_DEPARTMENTS.map(department => department.name), catalog),
     [catalog],
   );
   const category = categoryFromSlug(slug, categories);
@@ -281,7 +288,7 @@ export default function Category() {
   // Translated where NetLet knows the department, shown as the merchant typed
   // it otherwise — a product type is their words, not ours.
   /* A department NetLet keeps, by the slug in the address — its subcategories are the chips under the heading. */
-  const knownDepartment = DEPARTMENTS.find(entry => entry.slug === slug);
+  const knownDepartment = SHOP_DEPARTMENTS.find(entry => entry.slug === slug);
   const activeSub = onSearchPage ? null : findSubcategory(knownDepartment?.slug, filters.sub);
   const translatedName = category === "all" ? null : categoryMessageKey(category);
   const departmentName = category === "all"
@@ -335,7 +342,7 @@ export default function Category() {
   /* The departments of the refurbished section with something in them, in the departments' own order. */
   const refurbishedDepartments = useMemo(() => {
     const counts = refurbishedCounts.data?.departments ?? {};
-    return DEPARTMENTS.flatMap(department => ((counts[department.slug] ?? 0) > 0 ? [{ department, count: counts[department.slug] ?? 0 }] : []));
+    return SHOP_DEPARTMENTS.flatMap(department => ((counts[department.slug] ?? 0) > 0 ? [{ department, count: counts[department.slug] ?? 0 }] : []));
   }, [refurbishedCounts.data]);
 
   /** Writes the filters into the URL, which is the only place they live. */

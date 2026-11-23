@@ -110,6 +110,13 @@ final class ReferenceDataTests: XCTestCase {
     func testHasTheDepartmentsInTheirOrder() {
         XCTAssertEqual(reference.departments.first?.slug, "electronics")
         XCTAssertEqual(reference.departments.count, 13)
+        // The portal keeps all thirteen; the shop shows twelve, Grocery
+        // waiting for NetLet Groceries on the owner's word.
+        XCTAssertEqual(reference.shopDepartments.count, 12)
+        XCTAssertFalse(reference.shopDepartments.contains { $0.slug == "grocery" })
+        XCTAssertNil(reference.shopDepartment(slug: "grocery"))
+        XCTAssertTrue(reference.hiddenFromShop("grocery"))
+        XCTAssertFalse(reference.hiddenFromShop("electronics"))
         XCTAssertEqual(reference.department(named: "electronics")?.slug, "electronics")
         XCTAssertEqual(reference.department(named: "Pet Supplies")?.slug, "pet-supplies")
     }

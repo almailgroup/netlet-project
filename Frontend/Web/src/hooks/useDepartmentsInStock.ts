@@ -14,12 +14,14 @@
  * Until the counts arrive every department is shown, so the bar does not start
  * empty and fill in.
  */
-import { DEPARTMENTS } from "@shared/commerce/departments";
+import { DEPARTMENTS, shopDepartmentName } from "@shared/commerce/departments";
 import { trpc } from "@/lib/trpc";
 
 export function useDepartmentsInStock(): (departmentName: string) => boolean {
   const counts = trpc.commerce.departmentCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 });
   return (departmentName: string) => {
+    /* Never a department the shop does not show (Grocery), counted or not. */
+    if (!shopDepartmentName(departmentName)) return false;
     if (!counts.data) return true;
     const slug = slugFor(departmentName);
     return slug === null || (counts.data[slug] ?? 0) > 0;

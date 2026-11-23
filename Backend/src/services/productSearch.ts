@@ -44,6 +44,7 @@ import {
 } from "../../../Shared/commerce/search.js";
 import type { Product } from "../../../Shared/commerce/types.js";
 import { rankStores } from "../../../Shared/commerce/storesSelling.js";
+import { shopDepartmentName } from "../../../Shared/commerce/departments.js";
 import { listProductsByIds, sellingStoreCards, type SellingStore } from "./catalog.js";
 import { getDb } from "./db.js";
 
@@ -195,7 +196,9 @@ export async function searchCatalogue(request: { q: string; department?: string 
   const db = await getDb();
   const term = request.q.trim();
   if (!db || !term) return EMPTY;
-  const department = request.department?.trim() || null;
+  /* A department the shop does not show (Grocery) narrows nothing: its
+     products are found by their words across the whole shop. */
+  const department = shopDepartmentName(request.department);
   const limit = Math.min(Math.max(1, request.limit ?? 24), MAX_RESULTS);
   const condition = request.condition ?? "new";
 

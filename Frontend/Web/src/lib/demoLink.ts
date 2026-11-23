@@ -15,7 +15,7 @@ import { rankStores } from "@shared/commerce/storesSelling";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { resolveIssue, type HelpIssue } from "@shared/commerce/selfService";
 import { REFERENCE_RATES, RATES_AS_OF } from "@shared/commerce/currency";
-import { DEPARTMENTS } from "@shared/commerce/departments";
+import { SHOP_DEPARTMENTS } from "@shared/commerce/departments";
 import { correctionFor, productsInCategory, rankBySearch } from "@shared/commerce/browse";
 import { readStored, writeStored } from "@/lib/browserStore";
 import { MAX_LINE_QUANTITY, type Cart, type CartItem, type Money } from "@shared/commerce/types";
@@ -224,7 +224,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       const departments: Record<string, number> = {};
       const refurbishedOnes = demoCatalog.filter(isRefurbished);
       for (const product of refurbishedOnes) {
-        const department = DEPARTMENTS.find(entry => entry.name === product.productType);
+        const department = SHOP_DEPARTMENTS.find(entry => entry.name === product.productType);
         if (department) departments[department.slug] = (departments[department.slug] ?? 0) + 1;
       }
       return { total: refurbishedOnes.length, departments };
@@ -251,7 +251,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       /* Counted from the invented catalogue the same way the server counts its own. */
       const counts: Record<string, number> = {};
       for (const product of demoCatalog.filter(entry => !isRefurbished(entry))) {
-        const department = DEPARTMENTS.find(entry => entry.name === product.productType);
+        const department = SHOP_DEPARTMENTS.find(entry => entry.name === product.productType);
         if (department) counts[department.slug] = (counts[department.slug] ?? 0) + 1;
       }
       return counts;
@@ -263,7 +263,7 @@ function resolve(path: string, rawInput: unknown): unknown {
       /* The same rule over the invented catalogue: each product's own filing. */
       const counts: Record<string, Record<string, number>> = {};
       for (const product of demoCatalog) {
-        const department = DEPARTMENTS.find(entry => entry.name === product.productType);
+        const department = SHOP_DEPARTMENTS.find(entry => entry.name === product.productType);
         if (!department || !product.subcategory) continue;
         const inDepartment = (counts[department.slug] ??= {});
         inDepartment[product.subcategory] = (inDepartment[product.subcategory] ?? 0) + 1;

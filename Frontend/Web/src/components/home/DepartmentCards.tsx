@@ -43,12 +43,12 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useSideScroll } from "@/hooks/useSideScroll";
 import { ScrollArrows } from "@/components/ui/ScrollArrows";
 import { DepartmentArt } from "@/components/browse/DepartmentArt";
-import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
+import { ALL_DEPARTMENTS, SHOP_DEPARTMENTS } from "@shared/commerce/departments";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { Link } from "wouter";
 
 const CARDS: { slug: string; label: MessageKey }[] = [
-  ...DEPARTMENTS.map(department => ({ slug: department.slug, label: department.label })),
+  ...SHOP_DEPARTMENTS.map(department => ({ slug: department.slug, label: department.label })),
   { slug: "all", label: ALL_DEPARTMENTS.label },
 ];
 

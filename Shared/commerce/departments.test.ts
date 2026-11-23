@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { categorySlug } from "./browse.js";
-import { ALL_DEPARTMENTS, DEPARTMENT_ICONS, DEPARTMENTS, departmentByName, departmentIcon } from "./departments.js";
+import { ALL_DEPARTMENTS, DEPARTMENT_ICONS, DEPARTMENTS, SHOP_DEPARTMENTS, departmentByName, departmentIcon, hiddenFromShop, shopDepartmentName } from "./departments.js";
 
 describe("departments", () => {
   // The bug this prevents: a seeded slug of "home-kitchen" while the client
@@ -70,5 +70,28 @@ describe("departments", () => {
       expect(department.tint).toMatch(/^#[0-9a-f]{6}$/);
       expect(department.label.startsWith("category.")).toBe(true);
     }
+  });
+
+  /* On the owner's word ("completely remove grocery from the categories as
+     I'm planning to make a separate page for it called NetLet Groceries"):
+     the portal keeps all thirteen, and the shop shows twelve. */
+  it("keeps Grocery for the portal and out of the shop", () => {
+    expect(DEPARTMENTS.map(department => department.slug)).toContain("grocery");
+    expect(SHOP_DEPARTMENTS.map(department => department.slug)).not.toContain("grocery");
+    expect(SHOP_DEPARTMENTS).toHaveLength(DEPARTMENTS.length - 1);
+    expect(SHOP_DEPARTMENTS.map(department => department.slug)).toEqual(DEPARTMENTS.filter(department => department.slug !== "grocery").map(department => department.slug));
+    expect(hiddenFromShop("grocery")).toBe(true);
+    expect(hiddenFromShop("electronics")).toBe(false);
+    expect(hiddenFromShop(null)).toBe(false);
+    expect(hiddenFromShop("musical-instruments")).toBe(false);
+  });
+
+  it("names a product's department as the shop does: none for Grocery, a merchant's own as typed", () => {
+    expect(shopDepartmentName("Grocery")).toBeNull();
+    expect(shopDepartmentName(" grocery ")).toBeNull();
+    expect(shopDepartmentName("Electronics")).toBe("Electronics");
+    expect(shopDepartmentName("Musical instruments")).toBe("Musical instruments");
+    expect(shopDepartmentName("")).toBeNull();
+    expect(shopDepartmentName(null)).toBeNull();
   });
 });

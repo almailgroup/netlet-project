@@ -3,7 +3,7 @@ import { categoryRail, dealsDrawn, departmentTabs, homeRailDefinitions, MAX_OCCA
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { en } from "@shared/i18n/everyMessage";
 import type { Product } from "@shared/commerce/types";
-import { DEPARTMENTS } from "@shared/commerce/departments";
+import { SHOP_DEPARTMENTS } from "@shared/commerce/departments";
 
 const money = (amount: string) => ({ amount, currencyCode: "KWD" });
 
@@ -30,9 +30,11 @@ describe("NetLet home layout content", () => {
     expect(homeRailDefinitions.map((rail) => en[rail.title])).toEqual(["Mega deals", "Deals", "Trending", "Bestsellers", "New arrivals"]);
   });
 
-  it("keeps the category section available: All, then every department", () => {
-    expect(categoryRail).toHaveLength(DEPARTMENTS.length + 1);
-    expect(categoryRail.slice(1).map(entry => entry.query)).toEqual(DEPARTMENTS.map(department => department.name));
+  it("keeps the category section available: All, then every department the shop shows", () => {
+    expect(categoryRail).toHaveLength(SHOP_DEPARTMENTS.length + 1);
+    expect(categoryRail.slice(1).map(entry => entry.query)).toEqual(SHOP_DEPARTMENTS.map(department => department.name));
+    /* Grocery waits for NetLet Groceries, on the owner's word. */
+    expect(categoryRail.map(entry => entry.query)).not.toContain("Grocery");
   });
 
   // Every string on the home page comes out of the dictionary, so a key that

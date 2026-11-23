@@ -307,7 +307,7 @@ enum DealShelves {
     nonisolated static let size = 12
     nonisolated static let minKind = 2
 
-    nonisolated static func of(_ products: [Product], deepestFirst: Bool, departments: [Department] = ReferenceData.shared.departments) -> [Shelf] {
+    nonisolated static func of(_ products: [Product], deepestFirst: Bool, departments: [Department] = ReferenceData.shared.shopDepartments) -> [Shelf] {
         func department(of product: Product) -> Department? { departments.first { $0.name == product.productType } }
         // Kinds, in the order first met, to see which can stand alone.
         var kinds: [(key: String, products: [Product])] = []
@@ -426,7 +426,7 @@ final class BrowseModel {
     }
 
     var department: Department? {
-        if case .shelf(let slug, _) = source { return ReferenceData.shared.department(slug: slug) }
+        if case .shelf(let slug, _) = source { return ReferenceData.shared.shopDepartment(slug: slug) }
         return nil
     }
 

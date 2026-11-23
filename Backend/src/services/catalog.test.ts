@@ -407,4 +407,21 @@ describe("which departments have something on sale", () => {
     const counts = await inventory.publishedDepartmentCounts();
     expect(counts).toEqual({ "home-and-kitchen": 1 });
   });
+
+  /* On the owner's word: the shop shows no Grocery while it waits for NetLet
+     Groceries. A grocery product is on sale, under no department. */
+  it("counts nothing under Grocery, lists its products with no department, and reads its address as the whole shop", async () => {
+    const inventory = await import("./inventory");
+    const catalog = await import("./catalog");
+    const [grocery] = await db.insert(categories).values({ slug: "grocery", name: "Grocery", nameAr: "البقالة" }).returning();
+    const [row] = await db.insert(products).values({ vendorId: ids.acme, categoryId: grocery.id, handle: "basmati-rice", title: "Basmati rice 5 kg", status: "published" }).returning();
+    await db.insert(productVariants).values({ productId: row.id, title: "Default", sku: "rice-5", price: "4.750", stock: 9 });
+    expect(await inventory.publishedDepartmentCounts()).not.toHaveProperty("grocery");
+    expect(await inventory.publishedSubcategoryCounts()).not.toHaveProperty("grocery");
+    const shelf = await catalog.listProducts({ first: 100 });
+    const rice = shelf.find(product => product.handle === "basmati-rice");
+    expect(rice).toMatchObject({ productType: null, specsFrom: "grocery", subcategory: null });
+    const groceryShelf = await catalog.listProducts({ first: 100, collectionHandle: "grocery" });
+    expect(groceryShelf.map(product => product.handle).sort()).toEqual(shelf.map(product => product.handle).sort());
+  });
 });

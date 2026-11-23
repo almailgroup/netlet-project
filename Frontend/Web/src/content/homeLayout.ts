@@ -7,7 +7,7 @@
  * heading appearing on the Arabic storefront.
  */
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { ALL_DEPARTMENTS, DEPARTMENTS } from "@shared/commerce/departments";
+import { ALL_DEPARTMENTS, SHOP_DEPARTMENTS } from "@shared/commerce/departments";
 import { browse, EMPTY_FILTERS, productsInCategory } from "@shared/commerce/browse";
 import { savingPercentOf } from "@shared/commerce/placement";
 import { occasionsOn, productsForOccasion, type Occasion } from "@shared/commerce/occasions";
@@ -26,7 +26,7 @@ import type { Product } from "@shared/commerce/types";
  */
 export const categoryRail: readonly { key: MessageKey; query: string; color: string }[] = [
   { key: ALL_DEPARTMENTS.label, query: ALL_DEPARTMENTS.query, color: ALL_DEPARTMENTS.tint },
-  ...DEPARTMENTS.map(department => ({
+  ...SHOP_DEPARTMENTS.map(department => ({
     key: department.label,
     query: department.name,
     color: department.tint,
@@ -185,7 +185,7 @@ export type DepartmentTab = { slug: string; label: MessageKey; products: Product
  * control.
  */
 export function departmentTabs(products: Product[]): DepartmentTab[] {
-  const tabs = DEPARTMENTS
+  const tabs = SHOP_DEPARTMENTS
     .map(department => ({ slug: department.slug, label: department.label, products: productsInCategory(products, department.name) }))
     .filter(tab => tab.products.length >= MIN_TAB_PRODUCTS);
   if (tabs.length === 1 && tabs[0].products.length === products.length) return [];

@@ -168,7 +168,10 @@ describe("what the dropdown draws", () => {
 
   it("names a department from either language, and a brand the shop sells", () => {
     expect(departmentsMatching("elec").map(d => d.slug)).toEqual(["electronics"]);
-    expect(departmentsMatching("بقالة").map(d => d.slug)).toEqual(["grocery"]);
+    expect(departmentsMatching("جمال").map(d => d.slug)).toEqual(["beauty"]);
+    /* Grocery is not offered: the shop shows no Grocery, on the owner's word. */
+    expect(departmentsMatching("بقالة")).toEqual([]);
+    expect(departmentsMatching("grocery")).toEqual([]);
     expect(departmentsMatching("zzz")).toEqual([]);
     expect(brandsMatching("sams", ["Samsung", "Philips"])).toEqual(["Samsung"]);
   });

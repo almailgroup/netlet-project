@@ -35,6 +35,7 @@ beforeAll(async () => {
   const [closed] = await db.insert(vendors).values({ slug: "closed", name: "Closed", status: "suspended" }).returning();
   const [electronics] = await db.insert(categories).values({ slug: "electronics", name: "Electronics", nameAr: "إلكترونيات" }).returning();
   const [grocery] = await db.insert(categories).values({ slug: "grocery", name: "Grocery", nameAr: "البقالة" }).returning();
+  const [home] = await db.insert(categories).values({ slug: "home-and-kitchen", name: "Home & Kitchen", nameAr: "المنزل والمطبخ" }).returning();
 
   const add = async (values: Partial<typeof products.$inferInsert> & { handle: string; title: string }, variant = "Default") => {
     const [row] = await db.insert(products).values({ vendorId: shop.id, status: "published", ...values }).returning();
@@ -49,7 +50,7 @@ beforeAll(async () => {
   await add({ handle: "shirt", title: "Linen shirt", categoryId: null }, "Black");
   await add({ handle: "hidden", title: "Smart watch draft", status: "draft", categoryId: electronics.id });
   await db.insert(products).values({ vendorId: closed.id, handle: "closed-watch", title: "Smart watch from a closed shop", status: "published" });
-  for (let index = 0; index < 120; index++) await add({ handle: `filler-${index}`, title: `Kitchen towel ${index}`, categoryId: grocery.id });
+  for (let index = 0; index < 120; index++) await add({ handle: `filler-${index}`, title: `Kitchen towel ${index}`, categoryId: home.id });
 }, 120_000);
 
 describe("the SQL fold", () => {
@@ -104,9 +105,19 @@ describe("the whole catalogue", () => {
   });
 
   it("narrows to a department, and counts the whole shop when the department has none", async () => {
-    expect((await search.searchCatalogue({ q: "towel", department: "Grocery", limit: 5 })).total).toBe(120);
-    const elsewhere = await search.searchCatalogue({ q: "watch", department: "Grocery" });
+    expect((await search.searchCatalogue({ q: "towel", department: "Home & Kitchen", limit: 5 })).total).toBe(120);
+    const elsewhere = await search.searchCatalogue({ q: "watch", department: "Home & Kitchen" });
     expect(elsewhere).toMatchObject({ total: 0, elsewhere: 1 });
+  });
+
+  /* On the owner's word: the shop shows no Grocery while it waits for NetLet
+     Groceries, and its products are found across the whole shop. */
+  it("narrows nothing to Grocery, finds its products by their words, and names no department on them", async () => {
+    const watch = await search.searchCatalogue({ q: "watch", department: "Grocery" });
+    expect(watch).toMatchObject({ total: 1, elsewhere: 0 });
+    const rice = await search.searchCatalogue({ q: "rice" });
+    expect(rice.products.map(p => [p.handle, p.productType, p.specsFrom, p.subcategory ?? null])).toEqual([["rice", null, "grocery", null]]);
+    expect((await search.searchCatalogue({ q: "watch" })).products[0]).toMatchObject({ productType: "Electronics", specsFrom: "electronics" });
   });
 
   it("hands back a page and says how many there were", async () => {

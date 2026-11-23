@@ -18,6 +18,11 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
     /// Whether its subcategories' pictures have arrived
     /// (`Department.subcategoryArt`). Until they have, each row draws its symbol.
     var subcategoryArt: Bool? = nil
+    /// Whether shoppers see it at all (`Department.shop`): false for Grocery
+    /// alone, on the owner's word, while it waits for a page of its own,
+    /// NetLet Groceries. Its products are on sale under no department; the
+    /// portal still files products under it.
+    var shop: Bool? = nil
     /// Its subcategories by name, in the order the Categories tab lists them
     /// (`Shared/commerce/subcategories.ts`); the server files each product.
     let subcategories: [Subcategory]?
@@ -157,6 +162,9 @@ struct Department: Decodable, Identifiable, Hashable, Sendable {
 
     /// Whether its subcategories' pictures have arrived; a list from before the flag has them.
     var hasSubcategoryArt: Bool { subcategoryArt ?? hasArt }
+
+    /// Whether shoppers see it; a list from before the flag shows every one.
+    var inShop: Bool { shop ?? true }
 
     /// The department's art on the site, the same file the web's tiles draw.
     var artPath: String { "/departments/\(slug).webp" }
@@ -685,6 +693,22 @@ struct ReferenceData: Sendable {
 
     func department(slug: String?) -> Department? {
         departments.first { $0.slug == slug }
+    }
+
+    /// The departments a shopper is shown (`SHOP_DEPARTMENTS`): every tile,
+    /// row, filter, shelf and page of the shop reads these. The portal, the
+    /// importer and a listing's rows read `departments`.
+    var shopDepartments: [Department] { departments.filter(\.inShop) }
+
+    /// A department the shop shows, by its slug — nil for Grocery, whose old
+    /// address opens the whole shop.
+    func shopDepartment(slug: String?) -> Department? {
+        shopDepartments.first { $0.slug == slug }
+    }
+
+    /// Whether a slug names a department the shop does not show (`hiddenFromShop`).
+    func hiddenFromShop(_ slug: String?) -> Bool {
+        department(slug: slug).map { !$0.inShop } ?? false
     }
 
     func occasion(slug: String?) -> Occasion? {

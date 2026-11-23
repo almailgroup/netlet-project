@@ -321,7 +321,7 @@ private struct SearchSheet: View {
             .padding(.top, 12)
             .padding(.bottom, 10)
             .rise(2, shown: unrolled)
-        let departments = ReferenceData.shared.departments
+        let departments = ReferenceData.shared.shopDepartments
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
             ForEach(Array(departments.enumerated()), id: \.element.id) { index, department in
                 tile(slug: department.slug, title: l.t(department.label), count: app.shelf.counts?[department.slug]) {
@@ -506,7 +506,7 @@ private struct SearchSheet: View {
     private func namedDepartments(_ words: String) -> [Department] {
         let typed = words.lowercased()
         guard typed.count >= 2 else { return [] }
-        return ReferenceData.shared.departments.filter { department in
+        return ReferenceData.shared.shopDepartments.filter { department in
             let names = [l.t(department.label), department.name, department.nameAr].map { $0.lowercased() }
             let stocked = (app.shelf.counts?[department.slug] ?? 1) > 0
             return stocked && names.contains { $0.hasPrefix(typed) || typed.hasPrefix($0) }

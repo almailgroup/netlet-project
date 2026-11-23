@@ -19,7 +19,7 @@ struct CategoriesResults: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
-    private var departments: [Department] { ReferenceData.shared.departments }
+    private var departments: [Department] { ReferenceData.shared.shopDepartments }
 
     var body: some View {
         let foundDepartments = departments.filter { SearchRank.textsMatch([$0.name, $0.nameAr, l.t($0.label)], term) }

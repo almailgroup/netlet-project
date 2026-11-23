@@ -64,27 +64,65 @@ export type Department = {
    * picture, fails.
    */
   subcategoryArt: boolean;
+  /**
+   * Whether shoppers see it at all — a tile, a row of the header, a link in
+   * the footer, a filter, a deals shelf, a search suggestion, a page of its
+   * own. False for Grocery alone, on the owner's word ("completely remove
+   * grocery from the categories as I'm planning to make a separate page for
+   * it called NetLet Groceries"). Its products stay on sale under no
+   * department (`shopDepartmentName`): found by search, on their store's
+   * page, in the shelves and at their own address. The portal still files
+   * products under it, so they are ready for that page.
+   */
+  shop: boolean;
 };
 
 export const DEPARTMENTS: Department[] = [
-  { slug: "electronics", name: "Electronics", nameAr: "إلكترونيات", position: 1, label: "category.electronics", icon: "plug", tint: "#dce5e9", art: true, subcategoryArt: true },
-  { slug: "home-and-kitchen", name: "Home & Kitchen", nameAr: "المنزل والمطبخ", position: 2, label: "category.homeKitchen", icon: "cooking-pot", tint: "#f5e4c9", art: true, subcategoryArt: true },
-  { slug: "beauty", name: "Beauty", nameAr: "الجمال", position: 3, label: "category.beauty", icon: "flower", tint: "#f6d9d2", art: true, subcategoryArt: true },
-  { slug: "style", name: "Style", nameAr: "الأزياء", position: 4, label: "category.style", icon: "shirt", tint: "#e4dfd0", art: true, subcategoryArt: true },
-  { slug: "grocery", name: "Grocery", nameAr: "البقالة", position: 5, label: "category.grocery", icon: "carrot", tint: "#dce7cf", art: true, subcategoryArt: true },
+  { slug: "electronics", name: "Electronics", nameAr: "إلكترونيات", position: 1, label: "category.electronics", icon: "plug", tint: "#dce5e9", art: true, subcategoryArt: true, shop: true },
+  { slug: "home-and-kitchen", name: "Home & Kitchen", nameAr: "المنزل والمطبخ", position: 2, label: "category.homeKitchen", icon: "cooking-pot", tint: "#f5e4c9", art: true, subcategoryArt: true, shop: true },
+  { slug: "beauty", name: "Beauty", nameAr: "الجمال", position: 3, label: "category.beauty", icon: "flower", tint: "#f6d9d2", art: true, subcategoryArt: true, shop: true },
+  { slug: "style", name: "Style", nameAr: "الأزياء", position: 4, label: "category.style", icon: "shirt", tint: "#e4dfd0", art: true, subcategoryArt: true, shop: true },
+  { slug: "grocery", name: "Grocery", nameAr: "البقالة", position: 5, label: "category.grocery", icon: "carrot", tint: "#dce7cf", art: true, subcategoryArt: true, shop: false },
   /* The eight added on the owner's word ("add more categories for the
      products; currently there are only five"), after the departments a
      shop like noon or Amazon keeps. Their tiles are the owner's own
      pictures, made to the same style, and so are their subcategories'. */
-  { slug: "health-and-wellness", name: "Health & Wellness", nameAr: "الصحة والعافية", position: 6, label: "category.health", icon: "heart-pulse", tint: "#d6ecea", art: true, subcategoryArt: true },
-  { slug: "baby", name: "Baby", nameAr: "مستلزمات الرضّع", position: 7, label: "category.baby", icon: "baby", tint: "#f4e1ec", art: true, subcategoryArt: true },
-  { slug: "toys-and-games", name: "Toys & Games", nameAr: "ألعاب الأطفال", position: 8, label: "category.toys", icon: "toy-brick", tint: "#fbe8c8", art: true, subcategoryArt: true },
-  { slug: "sports-and-outdoors", name: "Sports & Outdoors", nameAr: "الرياضة والرحلات", position: 9, label: "category.sports", icon: "trophy", tint: "#dbe7f5", art: true, subcategoryArt: true },
-  { slug: "automotive", name: "Automotive", nameAr: "السيارات", position: 10, label: "category.automotive", icon: "car", tint: "#e2e5eb", art: true, subcategoryArt: true },
-  { slug: "tools-and-home-improvement", name: "Tools & Home Improvement", nameAr: "الأدوات وتحسين المنزل", position: 11, label: "category.tools", icon: "hammer", tint: "#f1e3d4", art: true, subcategoryArt: true },
-  { slug: "pet-supplies", name: "Pet Supplies", nameAr: "مستلزمات الحيوانات الأليفة", position: 12, label: "category.pets", icon: "paw", tint: "#ece5d6", art: true, subcategoryArt: true },
-  { slug: "books-and-stationery", name: "Books & Stationery", nameAr: "الكتب والقرطاسية", position: 13, label: "category.books", icon: "book", tint: "#e7e1f1", art: true, subcategoryArt: true },
+  { slug: "health-and-wellness", name: "Health & Wellness", nameAr: "الصحة والعافية", position: 6, label: "category.health", icon: "heart-pulse", tint: "#d6ecea", art: true, subcategoryArt: true, shop: true },
+  { slug: "baby", name: "Baby", nameAr: "مستلزمات الرضّع", position: 7, label: "category.baby", icon: "baby", tint: "#f4e1ec", art: true, subcategoryArt: true, shop: true },
+  { slug: "toys-and-games", name: "Toys & Games", nameAr: "ألعاب الأطفال", position: 8, label: "category.toys", icon: "toy-brick", tint: "#fbe8c8", art: true, subcategoryArt: true, shop: true },
+  { slug: "sports-and-outdoors", name: "Sports & Outdoors", nameAr: "الرياضة والرحلات", position: 9, label: "category.sports", icon: "trophy", tint: "#dbe7f5", art: true, subcategoryArt: true, shop: true },
+  { slug: "automotive", name: "Automotive", nameAr: "السيارات", position: 10, label: "category.automotive", icon: "car", tint: "#e2e5eb", art: true, subcategoryArt: true, shop: true },
+  { slug: "tools-and-home-improvement", name: "Tools & Home Improvement", nameAr: "الأدوات وتحسين المنزل", position: 11, label: "category.tools", icon: "hammer", tint: "#f1e3d4", art: true, subcategoryArt: true, shop: true },
+  { slug: "pet-supplies", name: "Pet Supplies", nameAr: "مستلزمات الحيوانات الأليفة", position: 12, label: "category.pets", icon: "paw", tint: "#ece5d6", art: true, subcategoryArt: true, shop: true },
+  { slug: "books-and-stationery", name: "Books & Stationery", nameAr: "الكتب والقرطاسية", position: 13, label: "category.books", icon: "book", tint: "#e7e1f1", art: true, subcategoryArt: true, shop: true },
 ];
+
+/**
+ * The departments a shopper is shown, in their order: `DEPARTMENTS` less the
+ * ones kept for the portal alone (`Department.shop`). Every tile, row, link,
+ * filter and page of the shop reads this; the portal, the importer, the
+ * schema of a listing's rows and the return rules read `DEPARTMENTS`.
+ */
+export const SHOP_DEPARTMENTS: Department[] = DEPARTMENTS.filter(department => department.shop);
+
+/** Whether a department's slug is one the shop does not show (Grocery). */
+export function hiddenFromShop(slug: string | null | undefined): boolean {
+  if (!slug) return false;
+  return DEPARTMENTS.some(department => department.slug === slug && !department.shop);
+}
+
+/**
+ * A product's department as the shop names it: its category's name, or none
+ * for a department the shop does not show — so a grocery product is on sale
+ * with no department, the owner's answer, and every list built from what the
+ * products say (a filter, a deals shelf, a shelf's tabs) has no Grocery in it.
+ */
+export function shopDepartmentName(name: string | null | undefined): string | null {
+  const trimmed = name?.trim();
+  if (!trimmed) return null;
+  const known = DEPARTMENTS.find(department => department.name.toLowerCase() === trimmed.toLowerCase());
+  return known && !known.shop ? null : trimmed;
+}
 
 /**
  * The query every surface uses for "no department chosen".

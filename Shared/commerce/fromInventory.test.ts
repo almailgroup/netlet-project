@@ -101,6 +101,16 @@ describe("toStorefrontProduct", () => {
     expect(shaped.vendor).toBe("Alghanim");
   });
 
+  /* Grocery waits for NetLet Groceries, on the owner's word: its products are
+     on sale under no department, and their rows still follow its schema. */
+  it("names no department for a grocery product and keeps its schema for the rows", () => {
+    const shaped = toStorefrontProduct(product(), { categoryName: "Grocery" });
+    expect(shaped.productType).toBeNull();
+    expect(shaped.specsFrom).toBe("grocery");
+    expect(toStorefrontProduct(product(), { categoryName: "Home & Kitchen" }).specsFrom).toBe("home-and-kitchen");
+    expect(toStorefrontProduct(product()).specsFrom).toBeNull();
+  });
+
   it("leaves productType null rather than empty when the product has no category", () => {
     expect(toStorefrontProduct(product()).productType).toBeNull();
   });

@@ -399,7 +399,7 @@ struct DepartmentCardGrid: View {
     /// Each tile, at a fixed width in the row and the column's in the grid.
     @ViewBuilder
     private func tiles(width: CGFloat?) -> some View {
-        ForEach(ReferenceData.shared.departments) { department in
+        ForEach(ReferenceData.shared.shopDepartments) { department in
             // The Categories tab with this department open, on the owner's
             // word; "All departments" opens it as it is.
             tile(slug: department.slug, title: l.t(department.label), count: nil, width: width) {

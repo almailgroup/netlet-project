@@ -176,14 +176,16 @@ final class CartQueueTests: XCTestCase {
 final class BrowseStoresTests: XCTestCase {
     func testTheStoresAreAskedForADepartmentAndASubcategoryAlone() async {
         let catalog = FakeCatalogService()
-        await BrowseModel(source: .shelf(slug: "grocery", view: .all), catalog: catalog).loadStores(language: .en)
-        await BrowseModel(source: .shelf(slug: "grocery", view: .all), catalog: catalog, sub: "pantry").loadStores(language: .en)
-        XCTAssertEqual(catalog.storesAsked, ["Grocery/", "Grocery/pantry"])
+        await BrowseModel(source: .shelf(slug: "electronics", view: .all), catalog: catalog).loadStores(language: .en)
+        await BrowseModel(source: .shelf(slug: "electronics", view: .all), catalog: catalog, sub: "audio").loadStores(language: .en)
+        XCTAssertEqual(catalog.storesAsked, ["Electronics/", "Electronics/audio"])
         await BrowseModel(source: .shelf(slug: nil, view: .all), catalog: catalog).loadStores(language: .en)
         await BrowseModel(source: .shelf(slug: nil, view: .deals), catalog: catalog).loadStores(language: .en)
-        await BrowseModel(source: .shelf(slug: "grocery", view: .deals), catalog: catalog, sub: "pantry").loadStores(language: .en)
-        await BrowseModel(source: .shelf(slug: "grocery", view: .all), catalog: catalog, occasion: "ramadan").loadStores(language: .en)
-        XCTAssertEqual(catalog.storesAsked.count, 2, "everything, the Deals page and an occasion ask nothing")
+        await BrowseModel(source: .shelf(slug: "electronics", view: .deals), catalog: catalog, sub: "audio").loadStores(language: .en)
+        await BrowseModel(source: .shelf(slug: "electronics", view: .all), catalog: catalog, occasion: "ramadan").loadStores(language: .en)
+        // Grocery is no department of the shop's, so its old address asks nothing either.
+        await BrowseModel(source: .shelf(slug: "grocery", view: .all), catalog: catalog).loadStores(language: .en)
+        XCTAssertEqual(catalog.storesAsked.count, 2, "everything, the Deals page, an occasion and Grocery ask nothing")
     }
 }
 

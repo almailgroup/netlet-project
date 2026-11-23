@@ -12,7 +12,7 @@ import { EMPTY_FILTERS, productsInCategory, searchPath, searchWithTerm } from "@
 import { brandsMatching, departmentsMatching, highlightParts, rankBySearch } from "@shared/commerce/search";
 import { useQueryClient } from "@tanstack/react-query";
 import { shelvedProducts } from "@/hooks/useCatalog";
-import { ALL_DEPARTMENTS, DEPARTMENTS, type Department } from "@shared/commerce/departments";
+import { ALL_DEPARTMENTS, SHOP_DEPARTMENTS, type Department } from "@shared/commerce/departments";
 import { DepartmentArt } from "@/components/browse/DepartmentArt";
 import { useDepartmentsInStock } from "@/hooks/useDepartmentsInStock";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -502,7 +502,7 @@ export function LiveSearch({ catalog, value, onChange, onSelectProduct, departme
    * who did not find theirs looks next.
    */
   const tiles = [
-    ...DEPARTMENTS.filter(entry => inStock(entry.name)).map(entry => ({ slug: entry.slug, query: entry.name, label: entry.label, counted: true })),
+    ...SHOP_DEPARTMENTS.filter(entry => inStock(entry.name)).map(entry => ({ slug: entry.slug, query: entry.name, label: entry.label, counted: true })),
     { slug: "all", query: ALL_DEPARTMENTS.query, label: ALL_DEPARTMENTS.label, counted: false },
   ];
   /* "All departments" says what it holds, and its line stays empty: the line is

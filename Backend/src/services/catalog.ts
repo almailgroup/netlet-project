@@ -63,6 +63,7 @@ import { discountAllowed } from "../../../Shared/inventory/discountLicence.js";
 import { isDeliverySpeed, speedForLine, type DeliverySpeed } from "../../../Shared/commerce/deliverySpeed.js";
 import { recentReviewsForStore, type StoreReview } from "./reviews.js";
 import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
+import { hiddenFromShop } from "../../../Shared/commerce/departments.js";
 import { valueOf } from "../../../Shared/commerce/attributeSchema.js";
 import { featureOn } from "./features.js";
 import { taxForLines } from "./tax.js";
@@ -500,7 +501,9 @@ export async function listProducts(
   if (!db) return [];
 
   let categoryId: number | undefined;
-  if (options.collectionHandle) {
+  /* A department the shop does not show (Grocery) is no department here: an
+     address that names it reads as the whole shop, as an unknown one does. */
+  if (options.collectionHandle && !hiddenFromShop(options.collectionHandle)) {
     const [row] = await db
       .select({ id: categories.id })
       .from(categories)

@@ -172,7 +172,8 @@
             "title": "Arabic coffee 500 g",
             "description": "A good arabic coffee 500 g for every day.",
             "descriptionHtml": "<p>A good arabic coffee 500 g for every day.</p>",
-            "productType": "Grocery",
+            "productType": null,
+            "specsFrom": "grocery",
             "vendor": "Gulf Grocers",
             "vendorSlug": "gulf-grocers",
             "vendorBadges": [],
@@ -230,7 +231,7 @@
             "sizeChart": null,
             "subscription": null,
             "reviewSummary": null,
-            "subcategory": "beverages"
+            "subcategory": null
           }
         },
         {
@@ -320,7 +321,8 @@
             "title": "Basmati rice 5 kg",
             "description": "",
             "descriptionHtml": "",
-            "productType": "Grocery",
+            "productType": null,
+            "specsFrom": "grocery",
             "vendor": "Gulf Grocers",
             "vendorSlug": "gulf-grocers",
             "vendorBadges": [],
@@ -381,7 +383,7 @@
             "sizeChart": null,
             "subscription": null,
             "reviewSummary": null,
-            "subcategory": "pantry"
+            "subcategory": null
           }
         },
         {

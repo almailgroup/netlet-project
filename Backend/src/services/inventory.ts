@@ -66,6 +66,7 @@ import { takeHourlyAllowance } from "./rateLimit.js";
 import { MAX_LISTING_SCREENS_PER_HOUR, reviewProduct as triageListing } from "../../../Shared/inventory/productReview.js";
 import { kuwaitDay } from "../../../Shared/kuwaitDay.js";
 import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
+import { hiddenFromShop } from "../../../Shared/commerce/departments.js";
 import { productAddonFields, productAddonsBefore0083, warrantyLengthsReady, withoutLength } from "./warrantyLengths.js";
 import { teamReady, teamSeatOf } from "./teamSeats.js";
 
@@ -428,7 +429,9 @@ export async function publishedDepartmentCounts(condition: Exclude<CatalogueCond
     .innerJoin(categories, eq(products.categoryId, categories.id))
     .where(and(eq(products.status, "published"), eq(vendors.status, "approved"), conditionWhere(condition)))
     .groupBy(categories.slug);
-  return Object.fromEntries(rows.map(row => [row.slug, Number(row.count)]));
+  /* Never a department the shop does not show (Grocery): its products are on
+     sale under no department, so nothing may count them under one. */
+  return Object.fromEntries(rows.filter(row => !hiddenFromShop(row.slug)).map(row => [row.slug, Number(row.count)]));
 }
 
 /**
@@ -460,6 +463,8 @@ export async function publishedSubcategoryCounts(): Promise<Record<string, Recor
     .limit(SUBCATEGORY_COUNT_CEILING);
   const counts: Record<string, Record<string, number>> = {};
   for (const row of rows) {
+    /* Grocery's subcategories are not the shop's either. */
+    if (hiddenFromShop(row.slug)) continue;
     const sub = subcategoryFor({
       department: row.department,
       titles: [row.title, row.titleAr],

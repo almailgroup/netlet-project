@@ -12,6 +12,7 @@
  */
 import type { SizeChart } from "@shared/commerce/sizeGuide";
 import { subcategoryFor } from "@shared/commerce/subcategories";
+import { DEPARTMENTS, shopDepartmentName } from "@shared/commerce/departments";
 import { DEFAULT_VARIANT_TITLE } from "@shared/commerce/fromInventory";
 import type { Product } from "@shared/commerce/types";
 
@@ -469,7 +470,10 @@ function toProduct(seed: Seed, index: number): Product {
     title: seed.title,
     description: seed.description,
     descriptionHtml: `<p>${seed.description}</p>`,
-    productType: seed.productType,
+    /* Shaped as the server shapes it: none for a department the shop does
+       not show (Grocery), whose rows still follow its schema. */
+    productType: shopDepartmentName(seed.productType),
+    specsFrom: DEPARTMENTS.find(department => department.name === seed.productType)?.slug ?? null,
     vendor: seed.vendor,
     /* So "Sold by" opens the invented store's page, which `demoLink` answers. */
     vendorSlug: seed.vendor.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
@@ -478,7 +482,7 @@ function toProduct(seed: Seed, index: number): Product {
     vendorBadges: [],
     tags: seed.tags,
     /* Filed by the server's own rule, from the invented title and tags. */
-    subcategory: subcategoryFor({ department: seed.productType, titles: [seed.title], tags: seed.tags }),
+    subcategory: subcategoryFor({ department: shopDepartmentName(seed.productType), titles: [seed.title], tags: seed.tags }),
     attributes: [
       ...(seed.refurbished ? [{ namespace: "spec", key: "condition", label: "Condition", value: "refurbished" }] : []),
       {

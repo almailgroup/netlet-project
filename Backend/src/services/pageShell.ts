@@ -8,7 +8,7 @@
  * product taken down — sends the shell unchanged rather than an error, since
  * the page itself still loads and says what happened.
  */
-import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
+import { SHOP_DEPARTMENTS } from "../../../Shared/commerce/departments.js";
 import { breadcrumbJsonLd, categoriesMeta, departmentMeta, guideMeta, guidesMeta, productJsonLd, productMeta, storeMeta, storesMeta } from "../../../Shared/seo.js";
 import { headTags, withHead } from "../../../Shared/seoHead.js";
 import { describeError } from "../core/describeError.js";
@@ -55,7 +55,8 @@ export async function pageWithHead(template: string, path: string, origin: strin
     }
     const department = DEPARTMENT.exec(path);
     if (department) {
-      const known = DEPARTMENTS.find(entry => entry.slug === decodeURIComponent(department[1]));
+      /* A department the shop does not show has no head of its own: its address reads as the shop. */
+      const known = SHOP_DEPARTMENTS.find(entry => entry.slug === decodeURIComponent(department[1]));
       if (!known) return template;
       return withHead(template, headTags(departmentMeta(known.name, known.slug, origin)));
     }

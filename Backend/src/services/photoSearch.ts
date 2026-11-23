@@ -12,6 +12,7 @@
 import { and, eq } from "drizzle-orm";
 import { askModel, modelAvailable } from "./gemini.js";
 import { departmentOf, productPhoto } from "./aiImages.js";
+import { hiddenFromShop } from "../../../Shared/commerce/departments.js";
 import { featureOn } from "./features.js";
 import { getDb } from "./db.js";
 import { products, vendors } from "../../database/schema.js";
@@ -107,7 +108,10 @@ export async function similarTo(productId: number, locale: "en" | "ar"): Promise
     .where(and(eq(products.id, productId), eq(products.status, "published"), eq(vendors.status, "approved")))
     .limit(1);
   if (!product) return null;
-  const department = await departmentOf(productId);
+  /* Never a department the shop does not show (Grocery): "more like this"
+     is then the whole shop, which is where its products are. */
+  const filed = await departmentOf(productId);
+  const department = hiddenFromShop(filed) ? null : filed;
   if (!(await featureOn("photoSearch")) || !(await photoSearchAvailable())) return { kind: "department", department };
 
   const title = (locale === "ar" && product.titleAr ? product.titleAr : product.title).replace(/\s+/g, " ").slice(0, 200);

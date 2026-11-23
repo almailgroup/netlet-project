@@ -48,7 +48,7 @@ struct DepartmentBrowser: View {
     private var opening: Animation? { still ? nil : .spring(response: 0.4, dampingFraction: 0.88) }
 
     var body: some View {
-        let departments = ReferenceData.shared.departments
+        let departments = ReferenceData.shared.shopDepartments
         let rows = Self.rows(departments.map(\.slug) + [Self.all], columns)
         ScrollViewReader { proxy in
             VStack(alignment: .leading, spacing: 18) {
@@ -120,7 +120,7 @@ struct DepartmentBrowser: View {
 
     /// Brings the row holding `slug` up under the search row.
     private func reveal(_ slug: String, _ proxy: ScrollViewProxy) {
-        let slugs = ReferenceData.shared.departments.map(\.slug) + [Self.all]
+        let slugs = ReferenceData.shared.shopDepartments.map(\.slug) + [Self.all]
         guard let row = Self.rows(slugs, columns).first(where: { $0.contains(slug) }) else { return }
         let glide: Animation? = still ? nil : .smooth(duration: 0.45)
         withAnimation(glide) {

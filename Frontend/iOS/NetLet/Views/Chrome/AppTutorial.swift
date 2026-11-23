@@ -384,7 +384,7 @@ private struct WelcomePicture: View {
                 .padding(.horizontal, 40)
             floating("electronics", x: -130, y: -110, delay: 0)
             floating("beauty", x: 135, y: -80, delay: 0.4)
-            floating("grocery", x: 120, y: 112, delay: 0.8)
+            floating("home-and-kitchen", x: 120, y: 112, delay: 0.8)
         }
         .accessibilityHidden(true)
         .onChange(of: active) { _, now in if now { float = true } }
@@ -496,7 +496,7 @@ private struct FindPicture: View {
     @Environment(LanguageSettings.self) private var l
 
     private var word: String {
-        ReferenceData.shared.departments.first.map { l.t($0.label) } ?? ""
+        ReferenceData.shared.shopDepartments.first.map { l.t($0.label) } ?? ""
     }
 
     var body: some View {
@@ -534,7 +534,7 @@ private struct FindPicture: View {
                 .background(Capsule().fill(Color.white))
                 .overlay(Capsule().strokeBorder(moment > 0 ? Brand.navy : Brand.line, lineWidth: moment > 0 ? 1.5 : 1))
                 HStack(spacing: 12) {
-                    ForEach(Array(ReferenceData.shared.departments.prefix(3).enumerated()), id: \.element.id) { index, department in
+                    ForEach(Array(ReferenceData.shared.shopDepartments.prefix(3).enumerated()), id: \.element.id) { index, department in
                         let shown = moment > letters.count + index
                         VStack(spacing: 6) {
                             BundledImage(image: WebAssets.department(department.slug))

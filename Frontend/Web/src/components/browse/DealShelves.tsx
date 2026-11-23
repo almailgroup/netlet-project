@@ -11,7 +11,7 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { ScrollArrows } from "@/components/ui/ScrollArrows";
 import { useSideScroll } from "@/hooks/useSideScroll";
 import { useTranslation } from "@/hooks/useTranslation";
-import { DEPARTMENTS } from "@shared/commerce/departments";
+import { SHOP_DEPARTMENTS } from "@shared/commerce/departments";
 import { findSubcategory, subcategoryName } from "@shared/commerce/subcategories";
 import type { DealShelf } from "@shared/commerce/deals";
 import type { Product } from "@shared/commerce/types";
@@ -35,7 +35,7 @@ export function DealShelves({ shelves, saved, onSave, onQuickView }: Props) {
 function Shelf({ shelf, saved, onSave, onQuickView }: { shelf: DealShelf } & Omit<Props, "shelves">) {
   const { t, locale } = useTranslation();
   const scroll = useSideScroll<HTMLUListElement>([shelf.products.length]);
-  const department = DEPARTMENTS.find(entry => entry.slug === shelf.department) ?? null;
+  const department = SHOP_DEPARTMENTS.find(entry => entry.slug === shelf.department) ?? null;
   const kind = findSubcategory(shelf.department, shelf.subcategory);
   const title = kind ? subcategoryName(kind, locale === "ar") : department ? t(department.label as MessageKey) : t("browse.moreDeals");
   /* That kind's department, narrowed to it and to what is on offer. */

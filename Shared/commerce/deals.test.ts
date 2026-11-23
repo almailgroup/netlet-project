@@ -22,13 +22,21 @@ describe("the Deals page's shelves", () => {
   it("is a shelf per kind of thing, the fullest first", () => {
     const shelves = dealShelves([
       deal("phone-a", "Electronics", "phones"),
-      deal("rice", "Grocery", "pantry"),
+      deal("pan", "Home & Kitchen", "cookware"),
       deal("phone-b", "Electronics", "phones"),
-      deal("oil", "Grocery", "pantry"),
-      deal("dates", "Grocery", "pantry"),
+      deal("pot", "Home & Kitchen", "cookware"),
+      deal("mug", "Home & Kitchen", "cookware"),
     ], { deepestFirst: false });
-    expect(shelves.map(shelf => shelf.key)).toEqual(["grocery/pantry", "electronics/phones"]);
-    expect(shelves[0]).toMatchObject({ department: "grocery", subcategory: "pantry", total: 3 });
+    expect(shelves.map(shelf => shelf.key)).toEqual(["home-and-kitchen/cookware", "electronics/phones"]);
+    expect(shelves[0]).toMatchObject({ department: "home-and-kitchen", subcategory: "cookware", total: 3 });
+  });
+
+  /* On the owner's word: no shelf is Grocery's while it waits for NetLet
+     Groceries. The server sends its products with no department; one that
+     still names it is on the shelf of everything else. */
+  it("draws no Grocery shelf", () => {
+    const shelves = dealShelves([deal("rice", "Grocery", "pantry"), deal("oil", "Grocery", "pantry"), deal("dates", null, null)], { deepestFirst: false });
+    expect(shelves.map(shelf => [shelf.key, shelf.total])).toEqual([["other", 3]]);
   });
 
   it("puts a kind with one deal on its department's own shelf, after the department's kinds", () => {

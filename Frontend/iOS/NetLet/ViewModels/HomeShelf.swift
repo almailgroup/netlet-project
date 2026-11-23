@@ -217,7 +217,7 @@ final class HomeShelf {
     /// `minTab` of the shelf in it, in the departments' own order, keeping the
     /// shelf's order — and none when a row could change nothing, one
     /// department holding the whole shelf being the "All" tab said twice.
-    nonisolated static func departmentTabs(_ products: [Product], departments: [Department] = ReferenceData.shared.departments) -> [DepartmentTab] {
+    nonisolated static func departmentTabs(_ products: [Product], departments: [Department] = ReferenceData.shared.shopDepartments) -> [DepartmentTab] {
         let tabs = departments.map { department in
             DepartmentTab(slug: department.slug, label: department.label, products: products.filter { $0.productType == department.name || $0.tags.contains(department.name) })
         }
@@ -248,7 +248,7 @@ final class HomeShelf {
     func searchExamples(language: LanguageSettings) -> [String] {
         let arabic = language.current == .ar
         let products = catalogue.value ?? []
-        let departments = ReferenceData.shared.departments.filter { department in
+        let departments = ReferenceData.shared.shopDepartments.filter { department in
             if let counts { return (counts[department.slug] ?? 0) > 0 }
             return products.contains { ReferenceData.shared.department(named: $0.productType ?? "")?.slug == department.slug }
         }

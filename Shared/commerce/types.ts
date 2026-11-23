@@ -142,7 +142,20 @@ export type Product = {
   title: string;
   description: string;
   descriptionHtml: string;
+  /**
+   * The department the shop files it under, by its catalogue name. Null for a
+   * product in no department — and for one in a department the shop does not
+   * show (Grocery, kept for NetLet Groceries), which is on sale under none.
+   */
   productType: string | null;
+  /**
+   * The slug of the NetLet department whose specification rows its own
+   * follow — its department's, shown or not — so a grocery product's rows
+   * keep their labels and units in both languages with no department named.
+   * Optional because a demo catalogue and a cart line's snapshot carry none;
+   * `productType` answers then.
+   */
+  specsFrom?: string | null;
   vendor: string | null;
   /**
    * The store's public address (`/stores/<slug>`), so "Sold by" can go there.

@@ -58,7 +58,7 @@ private struct DealShelvesView: View {
     }
 
     private func title(_ shelf: DealShelves.Shelf) -> String {
-        let department = ReferenceData.shared.department(slug: shelf.department)
+        let department = ReferenceData.shared.shopDepartment(slug: shelf.department)
         if let department, let kind = department.sub(shelf.subcategory) { return kind.shown(l.current) }
         if let department { return l.t(department.label) }
         return l.t("browse.moreDeals")
@@ -395,7 +395,7 @@ private struct BrowsePage: View {
     @ViewBuilder
     private var refurbishedDepartments: some View {
         let counts = model.refurbishedSummary.departments
-        let departments = ReferenceData.shared.departments.filter { (counts[$0.slug] ?? 0) > 0 || $0.slug == model.department?.slug }
+        let departments = ReferenceData.shared.shopDepartments.filter { (counts[$0.slug] ?? 0) > 0 || $0.slug == model.department?.slug }
         if !departments.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 GlassGroup {

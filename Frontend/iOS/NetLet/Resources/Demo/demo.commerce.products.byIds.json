@@ -355,7 +355,8 @@
           "title": "Tomatoes",
           "description": "Tomatoes. Sold by a NetLet seller; specification rows below.",
           "descriptionHtml": "<p>Tomatoes. Sold by a NetLet seller; specification rows below.</p>",
-          "productType": "Grocery",
+          "productType": null,
+          "specsFrom": "grocery",
           "vendor": "Gulf Grocers",
           "vendorSlug": "gulf-grocers",
           "vendorBadges": [],
@@ -366,7 +367,7 @@
           ],
           "attributes": [],
           "reviewSummary": null,
-          "subcategory": "fresh",
+          "subcategory": null,
           "media": [
             {
               "url": "http://localhost:5000/brand/collection-home.svg",

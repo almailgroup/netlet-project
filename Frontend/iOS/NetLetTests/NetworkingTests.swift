@@ -191,14 +191,19 @@ final class FixtureDecodingTests: XCTestCase {
         let sandals = try XCTUnwrap(products.first { $0.handle == "leather-sandals" })
         XCTAssertNil(sandals.reviewSummary)
         // Filed by the server: what the Categories page counts and a subcategory page narrows to.
-        XCTAssertEqual(rice.subcategory, "pantry")
         XCTAssertEqual(sandals.subcategory, "shoes")
-        var pantry = BrowseFilters()
-        pantry.sub = "pantry"
-        XCTAssertEqual(products.filter(pantry.admits).map(\.handle), ["basmati-rice-5kg"])
-        XCTAssertEqual(pantry.activeCount, 0)
+        var shoes = BrowseFilters()
+        shoes.sub = "shoes"
+        XCTAssertEqual(products.filter(shoes.admits).map(\.handle), ["leather-sandals"])
+        XCTAssertEqual(shoes.activeCount, 0)
+        // Grocery is not one of the shop's departments, on the owner's word:
+        // rice is on sale under none, and its rows still follow Grocery's.
+        XCTAssertNil(rice.productType)
+        XCTAssertNil(rice.subcategory)
+        XCTAssertEqual(rice.specsFrom, "grocery")
         let subCounts = try await client.call(API.subcategoryCounts)
-        XCTAssertEqual(subCounts["grocery"]?["pantry"], 2)
+        XCTAssertEqual(subCounts["style"]?["shoes"], 1)
+        XCTAssertNil(subCounts["grocery"], "the shop counts nothing under Grocery")
         let product = try await client.call(API.product, .init(handle: products[0].handle, locale: "en"))
         XCTAssertNotNil(product)
         let counts = try await client.call(API.departmentCounts)
@@ -897,7 +902,10 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(Route.from(link: "/category/all"), .department(slug: nil))
         XCTAssertEqual(Route.from(link: "/category/style?q=shirt"), .search(query: "shirt", department: "style"))
         // A subcategory is its department narrowed — the Categories page's chips.
-        XCTAssertEqual(Route.from(link: "/category/grocery?sub=pantry"), .subcategory(department: "grocery", sub: "pantry"))
+        XCTAssertEqual(Route.from(link: "/category/electronics?sub=audio"), .subcategory(department: "electronics", sub: "audio"))
+        // Grocery's old address is the whole shop: no Grocery page in the app.
+        XCTAssertEqual(Route.from(link: "/category/grocery"), .department(slug: nil))
+        XCTAssertEqual(Route.from(link: "/category/grocery?sub=pantry"), .department(slug: nil))
         XCTAssertEqual(Route.from(link: "/category/all?sub=pantry"), .department(slug: nil))
         XCTAssertEqual(Route.from(link: "/search?q=kettle"), .search(query: "kettle"))
         XCTAssertNil(Route.from(link: "/somewhere/else"))

@@ -9,7 +9,13 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     let handle: String
     let title: String
     let description: String
+    /// Its department's catalogue name; none for a product in a department
+    /// the shop does not show (Grocery), which is on sale under none.
     let productType: String?
+    /// The department whose specification rows its own follow, shown or not
+    /// (`Product.specsFrom`), so a grocery product's rows keep their labels;
+    /// absent from an older server and the recordings, `productType` answering.
+    let specsFrom: String?
     let vendor: String?
     let vendorSlug: String?
     let vendorBadges: [String]
@@ -82,7 +88,9 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     /// language and a chosen answer in it too ("النوع: الهواتف"); anything else
     /// is shown as the seller wrote it.
     func shownSpecifications(_ language: Language) -> [(label: String, value: String)] {
-        let department = ReferenceData.shared.department(named: productType ?? "")?.slug
+        // `specsFrom` first: a grocery product names no department (the shop
+        // does not show Grocery) and its rows still follow Grocery's schema.
+        let department = specsFrom ?? ReferenceData.shared.department(named: productType ?? "")?.slug
         let fields = department.flatMap { ListingRules.shared.attributeSchema[$0] } ?? []
         return specifications.map { row in
             guard let field = fields.first(where: { $0.key == row.key }) else { return (row.label, row.value) }

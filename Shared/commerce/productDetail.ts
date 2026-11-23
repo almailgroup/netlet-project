@@ -156,10 +156,12 @@ export function isExpressEligible(product: Pick<Product, "tags">): boolean {
 
 /** Specification content: structured metafields first, then the description. */
 export function specifications(
-  product: Pick<Product, "attributes" | "description"> & { productType?: string | null },
+  product: Pick<Product, "attributes" | "description"> & { productType?: string | null; specsFrom?: string | null },
   options: { arabic?: boolean } = {},
 ): Specifications {
-  const department = DEPARTMENTS.find(entry => entry.name === product.productType)?.slug ?? null;
+  /* `specsFrom` first: a grocery product names no department (the shop does
+     not show Grocery) and its rows still follow Grocery's schema. */
+  const department = product.specsFrom ?? DEPARTMENTS.find(entry => entry.name === product.productType)?.slug ?? null;
   return {
     rows: product.attributes
       /* The condition is said by its own badge and note, never as a row. */

@@ -9068,6 +9068,40 @@ Pet supplies opening five rows and View all, a subcategory's page, each new
 department's page answering with its name, no missing picture asked for, axe
 clean, no sideways scroll.
 
+**Grocery is not one of the shop's departments, on the owner's word**
+("completely remove grocery from the categories as I'm planning to make a
+separate page for it called NetLet Groceries"). `Department.shop` is false for
+Grocery alone, and **the shop reads `SHOP_DEPARTMENTS`** — the home tiles, the
+wide header's row, the footer, the Categories page and its own search, the
+department page, the search's department suggestions (`departmentsMatching`),
+the deals shelves, the shelves' tabs, the refurbished chips, the sitemap and a
+department page's head — **while the portal, the importer, a listing's rows,
+the subcategory picture desk and the return rules read `DEPARTMENTS`**, so a
+store still files a product under Grocery, ready for that page. **Its products
+stay on sale under no department, the owner's answer**: the shop's read names
+none for them (`shopDepartmentName` in `toStorefrontProduct`, so `productType`
+and `subcategory` are null and every list built from what products say has no
+Grocery in it), and the server counts nothing under it
+(`publishedDepartmentCounts`, `publishedSubcategoryCounts`), sells in it for no
+store (`storesSelling`), narrows nothing to it (`searchCatalogue`'s department,
+`listProducts`' handle, Find similar's department) and gives its address no
+head; they are found by their words (the department's own name still finds
+them), on their store's page, in the shelves and at their own address.
+**`Product.specsFrom`** names the department whose rows a product's own follow,
+shown or not, so a grocery product's "Country of origin" still reads "بلد
+المنشأ" with no department named (`specifications`, the app's
+`shownSpecifications`). **`/category/grocery` is replaced by `/category/all`**
+(the query kept), and the app's `Route.from` reads it as the whole shop
+(`hiddenFromShop`). A change of mind on a grocery item is still declined at
+once: the perishable rule reads the product's category in the database, never
+the shop's name for it. `departments.json` carries the flag and the app reads
+`shopDepartments` on every shopper screen; its recorded answers were rewritten
+to what the server now sends. Walked on a production build against a local
+Postgres holding two grocery products at 320, 390 and 1440 in both languages:
+no Grocery tile, row, link, filter or heading anywhere, the old address landing
+on everything, the honey suggested by search and its page buyable with no
+department in its breadcrumb, axe clean and no sideways scroll.
+
 **Every subcategory has a picture of its own, a file, on the owner's word**
 ("there you go, add all these for the sub-category and push it to netlet app
 and the website"): the owner had all thirty-five made in the department

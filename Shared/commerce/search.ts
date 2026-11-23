@@ -41,7 +41,7 @@
  * Only the catalogue's words: a dictionary of English would correct a brand
  * into a word nobody sells.
  */
-import { DEPARTMENTS, type Department } from "./departments.js";
+import { DEPARTMENTS, SHOP_DEPARTMENTS, type Department } from "./departments.js";
 import { SYNONYM_GROUPS } from "./searchSynonyms.js";
 import type { Product } from "./types.js";
 
@@ -356,11 +356,15 @@ export function highlightParts(title: string, term: string): { text: string; hit
   });
 }
 
-/** The departments a search names, in either language — "elec", "إلكترون", "بقالة". */
+/**
+ * The departments a search names, in either language — "elec", "إلكترون",
+ * "جمال". The shop's own: a department it does not show (Grocery) is never
+ * offered, though its products are still found by their words.
+ */
 export function departmentsMatching(term: string): Department[] {
   const words = queryWords(term);
   if (words.length === 0) return [];
-  return DEPARTMENTS.filter(department => {
+  return SHOP_DEPARTMENTS.filter(department => {
     const tokens = [...searchWords(department.name), ...searchWords(department.nameAr)];
     return words.every(word => tokens.some(token => wordMatch(token, word) > 0));
   });

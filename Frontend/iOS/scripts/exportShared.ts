@@ -216,8 +216,10 @@ export function buildResources(): Record<string, string> {
       /* Each with its subcategories — the Categories tab's panel. The server
          files the products (`Product.subcategory`); the words travel too, so the
          Categories tab's own search finds a subcategory by what its products are called. */
-      DEPARTMENTS.map(({ slug, name, nameAr, position, label, icon, tint, art, subcategoryArt }) => ({
-        slug, name, nameAr, position, label, icon, tint, art, subcategoryArt,
+      /* Every department, Grocery included — the portal files products under
+         it — each saying whether the shop shows it (`shop`). */
+      DEPARTMENTS.map(({ slug, name, nameAr, position, label, icon, tint, art, subcategoryArt, shop }) => ({
+        slug, name, nameAr, position, label, icon, tint, art, subcategoryArt, shop,
         subcategories: subcategoriesOf(slug).map(entry => ({ slug: entry.slug, name: entry.name, nameAr: entry.nameAr, icon: entry.icon, words: entry.words })),
       })),
     ),

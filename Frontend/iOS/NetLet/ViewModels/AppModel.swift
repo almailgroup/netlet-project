@@ -92,7 +92,9 @@ enum Route: Hashable {
         case ("categories"?, 1): return .tab(.categories)
         case ("products"?, 2): return .product(handle: segments[1])
         case ("category"?, 2):
-            let slug = segments[1] == "all" ? nil : segments[1]
+            // Grocery's old address is the whole shop: the shop shows no
+            // Grocery while it waits for NetLet Groceries (`hiddenFromShop`).
+            let slug = segments[1] == "all" || ReferenceData.shared.hiddenFromShop(segments[1]) ? nil : segments[1]
             if let words = query["q"], !words.isEmpty { return .search(query: words, department: slug) }
             if let slug, let sub = query["sub"], !sub.isEmpty { return .subcategory(department: slug, sub: sub) }
             if slug == nil, let occasion = query["occasion"], !occasion.isEmpty { return .occasion(slug: occasion) }
@@ -468,18 +470,18 @@ final class AppModel {
             }
             openChat()
         case "categories":
-            // `categories:grocery` opens that department onto its subcategories.
+            // `categories:electronics` opens that department onto its subcategories.
             selectedTab = .categories
             categoriesOpen = value
         case "subcategory":
-            // `subcategory:grocery/pantry`, the department narrowed to it.
+            // `subcategory:electronics/phones`, the department narrowed to it.
             let pieces = (value ?? "").split(separator: "/").map(String.init)
             if pieces.count == 2 {
                 selectedTab = .categories
                 categoriesPath = NavigationPath([Route.subcategory(department: pieces[0], sub: pieces[1])])
             }
         case "browseSheet":
-            // `browseSheet:all/sort`, `browseSheet:grocery/price` — a shelf with
+            // `browseSheet:all/sort`, `browseSheet:electronics/price` — a shelf with
             // its sort, every filter ("all") or one group's sheet up.
             let pieces = (value ?? "").split(separator: "/").map(String.init)
             guard pieces.count == 2 else { return }

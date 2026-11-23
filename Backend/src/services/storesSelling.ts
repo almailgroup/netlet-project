@@ -18,6 +18,7 @@ import { categories, products, vendors } from "../../database/schema.js";
 import type { LocalePick } from "../../../Shared/commerce/fromInventory.js";
 import { rankStores } from "../../../Shared/commerce/storesSelling.js";
 import { subcategoryFor } from "../../../Shared/commerce/subcategories.js";
+import { shopDepartmentName } from "../../../Shared/commerce/departments.js";
 import { sellingStoreCards, type SellingStore } from "./catalog.js";
 import { getDb } from "./db.js";
 
@@ -26,7 +27,9 @@ const SHELF_CEILING = 20_000;
 
 export async function storesSelling(request: { department: string; sub?: string | null; locale?: LocalePick }): Promise<SellingStore[]> {
   const db = await getDb();
-  const department = request.department.trim();
+  /* None for a department the shop does not show (Grocery): a store is never
+     said to sell in a department no shopper can open. */
+  const department = shopDepartmentName(request.department);
   if (!db || !department) return [];
   const sub = request.sub?.trim() || null;
   const rows = await db

@@ -28,6 +28,7 @@ import { savingPercent } from "./subscriptions.js";
 import { resolveSpeed } from "./deliverySpeed.js";
 import { chartProblem, type SizeChart } from "./sizeGuide.js";
 import { addonTitle } from "./addons.js";
+import { DEPARTMENTS, shopDepartmentName } from "./departments.js";
 
 /**
  * The dinar, everywhere.
@@ -293,8 +294,13 @@ export function toStorefrontProduct(
     /* The department's own name in every language: it is the key the pages
        filter on, build links from and look labels up by, not a label. Asked in
        Arabic it came back Arabic, so a department page read in Arabic matched
-       nothing. The label is the dictionary's (`categoryMessageKey`). */
-    productType: context.categoryName || null,
+       nothing. The label is the dictionary's (`categoryMessageKey`). None for
+       a department the shop does not show (`shopDepartmentName`): Grocery's
+       products are on sale under no department, on the owner's word. */
+    productType: shopDepartmentName(context.categoryName),
+    /* Its rows keep their labels in both languages under a department the
+       shop does not show (Grocery), whose products have no productType. */
+    specsFrom: DEPARTMENTS.find(department => department.name.toLowerCase() === context.categoryName?.trim().toLowerCase())?.slug ?? null,
     vendor: pick(locale, context.vendorName, context.vendorNameAr) || null,
     vendorSlug: context.vendorSlug ?? null,
     vendorBadges: visibleBadges(context.vendorBadges),

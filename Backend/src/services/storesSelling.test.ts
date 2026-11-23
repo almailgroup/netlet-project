@@ -83,7 +83,9 @@ describe("a department's and a subcategory's stores", () => {
     const stores = await selling.storesSelling({ department: "Electronics" });
     /* Three each: a tie goes the same way on every read. */
     expect(stores.map(store => [store.slug, store.matching])).toEqual([["phones", 3], ["gadgets", 3]]);
-    expect((await selling.storesSelling({ department: "Grocery" })).map(store => store.slug)).toEqual(["phones"]);
+    /* Grocery is not one of the shop's departments, on the owner's word: no
+       store is said to sell in it, though the rice is on sale. */
+    expect(await selling.storesSelling({ department: "Grocery" })).toEqual([]);
   });
 
   it("narrows to the subcategory the page shows", async () => {

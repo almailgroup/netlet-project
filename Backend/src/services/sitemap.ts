@@ -9,7 +9,7 @@
  * Departments come from `Shared/commerce/departments.ts` for the same reason
  * the client reads them from there: two lists that must agree, written once.
  */
-import { DEPARTMENTS } from "../../../Shared/commerce/departments.js";
+import { SHOP_DEPARTMENTS } from "../../../Shared/commerce/departments.js";
 import type { SitemapEntry } from "../../../Shared/sitemap.js";
 import { publishedCatalog } from "./inventory.js";
 import { listStoreCards, STORE_INDEX_LIMIT } from "./catalog.js";
@@ -32,7 +32,8 @@ export async function sitemapEntries(): Promise<SitemapEntry[]> {
     { path: "/terms", priority: 0.2 },
     { path: "/privacy", priority: 0.2 },
     { path: "/seller-agreement", priority: 0.2 },
-    ...DEPARTMENTS.map(department => ({ path: `/category/${department.slug}`, priority: 0.8 })),
+    /* The shop's departments: Grocery has no page while it waits for NetLet Groceries. */
+    ...SHOP_DEPARTMENTS.map(department => ({ path: `/category/${department.slug}`, priority: 0.8 })),
   ];
 
   // A catalog this cannot reach (no database configured, or it is down) yields

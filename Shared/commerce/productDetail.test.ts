@@ -144,6 +144,14 @@ describe("specifications", () => {
     ).toEqual({ rows: [], text: "A lamp." });
   });
 
+  it("labels a grocery product's rows by Grocery's schema with no department named", () => {
+    const rows = specifications(
+      { attributes: [attribute("spec", "origin", "Saudi Arabia"), attribute("spec", "storage", "Chilled")], description: "", productType: null, specsFrom: "grocery" },
+      { arabic: true },
+    ).rows;
+    expect(rows.map(row => row.label)).toEqual(["بلد المنشأ", "طريقة الحفظ"]);
+  });
+
   it("reports nothing to show when neither half is configured", () => {
     expect(specifications({ attributes: [], description: "   " })).toEqual({ rows: [], text: "" });
   });

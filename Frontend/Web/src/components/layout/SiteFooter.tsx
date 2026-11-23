@@ -44,7 +44,7 @@ import { footerLogoImage } from "@/lib/brandAssets";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
 import { displayNumber, mailLink, mapsLink, nameInSentence, type SocialPlatform } from "@shared/commerce/contact";
-import { DEPARTMENTS } from "@shared/commerce/departments";
+import { SHOP_DEPARTMENTS } from "@shared/commerce/departments";
 import { phoneLink, whatsappLink } from "@shared/commerce/support";
 import type { MessageKey } from "@shared/i18n/dictionary";
 
@@ -206,7 +206,7 @@ export function SiteFooter({ clearance = "tabs", assistant = false }: { clearanc
   /* The navigation's rule: a department with nothing on sale is not linked. */
   const inStock = useDepartmentsInStock();
   const departments: FooterLink[] = [
-    ...DEPARTMENTS.filter(department => inStock(department.name))
+    ...SHOP_DEPARTMENTS.filter(department => inStock(department.name))
       .map(department => ({ key: department.label, href: `/category/${categorySlug(department.name)}` })),
     { key: "footer.allCategories", href: "/categories" },
   ];

@@ -57,7 +57,7 @@ import { appPath } from "@/lib/basePath";
 import { glideTileIntoView } from "@/lib/revealScroll";
 import { trpc } from "@/lib/trpc";
 import { categorySlug } from "@shared/commerce/browse";
-import { ALL_DEPARTMENTS, DEPARTMENTS, type Department } from "@shared/commerce/departments";
+import { ALL_DEPARTMENTS, SHOP_DEPARTMENTS, type Department } from "@shared/commerce/departments";
 import { shownSubcategoryPicture } from "@shared/commerce/subcategoryPictures";
 import { categoriesMeta } from "@shared/seo";
 
@@ -76,10 +76,10 @@ export default function Categories() {
 
   const [, navigate] = useLocation();
   const params = new URLSearchParams(useSearch());
-  const opened = DEPARTMENTS.find(department => department.slug === params.get("dept")) ?? null;
+  const opened = SHOP_DEPARTMENTS.find(department => department.slug === params.get("dept")) ?? null;
   /* The department folding away, drawn until its fold has run. */
   const [closing, setClosing] = useState<string | null>(null);
-  const shown = opened ?? DEPARTMENTS.find(department => department.slug === closing) ?? null;
+  const shown = opened ?? SHOP_DEPARTMENTS.find(department => department.slug === closing) ?? null;
   /*
    * The department the page arrived with open (a home tile, a shared link) is
    * drawn open rather than unfolding: nobody pressed anything here yet, and
@@ -108,7 +108,7 @@ export default function Categories() {
   /* Three tiles to a row, six from lg: the list goes after the last tile of the opened one's row. */
   const wide = useMediaQuery("(min-width: 1024px)");
   const columns = wide ? 6 : 3;
-  const tiles = [...DEPARTMENTS.map(entry => entry.slug), "all"];
+  const tiles = [...SHOP_DEPARTMENTS.map(entry => entry.slug), "all"];
   const shownIndex = shown ? tiles.indexOf(shown.slug) : -1;
   const listAfter = shownIndex < 0 ? -1 : Math.min(tiles.length - 1, Math.floor(shownIndex / columns) * columns + columns - 1);
 
@@ -160,7 +160,7 @@ export default function Categories() {
            made the browser pull the page back a step before the glide began. */
         <ul ref={grid} aria-label={t("nav.categories")} className="grid grid-cols-3 gap-x-3 gap-y-5 [overflow-anchor:none] sm:gap-x-4 lg:grid-cols-6 lg:gap-x-5">
           {tiles.map((slug, index) => {
-            const department = DEPARTMENTS.find(entry => entry.slug === slug) ?? null;
+            const department = SHOP_DEPARTMENTS.find(entry => entry.slug === slug) ?? null;
             return [
               <li key={slug} className="min-w-0">
                 {department ? (
@@ -296,8 +296,8 @@ function PageResults({ term, countLine, pictures }: {
   const subCounts = trpc.commerce.subcategoryCounts.useQuery(undefined, { staleTime: 5 * 60 * 1000 }).data;
   const arabic = locale === "ar";
   const stores = trpc.commerce.stores.useQuery({ locale, limit: INDEX_LIMIT }, { staleTime: 5 * 60 * 1000 });
-  const departments = DEPARTMENTS.filter(entry => textsMatch([entry.name, entry.nameAr, t(entry.label)], term));
-  const subcategories = DEPARTMENTS.flatMap(department => subcategoriesOf(department.slug)
+  const departments = SHOP_DEPARTMENTS.filter(entry => textsMatch([entry.name, entry.nameAr, t(entry.label)], term));
+  const subcategories = SHOP_DEPARTMENTS.flatMap(department => subcategoriesOf(department.slug)
     .filter(entry => textsMatch([entry.name, entry.nameAr, ...entry.words], term))
     .map(entry => ({ department, entry })));
   /* By either of its names: an Arabic page lists "غادجت هب", and somebody types "gadget". */

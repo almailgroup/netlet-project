@@ -119,7 +119,7 @@ export function storeMeta(
 export function categoriesMeta(siteUrl: string): PageMeta {
   return {
     title: `Categories — ${SITE_NAME}`,
-    description: "Every department on NetLet, Kuwait's marketplace — electronics, home and kitchen, beauty, style and grocery, delivered across all six governorates.",
+    description: "Every department on NetLet, Kuwait's marketplace — electronics, home and kitchen, beauty, style, baby, toys and more, delivered across all six governorates.",
     canonical: absoluteUrl(siteUrl, "/categories"),
     image: absoluteUrl(siteUrl, "/brand/og-cover.png"),
     type: "website",

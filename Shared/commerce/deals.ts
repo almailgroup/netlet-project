@@ -22,7 +22,7 @@
  *   View all opens the rest.
  */
 import type { Product } from "./types.js";
-import { DEPARTMENTS } from "./departments.js";
+import { SHOP_DEPARTMENTS } from "./departments.js";
 import { subcategoriesOf } from "./subcategories.js";
 import { savingPercentOf } from "./placement.js";
 
@@ -45,7 +45,7 @@ export type DealShelf = {
 };
 
 export function dealShelves(products: Product[], options: { deepestFirst: boolean }): DealShelf[] {
-  const departmentOf = (product: Product) => DEPARTMENTS.find(department => department.name === product.productType) ?? null;
+  const departmentOf = (product: Product) => SHOP_DEPARTMENTS.find(department => department.name === product.productType) ?? null;
 
   /* First by kind, to see which kinds have enough to stand alone. */
   const byKind = new Map<string, Product[]>();
@@ -69,7 +69,7 @@ export function dealShelves(products: Product[], options: { deepestFirst: boolea
   const rank = (key: string) => {
     if (key === "other") return [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER];
     const [slug, kind] = key.split("/");
-    const department = DEPARTMENTS.find(entry => entry.slug === slug);
+    const department = SHOP_DEPARTMENTS.find(entry => entry.slug === slug);
     const kinds = subcategoriesOf(slug).map(entry => entry.slug);
     /* The department's own shelf follows its kinds. */
     return [department?.position ?? Number.MAX_SAFE_INTEGER - 1, kind ? kinds.indexOf(kind) : kinds.length];

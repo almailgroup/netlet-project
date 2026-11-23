@@ -8,7 +8,8 @@
           "title": "Basmati rice 5 kg",
           "description": "A test product for the home page screenshots.",
           "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
-          "productType": "Grocery",
+          "productType": null,
+          "specsFrom": "grocery",
           "vendor": "Gulf Grocers",
           "vendorSlug": "gulf-grocers",
           "vendorBadges": [],
@@ -20,7 +21,7 @@
             "average": 4.6,
             "count": 128
           },
-          "subcategory": "pantry",
+          "subcategory": null,
           "media": [
             {
               "url": "/departments/grocery.webp",
@@ -77,7 +78,8 @@
           "title": "Medjool dates 1 kg",
           "description": "A test product for the home page screenshots.",
           "descriptionHtml": "<p>A test product for the home page screenshots.</p>",
-          "productType": "Grocery",
+          "productType": null,
+          "specsFrom": "grocery",
           "vendor": "Gulf Grocers",
           "vendorSlug": "gulf-grocers",
           "vendorBadges": [],
@@ -89,7 +91,7 @@
             "average": 4.8,
             "count": 64
           },
-          "subcategory": "snacks",
+          "subcategory": null,
           "media": [
             {
               "url": "/departments/grocery.webp",
