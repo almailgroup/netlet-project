@@ -8610,8 +8610,30 @@ Variants cannot be stacked on these: write `hover:text-[#a44a2b]`, not
 all of it. **Run it with a toast on screen too** — sonner's own success ink
 measured 4.37:1 on its own background, on every "added to your cart" and every
 "Saved" in the portal, and survived every audit before that because a toast is
-transient and the runs measured pages with none. `[data-sonner-toast]` in
-`index.css` is the correction, in inks the codebase already carries.
+transient and the runs measured pages with none. That ink is gone with the
+fill it sat on: see the next paragraph.
+
+**A toast is NetLet's white card with navy words, on every phone, on the
+owner's word** ("why are the alerts in green colour? It should be the same
+colour palette as the website"). On an iPhone in dark mode the website's
+toasts were near-black with dark green words: the wrapper
+(`components/ui/sonner.tsx`) asked `next-themes` for the theme, which the site
+never set up, so it answered "system", and `richColors` filled a success with
+green — under the darker green ink the line above had chosen for a white
+background. The site has one look, so the wrapper always passes
+`theme="light"` (`next-themes` is gone from the dependencies), `richColors` is
+off, and the card is the popover's white, the hairline border and navy words
+at 12.6:1, with 16px corners, a soft navy-tinted shadow and Undo as the site's
+navy pill. Those are set inline: sonner injects its stylesheet outside every
+cascade layer, which beats anything in `index.css`'s layers on the toast
+itself. What kind of message it is shows in its icon alone
+(`[data-sonner-toast][data-type]` in `index.css`): navy for a success, the
+refusal red for an error, the amber ink for a warning. `toaster.test.ts`
+fails on either cause coming back. Walked with the browser in dark mode at
+320, 390 and 1440 and in light mode at 1440, in both languages
+(`.scratch/toast-walk.mjs`): Save for later's toast white with navy words, a
+navy tick and a navy Undo, axe clean. The app is held to light mode
+(`UIUserInterfaceStyle`), and its toast was already white glass with navy.
 
 **Run it against a catalog with products in it, and with some of
 them on offer** — an empty shop never renders a product card, and a shop where

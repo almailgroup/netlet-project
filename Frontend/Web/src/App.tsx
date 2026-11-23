@@ -531,7 +531,7 @@ function Router() {
  */
 function StorefrontToaster() {
   const { direction } = useTranslation();
-  return <Toaster richColors dir={direction} position="top-center" offset={{ top: 84 }} mobileOffset={{ top: 72 }} />;
+  return <Toaster dir={direction} position="top-center" offset={{ top: 84 }} mobileOffset={{ top: 72 }} />;
 }
 
 function App() {
