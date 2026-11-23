@@ -185,7 +185,7 @@ export function WishChooser({ productId, start = "choose", signedIn, onSave, onC
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={event => event.stopPropagation()}
-        className="overlay-sheet w-full max-w-[440px] rounded-t-3xl bg-[#fffdf9] px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 shadow-[0_24px_60px_rgba(10,40,90,.28)] sm:rounded-3xl sm:pb-6"
+        className="overlay-sheet w-full max-w-[440px] rounded-t-3xl bg-white px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-5 shadow-[0_24px_60px_rgba(10,40,90,.28)] sm:rounded-3xl sm:pb-6"
       >
         <div className="flex items-start justify-between gap-3">
           {step === "lists" && start === "choose" ? (

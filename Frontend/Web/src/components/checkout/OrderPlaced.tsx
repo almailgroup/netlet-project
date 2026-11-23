@@ -65,7 +65,7 @@ export function OrderPlaced({ reference, total, onView, onShop }: {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={bodyId}
-        className="flex h-full w-full flex-col items-center justify-center overflow-y-auto bg-[#f3f2ed] px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-10 text-center text-[#0a285a] sm:h-auto sm:max-w-[440px] sm:rounded-3xl sm:bg-[#fffdf9] sm:px-8 sm:py-9 sm:shadow-[0_24px_60px_rgba(10,40,90,.28)]"
+        className="flex h-full w-full flex-col items-center justify-center overflow-y-auto bg-[#f3f2ed] px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-10 text-center text-[#0a285a] sm:h-auto sm:max-w-[440px] sm:rounded-3xl sm:bg-white sm:px-8 sm:py-9 sm:shadow-[0_24px_60px_rgba(10,40,90,.28)]"
       >
         <div aria-hidden className="relative grid size-28 place-items-center">
           {BITS.map((bit, index) => {

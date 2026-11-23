@@ -80,7 +80,7 @@ function TryOnDialog({ productId, title, onClose }: { productId: number; title: 
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={event => event.stopPropagation()}
-        className="overlay-pop max-h-[90dvh] w-full max-w-[520px] overflow-y-auto rounded-3xl bg-[#fffdf9] p-6 shadow-[0_24px_60px_rgba(10,40,90,.28)]"
+        className="overlay-pop max-h-[90dvh] w-full max-w-[520px] overflow-y-auto rounded-3xl bg-white p-6 shadow-[0_24px_60px_rgba(10,40,90,.28)]"
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">

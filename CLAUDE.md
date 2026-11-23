@@ -2553,7 +2553,13 @@ dialog mounted once in `App` (`ConfirmRemovalProvider`,
 heart `useAskUnheart()`, which says "and off your wishlists" for something on
 one (`wishedIds`). It is `ConfirmDialog` in its danger tone: the verb on the
 button, Cancel focused as it opens so a stray Enter keeps the thing, Escape
-and the dim answering no, portalled to `<body>` above every drawer and sheet
+and the dim answering no, **drawn on the site's own white, on the owner's
+word** ("use the white color of the website itself") — it was a warm cream
+(#fffdf9) beside every white card behind it — with a hairline rim, the icon
+in a round tile with a faint halo, a 19px title and pill buttons 48px tall
+that stack under 120px each (the confirm still first in the document);
+confirming an order, the order placed, the size guide, the try-on and the
+wishlist chooser took the same white, portalled to `<body>` above every drawer and sheet
 (`z-[100]`), since a bin may be inside the bag drawer, a line's menu, the
 preview or a hovered card, whose lift is a transform. In the app it is the
 system's alert presented by UIKit from whatever is on top
