@@ -61,7 +61,7 @@ import { OrderFilterChips, type OrderFacets, type OrderFilterChange, type OrderF
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
-import { OrderAfterSales, OrderLineChoice, OrderLineMenu, OrderLinePanel } from "@/components/account/OrderActions";
+import { OrderAfterSales, OrderLineChoice, OrderLinePanel } from "@/components/account/OrderActions";
 import { OrderJourney } from "@/components/account/OrderJourney";
 import { ReceiptButton } from "@/components/account/OrderReceipt";
 
@@ -619,11 +619,9 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                   <span className="self-start pt-1.5 pointer-fine:pt-3"><OrderLineChoice line={line} /></span>
                   <Thumb src={line.photo ?? null} alt="" className="size-12 shrink-0 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start gap-2">
-                      <p dir="auto" className="type-product line-clamp-2 min-w-0 flex-1 pt-1.5 text-sm text-[#0a285a]">{line.productTitle}</p>
-                      {/* Everything that can be done with this item, on the owner's word. */}
-                      <OrderLineMenu line={line} />
-                    </div>
+                    {/* What can be done with it is the bar's, once its circle is
+                        chosen — the item has no ⋯ of its own (on the owner's word). */}
+                    <p dir="auto" className="type-product line-clamp-2 pt-1.5 text-sm text-[#0a285a]">{line.productTitle}</p>
                     {line.variantTitle ? <p dir="auto" className="truncate text-xs ink-muted">{line.variantTitle}</p> : null}
                     {/* Where this one went (3.2.6), when it did not go where
                         the rest of the order went — read off the line's own

@@ -128,7 +128,7 @@ struct WarrantyStagePill: View {
 struct WarrantySheet: View {
     let reference: String
     let detail: OrderDetail
-    /// From an item's ⋯: that item alone.
+    /// For one item chosen: that item alone.
     var lineId: Int? = nil
     /// From the bar over the chosen items: one of those.
     var lineIds: [Int]? = nil
@@ -282,7 +282,7 @@ private struct ChoiceRow: View {
 struct OrderModifySheet: View {
     let reference: String
     let detail: OrderDetail
-    /// From an item's ⋯: that item alone.
+    /// For one item chosen: that item alone.
     var lineId: Int? = nil
     /// From the bar over the chosen items: those items.
     var lineIds: [Int]? = nil
@@ -626,7 +626,7 @@ struct OrderAddressSheet: View {
 
 /// "Get help with this order" — the web's `OrderHelp`: it starts from what
 /// happened (the issues, `Shared/commerce/selfService.ts`), the item when it is
-/// about one — already chosen when opened from an item's ⋯ — and the answer
+/// about one — already chosen when opened for one item — and the answer
 /// from this order's own facts (`support.selfHelp`), with the acts that would
 /// settle it as cards done on Confirm. NetLet AI answers what that did not,
 /// and may propose an act of its own, drawn the same way. A person is one
@@ -635,7 +635,7 @@ struct OrderAddressSheet: View {
 struct OrderHelpSheet: View {
     let reference: String
     let items: [SelfHelpAnswer.Item]
-    /// Opened from an item's ⋯: the item it is about.
+    /// Opened for one item: the item it is about.
     var lineId: Int? = nil
     /// Reads the order again after an act changed it.
     let reload: () async -> Void

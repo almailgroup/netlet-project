@@ -30,6 +30,9 @@ enum Brand {
     static let renewedFill = Color(red: 227 / 255, green: 241 / 255, blue: 232 / 255)
     static let renewedWash = Color(red: 241 / 255, green: 248 / 255, blue: 244 / 255)
     static let danger = Color(red: 140 / 255, green: 47 / 255, blue: 34 / 255)
+    /// The shop's red made deep enough to read straight on the floating glass
+    /// (#7f1d1d, 4.8:1 over black behind an even 70% tint, where `danger` is 3.9).
+    static let dangerOnGlass = Color(red: 127 / 255, green: 29 / 255, blue: 29 / 255)
     /// NetLet's test payment page (0086): its note's words, ground and dashed rim
     /// (#6b4a12 on #fff8eb, 8.3:1; #e4b363).
     static let testInk = Color(red: 107 / 255, green: 74 / 255, blue: 18 / 255)

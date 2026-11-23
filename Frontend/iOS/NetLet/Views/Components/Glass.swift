@@ -159,20 +159,43 @@ final class RoundedBlurView: UIVisualEffectView {
 /// sit straight on it; they are in the dark ink, never the muted one.
 struct GlassCapsule: View {
     var body: some View {
-        GlassSurface(top: 0.7, foot: 0.7, rim: false, corners: .capsule)
+        FloatingGlass(shape: Capsule(), corners: .capsule)
+    }
+}
+
+/// The same floating glass in a rounded box — the order's chosen-items bar,
+/// on the owner's word ("can you make this Liquid Glass design?").
+struct GlassPane: View {
+    var radius: CGFloat = 24
+
+    var body: some View {
+        FloatingGlass(shape: RoundedRectangle(cornerRadius: radius, style: .continuous), corners: .radius(radius))
+    }
+}
+
+/// A floating piece of the clean glass in any shape: the even 70% surface,
+/// the rim all round with a brighter line along the top and a touch of depth
+/// at the foot, a dark hairline outside it and the shadow it casts outside its
+/// edge only.
+struct FloatingGlass<S: InsettableShape>: View {
+    let shape: S
+    let corners: GlassCorners
+
+    var body: some View {
+        GlassSurface(top: 0.7, foot: 0.7, rim: false, corners: corners)
             .overlay {
                 ZStack {
-                    Capsule().inset(by: 1).fill(LinearGradient(stops: [
+                    shape.inset(by: 1).fill(LinearGradient(stops: [
                         .init(color: Brand.navy.opacity(0), location: 0.82),
                         .init(color: Brand.navy.opacity(0.06), location: 1),
                     ], startPoint: .top, endPoint: .bottom))
-                    Capsule().inset(by: 1).strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
-                    Capsule().inset(by: 1).strokeBorder(LinearGradient(colors: [Color.white.opacity(0.95), Color.white.opacity(0)], startPoint: .top, endPoint: .center), lineWidth: 1.5)
-                    Capsule().strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
+                    shape.inset(by: 1).strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
+                    shape.inset(by: 1).strokeBorder(LinearGradient(colors: [Color.white.opacity(0.95), Color.white.opacity(0)], startPoint: .top, endPoint: .center), lineWidth: 1.5)
+                    shape.strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
                 }
                 .allowsHitTesting(false)
             }
-            .background { OuterShadow(shape: Capsule()) }
+            .background { OuterShadow(shape: shape) }
     }
 }
 

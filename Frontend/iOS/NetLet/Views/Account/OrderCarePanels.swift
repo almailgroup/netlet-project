@@ -65,7 +65,7 @@ struct LineReturnPanel: View {
     let line: OrderLine
     let detail: OrderDetail
     let reload: () async -> Void
-    /// Opened from the item's ⋯ ("Return or exchange"), on the owner's word.
+    /// Opened from the bar's Return, once the item's circle is chosen.
     @Binding var open: Bool
     @State private var kind = "refund"
     @State private var reason = "damaged"

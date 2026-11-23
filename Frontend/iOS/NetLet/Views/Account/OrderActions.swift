@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// What is open over the order — a sheet, and which items it is about: from
-/// an item's ⋯ that item (`lineId`), from the bar over the items the shopper
-/// chose those items (`lineIds`); cancelling opens the change at none (`remove`).
+/// What is open over the order — a sheet, and which items it is about: for
+/// one item chosen that item (`lineId`), for several those items (`lineIds`);
+/// cancelling opens the change at none (`remove`).
 struct OrderSheet: Identifiable, Hashable {
     enum Kind: String { case track, refund, warranty, modify, address, payment, help }
     let kind: Kind
@@ -13,13 +13,14 @@ struct OrderSheet: Identifiable, Hashable {
 }
 
 /// The opened order as an after-sales centre, on the owner's word — the
-/// web's `OrderAfterSales`: only the actions this order offers now, **each
-/// item's behind a ⋯ of its own** (`OrderLineMenu`, on the owner's word: "let
-/// these options be in a 3 dot icon for each product. The user can select a
-/// specific product with the options"), and what is about the whole order —
-/// tracking every parcel, a refund across items, the warranty, changing the
-/// address, modifying, buying everything again, help, cancelling — behind the
-/// ⋯ beside "In this order". They were one row of pills over the items.
+/// web's `OrderAfterSales`: only the actions this order offers now. **An
+/// item's acts are the bar's, once its circle is chosen** (`ChosenItemsBar`,
+/// `OrderSelection`); each item had a ⋯ of its own for a while, and the owner
+/// asked for it to go once the circles came ("you can control from selecting
+/// the product"). What is about the whole order — tracking every parcel, a
+/// refund across items, the warranty, changing the address, modifying, buying
+/// everything again, help, cancelling — is behind the ⋯ beside "In this
+/// order".
 ///
 /// Nothing here decides: cancelling is the server's `cancel`, changing it is
 /// `change` and `changeAddress`, what may go back is each line's return window
@@ -30,7 +31,7 @@ struct OrderActionsBar: View {
     let reference: String
     let detail: OrderDetail
     let reload: () async -> Void
-    /// The sheet over the order, shared with each item's ⋯.
+    /// The sheet over the order, shared with the bar of the chosen items.
     @Binding var sheet: OrderSheet?
     /// Make the order's receipt as a PDF (`OrderReceiptPDF`).
     var onReceipt: (() -> Void)? = nil
@@ -286,70 +287,6 @@ struct OrderMenuFace: View {
     }
 }
 
-/// One item's ⋯ — the web's `OrderLineMenu`: what can be done with this item
-/// now, and nothing else. Track it, return or exchange it, claim its warranty,
-/// change its quantity or cancel it while no driver has it, rate it, buy it
-/// again, and get help with it.
-struct OrderLineMenu: View {
-    let line: OrderLine
-    let detail: OrderDetail
-    @Binding var sheet: OrderSheet?
-    /// The item whose return form is open under it.
-    @Binding var returning: Int?
-    let rate: () -> Void
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        let returnsOn = app.features.isOn("returns")
-        let changeable = detail.change.changeable && line.changeable == true
-        Menu {
-            if detail.steps.map({ !$0.cancelled }) ?? false, line.fulfilment != "cancelled" {
-                Button { open(.track) } label: { Label(l.t("orders.trackItem"), systemImage: "shippingbox") }
-            }
-            if returnsOn, detail.mayAskReturn(for: line) {
-                Button { Haptics.action(); returning = line.id } label: { Label(l.t("returns.start"), systemImage: "arrow.uturn.backward") }
-            }
-            if returnsOn, line.warrantyEligibility?.allowed == true {
-                Button { open(.warranty) } label: { Label(l.t("warranty.title"), systemImage: "checkmark.shield") }
-            }
-            if changeable, line.quantity > 1 {
-                Button { open(.modify) } label: { Label(l.t("orders.changeQuantity"), systemImage: "square.and.pencil") }
-            }
-            if line.review != nil || line.mayRate {
-                Button { Haptics.action(); rate() } label: { Label(l.t(line.review == nil ? "review.rateItem" : "review.edit"), systemImage: "star") }
-            }
-            if let variant = line.variantId {
-                Button {
-                    Haptics.action()
-                    Task {
-                        if await app.cart.add(variantId: String(variant), quantity: line.quantity) {
-                            app.toast(l.t("cart.added", ["name": line.productTitle]))
-                        } else {
-                            Haptics.refused()
-                            app.toast(l.t("orders.buyAgainNone"))
-                        }
-                    }
-                } label: { Label(l.t("orders.buyAgain"), systemImage: "bag") }
-            }
-            Button { open(.help) } label: { Label(l.t("orders.helpItem"), systemImage: "lifepreserver") }
-            if changeable {
-                Divider()
-                Button(role: .destructive) { open(.modify, remove: true) } label: { Label(l.t("orders.cancelItem"), systemImage: "xmark.circle") }
-            }
-        } label: {
-            OrderMenuFace()
-        }
-        .menuOrder(.fixed)
-        .accessibilityLabel(l.t("orders.lineMenu", ["name": line.productTitle]))
-    }
-
-    private func open(_ kind: OrderSheet.Kind, remove: Bool = false) {
-        Haptics.action()
-        sheet = OrderSheet(kind: kind, lineId: line.id, remove: remove)
-    }
-}
-
 /// A pill that sizes to its words: white with a light rim, navy words — the
 /// web's `glass` pill — and the shop's red for cancelling.
 struct OrderActionStyle: ButtonStyle {
@@ -374,7 +311,7 @@ struct TrackOrderSheet: View {
     let reference: String
     let steps: OrderSteps
     let lines: [OrderLine]
-    /// From an item's ⋯: the parcel that item is in.
+    /// For one item: the parcel that item is in.
     var lineId: Int? = nil
     /// From the bar over the chosen items: the parcels they are in.
     var lineIds: [Int]? = nil
@@ -851,9 +788,6 @@ struct ChosenItemsBar: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
-    /// A pale red under the cancel's picture (#fdeceb).
-    private static let dangerWash = Color(red: 253 / 255, green: 236 / 255, blue: 235 / 255)
-
     var body: some View {
         let lines = OrderSelection.lines(detail, chosen: chosen, returnsOn: app.features.isOn("returns"))
         let offers = OrderSelection.offers(lines, cancelled: detail.steps?.cancelled ?? false)
@@ -870,54 +804,66 @@ struct ChosenItemsBar: View {
                     Label(l.t("orders.chosenClear"), systemImage: "xmark")
                         .font(.inter(13, .bold))
                         .foregroundStyle(Brand.navy)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 34)
+                        .liquidGlass(.frost)
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.tap)
             }
             .padding(.leading, 8)
-            .padding(.trailing, 4)
+            .padding(.trailing, 2)
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
-                    ForEach(offers, id: \.action) { offer in
-                        let some = chosen.count > 1 && offer.lineIds.count < chosen.count
-                        let danger = offer.action == .cancelItems
-                        Button {
-                            run(offer)
-                        } label: {
-                            VStack(spacing: 5) {
-                                Image(systemName: Self.symbol(offer.action))
-                                    .font(.system(size: 17, weight: .semibold))
-                                    .flipsForRightToLeftLayoutDirection(offer.action == .track || offer.action == .return || offer.action == .refund)
-                                    .frame(width: 42, height: 42)
-                                    .background(Circle().fill(danger ? Self.dangerWash : Brand.tint))
-                                    .accessibilityHidden(true)
-                                Text(l.t(Self.key(offer.action)) + (some ? " (\(offer.lineIds.count))" : ""))
-                                    .font(.inter(12, .bold))
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(2)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .foregroundStyle(danger ? Brand.danger : Brand.navy)
-                            .frame(width: 76)
-                            .padding(.vertical, 4)
-                            .contentShape(Rectangle())
+                GlassGroup {
+                    HStack(spacing: 2) {
+                        ForEach(offers, id: \.action) { offer in
+                            act(offer)
                         }
-                        .buttonStyle(.tap)
                     }
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 2)
                 }
-                .padding(.horizontal, 2)
             }
+            .glassRow()
         }
         .padding(8)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white)
-                .shadow(color: Brand.navy.opacity(0.18), radius: 15, y: 8)
-        )
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        // A pane of the tab bar's Liquid Glass, on the owner's word ("can you
+        // make this Liquid Glass design?"): an even 70% with its rim, the
+        // words on it navy and the cancel's a red deep enough for glass.
+        .background(GlassPane(radius: 24))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("orders.chosenBar"))
+    }
+
+    /// One act: its picture on a disc of Liquid Glass — the shop's red under
+    /// the cancel's, light glass under the rest — and its word under it.
+    private func act(_ offer: OrderSelection.Offer) -> some View {
+        let some = chosen.count > 1 && offer.lineIds.count < chosen.count
+        let danger = offer.action == .cancelItems
+        return Button {
+            run(offer)
+        } label: {
+            VStack(spacing: 5) {
+                Image(systemName: Self.symbol(offer.action))
+                    .font(.system(size: 17, weight: .semibold))
+                    .flipsForRightToLeftLayoutDirection(offer.action == .track || offer.action == .return || offer.action == .refund)
+                    .foregroundStyle(danger ? Color.white : Brand.navy)
+                    .frame(width: 44, height: 44)
+                    .liquidGlass(danger ? .danger : .frost, in: Circle())
+                    .accessibilityHidden(true)
+                Text(l.t(Self.key(offer.action)) + (some ? " (\(offer.lineIds.count))" : ""))
+                    .font(.inter(12, .bold))
+                    .foregroundStyle(danger ? Brand.dangerOnGlass : Brand.navy)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(width: 76)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.tap)
     }
 
     /// Each act's picture.

@@ -1473,6 +1473,58 @@ html[dir="rtl"] .nav-progress {
     background-color 120ms var(--ease-out),
     border-color 120ms var(--ease-out);
 }
+/*
+ * A floating pane of glass that comes and goes — the order's chosen items, on
+ * the owner's word ("can you make this Liquid Glass design?"). It rises and
+ * settles by `translate` and `scale` alone and only what is on it fades: an
+ * opacity on the pane would make it a backdrop root and drain the glass to
+ * white for as long as the fade ran (`.tab-bar`'s rule). Hidden, it is gone
+ * once the words have faded (`visibility`, after the move). It still rides the
+ * tab bar by `transform`, which this transition list keeps.
+ */
+.glass-float {
+  transition:
+    translate 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    scale 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 0s;
+}
+.glass-float[data-hidden] {
+  visibility: hidden;
+  translate: 0 0.75rem;
+  scale: 0.97;
+  transition:
+    translate 180ms ease-in,
+    scale 180ms ease-in,
+    transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    visibility 0s linear 180ms;
+}
+.glass-float > .glass-float-body {
+  transition: opacity 180ms ease;
+}
+.glass-float[data-hidden] > .glass-float-body {
+  opacity: 0;
+}
+/* The wide screen's pane, sticky at the window's foot: drawn while something
+   is chosen, it rises into place by a transform and its words fade in. */
+@media (prefers-reduced-motion: no-preference) {
+  .glass-rise {
+    animation: glass-rise 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .glass-rise > .glass-float-body {
+    animation: glass-words-in 200ms ease-out;
+  }
+}
+@keyframes glass-rise {
+  from {
+    transform: translateY(10px) scale(0.98);
+  }
+}
+@keyframes glass-words-in {
+  from {
+    opacity: 0;
+  }
+}
 @media (max-width: 1023.98px) {
   html[data-tab-bar="away"] .tab-bar:not(:focus-within) {
     transform: translateY(calc(100% + max(0.75rem, env(safe-area-inset-bottom)) + 2.5rem));

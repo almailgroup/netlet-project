@@ -3702,16 +3702,16 @@ value was not returned.
 
 **An opened order is an after-sales centre, on the owner's word** ("each
 order's detail page should function as a complete after-sales service center",
-with only the actions this order offers now) — **and each item's actions are
-behind a ⋯ of its own, also on the owner's word** ("let these options be in a
-3 dot icon for each product. The user can select a specific product with the
-options"); they were a row of buttons over the items, each asking afterwards
-which item it meant. An item's ⋯ (`OrderLineMenu`: the bag's `LinePopover` on
-the web — a sheet naming the item on a phone, a small menu from `sm` — and the
-system's `Menu` in the app) offers what that item can have done now: track it
-(its own parcel), return or exchange it, claim its warranty, change its
-quantity or cancel it before a driver has it, rate it or edit the review, buy
-it again, and get help with it; what it opens is drawn under that item
+with only the actions this order offers now) — **and an item's actions are
+the bar's, once its circle is chosen, on the owner's word** ("remove the 3
+dots button from individual products in the orders, as you can control from
+selecting the product"; see "An opened order's items are chosen like the
+cart's lines" below). They were a row of buttons over the items, each asking
+afterwards which item it meant, then a ⋯ on each item (`OrderLineMenu`, gone
+with that request). Chosen alone, an item gets what it can have done now:
+track it (its own parcel), return or exchange it, claim its warranty, change
+its quantity or cancel it before a driver has it, rate it or edit the review,
+buy it again, and get help with it; what that opens is drawn under the item
 (`OrderLinePanel`) or, in the app, a sheet about that item alone (`OrderSheet`
 with its `lineId`). **The order's own ⋯**, beside "In this order", keeps what
 is about the whole order: Track order, Request a refund across items, Warranty,
@@ -3830,8 +3830,8 @@ the bar's order, Track, Return (one item: its own form, refund or exchange)
 or Refund (several: one refund across the ones that can go back), Warranty,
 Quantity (an item of more than one, before a driver has it), Rate, Buy again,
 Help and Cancel (last, in red), each with how many of the chosen it is about
-when that is not all of them ("Refund (1)"). **One item's act opens where its
-⋯ would** — under the item on the web, its sheet in the app — and several open
+when that is not all of them ("Refund (1)"). **One item's act opens about
+that item** — under it on the web, its sheet in the app — and several open
 over the items with only those (the tracker narrowed to their parcels, the
 refund with them ticked, the change form with them at none for Cancel, "Cancel
 these items"); the web brings what opened into view and focuses its first
@@ -3841,7 +3841,20 @@ and today's price, saying when something was left out; Help is about the item
 when one is chosen and the order otherwise. **What was done takes the choice
 with it**: a panel or sheet that completes clears the circles; closing one
 keeps them. Nothing here decides — every press is the item's own procedure,
-which asks again under a lock. The ⋯ menus stay. The quantity form's stepper
+which asks again under a lock. **The bar is a pane of the tab bar's Liquid
+Glass, and the items have no ⋯ of their own — both on the owner's word** ("can
+you make this Liquid Glass design? And remove the 3 dots button from
+individual products"): the even 70% tint with its rim (`PhoneActionBar`'s
+`glass` and `GlassLayers` on the web, `GlassPane` in the app, the floating
+bars' `FloatingGlass` in a rounded box), navy words on it (6.8:1 over black
+behind the glass) and the cancel's word a deep red (`#7f1d1d`,
+`Brand.dangerOnGlass`, 4.8:1 where the shop's red would be under 4), each
+act's picture on a small white plate on the web and a disc of system glass in
+the app (red glass under the cancel's). On a phone it comes and goes by
+`translate` and `scale` and only its words fade (`.glass-float`), and a wide
+screen's rises by a transform (`.glass-rise`): an opacity on the pane would
+drain its glass to white for as long as the fade ran. The order's own ⋯ beside
+"In this order" stays. The quantity form's stepper
 now wraps under the item's name on a narrow phone (`basis-32`, the flex rule
 below), where at 320 it had left the name no room. `OrderSelectionUITests`
 chooses the recorded order's item, checks the bar's acts, opens the tracker
@@ -4023,7 +4036,7 @@ owner's word ("let the AI resolve the issue before any real reaction", and
 then "perform authorized actions directly after receiving customer
 confirmation, rather than simply providing instructions"). It opens on the
 issues (see "The help centre" under Talking to NetLet), the item when it is
-about one — already chosen from an item's ⋯ — and the answer from this order's
+about one — already chosen when opened for one item — and the answer from this order's
 facts, with its acts as cards done on Confirm. **NetLet AI answers what that
 did not**, from the same facts (`issueFactsFrom`, the order page's own
 answer), told the issue and the item; the items are numbered for it, and it
@@ -11246,9 +11259,9 @@ the logo row and the cart's title opens Saved items with the hearts counted.
 
 **The after-sales centre is the app's too, sheet for sheet**
 (`OrderActionsBar`, `Views/Account/OrderAfterSales.swift`), behind the order's
-⋯ and each item's (`OrderLineMenu`, the system's `Menu`, the same sheets
-scoped to the item by `OrderSheet.lineId`; "Cancel this item" opens the change
-at none, `remove`); the screenshots name the confirmation's two
+⋯ and the bar of the chosen items (`ChosenItemsBar`, the same sheets scoped to
+one item by `OrderSheet.lineId`; cancelling opens the change at none,
+`remove`); the screenshots name the confirmation's two
 (`-NetLetOpen confirmOrder`, `orderPlaced:<ref>`, 78 and 79): Warranty, Modify
 order (the quote, then Confirm at the figure it showed, asked again on
 `orders.changeMoved`), Change delivery address, Buy again (the answer's bag
@@ -11974,8 +11987,9 @@ each now fixed**:
   at that size read as "!".
 
 And the order page's line on returns named "the button beside it", from
-before an item's actions moved behind its ⋯; it names the ⋯ menu now, and so
-do the help page's answer and the returns page.
+before an item's actions moved behind its ⋯; it says to tick the item's
+circle and press Return now, the ⋯ having gone too, and so do the help page's
+answer and the returns page.
 
 **What floats over a page's foot steps aside while a keyboard is up**
 (`floatsAtFoot` in `ShopPage.swift`; `AppModel.keyboardUp`, set by

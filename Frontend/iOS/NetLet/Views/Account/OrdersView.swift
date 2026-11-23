@@ -463,7 +463,7 @@ struct OrderDetailView: View {
     @Environment(LanguageSettings.self) private var l
     /// The line being rated in `ReviewSheet`.
     @State private var rating: ReviewTarget?
-    /// The sheet over the order — its own ⋯'s, or an item's.
+    /// The sheet over the order — its own ⋯'s, or the chosen items'.
     @State private var sheet: OrderSheet?
     /// The item whose return form is open under it.
     @State private var returning: Int?
@@ -546,7 +546,7 @@ struct OrderDetailView: View {
         }
     }
 
-    /// What a press on the bar does: one item's act as its ⋯ does it, several
+    /// What a press on the bar does: one item's act about that item, several
     /// at once over the order — and the item's return form opens under it.
     private func run(_ offer: OrderSelection.Offer, detail: OrderDetail) {
         let ids = offer.lineIds
@@ -661,11 +661,9 @@ struct OrderDetailView: View {
                             StatusPill(label: OrderWording.line(line.fulfilment, language: l), tone: OrderTone.line(line.fulfilment))
                             returnWindow(line)
                         }
+                        // What can be done with it is the bar's, once its circle
+                        // is chosen: the item has no ⋯ of its own (on the owner's word).
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        // Everything that can be done with this item, on the owner's word.
-                        OrderLineMenu(line: line, detail: detail, sheet: $sheet, returning: $returning) { rating = target(line) }
-                            .padding(.top, -8)
-                            .padding(.trailing, -8)
                     }
                     LineReviewRow(line: line)
                     LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload, open: Binding(
@@ -764,8 +762,8 @@ struct OrderDetailView: View {
 }
 
 /// An item's review, once written: its stars and where it stands — the
-/// web's `LineReview`. Writing one and changing it are the item's ⋯ ("Rate
-/// this item", "Edit your review"), on the owner's word.
+/// web's `LineReview`. Writing one and changing it are the bar's Rate, once
+/// the item's circle is chosen.
 struct LineReviewRow: View {
     let line: OrderLine
 

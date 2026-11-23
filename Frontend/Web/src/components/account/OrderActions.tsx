@@ -1,20 +1,18 @@
 /**
  * The opened order as an after-sales centre, on the owner's word: "each
  * order's detail page should function as a complete after-sales service
- * center", with only the actions this order offers now — **and each item's
- * behind a ⋯ of its own**, also on the owner's word ("let these options be in
- * a 3 dot icon for each product. The user can select a specific product with
- * the options"). They were one row of buttons over the items, each asking
- * afterwards which item it meant.
+ * center", with only the actions this order offers now.
  *
- * **An item's ⋯** (`OrderLineMenu`, the bag's own `LinePopover`: a sheet on a
- * phone naming the item, a small menu from `sm`) offers what that item can
- * have done: track it, return or exchange it, claim its warranty, change its
- * quantity or cancel it before a driver has it, buy it again, rate it, and get
- * help with it. What it opens is drawn under that item (`OrderLinePanel`).
- * **The order's ⋯**, beside "In this order", keeps what is about the whole
- * order: tracking every parcel, a refund across items, changing the address,
- * modifying, buying everything again, cancelling it and getting help.
+ * **An item's acts are the bar's, once its circle is chosen** (`ChosenBar`,
+ * `selectionOffers`): track it, return or exchange it, claim its warranty,
+ * change its quantity or cancel it before a driver has it, buy it again, rate
+ * it, and get help with it; one item's act is drawn under that item
+ * (`OrderLinePanel`), several over the items. Each item had a ⋯ of its own
+ * for a while, and the owner asked for it to go once the circles came ("you
+ * can control from selecting the product"). **The order's ⋯**, beside "In
+ * this order", keeps what is about the whole order: tracking every parcel, a
+ * refund across items, changing the address, modifying, buying everything
+ * again, the receipt, cancelling it and getting help.
  *
  * **Nothing here decides.** Each action is drawn from the server's own answer
  * about this order — `cancel` (`shopperCancelState`), `change` and
@@ -53,7 +51,7 @@ import { Select } from "@/components/ui/Select";
 import { Thumb } from "@/components/product/Thumb";
 import { LinePopover, type LineAction } from "@/components/cart/LinePopover";
 import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
-import { PhoneActionBar } from "@/components/layout/PhoneActionBar";
+import { GlassLayers, PhoneActionBar } from "@/components/layout/PhoneActionBar";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { TrackParcels } from "@/components/account/TrackParcels";
 import { LineReturnForm, mayRequestReturn, REASON_LABEL, type Detail } from "@/components/account/LineReturn";
@@ -88,9 +86,9 @@ const isolate = (text: string) => `\u2068${text}\u2069`;
 type Line = Detail["lines"][number];
 type PanelKind = "track" | "refund" | "return" | "warranty" | "modify" | "address" | "payment" | "help";
 /**
- * What is open, and which items it is about: from an item's ⋯ that item
- * (`lineId`, drawn under it); from the bar over the items the shopper chose,
- * those items (`lineIds`, drawn over the items), or the one when it is one.
+ * What is open, and which items it is about: for one item that item
+ * (`lineId`, drawn under it); for several of the items the shopper chose,
+ * those items (`lineIds`, drawn over the items).
  */
 type Panel = { kind: PanelKind; lineId?: number; lineIds?: number[]; remove?: boolean; fromBar?: boolean };
 
@@ -119,8 +117,9 @@ function useControls(): Controls {
 
 /**
  * The order's after-sales state, round its items: the order's own ⋯ and what
- * it opens, then `children` — the items, each with `OrderLineMenu` and
- * `OrderLinePanel` — and the confirmation that cancels the whole order.
+ * it opens, then `children` — the items, each with `OrderLineChoice` and
+ * `OrderLinePanel` — the bar of the chosen items, and the confirmation that
+ * cancels the whole order.
  */
 export function OrderAfterSales({ reference, detail, trackFirst = false, refundFirst = false, onRate, children }: {
   reference: string;
@@ -360,66 +359,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
   );
 }
 
-/**
- * One item's ⋯: what can be done with this item now, and nothing else. A row
- * the server would refuse is not drawn — an item not delivered offers no
- * return, one a driver has offers no change.
- */
-export function OrderLineMenu({ line }: { line: Line }) {
-  const { t } = useTranslation();
-  const { detail, open, rate } = useControls();
-  const returnsOn = useFeature("returns");
-  const { addItem } = useCart();
-  const [, navigate] = useLocation();
-  const changeable = detail.change.changeable && line.changeable;
-  const actions: LineAction[] = [];
-
-  if (!detail.steps.cancelled && line.fulfilment !== "cancelled") {
-    actions.push({ key: "track", icon: <Truck className="size-[18px] rtl:-scale-x-100" aria-hidden />, label: t("orders.trackItem"), run: () => open({ kind: "track", lineId: line.id }) });
-  }
-  if (returnsOn && mayRequestReturn(line, detail.returns)) {
-    actions.push({ key: "return", icon: <RotateCcw className="size-[18px] rtl:-scale-x-100" aria-hidden />, label: t("returns.start"), run: () => open({ kind: "return", lineId: line.id }) });
-  }
-  if (returnsOn && line.warrantyEligibility.allowed) {
-    actions.push({ key: "warranty", icon: <ShieldCheck className="size-[18px]" aria-hidden />, label: t("warranty.title"), run: () => open({ kind: "warranty", lineId: line.id }) });
-  }
-  if (changeable && line.quantity > 1) {
-    actions.push({ key: "quantity", icon: <PencilLine className="size-[18px]" aria-hidden />, label: t("orders.changeQuantity"), run: () => open({ kind: "modify", lineId: line.id }) });
-  }
-  if (line.review || line.reviewEligibility.allowed) {
-    actions.push({ key: "rate", icon: <Star className="size-[18px] fill-[#ffb800] text-[#ffb800]" aria-hidden />, label: t(line.review ? "review.edit" : "review.rateItem"), run: () => rate(line.id) });
-  }
-  if (line.variantId !== null) {
-    actions.push({
-      key: "again",
-      icon: <ShoppingBag className="size-[18px]" aria-hidden />,
-      label: t("orders.buyAgain"),
-      run: () => {
-        addItem(String(line.variantId), line.quantity, { reveal: false }).then(
-          () => toast.success(t("cart.added", { name: line.productTitle }), { action: { label: t("product.viewCart"), onClick: () => navigate("/cart") } }),
-          () => toast.error(t("orders.buyAgainNone")),
-        );
-      },
-    });
-  }
-  actions.push({ key: "help", icon: <LifeBuoy className="size-[18px]" aria-hidden />, label: t("orders.helpItem"), run: () => open({ kind: "help", lineId: line.id }) });
-  if (changeable) {
-    actions.push({ key: "cancel", icon: <CircleX className="size-[18px]" aria-hidden />, label: t("orders.cancelItem"), danger: true, run: () => open({ kind: "modify", lineId: line.id, remove: true }) });
-  }
-
-  return (
-    <LinePopover
-      photo={line.photo ?? null}
-      title={line.productTitle}
-      label={t("orders.lineMenu", { name: line.productTitle })}
-      short={t("cart.lineMenuShort")}
-      trigger={<MoreHorizontal className="size-5" aria-hidden />}
-      actions={actions}
-    />
-  );
-}
-
-/** What an item's ⋯ — or the bar, for one item — opened, under that item. */
+/** What the bar opened for one item, under that item. */
 export function OrderLinePanel({ line }: { line: Line }) {
   const { reference, detail, panel: current, close, done, act, panelId } = useControls();
   const panel = current && current.lineId === line.id ? current : null;
@@ -487,9 +427,14 @@ const PICK_ICON: Record<SelectionAction, ReactNode> = {
  * all of them. One item's act opens under that item, several over the
  * items; either is brought into view, since the bar floats over the foot.
  *
- * On a phone it floats over the tab bar (`PhoneActionBar`, which also puts
- * the assistant's button aside); on a wide screen it sticks to the foot of
- * the window while the order is on screen.
+ * It is a pane of the tab bar's Liquid Glass, on the owner's word ("can you
+ * make this Liquid Glass design?"): an even 70% tint with its rim, the words
+ * on it navy (6.8:1 over black behind the glass) and the cancel's a deep red
+ * (`#7f1d1d`, 4.8:1, where the shop's `#c2362a` would be 3.3:1), each act's
+ * picture on a small white plate. On a phone it floats over the tab bar
+ * (`PhoneActionBar`'s `glass`, which also puts the assistant's button aside);
+ * on a wide screen it sticks to the foot of the window while the order is on
+ * screen.
  */
 function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<void> }) {
   const { t } = useTranslation();
@@ -519,7 +464,7 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
   const run = async (offer: SelectionOffer) => {
     const lineIds = offer.lineIds;
     const one = lineIds.length === 1 ? lineIds[0] : undefined;
-    /* One item's act opens under it, as its ⋯ would; several open over the items. */
+    /* One item's act opens under it; several open over the items. */
     const show = (kind: PanelKind, remove = false) =>
       open(one !== undefined ? { kind, lineId: one, remove, fromBar: true } : { kind, lineIds, remove, fromBar: true });
     switch (offer.action) {
@@ -553,7 +498,7 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
         <button
           type="button"
           onClick={() => choose(chosen, false)}
-          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-bold text-[#0a285a] pointer-fine:min-h-8"
+          className="tint-on-hover inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-white/90 bg-white/75 px-3 text-[13px] font-bold text-[#0a285a] pointer-fine:min-h-8"
         >
           <X className="size-4" aria-hidden />
           {t("orders.chosenClear")}
@@ -569,9 +514,16 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
                 type="button"
                 onClick={() => void run(offer)}
                 disabled={buying && offer.action === "buyAgain"}
-                className={`flex w-[4.75rem] flex-col items-center gap-1 rounded-xl px-1 pb-1.5 pt-1 text-center disabled:opacity-60 ${danger ? "text-[#c2362a]" : "text-[#0a285a]"}`}
+                className={`group flex w-[4.75rem] flex-col items-center gap-1 rounded-xl px-1 pb-1.5 pt-1 text-center disabled:opacity-60 ${danger ? "text-[#7f1d1d]" : "text-[#0a285a]"}`}
               >
-                <span aria-hidden className={`grid size-10 place-items-center rounded-full ${danger ? "bg-[#fdeceb]" : "bg-[#eef3fa]"}`}>{PICK_ICON[offer.action]}</span>
+                {/* A small plate of white glass under each picture: the shop's
+                    red one for the cancel, the rest white with a bright rim. */}
+                <span
+                  aria-hidden
+                  className={`grid size-10 place-items-center rounded-full shadow-[inset_0_0_0_1px_rgba(255,255,255,.9),0_1px_3px_rgba(10,40,90,.14)] transition-transform duration-150 group-active:scale-95 ${danger ? "bg-[#fdeceb]/90" : "bg-white/85"}`}
+                >
+                  {PICK_ICON[offer.action]}
+                </span>
                 <span className="text-[12px] font-bold leading-[1.2]">
                   {t(PICK_LABEL[offer.action])}
                   {some ? <span className="font-semibold"> ({offer.lineIds.length})</span> : null}
@@ -586,8 +538,13 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
 
   if (wide) {
     return count > 0 ? (
-      <div role="region" aria-label={t("orders.chosenBar")} className="overlay-pop sticky bottom-4 z-10 mt-4 rounded-2xl border border-[#e6e9ef] bg-white p-2 shadow-[0_10px_30px_rgba(10,40,90,.18)]">
-        {body}
+      <div
+        role="region"
+        aria-label={t("orders.chosenBar")}
+        className="glass-rise glass-panel sticky bottom-4 z-10 mt-4 rounded-[24px] border border-white/70 p-2 shadow-[0_12px_32px_rgba(10,40,90,.2),0_1px_3px_rgba(10,40,90,.08)]"
+      >
+        <GlassLayers />
+        <div className="glass-float-body">{body}</div>
       </div>
     ) : null;
   }
@@ -595,7 +552,7 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
     <>
       {/* Room under the last item, so the bar never covers it. */}
       {count > 0 ? <div aria-hidden className="h-24" /> : null}
-      <PhoneActionBar shown={count > 0} label={t("orders.chosenBar")}>{body}</PhoneActionBar>
+      <PhoneActionBar shown={count > 0} label={t("orders.chosenBar")} glass>{body}</PhoneActionBar>
     </>
   );
 }
@@ -627,7 +584,7 @@ function OrderTracking({ reference, detail, lineId, lineIds }: { reference: stri
   const { t } = useTranslation();
   const shortDay = useShortDayFormat();
   const headingId = useId();
-  /* From an item's ⋯: the parcel that item is in; from the bar, the parcels the chosen items are in. */
+  /* For one item the parcel it is in; for several chosen, the parcels they are in. */
   const about = lineId !== undefined ? [lineId] : lineIds;
   const steps = !about ? detail.steps : { ...detail.steps, parcels: detail.steps.parcels.filter(parcel => parcel.lineIds.some(id => about.includes(id))) };
   const items = new Map(detail.lines.map(line => [line.id, { title: line.productTitle, photo: line.photo ?? null }]));

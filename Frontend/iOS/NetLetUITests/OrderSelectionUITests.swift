@@ -3,9 +3,9 @@ import XCTest
 /// Choosing an order's items, the cart's own circles, on the owner's word
 /// ("when you select a specific order, it should let you choose the product,
 /// just like in the cart page, and it should give you all the options"): a
-/// circle beside each item brings a bar over the page's foot with every act
-/// the chosen items allow, Track opens the tracker for them, and Clear puts
-/// the bar away. The recorded order holds one delivered item that can still
+/// circle beside each item brings a bar of Liquid Glass over the page's foot
+/// with every act the chosen items allow — the item has no ⋯ of its own —
+/// Track opens the tracker for them, and Clear puts the bar away. The recorded order holds one delivered item that can still
 /// go back, be claimed on and be rated.
 final class OrderSelectionUITests: XCTestCase {
     override func setUp() {
@@ -25,6 +25,8 @@ final class OrderSelectionUITests: XCTestCase {
         let circle = named(app, "Choose USB-C charger 65W")
         XCTAssertTrue(circle.waitForExistence(timeout: 20), "The order's item has no circle: \(labels(app))")
         XCTAssertTrue(named(app, "Choose every item in this order").exists, "The order has no All circle: \(labels(app))")
+        // The item has no ⋯ of its own: its acts are the bar's (on the owner's word).
+        XCTAssertFalse(named(app, "Options for USB-C charger 65W").exists, "The item still has a ⋯ of its own: \(labels(app))")
         XCTAssertFalse(app.staticTexts["1 item chosen"].exists, "The bar is up before anything is chosen.")
         circle.tap()
 
