@@ -5066,7 +5066,9 @@ migration 0085, approved as shown). Under each store's lines the row says
 where it goes ("To Home", "To more than one address"), Standard or Express
 with the fee or **Free delivery** in green, and when — the day chosen, "Choose
 a day and time", or the store's band — with the way to free delivery under it
-(`StoreDeliveryRow` on the web and in the app). A press opens one sheet
+(`StoreDeliveryRow` on the web and in the app; the app's is one borderless line
+since, saying only a day chosen under it — see "The Cart tab is the web's new
+bag"). A press opens one sheet
 (`StoreDeliverySheet`): the type (Express only where the store keeps a fast
 fee, said so otherwise), the address (the order's own or a saved one, for
 every line of that store at once), a day and a time of day. Each press goes
@@ -11059,8 +11061,10 @@ nothing of it: the lines scrolled under its glass and through the gap, and the
 page's own Checkout came back while still half under the tab bar (the footer
 left once the button's *top* was 8 points above the bar). Now it is a
 `.safeAreaInset(edge: .bottom)` — the page's end clears it — drawn on
-`Brand.ground` with a hairline and a soft shadow along its top, reaching down
-behind the tab bar, and flush on the bar's top edge, so nothing scrolling shows
+`Brand.ground` with a half-point `Brand.cardLine` hairline and a whisper of
+shadow along its top (black at 4%, a radius of 6, cast 2 points up — on the
+owner's word, so a card scrolling under it reads as passing beneath an edge
+rather than cut off), reaching down behind the tab bar, and flush on the bar's top edge, so nothing scrolling shows
 through it, the strip under it or the tab bar's glass while it is up. It shows
 while any of the page's own Checkout is under the tab bar — the button's
 *foot*, against `pageBottom`, which is measured round the inset rather than
@@ -11095,8 +11099,20 @@ printed the sum, and a whole dinar loses its decimals, so free delivery read
 The reminder card and the address pin wear `Brand.accentWash` (and
 `Brand.accentLine`), and the "nothing chosen" line `Brand.danger`, where each
 was its own RGB. **Checkout's words stay navy, the owner's choice once the figures were
-set out**: white was asked for "for crisp contrast", and white on the brand
-orange is 3.08:1 where navy is 4.65:1 (`AccentButtonStyle`). `CartUITests` holds the line's rise from its "⋯" to its
+set out — twice**: white was asked for "for crisp contrast", and white on the brand
+orange is 3.08:1 where navy is 4.65:1 (`AccentButtonStyle`), the orange glass
+lightening it further; asked again in the cart's polish round, the owner kept navy.
+**All is a slim row above the first store, on the owner's word**, and the
+summary card is the summary alone — "Order summary", the totals, the note and
+Checkout; it was the summary card's first row. The floating bar keeps its own,
+and the row is not drawn while the cart is searched, where it would tick lines
+the search has hidden. **A store's delivery is one borderless line under its
+name, on the owner's word** (`StoreDeliveryRow`): a small truck, green when
+free, "To Home · Standard · Free delivery" and Change at its end, 36 points to
+press; it was a tall rounded box in every store's card. A day the shopper chose,
+or one no longer offered, is a small line under it, and the store's band and
+"Choose a day and time" are checkout's and the sheet's to say. `CartUITests`
+holds All above the first store and the row under 48 points. `CartUITests` holds the line's rise from its "⋯" to its
 stepper, the stepper's height, the search's absence on a one-line bag and the
 menu's rows; `CartSummaryTests` the Free rule in both languages.
 **Then more, on the owner's word** ("work on improving it more"). **The bag

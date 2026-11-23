@@ -45,6 +45,23 @@ final class CartUITests: XCTestCase {
         XCTAssertTrue(saving.waitForExistence(timeout: 5), "The summary does not say what the bag saves.")
         XCTAssertTrue(saving.label.contains("0.950"), "The saving is not the code's 0.950: \(saving.label)")
 
+        // All is a slim row above the first store, not the top of the
+        // summary (on the owner's word); the floating bar may hold its own,
+        // lower down, so the topmost one is the page's.
+        let alls = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Choose everything in your cart")).allElementsBoundByIndex
+        let store = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Sold by")).firstMatch
+        XCTAssertTrue(!alls.isEmpty && store.exists, "No All or no store: \(labels(app))")
+        let all = alls.min { $0.frame.minY < $1.frame.minY }!
+        print("TEST-NOTE cart all: all=\(all.frame) store=\(store.frame)")
+        XCTAssertLessThan(all.frame.maxY, store.frame.minY + 1, "All is not above the first store: all \(all.frame), store \(store.frame)")
+
+        // The store's delivery is one slim, borderless line under its name.
+        let delivery = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "Standard", "Change")).firstMatch
+        XCTAssertTrue(delivery.exists, "The store has no delivery row: \(labels(app))")
+        print("TEST-NOTE cart delivery row: \(delivery.frame)")
+        XCTAssertLessThanOrEqual(delivery.frame.height, 48, "The store's delivery row is tall again: \(delivery.frame)")
+        XCTAssertGreaterThan(delivery.frame.minY, store.frame.minY, "The delivery row is not under the store's name.")
+
         // And the menu offers where it goes, Remove last and in view.
         menu.tap()
         let remove = app.buttons["Remove from cart"]

@@ -25,40 +25,39 @@ struct StoreDeliveryRow: View {
         let currency = group.delivery.first?.fee.currencyCode ?? "KWD"
         let fee = free ? l.t("storeDelivery.free") : l.t("storeDelivery.fee", ["fee": l.price(Money(fils: total, currencyCode: currency))])
         let kind = store.choice == "fast" ? l.t("storeDelivery.express") : store.choice == "mixed" ? l.t("storeDelivery.both") : l.t("storeDelivery.standard")
-        let band = DeliveryLine.slowest(group.items.map { $0.isFast ? $0.fastDelivery?.speed : $0.deliverySpeed })
-        let when: String? = {
-            if ready, let slot = store.slot, store.slotState == "kept" { return SlotWords.slot(slot, l) }
-            if ready, !store.days.isEmpty, store.slotState == "unset" { return l.t("storeDelivery.chooseDay") }
-            return band.map { l.t("speed.\($0)") }
-        }()
+        // The day and time the shopper chose, when there is one.
+        let chosen: String? = ready && store.slotState == "kept" ? store.slot.map { SlotWords.slot($0, l) } : nil
         let nudge = group.delivery.first { $0.toFree.map { !$0.isZero } ?? false }
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Button {
                 open = true
             } label: {
-                HStack(spacing: 12) {
+                // One borderless line under the store's name, on the owner's
+                // word: a small truck, "To Home · Standard · Free delivery",
+                // and Change at the end. It was a tall rounded box of its own
+                // in every store's card, which made a bag from three stores
+                // read as the same box three times. The day chosen, or one no
+                // longer offered, is a small line under it; the store's band
+                // is checkout's to say.
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Image(systemName: "truck.box")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .scaleEffect(x: l.current == .ar ? -1 : 1)
                         .foregroundStyle(free ? Brand.success : Brand.navy)
-                        .frame(width: 36, height: 36)
-                        .background(Circle().fill(free ? Brand.successFill : Color.white))
                         .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        // Where, then the trip and what it costs, then when.
-                        Text(destination)
-                            .font(.inter(13, .heavy))
-                            .foregroundStyle(Brand.navy)
-                            .fixedSize(horizontal: false, vertical: true)
-                        (Text(kind + " · ").foregroundColor(Brand.body)
+                    VStack(alignment: .leading, spacing: 1) {
+                        (Text(destination + " · " + kind + " · ").foregroundColor(Brand.body)
                             + Text(fee).foregroundColor(free ? Brand.success : Brand.navy).bold())
-                            .font(.inter(12, .semibold))
-                            .fixedSize(horizontal: false, vertical: true)
-                        if let when {
-                            Text(when)
+                            .font(.inter(13, .semibold))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .minimumScaleFactor(0.85)
+                        if let chosen {
+                            Text(chosen)
                                 .font(.inter(12))
                                 .foregroundStyle(Brand.muted)
-                                .fixedSize(horizontal: false, vertical: true)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
                         }
                         if ready, store.slotGone {
                             Text(l.t("storeDelivery.slotGone"))
@@ -70,17 +69,17 @@ struct StoreDeliveryRow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     HStack(spacing: 2) {
                         Text(l.t("cart.change")).font(.inter(13, .bold))
-                        Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold))
+                        Image(systemName: "chevron.forward").font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundStyle(Brand.navy)
+                    .fixedSize()
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.photo))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
-                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .padding(.vertical, 4)
+                // A thumb's height to press, drawn as one line.
+                .frame(minHeight: 36)
+                .contentShape(Rectangle())
             }
-            .buttonStyle(PressFillStyle(cornerRadius: 16))
+            .buttonStyle(PressFillStyle(cornerRadius: 8))
             .accessibilityHint(l.t("storeDelivery.open", ["name": group.store.name(l.current)]))
             if let nudge, let toFree = nudge.toFree, let progress = BagGroup.freeProgress(nudge) {
                 Text(l.t("cart.storeToFree", ["amount": l.price(toFree)]))

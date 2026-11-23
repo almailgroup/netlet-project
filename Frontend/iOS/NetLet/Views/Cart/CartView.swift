@@ -224,6 +224,16 @@ struct CartView: View {
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.accentWash))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.accentLine, lineWidth: 1))
             }
+            // All, in a slim row of its own above the first store, on the
+            // owner's word: it sat at the top of the order summary, which is
+            // now the summary alone. The floating bar keeps its own. Not while
+            // searching, where it would tick lines the search has hidden.
+            if !searching, !lines.isEmpty {
+                AllChoice(cart: cart)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, -4)
+            }
             if let groups {
                 ForEach(groups) { group in
                     CartStoreCard(group: group, path: $path)
@@ -242,7 +252,6 @@ struct CartView: View {
                 .card()
             }
             VStack(alignment: .leading, spacing: 14) {
-                AllChoice(cart: cart)
                 SummaryCard(cart: cart, grouped: groups != nil, updating: app.cart.syncing)
                 Text(l.t("cart.checkoutNote"))
                     .font(.inter(12))
@@ -355,14 +364,18 @@ struct CartView: View {
         .background {
             // Solid, and down behind the tab bar, so no line shows through
             // the footer, the strip under it or the tab bar's glass while it
-            // is up; the shadow is the shape's own, cast up over the page.
+            // is up; the shadow is the shape's own, cast up over the page —
+            // a whisper of black, on the owner's word, so a card scrolling
+            // under the footer reads as passing beneath an edge rather than
+            // cut off.
             Rectangle()
                 .fill(Brand.ground)
-                .shadow(color: Brand.navy.opacity(0.08), radius: 8, x: 0, y: -2)
+                .shadow(color: Color.black.opacity(0.04), radius: 6, x: 0, y: -2)
                 .ignoresSafeArea(edges: .bottom)
         }
         .overlay(alignment: .top) {
-            Rectangle().fill(Brand.cardLine).frame(height: 1).allowsHitTesting(false)
+            // A crisp hairline along the top edge, half a point.
+            Rectangle().fill(Brand.cardLine).frame(height: 0.5).allowsHitTesting(false)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("cart.bar"))
@@ -965,7 +978,8 @@ struct SummaryCard: View {
 }
 
 /// All, the foot of the reference's cart: every line in or out at once,
-/// partly while some are left out — in the summary and in the floating bar.
+/// partly while some are left out — in a slim row above the first store and
+/// in the floating bar.
 private struct AllChoice: View {
     let cart: Cart
     var compact = false
