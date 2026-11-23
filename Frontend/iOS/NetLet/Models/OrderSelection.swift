@@ -8,6 +8,12 @@ import Foundation
 /// and in the app. It decides nothing the server does not decide again: each
 /// fact is the server's own answer about the line, and every act is asked
 /// again under a lock when it is pressed.
+///
+/// **The bar is the one way in, on the owner's word** ("remove all these 3
+/// dot buttons; instead put their options here — when you select all, it
+/// should show you all the options, and when you select individually, it
+/// should show you the options as well"): with every item chosen it also
+/// offers what only the whole order can have done (`Whole`).
 enum OrderSelection {
     /// One chosen item, as the page already knows it.
     struct Line: Equatable, Sendable {
@@ -27,9 +33,23 @@ enum OrderSelection {
     }
 
     /// The acts in the bar's order — the cancel last, apart. `return` is one
-    /// item's own form (refund or exchange); `refund` is one refund across several.
+    /// item's own form (refund or exchange); `refund` is one refund across
+    /// several. `modify`, `address`, `payment`, `receipt` and `cancelOrder`
+    /// are the whole order's, offered only while every item is chosen:
+    /// `modify` stands in for `quantity`, `cancelOrder` for `cancelItems`.
     enum Action: String, CaseIterable, Sendable {
-        case track, `return`, refund, warranty, quantity, rate, buyAgain, help, cancelItems
+        case track, `return`, refund, warranty, quantity, modify, rate, buyAgain, address, payment, receipt, help, cancelItems, cancelOrder
+    }
+
+    /// What the whole order allows now, from the server's answer — given only
+    /// while every item is chosen.
+    struct Whole: Equatable, Sendable {
+        /// The delivery address can still move.
+        var address = false
+        /// The way to pay can still change.
+        var payment = false
+        /// The order itself may be cancelled now.
+        var cancellable = false
     }
 
     /// An act and the chosen items it is about — some of them, or all.
@@ -38,21 +58,38 @@ enum OrderSelection {
         let lineIds: [Int]
     }
 
-    static func offers(_ chosen: [Line], cancelled: Bool) -> [Offer] {
+    static func offers(_ chosen: [Line], cancelled: Bool, whole: Whole? = nil) -> [Offer] {
         guard !chosen.isEmpty else { return [] }
+        let every = chosen.map(\.id)
         var offers: [Offer] = []
         func add(_ action: Action, _ test: (Line) -> Bool) {
             let ids = chosen.filter(test).map(\.id)
             if !ids.isEmpty { offers.append(Offer(action: action, lineIds: ids)) }
         }
+        func addWhole(_ action: Action, _ allowed: Bool) {
+            if allowed { offers.append(Offer(action: action, lineIds: every)) }
+        }
         if !cancelled { add(.track) { $0.fulfilment != "cancelled" } }
         add(chosen.count == 1 ? .return : .refund) { $0.returnable }
         add(.warranty) { $0.warranty }
-        add(.quantity) { $0.changeable && $0.quantity > 1 }
+        if whole != nil {
+            add(.modify) { $0.changeable }
+        } else {
+            add(.quantity) { $0.changeable && $0.quantity > 1 }
+        }
         add(.rate) { $0.rateable }
         add(.buyAgain) { $0.rebuyable }
+        if let whole {
+            addWhole(.address, whole.address)
+            addWhole(.payment, whole.payment)
+            addWhole(.receipt, true)
+        }
         add(.help) { _ in true }
-        add(.cancelItems) { $0.changeable }
+        if whole?.cancellable == true {
+            addWhole(.cancelOrder, true)
+        } else {
+            add(.cancelItems) { $0.changeable }
+        }
         return offers
     }
 

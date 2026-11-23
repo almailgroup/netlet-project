@@ -463,8 +463,10 @@ struct OrderDetailView: View {
     @Environment(LanguageSettings.self) private var l
     /// The line being rated in `ReviewSheet`.
     @State private var rating: ReviewTarget?
-    /// The sheet over the order — its own ⋯'s, or the chosen items'.
+    /// The sheet over the order — the chosen items', or a hook's.
     @State private var sheet: OrderSheet?
+    /// "Cancel this order?", asked from the bar's Cancel order.
+    @State private var askingCancel = false
     /// The item whose return form is open under it.
     @State private var returning: Int?
     /// The order's receipt as a PDF, made on the press and shown in Quick Look.
@@ -493,7 +495,7 @@ struct OrderDetailView: View {
                             VStack(alignment: .leading, spacing: 16) {
                                 OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet, onReceipt: { makeReceipt(detail) }, onRate: { line in
                                     rating = target(line)
-                                }, chosen: $chosen)
+                                }, chosen: $chosen, askingCancel: $askingCancel)
                                 lines(detail, reload: { await model.load() })
                                 OrderDocumentsList(documents: detail.documents, receipt: receipt) { makeReceipt(detail) }
                                 if detail.hasShipped { TrackingPanel(reference: reference) }
@@ -512,8 +514,9 @@ struct OrderDetailView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
-                // Room under the last card while the bar of the chosen items is up.
-                .padding(.bottom, chosen.isEmpty ? 48 : 170)
+                // Room under the last card while the bar of the chosen items is
+                // up — two rows of options when every item is chosen.
+                .padding(.bottom, chosen.isEmpty ? 48 : 260)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .overlay(alignment: .bottom) {
@@ -562,6 +565,12 @@ struct OrderDetailView: View {
         case .warranty: open(.warranty)
         case .quantity: open(.modify)
         case .cancelItems: open(.modify, remove: true)
+        // The whole order's, with every item chosen.
+        case .modify: sheet = OrderSheet(kind: .modify)
+        case .address: sheet = OrderSheet(kind: .address)
+        case .payment: sheet = OrderSheet(kind: .payment)
+        case .receipt: makeReceipt(detail)
+        case .cancelOrder: askingCancel = true
         case .rate:
             let lines = detail.lines.map { (id: $0.id, reviewed: $0.review != nil) }
             if let first = OrderSelection.firstToRate(lines, among: ids), let line = detail.lines.first(where: { $0.id == first }) {

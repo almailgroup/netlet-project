@@ -3503,8 +3503,8 @@ hold none on the road.
 **An opened order's receipt can be saved as a PDF, on the owner's word**
 ("an export to PDF option that will show all the details of your order in
 the form of a receipt"): "Download receipt (PDF)" under the order, above its
-invoice (the card is "Receipt and invoice" now), and in the order's ⋯ on both
-platforms. It carries the order's number, when it was placed, where it is,
+invoice (the card is "Receipt and invoice" now), and as Receipt on the bar
+of the chosen items once every item is chosen, on both platforms. It carries the order's number, when it was placed, where it is,
 how it is paid, where it goes (the name, the number, the address, the
 governorate, the notes), each item with its option, its store, the quantity
 at its price, its own code or that it was cancelled or returned, then the
@@ -3713,11 +3713,15 @@ track it (its own parcel), return or exchange it, claim its warranty, change
 its quantity or cancel it before a driver has it, rate it or edit the review,
 buy it again, and get help with it; what that opens is drawn under the item
 (`OrderLinePanel`) or, in the app, a sheet about that item alone (`OrderSheet`
-with its `lineId`). **The order's own ⋯**, beside "In this order", keeps what
-is about the whole order: Track order, Request a refund across items, Warranty,
-Change delivery address, Modify order, Buy everything again, Get help with this
-order and Cancel order (`OrderAfterSales` on the web, `OrderActionsBar` in the
-app). An item's review and its return's state stay on the item, being what is
+with its `lineId`). **What is about the whole order is the bar's too, once
+every item is chosen** — the All circle beside "In this order" does it in one
+press — on the owner's word ("remove all these 3 dot buttons; instead put
+their options here — when you select all, it should show you all the
+options"): the order's change form (Change order), its delivery address, its
+way to pay, its receipt, and Cancel order, behind its question, in place of
+cancelling the items (`WholeOrder` in `orderSelection.ts`; the order had its
+own ⋯ of those until then). A quiet line under "In this order" says to choose
+items while none is (`orders.chooseHint`). An item's review and its return's state stay on the item, being what is
 true rather than something to do. **Nothing on the page decides**: each button is drawn from the server's own answer on `orders.get` —
 `cancel`, `change`, `changeAddress`, each line's `returnState`,
 `warrantyEligibility`, `reviewEligibility` and `changeable` — and the server
@@ -3853,8 +3857,11 @@ act's picture on a small white plate on the web and a disc of system glass in
 the app (red glass under the cancel's). On a phone it comes and goes by
 `translate` and `scale` and only its words fade (`.glass-float`), and a wide
 screen's rises by a transform (`.glass-rise`): an opacity on the pane would
-drain its glass to white for as long as the fade ran. The order's own ⋯ beside
-"In this order" stays. The quantity form's stepper
+drain its glass to white for as long as the fade ran. **Its options are rows
+of four that wrap** (one row of eight from `sm` on the web; a `LazyVGrid` in
+the app), never a sideways scroll: with every item of a pending order chosen
+there are eight, and a scrolling row cut "Address" at the screen's edge. The
+quantity form's stepper
 now wraps under the item's name on a narrow phone (`basis-32`, the flex rule
 below), where at 320 it had left the name no room. `OrderSelectionUITests`
 chooses the recorded order's item, checks the bar's acts, opens the tracker
@@ -3920,7 +3927,7 @@ hands the order over in one step**.
   online, with something still coming that has not arrived. `paymentChangeState`
   is that window now (it was the cancel window), on `orders.get` as
   `paymentChange`, with `live` (the `testPayments` switch on and the tables
-  pasted) and `paidOnline`. Live, the order's ⋯ "Change payment method"
+  pasted) and `paidOnline`. Live, the bar's Payment, with every item chosen,
   (`OrderPayment` on the web, `OrderPaymentSheet` in the app) marks KNET, a
   card and Apple Pay "Test" and says before the press that the page takes no
   money; Pay opens it. Not live, it is the mockup it was: the ways drawn as
@@ -11258,10 +11265,10 @@ for a member, checkout names whose link a line came through, and the heart in
 the logo row and the cart's title opens Saved items with the hearts counted.
 
 **The after-sales centre is the app's too, sheet for sheet**
-(`OrderActionsBar`, `Views/Account/OrderAfterSales.swift`), behind the order's
-⋯ and the bar of the chosen items (`ChosenItemsBar`, the same sheets scoped to
-one item by `OrderSheet.lineId`; cancelling opens the change at none,
-`remove`); the screenshots name the confirmation's two
+(`OrderActionsBar`, `Views/Account/OrderAfterSales.swift`), behind the bar of
+the chosen items (`ChosenItemsBar`, the same sheets scoped to one item by
+`OrderSheet.lineId`, the whole order's with every item chosen; cancelling
+items opens the change at none, `remove`, and Cancel order asks first); the screenshots name the confirmation's two
 (`-NetLetOpen confirmOrder`, `orderPlaced:<ref>`, 78 and 79): Warranty, Modify
 order (the quote, then Confirm at the figure it showed, asked again on
 `orders.changeMoved`), Change delivery address, Buy again (the answer's bag

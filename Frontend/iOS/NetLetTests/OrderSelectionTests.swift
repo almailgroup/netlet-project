@@ -50,6 +50,38 @@ final class OrderSelectionTests: XCTestCase {
         XCTAssertEqual(actions([OrderSelection.Line(id: 5)], cancelled: true), ["buyAgain", "help"])
     }
 
+    private func wholeActions(_ chosen: [OrderSelection.Line], _ whole: OrderSelection.Whole = .init(), cancelled: Bool = false) -> [String] {
+        OrderSelection.offers(chosen, cancelled: cancelled, whole: whole).map(\.action.rawValue)
+    }
+
+    func testEveryItemChosenAddsTheOrdersOwnActsAndCancelsTheOrderItself() {
+        XCTAssertEqual(
+            wholeActions([waiting, single], .init(address: true, payment: true, cancellable: true)),
+            ["track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelOrder"]
+        )
+    }
+
+    func testEveryItemChosenOffersOnlyWhatTheOrderAllowsTheReceiptAlways() {
+        XCTAssertEqual(wholeActions([arrived]), ["track", "return", "warranty", "rate", "buyAgain", "receipt", "help"])
+        XCTAssertEqual(wholeActions([gone], cancelled: true), ["receipt", "help"])
+    }
+
+    func testEveryItemChosenCancelsTheItemsThatMayWhenTheOrderCannotBeCancelledWhole() {
+        XCTAssertEqual(
+            wholeActions([waiting, arrived], .init(address: true)),
+            ["track", "refund", "warranty", "modify", "rate", "buyAgain", "address", "receipt", "help", "cancelItems"]
+        )
+        let offers = OrderSelection.offers([waiting, arrived], cancelled: false, whole: .init())
+        XCTAssertEqual(offers.first { $0.action == .cancelItems }?.lineIds, [1])
+        XCTAssertEqual(offers.first { $0.action == .modify }?.lineIds, [1])
+        XCTAssertEqual(offers.first { $0.action == .receipt }?.lineIds, [1, 3])
+    }
+
+    func testTheOrdersActsWaitUntilEveryItemIsChosen() {
+        XCTAssertEqual(actions([waiting, single]), ["track", "quantity", "buyAgain", "help", "cancelItems"])
+        XCTAssertFalse(actions([waiting, single]).contains("receipt"))
+    }
+
     func testTheAllCircleReadsAllSomeOrNone() {
         XCTAssertEqual(OrderSelection.state(all: [1, 2, 3], chosen: []), .none)
         XCTAssertEqual(OrderSelection.state(all: [1, 2, 3], chosen: [2]), .some)

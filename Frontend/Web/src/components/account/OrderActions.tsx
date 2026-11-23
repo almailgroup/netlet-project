@@ -3,16 +3,17 @@
  * order's detail page should function as a complete after-sales service
  * center", with only the actions this order offers now.
  *
- * **An item's acts are the bar's, once its circle is chosen** (`ChosenBar`,
- * `selectionOffers`): track it, return or exchange it, claim its warranty,
- * change its quantity or cancel it before a driver has it, buy it again, rate
- * it, and get help with it; one item's act is drawn under that item
- * (`OrderLinePanel`), several over the items. Each item had a ⋯ of its own
- * for a while, and the owner asked for it to go once the circles came ("you
- * can control from selecting the product"). **The order's ⋯**, beside "In
- * this order", keeps what is about the whole order: tracking every parcel, a
- * refund across items, changing the address, modifying, buying everything
- * again, the receipt, cancelling it and getting help.
+ * **Everything is the bar's, once items are chosen** (`ChosenBar`,
+ * `selectionOffers`), on the owner's word ("remove all these 3 dot buttons;
+ * instead put their options here — when you select all, it should show you
+ * all the options, and when you select individually, it should show you the
+ * options as well"). Chosen, an item can be tracked, returned or exchanged,
+ * claimed on, lowered or cancelled before a driver has it, bought again,
+ * rated and asked about; one item's act is drawn under that item
+ * (`OrderLinePanel`), several over the items. With every item chosen the bar
+ * also has what only the whole order can have done: the order's change form,
+ * its address, its way to pay, its receipt and cancelling the order. Each
+ * item had a ⋯ of its own for a while, and so did the order.
  *
  * **Nothing here decides.** Each action is drawn from the server's own answer
  * about this order — `cancel` (`shopperCancelState`), `change` and
@@ -32,7 +33,6 @@ import {
   House,
   LifeBuoy,
   MapPin,
-  MoreHorizontal,
   Package,
   PackageSearch,
   PencilLine,
@@ -49,7 +49,6 @@ import { useLocation } from "wouter";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
 import { Thumb } from "@/components/product/Thumb";
-import { LinePopover, type LineAction } from "@/components/cart/LinePopover";
 import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
 import { GlassLayers, PhoneActionBar } from "@/components/layout/PhoneActionBar";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -116,10 +115,10 @@ function useControls(): Controls {
 }
 
 /**
- * The order's after-sales state, round its items: the order's own ⋯ and what
- * it opens, then `children` — the items, each with `OrderLineChoice` and
- * `OrderLinePanel` — the bar of the chosen items, and the confirmation that
- * cancels the whole order.
+ * The order's after-sales state, round its items: the All circle and what
+ * the order's acts open, then `children` — the items, each with
+ * `OrderLineChoice` and `OrderLinePanel` — the bar of the chosen items, and
+ * the confirmation that cancels the whole order.
  */
 export function OrderAfterSales({ reference, detail, trackFirst = false, refundFirst = false, onRate, children }: {
   reference: string;
@@ -150,7 +149,6 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
   const refundable = returnsOn ? detail.lines.filter(line => mayRequestReturn(line, detail.returns)) : [];
   const claimable = returnsOn ? detail.lines.filter(line => line.warrantyEligibility.allowed) : [];
   const changeable = detail.change.changeable && detail.lines.some(line => line.changeable);
-  const rebuyable = detail.lines.some(line => line.variantId !== null);
 
   /* Opened for the refund: the form is brought into view with its first box
      focused, since the press that asked for it is on the list above. */
@@ -260,24 +258,11 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
     ? detail.cancel.reason
     : null;
 
-  const actions: LineAction[] = [];
-  if (!detail.steps.cancelled) actions.push({ key: "track", icon: <Truck className="size-[18px] rtl:-scale-x-100" aria-hidden />, label: t("orders.track"), run: () => controls.open({ kind: "track" }) });
-  if (refundable.length > 0) actions.push({ key: "refund", icon: <RotateCcw className="size-[18px] rtl:-scale-x-100" aria-hidden />, label: t("orders.requestRefund"), run: () => controls.open({ kind: "refund" }) });
-  if (claimable.length > 0) actions.push({ key: "warranty", icon: <ShieldCheck className="size-[18px]" aria-hidden />, label: t("warranty.title"), run: () => controls.open({ kind: "warranty" }) });
-  if (detail.changeAddress.changeable) actions.push({ key: "address", icon: <MapPin className="size-[18px]" aria-hidden />, label: t("orders.changeAddress"), run: () => controls.open({ kind: "address" }) });
-  if (detail.paymentChange.open) actions.push({ key: "payment", icon: <CreditCard className="size-[18px]" aria-hidden />, label: t("orders.changePayment"), run: () => controls.open({ kind: "payment" }) });
-  if (changeable) actions.push({ key: "modify", icon: <PencilLine className="size-[18px]" aria-hidden />, label: t("orders.modify"), run: () => controls.open({ kind: "modify" }) });
-  if (rebuyable) actions.push({ key: "again", icon: <ShoppingBag className="size-[18px]" aria-hidden />, label: t("orders.buyAgainAll"), run: () => again.mutate({ reference, cartId }) });
-  /* The receipt as a PDF, every order's (on the owner's word). */
-  actions.push({ key: "receipt", icon: <FileDown className="size-[18px]" aria-hidden />, label: t("receipt.download"), run: () => void receipt.download(detail) });
-  actions.push({ key: "help", icon: <LifeBuoy className="size-[18px]" aria-hidden />, label: t("orders.getHelp"), run: () => controls.open({ kind: "help" }) });
-  if (detail.cancel.cancellable) actions.push({ key: "cancel", icon: <CircleX className="size-[18px]" aria-hidden />, label: t("orders.cancelOrder"), danger: true, run: () => setAsking(true) });
-
   const orderPanel = panel && panel.lineId === undefined ? panel : null;
 
   return (
     <OrderControls.Provider value={controls}>
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3">
         {/* Every item at once, the cart's All: the circle lines up with the items' own. */}
         <span className="flex min-w-0 items-center gap-1">
           <ChoiceCircle
@@ -288,14 +273,8 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
           />
           <h4 className="text-[14px] font-extrabold text-[#0a285a]">{t("orders.inThisOrder")}</h4>
         </span>
-        <LinePopover
-          title={t("orders.orderMenuTitle", { reference })}
-          label={t("orders.orderMenu")}
-          short={t("cart.lineMenuShort")}
-          trigger={<MoreHorizontal className="size-5" aria-hidden />}
-          actions={actions}
-          active
-        />
+        {/* The bar is the one way to the order's acts: said while nothing is chosen. */}
+        {chosen.length === 0 ? <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("orders.chooseHint")}</p> : null}
       </div>
       {whyNot ? <p className="mb-3 text-[12px] leading-5 ink-muted">{t(whyNot)}</p> : null}
 
@@ -340,8 +319,9 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
 
       {children}
 
-      {/* What can be done with the items chosen, on the owner's word. */}
-      <ChosenBar onBuyAgain={buyChosen} />
+      {/* What can be done with the items chosen, and with the whole order once
+          every item is, on the owner's word. */}
+      <ChosenBar onBuyAgain={buyChosen} onCancelOrder={() => setAsking(true)} onReceipt={() => void receipt.download(detail)} />
 
       <ConfirmDialog
         open={asking}
@@ -407,6 +387,11 @@ const PICK_LABEL: Record<SelectionAction, MessageKey> = {
   buyAgain: "orders.pickBuyAgain",
   help: "orders.pickHelp",
   cancelItems: "orders.pickCancel",
+  modify: "orders.pickModify",
+  address: "orders.pickAddress",
+  payment: "orders.pickPayment",
+  receipt: "orders.pickReceipt",
+  cancelOrder: "orders.pickCancelOrder",
 };
 const PICK_ICON: Record<SelectionAction, ReactNode> = {
   track: <Truck className="size-[19px] rtl:-scale-x-100" aria-hidden />,
@@ -418,6 +403,11 @@ const PICK_ICON: Record<SelectionAction, ReactNode> = {
   buyAgain: <ShoppingBag className="size-[19px]" aria-hidden />,
   help: <LifeBuoy className="size-[19px]" aria-hidden />,
   cancelItems: <CircleX className="size-[19px]" aria-hidden />,
+  modify: <PencilLine className="size-[19px]" aria-hidden />,
+  address: <MapPin className="size-[19px]" aria-hidden />,
+  payment: <CreditCard className="size-[19px]" aria-hidden />,
+  receipt: <FileDown className="size-[19px]" aria-hidden />,
+  cancelOrder: <CircleX className="size-[19px]" aria-hidden />,
 };
 
 /**
@@ -436,7 +426,13 @@ const PICK_ICON: Record<SelectionAction, ReactNode> = {
  * on a wide screen it sticks to the foot of the window while the order is on
  * screen.
  */
-function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<void> }) {
+function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
+  onBuyAgain: (lineIds: number[]) => Promise<void>;
+  /** Cancel the order itself, behind its question. */
+  onCancelOrder: () => void;
+  /** The order's receipt as a PDF. */
+  onReceipt: () => void;
+}) {
   const { t } = useTranslation();
   const { detail, chosen, choose, open, rate } = useControls();
   const returnsOn = useFeature("returns");
@@ -456,7 +452,13 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
       rateable: Boolean(line.review) || line.reviewEligibility.allowed,
       rebuyable: line.variantId !== null,
     })),
-    { cancelled: detail.steps.cancelled },
+    {
+      cancelled: detail.steps.cancelled,
+      /* Every item chosen: the whole order's acts too. */
+      whole: chosenState(detail.lines.map(line => line.id), chosen) === "all"
+        ? { address: detail.changeAddress.changeable, payment: detail.paymentChange.open, cancellable: detail.cancel.cancellable }
+        : null,
+    },
   );
   const shown = useRef(offers);
   if (count > 0) shown.current = offers;
@@ -474,6 +476,12 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
       case "warranty": show("warranty"); return;
       case "quantity": show("modify"); return;
       case "cancelItems": show("modify", true); return;
+      /* The whole order's: its own panels over the items, its receipt, its cancel. */
+      case "modify": open({ kind: "modify", fromBar: true }); return;
+      case "address": open({ kind: "address", fromBar: true }); return;
+      case "payment": open({ kind: "payment", fromBar: true }); return;
+      case "receipt": onReceipt(); return;
+      case "cancelOrder": onCancelOrder(); return;
       case "rate": {
         const first = firstToRate(lines.map(line => ({ id: line.id, reviewed: Boolean(line.review) })), lineIds);
         if (first !== null) rate(first);
@@ -504,17 +512,20 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
           {t("orders.chosenClear")}
         </button>
       </div>
-      <ul className="flex gap-0.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
+      {/* Rows of four that wrap (one row of eight from `sm`), never a sideways
+          scroll: every option the chosen items have is in view at once (on the
+          owner's word). */}
+      <ul className="grid grid-cols-4 gap-y-1 sm:grid-cols-8">
         {shown.current.map(offer => {
           const some = count > 1 && offer.lineIds.length < count;
-          const danger = offer.action === "cancelItems";
+          const danger = offer.action === "cancelItems" || offer.action === "cancelOrder";
           return (
-            <li key={offer.action} className="shrink-0">
+            <li key={offer.action} className="min-w-0">
               <button
                 type="button"
                 onClick={() => void run(offer)}
                 disabled={buying && offer.action === "buyAgain"}
-                className={`group flex w-[4.75rem] flex-col items-center gap-1 rounded-xl px-1 pb-1.5 pt-1 text-center disabled:opacity-60 ${danger ? "text-[#7f1d1d]" : "text-[#0a285a]"}`}
+                className={`group flex w-full flex-col items-center gap-1 rounded-xl px-0.5 pb-1.5 pt-1 text-center disabled:opacity-60 ${danger ? "text-[#7f1d1d]" : "text-[#0a285a]"}`}
               >
                 {/* A small plate of white glass under each picture: the shop's
                     red one for the cancel, the rest white with a bright rim. */}
@@ -550,8 +561,9 @@ function ChosenBar({ onBuyAgain }: { onBuyAgain: (lineIds: number[]) => Promise<
   }
   return (
     <>
-      {/* Room under the last item, so the bar never covers it. */}
-      {count > 0 ? <div aria-hidden className="h-24" /> : null}
+      {/* Room under the last item, so the bar never covers it — two rows of
+          options when there are more than four. */}
+      {count > 0 ? <div aria-hidden className={shown.current.length > 4 ? "h-44 sm:h-24" : "h-24"} /> : null}
       <PhoneActionBar shown={count > 0} label={t("orders.chosenBar")} glass>{body}</PhoneActionBar>
     </>
   );

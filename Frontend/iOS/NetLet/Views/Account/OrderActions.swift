@@ -17,10 +17,11 @@ struct OrderSheet: Identifiable, Hashable {
 /// item's acts are the bar's, once its circle is chosen** (`ChosenItemsBar`,
 /// `OrderSelection`); each item had a ⋯ of its own for a while, and the owner
 /// asked for it to go once the circles came ("you can control from selecting
-/// the product"). What is about the whole order — tracking every parcel, a
-/// refund across items, the warranty, changing the address, modifying, buying
-/// everything again, help, cancelling — is behind the ⋯ beside "In this
-/// order".
+/// the product"), and then for the order's own ⋯ to go too ("when you select
+/// all, it should show you all the options"): with every item chosen the bar
+/// also offers the order's change form, its address, its way to pay, its
+/// receipt and cancelling it. This view keeps the All circle, the sheets those
+/// acts open and the question before cancelling.
 ///
 /// Nothing here decides: cancelling is the server's `cancel`, changing it is
 /// `change` and `changeAddress`, what may go back is each line's return window
@@ -40,12 +41,17 @@ struct OrderActionsBar: View {
     /// The items chosen by their circles (on the owner's word): the All circle
     /// beside "In this order" chooses every one.
     var chosen: Binding<Set<Int>>? = nil
+    /// "Cancel this order?" — asked from the bar's Cancel order, with every
+    /// item chosen, or from an answer of NetLet AI.
+    var askingCancel: Binding<Bool>? = nil
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     /// What an answer from NetLet AI pointed at, opened once the help sheet is down.
     @State private var next: String?
-    @State private var asking = false
+    @State private var askingHere = false
     @State private var cancelling = false
+
+    private var asking: Binding<Bool> { askingCancel ?? $askingHere }
     @State private var rebuying = false
 
     private var refundable: [OrderLine] { app.features.isOn("returns") ? detail.refundable : [] }
@@ -70,43 +76,15 @@ struct OrderActionsBar: View {
                         .accessibilityAddTraits(.isHeader)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Menu {
-                    if trackable {
-                        Button { open(.track) } label: { Label(l.t("orders.track"), systemImage: "shippingbox") }
-                    }
-                    if !refundable.isEmpty {
-                        Button { open(.refund) } label: { Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward") }
-                    }
-                    if !claimable.isEmpty {
-                        Button { open(.warranty) } label: { Label(l.t("warranty.title"), systemImage: "checkmark.shield") }
-                    }
-                    if detail.changeAddress.changeable {
-                        Button { open(.address) } label: { Label(l.t("orders.changeAddress"), systemImage: "mappin.and.ellipse") }
-                    }
-                    if detail.paymentChange.open {
-                        Button { open(.payment) } label: { Label(l.t("orders.changePayment"), systemImage: "creditcard") }
-                    }
-                    if detail.mayModify {
-                        Button { open(.modify) } label: { Label(l.t("orders.modify"), systemImage: "square.and.pencil") }
-                    }
-                    if detail.mayBuyAgain {
-                        Button { Haptics.action(); Task { await buyAgain() } } label: { Label(l.t("orders.buyAgainAll"), systemImage: "bag") }
-                            .disabled(rebuying)
-                    }
-                    if let onReceipt {
-                        Button { Haptics.action(); onReceipt() } label: { Label(l.t("receipt.download"), systemImage: "arrow.down.doc") }
-                    }
-                    Button { open(.help) } label: { Label(l.t("orders.getHelp"), systemImage: "lifepreserver") }
-                    if detail.cancel.cancellable {
-                        Divider()
-                        Button(role: .destructive) { Haptics.action(); asking = true } label: { Label(l.t("orders.cancelOrder"), systemImage: "xmark.circle") }
-                            .disabled(cancelling)
-                    }
-                } label: {
-                    OrderMenuFace()
-                }
-                .menuOrder(.fixed)
-                .accessibilityLabel(l.t("orders.orderMenu"))
+            }
+            // The bar is the one way to the order's acts (on the owner's word):
+            // said while nothing is chosen.
+            if let chosen, chosen.wrappedValue.isEmpty {
+                Text(l.t("orders.chooseHint"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, -6)
             }
             if let why = detail.cancelRefusal {
                 Text(l.t(why))
@@ -131,7 +109,7 @@ struct OrderActionsBar: View {
             app.orderSheet = nil
             if offers(kind) { sheet = OrderSheet(kind: kind) }
         }
-        .alert(l.t("orders.cancelAsk"), isPresented: $asking) {
+        .alert(l.t("orders.cancelAsk"), isPresented: asking) {
             Button(l.t("orders.cancelOrder"), role: .destructive) { Task { await cancel() } }
             Button(l.t("orders.keepOrder"), role: .cancel) {}
         } message: {
@@ -219,7 +197,7 @@ struct OrderActionsBar: View {
         let item = detail.lines.first { $0.id == sheetLine }
         sheetLine = nil
         switch action {
-        case "cancel": if detail.cancel.cancellable { asking = true }
+        case "cancel": if detail.cancel.cancellable { asking.wrappedValue = true }
         case "buyAgain": Task { await buyAgain() }
         case "rate":
             if let line = item ?? detail.lines.first(where: \.mayRate) { onRate?(line) }
@@ -270,20 +248,6 @@ struct OrderActionsBar: View {
             let failure = APIError.from(error)
             if failure != .cancelled { app.toast(l.t(failure.messageKey(knownKey: Phrasebook.shared.has))) }
         }
-    }
-}
-
-/// The ⋯ that opens a menu on the order page: a round 44-point target, the
-/// web's `LinePopover` face.
-struct OrderMenuFace: View {
-    var body: some View {
-        Image(systemName: "ellipsis")
-            .font(.system(size: 17, weight: .bold))
-            .foregroundStyle(Brand.navy)
-            .frame(width: 36, height: 36)
-            .background(Circle().fill(Brand.tint))
-            .frame(width: 44, height: 44)
-            .contentShape(Rectangle())
     }
 }
 
@@ -790,7 +754,10 @@ struct ChosenItemsBar: View {
 
     var body: some View {
         let lines = OrderSelection.lines(detail, chosen: chosen, returnsOn: app.features.isOn("returns"))
-        let offers = OrderSelection.offers(lines, cancelled: detail.steps?.cancelled ?? false)
+        // Every item chosen: the whole order's acts too.
+        let every = OrderSelection.state(all: detail.lines.map(\.id), chosen: chosen) == .all
+        let whole = every ? OrderSelection.Whole(address: detail.changeAddress.changeable, payment: detail.paymentChange.open, cancellable: detail.cancel.cancellable) : nil
+        let offers = OrderSelection.offers(lines, cancelled: detail.steps?.cancelled ?? false, whole: whole)
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(l.t("orders.chosenCount", ["count": "\(chosen.count)"]))
@@ -814,18 +781,17 @@ struct ChosenItemsBar: View {
             }
             .padding(.leading, 8)
             .padding(.trailing, 2)
-            ScrollView(.horizontal, showsIndicators: false) {
-                GlassGroup {
-                    HStack(spacing: 2) {
-                        ForEach(offers, id: \.action) { offer in
-                            act(offer)
-                        }
+            // Rows of four that wrap, never a sideways scroll: every option
+            // the chosen items have is in view at once (on the owner's word).
+            GlassGroup {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2, alignment: .top), count: 4), spacing: 4) {
+                    ForEach(offers, id: \.action) { offer in
+                        act(offer)
                     }
-                    .padding(.horizontal, 2)
-                    .padding(.vertical, 2)
                 }
+                .padding(.horizontal, 2)
+                .padding(.vertical, 2)
             }
-            .glassRow()
         }
         .padding(8)
         // A pane of the tab bar's Liquid Glass, on the owner's word ("can you
@@ -840,7 +806,7 @@ struct ChosenItemsBar: View {
     /// the cancel's, light glass under the rest — and its word under it.
     private func act(_ offer: OrderSelection.Offer) -> some View {
         let some = chosen.count > 1 && offer.lineIds.count < chosen.count
-        let danger = offer.action == .cancelItems
+        let danger = offer.action == .cancelItems || offer.action == .cancelOrder
         return Button {
             run(offer)
         } label: {
@@ -859,7 +825,7 @@ struct ChosenItemsBar: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(width: 76)
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
@@ -876,7 +842,11 @@ struct ChosenItemsBar: View {
         case .rate: return "star"
         case .buyAgain: return "bag"
         case .help: return "lifepreserver"
-        case .cancelItems: return "xmark.circle"
+        case .cancelItems, .cancelOrder: return "xmark.circle"
+        case .modify: return "square.and.pencil"
+        case .address: return "mappin.and.ellipse"
+        case .payment: return "creditcard"
+        case .receipt: return "arrow.down.doc"
         }
     }
 
@@ -892,6 +862,11 @@ struct ChosenItemsBar: View {
         case .buyAgain: return "orders.pickBuyAgain"
         case .help: return "orders.pickHelp"
         case .cancelItems: return "orders.pickCancel"
+        case .modify: return "orders.pickModify"
+        case .address: return "orders.pickAddress"
+        case .payment: return "orders.pickPayment"
+        case .receipt: return "orders.pickReceipt"
+        case .cancelOrder: return "orders.pickCancelOrder"
         }
     }
 }

@@ -2,8 +2,7 @@
  * A small menu about one line of the bag, behind a round button on the line:
  * the "⋯" of what can be done with it (`LineMenu`) and the delivery button of
  * where it goes (`LineDestination`) share it, so the two open, move and close
- * alike — and so does the ⋯ beside an opened order's "In this order"
- * (`OrderAfterSales`).
+ * alike.
  *
  * Two shapes, one at a time. On a phone it is a sheet from the foot of the
  * screen, naming the product over the rows — the thumb's reach; from `sm` a

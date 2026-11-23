@@ -57,6 +57,43 @@ describe("what the chosen items of an order offer", () => {
   });
 });
 
+describe("what every item chosen offers: the whole order's acts too", () => {
+  const whole = (facts: Partial<{ address: boolean; payment: boolean; cancellable: boolean }> = {}) => ({
+    address: false,
+    payment: false,
+    cancellable: false,
+    ...facts,
+  });
+  const wholeActions = (chosen: ChosenLine[], facts = {}, cancelled = false) =>
+    selectionOffers(chosen, { cancelled, whole: whole(facts) }).map(offer => offer.action);
+
+  it("adds the order's change form, address, way to pay and receipt, and cancels the order itself", () => {
+    expect(wholeActions([waiting, single], { address: true, payment: true, cancellable: true })).toEqual([
+      "track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelOrder",
+    ]);
+  });
+
+  it("offers only what the order allows now, the receipt always", () => {
+    expect(wholeActions([arrived])).toEqual(["track", "return", "warranty", "rate", "buyAgain", "receipt", "help"]);
+    expect(wholeActions([gone], {}, true)).toEqual(["receipt", "help"]);
+  });
+
+  it("cancels the items that may change when the order cannot be cancelled whole", () => {
+    expect(wholeActions([waiting, arrived], { address: true })).toEqual([
+      "track", "refund", "warranty", "modify", "rate", "buyAgain", "address", "receipt", "help", "cancelItems",
+    ]);
+    const offers = selectionOffers([waiting, arrived], { cancelled: false, whole: whole() });
+    expect(offers.find(offer => offer.action === "cancelItems")?.lineIds).toEqual([1]);
+    expect(offers.find(offer => offer.action === "modify")?.lineIds).toEqual([1]);
+    expect(offers.find(offer => offer.action === "receipt")?.lineIds).toEqual([1, 3]);
+  });
+
+  it("keeps the order's acts off the bar until every item is chosen", () => {
+    expect(actions([waiting, single])).toEqual(["track", "quantity", "buyAgain", "help", "cancelItems"]);
+    expect(actions([waiting, single])).not.toContain("receipt");
+  });
+});
+
 describe("the All circle", () => {
   it("reads all, some or none of the order", () => {
     expect(chosenState([1, 2, 3], [])).toBe("none");

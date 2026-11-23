@@ -4,8 +4,9 @@ import XCTest
 /// ("when you select a specific order, it should let you choose the product,
 /// just like in the cart page, and it should give you all the options"): a
 /// circle beside each item brings a bar of Liquid Glass over the page's foot
-/// with every act the chosen items allow — the item has no ⋯ of its own —
-/// Track opens the tracker for them, and Clear puts the bar away. The recorded order holds one delivered item that can still
+/// with every act the chosen items allow — and the whole order's once every
+/// item is chosen; neither the item nor the order has a ⋯ — Track opens the
+/// tracker for them, and Clear puts the bar away. The recorded order holds one delivered item that can still
 /// go back, be claimed on and be rated.
 final class OrderSelectionUITests: XCTestCase {
     override func setUp() {
@@ -25,14 +26,17 @@ final class OrderSelectionUITests: XCTestCase {
         let circle = named(app, "Choose USB-C charger 65W")
         XCTAssertTrue(circle.waitForExistence(timeout: 20), "The order's item has no circle: \(labels(app))")
         XCTAssertTrue(named(app, "Choose every item in this order").exists, "The order has no All circle: \(labels(app))")
-        // The item has no ⋯ of its own: its acts are the bar's (on the owner's word).
+        // Neither the item nor the order has a ⋯ any more: the bar is the one
+        // way in (on the owner's word).
         XCTAssertFalse(named(app, "Options for USB-C charger 65W").exists, "The item still has a ⋯ of its own: \(labels(app))")
+        XCTAssertFalse(named(app, "Options for this order").exists, "The order still has a ⋯ of its own: \(labels(app))")
         XCTAssertFalse(app.staticTexts["1 item chosen"].exists, "The bar is up before anything is chosen.")
         circle.tap()
 
         let count = app.staticTexts["1 item chosen"]
         XCTAssertTrue(count.waitForExistence(timeout: 6), "Choosing the item brought no bar: \(labels(app))")
-        for act in ["Track", "Return", "Warranty", "Rate", "Buy again", "Help"] {
+        // The order's only item is every item: the order's receipt is on the bar too.
+        for act in ["Track", "Return", "Warranty", "Rate", "Buy again", "Receipt", "Help"] {
             XCTAssertTrue(app.buttons[act].exists, "The bar does not offer \(act): \(labels(app))")
         }
         // A paid, delivered item cannot be cancelled or have its quantity changed.
