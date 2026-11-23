@@ -2225,8 +2225,12 @@ where the order goes until it is told otherwise**, which is the default the
 owner asked for. The choice is `commerce.setDestination`, stored on the bag's
 line and frozen on the order's — 3.2.6, which checkout offered behind "Deliver
 this elsewhere" until the address moved to the cart — and the line says
-"Going to …" under its name while it holds one, the button navy rather than
-muted. A guest has no book, so no button.
+"Going to …" while it holds one, the button navy rather than muted. **That
+line sits under the line's price and stepper, on the owner's word** (a
+picture of the cart with the badge circled and an arrow under the stepper), as
+a small pill with a truck, on the web and in the app (`LineBadges`): under the
+name it pushed the price and the stepper down for one line of a store and not
+the next. A guest has no book, so no button.
 
 **The bag is drawn by store, and on a phone it opens on where it is going —
 on the owner's word.** Each store's lines sit together under "Sold by …",
@@ -2237,7 +2241,13 @@ under the total could not say which lines each was for (`bagGroups` in
 `lib/bagGroups.ts`, pure; the server now sends each line's `vendor`, and a
 line drawn before the server answers knows its store by the card's slug). A
 bag any of whose lines names no store — the demo build's — is one list as
-before. On the page each store is a card; in the drawer, a section. A line's
+before. On the page each store is a card; in the drawer, a section. **The
+store's delivery is at the card's foot, under its lines, on the owner's word**
+(the same picture, an arrow from the delivery box to the foot of the card):
+the lines are what a shopper reads a store's card for, and the delivery, which
+is about all of them, follows them under a hairline (`StoreDeliveryFoot` on
+the web, `store-delivery-foot` in the app); the store's name heads the card
+alone. A line's
 price sits under its name and its stepper under that: beside the stepper, the
 price was cut at a 320px card's edge, which the page-width audit did not see
 because the card clips: measure text past the edge of any box that clips it,
@@ -2302,11 +2312,25 @@ total counting the rest, a store's three unticked and still there, All
 unticked leaving every line and Checkout off, ticking one back pricing it,
 Saved for later unchanged throughout, axe clean and no sideways scroll.
 
+**The cart has no circles any more, on the owner's word, and that is a second
+reversal** ("remove the boxes for choosing products"): the circles beside every
+line and store, All above the first store and All in the floating bar went, on
+the web, in the drawer and in the app, so the cart checks out what it holds and
+"Checkout (n)" counts every line. A line the shopper does not want now is moved
+by name — Save for later or Remove in its "⋯". **The skip list stays, for Buy
+now alone**: "Buy 3 now" still checks out its own line (`chooseOnly`), and
+opening the cart page, the drawer or the Cart tab forgets that choice
+(`forgetChoice`, which empties the device's list and reads the bag again), so
+a shopper back in the cart after Buy now is checking out everything they see —
+a hidden skip list with no circle to show it would be a total that left lines
+out for no reason anybody could see. The server, the rule and their tests are
+unchanged; only the circles went.
+
 **Codes, gift cards and points are checkout's alone, on the owner's word**
 ("display three distinct options: a discount code input, a gift card input, a
 NetLet points redemption toggle", then "only in the checkout page, not cart"):
-`BagSavings` is a card at checkout, before the ways to pay, each of its three
-folded until pressed (see "Checkout confirms; it does not ask"), and the cart, its
+`BagSavings` is a card at checkout, before the ways to pay, its three a row of
+round icons each opening its own box (see "Checkout confirms; it does not ask"), and the cart, its
 drawer and its floating bar show the bag's own total with a line saying codes,
 gift cards and points are taken at checkout (`cart.checkoutNote`). What was
 chosen is kept for the tab and the bag (`lib/bagSavings.ts`, the session
@@ -2830,11 +2854,17 @@ payment method"; migration 0088, `customer_defaults`;
 word** ("remove the payment method from the quick settings"): it is
 checkout's question, which opens on the account's default with Change, so the
 server's `customer.defaults.setPayment` stays for an installed app that still
-sends it and no page draws it. **The default address is the address in use** — the
+sends it and no page draws it. **The delivery address left Quick settings
+too, on the owner's word** ("remove the delivery address from the quick
+settings in the profile page"): it is the cart's question, its first card and
+the header's book, and the address book's "Set as default" still writes the
+account's, so Quick settings are the country, the currency and the language
+alone (`QuickSettings` on the web, `QuickSettingsCard` in the app). **The
+default address is the address in use** — the
 header's, the cart's, checkout's (`addressInUse`) — because an account with a
 "default" in one place and an "in use" in another is one somebody has to keep
-in step by hand: choosing an address anywhere (the header's book, Quick
-settings' Delivery address, the address book's "Set as default", checkout's
+in step by hand: choosing an address anywhere (the header's book, the cart's
+Change, the address book's "Set as default", checkout's
 own fallback) writes the device's key (`lib/lastAddress`, the app's
 `CheckoutViewModel.lastAddressKey`), and `CustomerContext` (the app's
 `DeliveryModel`) sends it to the account and, on sign-in, reads the account's
@@ -3389,30 +3419,36 @@ rule: they narrow a list). **The search icon opens the search** under the
 tabs, on the orders' own views — a search by the order's number (whole or in
 part, with or without its dashes) or by anything in it; closing it clears it,
 so nothing narrows the list out of sight, and an address carrying words opens
-with it shown. **Under the tabs, a row of chips: Date, Store, Payment, Total
-and Sort, on the owner's word** ("a filter option at the top of the my order
-page in which the user can set custom dates … give the user as many options as
-you can, but keep it as user friendly as possible"; `OrderFilterChips` on the
-web and in the app), the department page's chip-and-sheet: each chip names
-what it holds once something is chosen ("Date, 2025", "Sort, Oldest first",
-its name first so voice control can say what it sees) and keeps a navy rim
-then, and a press opens a short sheet of that chip's choices where a press
-applies one and puts the sheet away — a phone's sheet from the foot of the
-screen, a card from `sm` (`useOverlay`, focus on its Close; the app's
-`.sheet(item:)`). **Date** is any time, 30, 90 and 180 days and a year as
-pills, This month and Last month, every year the shopper ordered in ("By
-year", a year chosen as its first and last day, so it is one rule), and two
-days of their own (`From` and `To`, the browser's or the phone's own date
-picker, held to Kuwait's days from the first order's day to today, applied by
-"Show orders"; on the web a day missing or the two the wrong way round is said
-under the box with focus on it, and the server swaps two days that arrive the
-wrong way round anyway). **Store** is drawn only once the shopper has bought
-from more than one (or one is chosen), each store with how many orders hold
-it. **Payment** is cash on delivery or paid online (`isOnlineMethod`).
-**Total** is four bands in whole dinars (`ORDER_TOTAL_BANDS`: under 10, 10 to
-50, 50 to 100, over 100, measured in fils). **Sort** is newest, oldest, highest
-and lowest total, ties kept in the order given. Clear all ends the row while
-anything is chosen, and leaves the tab and the search. **The choices are read
+with it shown. **Under the tabs, Filters and Sort, on the owner's word** ("a
+filter option at the top of the my order page in which the user can set custom
+dates … give the user as many options as you can, but keep it as user friendly
+as possible", then "organize the filter options for the my orders page, make
+it better and enhanced"; `OrderFilterChips` on the web and in the app). They
+were a row of five chips — Date, Store, Payment, Total, Sort — each opening a
+sheet of its own and applying on the press; five sheets for one question read
+as five places to look. Now two buttons: **Filters**, saying how many are on
+(a navy disc with the count), and **Sort**, naming the order. **Filters opens
+one sheet** — a phone's from the foot of the screen, a card from `sm`
+(`useOverlay`, focus on its Close; the app's `.sheet(item:)`) — with every
+choice in a section of its own under its icon and name, chosen as pills and
+**applied together by "Show orders"**, with Reset beside it (nothing changes
+until the press, so a shopper can try a few choices and leave with Close).
+**Date** is any time, 30, 90 and 180 days, This month and Last month, every
+year the shopper ordered in (a year chosen as its first and last day, so it is
+one rule), and "Choose dates" for two days of their own (`From` and `To`, the
+browser's or the phone's own date picker, held to Kuwait's days from the first
+order's day to today, starting on the last thirty; on the web a day missing or
+the two the wrong way round is said under the box with focus on it, and the
+server swaps two days that arrive the wrong way round anyway). **Store** is
+drawn only once the shopper has bought from more than one (or one is chosen),
+each store with how many orders hold it. **Payment** is cash on delivery or
+paid online (`isOnlineMethod`). **Total** is four bands in whole dinars
+(`ORDER_TOTAL_BANDS`: under 10, 10 to 50, 50 to 100, over 100, measured in
+fils). **Sort** is a short sheet of newest, oldest, highest and lowest total,
+applied on the press, ties kept in the order given. **Under the two, each
+filter that is on is a chip of its own with a cross** that takes that one off
+(its name says which, `orders.removeFilter`), and Clear all takes them all and
+the sort, leaving the tab and the search. **The choices are read
 over every order**, never only the ones the filters leave (`orders.list`'s
 `facets`: the stores with their counts, the Kuwaiti years, the first order's
 day), so a chip can always be changed back. The date counts once among what
@@ -3452,7 +3488,14 @@ and a store narrowing the list and their chips saying so, two days the wrong
 way round refused under the box, Clear all, axe clean with every sheet open,
 no sideways scroll (a review row's long reason widened the page at 320 until
 it was allowed to wrap, and the Date sheet's periods are pills, since a row
-each made it taller than a phone). Orders is the first tile, ahead of the settings: somebody
+each made it taller than a phone). The organised filters were walked again
+the same way (`.scratch/cart-checkout-walk.mjs`): Filters opening one sheet, a
+year chosen and applied by "Show orders" into the address and a chip of its
+own, Sort applying Oldest first on the press, the year's cross taking it off
+alone and Clear all the sort, axe clean with the sheet open, no sideways
+scroll; the app's `OrderFiltersUITests` does the same through the sheet, and
+the CI photographs it open (`115-order-filters`, `-NetLetOpen orderFilters`).
+Orders is the first tile, ahead of the settings: somebody
 opening their account on a shop is usually asking where a parcel is, not
 changing a display name.
 
@@ -4901,7 +4944,13 @@ the invoice (each line's tax and rate, the document's `tax` before the
 discount) and the credit note (goods and tax apart). The cart, its drawer,
 checkout, the opened order ("Includes tax"), the invoice and the app's same
 screens draw it; the bag's instant guess keeps the last tax in the total, as
-it keeps the last delivery. **Turning tax on asks first**, saying the rate.
+it keeps the last delivery. **The cart's and checkout's summaries always
+carry a Tax line, on the owner's word** ("add the tax in the order summary"):
+"Tax (5%)" with its amount while the shop charges it, and "Tax" at KWD 0.000
+while it does not (`summary.taxNone`), on the web, in the drawer and in the
+app — a line drawn only once tax is on read as no tax line at all to the
+owner, who could not see where it would go. **Turning tax on asks first**,
+saying the rate.
 
 **Closed, not broken, until 0087 is pasted**: the rules answer "no tax" while
 either table is missing (`taxTablesReady`, asked before reading because the
@@ -5754,23 +5803,39 @@ band, `deliverySpeed` on each bag line, `arrivalFor`, nothing where the seller
 stated none), **the code, the gift card and the points, right before the
 ways to pay** — `BagSavings`, see "Codes, gift cards and points are
 checkout's alone" — the way to pay, and the summary with
-Place order. **The three are folded until pressed, on the owner's word** ("keep
-these sections collapsed by default and expand them when clicked … keep the
-checkout page clean, simple, and easy to use"), a reversal: they were open,
-also on the owner's word ("so users can enter their code right away"), and
-three boxes over the ways to pay were most of a phone's screen for the few
-orders that carry a code. Folded, each row says what it holds — the code and
-what it takes off, "Not applied" in red for one refused, the points it would
-use, "Add" for nothing — so nothing chosen is hidden; pressed, it opens by its
-height (`Unfold`, `.unfold`; the app's `FoldRow`, a spring) and puts the
-keyboard in its box. **The way to pay opens on the default, with Change, on
-the owner's word** ("display the default payment method with the option to
-proceed directly or expand the section to select another method"): the
-account's own (Quick settings, below) when it can be chosen, else the first
-that can — today cash on delivery, marked "Your default" — so Place order goes
-straight on; Change opens the list (cash, and KNET, a card and Apple Pay drawn
-as coming), and a refusal of cash opens it by itself, since the sentence
-saying why is in it. The order is placed from the address in use's own parts, name and
+Place order. **The three are round icons, each opening its own box, on the
+owner's word** ("for the payment method make it icons, round shaped icons …
+the same for the codes, gift cards and points"): a ticket on pale sky, a gift
+on pale peach and the points coin on pale gold, each a circle with its name
+under it and a line under that saying what it holds — the code and what it
+takes off in green, "Not applied" in red, the points it would use — and a
+corner badge, a green tick once applied or a red "!" once refused, so nothing
+chosen is hidden. A press rings the circle in navy and opens that one box
+under the row (`Unfold`; the app's spring), the keyboard in it; one is open at
+a time and a second press folds it (`aria-expanded`). They were three folded
+rows before that, on the owner's word ("keep these sections collapsed"), and
+three open boxes before those; nothing is open to start with either way, so
+the page stays as short as the folded rows made it. **The way to pay is a row
+of round icons too, on the owner's word** — cash on delivery chosen (navy,
+with a white note on it), then KNET, Visa and Mastercard, and Apple Pay as
+**mockups**, "Coming soon" under each and none choosable until a card service
+is wired (3.2.1): NetLet's own drawing of how each will look — KNET's word in
+its blue over a green bar, VISA over two overlapping circles, the Apple mark
+and "Pay" on black — never a brand's file. On the web they are a radio group
+(`name="payment-method"`, real radios hidden under the circles, the coming
+ones disabled), the circle in a box below it saying what cash on delivery
+means for this order; a refusal of cash says why there instead. It replaced
+the default-with-Change row of the round before (that row said "Your default"
+over cash, the one way there is to choose), which went with its words.
+`components/checkout/RoundChoice.tsx` and `Views/Checkout/RoundChoice.swift`
+are the faces, the same on both; the CI photographs them with checkout opened
+on its foot (`116-checkout-foot`, `-NetLetOpen checkoutFoot`). Walked on a
+production build against a local Postgres at 320, 390 and 1440 in both
+languages (`.scratch/cart-checkout-walk.mjs`): Quick settings with no address,
+the cart with no circles, each store's delivery under its last line and the
+Tax line in its summary, checkout's four ways to pay with cash chosen, the
+code's circle opening its box with the keyboard in it, axe clean and no
+sideways scroll. The order is placed from the address in use's own parts, name and
 number; a saved address with no number on an account with none asks for it in
 one box, and an order with nowhere to go — Buy now arrives without passing the
 cart — says so under Place order, where the press opens the address book. A
@@ -11102,17 +11167,18 @@ was its own RGB. **Checkout's words stay navy, the owner's choice once the figur
 set out — twice**: white was asked for "for crisp contrast", and white on the brand
 orange is 3.08:1 where navy is 4.65:1 (`AccentButtonStyle`), the orange glass
 lightening it further; asked again in the cart's polish round, the owner kept navy.
-**All is a slim row above the first store, on the owner's word**, and the
-summary card is the summary alone — "Order summary", the totals, the note and
-Checkout; it was the summary card's first row. The floating bar keeps its own,
-and the row is not drawn while the cart is searched, where it would tick lines
-the search has hidden. **A store's delivery is one borderless line under its
-name, on the owner's word** (`StoreDeliveryRow`): a small truck, green when
-free, "To Home · Standard · Free delivery" and Change at its end, 36 points to
-press; it was a tall rounded box in every store's card. A day the shopper chose,
-or one no longer offered, is a small line under it, and the store's band and
-"Choose a day and time" are checkout's and the sheet's to say. `CartUITests`
-holds All above the first store and the row under 48 points. `CartUITests` holds the line's rise from its "⋯" to its
+The summary card is the summary alone — "Order summary", the totals, the note
+and Checkout. All was its first row, then a slim row above the first store,
+both on the owner's word, and then went with every other circle ("remove the
+boxes for choosing products"; see "The cart has no circles any more").
+**A store's delivery is one borderless line, on the owner's word**
+(`StoreDeliveryRow`): a small truck, green when free, "To Home · Standard ·
+Free delivery" and Change at its end, 36 points to press; it was a tall
+rounded box in every store's card, and it sits at the card's foot under the
+lines now, the web's. A day the shopper chose, or one no longer offered, is a
+small line under it, and the store's band and "Choose a day and time" are
+checkout's and the sheet's to say. `CartUITests` holds that no circle is drawn
+and the row under 48 points, below the line's plus. `CartUITests` holds the line's rise from its "⋯" to its
 stepper, the stepper's height, the search's absence on a one-line bag and the
 menu's rows; `CartSummaryTests` the Free rule in both languages.
 **Then more, on the owner's word** ("work on improving it more"). **The bag

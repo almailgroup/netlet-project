@@ -133,6 +133,9 @@ private struct CheckoutForm: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        // The screenshots' `-NetLetOpen checkoutFoot`: opened at its foot, on
+        // the codes, the ways to pay and the summary.
+        .defaultScrollAnchor(app.checkoutFootOnOpen ? .bottom : nil)
         .safeAreaInset(edge: .bottom) {
             if !empty {
             VStack(spacing: 6) {
@@ -497,133 +500,95 @@ private struct CheckoutItemRow: View {
     }
 }
 
-/// How it is paid. Cash on delivery is the one that works and is chosen; the
-/// rest are drawn as they will be, each marked as coming and none choosable
-/// (3.2.1 waits on a card service).
-///
-/// **It opens on the default, with Change, on the owner's word** — the web's
-/// `PaymentMethods`: the account's own way to pay (Quick settings, 0088) shown
-/// as the one the order goes with, so Place order goes straight on; Change
-/// opens the list. A refusal of cash opens it, since the sentence saying why
-/// is in it.
+/// How it is paid, as round icons, on the owner's word ("for the payment
+/// method make it icons, round shaped icons; for now add a mockup design of
+/// KNET, Visa/Mastercard and Apple Pay") — the web's `PaymentMethods`: cash
+/// on delivery, KNET, Visa and Mastercard, and Apple Pay side by side
+/// (`RoundFace`). Cash is the one that works and is chosen; the rest are drawn
+/// as they will look, each saying it is coming and none choosable (3.2.1 waits
+/// on a card service). Under the row, what the chosen one means, with "Your
+/// default" for the account's own; a refusal of cash says why in its place.
 private struct PaymentMethods: View {
     let cart: Cart?
     let model: CheckoutViewModel
     @Environment(LanguageSettings.self) private var l
     @Environment(AppModel.self) private var app
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var opened = false
 
     var body: some View {
         let refused = cart.flatMap { model.codRefusal(for: $0, language: l) }
-        let open = opened || refused != nil
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Text(l.t("checkout.paymentMethod"))
-                    .font(.inter(15, .heavy))
-                    .foregroundStyle(Brand.navy)
-                    .accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: 12) {
+            Text(l.t("checkout.paymentMethod"))
+                .font(.inter(15, .heavy))
+                .foregroundStyle(Brand.navy)
+                .accessibilityAddTraits(.isHeader)
+            HStack(alignment: .top, spacing: 4) {
+                ForEach(PaymentMark.allCases) { mark in
+                    option(mark, chosen: mark == .cod && refused == nil)
+                }
+            }
+            if let refused {
+                Text(refused)
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if refused == nil {
-                    Button {
-                        withAnimation(reduceMotion ? nil : .spring(response: 0.36, dampingFraction: 0.9)) { opened.toggle() }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(open ? l.t("checkout.payDone") : l.t("checkout.payChange"))
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 11, weight: .bold))
-                                .rotationEffect(.degrees(open ? 180 : 0))
-                        }
-                        .font(.inter(13, .bold))
-                        .foregroundStyle(Brand.navy)
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 36)
-                        .overlay(Capsule().strokeBorder(Brand.navy.opacity(0.18)))
-                        .contentShape(Capsule())
-                    }
-                    .buttonStyle(.tap)
-                    .accessibilityLabel(open ? l.t("checkout.payDone") : l.t("checkout.payChange"))
-                    .accessibilityHint(l.t("checkout.payChangeName"))
-                }
-            }
-            .padding(.bottom, 4)
-            if open {
-                option(icon: AnyView(Image(systemName: "banknote").font(.system(size: 18, weight: .medium))),
-                       title: l.t("checkout.payCod"), note: l.t("checkout.payCodNote"), chosen: refused == nil)
-                if let refused {
-                    Text(refused)
-                        .font(.inter(13))
-                        .foregroundStyle(Brand.danger)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.accentWash))
-                }
-                Group {
-                    option(icon: AnyView(Text("KNET").font(.inter(11, .heavy))), title: l.t("checkout.payKnet"), note: l.t("checkout.payKnetNote"), soon: true)
-                    option(icon: AnyView(Image(systemName: "creditcard").font(.system(size: 18, weight: .medium))),
-                           title: l.t("checkout.payCard"), note: l.t("checkout.payCardNote"), soon: true)
-                    option(icon: AnyView(Image(systemName: "iphone").font(.system(size: 18, weight: .medium))),
-                           title: l.t("checkout.payApple"), note: l.t("checkout.payAppleNote"), soon: true)
-                    if app.session.isSignedIn {
-                        Text(l.t("checkout.payMakeDefault"))
-                            .font(.inter(12))
-                            .foregroundStyle(Brand.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.accentWash))
             } else {
-                option(icon: AnyView(Image(systemName: "banknote").font(.system(size: 18, weight: .medium))),
-                       title: l.t("checkout.payCod"), note: l.t("checkout.payCodNote"), chosen: true,
-                       badge: app.session.isSignedIn && app.delivery.payment == "cod" ? l.t("checkout.payYourDefault") : nil)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(l.t("checkout.payCod")).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
+                        if app.session.isSignedIn && app.delivery.payment == "cod" {
+                            Text(l.t("checkout.payYourDefault"))
+                                .font(.inter(11, .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Brand.navy))
+                        }
+                    }
+                    Text(l.t("checkout.payCodNote"))
+                        .font(.inter(12))
+                        .foregroundStyle(Brand.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255)))
+                .accessibilityElement(children: .combine)
             }
+            Text(l.t("checkout.paySoonNote"))
+                .font(.inter(12))
+                .foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
     }
 
-    private func option(icon: AnyView, title: String, note: String, chosen: Bool = false, soon: Bool = false, badge: String? = nil) -> some View {
-        HStack(spacing: 12) {
-            ZStack {
-                Circle().strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 2 : 1.5).frame(width: 20, height: 20)
-                if chosen { Circle().fill(Brand.navy).frame(width: 10, height: 10) }
+    /// One way to pay: its circle, its name and whether it is chosen or coming.
+    /// None can be pressed — cash is already chosen and the rest are coming.
+    private func option(_ mark: PaymentMark, chosen: Bool) -> some View {
+        let soon = mark != .cod
+        let title: String = {
+            switch mark {
+            case .cod: return l.t("checkout.payCodShort")
+            case .knet: return l.t("checkout.payKnet")
+            case .card: return l.t("checkout.payCardShort")
+            case .apple: return l.t("checkout.payApple")
             }
-            .accessibilityHidden(true)
-            icon
-                .foregroundStyle(chosen ? Color.white : Brand.muted)
-                .frame(width: 40, height: 40)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(chosen ? Brand.navy : Brand.tint))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(title).font(.inter(14, .bold)).foregroundStyle(chosen ? Brand.navy : Brand.body)
-                    if let badge {
-                        Text(badge)
-                            .font(.inter(11, .bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Capsule().fill(Brand.navy))
-                    }
-                }
-                Text(note).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if soon {
-                Text(l.t("checkout.paySoon"))
-                    .font(.inter(11, .bold))
-                    .foregroundStyle(Brand.muted)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Brand.tint))
-            }
+        }()
+        let note = soon ? l.t("checkout.paySoon") : chosen ? l.t("checkout.payChosen") : nil
+        return VStack(spacing: 0) {
+            RoundFace(fill: mark.fill(chosen: chosen), ring: chosen, badge: chosen ? .done : nil) { mark.mark(chosen: chosen) }
+            RoundLabel(title: title, note: note, tone: chosen ? .good : .muted)
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(chosen ? Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255) : Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.cardLine, lineWidth: chosen ? 2 : 1))
-        .accessibilityElement(children: .combine)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel([title, note].compactMap { $0 }.joined(separator: ", "))
         .accessibilityAddTraits(chosen ? .isSelected : [])
+        .accessibilityIdentifier("pay-\(mark.rawValue)")
     }
 }
 
@@ -691,8 +656,11 @@ private struct CheckoutSummary: View {
                 codeRow(item)
             }
             // Tax (0087): on the goods, after each product's own code.
+            // Always a line, on the owner's word: nothing while NetLet charges none.
             if let tax = cart.tax, !tax.amount.isZero {
                 row(l.t("summary.tax", ["rate": TaxWording.rateLabel(tax.ratePercent)]), tax.amount.formatted(l.current), faint: app.cart.syncing)
+            } else {
+                row(l.t("summary.taxNone"), Money.zero.formatted(l.current), faint: app.cart.syncing)
             }
             if !bill.discount.isZero { row(l.t("checkout.discountRow"), "−" + bill.discount.formatted(l.current), good: true) }
             if !bill.points.isZero { row(l.t("checkout.pointsRow"), "−" + bill.points.formatted(l.current), good: true) }

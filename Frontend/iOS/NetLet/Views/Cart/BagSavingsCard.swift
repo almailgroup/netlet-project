@@ -11,43 +11,55 @@ import SwiftUI
 /// none is told where they come from — a line, never a switch that can only
 /// be turned on to no effect.
 ///
-/// **Each of the three is folded until it is pressed, on the owner's word**
-/// ("keep these sections collapsed by default and expand them when clicked")
-/// — the web's `SavingsRow`. Folded, each row says what it holds: a code and
-/// what it takes off, "Not applied" in red for one refused, the points it
-/// would use.
+/// **The three are round icons in a row, on the owner's word** ("the same
+/// for the codes, gift cards and points — round shaped icons"), each folded
+/// until it is pressed — the web's `BagSavings`. Under each circle a line says
+/// what it holds — what a code takes off, "Not applied" in red for one
+/// refused, the points there are — and a corner badge says the same to the
+/// eye. A press opens that one's box under the row, one at a time, with a
+/// spring (a cut under Reduce Motion).
 struct BagSavingsCard: View {
     let cart: Cart
+    @State private var open: SavingsMark?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let savings = app.savings
         let bill = savings.bill(for: cart)
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(l.t("cart.savingsHeading"))
                 .font(.inter(15, .heavy))
                 .foregroundStyle(Brand.navy)
                 .accessibilityAddTraits(.isHeader)
-                .padding(.top, 14)
-                .padding(.bottom, 4)
-            FoldRow(icon: AnyView(Image(systemName: "ticket").foregroundStyle(Brand.muted)), title: l.t("cart.discountCode"), summary: codeSummary(.discount, bill: bill)) {
-                CodeBoxRow(cart: cart, box: .discount)
+            HStack(alignment: .top, spacing: 4) {
+                ForEach(SavingsMark.allCases) { mark in
+                    circle(mark, summary: summary(mark, bill: bill))
+                }
             }
-            Divider().overlay(Brand.cardLine)
-            FoldRow(icon: AnyView(Image(systemName: "gift").foregroundStyle(Brand.muted)), title: l.t("cart.giftCard"), summary: codeSummary(.gift, bill: bill)) {
-                CodeBoxRow(cart: cart, box: .gift)
-            }
-            Divider().overlay(Brand.cardLine)
-            FoldRow(icon: AnyView(PointsCoin(size: 18)), title: l.t("account.points"), summary: pointsSummary(bill: bill)) {
-                PointsRow(cart: cart)
+            if let open {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(title(open))
+                        .font(.inter(13, .bold))
+                        .foregroundStyle(Brand.navy)
+                    switch open {
+                    case .discount: CodeBoxRow(cart: cart, box: .discount)
+                    case .gift: CodeBoxRow(cart: cart, box: .gift)
+                    case .points: PointsRow(cart: cart)
+                    }
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255)))
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 4)
+        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+        .clipped()
         .task(id: cart.id) {
             savings.follow(cartId: cart.id)
             await savings.loadBalance(signedIn: app.session.isSignedIn)
@@ -59,10 +71,50 @@ struct BagSavingsCard: View {
             Task { await savings.loadBalance(signedIn: app.session.isSignedIn) }
         }
     }
+
+    private func title(_ mark: SavingsMark) -> String {
+        switch mark {
+        case .discount: return l.t("cart.discountCode")
+        case .gift: return l.t("cart.giftCard")
+        case .points: return l.t("account.points")
+        }
+    }
+
+    /// One circle: its mark, its name and what it holds; a press opens its box, or folds it.
+    private func circle(_ mark: SavingsMark, summary: FoldSummary) -> some View {
+        let isOpen = open == mark
+        let badge: RoundBadge? = summary.tone == .good ? .done : summary.tone == .bad ? .problem : nil
+        return Button {
+            withAnimation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.9)) { open = isOpen ? nil : mark }
+        } label: {
+            VStack(spacing: 0) {
+                RoundFace(fill: mark.fill, ring: isOpen, badge: badge) { AnyView(mark.mark) }
+                RoundLabel(title: title(mark), note: summary.text, tone: summary.tone == .good ? .good : summary.tone == .bad ? .bad : .muted)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.tap)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title(mark))
+        .accessibilityValue(summary.text)
+        .accessibilityAddTraits(isOpen ? .isSelected : [])
+        .accessibilityHint(l.t(isOpen ? "ios.savings.fold" : "ios.savings.open"))
+        .accessibilityIdentifier("savings-\(mark.rawValue)")
+    }
+
+    /// What a circle says under its name.
+    private func summary(_ mark: SavingsMark, bill: Till.Bill) -> FoldSummary {
+        switch mark {
+        case .discount: return codeSummary(.discount, bill: bill)
+        case .gift: return codeSummary(.gift, bill: bill)
+        case .points: return pointsSummary(bill: bill)
+        }
+    }
 }
 
 extension BagSavingsCard {
-    /// What a folded code row says about itself.
+    /// What a code's circle says about itself.
     fileprivate func codeSummary(_ box: SavingsModel.Box, bill: Till.Bill) -> FoldSummary {
         let savings = app.savings
         let mine = savings.cartId == cart.id
@@ -70,81 +122,28 @@ extension BagSavingsCard {
         let quote = box == .gift ? savings.giftQuote : savings.codeQuote
         if held.isEmpty { return .init(text: l.t("cart.savingsOpen"), tone: .muted) }
         if quote?.ok == false { return .init(text: l.t("cart.savingsNotApplied"), tone: .bad) }
-        let code = "\u{2066}\(SavingsModel.normalise(held))\u{2069}"
-        guard quote != nil else { return .init(text: code, tone: .muted) }
+        guard quote != nil else { return .init(text: "\u{2066}\(SavingsModel.normalise(held))\u{2069}", tone: .muted) }
         let off = box == .gift ? bill.giftCard : bill.discount
-        return .init(text: "\(code) · −\(off.formatted(l.current))", tone: .good)
+        return .init(text: "−\(off.formatted(l.current))", tone: .good)
     }
 
-    /// What the folded points row says: what it uses, or what there is to use.
-    fileprivate func pointsSummary(bill: Till.Bill) -> FoldSummary? {
+    /// What the points' circle says: what it takes off, or what there is to use.
+    fileprivate func pointsSummary(bill: Till.Bill) -> FoldSummary {
         let savings = app.savings
-        guard app.session.isSignedIn, let balance = savings.balance else { return nil }
+        guard app.session.isSignedIn, let balance = savings.balance else { return .init(text: l.t("cart.savingsOpen"), tone: .muted) }
         if savings.usePoints, !bill.points.isZero {
-            return .init(text: l.t("cart.pointsUsing", ["value": bill.points.formatted(l.current)]), tone: .good)
+            return .init(text: "−\(bill.points.formatted(l.current))", tone: .good)
         }
-        guard balance > 0, Till.pointsSpendable(balance, on: cart.total) > 0 else { return nil }
-        return .init(text: l.t("rewards.balance", ["points": PointsFormat.count(balance, l.current)]), tone: .muted)
+        guard balance > 0, Till.pointsSpendable(balance, on: cart.total) > 0 else { return .init(text: l.t("cart.savingsOpen"), tone: .muted) }
+        return .init(text: PointsFormat.count(balance, l.current), tone: .muted)
     }
 }
 
-/// One folded row: its name and what it holds on a button, and what changes
-/// it under that, opened with a spring (a cut under Reduce Motion).
-/// What a folded row says about what it holds.
+/// What a circle says about what it holds.
 struct FoldSummary {
     enum Tone { case muted, good, bad }
     let text: String
     let tone: Tone
-}
-
-struct FoldRow<Content: View>: View {
-    let icon: AnyView
-    let title: String
-    let summary: FoldSummary?
-    @ViewBuilder let content: () -> Content
-    @State private var open = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.9)) { open.toggle() }
-            } label: {
-                HStack(spacing: 10) {
-                    icon.frame(width: 20).accessibilityHidden(true)
-                    Text(title)
-                        .font(.inter(14, .bold))
-                        .foregroundStyle(Brand.navy)
-                        .layoutPriority(1)
-                    Spacer(minLength: 8)
-                    if let summary {
-                        Text(summary.text)
-                            .font(.inter(13, .semibold))
-                            .foregroundStyle(summary.tone == .good ? Brand.success : summary.tone == .bad ? Brand.danger : Brand.muted)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                    }
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Brand.muted)
-                        .rotationEffect(.degrees(open ? 180 : 0))
-                        .accessibilityHidden(true)
-                }
-                .frame(minHeight: 52)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.tap)
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
-            .accessibilityValue(open ? "" : (summary?.text ?? ""))
-            if open {
-                content()
-                    .padding(.bottom, 10)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-        .clipped()
-    }
 }
 
 private struct CodeBoxRow: View {

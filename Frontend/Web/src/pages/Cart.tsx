@@ -39,7 +39,7 @@
  * says how many; the summary is still the whole bag's, since what is chosen
  * for checkout does not change because somebody looked for one line.
  */
-import { AllChoice, BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
+import { BagLines, BagSettling, BagSummary } from "@/components/cart/BagDrawer";
 import { BagUnread } from "@/components/cart/BagUnread";
 import { DeliveryAddressCard, useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
 import { SavedForLater } from "@/components/cart/SavedForLater";
@@ -72,7 +72,7 @@ const COLUMN = "mx-auto w-full max-w-2xl lg:max-w-5xl";
 export default function Cart() {
   const { t } = useTranslation();
   const money = useMoney();
-  const { cart, settling, unread, proceedToCheckout } = useCart();
+  const { cart, settling, unread, proceedToCheckout, forgetChoice } = useCart();
   const { user, isAuthenticated } = useAuth();
   usePageMeta(privatePageMeta("Your cart"));
   const items = cart?.items.length ?? 0;
@@ -84,7 +84,9 @@ export default function Cart() {
     ? (item: CartItem) => textsMatch([item.productTitle, item.productTitleAr, item.variantTitle, item.bundleName, item.vendor?.name, item.vendor?.nameAr], term)
     : undefined;
   const found = matches && cart ? cart.items.filter(matches).length : null;
-  /* The units ticked for this checkout (`cartChoice.ts`). */
+  /* No circles to choose lines, on the owner's word: the cart checks out all
+     of it, so a line Buy now left out comes back as the page opens. */
+  useEffect(() => { forgetChoice(); }, [forgetChoice]);
   const chosenCount = cart ? cart.chosenCount ?? cart.itemCount : 0;
   const [checkoutRef, checkoutBelow] = useBeyondScreen("bottom", TAB_BAR_REACH);
   /* The floating bar is a phone's alone (`lg:hidden`), and so is standing in for it. */
@@ -167,11 +169,9 @@ export default function Cart() {
       </div>
       {items && cart ? (
         <PhoneActionBar shown={checkoutBelow} label={t("cart.bar")}>
-          {/* The reference's foot: All, what the chosen lines come to, and
-              Checkout counting them. */}
+          {/* What the bag comes to, and Checkout counting it. */}
           <div className="flex items-center gap-1 min-[360px]:gap-2">
-            <AllChoice compact className="ps-2.5 pointer-fine:ps-1.5" />
-            <div className="min-w-0 flex-1 px-1 text-end min-[360px]:px-2">
+            <div className="min-w-0 flex-1 px-2.5 text-start">
               <p className="text-[12px] font-semibold leading-4 ink-muted">{t("cart.total")}</p>
               <p className="truncate text-[16px] font-extrabold leading-6 text-[#0a285a]">{money(cart.total)}</p>
             </div>

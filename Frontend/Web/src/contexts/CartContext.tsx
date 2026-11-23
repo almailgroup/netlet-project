@@ -195,7 +195,11 @@ type CartContextValue = {
    * now press may be about to add to — everything else left out.
    */
   chooseOnly: (lineIds: string[], variantId?: string) => void;
-  /** Everything left in the bag chosen again, as after an order. */
+  /**
+   * Everything in the bag chosen again — after an order, and as the cart page
+   * and the drawer open, which draw no circles, so only Buy now ever leaves a
+   * line out, and only for the checkout it opens.
+   */
   forgetChoice: () => void;
   clearCart: () => void;
   /**
@@ -576,7 +580,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     void enqueue({ kind: "choose" }).catch(() => undefined);
   }, [enqueue, realIds, setSkip]);
 
-  const forgetChoice = useCallback(() => setSkip([]), [setSkip]);
+  /* Every line chosen again, and the bag read again for the totals of all of
+     it — the cart page and the drawer do this as they open, since they draw no
+     circles to bring back a line Buy now left out. */
+  const forgetChoice = useCallback(() => {
+    if (!skipRef.current.length) return;
+    setSkip([]);
+    void enqueue({ kind: "choose" }).catch(() => undefined);
+  }, [enqueue, setSkip]);
 
   /* In the queue, so a read cannot overtake a change still on its way. */
   const refreshCart = useCallback(() => enqueue({ kind: "refresh" }).catch(() => undefined), [enqueue]);

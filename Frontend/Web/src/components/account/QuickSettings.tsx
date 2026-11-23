@@ -14,18 +14,12 @@
  * - **Language** is the two buttons Preferences had, each written in its own
  *   language so whoever needs it can read it.
  *
- * And where every order goes, on the owner's word ("allow customers to set or
- * change their default delivery address in Settings"), kept on the account
- * (0088, `Shared/commerce/customerDefaults.ts`): **Delivery address** is the
- * address book as choices. Choosing one is the header's own choice — the area
- * and the address in use, written to the account by `CustomerContext` — so
- * the header, the cart and checkout start from it at once. An address with no
- * governorate cannot price a delivery and is offered disabled, saying why; an
- * empty book is a link to add one.
- *
- * **The way to pay is not here, on the owner's word** ("remove the payment
- * method from the quick settings"): checkout opens on the account's default
- * with Change, and what the account keeps that is worth money is the Wallet's.
+ * **Neither the delivery address nor the way to pay is here, on the owner's
+ * word** ("remove the delivery address from the quick settings", and before it
+ * "remove the payment method from the quick settings"). The address in use —
+ * still kept on the account (0088, `Shared/commerce/customerDefaults.ts`) — is
+ * chosen from the header's delivery button or "Set as default" in the address
+ * book, and checkout opens on the account's way to pay with Change.
  */
 import { CurrencySelect } from "@/components/ui/CurrencySelect";
 import { Select } from "@/components/ui/Select";
@@ -34,12 +28,8 @@ import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { pressHaptic } from "@/lib/haptics";
 import { flagOf, HOME_COUNTRY, SHOP_COUNTRIES } from "@shared/commerce/country";
-import { kuwaitDeliveryZones } from "@shared/customer";
-import { useDeliveryAddress } from "@/components/cart/DeliveryAddressCard";
-import { rememberAddress } from "@/lib/lastAddress";
-import { Coins, Globe, Languages, MapPin, Plus } from "lucide-react";
+import { Coins, Globe, Languages } from "lucide-react";
 import type { ReactNode } from "react";
-import { Link } from "wouter";
 
 export function countryName(code: string, locale: string): string {
   try {
@@ -66,9 +56,6 @@ export function QuickSettings() {
               </option>
             ))}
           </Select>
-        </Row>
-        <Row icon={<MapPin className="size-[22px]" strokeWidth={1.75} />} label={t("quick.deliveryAddress")} labelFor="quick-address">
-          <AddressChoice />
         </Row>
         <Row icon={<Coins className="size-[22px]" strokeWidth={1.75} />} label={t("currency.title")} labelFor="quick-currency">
           <CurrencySelect id="quick-currency" className={FIELD} />
@@ -99,47 +86,6 @@ export function QuickSettings() {
       </div>
       <p className="mt-3 text-[12px] leading-5 ink-muted">{t("quick.note")}</p>
     </section>
-  );
-}
-
-/** The address book as choices; choosing one is the address the shop delivers to, kept on the account. */
-function AddressChoice() {
-  const { t, isArabic } = useTranslation();
-  const { setDeliveryZoneId } = useCustomer();
-  const { address, book, loaded } = useDeliveryAddress();
-  if (!loaded) return <span aria-hidden className="block h-11 w-full animate-pulse rounded-xl bg-[#eef1f6]" />;
-  if (book.length === 0) {
-    return (
-      <Link href="/account/addresses" id="quick-address" className="glass-field inline-flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-[14px] font-semibold text-[#0a285a]">
-        <Plus className="size-4" aria-hidden />{t("quick.addAddress")}
-      </Link>
-    );
-  }
-  const zoneOf = (id: string | null | undefined) => {
-    const zone = kuwaitDeliveryZones.find(entry => entry.id === id);
-    return zone ? (isArabic ? zone.labelAr : zone.label) : null;
-  };
-  return (
-    <Select
-      id="quick-address"
-      value={address ? String(address.id) : ""}
-      aria-label={t("quick.deliveryAddress")}
-      className={FIELD}
-      onChange={event => {
-        const row = book.find(entry => String(entry.id) === event.target.value);
-        if (!row?.governorate) return;
-        pressHaptic();
-        setDeliveryZoneId(row.governorate);
-        rememberAddress(row.id);
-      }}
-    >
-      {address ? null : <option value="" disabled>{t("home.chooseAreaShort")}</option>}
-      {book.map(row => (
-        <option key={row.id} value={String(row.id)} disabled={!row.governorate}>
-          {[row.label, zoneOf(row.governorate) ?? t("quick.noArea")].join(" · ")}
-        </option>
-      ))}
-    </Select>
   );
 }
 

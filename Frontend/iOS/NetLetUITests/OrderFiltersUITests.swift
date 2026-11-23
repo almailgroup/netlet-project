@@ -1,10 +1,11 @@
 import XCTest
 
-/// My orders' chips, on the owner's word: a press on When opens its sheet,
-/// a year chosen there is the chip's own words, and Sort likewise — then
-/// Clear all puts both back. The demo answers every filter with the same
-/// recorded list, so this proves the chips and their sheets, not the server's
-/// filtering, which `orders.test.ts` proves against a real Postgres.
+/// My orders' filters, organised on the owner's word: Filters opens one
+/// sheet where a year is chosen and applied by Show orders, and then stands as
+/// a chip of its own with a cross; Sort says the order the list is in; Clear
+/// all puts both back. The demo answers every filter with the same recorded
+/// list, so this proves the bar and its sheets, not the server's filtering,
+/// which `orders.test.ts` proves against a real Postgres.
 final class OrderFiltersUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
@@ -18,32 +19,35 @@ final class OrderFiltersUITests: XCTestCase {
         ]
         app.launch()
 
-        let date = chip(app, "Date")
-        XCTAssertTrue(date.waitForExistence(timeout: 20), "My orders drew no Date chip.")
-        date.tap()
+        let filters = app.buttons["order-filters-button"]
+        XCTAssertTrue(filters.waitForExistence(timeout: 20), "My orders drew no Filters button: \(chipLabels(app))")
+        filters.tap()
         let year = app.buttons["2026"]
-        XCTAssertTrue(year.waitForExistence(timeout: 10), "The Date sheet offered no year.")
+        XCTAssertTrue(year.waitForExistence(timeout: 10), "The Filters sheet offered no year.")
         year.tap()
-        let dated = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Date, 2026")).firstMatch
-        XCTAssertTrue(dated.waitForExistence(timeout: 10), "The Date chip does not say 2026: \(chipLabels(app))")
+        let show = app.buttons["Show orders"]
+        XCTAssertTrue(show.waitForExistence(timeout: 5), "The Filters sheet has no Show orders.")
+        show.tap()
+        let chosen = app.buttons["Remove 2026"]
+        XCTAssertTrue(chosen.waitForExistence(timeout: 10), "The year chosen is not a chip of its own: \(chipLabels(app))")
+        XCTAssertEqual(app.buttons["order-filters-button"].value as? String, "1", "Filters does not count the year.")
 
-        // The row scrolls sideways and Sort starts past the screen's edge
-        // (run 302 tapped it at x 507 on a 402-point screen), so the row is
-        // swiped along to it as a thumb would.
-        let sort = chip(app, "Sort")
-        reveal(sort, app)
+        let sort = app.buttons["order-sort-button"]
+        XCTAssertTrue(sort.exists, "My orders drew no Sort button.")
         sort.tap()
         let oldest = app.buttons["Oldest first"]
         XCTAssertTrue(oldest.waitForExistence(timeout: 10), "The Sort sheet offered no Oldest first.")
         oldest.tap()
-        let sorted = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Sort, Oldest first")).firstMatch
-        XCTAssertTrue(sorted.waitForExistence(timeout: 10), "The Sort chip does not say Oldest first: \(chipLabels(app))")
+        let sorted = app.buttons.matching(NSPredicate(format: "label == %@", "Sort, Oldest first")).firstMatch
+        XCTAssertTrue(sorted.waitForExistence(timeout: 10), "Sort does not say Oldest first: \(chipLabels(app))")
 
         let clear = app.buttons["Clear all"]
-        XCTAssertTrue(clear.waitForExistence(timeout: 5), "Clear all is not drawn while chips are chosen.")
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "Clear all is not drawn while filters are on.")
         reveal(clear, app)
         clear.tap()
-        XCTAssertTrue(chip(app, "Date").waitForExistence(timeout: 10), "Clear all did not put the Date chip back: \(chipLabels(app))")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == %@", "Sort, Newest first")).firstMatch.waitForExistence(timeout: 10),
+                      "Clear all did not put the order back: \(chipLabels(app))")
+        XCTAssertFalse(app.buttons["Remove 2026"].exists, "The year's chip stayed after Clear all.")
         XCTAssertFalse(app.buttons["Clear all"].exists, "Clear all stayed with nothing chosen.")
     }
 
@@ -56,7 +60,7 @@ final class OrderFiltersUITests: XCTestCase {
     /// the first ask — and the row draws its chips past its own frame
     /// (`glassRow`), so a drawn chip is not one a finger reaches.
     private func reveal(_ element: XCUIElement, _ app: XCUIApplication) {
-        let row = app.descendants(matching: .any).matching(identifier: "order-filter-chips").firstMatch
+        let row = app.descendants(matching: .any).matching(identifier: "order-filter-tokens").firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "The chip row is not drawn: \(chipLabels(app))")
         func inReach() -> Bool {
             let shown = row.frame.intersection(app.frame).insetBy(dx: 4, dy: -8)
@@ -66,10 +70,6 @@ final class OrderFiltersUITests: XCTestCase {
             row.swipeLeft()
         }
         XCTAssertTrue(inReach(), "\(element.label) never came into reach at \(element.frame) in the row's \(row.frame): \(chipLabels(app))")
-    }
-
-    private func chip(_ app: XCUIApplication, _ name: String) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label == %@", name)).firstMatch
     }
 
     private func chipLabels(_ app: XCUIApplication) -> String {

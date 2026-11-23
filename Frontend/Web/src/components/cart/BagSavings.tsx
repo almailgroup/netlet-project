@@ -24,17 +24,16 @@
  * to sign in, and an account with none is told where they come from — a line,
  * never a switch that can only be turned on to no effect.
  *
- * **Each of the three is folded until it is pressed, on the owner's word**
- * ("keep these sections collapsed by default and expand them when clicked …
- * keep the checkout page clean, simple, and easy to use"). They were open,
- * also on the owner's word ("so users can enter their code right away"), and
- * three boxes over the ways to pay were most of a phone's screen for the few
- * orders that carry a code. Folded, each row says what it holds — a code and
- * what it takes off, "Not applied" in red for one refused, the points it
- * would use — so nothing chosen is hidden; pressed, it opens by its height
- * (`Unfold`) and puts the keyboard in its box.
+ * **The three are round icons in a row, on the owner's word** ("the same
+ * for the codes, gift cards and points — round shaped icons"), each folded
+ * until it is pressed ("keep these sections collapsed by default"). Under each
+ * circle a line says what it holds — what a code takes off, "Not applied" in
+ * red for one refused, the points there are — and a corner badge, green or
+ * red, says the same to the eye, so nothing chosen is hidden. A press opens
+ * that one's box under the row by its height (`Unfold`), one at a time, and
+ * puts the keyboard in it.
  */
-import { PointsCoin } from "@/components/ui/PointsCoin";
+import { RoundFace, RoundLabel, savingsFace, type SavingsMark } from "@/components/checkout/RoundChoice";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -46,8 +45,8 @@ import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
 import { giftCardPayment, normaliseCode, settle } from "@shared/commerce/vouchers";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { subtractMoney } from "@shared/money";
-import { Check, ChevronDown, Gift, LoaderCircle, Ticket, X } from "lucide-react";
-import { Suspense, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Check, LoaderCircle, X } from "lucide-react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
 import { lazyPage } from "@/lib/lazyPage";
 import { Unfold } from "@/components/ui/Unfold";
 import { createPortal } from "react-dom";
@@ -131,10 +130,19 @@ export function BagSavings() {
   const money = useMoney();
   const { cart } = useCart();
   const headingId = useId();
+  const panelId = useId();
   const bill = useSavingsBill({ withBalance: true });
   const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
+  const [open, setOpen] = useState<SavingsMark | null>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const focusNext = useRef(false);
+  useEffect(() => {
+    if (!open || !focusNext.current) return;
+    focusNext.current = false;
+    panel.current?.querySelector<HTMLElement>("input:not([type=hidden]), [role=switch], button")?.focus({ preventScroll: true });
+  }, [open]);
 
-  /* What a folded row says about itself. */
+  /* What each circle says under its name about itself. */
   const codeSummary = (kind: "discount" | "gift"): Summary => {
     const held = kind === "discount" ? bill.chosen.code : bill.chosen.giftCard;
     const quote = kind === "discount" ? bill.codeQuote : bill.giftQuote;
@@ -142,78 +150,64 @@ export function BagSavings() {
     if (quote.data && !quote.data.ok) return { text: t("cart.savingsNotApplied"), tone: "bad" };
     if (!quote.data) return { text: normaliseCode(held) || held, tone: "muted", code: true };
     const off = kind === "discount" ? bill.discountOff : bill.giftOff;
-    return { text: `${normaliseCode(held) || held} · −${amount(off)}`, tone: "good", code: true };
+    return { text: `−${amount(off)}`, tone: "good" };
   };
   const offer = pointsSpendableOn(bill.balance, cart?.total.amount ?? "0.000");
-  const pointsSummary: Summary | null = bill.chosen.usePoints && bill.pointsApplied > 0
-    ? { text: t("cart.pointsUsing", { value: amount(bill.pointsOff) }), tone: "good" }
+  const pointsSummary: Summary = bill.chosen.usePoints && bill.pointsApplied > 0
+    ? { text: `−${amount(bill.pointsOff)}`, tone: "good" }
     : bill.balance > 0 && offer > 0
-      ? { text: t("rewards.balance", { points: formatCount(bill.balance, locale) }), tone: "muted" }
-      : null;
+      ? { text: formatCount(bill.balance, locale), tone: "muted" }
+      : { text: t("cart.savingsOpen"), tone: "muted" };
+  const items: Array<{ key: SavingsMark; title: string; summary: Summary }> = [
+    { key: "discount", title: t("cart.discountCode"), summary: codeSummary("discount") },
+    { key: "gift", title: t("cart.giftCard"), summary: codeSummary("gift") },
+    { key: "points", title: t("account.points"), summary: pointsSummary },
+  ];
+  const openTitle = items.find(item => item.key === open)?.title;
 
   return (
     <section aria-labelledby={headingId}>
-      <h3 id={headingId} className="sr-only">{t("cart.savingsHeading")}</h3>
-      <div className="divide-y divide-[#eef1f5]">
-        <SavingsRow icon={<Ticket className="size-[18px]" />} title={t("cart.discountCode")} summary={codeSummary("discount")}>
-          <CodeBox kind="discount" bill={bill} />
-        </SavingsRow>
-        <SavingsRow icon={<Gift className="size-[18px]" />} title={t("cart.giftCard")} summary={codeSummary("gift")}>
-          <CodeBox kind="gift" bill={bill} />
-        </SavingsRow>
-        <SavingsRow icon={<PointsCoin size={18} />} title={t("account.points")} summary={pointsSummary}>
-          <PointsSwitch bill={bill} />
-        </SavingsRow>
+      <h2 id={headingId} className="text-[15px] font-extrabold">{t("cart.savingsHeading")}</h2>
+      {/* Three round icons, on the owner's word; each opens its own box under
+          the row, one at a time, and a press on the open one folds it. */}
+      <div className="mt-3 grid grid-cols-3 gap-1 sm:flex sm:flex-wrap sm:gap-3">
+        {items.map(item => {
+          const face = savingsFace(item.key);
+          const isOpen = open === item.key;
+          const badge = item.summary.tone === "good" ? "done" : item.summary.tone === "bad" ? "problem" : null;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              aria-expanded={isOpen}
+              aria-controls={panelId}
+              onClick={() => { pressHaptic(); focusNext.current = !isOpen; setOpen(isOpen ? null : item.key); }}
+              className="flex min-w-0 flex-col items-center rounded-2xl px-0.5 pb-1 pt-1.5 sm:w-24"
+            >
+              <RoundFace fill={face.fill} ring={isOpen} badge={badge}>{face.mark}</RoundFace>
+              <RoundLabel
+                title={item.title}
+                note={item.summary.code ? <bdi dir="ltr">{item.summary.text}</bdi> : item.summary.text}
+                tone={item.summary.tone}
+              />
+            </button>
+          );
+        })}
       </div>
+      <Unfold open={open !== null} id={panelId}>
+        <div ref={panel} role="group" aria-label={openTitle} className="mt-3 rounded-2xl bg-[#f6f8fb] p-3">
+          {openTitle ? <p className="mb-2 text-[13px] font-bold text-[#0a285a]">{openTitle}</p> : null}
+          {open === "discount" ? <CodeBox kind="discount" bill={bill} />
+            : open === "gift" ? <CodeBox kind="gift" bill={bill} />
+            : open === "points" ? <PointsSwitch bill={bill} />
+            : null}
+        </div>
+      </Unfold>
     </section>
   );
 }
 
 type Summary = { text: string; tone: "muted" | "good" | "bad"; code?: boolean };
-
-/**
- * One folded row: its name and what it holds on a button, and what changes it
- * under that, opened by its height. Opening puts the keyboard in its box, or
- * on the points switch.
- */
-function SavingsRow({ icon, title, summary, children }: { icon: ReactNode; title: string; summary: Summary | null; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const panel = useRef<HTMLDivElement>(null);
-  const focusNext = useRef(false);
-  useEffect(() => {
-    if (!open || !focusNext.current) return;
-    focusNext.current = false;
-    panel.current?.querySelector<HTMLElement>("input:not([type=hidden]), [role=switch]")?.focus({ preventScroll: true });
-  }, [open]);
-  return (
-    <div>
-      <h4>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => { pressHaptic(); focusNext.current = !open; setOpen(!open); }}
-          className="-mx-2 flex min-h-[52px] w-[calc(100%+1rem)] items-center gap-2 rounded-xl px-2 py-3 text-start hover:bg-[#0a285a]/[.06]"
-        >
-          <span aria-hidden className="grid size-[18px] shrink-0 place-items-center text-[#536b8c]">{icon}</span>
-          <span className="min-w-0 shrink-0 text-[14px] font-bold text-[#0a285a]">{title}</span>
-          {summary ? (
-            <span
-              className={`ms-auto min-w-0 truncate text-[13px] font-semibold ${summary.tone === "good" ? "text-[#2f5d33]" : summary.tone === "bad" ? "text-[#8c2f22]" : "ink-muted"}`}
-            >
-              {summary.code ? <bdi dir="ltr">{summary.text}</bdi> : summary.text}
-            </span>
-          ) : <span className="ms-auto" />}
-          <ChevronDown aria-hidden className={`size-4 shrink-0 text-[#536b8c] transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-        </button>
-      </h4>
-      <Unfold open={open} id={panelId}>
-        <div ref={panel} className="pb-2">{children}</div>
-      </Unfold>
-    </div>
-  );
-}
 
 function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<typeof useSavingsBill> }) {
   const { t, tError } = useTranslation();

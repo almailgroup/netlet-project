@@ -270,6 +270,10 @@ final class AppModel {
     /// A department opens with its sort or one filter group's sheet up — the
     /// screenshots' `-NetLetOpen browseSheet:<slug>/<sort|all|group>`.
     var browseSheetStart: String?
+    /// My orders with its Filters sheet up — the screenshots' `-NetLetOpen orderFilters`.
+    var orderFiltersStart = false
+    /// Checkout opened at its foot — the screenshots' `-NetLetOpen checkoutFoot`.
+    var checkoutFootOnOpen = false
     /// The tutorial is over the app (`AppTutorial`): on a new install's first
     /// launch, or opened again from Help and information.
     var tutorialShowing = false
@@ -547,6 +551,10 @@ final class AppModel {
         case "checkout":
             selectedTab = .cart
             cartPath = NavigationPath([Route.checkout])
+        case "checkoutFoot":
+            selectedTab = .cart
+            checkoutFootOnOpen = true
+            cartPath = NavigationPath([Route.checkout])
         case "confirmOrder":
             selectedTab = .cart
             confirmOrderOnOpen = true
@@ -588,6 +596,10 @@ final class AppModel {
             accountPath = NavigationPath([Route.profile])
         case "orders":
             selectedTab = .account
+            accountPath = NavigationPath([Route.orders])
+        case "orderFilters":
+            selectedTab = .account
+            orderFiltersStart = true
             accountPath = NavigationPath([Route.orders])
         case "frequent":
             selectedTab = .account

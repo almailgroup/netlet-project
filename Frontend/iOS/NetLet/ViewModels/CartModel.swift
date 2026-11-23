@@ -292,8 +292,15 @@ final class CartModel {
         Task { _ = await enqueue(.choose) }
     }
 
-    /// Everything left in the bag chosen again, as after an order.
-    func forgetChoice() { setSkip([]) }
+    /// Everything in the bag chosen again — after an order, and as the Cart
+    /// tab opens, which draws no circles (on the owner's word), so only Buy now
+    /// ever leaves a line out, and only for the checkout it opens. The bag is
+    /// read again so its totals are all of it.
+    func forgetChoice() {
+        guard !skip.isEmpty else { return }
+        setSkip([])
+        Task { _ = await enqueue(.choose) }
+    }
 
     private func setSkip(_ value: [String]) {
         skip = Array(value.prefix(CartChoice.maxSkipped))

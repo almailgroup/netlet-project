@@ -2,10 +2,15 @@ import SwiftUI
 
 /// The bag — the web's `/cart` on a phone: the title with a heart to Saved
 /// items at its end, where the order is going, each store's lines
-/// together under its name with that store's delivery beside them, the
+/// together under its name with that store's delivery at their foot, the
 /// summary the server worked out and Checkout, and what was saved for later
 /// under Checkout (on the owner's word — it was directly under the lines,
 /// between the bag and what it costs).
+///
+/// **No circles to choose lines, on the owner's word** ("remove the boxes for
+/// choosing products"): the bag checks out every line in it, and opening the
+/// tab chooses all of it again (`CartModel.forgetChoice`), so only Buy now
+/// ever leaves a line out, for the checkout it opens.
 ///
 /// **It asks where the order is going, on the owner's word** — checkout only
 /// confirms it. The first card is the address (`DeliveryAddressCard`, the
@@ -135,6 +140,7 @@ struct CartView: View {
             }
         }
         .task(id: l.current) { await app.cart.refresh() }
+        .onAppear { app.cart.forgetChoice() }
         .task(id: app.session.isSignedIn) {
             guard app.session.isSignedIn else {
                 accountPhone = nil
@@ -224,16 +230,6 @@ struct CartView: View {
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.accentWash))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.accentLine, lineWidth: 1))
             }
-            // All, in a slim row of its own above the first store, on the
-            // owner's word: it sat at the top of the order summary, which is
-            // now the summary alone. The floating bar keeps its own. Not while
-            // searching, where it would tick lines the search has hidden.
-            if !searching, !lines.isEmpty {
-                AllChoice(cart: cart)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, -4)
-            }
             if let groups {
                 ForEach(groups) { group in
                     CartStoreCard(group: group, path: $path)
@@ -317,16 +313,13 @@ struct CartView: View {
         }
     }
 
-    /// All, the total and Checkout on solid ground above the tab bar while the
+    /// The total and Checkout on solid ground above the tab bar while the
     /// page's own button is under it; they leave once it has come up whole.
     private func bar(_ cart: Cart) -> some View {
-        // The reference's foot: All, what the ticked lines come to, and
-        // Checkout counting them.
         let count = cart.checkoutCount
         let saved = cart.savings
         return HStack(spacing: 8) {
-            AllChoice(cart: cart, compact: true)
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(l.t("cart.total")).font(.inter(12)).foregroundStyle(Brand.ink)
                 Text(l.price(cart.total)).font(.inter(17, .heavy)).foregroundStyle(Brand.navy)
                     .lineLimit(1)
@@ -346,7 +339,7 @@ struct CartView: View {
                         .opacity(app.cart.syncing ? 0.5 : 1)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity, alignment: .leading)
             Button {
                 if count > 0 { goToCheckout() } else { Haptics.refused() }
             } label: {
@@ -410,9 +403,10 @@ private struct CartSavedButton: View {
     }
 }
 
-/// One store's part of the bag: its name, which opens its page, its parcels —
-/// what each costs, free in green, and how far to free delivery — then its
-/// lines (`bagGroups` on the web).
+/// One store's part of the bag: its name, which opens its page, then its
+/// lines, then how they travel at the card's foot — the store's delivery row,
+/// or each parcel's cost, free in green, and how far to free delivery — on
+/// the owner's word, who drew it there (`bagGroups` on the web).
 private struct CartStoreCard: View {
     let group: BagGroup
     @Binding var path: NavigationPath
@@ -423,16 +417,6 @@ private struct CartStoreCard: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 0) {
-                    // Every line of this store in together, or out of checkout together —
-                    // an unticked line stays in the bag (on the owner's word).
-                    let ids = group.items.map(\.lineId)
-                    ChoiceCircle(
-                        state: CartChoice.state(CartChoice.lines(app.cart.cart?.items ?? []), app.cart.skip, of: ids),
-                        label: l.t("cart.chooseStore", ["name": group.store.name(l.current)])
-                    ) { chosen in
-                        app.cart.choose(ids, chosen: chosen)
-                    }
-                    .padding(.leading, -12)
                     Button {
                         path.append(Route.store(slug: group.store.slug))
                     } label: {
@@ -452,15 +436,6 @@ private struct CartStoreCard: View {
                     }
                     .buttonStyle(.tap)
                 }
-                // The store's delivery as one row beside its truck, with a sheet
-                // to change it (0085); a bag from before draws each parcel's line.
-                if let id = group.store.id, let store = app.cart.cart?.stores?.first(where: { $0.vendorId == id }) {
-                    StoreDeliveryRow(group: group, store: store)
-                } else {
-                    ForEach(Array(group.delivery.enumerated()), id: \.offset) { _, parcel in
-                        ParcelLine(parcel: parcel)
-                    }
-                }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -477,6 +452,22 @@ private struct CartStoreCard: View {
                 }
             }
             .padding(.horizontal, 16)
+            Divider().overlay(Brand.cardLine)
+            // How the store's lines travel, under them: the store's delivery
+            // as one row beside its truck, with a sheet to change it (0085);
+            // a bag from before draws each parcel's line.
+            VStack(alignment: .leading, spacing: 6) {
+                if let id = group.store.id, let store = app.cart.cart?.stores?.first(where: { $0.vendorId == id }) {
+                    StoreDeliveryRow(group: group, store: store)
+                } else {
+                    ForEach(Array(group.delivery.enumerated()), id: \.offset) { _, parcel in
+                        ParcelLine(parcel: parcel)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .accessibilityIdentifier("store-delivery-foot")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
@@ -552,13 +543,6 @@ struct CartLineRow: View {
         let title = item.title(l.current)
         let signedIn = app.session.isSignedIn
         HStack(alignment: .top, spacing: 12) {
-            // In this checkout, or left out of it — still in the bag.
-            ChoiceCircle(state: item.chosen == false ? .none : .all, label: l.t("cart.chooseLine", ["name": title])) { chosen in
-                app.cart.choose([item.lineId], chosen: chosen)
-            }
-            .padding(.leading, -12)
-            .padding(.trailing, -12)
-            .frame(height: 80)
             NavigationLink(value: Route.product(handle: item.productHandle)) {
                 Color.clear
                     .frame(width: 80, height: 80)
@@ -600,15 +584,6 @@ struct CartLineRow: View {
                 if let bundle = item.bundleName {
                     Text(bundle).font(.inter(12)).foregroundStyle(Brand.accentInk)
                 }
-                // Where it goes and an agreed price, only once either is set.
-                LineBadges(
-                    item: item,
-                    title: title,
-                    changesAddress: signedIn,
-                    changesPrice: takesRequests,
-                    onAddress: { choosingAddress = true },
-                    onPrice: { askingPrice = true }
-                )
                 PriceAndStepper(gap: 8) {
                     // Rolls to the new figure as the stepper moves it.
                     Text(l.price(item.lineTotal))
@@ -626,6 +601,17 @@ struct CartLineRow: View {
                         .font(.inter(12))
                         .foregroundStyle(Brand.muted)
                 }
+                // Where it goes and an agreed price, only once either is set —
+                // under the price and stepper, on the owner's word, who drew
+                // "Going to Office" there.
+                LineBadges(
+                    item: item,
+                    title: title,
+                    changesAddress: signedIn,
+                    changesPrice: takesRequests,
+                    onAddress: { choosingAddress = true },
+                    onPrice: { askingPrice = true }
+                )
                 // A member's price, named as what it is — never struck through,
                 // which is an advertised saving. An agreed one is a badge above.
                 if item.priceReason == "member", let listed = item.agreedFrom {
@@ -888,9 +874,12 @@ struct SummaryCard: View {
                 let delivery = Self.deliveryValue(cart.delivery.total, l)
                 row(l.t("cart.delivery"), delivery.text, tone: delivery.free ? Brand.success : Brand.navy, faint: updating)
             }
-            // Tax (0087), added on the goods while NetLet charges it.
+            // Tax (0087), always a line, on the owner's word: what NetLet adds
+            // on the goods while it charges it, and nothing while it does not.
             if let tax = cart.tax, !tax.amount.isZero {
                 row(l.t("summary.tax", ["rate": TaxWording.rateLabel(tax.ratePercent)]), l.price(tax.amount), faint: updating)
+            } else {
+                row(l.t("summary.taxNone"), l.price(.zero), faint: updating)
             }
             if let waived = cart.delivery.memberWaived, !waived.isZero {
                 Text(l.t("membership.deliveryWaived", ["amount": l.price(waived)]))
@@ -974,31 +963,5 @@ struct SummaryCard: View {
                 .opacity(faint ? 0.5 : 1)
                 .animation(.easeOut(duration: 0.15), value: faint)
         }
-    }
-}
-
-/// All, the foot of the reference's cart: every line in or out at once,
-/// partly while some are left out — in a slim row above the first store and
-/// in the floating bar.
-private struct AllChoice: View {
-    let cart: Cart
-    var compact = false
-    @Environment(AppModel.self) private var app
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        let ids = cart.items.map(\.lineId)
-        HStack(spacing: 0) {
-            ChoiceCircle(state: CartChoice.state(CartChoice.lines(cart.items), app.cart.skip, of: ids), label: l.t("cart.chooseAllName")) { chosen in
-                app.cart.choose(ids, chosen: chosen)
-            }
-            .padding(.leading, -12)
-            // The word is the eye's; the circle's name says it whole.
-            Text(l.t("cart.chooseAll"))
-                .font(.inter(compact ? 13 : 14, .bold))
-                .foregroundStyle(Brand.navy)
-                .accessibilityHidden(true)
-        }
-        .fixedSize()
     }
 }

@@ -182,6 +182,8 @@ jobs:
             shot 05h-face-id "$lang" faceId ""
             shot 06-cart "$lang" cart shopper
             shot 07-checkout "$lang" checkout shopper
+            # Checkout's foot: the codes and the ways to pay as round icons, and the tax line.
+            shot 116-checkout-foot "$lang" checkoutFoot shopper
             shot 08-orders "$lang" orders shopper
             shot 09-account "$lang" account shopper
             shot 10-selling "$lang" sell shopper
@@ -211,6 +213,8 @@ jobs:
             # the tracker on an order on its way, the road moving to the house.
             shot 113-order-chosen "$lang" orderChosen:NL-20261001-J7MWY shopper
             shot 114-order-track-road "$lang" track:NL-20261104-HMGQQ ontheway
+            # My orders' filters, organised: one sheet of sections, applied together.
+            shot 115-order-filters "$lang" orderFilters shopper
             shot 63-returns "$lang" section:returns shopper
             shot 28-invoice "$lang" page:invoices/INV-2026-000002 shopper
             shot 29-assistant "$lang" chat ""

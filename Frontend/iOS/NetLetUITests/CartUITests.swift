@@ -6,7 +6,8 @@ import XCTest
 /// gap and the price and the stepper sat far below it. Now the row holds the
 /// "⋯" alone (the other two are in its menu), the price shares a row with the
 /// stepper where both fit, and the stepper is the compact 36. A one-line bag
-/// draws no search field: there is nothing to search through.
+/// draws no search field: there is nothing to search through. No circles
+/// choose lines, and each store's delivery sits at the foot of its card.
 final class CartUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
@@ -45,22 +46,22 @@ final class CartUITests: XCTestCase {
         XCTAssertTrue(saving.waitForExistence(timeout: 5), "The summary does not say what the bag saves.")
         XCTAssertTrue(saving.label.contains("0.950"), "The saving is not the code's 0.950: \(saving.label)")
 
-        // All is a slim row above the first store, not the top of the
-        // summary (on the owner's word); the floating bar may hold its own,
-        // lower down, so the topmost one is the page's.
-        let alls = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Choose everything in your cart")).allElementsBoundByIndex
-        let store = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Sold by")).firstMatch
-        XCTAssertTrue(!alls.isEmpty && store.exists, "No All or no store: \(labels(app))")
-        let all = alls.min { $0.frame.minY < $1.frame.minY }!
-        print("TEST-NOTE cart all: all=\(all.frame) store=\(store.frame)")
-        XCTAssertLessThan(all.frame.maxY, store.frame.minY + 1, "All is not above the first store: all \(all.frame), store \(store.frame)")
+        // No circles to choose lines, on the owner's word: neither All nor
+        // one per store or line — the bag checks out every line in it.
+        let circles = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label == %@ OR label BEGINSWITH %@ OR label BEGINSWITH %@",
+            "Choose everything in your cart", "Include ", "Include everything from "
+        ))
+        XCTAssertEqual(circles.count, 0, "The bag still draws choice circles: \(circles.allElementsBoundByIndex.map(\.label))")
 
-        // The store's delivery is one slim, borderless line under its name.
+        // The store's delivery is one slim, borderless line at the foot of
+        // its card, under its lines, on the owner's word.
+        let store = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Sold by")).firstMatch
         let delivery = app.buttons.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "Standard", "Change")).firstMatch
-        XCTAssertTrue(delivery.exists, "The store has no delivery row: \(labels(app))")
-        print("TEST-NOTE cart delivery row: \(delivery.frame)")
+        XCTAssertTrue(store.exists && delivery.exists, "No store or no delivery row: \(labels(app))")
+        print("TEST-NOTE cart delivery row: store=\(store.frame) plus=\(plus.frame) delivery=\(delivery.frame)")
         XCTAssertLessThanOrEqual(delivery.frame.height, 48, "The store's delivery row is tall again: \(delivery.frame)")
-        XCTAssertGreaterThan(delivery.frame.minY, store.frame.minY, "The delivery row is not under the store's name.")
+        XCTAssertGreaterThan(delivery.frame.minY, plus.frame.maxY, "The delivery row is not under the store's lines: delivery \(delivery.frame), the line's plus \(plus.frame)")
 
         // And the menu offers where it goes, Remove last and in view.
         menu.tap()

@@ -10,16 +10,13 @@ import SwiftUI
 /// somebody could pick and then be delivered nothing in would be a control
 /// that lies. Each is the phone's own name for it, in the page's language.
 ///
-/// **And where every order goes** (0088, on the owner's word: "set or change
-/// their default delivery address" in Settings): the address book as choices —
-/// choosing one is the header sheet's own choice, kept on the account
-/// (`DeliveryModel.choose`). **The way to pay is not here, on the owner's
-/// word** ("remove the payment method from the quick settings"): checkout
-/// opens on the account's default with Change, and what the account keeps
-/// that is worth money is the Wallet's.
+/// **Neither the delivery address nor the way to pay is here, on the owner's
+/// word** ("remove the delivery address from the quick settings", and before
+/// it "remove the payment method from the quick settings"): the address in use
+/// is chosen from the header's sheet or "Set as default" in the address book,
+/// and checkout opens on the account's way to pay with Change.
 struct QuickSettingsCard: View {
     @Environment(LanguageSettings.self) private var l
-    @Environment(AppModel.self) private var app
 
     private var rules: Rules.AfterSales { ReferenceData.shared.rules.afterSalesRules }
 
@@ -32,8 +29,6 @@ struct QuickSettingsCard: View {
                 .padding(.top, 16)
                 .padding(.bottom, 4)
             countryRow
-            DashedRule()
-            addressRow
             DashedRule()
             CurrencyRow()
             DashedRule()
@@ -91,84 +86,6 @@ struct QuickSettingsCard: View {
             }
             .accessibilityLabel(l.t("quick.country"))
             .accessibilityValue(CountryNames.name(rules.homeCountry, language: l.current))
-        }
-        .padding(.vertical, 12)
-        .frame(minHeight: 64)
-    }
-
-    private func rowLabel(_ symbol: String, _ key: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 20))
-                .foregroundStyle(ProfileInk.icon)
-                .frame(width: 26)
-                .accessibilityHidden(true)
-            Text(l.t(key))
-                .font(.inter(16, .medium))
-                .foregroundStyle(Brand.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func chip(_ text: String) -> some View {
-        HStack(spacing: 6) {
-            Text(text)
-                .font(.inter(15, .semibold))
-                .foregroundStyle(Brand.ink)
-                .lineLimit(1)
-            Image(systemName: "chevron.up.chevron.down")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(ProfileInk.icon)
-        }
-        .padding(.horizontal, 14)
-        .frame(minHeight: 40)
-        .background(Capsule().fill(ProfileInk.chip))
-        .frame(maxWidth: 180, alignment: .trailing)
-    }
-
-    /// The address book as choices; an empty book opens it to add one.
-    private var addressRow: some View {
-        let delivery = app.delivery
-        let book = delivery.addresses
-        let chosen = delivery.inUse
-        return HStack(spacing: 14) {
-            rowLabel("mappin.and.ellipse", "quick.deliveryAddress")
-            if book.isEmpty {
-                Button {
-                    app.openAccount(.addresses)
-                } label: {
-                    Label(l.t("quick.addAddress"), systemImage: "plus")
-                        .font(.inter(15, .semibold))
-                        .foregroundStyle(Brand.navy)
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 40)
-                        .background(Capsule().fill(ProfileInk.chip))
-                }
-                .buttonStyle(.tap)
-                .fixedSize()
-            } else {
-                Menu {
-                    ForEach(book) { row in
-                        let zone = ReferenceData.shared.governorate(id: row.governorate)?.name(l.current)
-                        Button {
-                            Haptics.tap()
-                            Task { await delivery.choose(row) }
-                        } label: {
-                            let text = [row.label, zone ?? l.t("quick.noArea")].joined(separator: " · ")
-                            if row.id == chosen?.id {
-                                Label(text, systemImage: "checkmark")
-                            } else {
-                                Text(text)
-                            }
-                        }
-                        .disabled(row.governorate?.isEmpty != false)
-                    }
-                } label: {
-                    chip(chosen?.label ?? l.t("home.chooseAreaShort"))
-                }
-                .accessibilityLabel(l.t("quick.deliveryAddress"))
-                .accessibilityValue(chosen?.label ?? l.t("home.chooseAreaShort"))
-            }
         }
         .padding(.vertical, 12)
         .frame(minHeight: 64)

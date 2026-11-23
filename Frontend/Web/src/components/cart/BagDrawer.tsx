@@ -36,9 +36,7 @@ import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { isDeliverySpeed } from "@shared/commerce/deliverySpeed";
 import { lineCeiling, quantityDraft, shortLines, typedQuantity } from "@shared/commerce/typedQuantity";
 import { MAX_LINE_QUANTITY } from "@shared/commerce/types";
-import { choiceOf } from "@shared/commerce/cartChoice";
 import { rateLabel } from "@shared/commerce/tax";
-import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
 
 /** While a stored bag loads or the first item is being added: never "empty" before it knows. */
 export function BagSettling() {
@@ -82,13 +80,15 @@ export function BagEmpty({ onBrowse, heading = "h3" }: { onBrowse: () => void; h
  * Never greyed out while the server answers: the bag changes on the press and
  * sends the presses in order.
  *
- * **Each line and each store has a circle, and only what is ticked is checked
- * out**, on the owner's word (`ChoiceCircle`, `Shared/commerce/cartChoice.ts`):
- * the totals, each store's delivery and Checkout count the chosen lines alone.
- * **A line unticked stays in the bag, left out of this checkout, on the
- * owner's word** ("when I unselect a product, it should unselect that from the
- * cart and only show the price of the selected products"); it moved to Saved
- * for later for a while, and the owner asked for that to stop.
+ * **No circles to choose lines, on the owner's word** ("remove the boxes for
+ * choosing products"): the cart checks out every line in it. Each line and
+ * each store had a circle and All ticked them together; the page and the
+ * drawer now choose everything as they open (`forgetChoice`), so only Buy now
+ * leaves a line out, and only for the checkout it opens.
+ *
+ * **Each store's delivery is at the foot of its lines, and a line's "Going
+ * to" under its stepper, on the owner's word** (the owner's drawing of the
+ * cart): the store's name, then what is in it, then how it travels.
  */
 export function BagLines({ layout = "drawer", matches }: {
   layout?: "drawer" | "page";
@@ -123,6 +123,7 @@ export function BagLines({ layout = "drawer", matches }: {
             <div className={`divide-y divide-[#eef1f5] ${onPage ? "px-4" : ""}`}>
               {group.items.map(item => <BagLine key={item.lineId} item={item} />)}
             </div>
+            <StoreDeliveryFoot group={group} name={name} padded={onPage} />
           </div>
         );
       }) : (
@@ -134,41 +135,39 @@ export function BagLines({ layout = "drawer", matches }: {
   );
 }
 
-/**
- * A store's name, which opens its page, and each of its parcels: what it
- * costs, free in green, and while there is a threshold left to reach, how
- * much more and how far along — the server's own figures (`goods`, `toFree`).
- * A store with a fast line or a line for another door has more than one
- * parcel, and each says which it is.
- */
+/** A store's name, which opens its page. */
 function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; padded: boolean }) {
-  const { cart, skip, choose, syncing, closeCart } = useCart();
+  const { closeCart } = useCart();
+  const { t } = useTranslation();
+  return (
+    <div className={padded ? "border-b border-[#eef1f5] px-4 pb-2.5 pt-3" : "border-b border-[#d5dfeb] pb-2.5"}>
+      <Link
+        href={`/stores/${encodeURIComponent(group.store.slug)}`}
+        onClick={closeCart}
+        className="pressable -mx-1.5 inline-flex min-h-9 min-w-0 max-w-full items-center gap-2 rounded-lg px-1.5 text-[#0a285a]"
+      >
+        <Store className="size-4 shrink-0" aria-hidden />
+        <span className="truncate text-[14px] font-extrabold">{t("browse.soldBy", { name })}</span>
+        <ChevronRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * How a store's lines travel, under them: the store's delivery as one row
+ * beside its car, with a sheet to change it (0085) — or, for a bag from before
+ * it, each of its parcels: what it costs, free in green, and while there is a
+ * threshold left to reach, how much more and how far along — the server's own
+ * figures (`goods`, `toFree`).
+ */
+function StoreDeliveryFoot({ group, name, padded }: { group: BagGroup; name: string; padded: boolean }) {
+  const { cart, syncing } = useCart();
   const { t } = useTranslation();
   const money = useMoney();
-  const ids = group.items.map(item => item.lineId);
-  /* The store's delivery as one row beside its car, with a sheet to change it
-     (0085); a bag from before it draws each parcel's line as it did. */
   const storeDelivery = storeDeliveryOf(cart, group);
   return (
-    <div className={padded ? "border-b border-[#eef1f5] px-4 pb-3 pt-3" : "border-b border-[#d5dfeb] pb-3"}>
-      <div className="flex items-center gap-1">
-        {/* Every line of this store in together, or to Saved for later together. */}
-        <ChoiceCircle
-          state={choiceOf(cart?.items ?? [], skip, ids)}
-          label={t("cart.chooseStore", { name })}
-          onToggle={chosen => choose(ids, chosen)}
-          className="-ms-2.5 pointer-fine:-ms-1.5"
-        />
-        <Link
-          href={`/stores/${encodeURIComponent(group.store.slug)}`}
-          onClick={closeCart}
-          className="pressable -mx-1.5 inline-flex min-h-9 min-w-0 max-w-full items-center gap-2 rounded-lg px-1.5 text-[#0a285a]"
-        >
-          <Store className="size-4 shrink-0" aria-hidden />
-          <span className="truncate text-[14px] font-extrabold">{t("browse.soldBy", { name })}</span>
-          <ChevronRight className="size-4 shrink-0 ink-muted rtl:-scale-x-100" aria-hidden />
-        </Link>
-      </div>
+    <div className={padded ? "border-t border-[#eef1f5] px-4 pb-3.5 pt-1" : "border-t border-[#eef1f5] pb-1 pt-1"}>
       {storeDelivery ? <StoreDeliveryRow group={group} name={name} store={storeDelivery} /> : group.delivery.map(row => {
         const fast = row.choice === "fast";
         const cost = row.free
@@ -203,7 +202,7 @@ function StoreHeading({ group, name, padded }: { group: BagGroup; name: string; 
  * did not fit on one line and the price was cut at the card's edge.
  */
 function BagLine({ item }: { item: CartItem }) {
-  const { cart, choose, updateQuantity, removeItem, closeCart } = useCart();
+  const { cart, updateQuantity, removeItem, closeCart } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
   const title = lineTitle(item, isArabic);
@@ -218,16 +217,8 @@ function BagLine({ item }: { item: CartItem }) {
   /* The bin asks first, on the owner's word. */
   const askRemove = useAskRemoveFromCart();
   const href = `/products/${encodeURIComponent(item.productHandle)}`;
-  const chosen = item.chosen !== false;
   return (
-    <div className="flex gap-2 py-4 min-[360px]:gap-3">
-      {/* In this checkout, or left out of it and still in the bag. */}
-      <ChoiceCircle
-        state={chosen ? "all" : "none"}
-        label={t("cart.chooseLine", { name: title })}
-        onToggle={next => choose([item.lineId], next)}
-        className="-ms-2.5 self-center pointer-fine:-ms-1.5"
-      />
+    <div className="flex gap-3 py-4">
       {/* The photo is the same place as the name, so it is hidden from the
           keyboard and a screen reader rather than read as a second link. */}
       <Link href={href} onClick={closeCart} tabIndex={-1} aria-hidden className="size-[72px] shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-[#f4f6f9] min-[360px]:size-[84px]">
@@ -245,9 +236,6 @@ function BagLine({ item }: { item: CartItem }) {
             {/* Which set made this line cheaper (3.3.11) — a lower
                 figure with no explanation is one a shopper cannot check. */}
             {item.bundleName ? <p dir="auto" className="mt-0.5 text-[12px] ink-accent">{item.bundleName}</p> : null}
-            {/* Where this one is going (3.2.6), when it is not going where the
-                rest is — chosen on the delivery button beside it. */}
-            {item.destination ? <p dir="auto" className="mt-0.5 text-[12px] ink-muted">{t("address.sendingTo", { label: item.destination.label })}</p> : null}
             <p className="mt-1.5 text-[15px] font-extrabold text-[#0a285a]">{money(item.lineTotal)}</p>
             {/* What one costs, once there is more than one — the total alone
                 leaves somebody dividing in their head. */}
@@ -295,6 +283,15 @@ function BagLine({ item }: { item: CartItem }) {
         {left !== undefined ? (
           <p role="status" className="mt-2 text-[12px] font-bold text-[#b42318]">
             {left === 0 ? t("cart.lineSoldOut") : t("cart.lineShort", { count: left })}
+          </p>
+        ) : null}
+        {/* Where this one is going (3.2.6), when it is not going where the
+            rest is — chosen on the delivery button beside the name — under
+            its price and stepper, on the owner's word. */}
+        {item.destination ? (
+          <p dir="auto" className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#eef1f6] px-2.5 py-1 text-[12px] font-semibold text-[#0a285a]">
+            <Truck className="size-3.5 shrink-0 rtl:-scale-x-100" aria-hidden />
+            <span className="truncate">{t("address.sendingTo", { label: item.destination.label })}</span>
           </p>
         ) : null}
       </div>
@@ -439,8 +436,6 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
   return (
     <div aria-busy={syncing}>
       {heading ? <h2 className="mb-3 text-[17px] font-extrabold text-[#0a285a]">{t("checkout.orderSummary")}</h2> : null}
-      {/* Everything in this checkout at once, or nothing. */}
-      <AllChoice />
       {/* Delivery per seller (3.2.4), each named. A basket from three shops
           is three parcels, and one blended figure hides which seller is
           expensive. Sellers who charge nothing are left out entirely —
@@ -467,8 +462,9 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
       <div className="flex items-center justify-between gap-3 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.subtotal")} <span className="font-normal">({t("cart.itemCount", { count: chosenCount })})</span></span><span className="shrink-0 font-bold text-[#0a285a]">{money(cart.subtotal)}</span></div>
       {cart.codeDiscount ? <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("checkout.lineCodesTitle")}</span><span className={`font-bold text-[#2f5d33] transition-opacity ${updating}`}>−{money(cart.codeDiscount)}</span></div> : null}
       <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.delivery")}</span>{Number(cart.delivery.total.amount) > 0 ? <span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.delivery.total)}</span> : <span className={`font-bold text-[#2f5d33] transition-opacity ${updating}`}>{t("cart.deliveryFree")}</span>}</div>
-      {/* Tax (0087), added on the goods while NetLet charges it. */}
-      {cart.tax ? <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{t("summary.tax", { rate: rateLabel(cart.tax.ratePercent) })}</span><span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.tax.amount)}</span></div> : null}
+      {/* Tax (0087), always a line, on the owner's word: what NetLet adds on the
+          goods while it charges it, and nothing while it does not. */}
+      <div className="mt-1 flex items-center justify-between text-sm"><span className="font-semibold text-[#536b8c]">{cart.tax ? t("summary.tax", { rate: rateLabel(cart.tax.ratePercent) }) : t("summary.taxNone")}</span><span className={`font-bold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.tax?.amount ?? { amount: "0", currencyCode: cart.total.currencyCode })}</span></div>
       {/* A member's free delivery (4.1), said with what it saved. */}
       {cart.delivery.memberWaived ? <p className="mt-1 text-[12px] font-bold text-[#0a285a]">{t("membership.deliveryWaived", { amount: money(cart.delivery.memberWaived) })}</p> : null}
       <div className="mt-2 flex items-center justify-between border-t border-[#d5dfeb] pt-2 text-sm"><span className="font-semibold text-[#536b8c]">{t("cart.total")}</span><span className={`text-lg font-extrabold text-[#0a285a] transition-opacity ${updating}`}>{money(cart.total)}</span></div>
@@ -484,29 +480,14 @@ export function BagSummary({ checkoutRef, heading = false, onCheckout, standIn =
   );
 }
 
-/**
- * All, the foot of the reference's cart: every line ticked at once, or every
- * line to Saved for later; partly while Buy now left some out. In the summary
- * and in the phone's floating bar.
- */
-export function AllChoice({ className = "", compact = false }: { className?: string; compact?: boolean }) {
-  const { cart, skip, choose } = useCart();
-  const { t } = useTranslation();
-  if (!cart?.items.length) return null;
-  const ids = cart.items.map(item => item.lineId);
-  return (
-    <div className={`flex items-center ${className}`}>
-      <ChoiceCircle state={choiceOf(cart.items, skip, ids)} label={t("cart.chooseAllName")} onToggle={chosen => choose(ids, chosen)} className="-ms-2.5 pointer-fine:-ms-1.5" />
-      {/* The word is the eye's; the circle's name says it whole. */}
-      <span aria-hidden className={`font-bold text-[#0a285a] ${compact ? "text-[13px]" : "text-[14px]"}`}>{t("cart.chooseAll")}</span>
-    </div>
-  );
-}
-
 export function BagDrawer() {
-  const { cart, isOpen, closeCart, settling, unread } = useCart();
+  const { cart, isOpen, closeCart, settling, unread, forgetChoice } = useCart();
   const { t } = useTranslation();
   useOverlay(isOpen, closeCart);
+  /* No circles here: opening the bag is checking out all of it. */
+  useEffect(() => {
+    if (isOpen) forgetChoice();
+  }, [isOpen, forgetChoice]);
   /* It slides out the way it came, the page behind answering at once. */
   const { mounted, closing } = usePresence(isOpen, DRAWER_EXIT_MS);
   /* Into the drawer as it opens, by an effect after `useOverlay` so the hook
