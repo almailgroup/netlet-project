@@ -56,8 +56,7 @@ import { OrderSearchAndFilter, filtersOn, type OrderFacets, type OrderFilterChan
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
-import { OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLineRow } from "@/components/account/OrderActions";
-import { OrderJourney } from "@/components/account/OrderJourney";
+import { LineJourney, OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLineRow } from "@/components/account/OrderActions";
 
 /**
  * The words for each state, and its colour.
@@ -293,8 +292,11 @@ export function AccountOrders() {
                     >
                       <OrderPhoto photo={summary?.photos[0] ?? null} more={Math.max(0, (summary?.lineCount ?? 1) - 1)} />
                       <span className="min-w-0 flex-1">
-                        {/* Where it is, under the products now (`OrderJourney`);
-                            a server older than the summary says only how it is paid. */}
+                        {/* The order's main facts alone, on the owner's word: its
+                            items have their own delivery times, so where each is
+                            is drawn under it once the order is opened
+                            (`LineJourney`). A server older than the summary says
+                            only how it is paid. */}
                         {summary ? null : <Pill label={t(payment.label)} className={payment.className} />}
                         {/* What it is, by the first thing in it — nobody knows
                             their own order by its number. The title is the
@@ -322,15 +324,6 @@ export function AccountOrders() {
                       </span>
                       <ChevronDown className={`mt-1 size-5 shrink-0 ink-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
                     </button>
-
-                    {/* Where it is on its way to the door, under its products,
-                        on the owner's word: the box got ready, the van on the
-                        road to the house, the house reached. */}
-                    {summary ? (
-                      <div className="-mt-1 px-4 pb-4 sm:px-5">
-                        <OrderJourney progress={summary.progress} />
-                      </div>
-                    ) : null}
 
                     {/* Request a refund from the list, on the owner's word: on an
                         order with something that can still go back — delivered,
@@ -485,7 +478,6 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
           ) : null}
           <ul className="space-y-4">
             {data.lines.map(line => {
-              const fulfilment = FULFILMENT[line.fulfilment] ?? FULFILMENT.pending;
               return (
                 <li key={line.id}>
                   {/* A press anywhere on the item chooses it (on the owner's word). */}
@@ -516,7 +508,6 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                       </p>
                     ) : null}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <Pill label={t(fulfilment.label)} className={fulfilment.className} />
                       {/*
                         The return affordance draws only where a return is
                         actually open. Everywhere else it says why, which is the
@@ -540,6 +531,9 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                     <LineReturnStatus reference={reference} currency={data.order.currency} line={line} requests={data.returns} />
                   </div>
                   </OrderLineRow>
+                  {/* Where this item is, its own road and its store's date (on
+                      the owner's word: each item has its own delivery time). */}
+                  <LineJourney line={line} detail={data} />
                   {/* What the bar opened for this item, the item's full width. */}
                   <OrderLinePanel line={line} />
                 </li>

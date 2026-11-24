@@ -316,12 +316,10 @@ struct OrderRow: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            summaryRow
-            // Where it is on its way to the door, under the order, on the
-            // owner's word — the web's `OrderJourney`.
-            OrderJourney(progress: order.summary.progress)
-        }
+        // The order's main facts alone, on the owner's word: its items have
+        // their own delivery times, so where each is is drawn under it once
+        // the order is opened (`LineJourney`).
+        summaryRow
     }
 
     private var summaryRow: some View {
@@ -672,7 +670,6 @@ struct OrderDetailView: View {
                                     .foregroundStyle(Brand.success)
                             }
                             Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
-                            StatusPill(label: OrderWording.line(line.fulfilment, language: l), tone: OrderTone.line(line.fulfilment))
                             returnWindow(line)
                         }
                         // What can be done with it is the bar's, once its circle
@@ -696,6 +693,9 @@ struct OrderDetailView: View {
                             .padding(-6)
                     )
                     .animation(.easeOut(duration: 0.15), value: chosen.contains(line.id))
+                    // Where this item is, its own road and its store's date (on
+                    // the owner's word: each item has its own delivery time).
+                    LineJourney(line: line, detail: detail)
                     LineReviewRow(line: line)
                     LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload, open: Binding(
                         get: { returning == line.id },

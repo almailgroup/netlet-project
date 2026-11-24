@@ -74,6 +74,7 @@ import { HandoverCard, PaidOnlineNote } from "@/components/account/OrderHandover
 import { WarrantyClaims, WarrantyForm } from "@/components/account/OrderWarranty";
 import { OrderHelp } from "@/components/account/OrderHelp";
 import { ReceiptButton, useOrderReceipt } from "@/components/account/OrderReceipt";
+import { OrderJourney } from "@/components/account/OrderJourney";
 import { useCart } from "@/contexts/CartContext";
 import { useFeature } from "@/hooks/useFeature";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -81,7 +82,8 @@ import { useShortDayFormat } from "@/hooks/useDateFormat";
 import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { MAX_RETURN_NOTE, RETURN_REASONS, type ReturnReason } from "@shared/commerce/returnRequests";
-import { TRACK_STEPS, type ParcelTrack, type TrackStep } from "@shared/commerce/orderTracking";
+import { TRACK_STEPS, type ParcelTrack, type TrackPromise, type TrackStep } from "@shared/commerce/orderTracking";
+import { orderProgress } from "@shared/commerce/orderProgress";
 import type { OrderHelpAction } from "@shared/commerce/orderHelp";
 import { chosenState, firstToRate, selectionOffers, type SelectionAction, type SelectionOffer } from "@shared/commerce/orderSelection";
 import type { MessageKey } from "@shared/i18n/dictionary";
@@ -729,6 +731,47 @@ const STEP_ICON: Record<TrackStep, (className: string) => ReactNode> = {
   delivered: className => <House className={className} aria-hidden />,
 };
 
+/**
+ * What the store says about when a parcel comes, said as theirs: its window,
+ * "made to order", a pre-order's release, or that it is later than the
+ * estimate. Null when there is nothing to say.
+ */
+function usePromiseText() {
+  const { t } = useTranslation();
+  const shortDay = useShortDayFormat();
+  return (promised: TrackPromise | null): { text: string; late: boolean } | null => {
+    if (!promised) return null;
+    if (promised.kind === "madeToOrder") return { text: t("track.madeToOrder"), late: false };
+    if (promised.kind === "preorder") return { text: promised.at ? t("track.preorder", { date: shortDay(promised.at) }) : t("track.preorderOpen"), late: false };
+    if (promised.late) return { text: t("track.late", { date: shortDay(promised.to) }), late: true };
+    const from = shortDay(promised.from);
+    const to = shortDay(promised.to);
+    return { text: from === to ? t("track.expectedOn", { date: from }) : t("track.expected", { from, to }), late: false };
+  };
+}
+
+/**
+ * Where one item is, drawn under it in the opened order, on the owner's word
+ * ("inside, each item has a different delivery time … once you click in it,
+ * each item will show this one"): the road My orders drew under the whole
+ * order, read off this item alone (`orderProgress` over its one line), with
+ * when its parcel's store says it comes. The list shows the order's main
+ * facts only.
+ */
+export function LineJourney({ line, detail }: { line: Line; detail: Detail }) {
+  const promiseText = usePromiseText();
+  const progress = orderProgress(detail.order, [line]);
+  const parcel = detail.steps.parcels.find(entry => entry.lineIds.includes(line.id));
+  const coming = progress.kind !== "delivered" && progress.kind !== "cancelled" && progress.kind !== "returned";
+  const promise = coming ? promiseText(parcel?.promise ?? null) : null;
+  return (
+    <div className="mt-2">
+      <OrderJourney progress={progress} />
+      {promise ? <p className={`mt-1.5 text-[12px] font-semibold leading-5 ${promise.late ? "ink-accent" : "text-[#2f5d33]"}`}>{promise.text}</p> : null}
+    </div>
+  );
+}
+
 /** How many of a parcel's items are drawn by their photos before a "+N". */
 const PARCEL_PHOTOS = 4;
 
@@ -745,16 +788,8 @@ function ParcelTracker({ parcel, placedAt, items, shortDay }: {
   const dateOf = (step: TrackStep) =>
     step === "placed" ? shortDay(placedAt) : step === "delivered" && parcel.deliveredAt ? shortDay(parcel.deliveredAt) : null;
 
-  const promise = (() => {
-    const promised = parcel.promise;
-    if (!promised || arrived) return null;
-    if (promised.kind === "madeToOrder") return { text: t("track.madeToOrder"), late: false };
-    if (promised.kind === "preorder") return { text: promised.at ? t("track.preorder", { date: shortDay(promised.at) }) : t("track.preorderOpen"), late: false };
-    if (promised.late) return { text: t("track.late", { date: shortDay(promised.to) }), late: true };
-    const from = shortDay(promised.from);
-    const to = shortDay(promised.to);
-    return { text: from === to ? t("track.expectedOn", { date: from }) : t("track.expected", { from, to }), late: false };
-  })();
+  const promiseText = usePromiseText();
+  const promise = arrived ? null : promiseText(parcel.promise);
 
   return (
     <>

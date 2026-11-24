@@ -3508,7 +3508,19 @@ processing, a processing animation — simple for the user to understand"):
 start, the shopper's house at its end, and three words under it —
 Processing, On the way, Delivered — the one it is at in the order's own
 phrase ("Being prepared", "2 of 3 delivered", "Delivered 19 November"). It
-replaced the status pill at the top of the row. **It is a little street of
+replaced the status pill at the top of the row. **It is drawn under each
+item of an opened order, not under the order on the list, on the owner's
+word** ("in this page will show you only the main info, once you click in it
+each items will show this one because each item has different deliver
+time"): My orders' row is the order's photo, name, date, reference, total and
+how it is paid, and the opened order draws a road under every item
+(`LineJourney` on both), read off that item alone (`orderProgress` over its
+one line, `ReceiptRules.progress` in the app) with, while it is still coming,
+its parcel's own day under it — the store's estimate or that it is later
+(`usePromiseText`, the app's `ParcelStepsCard.promiseText`, the tracker's own
+words). The item's status pill went with it, the road saying the same.
+`OrderItemJourneyUITests` holds the list with no road and two on the recorded
+pending order. **It is a little street of
 NetLet's own drawing, made richer on the owner's word** ("high quality
 animations and icons … an animation for the shipping car if the product is on
 processing … its tires running, going to its destination"): NetLet's store

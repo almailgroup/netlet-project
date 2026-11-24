@@ -521,7 +521,13 @@ struct ParcelStepsCard: View {
 
     /// The seller's word on when, said as theirs.
     private var promiseLine: (text: String, late: Bool)? {
-        guard let promise = parcel.promise else { return nil }
+        Self.promiseText(parcel.promise, l)
+    }
+
+    /// What the store says about when a parcel comes: its window, "made to
+    /// order", a pre-order's release, or that it is later than the estimate.
+    static func promiseText(_ promise: ParcelSteps.Promise?, _ l: LanguageSettings) -> (text: String, late: Bool)? {
+        guard let promise else { return nil }
         switch promise.kind {
         case "madeToOrder":
             return (l.t("track.madeToOrder"), false)
@@ -927,5 +933,32 @@ struct EditOrderButton: View {
         .buttonStyle(SpringPressStyle(cornerRadius: 18))
         .fixedSize()
         .accessibilityIdentifier("order-edit")
+    }
+}
+
+/// Where one item is, drawn under it in the opened order, on the owner's word
+/// ("inside, each item has a different delivery time … once you click in it,
+/// each item will show this one"): the road My orders drew under the whole
+/// order, read off this item alone (`ReceiptRules.progress` over its one
+/// line), with when its parcel's store says it comes. The web's `LineJourney`.
+struct LineJourney: View {
+    let line: OrderLine
+    let detail: OrderDetail
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let progress = ReceiptRules.progress(status: detail.order.status, lines: [(fulfilment: line.fulfilment, deliveredAt: line.deliveredAt, preordered: line.preordered ?? false)])
+        let coming = !["delivered", "cancelled", "returned"].contains(progress.kind)
+        let parcel = detail.steps?.parcels.first { $0.lineIds.contains(line.id) }
+        let promise = coming ? ParcelStepsCard.promiseText(parcel?.promise, l) : nil
+        VStack(alignment: .leading, spacing: 6) {
+            OrderJourney(progress: progress)
+            if let promise {
+                Text(promise.text)
+                    .font(.inter(12, .semibold))
+                    .foregroundStyle(promise.late ? Brand.accentInk : Brand.success)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
