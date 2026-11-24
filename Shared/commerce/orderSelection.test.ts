@@ -50,6 +50,16 @@ describe("what the chosen items of an order offer", () => {
     });
   });
 
+  it("offers one item's page first, only while the shop shows it and only for one item", () => {
+    const shown = line(6, { fulfilment: "delivered", viewable: true, rateable: true });
+    expect(actions([shown])).toEqual(["view", "rate", "buyAgain", "help"]);
+    /* Off the shelf since: no page to open. */
+    expect(actions([line(7, { viewable: false })])).toEqual(["buyAgain", "help"]);
+    /* Several chosen: which page would it open? None — each item's own press does. */
+    expect(actions([shown, line(8, { viewable: true })])).not.toContain("view");
+    expect(selectionOffers([shown], { cancelled: false })[0]).toEqual({ action: "view", lineIds: [6] });
+  });
+
   it("offers an order cancelled whole only what is left to do", () => {
     expect(actions([gone], true)).toEqual(["help"]);
     expect(actions([line(5)], true)).toEqual(["buyAgain", "help"]);

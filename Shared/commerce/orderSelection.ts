@@ -54,12 +54,17 @@ export type ChosenLine = {
   rateable: boolean;
   /** Still a product the shop knows (`variantId`), so it can go in the bag again. */
   rebuyable: boolean;
+  /** Its page is on the shop (`productHandle`), so it can be looked at. */
+  viewable?: boolean;
 };
 
 /**
- * The acts, in the order the bar draws them — the cancel last, apart, being
- * the one that takes something away.
+ * The acts, in the order the bar draws them — looking at the product first,
+ * the cancel last, apart, being the one that takes something away.
  *
+ * - `view`: one item's page on the shop, on the owner's word ("I cannot see
+ *   product details … and there is no option inside" — a press on an item
+ *   chooses it while the order is edited, so the bar is how to reach it).
  * - `return`: one item, its return or exchange form.
  * - `refund`: several, one refund asked across the ones that can go back.
  * - `modify`, `address`, `cancelOrder`: the whole order's (`WholeOrder`),
@@ -68,7 +73,7 @@ export type ChosenLine = {
  *   every item chosen they stand in for `quantity` and `cancelItems`.
  */
 export const SELECTION_ACTIONS = [
-  "return", "refund", "warranty", "quantity", "modify", "rate", "buyAgain",
+  "view", "return", "refund", "warranty", "quantity", "modify", "rate", "buyAgain",
   "address", "help", "cancelItems", "cancelOrder",
 ] as const;
 export type SelectionAction = (typeof SELECTION_ACTIONS)[number];
@@ -108,6 +113,8 @@ export function selectionOffers(
   const addWhole = (action: SelectionAction, allowed: boolean) => {
     if (allowed) offers.push({ action, lineIds: every });
   };
+  /* One item's page, when one is chosen and the shop still shows it. */
+  if (chosen.length === 1) add("view", line => line.viewable === true);
   /* One item is its own form, which asks refund or exchange; several, a refund across them. */
   add(chosen.length === 1 ? "return" : "refund", line => line.returnable);
   add("warranty", line => line.warranty);

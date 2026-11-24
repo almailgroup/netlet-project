@@ -44,6 +44,16 @@ final class OrderSelectionTests: XCTestCase {
         ])
     }
 
+    /// "I cannot see product details" from an order (the owner's word): one
+    /// item chosen offers its page first, while the shop still shows it.
+    func testOneItemIsOfferedItsPageFirstOnlyWhileTheShopShowsIt() {
+        let shown = OrderSelection.Line(id: 6, fulfilment: "delivered", rateable: true, viewable: true)
+        XCTAssertEqual(actions([shown]), ["view", "rate", "buyAgain", "help"])
+        XCTAssertEqual(actions([OrderSelection.Line(id: 7, viewable: false)]), ["buyAgain", "help"])
+        XCTAssertFalse(actions([shown, OrderSelection.Line(id: 8, viewable: true)]).contains("view"))
+        XCTAssertEqual(OrderSelection.offers([shown], cancelled: false).first, OrderSelection.Offer(action: .view, lineIds: [6]))
+    }
+
     func testAnOrderCancelledWholeIsOfferedOnlyWhatIsLeftToDo() {
         XCTAssertEqual(actions([gone], cancelled: true), ["help"])
         XCTAssertEqual(actions([OrderSelection.Line(id: 5)], cancelled: true), ["buyAgain", "help"])

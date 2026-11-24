@@ -31,8 +31,10 @@
  * to control all or each one separately"): the order opens on its items
  * alone, and "Edit order" at the end of "In this order" brings the All
  * circle, the items' circles and the line saying what they are for; "Done",
- * or the bar's Close, puts them away with the choice. A press on an item
- * still chooses it, and opens the editing with it.
+ * or the bar's Close, puts them away with the choice. Outside editing a press
+ * on an item opens its page on the shop (on the owner's word: "I cannot see
+ * product details"); while editing it chooses the item, and one item chosen
+ * offers View product on the bar.
  *
  * **Nothing here decides.** Each action is drawn from the server's own answer
  * about this order — `cancel` (`shopperCancelState`), `change` and
@@ -51,6 +53,7 @@ import {
   Banknote,
   CircleX,
   CreditCard,
+  Eye,
   House,
   LifeBuoy,
   MapPin,
@@ -66,7 +69,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Select } from "@/components/ui/Select";
 import { Thumb } from "@/components/product/Thumb";
@@ -441,17 +444,29 @@ export function OrderLineChoice({ line }: { line: Line }) {
 const OWN_PRESS = "a, button, input, select, textarea, label, summary, [role='button'], [role='link'], [role='checkbox'], [role='radio'], [contenteditable='true']";
 
 /**
- * An item's row: **a press anywhere on it chooses it, or puts it back**, on
+ * An item's row. **Outside editing, a press on it opens its page on the
+ * shop**, on the owner's word ("I cannot see product details" from an order):
+ * while the circles are put away nothing is being chosen, so the item is a
+ * way to its product, as a cart's line is. Its name is the link the keyboard
+ * and a screen reader meet (`OrderLineTitle`), its photo the same link for
+ * the eye (`OrderLinePhoto`), and the rest of the row the pointer's and the
+ * finger's larger target. A product the shop no longer shows has no page, and
+ * its row opens nothing.
+ *
+ * **While editing, a press anywhere on it chooses it, or puts it back**, on
  * the owner's word ("when you tap on its name or anywhere near that specific
- * product, it should automatically choose it"). The circle stays the one
- * control the keyboard and a screen reader meet (`OrderLineChoice`); the row
- * is the pointer's and the finger's larger target. A press on something
+ * product, it should automatically choose it"); the circle stays the one
+ * control the keyboard and a screen reader meet (`OrderLineChoice`), and one
+ * item chosen offers View product on the bar. Either way a press on something
  * inside the row that does a thing of its own — a link, a review's button —
  * does that thing alone, and a press that ends a text selection selects.
  */
 export function OrderLineRow({ line, children }: { line: Line; children: ReactNode }) {
-  const { chosen, choose } = useControls();
+  const { chosen, choose, editing } = useControls();
+  const [, navigate] = useLocation();
   const on = chosen.includes(line.id);
+  const href = productHref(line);
+  const acts = editing || href !== null;
   return (
     <div
       data-chosen={on ? "" : undefined}
@@ -459,16 +474,54 @@ export function OrderLineRow({ line, children }: { line: Line; children: ReactNo
         const target = event.target as Element | null;
         if (target?.closest(OWN_PRESS)) return;
         if ((window.getSelection?.()?.toString() ?? "") !== "") return;
+        if (!editing) {
+          if (href) navigate(href);
+          return;
+        }
         pressHaptic();
         choose([line.id], !on);
       }}
-      className={`-mx-2 flex cursor-pointer gap-2 rounded-2xl px-2 py-1.5 transition-colors duration-150 min-[360px]:gap-3 ${
-        on ? "bg-[#0a285a]/[.05]" : "hover:bg-[#0a285a]/[.06]"
+      className={`-mx-2 flex gap-2 rounded-2xl px-2 py-1.5 transition-colors duration-150 min-[360px]:gap-3 ${acts ? "cursor-pointer" : ""} ${
+        on ? "bg-[#0a285a]/[.05]" : acts ? "hover:bg-[#0a285a]/[.06]" : ""
       }`}
     >
       {children}
     </div>
   );
+}
+
+/** An item's page on the shop, while the shop still shows it. */
+function productHref(line: Line): string | null {
+  return line.productHandle ? `/products/${encodeURIComponent(line.productHandle)}` : null;
+}
+
+/**
+ * An item's name: outside editing, a link to its page on the shop — the one
+ * the keyboard and a screen reader meet; while editing, words, since a press
+ * there chooses the item.
+ */
+export function OrderLineTitle({ line }: { line: Line }) {
+  const { editing } = useControls();
+  const href = productHref(line);
+  const className = "type-product line-clamp-2 pt-1.5 text-sm text-[#0a285a]";
+  if (editing || !href) return <p dir="auto" className={className}>{line.productTitle}</p>;
+  return (
+    <p dir="auto" className={className}>
+      <Link href={href} dir="auto" className="hover:underline">{line.productTitle}</Link>
+    </p>
+  );
+}
+
+/**
+ * An item's photo: outside editing, the same link as its name, for the eye
+ * alone (hidden from the keyboard and a screen reader, the card's rule: two
+ * links to one place read twice).
+ */
+export function OrderLinePhoto({ line, children }: { line: Line; children: ReactNode }) {
+  const { editing } = useControls();
+  const href = productHref(line);
+  if (editing || !href) return <>{children}</>;
+  return <Link href={href} tabIndex={-1} aria-hidden className="block">{children}</Link>;
 }
 
 /**
@@ -505,6 +558,7 @@ function PaymentLine() {
 
 /** Each act's word on the bar — short, for a row of them — and its picture. */
 const PICK_LABEL: Record<SelectionAction, MessageKey> = {
+  view: "orders.pickView",
   return: "orders.pickReturn",
   refund: "orders.pickRefund",
   warranty: "orders.pickWarranty",
@@ -518,6 +572,7 @@ const PICK_LABEL: Record<SelectionAction, MessageKey> = {
   cancelOrder: "orders.pickCancelOrder",
 };
 const PICK_ICON: Record<SelectionAction, ReactNode> = {
+  view: <Eye className="size-[19px]" aria-hidden />,
   return: <RotateCcw className="size-[19px] rtl:-scale-x-100" aria-hidden />,
   refund: <RotateCcw className="size-[19px] rtl:-scale-x-100" aria-hidden />,
   warranty: <ShieldCheck className="size-[19px]" aria-hidden />,
@@ -554,6 +609,7 @@ function ChosenBar({ onBuyAgain, onCancelOrder }: {
 }) {
   const { t } = useTranslation();
   const { detail, chosen, open, rate, stopEditing } = useControls();
+  const [, navigate] = useLocation();
   const returnsOn = useFeature("returns");
   const wide = useMediaQuery("(min-width: 1024px)");
   const eightAcross = useMediaQuery("(min-width: 640px)");
@@ -571,6 +627,7 @@ function ChosenBar({ onBuyAgain, onCancelOrder }: {
       changeable: detail.change.changeable && line.changeable,
       rateable: Boolean(line.review) || line.reviewEligibility.allowed,
       rebuyable: line.variantId !== null,
+      viewable: Boolean(line.productHandle),
     })),
     {
       cancelled: detail.steps.cancelled,
@@ -594,6 +651,12 @@ function ChosenBar({ onBuyAgain, onCancelOrder }: {
     const show = (kind: PanelKind, remove = false) =>
       open(one !== undefined ? { kind, lineId: one, remove, fromBar: true } : { kind, lineIds, remove, fromBar: true });
     switch (offer.action) {
+      /* The item's page on the shop, the order left as it was behind it. */
+      case "view": {
+        const handle = lines.find(line => line.id === lineIds[0])?.productHandle;
+        if (handle) navigate(`/products/${encodeURIComponent(handle)}`);
+        return;
+      }
       case "return": open({ kind: "return", lineId: lineIds[0], fromBar: true }); return;
       case "refund": open({ kind: "refund", lineIds, fromBar: true }); return;
       case "warranty": show("warranty"); return;

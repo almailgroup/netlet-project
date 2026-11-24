@@ -567,6 +567,25 @@ describe("reading orders back", () => {
     }
   });
 
+  /* "I cannot see product details" from an order (the owner's word): each
+     line carries its page on the shop, while the shop shows the product. */
+  it("gives each line of an opened order its product's address, only while the shop shows it", async () => {
+    const placed = await twoVendorOrder();
+    const handleOf = async (productId: number) =>
+      (await ordersModule.getOrderForUser(ids.shopper, placed.order.reference))?.lines.find(line => line.productId === productId)?.productHandle;
+    expect(await handleOf(ids.lamp)).toBe("acme-lamp");
+    expect(await handleOf(ids.kettle)).toBe("other-kettle");
+
+    /* Taken off the shelf, a product has no page to open. */
+    await db.update(products).set({ status: "archived" }).where(eq(products.id, ids.lamp));
+    try {
+      expect(await handleOf(ids.lamp)).toBeNull();
+      expect(await handleOf(ids.kettle)).toBe("other-kettle");
+    } finally {
+      await db.update(products).set({ status: "published" }).where(eq(products.id, ids.lamp));
+    }
+  });
+
   /* The list's "Request a refund" (on the owner's word) is drawn from this
      count, by the opened order's own rule: paid, delivered, in the window,
      nothing asked on the line already. */

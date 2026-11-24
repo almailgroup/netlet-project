@@ -55,7 +55,7 @@ import { isCalendarDay, isOrderPeriod, isOrderTab, isOrderView, ORDER_SEARCH_MAX
 import { OrderSearchAndFilter, filtersOn, type OrderFacets, type OrderFilterChange, type OrderFilterState } from "@/components/account/OrderFilters";
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
-import { LineExpected, LineStatus, OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLineRow } from "@/components/account/OrderActions";
+import { LineExpected, LineStatus, OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLinePhoto, OrderLineRow, OrderLineTitle } from "@/components/account/OrderActions";
 
 /**
  * The words for each state, and its colour.
@@ -479,20 +479,23 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
             {data.lines.map(line => {
               return (
                 <li key={line.id}>
-                  {/* A press anywhere on the item chooses it (on the owner's word). */}
+                  {/* A press on the item opens its product, or chooses it while
+                      the order is edited (on the owner's word). */}
                   <OrderLineRow line={line}>
                   {/* Chosen for the bar's acts, the cart's own circle (on the owner's word). */}
                   <OrderLineChoice line={line} />
                   {/* The photo, and under it where the item is — once it has
                       arrived, its review (on the owner's word). */}
                   <div className="flex w-14 shrink-0 flex-col items-center gap-2">
-                    <Thumb src={line.photo ?? null} alt="" className="size-12 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
+                    <OrderLinePhoto line={line}>
+                      <Thumb src={line.photo ?? null} alt="" className="size-12 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
+                    </OrderLinePhoto>
                     <LineStatus line={line} detail={data} />
                   </div>
                   <div className="min-w-0 flex-1">
                     {/* What can be done with it is the bar's, once its circle is
                         chosen — the item has no ⋯ of its own (on the owner's word). */}
-                    <p dir="auto" className="type-product line-clamp-2 pt-1.5 text-sm text-[#0a285a]">{line.productTitle}</p>
+                    <OrderLineTitle line={line} />
                     {line.variantTitle ? <p dir="auto" className="truncate text-xs ink-muted">{line.variantTitle}</p> : null}
                     {/* Where this one went (3.2.6), when it did not go where
                         the rest of the order went — read off the line's own

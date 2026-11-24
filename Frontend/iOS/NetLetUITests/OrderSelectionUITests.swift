@@ -53,7 +53,7 @@ final class OrderSelectionUITests: XCTestCase {
 
         let count = app.staticTexts["1 item chosen"]
         XCTAssertTrue(count.waitForExistence(timeout: 6), "Choosing the item brought no bar: \(labels(app))")
-        for act in ["Return", "Warranty", "Rate", "Buy again", "Help"] {
+        for act in ["View product", "Return", "Warranty", "Rate", "Buy again", "Help"] {
             XCTAssertTrue(app.buttons[act].exists, "The bar does not offer \(act): \(labels(app))")
         }
         for act in ["Track", "Payment", "Receipt"] {
@@ -81,11 +81,12 @@ final class OrderSelectionUITests: XCTestCase {
         XCTAssertEqual(app.buttons["order-edit"].label, "Edit order", "After Close the button is not Edit order again.")
     }
 
-    /// A press on the item's name chooses it, and a second puts it back, on
-    /// the owner's word ("when you tap on its name or anywhere near that
-    /// specific product, it should automatically choose it") — the circle is
-    /// no longer the only place to press.
-    func testAPressOnTheItemsNameChoosesIt() {
+    /// "I cannot see product details" from an order (the owner's word): with
+    /// the circles away a press on the item opens its product; while the
+    /// order is edited a press on its name chooses it and a second puts it
+    /// back (the owner's "tap on its name … should choose it"), and one item
+    /// chosen offers View product on the bar, which opens it too.
+    func testAPressOnTheItemOpensItsProductAndChoosesItWhileEditing() {
         let app = XCUIApplication()
         app.launchArguments = [
             "-NetLetDemo", "YES", "-netlet.language", "en", "-NetLetUITest", "YES",
@@ -93,19 +94,48 @@ final class OrderSelectionUITests: XCTestCase {
         ]
         app.launch()
 
-        // The press lands on the item's name, with the circles still away: it
-        // opens the editing with that item chosen.
         let name = app.staticTexts["USB-C charger 65W"].firstMatch
         XCTAssertTrue(name.waitForExistence(timeout: 20), "The order's item has no name: \(labels(app))")
-        let onTheName = name.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         let count = app.staticTexts["1 item chosen"]
-        XCTAssertFalse(count.exists, "The bar is up before anything is chosen.")
+
+        // Not editing: the press opens the product's page (the demo answers
+        // every product with its earbuds), and nothing is chosen.
+        name.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(productPage(app).waitForExistence(timeout: 12), "A press on the item did not open its product: \(labels(app))")
+        XCTAssertFalse(count.exists, "A press outside editing chose the item.")
+        backFromProduct(app)
+
+        // Editing: the press on the name chooses the item, a second puts it back.
+        let edit = app.buttons["order-edit"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 10), "Back from the product, the order has no Edit order: \(labels(app))")
+        edit.tap()
+        let onTheName = name.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         onTheName.tap()
-        XCTAssertTrue(count.waitForExistence(timeout: 6), "A press on the item's name did not choose it: \(labels(app))")
-        XCTAssertTrue(named(app, "Choose USB-C charger 65W").exists, "Choosing by the name did not bring the circles out.")
+        XCTAssertTrue(count.waitForExistence(timeout: 6), "While editing, a press on the item's name did not choose it: \(labels(app))")
+        XCTAssertFalse(productPage(app).exists, "While editing, a press on the item opened its product.")
         onTheName.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: count)
         wait(for: [gone], timeout: 4)
+
+        // One item chosen: View product, first on the bar, opens its page.
+        named(app, "Choose USB-C charger 65W").tap()
+        let view = app.buttons["View product"]
+        XCTAssertTrue(view.waitForExistence(timeout: 6), "One item chosen does not offer View product: \(labels(app))")
+        view.tap()
+        XCTAssertTrue(productPage(app).waitForExistence(timeout: 12), "View product did not open the product: \(labels(app))")
+    }
+
+    /// The product page's own buy box: a card's buttons name the product, the page's do not.
+    private func productPage(_ app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label IN %@", ["Add to cart", "Buy now", "Pre-order now"])).firstMatch
+    }
+
+    private func backFromProduct(_ app: XCUIApplication) {
+        let back = app.buttons["Back"].firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 6), "The product page has no way back: \(labels(app))")
+        back.tap()
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: productPage(app))
+        wait(for: [gone], timeout: 10)
     }
 
     /// One item of several chosen offers the whole order's acts too, on the

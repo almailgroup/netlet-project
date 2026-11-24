@@ -869,6 +869,7 @@ struct ChosenItemsBar: View {
     /// Each act's picture.
     static func symbol(_ action: OrderSelection.Action) -> String {
         switch action {
+        case .view: return "eye"
         case .return, .refund: return "arrow.uturn.backward"
         case .warranty: return "checkmark.shield"
         case .quantity: return "square.and.pencil"
@@ -889,6 +890,7 @@ struct ChosenItemsBar: View {
 
     static func key(_ action: OrderSelection.Action) -> String {
         switch action {
+        case .view: return "orders.pickView"
         case .return: return "orders.pickReturn"
         case .refund: return "orders.pickRefund"
         case .warranty: return "orders.pickWarranty"

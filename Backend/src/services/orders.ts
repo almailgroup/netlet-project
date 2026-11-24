@@ -1151,6 +1151,25 @@ export async function firstPhotos(db: Db, productIds: (number | null)[]): Promis
   return new Map(rows.map(row => [row.productId, row.url]));
 }
 
+/**
+ * Each product's address on the shop, for the ones the shop still shows —
+ * `publishedCatalog`'s rule, a published product of an approved store — so
+ * an opened order can lead from an item to its page (on the owner's word:
+ * "I cannot see product details" from an order). A product taken off the
+ * shelf since has none, and its item opens nothing rather than a page saying
+ * it is not found.
+ */
+export async function shownHandles(db: Db, productIds: (number | null)[]): Promise<Map<number, string>> {
+  const ids = [...new Set(productIds.filter((id): id is number => id !== null))];
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: products.id, handle: products.handle })
+    .from(products)
+    .innerJoin(vendors, eq(products.vendorId, vendors.id))
+    .where(and(inArray(products.id, ids), eq(products.status, "published"), eq(vendors.status, "approved")));
+  return new Map(rows.map(row => [row.id, row.handle]));
+}
+
 const PREVIEW_PHOTOS = 3;
 
 async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promise<Map<number, OrderSummary>> {
@@ -1399,8 +1418,16 @@ export async function getOrderForUser(userId: number, reference: string) {
   if (!order) return null;
 
   const rows = await db.select().from(orderItems).where(eq(orderItems.orderId, order.id)).orderBy(orderItems.id);
-  const photos = await firstPhotos(db, rows.map(line => line.productId));
-  const lines = rows.map(line => ({ ...line, photo: line.productId === null ? null : photos.get(line.productId) ?? null }));
+  const [photos, handles] = await Promise.all([
+    firstPhotos(db, rows.map(line => line.productId)),
+    shownHandles(db, rows.map(line => line.productId)),
+  ]);
+  const lines = rows.map(line => ({
+    ...line,
+    photo: line.productId === null ? null : photos.get(line.productId) ?? null,
+    /* Its page on the shop, while the shop shows it (`shownHandles`). */
+    productHandle: line.productId === null ? null : handles.get(line.productId) ?? null,
+  }));
   const owed = (await stillOwedFor(db, [order])).get(order.id) ?? null;
   return { order, lines, owed };
 }

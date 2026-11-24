@@ -324,6 +324,10 @@ struct OrderLine: Decodable, Identifiable, Hashable, Sendable {
     /// status is read off (`ReceiptRules.progress`, the server's `orderProgress`).
     var deliveredAt: Date? = nil
     var preordered: Bool? = nil
+    /// Its page on the shop, while the shop still shows the product — what a
+    /// press on the item opens (on the owner's word: "I cannot see product
+    /// details" from an order). Absent from an older server.
+    var productHandle: String? = nil
 
     /// "Rate this item" is drawn for a line with no review that may be rated.
     var mayRate: Bool { review == nil && reviewEligibility?.allowed == true }

@@ -496,13 +496,24 @@ struct OrderDetailView: View {
         }
     }
 
-    /// A press on an item chooses it or puts it back, and opens the editing
-    /// when it is not open yet — the owner's earlier "tap anywhere on the
-    /// product chooses it", kept with the circles put away.
-    private func toggle(_ id: Int) {
+    /// A press on an item. **Outside editing it opens the item's page on the
+    /// shop**, on the owner's word ("I cannot see product details" from an
+    /// order): nothing is being chosen while the circles are away, so the
+    /// item is a way to its product, as a cart's line is; one the shop no
+    /// longer shows opens nothing. **While editing it chooses the item or
+    /// puts it back** (the owner's "tap anywhere on the product chooses it"),
+    /// and one item chosen offers View product on the bar.
+    private func press(_ line: OrderLine) {
+        guard editing else {
+            if let handle = line.productHandle {
+                Haptics.tap()
+                app.push(.product(handle: handle))
+            }
+            return
+        }
+        Haptics.tap()
         withAnimation(still ? nil : .snappy(duration: 0.25)) {
-            editing = true
-            if chosen.contains(id) { chosen.remove(id) } else { chosen.insert(id) }
+            if chosen.contains(line.id) { chosen.remove(line.id) } else { chosen.insert(line.id) }
         }
     }
 
@@ -528,6 +539,11 @@ struct OrderDetailView: View {
             sheet = one.map { OrderSheet(kind: kind, lineId: $0, remove: remove) } ?? OrderSheet(kind: kind, lineIds: ids, remove: remove)
         }
         switch offer.action {
+        // The item's page on the shop, the order left as it was behind it.
+        case .view:
+            if let handle = detail.lines.first(where: { $0.id == ids.first })?.productHandle {
+                app.push(.product(handle: handle))
+            }
         case .return:
             returning = ids.first
         case .refund: sheet = OrderSheet(kind: .refund, lineIds: ids)
@@ -666,6 +682,9 @@ struct OrderDetailView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(line.productTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
                                 .fixedSize(horizontal: false, vertical: true)
+                                // Outside editing, the name is how VoiceOver reaches the product.
+                                .accessibilityAddTraits(!editing && line.productHandle != nil ? .isLink : [])
+                                .accessibilityHint(!editing && line.productHandle != nil ? l.t("orders.pickView") : "")
                             if let variant = line.variantLabel {
                                 Text(variant).font(.caption).foregroundStyle(Brand.muted)
                             }
@@ -694,16 +713,13 @@ struct OrderDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     // A press anywhere on the item — its photo, its name, its
-                    // price — chooses it or puts it back, on the owner's word
-                    // ("when you tap on its name or anywhere near that specific
-                    // product, it should automatically choose it"). The circle
-                    // is still the one control VoiceOver meets; it is a button,
-                    // so a press on it is its own and never counted twice.
+                    // price — opens its product while the order is not being
+                    // edited, and chooses it or puts it back while it is (on the
+                    // owner's word, `press`). The circle is the one control
+                    // VoiceOver meets for choosing; it is a button, so a press on
+                    // it is its own and never counted twice.
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        Haptics.tap()
-                        toggle(line.id)
-                    }
+                    .onTapGesture { press(line) }
                     .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(Brand.navy.opacity(chosen.contains(line.id) ? 0.05 : 0))

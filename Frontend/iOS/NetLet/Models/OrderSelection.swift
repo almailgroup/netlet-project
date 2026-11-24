@@ -41,15 +41,19 @@ enum OrderSelection {
         var rateable = false
         /// Still a product the shop knows, so it can go in the bag again.
         var rebuyable = true
+        /// Its page is on the shop, so it can be looked at.
+        var viewable = false
     }
 
-    /// The acts in the bar's order — the cancel last, apart. `return` is one
+    /// The acts in the bar's order — looking at the product first (`view`,
+    /// one item's page, on the owner's word: "I cannot see product details …
+    /// and there is no option inside"), the cancel last, apart. `return` is one
     /// item's own form (refund or exchange); `refund` is one refund across
     /// several. `modify`, `address` and `cancelOrder` are the whole order's,
     /// offered whatever is chosen; with every item
     /// chosen `modify` stands in for `quantity`, `cancelOrder` for `cancelItems`.
     enum Action: String, CaseIterable, Sendable {
-        case `return`, refund, warranty, quantity, modify, rate, buyAgain, address, help, cancelItems, cancelOrder
+        case view, `return`, refund, warranty, quantity, modify, rate, buyAgain, address, help, cancelItems, cancelOrder
     }
 
     /// What the whole order allows now, from the server's answer.
@@ -80,6 +84,8 @@ enum OrderSelection {
         func addWhole(_ action: Action, _ allowed: Bool) {
             if allowed { offers.append(Offer(action: action, lineIds: every)) }
         }
+        // One item's page, when one is chosen and the shop still shows it.
+        if chosen.count == 1 { add(.view) { $0.viewable } }
         add(chosen.count == 1 ? .return : .refund) { $0.returnable }
         add(.warranty) { $0.warranty }
         if !all { add(.quantity) { $0.changeable && $0.quantity > 1 } }
@@ -137,7 +143,8 @@ enum OrderSelection {
                 warranty: returnsOn && line.warrantyEligibility?.allowed == true,
                 changeable: detail.change.changeable && line.changeable == true,
                 rateable: line.review != nil || line.reviewEligibility?.allowed == true,
-                rebuyable: line.variantId != nil
+                rebuyable: line.variantId != nil,
+                viewable: line.productHandle != nil
             )
         }
     }

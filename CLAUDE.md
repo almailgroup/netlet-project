@@ -3787,7 +3787,7 @@ selecting the product"; see "An opened order's items are chosen like the
 cart's lines" below). They were a row of buttons over the items, each asking
 afterwards which item it meant, then a ⋯ on each item (`OrderLineMenu`, gone
 with that request). Chosen alone, an item gets what it can have done now:
-return or exchange it, claim its warranty, change
+look at its page on the shop, return or exchange it, claim its warranty, change
 its quantity or cancel it before a driver has it, rate it or edit the review,
 buy it again, and get help with it; what that opens is drawn under the item
 (`OrderLinePanel`) or, in the app, a sheet about that item alone (`OrderSheet`
@@ -3928,13 +3928,24 @@ items get every act they allow, on the owner's word** ("when you select a
 specific order, it should let you choose the product, just like in the cart
 page, and it should give you all the options"). A circle beside each item —
 the cart's own `ChoiceCircle` — and All beside "In this order" (the minus
-when some are chosen). **A press anywhere on the item chooses it or puts it
-back, on the owner's word** ("when you tap on its name or anywhere near that
-specific product, it should automatically choose it"): its photo, name, price
-and lines are one target (`OrderLineRow` on the web, an `onTapGesture` over the
-item's row in the app, the chosen row on a faint navy wash), and a press on a
-link or button inside it does that alone; the circle stays the one control a
-keyboard, a screen reader and VoiceOver meet. **The circles are out only while
+when some are chosen). **While the order is being edited, a press anywhere on
+the item chooses it or puts it back, on the owner's word** ("when you tap on
+its name or anywhere near that specific product, it should automatically
+choose it"): its photo, name, price and lines are one target (`OrderLineRow`
+on the web, an `onTapGesture` over the item's row in the app, the chosen row on
+a faint navy wash), and a press on a link or button inside it does that alone;
+the circle stays the one control a keyboard, a screen reader and VoiceOver
+meet. **Outside editing, the same press opens the item's page on the shop, on
+the owner's word** ("now I cannot see product details from [the order] and
+there is no option inside either"): with the circles away nothing is being
+chosen, so the item is a way to its product, as a cart's line is — its name
+the link a keyboard and a screen reader meet (`OrderLineTitle`; the app's name
+carries the link trait), its photo the same link for the eye alone
+(`OrderLinePhoto`), the rest of the row the finger's larger target. The order
+sends each line's `productHandle` (`shownHandles` in `services/orders.ts`, the
+shop's own rule — a published product of an approved store), so a product
+taken off the shelf since opens nothing rather than a page saying it is not
+found. **The circles are out only while
 the order is being edited, on the owner's word** ("when I came to this page no
 need to see it in this way … add an icon like edit your order, once you click
 it, it will open like that to control all or each one separately"): the order
@@ -3942,10 +3953,10 @@ opens on its items alone, with "Edit order" (a pencil, `EditOrderButton` in the
 app, beside the PDF pill on the web) at the end of the "In this order" row;
 pressed, the All circle, every item's circle and "Choose items, or all of
 them…" come out and the button reads "Done", which puts them away with the
-choice, as the bar's Close does. A press on an item still chooses it and opens
-the editing with it, so the keyboard's way in is the button and the finger's is
-either (`editing` in `OrderAfterSales` and `OrderDetailView`; the screenshots'
-`orderChosen:` hook opens it). While anything is chosen a bar of
+choice, as the bar's Close does. Edit order is the one way into the editing
+(`editing` in `OrderAfterSales` and `OrderDetailView`; the screenshots'
+`orderChosen:` hook opens it): a press on an item used to open it too, which
+left an order with no way to its products. While anything is chosen a bar of
 presses: on a
 phone it floats over the tab bar (`PhoneActionBar` on the web, which puts the
 assistant aside; `ChosenItemsBar` in the app, `floatsAtFoot`, with
@@ -3956,7 +3967,8 @@ offers **every act the chosen items allow and none they do not**:
 `OrderSelection`, on the same cases) reads the facts the server already sent
 on `orders.get` — each line's return window, warranty and review eligibility,
 whether it can still change, whether it is still for sale — and answers, in
-the bar's order, Return (one item: its own form, refund or exchange)
+the bar's order, View product (one item, while the shop shows it: its page,
+the order left as it was behind it), Return (one item: its own form, refund or exchange)
 or Refund (several: one refund across the ones that can go back), Warranty,
 Quantity (an item of more than one, before a driver has it), Rate, Buy again,
 Help and Cancel item (last, in red), each with how many of the chosen it is about
