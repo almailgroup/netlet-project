@@ -162,7 +162,7 @@ final class OrderSelectionUITests: XCTestCase {
         XCTAssertEqual(named(app, "Choose Harbour Desk Lamp").exists, true, "The lamp has no circle: \(labels(app))")
         circle.tap()
         XCTAssertTrue(app.staticTexts["1 item chosen"].waitForExistence(timeout: 6), "Choosing the kettle brought no bar: \(labels(app))")
-        for act in ["Change order", "Buy again", "Address", "Help", "Cancel item"] {
+        for act in ["Change order", "Buy again", "Change address", "Help", "Cancel item"] {
             XCTAssertTrue(app.buttons[act].exists, "One item chosen does not offer \(act): \(labels(app))")
         }
         for act in ["Track", "Payment", "Receipt"] {

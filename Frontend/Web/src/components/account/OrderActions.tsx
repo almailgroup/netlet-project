@@ -303,7 +303,11 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           {/* Every item at once, the cart's All: the circle lines up with the
               items' own — out only while the order is being edited. */}
-          <span className="flex min-h-11 min-w-0 items-center gap-1 pointer-fine:min-h-9">
+          <span className="flex min-h-11 min-w-0 items-center gap-1.5 pointer-fine:min-h-9">
+            {/* No "In this order" drawn, on the owner's word ("remove this
+                word … edit order keep it left"); a screen reader still hears
+                what the list is. */}
+            <h4 className="sr-only">{t("orders.inThisOrder")}</h4>
             {editing ? (
               <span className="panel-in">
                 <ChoiceCircle
@@ -314,10 +318,8 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
                 />
               </span>
             ) : null}
-            <h4 className="text-[14px] font-extrabold text-[#0a285a]">{t("orders.inThisOrder")}</h4>
-          </span>
-          <span className="ms-auto flex items-center gap-2">
-            {/* "Edit order" brings the circles; "Done" puts them away. */}
+            {/* "Edit order" brings the circles; "Done" puts them away — at the
+                row's start, beside the All circle. */}
             <button
               type="button"
               onClick={() => { pressHaptic(); if (editing) stopEditing(); else setEditing(true); }}
@@ -326,6 +328,8 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
               {editing ? <Check className="size-4" aria-hidden /> : <PencilLine className="size-4" aria-hidden />}
               {t(editing ? "orders.editDone" : "orders.editOrder")}
             </button>
+          </span>
+          <span className="ms-auto flex items-center gap-2">
             {/* The receipt as a PDF, at the top of the order under its title
                 and its date, on the owner's word — it was at the order's foot. */}
             <ReceiptButton detail={detail} />

@@ -4,7 +4,7 @@ import XCTest
 /// download pdf option from the bottom of the order page to here, and include
 /// the date of the order as well"): a round PDF button at the end of the
 /// title's line — the right in English, the left in Arabic — the date under
-/// the title, above "In this order", and no second receipt button at the
+/// the title, above Edit order, and no second receipt button at the
 /// order's foot. A press makes the receipt and shows it.
 final class OrderReceiptUITests: XCTestCase {
     override func setUp() {
@@ -12,14 +12,14 @@ final class OrderReceiptUITests: XCTestCase {
     }
 
     func testTheReceiptIsBesideTheTitleWithTheDateUnderItInEnglish() {
-        check(language: "en", heading: "Order NL-20261001-J7MWY", choose: "In this order", placed: "Ordered on ")
+        check(language: "en", heading: "Order NL-20261001-J7MWY", gone: "In this order", placed: "Ordered on ")
     }
 
     func testTheReceiptIsBesideTheTitleWithTheDateUnderItInArabic() {
-        check(language: "ar", heading: "الطلب NL-20261001-J7MWY", choose: "في هذا الطلب", placed: "تاريخ الطلب:")
+        check(language: "ar", heading: "الطلب NL-20261001-J7MWY", gone: "في هذا الطلب", placed: "تاريخ الطلب:")
     }
 
-    private func check(language: String, heading: String, choose: String, placed: String) {
+    private func check(language: String, heading: String, gone: String, placed: String) {
         let app = XCUIApplication()
         app.launchArguments = [
             "-NetLetDemo", "YES", "-netlet.language", language, "-NetLetUITest", "YES",
@@ -34,8 +34,16 @@ final class OrderReceiptUITests: XCTestCase {
         let date = app.staticTexts["order-placed-on"]
         XCTAssertTrue(date.exists, "The order does not say when it was ordered (\(language)).")
         XCTAssertTrue(date.label.hasPrefix(placed), "The date reads \(date.label), not \(placed)…")
-        let inThisOrder = app.staticTexts[choose]
-        XCTAssertTrue(inThisOrder.exists, "No \(choose) under the title: \(labels(app))")
+        // "In this order" is not drawn, and Edit order is at the row's start
+        // (the owner's word: "remove this word … edit order keep it left").
+        XCTAssertFalse(app.staticTexts[gone].exists, "\(gone) is still drawn over the items.")
+        let inThisOrder = app.buttons["order-edit"]
+        XCTAssertTrue(inThisOrder.exists, "No Edit order under the title: \(labels(app))")
+        if language == "ar" {
+            XCTAssertGreaterThan(inThisOrder.frame.midX, app.windows.firstMatch.frame.midX, "On the Arabic page Edit order is not at the row's start (the right).")
+        } else {
+            XCTAssertLessThan(inThisOrder.frame.midX, app.windows.firstMatch.frame.midX, "Edit order is not at the row's start (the left).")
+        }
 
         // Beside the title, on its line, at the line's end.
         XCTAssertLessThan(abs(pdf.frame.midY - title.frame.midY), 20, "The PDF button is not on the title's line: pdf \(pdf.frame), title \(title.frame)")
@@ -46,8 +54,8 @@ final class OrderReceiptUITests: XCTestCase {
         }
         // The date under the title, both above the items.
         XCTAssertGreaterThan(date.frame.minY, title.frame.minY, "The date is not under the title.")
-        XCTAssertLessThan(date.frame.maxY, inThisOrder.frame.minY, "The date is not above \(choose).")
-        XCTAssertLessThan(pdf.frame.maxY, inThisOrder.frame.minY, "The PDF button is not above \(choose).")
+        XCTAssertLessThan(date.frame.maxY, inThisOrder.frame.minY, "The date is not above Edit order.")
+        XCTAssertLessThan(pdf.frame.maxY, inThisOrder.frame.minY, "The PDF button is not above Edit order.")
 
         // One receipt button on the page: none left at the order's foot.
         let receipts = app.buttons.matching(NSPredicate(format: "label == %@", pdf.label))

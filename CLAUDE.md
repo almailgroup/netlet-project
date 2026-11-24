@@ -3574,7 +3574,7 @@ end of the title's line, the reference drawn smaller rather than broken
 when it needs the room, and "Ordered on …" under the title
 (`OrderReceiptButton`, `OrderDetailView.title`; the card's date at the top
 of the items went with it); on the website a "PDF" pill at the end of the
-"In this order" row, under the order's own row with its date, and a linked
+row over the items (Edit order at its start), under the order's own row with its date, and a linked
 order opened on its own says its date under its heading. Both are named
 "Download receipt (PDF)". It was a row of the card at the order's foot,
 which is the invoice and any credit notes alone now ("Invoice", or
@@ -3802,7 +3802,8 @@ its quantity or cancel it before a driver has it, rate it or edit the review,
 buy it again, and get help with it; what that opens is drawn under the item
 (`OrderLinePanel`) or, in the app, a sheet about that item alone (`OrderSheet`
 with its `lineId`). **What is about the whole order is the bar's too** —
-the order's change form (Change order), its delivery address and Cancel
+the order's change form (Change order), its delivery address (**"Change
+address", on the owner's word** — it read "Address") and Cancel
 order, behind its question (`WholeOrder` in `orderSelection.ts`; the order had
 its own ⋯ of those until then), on the owner's word ("remove all these 3 dot
 buttons; instead put their options here"). **Track, Payment and Receipt are
@@ -3830,7 +3831,7 @@ order"): it stood beside Cancel item whatever was chosen, so somebody who had
 chosen one thing was offered to cancel everything. With every item chosen the
 order's acts stand in for the items' (`everyChosen`): Change order for
 Quantity, Cancel order for cancelling them all, and never Cancel items beside
-it; the All circle beside "In this order" chooses them all in one press. **The
+it; the All circle beside Edit order chooses them all in one press. **The
 bar puts itself away with Close** (`orders.chosenClear`, on the owner's word:
 "back or close instead of clear"), which empties the choice as Clear did. Change order is offered while
 any item of the order may change, the chosen one or not (`modifiable`, the
@@ -3838,7 +3839,7 @@ change form being the order's). **The room the bar needs is at the page's
 foot** (portalled to the end of `<main>`, about 80px a row): it sat under the
 opened order, and the orders listed after it could not be scrolled clear of
 the bar. The app's order is a page of its own and keeps the room under its
-last card (`barRoom`, about 91 points a row). A quiet line under "In this order" says to choose
+last card (`barRoom`, about 91 points a row). A quiet line under Edit order says to choose
 items while none is (`orders.chooseHint`). An item's review and its return's state stay on the item, being what is
 true rather than something to do. **Nothing on the page decides**: each button is drawn from the server's own answer on `orders.get` —
 `cancel`, `change`, `changeAddress`, each line's `returnState`,
@@ -3937,7 +3938,7 @@ on its way).
 items get every act they allow, on the owner's word** ("when you select a
 specific order, it should let you choose the product, just like in the cart
 page, and it should give you all the options"). A circle beside each item —
-the cart's own `ChoiceCircle` — and All beside "In this order" (the minus
+the cart's own `ChoiceCircle` — and All beside Edit order (the minus
 when some are chosen). **While the order is being edited, a press anywhere on
 the item chooses it or puts it back, on the owner's word** ("when you tap on
 its name or anywhere near that specific product, it should automatically
@@ -3960,7 +3961,10 @@ the order is being edited, on the owner's word** ("when I came to this page no
 need to see it in this way … add an icon like edit your order, once you click
 it, it will open like that to control all or each one separately"): the order
 opens on its items alone, with "Edit order" (a pencil, `EditOrderButton` in the
-app, beside the PDF pill on the web) at the end of the "In this order" row;
+app) at the start of the row over the items — **the row has no "In this order"
+and Edit order sits at its start, on the owner's word** ("remove this word (in
+this order) edit order keep it left"; the web keeps the words for a screen
+reader alone, the PDF pill at the row's end); it was at the row's end;
 pressed, the All circle, every item's circle and "Choose items, or all of
 them…" come out and the button reads "Done", which puts them away with the
 choice, as the bar's Close does. Edit order is the one way into the editing

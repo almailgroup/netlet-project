@@ -69,24 +69,21 @@ struct OrderActionsBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 12) {
-                HStack(spacing: 0) {
-                    // Every item at once, the cart's All; its circle lines up with
-                    // the items' own — out only while the order is being edited.
-                    if let chosen, isEditing {
-                        let all = detail.lines.map(\.id)
-                        ChoiceCircle(state: OrderSelection.state(all: all, chosen: chosen.wrappedValue), label: l.t("orders.chooseAllItems")) { on in
-                            chosen.wrappedValue = on ? Set(all) : []
-                        }
-                        .padding(.leading, -12)
-                        .transition(still ? .identity : .scale(scale: 0.6).combined(with: .opacity))
+            // No "In this order" over the items, and Edit order at the row's
+            // start, on the owner's word ("remove this word … edit order keep
+            // it left"): the All circle, while editing, then the button.
+            HStack(spacing: 8) {
+                // Every item at once, the cart's All; its circle lines up with
+                // the items' own — out only while the order is being edited.
+                if let chosen, isEditing {
+                    let all = detail.lines.map(\.id)
+                    ChoiceCircle(state: OrderSelection.state(all: all, chosen: chosen.wrappedValue), label: l.t("orders.chooseAllItems")) { on in
+                        chosen.wrappedValue = on ? Set(all) : []
                     }
-                    Text(l.t("orders.inThisOrder"))
-                        .font(.inter(15, .heavy))
-                        .foregroundStyle(Brand.navy)
-                        .accessibilityAddTraits(.isHeader)
+                    .padding(.leading, -12)
+                    .padding(.trailing, -4)
+                    .transition(still ? .identity : .scale(scale: 0.6).combined(with: .opacity))
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 if let editing, chosen != nil {
                     EditOrderButton(editing: editing.wrappedValue) {
                         withAnimation(still ? nil : .snappy(duration: 0.25)) {
@@ -96,6 +93,7 @@ struct OrderActionsBar: View {
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             // The bar is the one way to the order's acts (on the owner's word):
             // said while editing and nothing is chosen yet.
             if let chosen, isEditing, chosen.wrappedValue.isEmpty {
