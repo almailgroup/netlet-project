@@ -150,7 +150,13 @@ export function useOrderReceipt() {
   return { making, download };
 }
 
-/** The button under an opened order, beside its invoice. */
+/**
+ * The receipt's button at the top of an opened order, on the owner's word
+ * ("move the download pdf option from the bottom of the order page to
+ * here", a picture with "pdf" beside the order's title): "PDF" with a
+ * document's download mark, named "Download receipt (PDF)", which holds the
+ * word drawn (WCAG 2.5.3). It was a pill in the card at the order's foot.
+ */
 export function ReceiptButton({ detail }: { detail: Detail }) {
   const { t } = useTranslation();
   const receipt = useOrderReceipt();
@@ -160,10 +166,12 @@ export function ReceiptButton({ detail }: { detail: Detail }) {
       onClick={() => void receipt.download(detail)}
       disabled={receipt.making}
       aria-busy={receipt.making}
-      className="glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 disabled:opacity-70 pointer-fine:min-h-9"
+      aria-label={receipt.making ? t("receipt.making") : t("receipt.download")}
+      title={t("receipt.download")}
+      className="glass type-control pressable inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 disabled:opacity-70 pointer-fine:min-h-9"
     >
       {receipt.making ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <FileDown className="size-4" aria-hidden />}
-      {receipt.making ? t("receipt.making") : t("receipt.download")}
+      <span aria-hidden>{t("receipt.pdf")}</span>
     </button>
   );
 }

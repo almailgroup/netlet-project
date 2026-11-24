@@ -318,7 +318,8 @@ enum OrderReceiptPDF {
 }
 
 /// Makes an order's receipt and shows it in Quick Look, where Share and Save
-/// to Files are — one model for the button under the order and the order's ⋯.
+/// to Files are — one model for the button beside the order's title and the
+/// bar of the chosen items.
 /// Not a main-actor class, so the order screen can hold it as a `@State`
 /// default (Swift 5 mode evaluates that off the main actor); what makes the
 /// receipt is.
@@ -341,7 +342,11 @@ final class OrderReceiptModel {
     }
 }
 
-/// The button under an opened order, beside its invoice.
+/// The receipt's button at the end of an opened order's title, on the owner's
+/// word ("move the download pdf option from the bottom of the order page to
+/// here", a picture with "pdf" beside the title): a round button the size of
+/// My orders' filter, a document with an arrow over "PDF", named "Download
+/// receipt (PDF)" to VoiceOver. It was a row in the card at the order's foot.
 struct OrderReceiptButton: View {
     let model: OrderReceiptModel
     let make: () -> Void
@@ -349,23 +354,29 @@ struct OrderReceiptButton: View {
 
     var body: some View {
         Button {
+            Haptics.tap()
             make()
         } label: {
-            HStack(spacing: 10) {
+            VStack(spacing: 1) {
                 if model.making {
-                    ProgressView().tint(Brand.navy)
+                    ProgressView().tint(Brand.navy).controlSize(.small)
                 } else {
-                    Image(systemName: "arrow.down.doc").foregroundStyle(Brand.navy)
+                    Image(systemName: "arrow.down.doc")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text(l.t("receipt.pdf"))
+                        .font(.inter(9, .heavy))
+                        .tracking(0.3)
                 }
-                Text(l.t(model.making ? "receipt.making" : "receipt.download"))
-                    .font(.inter(14, .semibold))
-                    .foregroundStyle(Brand.navy)
-                Spacer()
             }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
+            .foregroundStyle(Brand.navy)
+            .frame(width: 48, height: 48)
+            .background(Circle().fill(Color.white))
+            .overlay(Circle().strokeBorder(Brand.line, lineWidth: 1))
+            .contentShape(Circle())
         }
-        .buttonStyle(.tap)
+        .buttonStyle(SpringPressStyle(cornerRadius: 24))
         .disabled(model.making)
+        .accessibilityLabel(l.t(model.making ? "receipt.making" : "receipt.download"))
+        .accessibilityIdentifier("order-receipt-pdf")
     }
 }

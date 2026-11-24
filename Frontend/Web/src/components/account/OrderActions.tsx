@@ -63,7 +63,7 @@ import { OrderPayment } from "@/components/account/OrderPayment";
 import { HandoverCard, PaidOnlineNote } from "@/components/account/OrderHandover";
 import { WarrantyClaims, WarrantyForm } from "@/components/account/OrderWarranty";
 import { OrderHelp } from "@/components/account/OrderHelp";
-import { useOrderReceipt } from "@/components/account/OrderReceipt";
+import { ReceiptButton, useOrderReceipt } from "@/components/account/OrderReceipt";
 import { useCart } from "@/contexts/CartContext";
 import { useFeature } from "@/hooks/useFeature";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -267,16 +267,21 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
   return (
     <OrderControls.Provider value={controls}>
       <div className="mb-3">
-        {/* Every item at once, the cart's All: the circle lines up with the items' own. */}
-        <span className="flex min-w-0 items-center gap-1">
-          <ChoiceCircle
-            state={chosenState(detail.lines.map(line => line.id), chosen)}
-            label={t("orders.chooseAllItems")}
-            onToggle={on => choose(detail.lines.map(line => line.id), on)}
-            className="-ms-2.5 pointer-fine:-ms-1.5"
-          />
-          <h4 className="text-[14px] font-extrabold text-[#0a285a]">{t("orders.inThisOrder")}</h4>
-        </span>
+        <div className="flex items-center justify-between gap-3">
+          {/* Every item at once, the cart's All: the circle lines up with the items' own. */}
+          <span className="flex min-w-0 items-center gap-1">
+            <ChoiceCircle
+              state={chosenState(detail.lines.map(line => line.id), chosen)}
+              label={t("orders.chooseAllItems")}
+              onToggle={on => choose(detail.lines.map(line => line.id), on)}
+              className="-ms-2.5 pointer-fine:-ms-1.5"
+            />
+            <h4 className="text-[14px] font-extrabold text-[#0a285a]">{t("orders.inThisOrder")}</h4>
+          </span>
+          {/* The receipt as a PDF, at the top of the order under its title
+              and its date, on the owner's word — it was at the order's foot. */}
+          <ReceiptButton detail={detail} />
+        </div>
         {/* The bar is the one way to the order's acts: said while nothing is chosen. */}
         {chosen.length === 0 ? <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("orders.chooseHint")}</p> : null}
       </div>

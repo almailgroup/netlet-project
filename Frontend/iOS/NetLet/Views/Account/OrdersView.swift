@@ -421,9 +421,7 @@ struct OrderDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     BackLink(label: l.t("invoice.back"))
                         .padding(.bottom, -8)
-                    Text(l.t("orders.orderHeading", ["reference": reference]))
-                        .pageTitle()
-                        .fixedSize(horizontal: false, vertical: true)
+                    title(model)
                     if model.missing {
                         Text(l.t("orders.detailMissing"))
                             .font(.subheadline)
@@ -436,7 +434,7 @@ struct OrderDetailView: View {
                                     rating = target(line)
                                 }, chosen: $chosen, askingCancel: $askingCancel)
                                 lines(detail, reload: { await model.load() })
-                                OrderDocumentsList(documents: detail.documents, receipt: receipt) { makeReceipt(detail) }
+                                if !detail.documents.isEmpty { OrderDocumentsList(documents: detail.documents) }
                                 if detail.hasShipped { TrackingPanel(reference: reference) }
                                 ParcelCareSection(reference: reference, detail: detail, reload: { await model.load() })
                                 totals(detail.order, tax: detail.tax)
@@ -554,9 +552,44 @@ struct OrderDetailView: View {
         ReviewTarget(orderItemId: line.id, productTitle: line.productTitle, photo: line.photo, review: line.review)
     }
 
+    /// The order's title with its receipt at the line's end, and when it was
+    /// ordered under it — both on the owner's word ("move the download pdf
+    /// option … to here, and include the date of the order as well"). The
+    /// reference stays on one line (it is read down a phone), drawn smaller
+    /// rather than broken when the button leaves it less room; until the
+    /// order arrives the button's and the date's room is kept, so nothing
+    /// moves when they come.
+    private func title(_ model: OrderDetailViewModel) -> some View {
+        let detail = model.detail.value
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center, spacing: 10) {
+                Text(l.t("orders.orderHeading", ["reference": reference]))
+                    .pageTitle()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let detail {
+                    OrderReceiptButton(model: receipt) { makeReceipt(detail) }
+                } else if !model.missing {
+                    Color.clear.frame(width: 48, height: 48).accessibilityHidden(true)
+                }
+            }
+            if let detail {
+                Text(l.t("orders.orderedOn", ["date": OrderWording.date(detail.order.placedAt, language: l.current)]))
+                    .font(.inter(14, .semibold))
+                    .foregroundStyle(JourneyStreet.passed)
+                    .accessibilityIdentifier("order-placed-on")
+            } else if !model.missing {
+                Text(l.t("orders.orderedOn", ["date": OrderWording.date(Date(), language: l.current)]))
+                    .font(.inter(14, .semibold))
+                    .redacted(reason: .placeholder)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+
     private func lines(_ detail: OrderDetail, reload: @escaping () async -> Void) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(OrderWording.date(detail.order.placedAt, language: l.current)).font(.footnote).foregroundStyle(Brand.muted)
             if !detail.deliverySlots.isEmpty {
                 // The day and time asked of each store, said as the shopper's own.
                 VStack(alignment: .leading, spacing: 6) {

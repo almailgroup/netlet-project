@@ -685,19 +685,17 @@ private struct TrackMap: View {
     }
 }
 
-/// The order's receipt, its invoice and any credit notes — the receipt made
-/// on the press (`OrderReceiptPDF`), each document opening itself.
+/// The order's invoice and any credit notes, each opening itself (3.6.6) —
+/// drawn once the money has been collected. The receipt is the PDF button
+/// beside the order's title now (`OrderReceiptButton`), on the owner's word.
 struct OrderDocumentsList: View {
     let documents: [OrderDocument]
-    let receipt: OrderReceiptModel
-    let makeReceipt: () -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(l.t(documents.isEmpty ? "receipt.title" : "receipt.heading")).font(.headline).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
-            OrderReceiptButton(model: receipt, make: makeReceipt)
+            Text(l.t(documents.contains(where: \.isCredit) ? "orders.invoiceAndCredit" : "invoice.title")).font(.headline).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
             ForEach(documents) { document in
                 Button {
                     app.open(.invoice(number: document.number))

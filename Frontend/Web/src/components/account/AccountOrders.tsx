@@ -58,7 +58,6 @@ import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
 import { OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLineRow } from "@/components/account/OrderActions";
 import { OrderJourney } from "@/components/account/OrderJourney";
-import { ReceiptButton } from "@/components/account/OrderReceipt";
 
 /**
  * The words for each state, and its colour.
@@ -251,7 +250,7 @@ export function AccountOrders() {
             <h3 id="linked-order" className="mb-3 text-[15px] font-bold text-[#0a285a]">
               {t("orders.orderHeading", { reference: openRef })}
             </h3>
-            <OrderLines reference={openRef} trackFirst={trackRef === openRef} refundFirst={refundRef === openRef} />
+            <OrderLines reference={openRef} trackFirst={trackRef === openRef} refundFirst={refundRef === openRef} dated />
           </section>
         ) : null;
         if (!data || data.total === 0) {
@@ -435,7 +434,7 @@ function OrderTotal({ order }: {
  * per line against the server's clock and a list of fifty orders would resolve
  * fifty windows nobody has asked to see.
  */
-function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFirst = false }: { reference: string; trackFirst?: boolean; refundFirst?: boolean; rateFirst?: boolean }) {
+function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFirst = false, dated = false }: { reference: string; trackFirst?: boolean; refundFirst?: boolean; rateFirst?: boolean; dated?: boolean }) {
   const { t, locale } = useTranslation();
   const returnsOn = useFeature("returns");
   const detail = trpc.orders.get.useQuery({ reference });
@@ -465,6 +464,10 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
         if (!data) return <p className="text-sm ink-muted">{t("orders.detailMissing")}</p>;
 
         return (
+          <>
+          {/* An order a link opened on its own has no row over it saying when
+              it was ordered, so it says so under its title (on the owner's word). */}
+          {dated ? <p className="-mt-2 mb-3 text-[13px] font-semibold text-[#3d5170]">{t("orders.orderedOn", { date: formatDate(data.order.placedAt) })}</p> : null}
           <OrderAfterSales reference={reference} detail={data} trackFirst={trackFirst} refundFirst={refundFirst} onRate={rate}>
           {/* The day and time asked of each store in the cart (0085), as frozen. */}
           {data.deliverySlots.length ? (
@@ -555,14 +558,13 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
               {t("orders.taxIncluded", { rate: rateLabel(data.tax.rate), amount: formatMoney(data.tax.amount, { currencyCode: data.order.currency, locale }) })}
             </p>
           ) : null}
-          {/* The receipt, every order's (on the owner's word), and the
-              invoice and any credit notes (3.6.6) once the money has been
-              collected — the moment the sale completes. */}
-          {(
+          {/* The invoice and any credit notes (3.6.6) once the money has
+              been collected — the moment the sale completes. The receipt is
+              at the order's top now, on the owner's word (`ReceiptButton`). */}
+          {data.documents.length > 0 ? (
             <section aria-labelledby={`docs-${reference}`} className="mt-5 border-t border-[#e7edf5] pt-4">
-              <h4 id={`docs-${reference}`} className="type-label ink-muted">{t(data.documents.length > 0 ? "receipt.heading" : "receipt.title")}</h4>
+              <h4 id={`docs-${reference}`} className="type-label ink-muted">{t(data.documents.some(document => document.kind === "credit_note") ? "orders.invoiceAndCredit" : "invoice.title")}</h4>
               <ul className="mt-2 flex flex-wrap gap-2">
-                <li><ReceiptButton detail={data} /></li>
                 {data.documents.map(document => (
                   <li key={document.number}>
                     <Link href={`/invoices/${document.number}`} className="glass type-control pressable inline-flex items-center gap-1.5 rounded-full px-3 py-1.5">
@@ -573,7 +575,7 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                 ))}
               </ul>
             </section>
-          )}
+          ) : null}
           <ParcelCare reference={reference} currency={data.order.currency} parcels={data.parcels} />
           {rating ? (
             <ReviewDialog
@@ -583,6 +585,7 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
             />
           ) : null}
           </OrderAfterSales>
+          </>
         );
       }}
     </QueryGate>

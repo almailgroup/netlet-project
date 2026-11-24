@@ -13,8 +13,10 @@ describe("dictionary completeness", () => {
   it("has no Arabic entry left as a copy of the English", () => {
     /* Legitimately identical in both dictionaries: each names a language in
        that language's own words, which is the point — "English" has to read as
-       English to somebody who cannot read the Arabic, and the reverse. */
-    const allowed = new Set<MessageKey>(["header.language", "account.english", "account.arabic"]);
+       English to somebody who cannot read the Arabic, and the reverse. The
+       receipt's button says "PDF", which is the file's name on an Arabic
+       phone too — the reason "CSV" is allowed below. */
+    const allowed = new Set<MessageKey>(["header.language", "account.english", "account.arabic", "receipt.pdf"]);
     const untranslated = (Object.keys(en) as MessageKey[]).filter(
       (key) => !allowed.has(key) && ar[key] === en[key],
     );
@@ -51,6 +53,9 @@ describe("dictionary completeness", () => {
       // The receipt is saved as a PDF, and the file a phone or a browser then
       // shows is named that way in Arabic too — the CSV reason.
       "receipt.download",
+      // The receipt's button beside an order's title says what it gives:
+      // "PDF", the file's own name on an Arabic phone — the CSV reason.
+      "receipt.pdf",
       // Names the variable an administrator sets in the deployment's settings,
       // which is spelled the same in every language — the `https` reason.
       "features.why.noGateway",

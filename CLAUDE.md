@@ -3553,9 +3553,22 @@ hold none on the road.
 
 **An opened order's receipt can be saved as a PDF, on the owner's word**
 ("an export to PDF option that will show all the details of your order in
-the form of a receipt"): "Download receipt (PDF)" under the order, above its
-invoice (the card is "Receipt and invoice" now), and as Receipt on the bar
-of the chosen items whatever is chosen, on both platforms. It carries the order's number, when it was placed, where it is,
+the form of a receipt"), and as Receipt on the bar of the chosen items
+whatever is chosen, on both platforms. **Its button is at the order's top,
+with the date, on the owner's word** ("move the download pdf option from
+the bottom of the order page to here, and include the date of the order as
+well", a picture with "pdf" beside the title): in the app a round button
+the size of My orders' filter — a document with an arrow over "PDF" — at the
+end of the title's line, the reference drawn smaller rather than broken
+when it needs the room, and "Ordered on …" under the title
+(`OrderReceiptButton`, `OrderDetailView.title`; the card's date at the top
+of the items went with it); on the website a "PDF" pill at the end of the
+"In this order" row, under the order's own row with its date, and a linked
+order opened on its own says its date under its heading. Both are named
+"Download receipt (PDF)". It was a row of the card at the order's foot,
+which is the invoice and any credit notes alone now ("Invoice", or
+"Invoice and credit notes"), drawn only once there is one.
+`OrderReceiptUITests` holds the app's in both languages. It carries the order's number, when it was placed, where it is,
 how it is paid, where it goes (the name, the number, the address, the
 governorate, the notes), each item with its option, its store, the quantity
 at its price, its own code or that it was cancelled or returned, then the
