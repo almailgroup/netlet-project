@@ -12,10 +12,18 @@
  * rated and asked about; one item's act is drawn under that item
  * (`OrderLinePanel`), several over the items. Whatever is chosen, one item
  * included, the bar also has what only the whole order can have done: the
- * order's change form, its address, its way to pay, its receipt and
- * cancelling the order (on the owner's word: "keep as many options as there
- * is"; they waited for every item to be chosen once). Each item had a ⋯ of
- * its own for a while, and so did the order.
+ * order's change form, its address and cancelling the order (on the owner's
+ * word: "keep as many options as there is"; they waited for every item to be
+ * chosen once). Each item had a ⋯ of its own for a while, and so did the
+ * order.
+ *
+ * **Track, Payment and Receipt are not on the bar, on the owner's word** ("no
+ * need inside the track because will show out side, no need payment because
+ * we will control full payment for all order one time, no need receipt
+ * because there will be one receipt for all"): where each item is, is drawn
+ * under its photo; the way to pay is the whole order's, changed from the one
+ * line saying how it is paid (`PaymentLine`); the receipt is the PDF at the
+ * top.
  *
  * **The circles are out only while the order is being edited**, on the
  * owner's word ("when I came to this page no need to see it in this way …
@@ -40,9 +48,9 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
   Check,
+  Banknote,
   CircleX,
   CreditCard,
-  FileDown,
   House,
   LifeBuoy,
   MapPin,
@@ -73,7 +81,7 @@ import { OrderPayment } from "@/components/account/OrderPayment";
 import { HandoverCard, PaidOnlineNote } from "@/components/account/OrderHandover";
 import { WarrantyClaims, WarrantyForm } from "@/components/account/OrderWarranty";
 import { OrderHelp } from "@/components/account/OrderHelp";
-import { ReceiptButton, useOrderReceipt } from "@/components/account/OrderReceipt";
+import { ReceiptButton } from "@/components/account/OrderReceipt";
 import { ItemStatus } from "@/components/account/OrderJourney";
 import { useCart } from "@/contexts/CartContext";
 import { useFeature } from "@/hooks/useFeature";
@@ -193,7 +201,6 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
     onSuccess: () => { setAsking(false); toast.success(t("orders.cancelDone")); refresh(); },
     onError: error => { setAsking(false); toast.error(tError(error.message)); refresh(); },
   });
-  const receipt = useOrderReceipt();
   const again = trpc.orders.buyAgain.useMutation({
     onSuccess: async answer => {
       if (answer.cartId) await adoptCart(answer.cartId);
@@ -329,6 +336,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
 
       {/* Paid online (0086), and the code the driver scans at the door. */}
       <PaidOnlineNote detail={detail} />
+      <PaymentLine />
       <HandoverCard detail={detail} />
 
       <WarrantyClaims detail={detail} onChanged={refresh} />
@@ -370,7 +378,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
 
       {/* What can be done with the items chosen, and with the whole order once
           every item is, on the owner's word. */}
-      <ChosenBar onBuyAgain={buyChosen} onCancelOrder={() => setAsking(true)} onReceipt={() => void receipt.download(detail)} />
+      <ChosenBar onBuyAgain={buyChosen} onCancelOrder={() => setAsking(true)} />
 
       <ConfirmDialog
         open={asking}
@@ -463,9 +471,40 @@ export function OrderLineRow({ line, children }: { line: Line; children: ReactNo
   );
 }
 
+/**
+ * How the whole order is paid, and the one place that is changed, on the
+ * owner's word ("we will control full payment for all order one time"): it
+ * was Payment on the bar, offered beside one chosen item as if an item could
+ * be paid for apart. Drawn while the way to pay may still change
+ * (`paymentChange.open`: cash, not paid online, something still coming); the
+ * press opens the order's payment panel just under it, and closes it again.
+ */
+function PaymentLine() {
+  const { t } = useTranslation();
+  const { detail, panel, open } = useControls();
+  if (!detail.paymentChange.open) return null;
+  const opened = panel?.kind === "payment" && panel.lineId === undefined;
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-2xl border border-[#e2e7ef] bg-white px-4 py-2.5">
+      <span className="flex min-w-0 items-center gap-2 text-[13px] font-bold text-[#0a285a]">
+        <Banknote className="size-[18px] shrink-0" aria-hidden />
+        {t("orders.payOnDelivery")}
+      </span>
+      <button
+        type="button"
+        aria-expanded={opened}
+        onClick={() => { pressHaptic(); open({ kind: "payment" }); }}
+        className="glass type-control pressable inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
+      >
+        <CreditCard className="size-4" aria-hidden />
+        {t("orders.changePayment")}
+      </button>
+    </div>
+  );
+}
+
 /** Each act's word on the bar — short, for a row of them — and its picture. */
 const PICK_LABEL: Record<SelectionAction, MessageKey> = {
-  track: "orders.pickTrack",
   return: "orders.pickReturn",
   refund: "orders.pickRefund",
   warranty: "orders.pickWarranty",
@@ -476,12 +515,9 @@ const PICK_LABEL: Record<SelectionAction, MessageKey> = {
   cancelItems: "orders.pickCancelItem",
   modify: "orders.pickModify",
   address: "orders.pickAddress",
-  payment: "orders.pickPayment",
-  receipt: "orders.pickReceipt",
   cancelOrder: "orders.pickCancelOrder",
 };
 const PICK_ICON: Record<SelectionAction, ReactNode> = {
-  track: <Truck className="size-[19px] rtl:-scale-x-100" aria-hidden />,
   return: <RotateCcw className="size-[19px] rtl:-scale-x-100" aria-hidden />,
   refund: <RotateCcw className="size-[19px] rtl:-scale-x-100" aria-hidden />,
   warranty: <ShieldCheck className="size-[19px]" aria-hidden />,
@@ -492,8 +528,6 @@ const PICK_ICON: Record<SelectionAction, ReactNode> = {
   cancelItems: <CircleX className="size-[19px]" aria-hidden />,
   modify: <PencilLine className="size-[19px]" aria-hidden />,
   address: <MapPin className="size-[19px]" aria-hidden />,
-  payment: <CreditCard className="size-[19px]" aria-hidden />,
-  receipt: <FileDown className="size-[19px]" aria-hidden />,
   cancelOrder: <CircleX className="size-[19px]" aria-hidden />,
 };
 
@@ -513,12 +547,10 @@ const PICK_ICON: Record<SelectionAction, ReactNode> = {
  * on a wide screen it sticks to the foot of the window while the order is on
  * screen.
  */
-function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
+function ChosenBar({ onBuyAgain, onCancelOrder }: {
   onBuyAgain: (lineIds: number[]) => Promise<void>;
   /** Cancel the order itself, behind its question. */
   onCancelOrder: () => void;
-  /** The order's receipt as a PDF. */
-  onReceipt: () => void;
 }) {
   const { t } = useTranslation();
   const { detail, chosen, open, rate, stopEditing } = useControls();
@@ -547,7 +579,6 @@ function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
       whole: {
         modifiable: detail.change.changeable && detail.lines.some(line => line.changeable),
         address: detail.changeAddress.changeable,
-        payment: detail.paymentChange.open,
         cancellable: detail.cancel.cancellable,
       },
       everyChosen: chosenState(detail.lines.map(line => line.id), chosen) === "all",
@@ -563,17 +594,14 @@ function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
     const show = (kind: PanelKind, remove = false) =>
       open(one !== undefined ? { kind, lineId: one, remove, fromBar: true } : { kind, lineIds, remove, fromBar: true });
     switch (offer.action) {
-      case "track": show("track"); return;
       case "return": open({ kind: "return", lineId: lineIds[0], fromBar: true }); return;
       case "refund": open({ kind: "refund", lineIds, fromBar: true }); return;
       case "warranty": show("warranty"); return;
       case "quantity": show("modify"); return;
       case "cancelItems": show("modify", true); return;
-      /* The whole order's: its own panels over the items, its receipt, its cancel. */
+      /* The whole order's: its own panels over the items, and its cancel. */
       case "modify": open({ kind: "modify", fromBar: true }); return;
       case "address": open({ kind: "address", fromBar: true }); return;
-      case "payment": open({ kind: "payment", fromBar: true }); return;
-      case "receipt": onReceipt(); return;
       case "cancelOrder": onCancelOrder(); return;
       case "rate": {
         const first = firstToRate(lines.map(line => ({ id: line.id, reviewed: Boolean(line.review) })), lineIds);

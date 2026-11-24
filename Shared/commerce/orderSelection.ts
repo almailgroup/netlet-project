@@ -10,14 +10,21 @@
  * should show you all the options, and when you select individually, it
  * should show you the options as well"). Each item had a ⋯, and so did the
  * order. The bar also offers what only the whole order can have done
- * (`WholeOrder`): change the order, its address or its way to pay, its
- * receipt, and cancelling the order itself.
+ * (`WholeOrder`): change the order, its address, and cancelling the order
+ * itself.
+ *
+ * **No Track, Payment or Receipt on it, on the owner's word** ("no need
+ * inside the track because will show out side, no need payment because we
+ * will control full payment for all order one time, no need receipt because
+ * there will be one receipt for all"): where each item is, is drawn under its
+ * photo (`ItemStatus`), the way to pay is changed once for the whole order
+ * beside how it is paid, and the receipt is the order's one PDF at its top.
  *
  * **Those are offered whatever is chosen, one item included, on the owner's
  * word** ("these options should show even if one is selected; keep as many
  * options as there is for the user"). They waited for every item to be
- * chosen, so choosing one item of two offered Track, Buy again, Help and
- * Cancel, and choosing both offered eight. With one item chosen of several,
+ * chosen, so choosing one item of two offered four acts and choosing both
+ * eight. With one item chosen of several,
  * the bar offers both that item's acts and the order's: its quantity and the
  * order's change form, cancelling the item and cancelling the order. Only
  * with every item chosen do the order's stand in for the items' — the order's
@@ -55,14 +62,14 @@ export type ChosenLine = {
  *
  * - `return`: one item, its return or exchange form.
  * - `refund`: several, one refund asked across the ones that can go back.
- * - `modify`, `address`, `payment`, `receipt`, `cancelOrder`: the whole
- *   order's (`WholeOrder`), offered whatever is chosen. `modify` is the
+ * - `modify`, `address`, `cancelOrder`: the whole order's (`WholeOrder`),
+ *   offered whatever is chosen. `modify` is the
  *   order's change form and `cancelOrder` cancels the order itself; with
  *   every item chosen they stand in for `quantity` and `cancelItems`.
  */
 export const SELECTION_ACTIONS = [
-  "track", "return", "refund", "warranty", "quantity", "modify", "rate", "buyAgain",
-  "address", "payment", "receipt", "help", "cancelItems", "cancelOrder",
+  "return", "refund", "warranty", "quantity", "modify", "rate", "buyAgain",
+  "address", "help", "cancelItems", "cancelOrder",
 ] as const;
 export type SelectionAction = (typeof SELECTION_ACTIONS)[number];
 
@@ -75,8 +82,6 @@ export type WholeOrder = {
   modifiable: boolean;
   /** The delivery address can still move (`changeAddress.changeable`). */
   address: boolean;
-  /** The way to pay can still change (`paymentChange.open`). */
-  payment: boolean;
   /** The order itself may be cancelled now (`cancel.cancellable`). */
   cancellable: boolean;
 };
@@ -103,8 +108,6 @@ export function selectionOffers(
   const addWhole = (action: SelectionAction, allowed: boolean) => {
     if (allowed) offers.push({ action, lineIds: every });
   };
-  /* A parcel to follow: anything still part of an order that was not cancelled whole. */
-  if (!order.cancelled) add("track", line => line.fulfilment !== "cancelled");
   /* One item is its own form, which asks refund or exchange; several, a refund across them. */
   add(chosen.length === 1 ? "return" : "refund", line => line.returnable);
   add("warranty", line => line.warranty);
@@ -115,12 +118,7 @@ export function selectionOffers(
   if (whole) addWhole("modify", whole.modifiable);
   add("rate", line => line.rateable);
   add("buyAgain", line => line.rebuyable);
-  if (whole) {
-    addWhole("address", whole.address);
-    addWhole("payment", whole.payment);
-    /* Every order has its receipt. */
-    addWhole("receipt", true);
-  }
+  if (whole) addWhole("address", whole.address);
   /* Help is always there: about the one item, or about the order. */
   add("help", () => true);
   /* Cancelling the order is offered only with every item chosen — the All

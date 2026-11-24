@@ -34,8 +34,6 @@ struct OrderActionsBar: View {
     let reload: () async -> Void
     /// The sheet over the order, shared with the bar of the chosen items.
     @Binding var sheet: OrderSheet?
-    /// Make the order's receipt as a PDF (`OrderReceiptPDF`).
-    var onReceipt: (() -> Void)? = nil
     /// Rate one item, in its sheet.
     var onRate: ((OrderLine) -> Void)? = nil
     /// The items chosen by their circles (on the owner's word): the All circle
@@ -115,6 +113,12 @@ struct OrderActionsBar: View {
             }
             // Paid online (0086), and the code the driver scans at the door.
             if let paid = detail.paymentChange.paidOnline { PaidOnlineNote(paid: paid) }
+            // How the whole order is paid, and the one place it is changed (on
+            // the owner's word: "we will control full payment for all order
+            // one time") — it was Payment on the bar of the chosen items.
+            if detail.paymentChange.open {
+                OrderPaymentLine { open(.payment) }
+            }
             if let handover = detail.handover {
                 HandoverCard(handover: handover, paidOnline: detail.paymentChange.paidOnline != nil, owed: detail.owedNow ?? detail.order.grandTotal)
             }
@@ -843,7 +847,7 @@ struct ChosenItemsBar: View {
             VStack(spacing: 5) {
                 Image(systemName: Self.symbol(offer.action))
                     .font(.system(size: 17, weight: .semibold))
-                    .flipsForRightToLeftLayoutDirection(offer.action == .track || offer.action == .return || offer.action == .refund)
+                    .flipsForRightToLeftLayoutDirection(offer.action == .return || offer.action == .refund)
                     .foregroundStyle(danger ? Color.white : Brand.navy)
                     .frame(width: 44, height: 44)
                     .liquidGlass(danger ? .danger : .frost, in: Circle())
@@ -865,7 +869,6 @@ struct ChosenItemsBar: View {
     /// Each act's picture.
     static func symbol(_ action: OrderSelection.Action) -> String {
         switch action {
-        case .track: return "truck.box"
         case .return, .refund: return "arrow.uturn.backward"
         case .warranty: return "checkmark.shield"
         case .quantity: return "square.and.pencil"
@@ -875,8 +878,6 @@ struct ChosenItemsBar: View {
         case .cancelItems, .cancelOrder: return "xmark.circle"
         case .modify: return "square.and.pencil"
         case .address: return "mappin.and.ellipse"
-        case .payment: return "creditcard"
-        case .receipt: return "arrow.down.doc"
         }
     }
 
@@ -888,7 +889,6 @@ struct ChosenItemsBar: View {
 
     static func key(_ action: OrderSelection.Action) -> String {
         switch action {
-        case .track: return "orders.pickTrack"
         case .return: return "orders.pickReturn"
         case .refund: return "orders.pickRefund"
         case .warranty: return "orders.pickWarranty"
@@ -899,8 +899,6 @@ struct ChosenItemsBar: View {
         case .cancelItems: return "orders.pickCancelItem"
         case .modify: return "orders.pickModify"
         case .address: return "orders.pickAddress"
-        case .payment: return "orders.pickPayment"
-        case .receipt: return "orders.pickReceipt"
         case .cancelOrder: return "orders.pickCancelOrder"
         }
     }

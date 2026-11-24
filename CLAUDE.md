@@ -3552,8 +3552,9 @@ the expected day beside each item still coming, axe clean, no sideways scroll.
 
 **An opened order's receipt can be saved as a PDF, on the owner's word**
 ("an export to PDF option that will show all the details of your order in
-the form of a receipt"), and as Receipt on the bar of the chosen items
-whatever is chosen, on both platforms. **Its button is at the order's top,
+the form of a receipt"), on both platforms — once on the bar of the chosen
+items too, which the owner took off ("there will be one receipt for all").
+**Its button is at the order's top,
 with the date, on the owner's word** ("move the download pdf option from
 the bottom of the order page to here, and include the date of the order as
 well", a picture with "pdf" beside the title): in the app a round button
@@ -3772,21 +3773,30 @@ selecting the product"; see "An opened order's items are chosen like the
 cart's lines" below). They were a row of buttons over the items, each asking
 afterwards which item it meant, then a ⋯ on each item (`OrderLineMenu`, gone
 with that request). Chosen alone, an item gets what it can have done now:
-track it (its own parcel), return or exchange it, claim its warranty, change
+return or exchange it, claim its warranty, change
 its quantity or cancel it before a driver has it, rate it or edit the review,
 buy it again, and get help with it; what that opens is drawn under the item
 (`OrderLinePanel`) or, in the app, a sheet about that item alone (`OrderSheet`
 with its `lineId`). **What is about the whole order is the bar's too** —
-the order's change form (Change order), its delivery address, its way to pay,
-its receipt, and Cancel order, behind its question (`WholeOrder` in
-`orderSelection.ts`; the order had its own ⋯ of those until then), on the
-owner's word ("remove all these 3 dot buttons; instead put their options
-here"). **They are offered whatever is chosen, one item included, on the
+the order's change form (Change order), its delivery address and Cancel
+order, behind its question (`WholeOrder` in `orderSelection.ts`; the order had
+its own ⋯ of those until then), on the owner's word ("remove all these 3 dot
+buttons; instead put their options here"). **Track, Payment and Receipt are
+not on the bar, on the owner's word** ("no need inside the track because will
+show out side, no need payment because we will control full payment for all
+order one time, no need receipt because there will be one receipt for all", a
+picture of the bar with the three crossed out): where each item is, is its
+status under its photo, and the tracker still opens by itself while a parcel
+is on the road (and from `?track=1` and help's answers); the way to pay is the
+whole order's, a line under the order's top saying "Pay on delivery" with
+"Change payment method" (`PaymentLine` on the web, `OrderPaymentLine` in the
+app), drawn while `paymentChange.open` and opening the order's payment panel
+or sheet; the receipt is the PDF at the order's top. **They are offered whatever is chosen, one item included, on the
 owner's word** ("when one product is selected the options shown are limited,
 but when 2 are selected it shows many options … these options should show
 even if one is selected; keep as many options as there is for the user"):
 they waited for every item to be chosen, so one item of an unpaid order of two
-offered Track, Buy again, Help and Cancel, and both offered eight. Now one
+offered four acts and both offered eight. Now one
 item of several offers its own acts and the order's together — its Quantity
 beside Change order, and **Cancel item** ("Cancel items" for several,
 `orders.pickCancelItem(s)`) — in rows of four. **Cancel order is offered only
@@ -3932,14 +3942,13 @@ offers **every act the chosen items allow and none they do not**:
 `OrderSelection`, on the same cases) reads the facts the server already sent
 on `orders.get` — each line's return window, warranty and review eligibility,
 whether it can still change, whether it is still for sale — and answers, in
-the bar's order, Track, Return (one item: its own form, refund or exchange)
+the bar's order, Return (one item: its own form, refund or exchange)
 or Refund (several: one refund across the ones that can go back), Warranty,
 Quantity (an item of more than one, before a driver has it), Rate, Buy again,
 Help and Cancel item (last, in red), each with how many of the chosen it is about
 when that is not all of them ("Refund (1)"). **One item's act opens about
 that item** — under it on the web, its sheet in the app — and several open
-over the items with only those (the tracker narrowed to their parcels, the
-refund with them ticked, the change form with them at none for Cancel, "Cancel
+over the items with only those (the refund with them ticked, the change form with them at none for Cancel, "Cancel
 these items"); the web brings what opened into view and focuses its first
 box, since the bar floats over the foot. Rate opens the first not yet reviewed
 (`firstToRate`); Buy again puts each back in the bag at what was ordered of it
@@ -3962,12 +3971,13 @@ screen's rises by a transform (`.glass-rise`): an opacity on the pane would
 drain its glass to white for as long as the fade ran. **Its options are rows
 of four that wrap** (one row of eight from `sm` on the web; a `LazyVGrid` in
 the app), never a sideways scroll: with every item of a pending order chosen
-there are eight, and a scrolling row cut "Address" at the screen's edge. The
+there were eight, and a scrolling row cut "Address" at the screen's edge. The
 quantity form's stepper
 now wraps under the item's name on a narrow phone (`basis-32`, the flex rule
 below), where at 320 it had left the name no room. `OrderSelectionUITests`
-chooses the recorded order's item, checks the bar's acts, opens the tracker
-from it and clears; the CI photographs an order with every item chosen
+chooses the recorded order's item, checks the bar's acts (and that Track,
+Payment and Receipt are not among them), opens the warranty from it and
+clears; the CI photographs an order with every item chosen
 (`113-order-chosen`, `-NetLetOpen orderChosen:<ref>`). **A `ChoiceCircle` is
 not in `app.buttons`**: it carries `.isToggle`, which XCUITest reports as a
 toggle, so the first run of that test could not find the circle that was on

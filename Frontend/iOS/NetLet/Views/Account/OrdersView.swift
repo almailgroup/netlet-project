@@ -431,7 +431,7 @@ struct OrderDetailView: View {
                     } else {
                         LoadStateView(state: model.detail, retry: { await model.load() }) { detail in
                             VStack(alignment: .leading, spacing: 16) {
-                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet, onReceipt: { makeReceipt(detail) }, onRate: { line in
+                                OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet, onRate: { line in
                                     rating = target(line)
                                 }, chosen: $chosen, editing: $editing, askingCancel: $askingCancel)
                                 lines(detail, reload: { await model.load() })
@@ -522,7 +522,6 @@ struct OrderDetailView: View {
             sheet = one.map { OrderSheet(kind: kind, lineId: $0, remove: remove) } ?? OrderSheet(kind: kind, lineIds: ids, remove: remove)
         }
         switch offer.action {
-        case .track: open(.track)
         case .return:
             returning = ids.first
         case .refund: sheet = OrderSheet(kind: .refund, lineIds: ids)
@@ -532,8 +531,6 @@ struct OrderDetailView: View {
         // The whole order's, whatever is chosen.
         case .modify: sheet = OrderSheet(kind: .modify)
         case .address: sheet = OrderSheet(kind: .address)
-        case .payment: sheet = OrderSheet(kind: .payment)
-        case .receipt: makeReceipt(detail)
         case .cancelOrder: askingCancel = true
         case .rate:
             let lines = detail.lines.map { (id: $0.id, reviewed: $0.review != nil) }

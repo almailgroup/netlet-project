@@ -18,6 +18,13 @@ import Foundation
 /// as many options as there is for the user"). Only with every item chosen do
 /// the order's acts stand in for the items' (the change form for the
 /// quantity, cancelling the order for cancelling them all).
+///
+/// **No Track, Payment or Receipt on it, on the owner's word** ("no need
+/// inside the track because will show out side, no need payment because we
+/// will control full payment for all order one time, no need receipt because
+/// there will be one receipt for all"): each item's status is under its photo,
+/// the way to pay is changed once beside how the order is paid, and the
+/// receipt is the order's one PDF at its top.
 enum OrderSelection {
     /// One chosen item, as the page already knows it.
     struct Line: Equatable, Sendable {
@@ -38,11 +45,11 @@ enum OrderSelection {
 
     /// The acts in the bar's order — the cancel last, apart. `return` is one
     /// item's own form (refund or exchange); `refund` is one refund across
-    /// several. `modify`, `address`, `payment`, `receipt` and `cancelOrder`
-    /// are the whole order's, offered whatever is chosen; with every item
+    /// several. `modify`, `address` and `cancelOrder` are the whole order's,
+    /// offered whatever is chosen; with every item
     /// chosen `modify` stands in for `quantity`, `cancelOrder` for `cancelItems`.
     enum Action: String, CaseIterable, Sendable {
-        case track, `return`, refund, warranty, quantity, modify, rate, buyAgain, address, payment, receipt, help, cancelItems, cancelOrder
+        case `return`, refund, warranty, quantity, modify, rate, buyAgain, address, help, cancelItems, cancelOrder
     }
 
     /// What the whole order allows now, from the server's answer.
@@ -51,8 +58,6 @@ enum OrderSelection {
         var modifiable = false
         /// The delivery address can still move.
         var address = false
-        /// The way to pay can still change.
-        var payment = false
         /// The order itself may be cancelled now.
         var cancellable = false
     }
@@ -75,18 +80,13 @@ enum OrderSelection {
         func addWhole(_ action: Action, _ allowed: Bool) {
             if allowed { offers.append(Offer(action: action, lineIds: every)) }
         }
-        if !cancelled { add(.track) { $0.fulfilment != "cancelled" } }
         add(chosen.count == 1 ? .return : .refund) { $0.returnable }
         add(.warranty) { $0.warranty }
         if !all { add(.quantity) { $0.changeable && $0.quantity > 1 } }
         if let whole { addWhole(.modify, whole.modifiable) }
         add(.rate) { $0.rateable }
         add(.buyAgain) { $0.rebuyable }
-        if let whole {
-            addWhole(.address, whole.address)
-            addWhole(.payment, whole.payment)
-            addWhole(.receipt, true)
-        }
+        if let whole { addWhole(.address, whole.address) }
         add(.help) { _ in true }
         // Cancelling the order only with every item chosen (the All circle),
         // where it stands in for cancelling them all; with some chosen, only
@@ -115,7 +115,6 @@ enum OrderSelection {
         let whole = Whole(
             modifiable: detail.mayModify,
             address: detail.changeAddress.changeable,
-            payment: detail.paymentChange.open,
             cancellable: detail.cancel.cancellable
         )
         return offers(

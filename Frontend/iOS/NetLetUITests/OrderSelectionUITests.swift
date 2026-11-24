@@ -5,8 +5,13 @@ import XCTest
 /// just like in the cart page, and it should give you all the options"): a
 /// circle beside each item brings a bar of Liquid Glass over the page's foot
 /// with every act the chosen items allow — and the whole order's, whatever is
-/// chosen; neither the item nor the order has a ⋯ — Track opens the
-/// tracker for them, and Close puts the bar away. **The circles are out only
+/// chosen; neither the item nor the order has a ⋯ — Warranty opens its
+/// sheet for them, and Close puts the bar away. **No Track, Payment or
+/// Receipt on the bar**, on the owner's word ("no need inside the track
+/// because will show out side, no need payment because we will control full
+/// payment for all order one time, no need receipt because there will be one
+/// receipt for all"): each item's status is under its photo, the way to pay is
+/// changed from the order's own line, and the receipt is the PDF at the top. **The circles are out only
 /// once "Edit order" is pressed**, on the owner's word ("when I came to this
 /// page no need to see it in this way … add an icon like edit your order"),
 /// and Close puts them away with the bar. The recorded order holds one
@@ -48,18 +53,20 @@ final class OrderSelectionUITests: XCTestCase {
 
         let count = app.staticTexts["1 item chosen"]
         XCTAssertTrue(count.waitForExistence(timeout: 6), "Choosing the item brought no bar: \(labels(app))")
-        // The order's only item is every item: the order's receipt is on the bar too.
-        for act in ["Track", "Return", "Warranty", "Rate", "Buy again", "Receipt", "Help"] {
+        for act in ["Return", "Warranty", "Rate", "Buy again", "Help"] {
             XCTAssertTrue(app.buttons[act].exists, "The bar does not offer \(act): \(labels(app))")
+        }
+        for act in ["Track", "Payment", "Receipt"] {
+            XCTAssertFalse(app.buttons[act].exists, "The bar still offers \(act): \(labels(app))")
         }
         // A paid, delivered item cannot be cancelled or have its quantity changed.
         XCTAssertFalse(app.buttons["Quantity"].exists, "The bar offers a change on a paid order.")
 
-        // Track opens the tracker on the chosen item's parcel.
-        app.buttons["Track"].tap()
-        let delivered = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Delivered")).firstMatch
-        XCTAssertTrue(delivered.waitForExistence(timeout: 6), "Track did not open the tracker: \(labels(app))")
-        // The tracker's own Close, never the bar's, which is named Close too.
+        // Warranty opens its sheet about the chosen item.
+        app.buttons["Warranty"].tap()
+        let note = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "For something that arrived")).firstMatch
+        XCTAssertTrue(note.waitForExistence(timeout: 6), "Warranty did not open its sheet: \(labels(app))")
+        // The sheet's own Close, never the bar's, which is named Close too.
         app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND identifier != %@", "Close", "chosen-close")).firstMatch.tap()
 
         // Close puts the bar away (it said Clear; the owner asked for Close).
@@ -104,10 +111,11 @@ final class OrderSelectionUITests: XCTestCase {
     /// One item of several chosen offers the whole order's acts too, on the
     /// owner's word ("these options should show even if one is selected; keep
     /// as many options as there is for the user"): the owner's screenshots
-    /// had one of two items offer Track, Buy again, Help and Cancel, and both
-    /// offer eight. The recorded pending order holds a lamp (three of it) and
-    /// a kettle, neither with a driver yet, on an order that may still change
-    /// its address, its way to pay or be cancelled.
+    /// had one of two items offer four acts and both eight. The recorded
+    /// pending order holds a lamp (three of it) and a kettle, neither with a
+    /// driver yet, on an order that may still change its address, its way to
+    /// pay or be cancelled — the way to pay from the order's own line, never
+    /// the bar.
     func testOneItemOfSeveralOffersTheOrdersActsToo() {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -124,9 +132,14 @@ final class OrderSelectionUITests: XCTestCase {
         XCTAssertEqual(named(app, "Choose Harbour Desk Lamp").exists, true, "The lamp has no circle: \(labels(app))")
         circle.tap()
         XCTAssertTrue(app.staticTexts["1 item chosen"].waitForExistence(timeout: 6), "Choosing the kettle brought no bar: \(labels(app))")
-        for act in ["Track", "Change order", "Buy again", "Address", "Payment", "Receipt", "Help", "Cancel item"] {
+        for act in ["Change order", "Buy again", "Address", "Help", "Cancel item"] {
             XCTAssertTrue(app.buttons[act].exists, "One item chosen does not offer \(act): \(labels(app))")
         }
+        for act in ["Track", "Payment", "Receipt"] {
+            XCTAssertFalse(app.buttons[act].exists, "The bar still offers \(act): \(labels(app))")
+        }
+        // The way to pay is the whole order's, changed from its own line.
+        XCTAssertTrue(app.buttons["Change payment method"].exists, "The order has no line to change how it is paid: \(labels(app))")
         // Cancel order only from All, on the owner's word: one item of two
         // offers that item's cancel alone.
         XCTAssertFalse(app.buttons["Cancel order"].exists, "One item of two offers Cancel order: \(labels(app))")

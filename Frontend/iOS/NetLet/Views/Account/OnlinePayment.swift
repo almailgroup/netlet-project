@@ -335,6 +335,45 @@ struct PaidOnlineNote: View {
     }
 }
 
+/// How the whole order is paid, and the one place it is changed, on the
+/// owner's word ("we will control full payment for all order one time"): it
+/// was Payment on the bar of the chosen items, offered beside one item as if
+/// an item could be paid for apart. Drawn while the way to pay may still
+/// change (`paymentChange.open`); the press opens the order's payment sheet.
+struct OrderPaymentLine: View {
+    let change: () -> Void
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "banknote")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Brand.navy)
+                .accessibilityHidden(true)
+            Text(l.t("orders.payOnDelivery"))
+                .font(.inter(13, .bold))
+                .foregroundStyle(Brand.navy)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button(action: change) {
+                HStack(spacing: 6) {
+                    Image(systemName: "creditcard").font(.system(size: 13, weight: .semibold)).accessibilityHidden(true)
+                    Text(l.t("orders.changePayment")).font(.inter(13, .semibold))
+                }
+                .foregroundStyle(Brand.navy)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 36)
+                .liquidGlass(.clear, in: Capsule())
+            }
+            .buttonStyle(.tap)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
+    }
+}
+
 /// "Show this to your driver": the QR, the code, and what the driver will ask
 /// for — drawn while a parcel is on its way, the server's `handover`.
 struct HandoverCard: View {
