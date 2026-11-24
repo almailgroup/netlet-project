@@ -572,7 +572,10 @@ final class SearchRankTests: XCTestCase {
         XCTAssertEqual(ids("payment methods").first, "cards")
         XCTAssertTrue(ids("saved cards").contains("cards"))
         XCTAssertTrue(ids("track").contains("orders"))
-        XCTAssertEqual(ids("refund"), [])
+        // The returns are "Returns and refunds" since the owner's "add return/refund up".
+        XCTAssertTrue(ids("refund").contains("returns"))
+        // The reviews left the search with the filter page ("cancel review").
+        XCTAssertEqual(ids("reviews"), [])
         XCTAssertEqual(ids("price requests"), ["offers"])
         XCTAssertEqual(ids("price requests") { $0 != "offers" }, [])
         XCTAssertEqual(Set(places.map(\.id)).count, places.count)
