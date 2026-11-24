@@ -2912,11 +2912,15 @@ somebody who has one (`offers.list`, `subscriptions.mine`), since for anybody
 else they open an empty page, and their pages stay open to a link. The
 language and the currency were rows of their own, then inside Preferences, and
 are on the page itself now (Quick settings, above). Then the help centre, selling for
-a seller, and the account itself. **Returns and Reviews are tabs of My
-orders, on the owner's word** ("move the returns and my review to the my
+a seller, and the account itself. **Returns are a choice of My
+orders' filter, on the owner's word** ("move the returns and my review to the my
 orders page"; see "My orders is a search bar" under Orders) — they were rows
-of this card, then tabs, and are the filter page's "Returns and reviews" now;
-`/account/returns` and `/account/reviews` open the orders on that list (`MOVED` in `Account.tsx`; the app's `AppModel.open`). **Returns**
+of this card, then tabs, then the filter page's "Returns and reviews", and are
+"Returns and refunds" in its Order status row now, **the reviews no longer
+offered** (each item is rated under its photo); `/account/returns` and
+`/account/reviews` still open the orders on that list (`MOVED` in
+`Account.tsx`; the app's `AppModel.open`), and the account's search finds the
+returns and not the reviews. **Returns**
 (`AccountReturns`; the app's `ReturnsList`): a return is
 started from its order, and this is where somebody asks where their refund
 is — every request across their orders, newest first (`orders.myReturns`,
@@ -3447,7 +3451,7 @@ it was ordered** on a line of its own under its name ("Ordered on 4 November
 
 **The filter button opens the filter page** — the whole screen on a phone and
 a card from `sm` (`useOverlay`, focus on its Close; the app's
-`.fullScreenCover`) — three sections, each a row of pills, **applied together
+`.fullScreenCover`) — two sections, each a row of pills, **applied together
 by "Show orders"** with Reset beside it, a pill pressed again taken off:
 
 - **Order status** (`ORDER_STATUSES`): Order received, Being prepared,
@@ -3457,7 +3461,14 @@ by "Show orders"** with Reset beside it, a pill pressed again taken off:
   ship is Being prepared — a step the shop does not record cannot be offered.
   Each is read off `orderProgress` (`statusOfProgress`); the old Processing
   (`received` and `preparing` together) still answers an address that names
-  it.
+  it. **Then Returns and refunds** (`ORDER_LISTS`, `orders.viewReturns`), the
+  shopper's return requests across every order, **on the owner's word** (a
+  picture of the page with Returns circled and an arrow up to the statuses,
+  and Reviews crossed out: "add return/refund up and cancel review"). It had
+  a section of its own, "Returns and reviews", beside Reviews; that section
+  and Reviews left the page. `reviews` stays in `ORDER_TABS`, so an old
+  `?view=reviews` or `/account/reviews` still opens the list (the page opened
+  on it starts from every order, as from Processing).
 - **When**: the last 30 days, the last 3 months, or "Choose dates" for two
   days of one's own (`ORDER_DATE_CHOICES`; `From` and `To` on the browser's or
   the phone's own picker, held to Kuwait's days from the first order's day to
@@ -3465,8 +3476,6 @@ by "Show orders"** with Reset beside it, a pill pressed again taken off:
   the box with focus on it). **By year, the newest year and "More years"** for
   the ones before it, on the owner's word ("2026, then a more icon to see
   previous years"); a year chosen earlier stays in view beside it.
-- **Returns and reviews** (`ORDER_LISTS`): the two lists that were the last
-  tabs, here because the tabs went.
 
 **No store, payment or total sections, on the owner's word** ("remove bought
 from … cancel how it's paid, and total order"); the server still takes them,
@@ -3489,9 +3498,10 @@ dates and lists are exported to `rules.json` (`orders.filterStatuses`,
 has to know before it asks, on the TypeScript's cases. `orders.test.ts`
 filters a real database by status, a store's name, the date and a year;
 `orderFilters.test.ts` holds the rule; the app's `OrderFiltersUITests` checks
-no tabs or sort, the date on an order, the page's choices and none of the old
-ones, a status and a year applied as two chips, one taken off by its cross and
-Clear all. Walked at 320, 390 and 1440 in both languages
+no tabs or sort, the date on an order, the page's choices (Returns and
+refunds above the dates) and none of the old ones (Reviews among them), a
+status and a year applied as two chips, one taken off by its cross and Clear
+all. Walked at 320, 390 and 1440 in both languages
 (`.scratch/round345-walk.mjs`): the filter button beside the search, no tabs
 or sort, the date on every order, the page the whole screen on a phone with
 focus on Close, Delivered and 2026 applied into the address as two chips, a

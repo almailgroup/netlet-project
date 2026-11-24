@@ -24,7 +24,10 @@ describe("the account's own search", () => {
 
   it("finds a section by the words of its hint", () => {
     expect(ids("track")).toContain("orders");
-    expect(ids("refund")).toEqual([]);
+    /* The returns are "Returns and refunds" since the owner's "add return/refund up". */
+    expect(ids("refund")).toContain("returns");
+    /* The reviews left the search with the filter page ("cancel review"). */
+    expect(ids("reviews")).toEqual([]);
     expect(ids("returns")).toContain("returns");
   });
 

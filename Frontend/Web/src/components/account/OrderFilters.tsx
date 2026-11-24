@@ -4,17 +4,19 @@
  * button beside it, and the filter **a page of its own** — the whole screen on
  * a phone, a card from `sm` — never a row of tabs, a sort or a store list.
  *
- * The page asks three things, each a short row of pills, chosen together and
+ * The page asks two things, each a short row of pills, chosen together and
  * applied by "Show orders", with Reset beside it:
  *
  * - **Order status** (`ORDER_STATUSES`): received, being prepared, shipped,
  *   delivered, cancelled — the owner's "pending, received, ready to ship,
- *   shipped, delivered", in NetLet's own steps.
+ *   shipped, delivered", in NetLet's own steps — **then Returns and refunds**
+ *   (`ORDER_LISTS`), on the owner's word ("add return/refund up and cancel
+ *   review"): it had a section of its own beside Reviews, which left the page
+ *   (each item is rated under its photo; an old `?view=reviews` still opens
+ *   the list).
  * - **When**: the last 30 days, the last 3 months, or two days of one's own
  *   (`ORDER_DATE_CHOICES`); and by year, the newest with a More button for the
  *   years before it, on the owner's word.
- * - **Returns and reviews** (`ORDER_LISTS`): the lists that were the last two
- *   tabs, here because the tabs went.
  *
  * A pill pressed again is taken off. **No store list, on the owner's word**
  * ("he can search by the filter bar for any name — in future maybe he will
@@ -32,7 +34,7 @@ import {
 } from "@shared/commerce/orderFilters";
 import { kuwaitDay } from "@shared/kuwaitDay";
 import type { MessageKey } from "@shared/i18n/dictionary";
-import { CalendarDays, Check, ListChecks, MessageSquareText, Search, SlidersHorizontal, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, Check, ListChecks, Search, SlidersHorizontal, Star, Undo2, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { SHOP_TIME_ZONE } from "@/hooks/useDateFormat";
@@ -74,7 +76,11 @@ const PERIOD_LABEL: Record<(typeof ORDER_DATE_CHOICES)[number], MessageKey> = {
   "90": "orders.period90",
 };
 
-const isList = (tab: OrderTab) => (ORDER_LISTS as readonly string[]).includes(tab);
+/* A list of its own rather than a view of the orders: the returns, and the reviews an old address names. */
+const isList = (tab: OrderTab) => tab === "returns" || tab === "reviews";
+
+/** A chip's icon: the status checklist, the returns' arrow back, or the reviews' star. */
+const CHIP_ICON = (tab: OrderTab): LucideIcon => (tab === "returns" ? Undo2 : tab === "reviews" ? Star : ListChecks);
 
 /** What the date chip says: a period, a year, or the days chosen. */
 function useWhenLabel() {
@@ -137,7 +143,7 @@ export function OrderSearchAndFilter({ state, q, facets, onChange }: {
 
   /* Each filter that is on, as a chip with a cross for just that one. */
   const on: { key: string; icon: LucideIcon; value: string; clear: OrderFilterChange }[] = [];
-  if (state.tab !== "all") on.push({ key: "status", icon: isList(state.tab) ? MessageSquareText : ListChecks, value: t(STATUS_LABEL[state.tab]), clear: { view: null } });
+  if (state.tab !== "all") on.push({ key: "status", icon: CHIP_ICON(state.tab), value: t(STATUS_LABEL[state.tab]), clear: { view: null } });
   const when = whenLabel(state);
   if (when) on.push({ key: "when", icon: CalendarDays, value: when, clear: { period: null, from: null, to: null } });
 
@@ -224,7 +230,8 @@ type Draft = { tab: OrderTab; period: OrderPeriod; from: string | null; to: stri
 /** What the address holds, as the page's draft: a span of one's own is "Choose dates". */
 function draftOf(state: OrderFilterState): Draft {
   return {
-    tab: state.tab === "processing" ? "all" : state.tab,
+    /* The old Processing and the reviews an old address names are not on the page; opened on either, it starts on every order. */
+    tab: state.tab === "processing" || state.tab === "reviews" ? "all" : state.tab,
     period: state.period,
     from: state.from,
     to: state.to,
@@ -329,12 +336,12 @@ function FilterPage({ open, state, facets, onClose, onApply }: {
         <div className="flex-1 overflow-y-auto px-5 pb-4 pt-2">
           <FilterSection icon={ListChecks} title={t("orders.statusTitle")}>
             <div className="flex flex-wrap gap-2">
-              {ORDER_STATUSES.map(status => (
+              {[...ORDER_STATUSES, ...ORDER_LISTS].map(status => (
                 <Pill key={status} chosen={draft.tab === status} onPick={() => pickTab(status)}>{t(STATUS_LABEL[status])}</Pill>
               ))}
             </div>
           </FilterSection>
-          <FilterSection icon={CalendarDays} title={t("orders.whenTitle")}>
+          <FilterSection icon={CalendarDays} title={t("orders.whenTitle")} last>
             <div className="flex flex-wrap gap-2">
               {ORDER_DATE_CHOICES.map(period => (
                 <Pill key={period} chosen={undated && draft.period === period} onPick={() => pickPeriod(period)}>{t(PERIOD_LABEL[period])}</Pill>
@@ -390,13 +397,6 @@ function FilterPage({ open, state, facets, onClose, onApply }: {
                 </div>
               </>
             ) : null}
-          </FilterSection>
-          <FilterSection icon={MessageSquareText} title={t("orders.listsTitle")} last>
-            <div className="flex flex-wrap gap-2">
-              {ORDER_LISTS.map(list => (
-                <Pill key={list} chosen={draft.tab === list} onPick={() => pickTab(list)}>{t(STATUS_LABEL[list])}</Pill>
-              ))}
-            </div>
           </FilterSection>
         </div>
         <div className="flex gap-3 border-t border-[#e6e9ef] px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:pb-4">

@@ -170,15 +170,6 @@
         "needs": null
       },
       {
-        "id": "reviews",
-        "label": "orders.viewReviews",
-        "within": "account.myOrders",
-        "words": [
-          "account.hint.reviews"
-        ],
-        "needs": null
-      },
-      {
         "id": "saved",
         "label": "saved.andWishlists",
         "within": null,
@@ -489,8 +480,7 @@
       "90"
     ],
     "filterLists": [
-      "returns",
-      "reviews"
+      "returns"
     ],
     "searchMax": 80,
     "filterSorts": [

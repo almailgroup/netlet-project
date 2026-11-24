@@ -18,7 +18,6 @@ struct AccountSearchResults: View {
     private static let opens: [String: (route: Route, symbol: String)] = [
         "orders": (.orders, "shippingbox"),
         "returns": (.returns, "arrow.uturn.backward"),
-        "reviews": (.reviews, "star"),
         "saved": (.saved, "heart"),
         "wishlists": (.wishlists, "gift"),
         "frequent": (.frequent, "arrow.clockwise.circle"),

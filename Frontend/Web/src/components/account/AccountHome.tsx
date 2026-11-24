@@ -98,7 +98,6 @@ import {
   Phone,
   Repeat,
   SlidersHorizontal,
-  Star,
   Store,
   Tag,
   Trash2,
@@ -374,7 +373,6 @@ function SignOutCard({ onSignOut }: { onSignOut: () => void }) {
 const PLACE_OPENS: Record<string, { href: string; icon: ComponentType<{ className?: string; strokeWidth?: number }> }> = {
   orders: { href: "/account/orders", icon: PackageSearch },
   returns: { href: "/account/orders?view=returns", icon: Undo2 },
-  reviews: { href: "/account/orders?view=reviews", icon: Star },
   saved: { href: "/saved", icon: Heart },
   wishlists: { href: "/saved?tab=wishlists", icon: Gift },
   frequent: { href: "/account/frequent", icon: Repeat },

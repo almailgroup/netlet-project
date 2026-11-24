@@ -21,9 +21,10 @@
  * word** ("all bar up removed, only add search bar and in the side filter";
  * `OrderSearchAndFilter`): the search finds an order by its number, anything
  * in it or its store, and the filter is a page of its own — the order's
- * status, the last 30 days or 3 months or two days of one's own, a year, and
- * the returns asked for and the reviews, which moved here from the account's
- * home (`AccountReturns`, `AccountReviews`, drawn in place). The row of tabs,
+ * status or the returns and refunds asked for (`AccountReturns`, drawn in
+ * place), the last 30 days or 3 months or two days of one's own, and a year.
+ * The reviews left the page on the owner's word (each item is rated under its
+ * photo); an old `?view=reviews` still draws `AccountReviews`. The row of tabs,
  * the sort and the store, payment and total filters went. All of it is in
  * the address (`?view=`, `?q=`, `?period=`, `?from=`, `?to=`), the browse
  * pages' rule, and decided by the server over every order
@@ -112,7 +113,7 @@ function OrderPhoto({ photo, more }: { photo: string | null; more: number }) {
  * orders" in its middle, then the search bar with the filter button beside it
  * (`OrderSearchAndFilter`) — **no tabs and no sort, on the owner's word**
  * ("all bar up removed, only add search bar and in the side filter"); the
- * statuses, the dates and the returns and reviews are on the filter page.
+ * statuses with the returns and refunds, and the dates, are on the filter page.
  */
 function OrdersTop({ search }: { search: ReactNode }) {
   const { t } = useTranslation();

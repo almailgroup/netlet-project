@@ -35,7 +35,6 @@ const QUICK: MessageKey = "quick.settingsTitle";
 export const ACCOUNT_PLACES: readonly AccountPlace[] = [
   place("orders", "account.myOrders", null, ["account.sectionOrders", "account.hint.orders", "orders.viewProcessing", "orders.viewOnTheWay", "orders.viewDelivered", "orders.viewCancelled"]),
   place("returns", "orders.viewReturns", "account.myOrders", ["account.hint.returns"]),
-  place("reviews", "orders.viewReviews", "account.myOrders", ["account.hint.reviews"]),
   place("saved", "saved.andWishlists", null, ["account.hint.saved"]),
   place("wishlists", "saved.tabWishlists", "saved.andWishlists", ["account.hint.wishlists"]),
   place("frequent", "frequent.section", null, ["account.hint.frequent"], "frequent"),

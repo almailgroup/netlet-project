@@ -31,12 +31,20 @@ final class OrderFiltersUITests: XCTestCase {
         filters.tap()
         let delivered = app.buttons["Delivered"]
         XCTAssertTrue(delivered.waitForExistence(timeout: 10), "The filter page offered no Delivered status.")
-        for each in ["Order received", "Being prepared", "Shipped", "Cancelled", "Last 30 days", "Last 3 months", "Choose dates", "Returns", "Reviews"] {
+        for each in ["Order received", "Being prepared", "Shipped", "Cancelled", "Returns and refunds", "Last 30 days", "Last 3 months", "Choose dates"] {
             XCTAssertTrue(app.buttons[each].exists, "The filter page has no \(each): \(buttonLabels(app))")
         }
-        for gone in ["Last 6 months", "This month", "Cash on delivery", "Any total", "Any store"] {
+        // "Add return/refund up and cancel review" (the owner's screenshot):
+        // Returns and refunds sits with the statuses, above the dates, and
+        // Reviews and its section are gone.
+        for gone in ["Last 6 months", "This month", "Cash on delivery", "Any total", "Any store", "Reviews", "Returns"] {
             XCTAssertFalse(app.buttons[gone].exists, "The filter page still offers \(gone).")
         }
+        XCTAssertFalse(app.staticTexts["Returns and reviews"].exists, "The filter page still has its Returns and reviews section.")
+        XCTAssertLessThan(
+            app.buttons["Returns and refunds"].frame.minY, app.buttons["Last 30 days"].frame.minY,
+            "Returns and refunds is not up with the statuses, above the dates."
+        )
         delivered.tap()
         let year = app.buttons["2026"]
         XCTAssertTrue(year.waitForExistence(timeout: 5), "The filter page offered no year.")

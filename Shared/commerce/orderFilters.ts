@@ -8,11 +8,13 @@
  *
  * The filter page offers the order's status (`ORDER_STATUSES`, in the
  * owner's order: received, being prepared, shipped, delivered, then
- * cancelled), the last 30 days, the last 3 months or two days of one's own
- * (`ORDER_DATE_CHOICES`), and a year; and leads to the returns asked for and
- * the reviews (`ORDER_LISTS`), which are lists of their own and not views of
- * the orders. The search finds an order by its number, anything in it, or
- * the store it came from.
+ * cancelled), then the returns and refunds asked for (`ORDER_LISTS`), a list
+ * of its own and not a view of the orders, offered beside the statuses on the
+ * owner's word ("add return/refund up and cancel review"); the last 30 days,
+ * the last 3 months or two days of one's own (`ORDER_DATE_CHOICES`), and a
+ * year. The reviews are no longer offered there — each item is rated under
+ * its photo — and an old address naming them still opens them. The search
+ * finds an order by its number, anything in it, or the store it came from.
  *
  * **A view is read off `orderProgress`, never a second rule.** The pill on a
  * row says where the order has got to; the view it is filed under is that same
@@ -50,13 +52,17 @@ export type OrderView = (typeof ORDER_VIEWS)[number];
 export const ORDER_STATUSES = ["received", "preparing", "onTheWay", "delivered", "cancelled"] as const;
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
-/** The lists of their own the filter page leads to: the returns asked for and the reviews. */
-export const ORDER_LISTS = ["returns", "reviews"] as const;
+/**
+ * The lists of their own the filter page leads to, drawn after the statuses:
+ * the returns and refunds asked for. Reviews left the page on the owner's word
+ * ("cancel review"); `reviews` stays in `ORDER_TABS` so an old address answers.
+ */
+export const ORDER_LISTS = ["returns"] as const;
 
 /** How far back the filter page offers, in days — the last 30 days and the last 3 months — beside two days of one's own. */
 export const ORDER_DATE_CHOICES = ["30", "90"] as const;
 
-/** Everything the page can show: every order, a status, the old Processing, or one of the two lists. */
+/** Everything the page can show: every order, a status, the old Processing, the returns, or the reviews an old address names. */
 export const ORDER_TABS = ["all", "received", "preparing", "processing", "onTheWay", "delivered", "returns", "cancelled", "reviews"] as const;
 export type OrderTab = (typeof ORDER_TABS)[number];
 

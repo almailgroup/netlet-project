@@ -47,7 +47,8 @@ describe("order filters", () => {
     expect(inView({ kind: "received", preordered: false }, "received")).toBe(true);
     expect(inView({ kind: "cancelled" }, "all")).toBe(true);
     for (const status of ORDER_STATUSES) expect(isOrderTab(status)).toBe(true);
-    expect(ORDER_LISTS).toEqual(["returns", "reviews"]);
+    /* Returns and refunds beside the statuses; Reviews left the page (the owner's "cancel review"). */
+    expect(ORDER_LISTS).toEqual(["returns"]);
     expect(ORDER_DATE_CHOICES).toEqual(["30", "90"]);
   });
 

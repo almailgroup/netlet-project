@@ -5,17 +5,20 @@ import SwiftUI
 /// you to the filter page") — the web's `OrderSearchAndFilter`.
 ///
 /// **The button at the search bar's end** says how many filters are on and
-/// opens **the filter page**, the whole screen, which asks three things, each
+/// opens **the filter page**, the whole screen, which asks two things, each
 /// a short row of pills chosen together and applied by "Show orders", with
 /// Reset beside it:
 ///
 /// - **Order status**: received, being prepared, shipped, delivered,
 ///   cancelled — the owner's "pending, received, ready to ship, shipped,
-///   delivered" in NetLet's own steps.
+///   delivered" in NetLet's own steps — **then Returns and refunds**, on the
+///   owner's word ("add return/refund up and cancel review"): it had a
+///   section of its own beside Reviews, which left the page (each item is
+///   rated under its photo; an old address naming the reviews still opens
+///   them).
 /// - **When**: the last 30 days, the last 3 months, or two days of one's own
 ///   on the system's date pickers; and by year, the newest with "More years"
 ///   for the ones before it, on the owner's word.
-/// - **Returns and reviews**: the lists that were the last two tabs.
 ///
 /// A pill pressed again is taken off. **No store list, payment or total, on
 /// the owner's word** ("he can search by the filter bar for any name — in
@@ -158,7 +161,7 @@ struct OrderFilterToken: Identifiable {
 enum OrderFilterWords {
     static var statuses: [String] { ReferenceData.shared.rules.orders?.filterStatuses ?? ["received", "preparing", "onTheWay", "delivered", "cancelled"] }
     static var dates: [String] { ReferenceData.shared.rules.orders?.filterDates ?? ["30", "90"] }
-    static var lists: [String] { ReferenceData.shared.rules.orders?.filterLists ?? ["returns", "reviews"] }
+    static var lists: [String] { ReferenceData.shared.rules.orders?.filterLists ?? ["returns"] }
 
     /// A status's or a list's words: the order row's own phrase for the first
     /// two steps, the old tabs' for the rest.
@@ -188,8 +191,8 @@ enum OrderFilterWords {
     static func on(tab: String, filters: OrderFilters, language l: LanguageSettings) -> [OrderFilterToken] {
         var tokens: [OrderFilterToken] = []
         if tab != "all" {
-            let list = ["returns", "reviews"].contains(tab)
-            tokens.append(.init(kind: .status, symbol: list ? "text.bubble" : "checklist", value: status(tab, l)))
+            let symbol = tab == "returns" ? "arrow.uturn.backward" : tab == "reviews" ? "star" : "checklist"
+            tokens.append(.init(kind: .status, symbol: symbol, value: status(tab, l)))
         }
         if let when = when(filters, l) {
             tokens.append(.init(kind: .when, symbol: "calendar", value: when))
@@ -228,8 +231,9 @@ private struct OrderFilterPage: View {
     init(model: OrdersViewModel) {
         self.model = model
         let filters = model.filters
-        // The old Processing is not on the page; opened on it, the page starts on every order.
-        _tab = State(initialValue: model.tab == "processing" ? "all" : model.tab)
+        // The old Processing and the reviews an old address names are not on
+        // the page; opened on either, the page starts on every order.
+        _tab = State(initialValue: ["processing", "reviews"].contains(model.tab) ? "all" : model.tab)
         _period = State(initialValue: filters.period)
         _from = State(initialValue: filters.from)
         _to = State(initialValue: filters.to)
@@ -267,19 +271,12 @@ private struct OrderFilterPage: View {
                 VStack(alignment: .leading, spacing: 0) {
                     section(symbol: "checklist", title: l.t("orders.statusTitle")) {
                         FlowLayout(spacing: 8) {
-                            ForEach(OrderFilterWords.statuses, id: \.self) { status in
+                            ForEach(OrderFilterWords.statuses + OrderFilterWords.lists, id: \.self) { status in
                                 pill(OrderFilterWords.status(status, l), chosen: tab == status) { tab = tab == status ? "all" : status }
                             }
                         }
                     }
-                    section(symbol: "calendar", title: l.t("orders.whenTitle")) { whenChoices }
-                    section(symbol: "text.bubble", title: l.t("orders.listsTitle"), last: true) {
-                        FlowLayout(spacing: 8) {
-                            ForEach(OrderFilterWords.lists, id: \.self) { list in
-                                pill(OrderFilterWords.status(list, l), chosen: tab == list) { tab = tab == list ? "all" : list }
-                            }
-                        }
-                    }
+                    section(symbol: "calendar", title: l.t("orders.whenTitle"), last: true) { whenChoices }
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)

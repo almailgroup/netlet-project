@@ -61,7 +61,7 @@ final class OrderFilterRulesTests: XCTestCase {
         let orders = ReferenceData.shared.rules.orders
         XCTAssertEqual(orders?.filterStatuses, ["received", "preparing", "onTheWay", "delivered", "cancelled"])
         XCTAssertEqual(orders?.filterDates, ["30", "90"])
-        XCTAssertEqual(orders?.filterLists, ["returns", "reviews"])
+        XCTAssertEqual(orders?.filterLists, ["returns"], "Returns and refunds beside the statuses; Reviews left the page")
     }
 
     /// The recorded list carries its choices, as the server answers them.
