@@ -2558,6 +2558,25 @@ html[data-page-arriving] .assistant-launcher {
 }
 
 /*
+ * The receipt's button (`ReceiptButton`): the PDF file lifts a little under
+ * the pointer, and the tick that says it downloaded pops in. Transforms
+ * alone, and still for somebody who asked for less motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .receipt-file {
+    transition: translate 160ms ease;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .receipt-button:hover .receipt-file {
+      translate: 0 -1.5px;
+    }
+  }
+  .receipt-done {
+    animation: item-status-pop 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  }
+}
+
+/*
  * Where a parcel is (`ParcelTracker` on the opened order), on the owner's word
  * ("enhance the tracking order UI, make it better"): the step it is at wears
  * the brand's orange with a ring spreading from it, and while it is on the way

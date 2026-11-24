@@ -506,10 +506,16 @@ struct OrderDetailView: View {
         }
     }
 
-    /// The receipt, made and shown; a toast if it could not be drawn.
+    /// The receipt, made and shown with a confirming tap; a toast if it
+    /// could not be drawn.
     private func makeReceipt(_ detail: OrderDetail) {
         Task {
-            if await receipt.make(detail, language: l) == false { app.toast(l.t("receipt.failed")) }
+            if await receipt.make(detail, language: l) {
+                Haptics.succeeded()
+            } else {
+                Haptics.refused()
+                app.toast(l.t("receipt.failed"))
+            }
         }
     }
 

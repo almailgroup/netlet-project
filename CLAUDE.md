@@ -3569,7 +3569,20 @@ order opened on its own says its date under its heading. Both are named
 "Download receipt (PDF)". It was a row of the card at the order's foot,
 which is the invoice and any credit notes alone now ("Invoice", or
 "Invoice and credit notes"), drawn only once there is one.
-`OrderReceiptUITests` holds the app's in both languages. It carries the order's number, when it was placed, where it is,
+`OrderReceiptUITests` holds the app's in both languages. **The button
+was then made plainer to read, on the owner's word** ("just enhance the
+pdf option"): its picture is a drawn PDF file (`PdfFileMark` on both — a
+white page with a folded corner and two lines, and a red tag reading
+"PDF" across its foot, the Deals bag's red, drawn the same way round in
+Arabic), the web's pill says "Receipt" beside it, "Preparing…" with a
+spinner while it is made, and "Downloaded" with a green tick for a moment
+after, said to a screen reader too; the app's round button keeps the
+picture alone and answers with a confirming tap, or two and a toast when
+it failed. **The pill's three faces share one cell**, so it is always as
+wide as the widest and never moves on the press: grown from "Receipt" to
+"Downloaded" it shifted along the row, and at 390 in Arabic wrapped the
+row under its heading — found by a walk that measures the button before
+and after (`.scratch/receipt-button-walk.mjs`). It carries the order's number, when it was placed, where it is,
 how it is paid, where it goes (the name, the number, the address, the
 governorate, the notes), each item with its option, its store, the quantity
 at its price, its own code or that it was cancelled or returned, then the

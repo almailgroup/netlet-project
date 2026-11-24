@@ -345,8 +345,11 @@ final class OrderReceiptModel {
 /// The receipt's button at the end of an opened order's title, on the owner's
 /// word ("move the download pdf option from the bottom of the order page to
 /// here", a picture with "pdf" beside the title): a round button the size of
-/// My orders' filter, a document with an arrow over "PDF", named "Download
-/// receipt (PDF)" to VoiceOver. It was a row in the card at the order's foot.
+/// My orders' filter, named "Download receipt (PDF)" to VoiceOver. **Enhanced
+/// on the owner's word** ("just enhance the pdf option"): a PDF file drawn for
+/// NetLet (`PdfFileMark`, the web's same drawing) where it was a system
+/// arrow-document over the letters "PDF"; a turning ring while it is made,
+/// then a confirming tap as the receipt opens.
 struct OrderReceiptButton: View {
     let model: OrderReceiptModel
     let make: () -> Void
@@ -357,15 +360,13 @@ struct OrderReceiptButton: View {
             Haptics.tap()
             make()
         } label: {
-            VStack(spacing: 1) {
+            Group {
                 if model.making {
                     ProgressView().tint(Brand.navy).controlSize(.small)
                 } else {
-                    Image(systemName: "arrow.down.doc")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(l.t("receipt.pdf"))
-                        .font(.inter(9, .heavy))
-                        .tracking(0.3)
+                    PdfFileMark(label: l.t("receipt.pdf"))
+                        .frame(width: 25, height: 29.5)
+                        .offset(x: 1)
                 }
             }
             .foregroundStyle(Brand.navy)
@@ -378,5 +379,60 @@ struct OrderReceiptButton: View {
         .disabled(model.making)
         .accessibilityLabel(l.t(model.making ? "receipt.making" : "receipt.download"))
         .accessibilityIdentifier("order-receipt-pdf")
+    }
+}
+
+/// A PDF file, drawn for NetLet in a 22 × 26 box and scaled to its frame — the
+/// web's `PdfFileMark`: a white page with a navy rim and its top corner
+/// folded, two lines of text, and a red tag across its foot reading "PDF",
+/// the Deals bag's red (white on it 5.1:1). It is a picture of a file, so it
+/// is drawn the same way round on the Arabic page.
+struct PdfFileMark: View {
+    let label: String
+
+    static let red = Color(red: 214 / 255, green: 32 / 255, blue: 31 / 255)
+    static let rule = Color(red: 159 / 255, green: 176 / 255, blue: 200 / 255)
+
+    var body: some View {
+        let label = self.label
+        let navy = Brand.navy
+        let red = Self.red
+        let rule = Self.rule
+        Canvas { c, size in
+            let scale = min(size.width / 22, size.height / 26)
+            c.scaleBy(x: scale, y: scale)
+            var page = Path()
+            page.move(to: CGPoint(x: 5, y: 1.5))
+            page.addLine(to: CGPoint(x: 13.6, y: 1.5))
+            page.addLine(to: CGPoint(x: 19.5, y: 7.4))
+            page.addLine(to: CGPoint(x: 19.5, y: 23))
+            page.addQuadCurve(to: CGPoint(x: 18, y: 24.5), control: CGPoint(x: 19.5, y: 24.5))
+            page.addLine(to: CGPoint(x: 5, y: 24.5))
+            page.addQuadCurve(to: CGPoint(x: 3.5, y: 23), control: CGPoint(x: 3.5, y: 24.5))
+            page.addLine(to: CGPoint(x: 3.5, y: 3))
+            page.addQuadCurve(to: CGPoint(x: 5, y: 1.5), control: CGPoint(x: 3.5, y: 1.5))
+            page.closeSubpath()
+            c.fill(page, with: .color(.white))
+            c.stroke(page, with: .color(navy), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+            var fold = Path()
+            fold.move(to: CGPoint(x: 13.6, y: 1.5))
+            fold.addLine(to: CGPoint(x: 13.6, y: 6))
+            fold.addQuadCurve(to: CGPoint(x: 15, y: 7.4), control: CGPoint(x: 13.6, y: 7.4))
+            fold.addLine(to: CGPoint(x: 19.5, y: 7.4))
+            c.stroke(fold, with: .color(navy), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+            var lines = Path()
+            lines.move(to: CGPoint(x: 7, y: 10))
+            lines.addLine(to: CGPoint(x: 14, y: 10))
+            lines.move(to: CGPoint(x: 7, y: 13))
+            lines.addLine(to: CGPoint(x: 16, y: 13))
+            c.stroke(lines, with: .color(rule), style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
+            c.fill(Path(roundedRect: CGRect(x: 0.75, y: 15.5, width: 16.5, height: 7.5), cornerRadius: 1.6), with: .color(red))
+            c.draw(
+                Text(label).font(.system(size: 5.6, weight: .heavy)).foregroundColor(.white),
+                at: CGPoint(x: 9, y: 19.25)
+            )
+        }
+        .environment(\.layoutDirection, .leftToRight)
+        .accessibilityHidden(true)
     }
 }
