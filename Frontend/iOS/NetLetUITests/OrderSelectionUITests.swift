@@ -6,8 +6,11 @@ import XCTest
 /// circle beside each item brings a bar of Liquid Glass over the page's foot
 /// with every act the chosen items allow — and the whole order's, whatever is
 /// chosen; neither the item nor the order has a ⋯ — Track opens the
-/// tracker for them, and Close puts the bar away. The recorded order holds one delivered item that can still
-/// go back, be claimed on and be rated.
+/// tracker for them, and Close puts the bar away. **The circles are out only
+/// once "Edit order" is pressed**, on the owner's word ("when I came to this
+/// page no need to see it in this way … add an icon like edit your order"),
+/// and Close puts them away with the bar. The recorded order holds one
+/// delivered item that can still go back, be claimed on and be rated.
 final class OrderSelectionUITests: XCTestCase {
     override func setUp() {
         continueAfterFailure = false
@@ -21,11 +24,21 @@ final class OrderSelectionUITests: XCTestCase {
         ]
         app.launch()
 
+        // The order opens on its items alone: no circles and no line about
+        // them until "Edit order" is pressed.
+        let edit = app.buttons["order-edit"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 20), "The order has no Edit order button: \(labels(app))")
+        XCTAssertEqual(edit.label, "Edit order")
         // The circle is a toggle (`.isToggle`), which XCUITest reports as a
         // toggle rather than a button, so it is found by its name alone.
         let circle = named(app, "Choose USB-C charger 65W")
-        XCTAssertTrue(circle.waitForExistence(timeout: 20), "The order's item has no circle: \(labels(app))")
+        XCTAssertFalse(circle.exists, "The item's circle is out before Edit order: \(labels(app))")
+        XCTAssertFalse(named(app, "Choose every item in this order").exists, "The All circle is out before Edit order.")
+        XCTAssertFalse(app.staticTexts["Choose items, or all of them, to see what you can do."].exists, "The line about the circles is out before Edit order.")
+        edit.tap()
+        XCTAssertTrue(circle.waitForExistence(timeout: 6), "Edit order brought no circle: \(labels(app))")
         XCTAssertTrue(named(app, "Choose every item in this order").exists, "The order has no All circle: \(labels(app))")
+        XCTAssertEqual(edit.label, "Done", "Editing, the button does not say Done.")
         // Neither the item nor the order has a ⋯ any more: the bar is the one
         // way in (on the owner's word).
         XCTAssertFalse(named(app, "Options for USB-C charger 65W").exists, "The item still has a ⋯ of its own: \(labels(app))")
@@ -55,6 +68,10 @@ final class OrderSelectionUITests: XCTestCase {
         clear.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: count)
         wait(for: [gone], timeout: 4)
+        // Close puts the circles away with the bar, and Edit order is back.
+        let circleGone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: circle)
+        wait(for: [circleGone], timeout: 4)
+        XCTAssertEqual(app.buttons["order-edit"].label, "Edit order", "After Close the button is not Edit order again.")
     }
 
     /// A press on the item's name chooses it, and a second puts it back, on
@@ -69,16 +86,16 @@ final class OrderSelectionUITests: XCTestCase {
         ]
         app.launch()
 
-        // The item's own row: its circle, then its photo and its name to the
-        // circle's right on the English page. The press lands on the name,
-        // 120 points past the circle's middle, never on the circle itself.
-        let circle = named(app, "Choose USB-C charger 65W")
-        XCTAssertTrue(circle.waitForExistence(timeout: 20), "The order's item has no circle: \(labels(app))")
-        let onTheName = circle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 120, dy: 0))
+        // The press lands on the item's name, with the circles still away: it
+        // opens the editing with that item chosen.
+        let name = app.staticTexts["USB-C charger 65W"].firstMatch
+        XCTAssertTrue(name.waitForExistence(timeout: 20), "The order's item has no name: \(labels(app))")
+        let onTheName = name.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         let count = app.staticTexts["1 item chosen"]
         XCTAssertFalse(count.exists, "The bar is up before anything is chosen.")
         onTheName.tap()
         XCTAssertTrue(count.waitForExistence(timeout: 6), "A press on the item's name did not choose it: \(labels(app))")
+        XCTAssertTrue(named(app, "Choose USB-C charger 65W").exists, "Choosing by the name did not bring the circles out.")
         onTheName.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: count)
         wait(for: [gone], timeout: 4)
@@ -99,8 +116,11 @@ final class OrderSelectionUITests: XCTestCase {
         ]
         app.launch()
 
+        let edit = app.buttons["order-edit"]
+        XCTAssertTrue(edit.waitForExistence(timeout: 20), "The order has no Edit order button: \(labels(app))")
+        edit.tap()
         let circle = named(app, "Choose Copper Kettle")
-        XCTAssertTrue(circle.waitForExistence(timeout: 20), "The kettle has no circle: \(labels(app))")
+        XCTAssertTrue(circle.waitForExistence(timeout: 6), "The kettle has no circle: \(labels(app))")
         XCTAssertEqual(named(app, "Choose Harbour Desk Lamp").exists, true, "The lamp has no circle: \(labels(app))")
         circle.tap()
         XCTAssertTrue(app.staticTexts["1 item chosen"].waitForExistence(timeout: 6), "Choosing the kettle brought no bar: \(labels(app))")

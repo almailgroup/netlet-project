@@ -412,6 +412,9 @@ struct OrderDetailView: View {
     @State private var receipt = OrderReceiptModel()
     /// The items chosen by their circles, the cart's own (on the owner's word).
     @State private var chosen: Set<Int> = []
+    /// The circles are out only while the order is being edited — "Edit order"
+    /// on the "In this order" row, on the owner's word.
+    @State private var editing = false
     @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
@@ -432,7 +435,7 @@ struct OrderDetailView: View {
                             VStack(alignment: .leading, spacing: 16) {
                                 OrderActionsBar(reference: reference, detail: detail, reload: { await model.load() }, sheet: $sheet, onReceipt: { makeReceipt(detail) }, onRate: { line in
                                     rating = target(line)
-                                }, chosen: $chosen, askingCancel: $askingCancel)
+                                }, chosen: $chosen, editing: $editing, askingCancel: $askingCancel)
                                 lines(detail, reload: { await model.load() })
                                 if !detail.documents.isEmpty { OrderDocumentsList(documents: detail.documents) }
                                 if detail.hasShipped { TrackingPanel(reference: reference) }
@@ -459,7 +462,7 @@ struct OrderDetailView: View {
             .overlay(alignment: .bottom) {
                 ZStack(alignment: .bottom) {
                     if let detail = model.detail.value, !chosen.isEmpty {
-                        ChosenItemsBar(detail: detail, chosen: $chosen) { offer in
+                        ChosenItemsBar(detail: detail, chosen: $chosen, onClose: { stopEditing() }) { offer in
                             run(offer, detail: detail)
                         }
                         .padding(.horizontal, 12)
@@ -485,6 +488,24 @@ struct OrderDetailView: View {
         guard let detail else { return 260 }
         let count = OrderSelection.offers(detail, chosen: chosen, returnsOn: app.features.isOn("returns")).count
         return 96 + 91 * CGFloat(max(1, (count + 3) / 4))
+    }
+
+    /// The circles away, with the choice (the bar's Close, on the owner's word).
+    private func stopEditing() {
+        withAnimation(still ? nil : .snappy(duration: 0.25)) {
+            chosen = []
+            editing = false
+        }
+    }
+
+    /// A press on an item chooses it or puts it back, and opens the editing
+    /// when it is not open yet — the owner's earlier "tap anywhere on the
+    /// product chooses it", kept with the circles put away.
+    private func toggle(_ id: Int) {
+        withAnimation(still ? nil : .snappy(duration: 0.25)) {
+            editing = true
+            if chosen.contains(id) { chosen.remove(id) } else { chosen.insert(id) }
+        }
     }
 
     /// The receipt, made and shown; a toast if it could not be drawn.
@@ -614,13 +635,17 @@ struct OrderDetailView: View {
             ForEach(detail.lines) { line in
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 10) {
-                        // Chosen for the bar's acts, the cart's own circle (on the owner's word).
-                        ChoiceCircle(state: chosen.contains(line.id) ? .all : .none, label: l.t("select.item", ["name": line.productTitle])) { on in
-                            if on { chosen.insert(line.id) } else { chosen.remove(line.id) }
+                        // Chosen for the bar's acts, the cart's own circle (on the
+                        // owner's word) — out only while the order is being edited.
+                        if editing {
+                            ChoiceCircle(state: chosen.contains(line.id) ? .all : .none, label: l.t("select.item", ["name": line.productTitle])) { on in
+                                if on { chosen.insert(line.id) } else { chosen.remove(line.id) }
+                            }
+                            .padding(.leading, -12)
+                            .padding(.trailing, -4)
+                            .padding(.top, 6)
+                            .transition(still ? .identity : .scale(scale: 0.6).combined(with: .opacity))
                         }
-                        .padding(.leading, -12)
-                        .padding(.trailing, -4)
-                        .padding(.top, 6)
                         Color.clear
                             .frame(width: 56, height: 56)
                             .overlay { RemoteImage(reference: line.photo) }
@@ -663,7 +688,7 @@ struct OrderDetailView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         Haptics.tap()
-                        if chosen.contains(line.id) { chosen.remove(line.id) } else { chosen.insert(line.id) }
+                        toggle(line.id)
                     }
                     .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -692,6 +717,7 @@ struct OrderDetailView: View {
             // The screenshots' `orderChosen:` hook: every item chosen, the bar up.
             if app.orderSheet == "chooseAll" {
                 app.orderSheet = nil
+                editing = true
                 chosen = Set(detail.lines.map(\.id))
                 return
             }

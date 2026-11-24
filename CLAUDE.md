@@ -3911,7 +3911,18 @@ specific product, it should automatically choose it"): its photo, name, price
 and lines are one target (`OrderLineRow` on the web, an `onTapGesture` over the
 item's row in the app, the chosen row on a faint navy wash), and a press on a
 link or button inside it does that alone; the circle stays the one control a
-keyboard, a screen reader and VoiceOver meet. While anything is chosen a bar of
+keyboard, a screen reader and VoiceOver meet. **The circles are out only while
+the order is being edited, on the owner's word** ("when I came to this page no
+need to see it in this way … add an icon like edit your order, once you click
+it, it will open like that to control all or each one separately"): the order
+opens on its items alone, with "Edit order" (a pencil, `EditOrderButton` in the
+app, beside the PDF pill on the web) at the end of the "In this order" row;
+pressed, the All circle, every item's circle and "Choose items, or all of
+them…" come out and the button reads "Done", which puts them away with the
+choice, as the bar's Close does. A press on an item still chooses it and opens
+the editing with it, so the keyboard's way in is the button and the finger's is
+either (`editing` in `OrderAfterSales` and `OrderDetailView`; the screenshots'
+`orderChosen:` hook opens it). While anything is chosen a bar of
 presses: on a
 phone it floats over the tab bar (`PhoneActionBar` on the web, which puts the
 assistant aside; `ChosenItemsBar` in the app, `floatsAtFoot`, with

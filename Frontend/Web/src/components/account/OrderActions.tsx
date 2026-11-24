@@ -17,6 +17,15 @@
  * is"; they waited for every item to be chosen once). Each item had a ⋯ of
  * its own for a while, and so did the order.
  *
+ * **The circles are out only while the order is being edited**, on the
+ * owner's word ("when I came to this page no need to see it in this way …
+ * add an icon like edit your order, once you click it, it will open like that
+ * to control all or each one separately"): the order opens on its items
+ * alone, and "Edit order" at the end of "In this order" brings the All
+ * circle, the items' circles and the line saying what they are for; "Done",
+ * or the bar's Close, puts them away with the choice. A press on an item
+ * still chooses it, and opens the editing with it.
+ *
  * **Nothing here decides.** Each action is drawn from the server's own answer
  * about this order — `cancel` (`shopperCancelState`), `change` and
  * `changeAddress` (`Shared/commerce/orderChanges.ts`), each line's return
@@ -30,6 +39,7 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import {
+  Check,
   CircleX,
   CreditCard,
   FileDown,
@@ -106,7 +116,12 @@ type Controls = {
   rate: (lineId: number) => void;
   /** The items chosen by their circles, the cart's own (on the owner's word). */
   chosen: number[];
+  /** Choosing an item opens the editing; putting one back does not close it. */
   choose: (lineIds: number[], on: boolean) => void;
+  /** Whether the circles are out ("Edit order", on the owner's word). */
+  editing: boolean;
+  /** The circles away, with the choice: "Done" and the bar's Close. */
+  stopEditing: () => void;
   /** Where an item's panel is drawn, so the bar can bring it into view. */
   panelId: (lineId?: number) => string;
 };
@@ -146,9 +161,13 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
   const [asking, setAsking] = useState(false);
   /* The items chosen, kept to the ones the order still has. */
   const [picked, setPicked] = useState<number[]>([]);
+  const [editing, setEditing] = useState(false);
   const chosen = picked.filter(id => detail.lines.some(line => line.id === id));
-  const choose = (lineIds: number[], on: boolean) =>
+  const choose = (lineIds: number[], on: boolean) => {
+    if (on) setEditing(true);
     setPicked(now => (on ? [...now.filter(id => !lineIds.includes(id)), ...lineIds] : now.filter(id => !lineIds.includes(id))));
+  };
+  const stopEditing = () => { setPicked([]); setEditing(false); };
 
   const refundable = returnsOn ? detail.lines.filter(line => mayRequestReturn(line, detail.returns)) : [];
   const claimable = returnsOn ? detail.lines.filter(line => line.warrantyEligibility.allowed) : [];
@@ -233,11 +252,13 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
     open: next => setPanel(current => (!next.fromBar && current && current.kind === next.kind && current.lineId === next.lineId && current.remove === next.remove && !current.lineIds ? null : next)),
     close: () => setPanel(null),
     /* What was done is done with the items it was about: the choice goes too. */
-    done: () => { setPanel(null); setPicked([]); refresh(); },
+    done: () => { setPanel(null); stopEditing(); refresh(); },
     act,
     rate: onRate,
     chosen,
     choose,
+    editing,
+    stopEditing,
     panelId,
   };
 
@@ -267,23 +288,40 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
   return (
     <OrderControls.Provider value={controls}>
       <div className="mb-3">
-        <div className="flex items-center justify-between gap-3">
-          {/* Every item at once, the cart's All: the circle lines up with the items' own. */}
-          <span className="flex min-w-0 items-center gap-1">
-            <ChoiceCircle
-              state={chosenState(detail.lines.map(line => line.id), chosen)}
-              label={t("orders.chooseAllItems")}
-              onToggle={on => choose(detail.lines.map(line => line.id), on)}
-              className="-ms-2.5 pointer-fine:-ms-1.5"
-            />
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          {/* Every item at once, the cart's All: the circle lines up with the
+              items' own — out only while the order is being edited. */}
+          <span className="flex min-h-11 min-w-0 items-center gap-1 pointer-fine:min-h-9">
+            {editing ? (
+              <span className="panel-in">
+                <ChoiceCircle
+                  state={chosenState(detail.lines.map(line => line.id), chosen)}
+                  label={t("orders.chooseAllItems")}
+                  onToggle={on => choose(detail.lines.map(line => line.id), on)}
+                  className="-ms-2.5 pointer-fine:-ms-1.5"
+                />
+              </span>
+            ) : null}
             <h4 className="text-[14px] font-extrabold text-[#0a285a]">{t("orders.inThisOrder")}</h4>
           </span>
-          {/* The receipt as a PDF, at the top of the order under its title
-              and its date, on the owner's word — it was at the order's foot. */}
-          <ReceiptButton detail={detail} />
+          <span className="ms-auto flex items-center gap-2">
+            {/* "Edit order" brings the circles; "Done" puts them away. */}
+            <button
+              type="button"
+              onClick={() => { pressHaptic(); if (editing) stopEditing(); else setEditing(true); }}
+              className={`${editing ? "glass-navy" : "glass"} type-control pressable inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9`}
+            >
+              {editing ? <Check className="size-4" aria-hidden /> : <PencilLine className="size-4" aria-hidden />}
+              {t(editing ? "orders.editDone" : "orders.editOrder")}
+            </button>
+            {/* The receipt as a PDF, at the top of the order under its title
+                and its date, on the owner's word — it was at the order's foot. */}
+            <ReceiptButton detail={detail} />
+          </span>
         </div>
-        {/* The bar is the one way to the order's acts: said while nothing is chosen. */}
-        {chosen.length === 0 ? <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("orders.chooseHint")}</p> : null}
+        {/* The bar is the one way to the order's acts: said while editing and
+            nothing is chosen yet. */}
+        {editing && chosen.length === 0 ? <p className="mt-1 text-[12px] leading-5 ink-muted">{t("orders.chooseHint")}</p> : null}
       </div>
       {whyNot ? <p className="mb-3 text-[12px] leading-5 ink-muted">{t(whyNot)}</p> : null}
 
@@ -373,15 +411,19 @@ export function OrderLinePanel({ line }: { line: Line }) {
  */
 export function OrderLineChoice({ line }: { line: Line }) {
   const { t } = useTranslation();
-  const { chosen, choose } = useControls();
+  const { chosen, choose, editing } = useControls();
   const on = chosen.includes(line.id);
+  /* Out only while the order is being edited (on the owner's word). */
+  if (!editing) return null;
   return (
-    <ChoiceCircle
-      state={on ? "all" : "none"}
-      label={t("select.item", { name: line.productTitle })}
-      onToggle={next => choose([line.id], next)}
-      className="-ms-2.5 pointer-fine:-ms-1.5"
-    />
+    <span className="panel-in self-start pt-1.5 pointer-fine:pt-3">
+      <ChoiceCircle
+        state={on ? "all" : "none"}
+        label={t("select.item", { name: line.productTitle })}
+        onToggle={next => choose([line.id], next)}
+        className="-ms-2.5 pointer-fine:-ms-1.5"
+      />
+    </span>
   );
 }
 
@@ -477,7 +519,7 @@ function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
   onReceipt: () => void;
 }) {
   const { t } = useTranslation();
-  const { detail, chosen, choose, open, rate } = useControls();
+  const { detail, chosen, open, rate, stopEditing } = useControls();
   const returnsOn = useFeature("returns");
   const wide = useMediaQuery("(min-width: 1024px)");
   const eightAcross = useMediaQuery("(min-width: 640px)");
@@ -554,7 +596,7 @@ function ChosenBar({ onBuyAgain, onCancelOrder, onReceipt }: {
         </p>
         <button
           type="button"
-          onClick={() => choose(chosen, false)}
+          onClick={stopEditing}
           className="tint-on-hover inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-white/90 bg-white/75 px-3 text-[13px] font-bold text-[#0a285a] pointer-fine:min-h-8"
         >
           <X className="size-4" aria-hidden />

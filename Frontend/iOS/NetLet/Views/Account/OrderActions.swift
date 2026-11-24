@@ -41,17 +41,28 @@ struct OrderActionsBar: View {
     /// The items chosen by their circles (on the owner's word): the All circle
     /// beside "In this order" chooses every one.
     var chosen: Binding<Set<Int>>? = nil
+    /// Whether the circles are out, on the owner's word ("when I came to this
+    /// page no need to see it in this way … add an icon like edit your order,
+    /// once you click it, it will open like that to control all or each one
+    /// separately"): the order opens on its items alone, and "Edit order" at
+    /// the end of "In this order" brings the All circle, the items' circles and
+    /// the line saying what they are for; "Done" puts them away with the choice.
+    var editing: Binding<Bool>? = nil
     /// "Cancel this order?" — asked from the bar's Cancel order, with every
     /// item chosen, or from an answer of NetLet AI.
     var askingCancel: Binding<Bool>? = nil
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.accessibilityReduceMotion) private var still
     /// What an answer from NetLet AI pointed at, opened once the help sheet is down.
     @State private var next: String?
     @State private var askingHere = false
     @State private var cancelling = false
 
     private var asking: Binding<Bool> { askingCancel ?? $askingHere }
+    /// The circles are out: while editing, or always where nobody hands an
+    /// `editing` (the order's own page always does).
+    private var isEditing: Bool { editing?.wrappedValue ?? true }
     @State private var rebuying = false
 
     private var refundable: [OrderLine] { app.features.isOn("returns") ? detail.refundable : [] }
@@ -62,13 +73,15 @@ struct OrderActionsBar: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 HStack(spacing: 0) {
-                    // Every item at once, the cart's All; its circle lines up with the items' own.
-                    if let chosen {
+                    // Every item at once, the cart's All; its circle lines up with
+                    // the items' own — out only while the order is being edited.
+                    if let chosen, isEditing {
                         let all = detail.lines.map(\.id)
                         ChoiceCircle(state: OrderSelection.state(all: all, chosen: chosen.wrappedValue), label: l.t("orders.chooseAllItems")) { on in
                             chosen.wrappedValue = on ? Set(all) : []
                         }
                         .padding(.leading, -12)
+                        .transition(still ? .identity : .scale(scale: 0.6).combined(with: .opacity))
                     }
                     Text(l.t("orders.inThisOrder"))
                         .font(.inter(15, .heavy))
@@ -76,10 +89,18 @@ struct OrderActionsBar: View {
                         .accessibilityAddTraits(.isHeader)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                if let editing, chosen != nil {
+                    EditOrderButton(editing: editing.wrappedValue) {
+                        withAnimation(still ? nil : .snappy(duration: 0.25)) {
+                            if editing.wrappedValue { chosen?.wrappedValue = [] }
+                            editing.wrappedValue.toggle()
+                        }
+                    }
+                }
             }
             // The bar is the one way to the order's acts (on the owner's word):
-            // said while nothing is chosen.
-            if let chosen, chosen.wrappedValue.isEmpty {
+            // said while editing and nothing is chosen yet.
+            if let chosen, isEditing, chosen.wrappedValue.isEmpty {
                 Text(l.t("orders.chooseHint"))
                     .font(.inter(13))
                     .foregroundStyle(Brand.muted)
@@ -171,6 +192,7 @@ struct OrderActionsBar: View {
     /// What was done is done with the items it was about: the choice goes too.
     private func done() {
         if let chosen { chosen.wrappedValue = [] }
+        editing?.wrappedValue = false
         Task { await reload() }
     }
 
@@ -748,6 +770,8 @@ struct RefundSheet: View {
 struct ChosenItemsBar: View {
     let detail: OrderDetail
     @Binding var chosen: Set<Int>
+    /// Close puts the editing away with the choice (on the owner's word).
+    var onClose: (() -> Void)? = nil
     let run: (OrderSelection.Offer) -> Void
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -764,6 +788,7 @@ struct ChosenItemsBar: View {
                 Spacer(minLength: 8)
                 Button {
                     chosen = []
+                    onClose?()
                 } label: {
                     Label(l.t("orders.chosenClear"), systemImage: "xmark")
                         .font(.inter(13, .bold))
@@ -872,5 +897,35 @@ struct ChosenItemsBar: View {
         case .receipt: return "orders.pickReceipt"
         case .cancelOrder: return "orders.pickCancelOrder"
         }
+    }
+}
+
+/// "Edit order" at the end of "In this order", and "Done" while editing — a
+/// small white pill with a pencil or a tick, the order page's own (on the
+/// owner's word: "add an icon like edit your order").
+struct EditOrderButton: View {
+    let editing: Bool
+    let toggle: () -> Void
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        Button {
+            Haptics.tap()
+            toggle()
+        } label: {
+            Label(l.t(editing ? "orders.editDone" : "orders.editOrder"), systemImage: editing ? "checkmark" : "pencil")
+                .font(.inter(14, .semibold))
+                .foregroundStyle(editing ? Color.white : Brand.navy)
+                .lineLimit(1)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 36)
+                .background(Capsule().fill(editing ? Brand.navy : Color.white))
+                .overlay(Capsule().strokeBorder(editing ? Brand.navy : Brand.line, lineWidth: 1))
+                .frame(minHeight: 44)
+                .contentShape(Capsule())
+        }
+        .buttonStyle(SpringPressStyle(cornerRadius: 18))
+        .fixedSize()
+        .accessibilityIdentifier("order-edit")
     }
 }

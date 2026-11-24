@@ -491,7 +491,7 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                   {/* A press anywhere on the item chooses it (on the owner's word). */}
                   <OrderLineRow line={line}>
                   {/* Chosen for the bar's acts, the cart's own circle (on the owner's word). */}
-                  <span className="self-start pt-1.5 pointer-fine:pt-3"><OrderLineChoice line={line} /></span>
+                  <OrderLineChoice line={line} />
                   <Thumb src={line.photo ?? null} alt="" className="size-12 shrink-0 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
                   <div className="min-w-0 flex-1">
                     {/* What can be done with it is the bar's, once its circle is
