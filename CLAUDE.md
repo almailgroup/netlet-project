@@ -2823,11 +2823,12 @@ orders and Saved items, so all should be in four boxes"): "My orders" and
 "Saved items", then "Frequently bought" and "Wallet" — the first three
 showing the last four pictures (`orders.list`'s own photos, the hearts read by
 id, `frequent.list`'s products) or saying there is nothing yet, **the Wallet
-what it holds, each with its own icon, on the owner's word** ("add more icons
-for the Wallet, not only NetLet points"): a white card on a navy disc over how
-many cards are saved, on pale sky, beside the coin over the balance, on pale
-orange — the Wallet's own order (`WalletChip`, the app's `walletChip`; the
-words are the tile's name to a screen reader). **Every tile is the height of the
+its points alone**: the coin beside the balance and "NetLet points", on pale
+orange (the words are the tile's name to a screen reader). It carried the saved
+cards too for a while, a card on a navy disc over how many, on the owner's word
+("add more icons for the Wallet"), and **they left it, also on the owner's
+word** ("remove the payment methods from Wallet, keep this option at the
+bottom only"): the cards are the Payment methods row under Addresses alone. **Every tile is the height of the
 tallest** (`auto-rows-fr`; the app's `TileGrid`), with its picture at the
 foot, because "Frequently bought" wraps on a 320px phone and a row of its own
 height read as a broken grid; a figure shrinks with the screen rather than
@@ -2927,16 +2928,16 @@ its line naming tracking, cancelling and the refund. **The Wallet is
 everything the account holds that is worth money, on the owner's word**
 ("instead of NetLet points … rename it to wallet, and store everything there,
 from NetLet points to anything else related to wallet"; `/account/wallet`,
-`AccountWallet`; the app's `WalletView`): **the saved cards first and the
-NetLet points at the bottom, on the owner's word** ("it should show you the
-saved cards first and NetLet points at the bottom") — the saved cards
-(`SavedCards`, the app's `SavedCardsCard`), then under "NetLet points" the
-balance with the coin and converting it (`PointsWallet`), the two ways to earn
-and the points history. It was two
-pages, the points (`/account/rewards`) and Payment methods
-(`/account/payments`); the points' address opens the Wallet (`MOVED` in
-`Account.tsx`, the app's `Route.from`), and Payment methods is a row and a
-page again, under Addresses (above), its cards still on the Wallet too. Gift cards are not in it because the account holds none — a gift card is
+`AccountWallet`; the app's `WalletView`): under "NetLet points" the balance
+with the coin and converting it (`PointsWallet`), the two ways to earn and the
+points history. **The saved cards are not in it, on the owner's word**
+("remove the payment methods from Wallet, keep this option at the bottom
+only"): they opened the Wallet for a while ("it should show you the saved
+cards first and NetLet points at the bottom"), and are Payment methods alone
+now (`SavedCards` on `/account/payments`, the app's `PaymentMethodsView`),
+the row under Addresses (above). It was two pages, the points
+(`/account/rewards`) and Payment methods (`/account/payments`); the points'
+address opens the Wallet (`MOVED` in `Account.tsx`, the app's `Route.from`). Gift cards are not in it because the account holds none — a gift card is
 a code typed and spent at checkout, and keeping a list of them would be a
 table, a migration not shown. **The saved cards are the cards and a way to
 add one, and nothing else, on the owner's word** ("remove the ways to pay …

@@ -2,15 +2,15 @@
  * The Wallet, on the account page, on the owner's word ("instead of NetLet
  * points … rename it to wallet, and store everything there, from NetLet
  * points to anything else related to wallet"): everything the account holds
- * that is worth money, in one place. **It opens on the saved cards
- * (`SavedCards`, which was the Payment methods page) and keeps the NetLet
- * points at the bottom, also on the owner's word** ("it should show you the
- * saved cards first and NetLet points at the bottom"): under their own
- * heading, the balance with the coin and converting it to money
- * (`PointsWallet`, 3.1.14, 3.1.15), the two ways to earn, and the history
- * behind the number. The points page
- * (`/account/rewards`) and Payment methods (`/account/payments`) were two
- * addresses; both open this page now (`MOVED` in `Account.tsx`).
+ * that is worth money, in one place: the balance with the coin and
+ * converting it to money (`PointsWallet`, 3.1.14, 3.1.15), the two ways to
+ * earn, and the history behind the number. The points page
+ * (`/account/rewards`) opens this page now (`MOVED` in `Account.tsx`).
+ *
+ * **The saved cards are not here, on the owner's word** ("remove the payment
+ * methods from Wallet, keep this option at the bottom only"): they opened the
+ * Wallet for a while (`SavedCards`), and are the Payment methods row under
+ * Addresses on the account page alone (`/account/payments`).
  *
  * Gift cards are not here because the account holds none: a gift card is a
  * code, typed at checkout and spent there, and NetLet keeps no list of the
@@ -35,7 +35,6 @@ import { Link } from "wouter";
 import { spendValue } from "@shared/commerce/referral";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { PointsWallet } from "@/components/account/PointsWallet";
-import { SavedCards } from "@/components/account/SavedCards";
 import { PANEL } from "@/components/account/profileParts";
 import { PointsCoin } from "@/components/ui/PointsCoin";
 import { useDateFormat } from "@/hooks/useDateFormat";
@@ -82,9 +81,7 @@ export function AccountWallet() {
 
         return (
           <div className="space-y-3">
-            <SavedCards />
-
-            <h3 className="px-1 pt-2 text-[15px] font-bold text-[#0a285a]">{t("account.points")}</h3>
+            <h3 className="px-1 text-[15px] font-bold text-[#0a285a]">{t("account.points")}</h3>
             <PointsWallet view={view} />
 
             <section aria-labelledby="ways-to-earn" className="space-y-3">

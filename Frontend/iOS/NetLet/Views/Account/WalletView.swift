@@ -2,12 +2,13 @@ import SwiftUI
 
 /// The Wallet — the web's `AccountWallet`, on the owner's word ("instead of
 /// NetLet points … rename it to wallet, and store everything there"): the
-/// saved cards first (`SavedCardsCard`, which was the Payment methods screen),
-/// then the NetLet points at the bottom, also on the owner's word — the
-/// balance with the coin and converting it to money (`PointsWallet`), the two
-/// ways to earn (affiliate marketing first, then inviting a friend) and the
-/// history behind the number. The web's `/account/rewards` opens it
-/// (`Route.from`).
+/// NetLet points — the balance with the coin and converting it to money
+/// (`PointsWallet`), the two ways to earn (affiliate marketing first, then
+/// inviting a friend) and the history behind the number. The web's
+/// `/account/rewards` opens it (`Route.from`). **The saved cards are not
+/// here, on the owner's word** ("remove the payment methods from Wallet, keep
+/// this option at the bottom only"): they are Payment methods alone
+/// (`PaymentMethodsView`), the row under the addresses.
 struct WalletView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -27,15 +28,11 @@ struct WalletView: View {
 
     private func content(_ view: Rewards, reload: @escaping () async -> Void) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // The saved cards first and the points under them, on the owner's
-            // word ("it should show you the saved cards first and NetLet points
-            // at the bottom") — the points with their ways to earn and history.
-            SavedCardsCard()
-
+            // The points with their ways to earn and history; the saved cards
+            // are Payment methods alone (on the owner's word).
             Text(l.t("account.points"))
                 .font(.inter(15, .bold))
                 .foregroundStyle(Brand.navy)
-                .padding(.top, 6)
                 .accessibilityAddTraits(.isHeader)
             PointsWallet(view: view, reload: reload)
 
@@ -793,7 +790,7 @@ private struct StandingOrderCard: View {
 /// Payment methods — the saved cards alone, the web's `/account/payments`: a
 /// row under the addresses on the Profile tab again, on the owner's word ("add
 /// payment method below delivery addresses … let them two be connected
-/// together"). The Wallet keeps the same card above the points.
+/// together"). It is the one place they are: the Wallet does not show them.
 struct PaymentMethodsView: View {
     @Environment(LanguageSettings.self) private var l
 
