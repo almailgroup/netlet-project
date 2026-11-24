@@ -3520,8 +3520,13 @@ My orders ("a design for their status of delivery below them … simple for
 the user to understand"), then a road under each item of an opened order
 ("in this page will show you only the main info … each item has different
 deliver time"), and is now a tile under the photo (`ItemStatus` on the web,
-`ItemStatusTile` in the app): a 56 by 40 plate with the item's word under
-it, read off that item alone (`orderProgress` over its one line,
+`ItemStatusTile` in the app): **a row the photo's width, a 36 by 30 plate at
+its start and the item's word after it, under a photo 96 square (76 on a
+phone under 360px wide) — both on the owner's word** (a drawing over the
+item: "I prefer the item picture this size, and the delivery details down,
+picture left and status right"); it was a 56 by 40 plate with the word under
+it beside a 56px photo. On a 320 phone the word drops under the plate rather
+than break mid-word. It is read off that item alone (`orderProgress` over its one line,
 `ReceiptRules.progress` in the app). **Being got ready** (received, being
 prepared, pre-ordered): NetLet's store on pale amber, an amber disc turning
 on its corner. **On the way**: NetLet's navy van on pale sky, wheels turning

@@ -2372,8 +2372,10 @@ html[data-page-arriving] .assistant-launcher {
 /*
  * Each item's status under its photo on the opened order (`ItemStatus`), on
  * the owner's word ("delivery status should shown here; once it shown
- * delivered, then review icon will appear out here"): a small plate drawn
- * from the street's own pictures, the item's word under it. Being got ready,
+ * delivered, then review icon will appear out here"): a row the photo's
+ * width, a small plate drawn from the street's own pictures at its start and
+ * the item's word after it (the owner's drawing: "picture left and status
+ * right"; it was the word under the plate). Being got ready,
  * NetLet's store with an amber disc turning on its corner; on the way, the
  * van with its wheels turning, riding the bumps, speed lines behind it —
  * facing the page's end, so it is mirrored on the Arabic page; delivered, a
@@ -2383,19 +2385,20 @@ html[data-page-arriving] .assistant-launcher {
  */
 .item-status {
   display: flex;
-  width: 3.5rem;
-  flex-direction: column;
+  width: 100%;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  text-align: center;
+  gap: 4px 6px;
+  text-align: start;
 }
 .item-status-plate {
   position: relative;
   display: grid;
+  flex: none;
   place-items: center;
-  width: 3.5rem;
-  height: 2.5rem;
-  border-radius: 14px;
+  min-width: 2.25rem;
+  height: 1.875rem;
+  border-radius: 10px;
   background: #e8f0fb;
 }
 .item-status[data-look="processing"] .item-status-plate {
@@ -2419,20 +2422,23 @@ html[data-page-arriving] .assistant-launcher {
   color: #3d5170;
 }
 .item-status-word {
-  max-width: 3.5rem;
+  /* Beside the plate while a word of its fits (the photo's 96px leaves 54),
+     under it on the narrowest phones rather than broken mid-word. */
+  flex: 1 1 0;
+  min-width: 2.75rem;
   font-size: 11px;
   font-weight: 700;
   line-height: 13px;
   color: #0a285a;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .item-status[data-look="cancelled"] .item-status-word {
   color: #8c2f22;
 }
 .item-status-place {
   position: relative;
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
 }
 .item-status-place > svg,
 .item-status-van > svg {
@@ -2444,12 +2450,12 @@ html[data-page-arriving] .assistant-launcher {
 /* The tick or the turning disc on a place's corner — never mirrored. */
 .item-status-badge {
   position: absolute;
-  top: -4px;
-  inset-inline-end: -7px;
+  top: -3px;
+  inset-inline-end: -6px;
   display: grid;
   place-items: center;
-  width: 15px;
-  height: 15px;
+  width: 12px;
+  height: 12px;
   border-radius: 9999px;
   color: #fff;
   box-shadow: 0 0 0 1.5px #fff;
@@ -2461,16 +2467,16 @@ html[data-page-arriving] .assistant-launcher {
   background: #2f7d3a;
 }
 .item-status-spinner {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border: 1.5px solid rgb(255 255 255 / 0.4);
   border-top-color: #fff;
   border-radius: 9999px;
 }
 .item-status-van {
   position: relative;
-  width: 36px;
-  height: 21px;
+  width: 26px;
+  height: 15px;
 }
 [dir="rtl"] .item-status-van {
   scale: -1 1;
@@ -2481,22 +2487,23 @@ html[data-page-arriving] .assistant-launcher {
 }
 .item-status-speed {
   position: absolute;
-  bottom: 12px;
-  left: -9px;
-  width: 7px;
+  bottom: 9px;
+  left: -6px;
+  width: 5px;
   height: 1.5px;
   border-radius: 2px;
   background: #9fb0c8;
   opacity: 0;
 }
 .item-status-speed-late {
-  bottom: 7px;
-  left: -7px;
-  width: 5px;
+  bottom: 5px;
+  left: -5px;
+  width: 4px;
 }
 .item-status-stars {
   display: flex;
   gap: 1px;
+  padding-inline: 5px;
 }
 @media (prefers-reduced-motion: no-preference) {
   .item-status[data-look="processing"] .item-status-spinner {

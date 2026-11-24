@@ -57,6 +57,13 @@ final class OrderItemJourneyUITests: XCTestCase {
         for (status, word) in zip(opened, words) {
             XCTAssertTrue(status.label.contains(word), "An item's status reads \(status.label), not \(word) (\(language)).")
         }
+        // A row the larger photo's width, the picture beside the word rather
+        // than over it ("the delivery details down picture left and status
+        // right as my drawing", the owner's word).
+        for status in opened {
+            XCTAssertGreaterThanOrEqual(status.frame.width, 90, "An item's status is not the photo's width (\(status.frame)) (\(language)).")
+            XCTAssertLessThanOrEqual(status.frame.height, 48, "An item's status is stacked, not a row (\(status.frame)) (\(language)).")
+        }
         // Under the photo, at the item's start: the left in English, the right in Arabic.
         let width = order.windows.firstMatch.frame.width
         if language == "ar" {

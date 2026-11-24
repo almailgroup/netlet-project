@@ -2,8 +2,11 @@ import SwiftUI
 
 /// Where one item of an opened order is, drawn under its photo, on the
 /// owner's word ("delivery status should shown here — once it shown
-/// delivered, then review icon will appear out here"): a small plate with the
-/// item's word under it. The web's `ItemStatus`, drawn the same.
+/// delivered, then review icon will appear out here"): **a row the photo's
+/// width, the small picture at its start and the word after it**, also on the
+/// owner's word ("the delivery details down picture left and status right as
+/// my drawing", with the photo made larger) — it was a plate with the word
+/// under it. The web's `ItemStatus`, drawn the same.
 ///
 /// - **Being got ready**, NetLet's store with an amber disc turning on its corner.
 /// - **On the way**, NetLet's van with its wheels turning, riding the bumps,
@@ -35,7 +38,11 @@ struct ItemStatusTile: View {
 
     enum Look { case processing, onTheWay, delivered, rate, rated, cancelled, returned }
 
-    static let width: CGFloat = 56
+    /// The photo's width above it, which the row spans.
+    static let width: CGFloat = 96
+    /// The picture's plate, at the row's start.
+    static let plateWidth: CGFloat = 36
+    static let plateHeight: CGFloat = 30
     static let gold = Color(red: 183 / 255, green: 121 / 255, blue: 31 / 255)
     static let goldFill = Color(red: 1, green: 243 / 255, blue: 209 / 255)
     static let goldLine = Color(red: 239 / 255, green: 212 / 255, blue: 138 / 255)
@@ -61,16 +68,18 @@ struct ItemStatusTile: View {
 
     var body: some View {
         let look = self.look
-        let tile = VStack(spacing: 4) {
+        let tile = HStack(spacing: 6) {
             plate(look)
             Text(word(look))
                 .font(.inter(11, .bold))
                 .foregroundStyle(look == .cancelled ? JourneyStreet.stoppedInk : Brand.navy)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(.leading)
                 .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(width: Self.width)
+        .frame(width: Self.width, alignment: .leading)
+        .contentShape(Rectangle())
         .onAppear {
             guard !shown else { return }
             if reduceMotion { shown = true } else { withAnimation(.spring(response: 0.45, dampingFraction: 0.55).delay(0.15)) { shown = true } }
@@ -78,7 +87,7 @@ struct ItemStatusTile: View {
         Group {
             if look == .rate || look == .rated {
                 Button(action: onRate) { tile }
-                    .buttonStyle(SpringPressStyle(cornerRadius: 14))
+                    .buttonStyle(SpringPressStyle(cornerRadius: 10))
                     .accessibilityLabel(look == .rate ? l.t("review.dialogTitle", ["name": title]) : l.t("review.edit"))
             } else {
                 tile.accessibilityElement(children: .combine)
@@ -99,15 +108,20 @@ struct ItemStatusTile: View {
     }
 
     private func plate(_ look: Look) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 14, style: .continuous).fill(fill(look))
-            if look == .rate || look == .rated {
-                RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Self.goldLine, lineWidth: 1)
+        let rated = look == .rated
+        return picture(look)
+            // The stars given are wider than the plate; it grows round them.
+            .padding(.horizontal, rated ? 5 : 0)
+            .frame(width: rated ? nil : Self.plateWidth, height: Self.plateHeight)
+            .frame(minWidth: Self.plateWidth)
+            .layoutPriority(1)
+            .background {
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(fill(look))
+                if look == .rate || look == .rated {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Self.goldLine, lineWidth: 1)
+                }
             }
-            picture(look)
-        }
-        .frame(width: Self.width, height: 40)
-        .accessibilityHidden(true)
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder private func picture(_ look: Look) -> some View {
@@ -122,7 +136,7 @@ struct ItemStatusTile: View {
             }
         case .delivered:
             Canvas { c, size in
-                let side: CGFloat = 28
+                let side: CGFloat = 20
                 var house = c
                 house.translateBy(x: (size.width - side) / 2, y: (size.height - side) / 2)
                 house.scaleBy(x: side / JourneyArt.place, y: side / JourneyArt.place)
@@ -130,18 +144,18 @@ struct ItemStatusTile: View {
             }
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 7, weight: .black))
+                    .font(.system(size: 6, weight: .black))
                     .foregroundStyle(.white)
-                    .frame(width: 15, height: 15)
+                    .frame(width: 12, height: 12)
                     .background(Circle().fill(JourneyArt.green))
-                    .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 1.25))
                     .scaleEffect(shown ? 1 : 0)
-                    .padding(.top, 2)
-                    .padding(.trailing, 6)
+                    .padding(.top, 1)
+                    .padding(.trailing, 2)
             }
         case .rate:
             Image(systemName: "star")
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Self.gold)
                 .scaleEffect(shown ? 1 : 0.4)
                 .rotationEffect(.degrees(shown ? 0 : -25))
@@ -150,17 +164,17 @@ struct ItemStatusTile: View {
             HStack(spacing: 1) {
                 ForEach(1...5, id: \.self) { star in
                     Image(systemName: star <= (rating ?? 0) ? "star.fill" : "star")
-                        .font(.system(size: 8.5, weight: .bold))
+                        .font(.system(size: 6.5, weight: .bold))
                 }
             }
             .foregroundStyle(Self.gold)
         case .cancelled:
             Image(systemName: "xmark.circle")
-                .font(.system(size: 19, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(JourneyStreet.stoppedInk)
         case .returned:
             Image(systemName: "arrow.uturn.backward")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(JourneyStreet.passed)
         }
     }
@@ -543,9 +557,17 @@ private struct MovingPlate: View {
 }
 
 extension JourneyArt {
-    /// NetLet's store, 28 square in the middle, the amber disc turning on its corner.
+    /// How much smaller than the 56 × 40 plate it was drawn for a plate is:
+    /// the row's plate is 36 × 30.
+    static func tileFit(_ size: CGSize) -> CGFloat {
+        min(size.width / 56, size.height / 40)
+    }
+
+    /// NetLet's store, 28 square in the middle on a 56 × 40 plate (less on a
+    /// smaller one), the amber disc turning on its corner.
     static func tileStore(_ c: inout GraphicsContext, size: CGSize, motion: JourneyMotion) {
-        let side: CGFloat = 28
+        let fit = tileFit(size)
+        let side: CGFloat = 28 * fit
         let left = (size.width - side) / 2
         let top = (size.height - side) / 2
         var store = c
@@ -553,16 +575,18 @@ extension JourneyArt {
         store.scaleBy(x: side / JourneyArt.place, y: side / JourneyArt.place)
         JourneyArt.store(&store)
         var badge = c
-        badge.translateBy(x: left + side + 1, y: top + 2)
-        badge.scaleBy(x: 0.68, y: 0.68)
+        badge.translateBy(x: left + side + 1 * fit, y: top + 2 * fit)
+        badge.scaleBy(x: 0.68 * fit, y: 0.68 * fit)
         JourneyArt.spinner(&badge, center: .zero, angle: motion.spinner)
     }
 
-    /// NetLet's van, 36 wide in the middle, wheels turning, speed lines behind.
+    /// NetLet's van, 36 wide in the middle of a 56 × 40 plate (less on a
+    /// smaller one), wheels turning, speed lines behind.
     static func tileVan(_ c: inout GraphicsContext, size: CGSize, motion: JourneyMotion) {
-        let scale: CGFloat = 36 / 52
+        let wide: CGFloat = 36 * tileFit(size)
+        let scale: CGFloat = wide / 52
         var van = c
-        van.translateBy(x: (size.width - 36) / 2 + 3, y: (size.height - 30 * scale) / 2)
+        van.translateBy(x: (size.width - wide) / 2 + 3 * tileFit(size), y: (size.height - 30 * scale) / 2)
         van.scaleBy(x: scale, y: scale)
         for streak in motion.streaks() where streak.opacity > 0 {
             let bar = Path(roundedRect: CGRect(x: streak.x + CGFloat(streak.dx), y: streak.y, width: streak.width, height: 2), cornerRadius: 1)

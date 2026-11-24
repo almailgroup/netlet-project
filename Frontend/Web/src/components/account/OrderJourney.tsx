@@ -1,8 +1,11 @@
 /**
  * Where each item of an opened order is, drawn under its photo, on the
  * owner's word ("delivery status should shown here — once it shown
- * delivered, then review icon will appear out here"): a small plate with the
- * item's word under it.
+ * delivered, then review icon will appear out here"): **a row the photo's
+ * width, the small picture at its start and the word after it**, also on the
+ * owner's word ("the delivery details down picture left and status right as
+ * my drawing", with the photo made larger) — it was a plate with the word
+ * under it.
  *
  * - **Being got ready** (received, being prepared, pre-ordered), NetLet's
  *   store with an amber disc turning on its corner.
@@ -95,23 +98,23 @@ export function ItemStatus({ progress, rating, mayRate, title, onRate }: {
         return (
           <span className="item-status-place">
             <HouseArt />
-            <span className="item-status-badge" data-kind="arrived"><Check className="size-2.5" strokeWidth={3.5} /></span>
+            <span className="item-status-badge" data-kind="arrived"><Check className="size-2" strokeWidth={3.5} /></span>
           </span>
         );
       case "rate":
-        return <Star className="item-status-star size-[22px]" strokeWidth={2.2} />;
+        return <Star className="item-status-star size-4" strokeWidth={2.2} />;
       case "rated":
         return (
           <span className="item-status-stars">
             {STARS.map(star => (
-              <Star key={star} className="size-[9px]" strokeWidth={2.4} fill={star <= (rating ?? 0) ? "currentColor" : "none"} />
+              <Star key={star} className="size-[7px]" strokeWidth={2.6} fill={star <= (rating ?? 0) ? "currentColor" : "none"} />
             ))}
           </span>
         );
       case "cancelled":
-        return <CircleX className="size-5" strokeWidth={2.2} />;
+        return <CircleX className="size-4" strokeWidth={2.2} />;
       case "returned":
-        return <RotateCcw className="size-5 rtl:-scale-x-100" strokeWidth={2.2} />;
+        return <RotateCcw className="size-3.5 rtl:-scale-x-100" strokeWidth={2.4} />;
     }
   })();
 
@@ -130,7 +133,7 @@ export function ItemStatus({ progress, rating, mayRate, title, onRate }: {
         onClick={onRate}
         data-look={look}
         aria-label={look === "rate" ? t("review.dialogTitle", { name: title }) : t("review.edit")}
-        className="item-status rounded-[14px]"
+        className="item-status rounded-[10px]"
       >
         {inside}
       </button>

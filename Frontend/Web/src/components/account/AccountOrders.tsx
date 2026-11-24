@@ -485,11 +485,13 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                   <OrderLineRow line={line}>
                   {/* Chosen for the bar's acts, the cart's own circle (on the owner's word). */}
                   <OrderLineChoice line={line} />
-                  {/* The photo, and under it where the item is — once it has
-                      arrived, its review (on the owner's word). */}
-                  <div className="flex w-14 shrink-0 flex-col items-center gap-2">
+                  {/* The photo, the size the owner drew it ("I prefer the item
+                      picture this size"), and under it where the item is — once
+                      it has arrived, its review — the picture at the row's start
+                      and the word after it (on the owner's word). */}
+                  <div className="flex w-[76px] shrink-0 flex-col items-stretch gap-2 min-[360px]:w-24">
                     <OrderLinePhoto line={line}>
-                      <Thumb src={line.photo ?? null} alt="" className="size-12 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
+                      <Thumb src={line.photo ?? null} alt="" className="size-[76px] rounded-2xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-24" icon={<PackageSearch className="size-6" />} />
                     </OrderLinePhoto>
                     <LineStatus line={line} detail={data} />
                   </div>

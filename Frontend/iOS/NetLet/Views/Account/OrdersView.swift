@@ -663,13 +663,16 @@ struct OrderDetailView: View {
                             .padding(.top, 6)
                             .transition(still ? .identity : .scale(scale: 0.6).combined(with: .opacity))
                         }
-                        // The photo, and under it where the item is — once it
-                        // has arrived, its review (on the owner's word).
-                        VStack(spacing: 8) {
+                        // The photo, the size the owner drew it ("I prefer the
+                        // item picture this size"), and under it where the item
+                        // is — once it has arrived, its review — the picture at
+                        // the row's start and the word after it (on the owner's word).
+                        VStack(alignment: .leading, spacing: 8) {
                             Color.clear
-                                .frame(width: 56, height: 56)
+                                .frame(width: ItemStatusTile.width, height: ItemStatusTile.width)
                                 .overlay { RemoteImage(reference: line.photo) }
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             ItemStatusTile(
                                 progress: ReceiptRules.progress(status: detail.order.status, lines: [(fulfilment: line.fulfilment, deliveredAt: line.deliveredAt, preordered: line.preordered ?? false)]),
                                 rating: line.review?.rating,

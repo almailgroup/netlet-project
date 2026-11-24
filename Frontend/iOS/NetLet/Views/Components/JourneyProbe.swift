@@ -29,7 +29,7 @@ struct JourneyProbe: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .top), count: 4), spacing: 16) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .top), count: 2), spacing: 16) {
                 ForEach(Array(cases.enumerated()), id: \.offset) { _, entry in
                     ItemStatusTile(progress: entry.progress, rating: entry.rating, mayRate: entry.mayRate, title: "Smart watch") {}
                 }
