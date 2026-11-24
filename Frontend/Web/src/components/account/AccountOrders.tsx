@@ -55,8 +55,7 @@ import { isCalendarDay, isOrderPeriod, isOrderTab, isOrderView, ORDER_SEARCH_MAX
 import { OrderSearchAndFilter, filtersOn, type OrderFacets, type OrderFilterChange, type OrderFilterState } from "@/components/account/OrderFilters";
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
-import { StarRow } from "@/components/product/ProductReviews";
-import { LineJourney, OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLineRow } from "@/components/account/OrderActions";
+import { LineExpected, LineStatus, OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLineRow } from "@/components/account/OrderActions";
 
 /**
  * The words for each state, and its colour.
@@ -484,7 +483,12 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                   <OrderLineRow line={line}>
                   {/* Chosen for the bar's acts, the cart's own circle (on the owner's word). */}
                   <OrderLineChoice line={line} />
-                  <Thumb src={line.photo ?? null} alt="" className="size-12 shrink-0 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
+                  {/* The photo, and under it where the item is — once it has
+                      arrived, its review (on the owner's word). */}
+                  <div className="flex w-14 shrink-0 flex-col items-center gap-2">
+                    <Thumb src={line.photo ?? null} alt="" className="size-12 rounded-xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-14" icon={<PackageSearch className="size-5" />} />
+                    <LineStatus line={line} detail={data} />
+                  </div>
                   <div className="min-w-0 flex-1">
                     {/* What can be done with it is the bar's, once its circle is
                         chosen — the item has no ⋯ of its own (on the owner's word). */}
@@ -507,6 +511,8 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                         {t("orders.lineCode", { code: line.discountCode, amount: formatMoney(line.discountAmount, { currencyCode: data.order.currency, locale }) })}
                       </p>
                     ) : null}
+                    {/* When this item is expected, while it is still coming. */}
+                    <LineExpected line={line} detail={data} />
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {/*
                         The return affordance draws only where a return is
@@ -531,9 +537,6 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
                     <LineReturnStatus reference={reference} currency={data.order.currency} line={line} requests={data.returns} />
                   </div>
                   </OrderLineRow>
-                  {/* Where this item is, its own road and its store's date (on
-                      the owner's word: each item has its own delivery time). */}
-                  <LineJourney line={line} detail={data} />
                   {/* What the bar opened for this item, the item's full width. */}
                   <OrderLinePanel line={line} />
                 </li>
@@ -615,10 +618,10 @@ function EmptyOrders() {
  * on the owner's word — the rule is `reviewEligibility`, which `reviews.write`
  * refuses with.
  */
+/** Where the review stands; its stars are under the photo, with Edit. */
 function LineReview({ review }: { review: MyReview }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2">
-      <StarRow value={review.rating} />
       <ReviewStatePill state={review.state} />
     </div>
   );

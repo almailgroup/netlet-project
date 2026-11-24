@@ -74,7 +74,7 @@ import { HandoverCard, PaidOnlineNote } from "@/components/account/OrderHandover
 import { WarrantyClaims, WarrantyForm } from "@/components/account/OrderWarranty";
 import { OrderHelp } from "@/components/account/OrderHelp";
 import { ReceiptButton, useOrderReceipt } from "@/components/account/OrderReceipt";
-import { OrderJourney } from "@/components/account/OrderJourney";
+import { ItemStatus } from "@/components/account/OrderJourney";
 import { useCart } from "@/contexts/CartContext";
 import { useFeature } from "@/hooks/useFeature";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -758,18 +758,38 @@ function usePromiseText() {
  * when its parcel's store says it comes. The list shows the order's main
  * facts only.
  */
-export function LineJourney({ line, detail }: { line: Line; detail: Detail }) {
+/**
+ * Where one item is, under its photo (on the owner's word: "delivery status
+ * should shown here; once it shown delivered, then review icon will appear
+ * out here"), read off that item alone; once delivered, the plate is its
+ * review — Rate, or the stars given and Edit.
+ */
+export function LineStatus({ line, detail }: { line: Line; detail: Detail }) {
+  const { rate } = useControls();
+  return (
+    <ItemStatus
+      progress={orderProgress(detail.order, [line])}
+      rating={line.review?.rating ?? null}
+      mayRate={!line.review && line.reviewEligibility.allowed}
+      title={line.productTitle}
+      onRate={() => rate(line.id)}
+    />
+  );
+}
+
+/**
+ * When one item still coming is expected — its parcel's day, the store's own
+ * estimate or that it is later (the tracker's words): an order's items arrive
+ * on different days.
+ */
+export function LineExpected({ line, detail }: { line: Line; detail: Detail }) {
   const promiseText = usePromiseText();
   const progress = orderProgress(detail.order, [line]);
+  if (progress.kind === "delivered" || progress.kind === "cancelled" || progress.kind === "returned") return null;
   const parcel = detail.steps.parcels.find(entry => entry.lineIds.includes(line.id));
-  const coming = progress.kind !== "delivered" && progress.kind !== "cancelled" && progress.kind !== "returned";
-  const promise = coming ? promiseText(parcel?.promise ?? null) : null;
-  return (
-    <div className="mt-2">
-      <OrderJourney progress={progress} />
-      {promise ? <p className={`mt-1.5 text-[12px] font-semibold leading-5 ${promise.late ? "ink-accent" : "text-[#2f5d33]"}`}>{promise.text}</p> : null}
-    </div>
-  );
+  const promise = promiseText(parcel?.promise ?? null);
+  if (!promise) return null;
+  return <p className={`mt-1 text-[12px] font-semibold leading-5 ${promise.late ? "ink-accent" : "text-[#2f5d33]"}`}>{promise.text}</p>;
 }
 
 /** How many of a parcel's items are drawn by their photos before a "+N". */

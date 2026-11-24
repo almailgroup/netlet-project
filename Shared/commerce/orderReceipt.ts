@@ -2,11 +2,12 @@
  * Two things My orders draws about an order, on the owner's word ("for the
  * products shown in the orders page, a design for their status of delivery
  * below them … and an export to PDF option that shows all the details of
- * your order in the form of a receipt"): where it is on its way to the door,
- * and what it came to, line by line.
+ * your order in the form of a receipt"): where each item is on its way to the
+ * door (drawn under its photo in the opened order, on the owner's word), and
+ * what it came to, line by line.
  *
- * Pure and shared, so the website's row and receipt and the app's
- * (`OrderJourney.swift`, `ReceiptRules` in Swift, tested on these cases)
+ * Pure and shared, so the website's item status and receipt and the app's
+ * (`ItemStatusTile`, `ReceiptRules` in Swift, tested on these cases)
  * cannot say different things. Nothing here is computed afresh: every figure
  * is the one the order froze.
  */

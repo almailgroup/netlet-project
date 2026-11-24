@@ -318,7 +318,7 @@ struct OrderRow: View {
     var body: some View {
         // The order's main facts alone, on the owner's word: its items have
         // their own delivery times, so where each is is drawn under it once
-        // the order is opened (`LineJourney`).
+        // the order is opened (`ItemStatusTile`).
         summaryRow
     }
 
@@ -644,10 +644,22 @@ struct OrderDetailView: View {
                             .padding(.top, 6)
                             .transition(still ? .identity : .scale(scale: 0.6).combined(with: .opacity))
                         }
-                        Color.clear
-                            .frame(width: 56, height: 56)
-                            .overlay { RemoteImage(reference: line.photo) }
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        // The photo, and under it where the item is — once it
+                        // has arrived, its review (on the owner's word).
+                        VStack(spacing: 8) {
+                            Color.clear
+                                .frame(width: 56, height: 56)
+                                .overlay { RemoteImage(reference: line.photo) }
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            ItemStatusTile(
+                                progress: ReceiptRules.progress(status: detail.order.status, lines: [(fulfilment: line.fulfilment, deliveredAt: line.deliveredAt, preordered: line.preordered ?? false)]),
+                                rating: line.review?.rating,
+                                mayRate: line.mayRate,
+                                title: line.productTitle
+                            ) {
+                                rating = target(line)
+                            }
+                        }
                         VStack(alignment: .leading, spacing: 4) {
                             Text(line.productTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -670,6 +682,8 @@ struct OrderDetailView: View {
                                     .foregroundStyle(Brand.success)
                             }
                             Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
+                            // When this item is expected, while it is still coming.
+                            LineExpected(line: line, detail: detail)
                             returnWindow(line)
                         }
                         // What can be done with it is the bar's, once its circle
@@ -693,9 +707,6 @@ struct OrderDetailView: View {
                             .padding(-6)
                     )
                     .animation(.easeOut(duration: 0.15), value: chosen.contains(line.id))
-                    // Where this item is, its own road and its store's date (on
-                    // the owner's word: each item has its own delivery time).
-                    LineJourney(line: line, detail: detail)
                     LineReviewRow(line: line)
                     LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload, open: Binding(
                         get: { returning == line.id },
@@ -800,11 +811,9 @@ struct LineReviewRow: View {
     let line: OrderLine
 
     var body: some View {
+        // Where the review stands; its stars are under the photo, with Edit.
         if let review = line.review {
-            HStack(spacing: 8) {
-                StarsView(rating: review.rating)
-                ReviewStatePill(state: review.state)
-            }
+            ReviewStatePill(state: review.state)
         }
     }
 }

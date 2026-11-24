@@ -1,30 +1,42 @@
 #if DEBUG
 import SwiftUI
 
-/// Debug only: My orders' street at every stage, one under another
-/// (`-NetLetOpen journeyProbe`), so the CI photographs the van on the road —
-/// the recorded orders hold none on their way — in both languages.
+/// Debug only: an item's status tile in every state, side by side
+/// (`-NetLetOpen journeyProbe`), so the CI photographs the store, the van, the
+/// house, Rate and the stars given — the recorded orders hold no item on the
+/// road — in both languages.
 struct JourneyProbe: View {
-    private let stages: [OrderProgress] = [
-        OrderProgress(kind: "received", preordered: false, at: nil, delivered: nil, of: nil),
-        OrderProgress(kind: "preparing", preordered: nil, at: nil, delivered: nil, of: nil),
-        OrderProgress(kind: "onTheWay", preordered: nil, at: nil, delivered: nil, of: nil),
-        OrderProgress(kind: "partlyDelivered", preordered: nil, at: nil, delivered: 1, of: 2),
-        OrderProgress(kind: "delivered", preordered: nil, at: "2026-10-17T22:33:45.311Z", delivered: nil, of: nil),
-        OrderProgress(kind: "cancelled", preordered: nil, at: nil, delivered: nil, of: nil),
+    private struct Case {
+        let progress: OrderProgress
+        let rating: Int?
+        let mayRate: Bool
+    }
+
+    private static func kind(_ kind: String, at: String? = nil) -> OrderProgress {
+        OrderProgress(kind: kind, preordered: kind == "received" ? false : nil, at: at, delivered: nil, of: nil)
+    }
+
+    private let cases: [Case] = [
+        Case(progress: kind("received"), rating: nil, mayRate: false),
+        Case(progress: kind("preparing"), rating: nil, mayRate: false),
+        Case(progress: kind("onTheWay"), rating: nil, mayRate: false),
+        Case(progress: kind("delivered", at: "2026-10-17T22:33:45.311Z"), rating: nil, mayRate: false),
+        Case(progress: kind("delivered", at: "2026-10-17T22:33:45.311Z"), rating: nil, mayRate: true),
+        Case(progress: kind("delivered", at: "2026-10-17T22:33:45.311Z"), rating: 4, mayRate: false),
+        Case(progress: kind("cancelled"), rating: nil, mayRate: false),
+        Case(progress: kind("returned"), rating: nil, mayRate: false),
     ]
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
-                ForEach(Array(stages.enumerated()), id: \.offset) { _, progress in
-                    OrderJourney(progress: progress)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(16)
-                        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white))
-                        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .top), count: 4), spacing: 16) {
+                ForEach(Array(cases.enumerated()), id: \.offset) { _, entry in
+                    ItemStatusTile(progress: entry.progress, rating: entry.rating, mayRate: entry.mayRate, title: "Smart watch") {}
                 }
             }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.white))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             .padding(.horizontal, 16)
             .padding(.vertical, 70)
         }

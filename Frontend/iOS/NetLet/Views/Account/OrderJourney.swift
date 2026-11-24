@@ -1,139 +1,177 @@
 import SwiftUI
 
-/// Where an order is, drawn under it on My orders, on the owner's word ("for
-/// the products shown in the orders page, a design for their status of
-/// delivery below them … simple for the user to understand"), and made richer
-/// on their word again ("high quality animations and icons … an animation for
-/// its tires running, going to its destination"). The web's `OrderJourney`,
-/// drawn the same.
+/// Where one item of an opened order is, drawn under its photo, on the
+/// owner's word ("delivery status should shown here — once it shown
+/// delivered, then review icon will appear out here"): a small plate with the
+/// item's word under it. The web's `ItemStatus`, drawn the same.
 ///
-/// A little street: NetLet's store at the road's start, the shopper's house
-/// at its end, the van on the road between, and three words under it —
-/// Processing, On the way, Delivered.
+/// - **Being got ready**, NetLet's store with an amber disc turning on its corner.
+/// - **On the way**, NetLet's van with its wheels turning, riding the bumps,
+///   speed lines behind it — facing the page's end, so it is mirrored on the
+///   Arabic page.
+/// - **Delivered**, a star to press and rate it, once it may be rated; the
+///   stars given and "Edit" once it has been; the house with a green tick
+///   when it can be neither.
+/// - **Cancelled** or **returned**, its word on a plate of its own.
 ///
-/// - **Being got ready**, the van waits outside the store with its engine
-///   running — a shiver in its body, puffs from its exhaust — while parcels
-///   hop from the store's door into its back, the van dipping as each lands; a
-///   small amber disc turns on the store's corner.
-/// - **On the way**, it drives the road to the house: its wheels turning, its
-///   body riding the bumps, puffs and speed lines behind it and the road
-///   filling navy, while a pin bobs over the house and its window is lit.
-/// - **Delivered**, the van has gone and the parcel is at the door; the road
-///   and the tick are green, and a burst goes off round the house once.
-///
-/// The word under the stage it is at is the order's own phrase. An order that
-/// left the road — cancelled, returned — has no road, only its word.
-///
-/// The street is one `Canvas` drawn from `JourneyMotion`, a pure function of
-/// the clock, by a timeline that runs only while something moves and never
-/// under Reduce Motion, when the van stands where it waits or half-way. It is
-/// drawn left to right and mirrored whole on the Arabic page, so the van
-/// drives to the house on the left there and faces it; only the ticks are
-/// turned back. VoiceOver hears it as one element: "Order status", then where
-/// it is.
-struct OrderJourney: View {
+/// It was a street drawn under each order on My orders, then under each
+/// item, and the owner moved it here, an order's items arriving on different
+/// days. The pictures are still the street's own (`JourneyArt`), drawn from
+/// `JourneyMotion`, a pure function of the clock, by a timeline that runs only
+/// while something moves and never under Reduce Motion.
+struct ItemStatusTile: View {
     let progress: OrderProgress
+    /// The shopper's stars on it, once rated.
+    let rating: Int?
+    /// Whether it may be rated now (`reviewEligibility`).
+    let mayRate: Bool
+    let title: String
+    /// Opens the review: a new one, or the one written to change it.
+    let onRate: () -> Void
     @Environment(LanguageSettings.self) private var l
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// When a delivered order was first drawn, for its burst, which plays once.
-    @State private var landedAt: Date?
-    @State private var landing = false
+    /// For the tick's and the star's pop, once, as it is first drawn.
+    @State private var shown = false
 
-    var body: some View {
-        let stage = ReceiptRules.journeyStage(progress.kind)
-        let phrase = OrderWording.progress(progress, language: l)
-        if let at = stage.step {
-            let driving = !reduceMotion && stage != .delivered
-            VStack(alignment: .leading, spacing: 6) {
-                TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !(driving || landing))) { context in
-                    JourneyStreet(
-                        stage: stage,
-                        motion: JourneyMotion(time: driving ? context.date.timeIntervalSinceReferenceDate : nil),
-                        landed: landedFraction(at: context.date),
-                        rightToLeft: l.current.isRightToLeft
-                    )
-                }
-                .frame(height: 58)
-                HStack(alignment: .top, spacing: 8) {
-                    ForEach(Array(JourneyStage.road.enumerated()), id: \.offset) { index, entry in
-                        let alignment: Alignment = index == 0 ? .leading : index == 2 ? .trailing : .center
-                        let text: TextAlignment = index == 0 ? .leading : index == 2 ? .trailing : .center
-                        Text(index == at ? phrase : l.t(JourneyStreet.word(entry)))
-                            .font(.inter(12, index == at ? .heavy : .semibold))
-                            .foregroundStyle(index == at ? Brand.navy : index < at ? JourneyStreet.passed : Brand.muted)
-                            .multilineTextAlignment(text)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(maxWidth: .infinity, alignment: alignment)
-                    }
-                }
-            }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(l.t("orders.journeyLabel"))
-            .accessibilityValue(phrase)
-            .onAppear {
-                guard stage == .delivered, !reduceMotion, landedAt == nil else { return }
-                landedAt = Date()
-                landing = true
-            }
-            .task(id: landing) {
-                guard landing else { return }
-                try? await Task.sleep(for: .milliseconds(1200))
-                landing = false
-            }
-        } else {
-            let cancelled = stage == .cancelled
-            Label {
-                Text(phrase).font(.inter(13, .bold))
-            } icon: {
-                Image(systemName: cancelled ? "xmark.circle" : "arrow.uturn.backward").font(.system(size: 14, weight: .semibold))
-            }
-            .foregroundStyle(cancelled ? JourneyStreet.stoppedInk : JourneyStreet.passed)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(cancelled ? JourneyStreet.stoppedFill : JourneyStreet.overFill))
+    enum Look { case processing, onTheWay, delivered, rate, rated, cancelled, returned }
+
+    static let width: CGFloat = 56
+    static let gold = Color(red: 183 / 255, green: 121 / 255, blue: 31 / 255)
+    static let goldFill = Color(red: 1, green: 243 / 255, blue: 209 / 255)
+    static let goldLine = Color(red: 239 / 255, green: 212 / 255, blue: 138 / 255)
+
+    var look: Look {
+        switch ReceiptRules.journeyStage(progress.kind) {
+        case .processing: return .processing
+        case .onTheWay: return .onTheWay
+        case .delivered: return rating != nil ? .rated : mayRate ? .rate : .delivered
+        case .cancelled: return .cancelled
+        case .returned: return .returned
         }
     }
 
-    /// How far a delivered order's arrival has played: 0 as it is first drawn, 1 once done.
-    private func landedFraction(at now: Date) -> Double {
-        guard let landedAt, !reduceMotion else { return 1 }
-        return min(1, max(0, now.timeIntervalSince(landedAt) / JourneyMotion.landingSeconds))
+    private func word(_ look: Look) -> String {
+        switch look {
+        case .rate: return l.t("orders.pickRate")
+        case .rated: return l.t("profile.edit")
+        case .delivered: return l.t("orders.journeyDelivered")
+        default: return OrderWording.progress(progress, language: l)
+        }
+    }
+
+    var body: some View {
+        let look = self.look
+        let tile = VStack(spacing: 4) {
+            plate(look)
+            Text(word(look))
+                .font(.inter(11, .bold))
+                .foregroundStyle(look == .cancelled ? JourneyStreet.stoppedInk : Brand.navy)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(width: Self.width)
+        .onAppear {
+            guard !shown else { return }
+            if reduceMotion { shown = true } else { withAnimation(.spring(response: 0.45, dampingFraction: 0.55).delay(0.15)) { shown = true } }
+        }
+        Group {
+            if look == .rate || look == .rated {
+                Button(action: onRate) { tile }
+                    .buttonStyle(SpringPressStyle(cornerRadius: 14))
+                    .accessibilityLabel(look == .rate ? l.t("review.dialogTitle", ["name": title]) : l.t("review.edit"))
+            } else {
+                tile.accessibilityElement(children: .combine)
+            }
+        }
+        .accessibilityIdentifier("item-status")
+    }
+
+    private func fill(_ look: Look) -> Color {
+        switch look {
+        case .processing: return Color(red: 1, green: 244 / 255, blue: 220 / 255)
+        case .onTheWay: return Color(red: 232 / 255, green: 240 / 255, blue: 251 / 255)
+        case .delivered: return Color(red: 230 / 255, green: 244 / 255, blue: 234 / 255)
+        case .rate, .rated: return Self.goldFill
+        case .cancelled: return JourneyStreet.stoppedFill
+        case .returned: return JourneyStreet.overFill
+        }
+    }
+
+    private func plate(_ look: Look) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14, style: .continuous).fill(fill(look))
+            if look == .rate || look == .rated {
+                RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Self.goldLine, lineWidth: 1)
+            }
+            picture(look)
+        }
+        .frame(width: Self.width, height: 40)
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private func picture(_ look: Look) -> some View {
+        switch look {
+        case .processing, .onTheWay:
+            TimelineView(.animation(minimumInterval: 1.0 / 60, paused: reduceMotion)) { context in
+                MovingPlate(
+                    onTheWay: look == .onTheWay,
+                    motion: JourneyMotion(time: reduceMotion ? nil : context.date.timeIntervalSinceReferenceDate),
+                    rightToLeft: l.current.isRightToLeft
+                )
+            }
+        case .delivered:
+            Canvas { c, size in
+                let side: CGFloat = 28
+                var house = c
+                house.translateBy(x: (size.width - side) / 2, y: (size.height - side) / 2)
+                house.scaleBy(x: side / JourneyArt.place, y: side / JourneyArt.place)
+                JourneyArt.house(&house, windowLit: 0)
+            }
+            .overlay(alignment: .topTrailing) {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 7, weight: .black))
+                    .foregroundStyle(.white)
+                    .frame(width: 15, height: 15)
+                    .background(Circle().fill(JourneyArt.green))
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
+                    .scaleEffect(shown ? 1 : 0)
+                    .padding(.top, 2)
+                    .padding(.trailing, 6)
+            }
+        case .rate:
+            Image(systemName: "star")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Self.gold)
+                .scaleEffect(shown ? 1 : 0.4)
+                .rotationEffect(.degrees(shown ? 0 : -25))
+                .opacity(shown ? 1 : 0)
+        case .rated:
+            HStack(spacing: 1) {
+                ForEach(1...5, id: \.self) { star in
+                    Image(systemName: star <= (rating ?? 0) ? "star.fill" : "star")
+                        .font(.system(size: 8.5, weight: .bold))
+                }
+            }
+            .foregroundStyle(Self.gold)
+        case .cancelled:
+            Image(systemName: "xmark.circle")
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(JourneyStreet.stoppedInk)
+        case .returned:
+            Image(systemName: "arrow.uturn.backward")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(JourneyStreet.passed)
+        }
     }
 }
 
-/// The street at one moment, drawn left to right in a `Canvas` and mirrored
-/// whole on the Arabic page.
-struct JourneyStreet: View {
-    let stage: JourneyStage
-    let motion: JourneyMotion
-    /// A delivered order's arrival, 0 to 1 (`JourneyMotion.landing`).
-    let landed: Double
-    let rightToLeft: Bool
-
+/// The colours a stopped or finished item wears, which other pages share.
+enum JourneyStreet {
     static let passed = Color(red: 61 / 255, green: 81 / 255, blue: 112 / 255)
     static let stoppedFill = Color(red: 253 / 255, green: 236 / 255, blue: 235 / 255)
     static let stoppedInk = Color(red: 140 / 255, green: 47 / 255, blue: 34 / 255)
     static let overFill = Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)
-
-    static func word(_ stage: JourneyStage) -> String {
-        switch stage {
-        case .onTheWay: return "orders.journeyOnTheWay"
-        case .delivered: return "orders.journeyDelivered"
-        default: return "orders.journeyProcessing"
-        }
-    }
-
-    var body: some View {
-        Canvas { context, size in
-            var street = context
-            if rightToLeft {
-                street.translateBy(x: size.width, y: 0)
-                street.scaleBy(x: -1, y: 1)
-            }
-            JourneyArt.draw(in: &street, size: size, stage: stage, motion: motion, landed: landed, mirrored: rightToLeft)
-        }
-        .accessibilityHidden(true)
-    }
 }
 
 /// The pictures, drawn for this street rather than taken from a symbol set, so
@@ -159,127 +197,6 @@ enum JourneyArt {
     static let place: CGFloat = 44
     static let vanWidth: CGFloat = 48
     static let vanHeight: CGFloat = 28
-
-    static func draw(in c: inout GraphicsContext, size: CGSize, stage: JourneyStage, motion: JourneyMotion, landed: Double, mirrored: Bool) {
-        let height = size.height
-        let placeY = height - 2 - place
-        let roadX = place + 3
-        let roadWidth = max(0, size.width - 2 * place - 6)
-        let laneY = height - 12
-        let done = stage == .delivered ? green : navy
-
-        // The road, its white line, and how far the van has come.
-        let road = Path(roundedRect: CGRect(x: roadX, y: laneY, width: roadWidth, height: 6), cornerRadius: 3)
-        c.fill(road, with: .color(lane))
-        var line = Path()
-        var dash = roadX + 5
-        while dash < roadX + roadWidth - 5 {
-            line.addRect(CGRect(x: dash, y: laneY + 2.5, width: min(5, roadX + roadWidth - 5 - dash), height: 1))
-            dash += 10
-        }
-        c.fill(line, with: .color(.white))
-        let filled: Double = stage == .delivered ? 1 : stage == .onTheWay ? motion.drive.distance : 0
-        if filled > 0 {
-            let fill = Path(roundedRect: CGRect(x: roadX, y: laneY, width: roadWidth * CGFloat(filled), height: 6), cornerRadius: 3)
-            c.fill(fill, with: .color(done.opacity(stage == .onTheWay ? motion.drive.roadOpacity : 1)))
-        }
-
-        // The store, and its corner: a turning amber disc while it is got ready, a tick once it has left.
-        c.drawLayer { layer in
-            layer.translateBy(x: 0, y: placeY)
-            store(&layer)
-            if stage == .processing {
-                spinner(&layer, center: CGPoint(x: 39, y: 4), angle: motion.spinner)
-            } else {
-                badge(&layer, center: CGPoint(x: 39, y: 4), fill: done, mirrored: mirrored)
-            }
-        }
-
-        // The parcels hopping into the van while it is loaded.
-        if stage == .processing {
-            for hop in [JourneyMotion.hop(phase: motion.loadPhase), JourneyMotion.hop(phase: (motion.loadPhase + 0.5).truncatingRemainder(dividingBy: 1))] where hop.opacity > 0 {
-                c.drawLayer { layer in
-                    layer.opacity = hop.opacity
-                    layer.translateBy(x: roadX + CGFloat(hop.x) + 6, y: height - 8 - 6 + CGFloat(hop.y))
-                    layer.rotate(by: .degrees(hop.angle))
-                    layer.scaleBy(x: CGFloat(hop.scale), y: CGFloat(hop.scale))
-                    layer.translateBy(x: -6, y: -6)
-                    parcel(&layer, size: 12)
-                }
-            }
-        }
-
-        // The van, until it has gone.
-        if stage != .delivered {
-            let travel = max(0, roadWidth - 53)
-            let vanX = stage == .onTheWay ? roadX + 3 + travel * CGFloat(motion.drive.distance) : roadX + 3
-            let vanY = height - 8 - vanHeight
-            c.drawLayer { layer in
-                layer.opacity = stage == .onTheWay ? motion.drive.vanOpacity : 1
-                layer.translateBy(x: vanX, y: vanY)
-                if stage == .processing {
-                    // The dip as a parcel lands, about its front wheel.
-                    let pivot = CGPoint(x: vanWidth * 0.8, y: vanHeight)
-                    layer.translateBy(x: pivot.x, y: pivot.y)
-                    layer.rotate(by: .degrees(motion.dip))
-                    layer.translateBy(x: -pivot.x, y: -pivot.y)
-                }
-                for puff in motion.puffs(onTheWay: stage == .onTheWay) where puff.opacity > 0 {
-                    let radius = 3 * CGFloat(puff.scale)
-                    let center = CGPoint(x: CGFloat(puff.x), y: 20 + CGFloat(puff.y))
-                    layer.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)), with: .color(smoke.opacity(puff.opacity)))
-                }
-                if stage == .onTheWay {
-                    for streak in motion.streaks() where streak.opacity > 0 {
-                        let bar = Path(roundedRect: CGRect(x: streak.x + CGFloat(streak.dx), y: streak.y, width: streak.width, height: 2), cornerRadius: 1)
-                        layer.fill(bar, with: .color(streak.opacity == 0 ? .clear : JourneyArt.streak.opacity(streak.opacity)))
-                    }
-                }
-                layer.scaleBy(x: vanWidth / 52, y: vanHeight / 30)
-                van(&layer, lift: CGFloat(motion.bodyLift(onTheWay: stage == .onTheWay)), wheelTurn: stage == .onTheWay ? motion.wheel : 0)
-            }
-        }
-
-        // The house: the pin over it while the van comes, the parcel at its door and a burst once it has.
-        let houseX = size.width - place
-        c.drawLayer { layer in
-            layer.translateBy(x: houseX, y: placeY)
-            house(&layer, windowLit: stage == .onTheWay ? motion.window : 0)
-            if stage == .onTheWay {
-                layer.drawLayer { pin in
-                    pin.translateBy(x: 15, y: -15 + CGFloat(motion.pin))
-                    pin.scaleBy(x: 14 / 16, y: 18 / 20)
-                    self.pin(&pin)
-                }
-            }
-            if stage == .delivered {
-                let arrival = JourneyMotion.landing(landed)
-                layer.drawLayer { step in
-                    step.opacity = arrival.parcelOpacity
-                    step.translateBy(x: 12, y: 30 + CGFloat(arrival.parcelDrop))
-                    parcel(&step, size: 12)
-                }
-                if arrival.burstOpacity > 0 {
-                    for ray in 0..<8 {
-                        layer.drawLayer { spoke in
-                            spoke.opacity = arrival.burstOpacity
-                            spoke.translateBy(x: 22, y: 22)
-                            spoke.rotate(by: .degrees(Double(ray) * 45))
-                            let length = 6 * CGFloat(arrival.burstStretch)
-                            spoke.fill(Path(roundedRect: CGRect(x: -1, y: -21 - length + CGFloat(arrival.burstOut), width: 2, height: length), cornerRadius: 1), with: .color(green))
-                        }
-                    }
-                }
-                if arrival.tickScale > 0 {
-                    layer.drawLayer { tick in
-                        tick.translateBy(x: 39, y: 4)
-                        tick.scaleBy(x: CGFloat(arrival.tickScale), y: CGFloat(arrival.tickScale))
-                        badge(&tick, center: .zero, fill: green, mirrored: mirrored)
-                    }
-                }
-            }
-        }
-    }
 
     private static func box(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat, _ radius: CGFloat) -> Path {
         Path(roundedRect: CGRect(x: x, y: y, width: width, height: height), cornerRadius: radius)
@@ -596,5 +513,61 @@ struct JourneyMotion: Equatable {
             let opacity = t < 0.3 ? 0.9 * t / 0.3 : 0.9 * (1 - (t - 0.3) / 0.7)
             return Streak(x: x, y: y, width: width, dx: 4 - 12 * t, opacity: opacity)
         }
+    }
+}
+
+/// The store or the van at one moment, drawn left to right in a `Canvas` and
+/// mirrored on the Arabic page, so the van faces the page's end.
+private struct MovingPlate: View {
+    let onTheWay: Bool
+    let motion: JourneyMotion
+    let rightToLeft: Bool
+
+    var body: some View {
+        let driving = self.onTheWay
+        let now = self.motion
+        let mirrored = self.rightToLeft
+        Canvas { c, size in
+            var scene = c
+            if mirrored {
+                scene.translateBy(x: size.width, y: 0)
+                scene.scaleBy(x: -1, y: 1)
+            }
+            if driving {
+                JourneyArt.tileVan(&scene, size: size, motion: now)
+            } else {
+                JourneyArt.tileStore(&scene, size: size, motion: now)
+            }
+        }
+    }
+}
+
+extension JourneyArt {
+    /// NetLet's store, 28 square in the middle, the amber disc turning on its corner.
+    static func tileStore(_ c: inout GraphicsContext, size: CGSize, motion: JourneyMotion) {
+        let side: CGFloat = 28
+        let left = (size.width - side) / 2
+        let top = (size.height - side) / 2
+        var store = c
+        store.translateBy(x: left, y: top)
+        store.scaleBy(x: side / JourneyArt.place, y: side / JourneyArt.place)
+        JourneyArt.store(&store)
+        var badge = c
+        badge.translateBy(x: left + side + 1, y: top + 2)
+        badge.scaleBy(x: 0.68, y: 0.68)
+        JourneyArt.spinner(&badge, center: .zero, angle: motion.spinner)
+    }
+
+    /// NetLet's van, 36 wide in the middle, wheels turning, speed lines behind.
+    static func tileVan(_ c: inout GraphicsContext, size: CGSize, motion: JourneyMotion) {
+        let scale: CGFloat = 36 / 52
+        var van = c
+        van.translateBy(x: (size.width - 36) / 2 + 3, y: (size.height - 30 * scale) / 2)
+        van.scaleBy(x: scale, y: scale)
+        for streak in motion.streaks() where streak.opacity > 0 {
+            let bar = Path(roundedRect: CGRect(x: streak.x + CGFloat(streak.dx), y: streak.y, width: streak.width, height: 2), cornerRadius: 1)
+            van.fill(bar, with: .color(JourneyArt.streak.opacity(streak.opacity)))
+        }
+        JourneyArt.van(&van, lift: CGFloat(motion.bodyLift(onTheWay: true)), wheelTurn: motion.wheel)
     }
 }

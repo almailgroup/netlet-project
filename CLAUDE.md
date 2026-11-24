@@ -3500,68 +3500,55 @@ Orders is the first tile, ahead of the settings: somebody
 opening their account on a shop is usually asking where a parcel is, not
 changing a display name.
 
-**Under each order on My orders is where it is, drawn as a road, on the
-owner's word** ("a design for their status of delivery below them — if it's
-on the way, a delivery icon animation to the house; if it's still
-processing, a processing animation — simple for the user to understand"):
-`OrderJourney` on the web and in the app, the store's box at the road's
-start, the shopper's house at its end, and three words under it —
-Processing, On the way, Delivered — the one it is at in the order's own
-phrase ("Being prepared", "2 of 3 delivered", "Delivered 19 November"). It
-replaced the status pill at the top of the row. **It is drawn under each
-item of an opened order, not under the order on the list, on the owner's
-word** ("in this page will show you only the main info, once you click in it
-each items will show this one because each item has different deliver
-time"): My orders' row is the order's photo, name, date, reference, total and
-how it is paid, and the opened order draws a road under every item
-(`LineJourney` on both), read off that item alone (`orderProgress` over its
-one line, `ReceiptRules.progress` in the app) with, while it is still coming,
-its parcel's own day under it — the store's estimate or that it is later
-(`usePromiseText`, the app's `ParcelStepsCard.promiseText`, the tracker's own
-words). The item's status pill went with it, the road saying the same.
-`OrderItemJourneyUITests` holds the list with no road and two on the recorded
-pending order. **It is a little street of
-NetLet's own drawing, made richer on the owner's word** ("high quality
-animations and icons … an animation for the shipping car if the product is on
-processing … its tires running, going to its destination"): NetLet's store
-(an orange-and-white awning, two windows, a door) at the road's start, the
-shopper's house under the logo's orange roof at its end, and NetLet's navy
-van with the orange stripe, a lit headlamp and spoked wheels. The pictures are
-drawn for it (SVG on the web, `JourneyArt` in a `Canvas` in the app, in the
-same coordinates) rather than taken from an icon set, so the wheels can turn.
-**Processing**: the van waits outside the store with its engine running — its
-body shivers and puffs rise from the exhaust — while kraft parcels hop from
-the store's door into its back one after another, the van dipping on its
-front wheel as each lands, and an amber disc turns on the store's corner.
-**On the way**: the store has its tick and the van drives the road to the
-house every 3.6 seconds, wheels turning (a turn every 0.42s), its body riding
-the bumps, puffs and two speed lines behind it, the road filling navy, while
-an orange pin bobs over the house and its window glows. **Delivered**: the van
-has gone and the parcel stands at the door; the road and the house's tick are
-green, and as the order is drawn the parcel drops in, the tick pops and a
-burst of eight rays goes off round the house — once, never on a loop. A cancelled or
-returned order has no road, only its word on a pale pill. `journeyStage`
-(`Shared/commerce/orderReceipt.ts`) is the rule, read off `orderProgress`
-(part-delivered is still on the way); the app's `ReceiptRules.journeyStage`,
-on the same cases. **The web's motion is transforms and opacities alone**: the
-fill grows by `scale` and the van drives by `translate` against the road's own
-width (`cqi`, the road a size container), so twenty orders moving cost the
-page no layout. **The scene is drawn left to right and mirrored whole on the
-Arabic page** (`direction: ltr` on `.journey-scene` and `scale: -1 1` under
-`rtl`; the app's `Canvas` flipped): mirroring a row that already ran right to
-left flipped it twice and put the store at the house's end, which the walk
-found by measuring which side the store was on. Only the ticks are turned
-back, so they read as ticks. **The app's is a pure function of the clock**
-(`JourneyMotion`: the drive, the hop, the dip, the puffs, the streaks and the
-landing as arithmetic, tested at the web's keyframes), drawn by a timeline
-that runs only while something moves and, for a delivered order, only for
-its landing (`landedAt`). Under reduced motion nothing moves: the van stands outside the
-store or half-way, and a delivered order is drawn landed. A screen reader
-hears an ordered list with the current step marked (`aria-current`) on the
-web and one element in the app — "Order status", then where it is. The CI
-photographs every stage in both languages (`-NetLetOpen journeyProbe`,
-`JourneyProbe`, Debug only, `112-order-journey`), since the recorded orders
-hold none on the road.
+**Where each item is, is drawn under its photo in the opened order, and once
+it has arrived that place is its review — on the owner's word, the third
+time it moved** ("delivery status should shown here; once it shown
+delivered, then review icon will appear out here", a picture with the empty
+corner under an item's photo circled). It was a road under each order on
+My orders ("a design for their status of delivery below them … simple for
+the user to understand"), then a road under each item of an opened order
+("in this page will show you only the main info … each item has different
+deliver time"), and is now a tile under the photo (`ItemStatus` on the web,
+`ItemStatusTile` in the app): a 56 by 40 plate with the item's word under
+it, read off that item alone (`orderProgress` over its one line,
+`ReceiptRules.progress` in the app). **Being got ready** (received, being
+prepared, pre-ordered): NetLet's store on pale amber, an amber disc turning
+on its corner. **On the way**: NetLet's navy van on pale sky, wheels turning
+every 0.42s, its body riding the bumps, two speed lines behind it, facing the
+page's end (mirrored on the Arabic page). **Delivered**: a star on pale gold
+that pops in, "Rate", a button named "Rate {item}" opening the review
+dialog (`rate` on the web, the app's `ReviewSheet`) — only where
+`reviewEligibility` allows it; once rated, the five stars given and "Edit"
+("Edit your review"), the same dialog; and where it can be neither, the house
+with a green tick. **Cancelled** and **returned** are their word on a pale
+plate. A press on the tile is its own and never chooses the item (the row's
+`OWN_PRESS`; a SwiftUI `Button` in the app). The review line in the item's
+text keeps only its state (Published, Waiting for a quick check, Removed),
+the stars being under the photo. **The item's expected day is in its text**
+while it is still coming (`LineExpected` on both): its parcel's own day, the
+store's estimate or that it is later (`usePromiseText`, the app's
+`ParcelStepsCard.promiseText`, the tracker's words). My orders' row is the
+order's photo, name, date, reference, total and how it is paid, and no
+status. **The pictures are NetLet's own drawing**, not an icon set's, so the
+van can turn its wheels — the store with its orange-and-white awning, the
+house under the logo's orange roof, the navy van with the orange stripe and
+spoked wheels (SVG on the web, `JourneyArt` in a `Canvas` in the app, in the
+same coordinates); the street they were first drawn for, the store's parcels
+hopping into the van and the van driving to the house, went with the road.
+**The web's motion is transforms and opacities alone** (`.item-status` in
+`index.css`) and the app's a pure function of the clock (`JourneyMotion`,
+tested at the web's keyframes) drawn by a timeline that runs only while
+something moves; nothing moves under reduced motion. `journeyStage`
+(`Shared/commerce/orderReceipt.ts`) is the rule; the app's
+`ReceiptRules.journeyStage`, on the same cases. `OrderItemJourneyUITests`
+holds the list with none, two on the recorded pending order, Rate on a
+delivered item opening the review and Edit on two rated ones; the CI
+photographs every look in both languages (`-NetLetOpen journeyProbe`,
+`JourneyProbe`, Debug only, `112-order-journey`). Walked on a production
+build against a local Postgres at 320, 390 and 1440 in both languages: each
+tile under its own photo and centred on it, the van on the shipped item and
+Rate on the delivered one, Rate opening the review without choosing the item,
+the expected day beside each item still coming, axe clean, no sideways scroll.
 
 **An opened order's receipt can be saved as a PDF, on the owner's word**
 ("an export to PDF option that will show all the details of your order in
