@@ -2230,7 +2230,13 @@ line sits under the line's price and stepper, on the owner's word** (a
 picture of the cart with the badge circled and an arrow under the stepper), as
 a small pill with a truck, on the web and in the app (`LineBadges`): under the
 name it pushed the price and the stepper down for one line of a store and not
-the next. A guest has no book, so no button.
+the next. **Once any line goes elsewhere, every line says where it goes, on
+the owner's word** ("once you choose a different place for any product, let
+the other products also show where they're going, to be clear to clients"):
+the rest say "Going to" the order's main address, named as the header names it
+(`useDeliveryArea` on the web, `DeliveryModel.label` in the app), so a bag
+split two ways never leaves a shopper guessing which lines go where; while no
+line goes elsewhere, none says it. A guest has no book, so no button.
 
 **The bag is drawn by store, and on a phone it opens on where it is going —
 on the owner's word.** Each store's lines sit together under "Sold by …",
@@ -2399,7 +2405,9 @@ enabled, which a real browser does not.
 
 **Every line has a menu, on the owner's word** (`LineMenu`, a "⋯" where the bin
 was; the stepper's minus is the bin at one, the app's rule): Save for later,
-Move to wishlist, Share, View product, Remove from cart — a sheet from the foot
+Move to wishlist, Share, Remove from cart — **no View product, on the owner's
+word** ("this one already: when you click on the item you can show the
+product page"; the line's photo and name are its link) — a sheet from the foot
 of a phone's screen naming the product, a small menu from `sm`, the WAI-ARIA
 menu in both, `position: fixed` and portalled into the nearest dialog or
 landmark because the store card clips. **Save for later is Saved** — the
@@ -2890,7 +2898,14 @@ axe clean and no sideways scroll.
 
 **Only the rows somebody needs, on the owner's word** ("I only want the
 options that are 100 percent needed in the profile page; combine or remove
-options if necessary"). The first card is Addresses;
+options if necessary"). The first card is Addresses with **Payment methods
+under it, the two together, on the owner's word** ("add payment method below
+delivery addresses … let them two be connected together"), and **Preferences
+and Browsing history share a card** for the same reason ("while preferences
+and browsing history connected together"); Payment methods opens the saved
+cards on a page of their own (`/account/payments`, `SavedCards`; the app's
+`PaymentMethodsView`), and the account's own search finds it by "payment",
+"card" and "saved cards" (`ACCOUNT_PLACES`' `cards`).
 Price requests and Subscribe & Save are rows only for
 somebody who has one (`offers.list`, `subscriptions.mine`), since for anybody
 else they open an empty page, and their pages stay open to a link. The
@@ -2898,9 +2913,9 @@ language and the currency were rows of their own, then inside Preferences, and
 are on the page itself now (Quick settings, above). Then the help centre, selling for
 a seller, and the account itself. **Returns and Reviews are tabs of My
 orders, on the owner's word** ("move the returns and my review to the my
-orders page"; see "My orders has every tool" under Orders) — they were rows of
-this card, and `/account/returns` and `/account/reviews` now open the orders
-on that tab (`MOVED` in `Account.tsx`; the app's `AppModel.open`). **Returns**
+orders page"; see "My orders is a search bar" under Orders) — they were rows
+of this card, then tabs, and are the filter page's "Returns and reviews" now;
+`/account/returns` and `/account/reviews` open the orders on that list (`MOVED` in `Account.tsx`; the app's `AppModel.open`). **Returns**
 (`AccountReturns`; the app's `ReturnsList`): a return is
 started from its order, and this is where somebody asks where their refund
 is — every request across their orders, newest first (`orders.myReturns`,
@@ -2919,9 +2934,9 @@ saved cards first and NetLet points at the bottom") — the saved cards
 balance with the coin and converting it (`PointsWallet`), the two ways to earn
 and the points history. It was two
 pages, the points (`/account/rewards`) and Payment methods
-(`/account/payments`); both addresses open the Wallet (`MOVED` in
-`Account.tsx`, the app's `Route.from`), and Payment methods is no longer a
-row. Gift cards are not in it because the account holds none — a gift card is
+(`/account/payments`); the points' address opens the Wallet (`MOVED` in
+`Account.tsx`, the app's `Route.from`), and Payment methods is a row and a
+page again, under Addresses (above), its cards still on the Wallet too. Gift cards are not in it because the account holds none — a gift card is
 a code typed and spent at checkout, and keeping a list of them would be a
 table, a migration not shown. **The saved cards are the cards and a way to
 add one, and nothing else, on the owner's word** ("remove the ways to pay …
@@ -3135,7 +3150,12 @@ path names (anybody else gets the same 404 as an account with none), as
 `private, no-cache` with the version as its ETag — the browser keeps a copy
 but asks each time, so the cookie is checked on every use and the next person
 on a shared device never sees it. It goes with the account by the cascade.
-**Chosen on "Your profile"**, under the name (`ProfileIdentity`, the app's `ProfilePhotoControls`): the
+**Chosen on "Your profile", on the picture itself, on the owner's word**
+("the image changes should be on the picture side"): the circle is the press,
+with a navy camera badge on its corner, and Remove under it
+(`ProfileIdentity`, the app's `ProfilePhotoControls`); the Save, Cancel and
+note for a photo chosen sit under the name (the app's `ProfilePhotoSave`). It
+was "Add a photo" under the name, away from the picture it changes. The
 browser's or the phone's own picker, the largest square from the centre at
 `PROFILE_PHOTO_EDGE` (512) made on the device (`prepareProfilePhoto`,
 `ImagePreparation.squareJPEG`) and shown in the circle before anything is sent,
@@ -3403,98 +3423,79 @@ to ask where their refund is, every order's returns together (see "Only the
 rows somebody needs" under The account), and it says how to start one while
 it is empty.
 
-**My orders has every tool somebody needs about what they bought, on the
-owner's word** ("add these filter options at the top of the my order page …
-I want the orders page to have all the tools that the user needs"), **and it
-is drawn to the picture they sent** (a shop's "Your orders"): a bar with the
-way back at its start, "Your orders" in its middle and a search icon at its
-end (`OrdersTop`; the app's own of the same name), then the tabs as plain
-words in one row that scrolls sideways — All orders, Processing, Shipped,
-Delivered, Returns (the picture's five, in its order, `ORDER_TABS`), then
-Cancelled and Reviews — the chosen one dark with a short rounded line under it
-(sliding to the next in the app), the rest muted, a hairline under the row.
-No counts, icons or chips: the first version had them and the picture has
-none. The tabs are `aria-pressed` buttons in a named group (the `Segmented`
-rule: they narrow a list). **The search icon opens the search** under the
-tabs, on the orders' own views — a search by the order's number (whole or in
-part, with or without its dashes) or by anything in it; closing it clears it,
-so nothing narrows the list out of sight, and an address carrying words opens
-with it shown. **Under the tabs, Filters and Sort, on the owner's word** ("a
-filter option at the top of the my order page in which the user can set custom
-dates … give the user as many options as you can, but keep it as user friendly
-as possible", then "organize the filter options for the my orders page, make
-it better and enhanced"; `OrderFilterChips` on the web and in the app). They
-were a row of five chips — Date, Store, Payment, Total, Sort — each opening a
-sheet of its own and applying on the press; five sheets for one question read
-as five places to look. Now two buttons: **Filters**, saying how many are on
-(a navy disc with the count), and **Sort**, naming the order. **Filters opens
-one sheet** — a phone's from the foot of the screen, a card from `sm`
-(`useOverlay`, focus on its Close; the app's `.sheet(item:)`) — with every
-choice in a section of its own under its icon and name, chosen as pills and
-**applied together by "Show orders"**, with Reset beside it (nothing changes
-until the press, so a shopper can try a few choices and leave with Close).
-**Date** is any time, 30, 90 and 180 days, This month and Last month, every
-year the shopper ordered in (a year chosen as its first and last day, so it is
-one rule), and "Choose dates" for two days of their own (`From` and `To`, the
-browser's or the phone's own date picker, held to Kuwait's days from the first
-order's day to today, starting on the last thirty; on the web a day missing or
-the two the wrong way round is said under the box with focus on it, and the
-server swaps two days that arrive the wrong way round anyway). **Store** is
-drawn only once the shopper has bought from more than one (or one is chosen),
-each store with how many orders hold it. **Payment** is cash on delivery or
-paid online (`isOnlineMethod`). **Total** is four bands in whole dinars
-(`ORDER_TOTAL_BANDS`: under 10, 10 to 50, 50 to 100, over 100, measured in
-fils). **Sort** is a short sheet of newest, oldest, highest and lowest total,
-applied on the press, ties kept in the order given. **Under the two, each
-filter that is on is a chip of its own with a cross** that takes that one off
-(its name says which, `orders.removeFilter`), and Clear all takes them all and
-the sort, leaving the tab and the search. **The choices are read
-over every order**, never only the ones the filters leave (`orders.list`'s
-`facets`: the stores with their counts, the Kuwaiti years, the first order's
-day), so a chip can always be changed back. The date counts once among what
-narrows the list and the order of it never (`narrowingCount`), so "nothing
-matches" is said only when something does narrow it. **A view is read off `orderProgress`, never a second
-rule** (`viewOfProgress` in `Shared/commerce/orderFilters.ts`): received and
-being prepared are Processing, on the way and part-delivered Shipped, an order
-that came back whole Delivered (its return is under Returns). **The server
-filters over every order the shopper has** (`orders.list` with `view`, `q`,
-`period`, `from`, `to`, `store`, `payment`, `total` and `sort`; `filterOrders`,
-pure, over up to `ORDER_SCAN_CEILING` of their
-newest, and says when it reached it), because a filter over the twenty on the
-page says "none" about the twenty-first — the admin lists' rule; it still
-answers each view's count, which tells "nothing matches" from "no orders yet".
-The search folds and stems as the shop's search does (`searchWords`: "ساعه"
-finds "ساعة ذكية", "watches" finds "Smart watch", "cha" the word it starts).
+**My orders is a search bar with a filter button beside it, on the owner's
+word, and that is a reversal** ("all bar up removed, only add search bar and
+in the side filter … once you click on filter it will send you to the filter
+page"). It had been drawn to a shop's "Your orders" — a row of tabs (All
+orders, Processing, Shipped, Delivered, Returns, Cancelled, Reviews), a search
+icon opening a box under them, then Filters and Sort buttons over five
+sections (date, store, payment, total, sort) — on the owner's earlier word
+("I want the orders page to have all the tools that the user needs"), and the
+owner found it too much. Now the top is the way back and "Your orders"
+(`OrdersTop`, both platforms), then **one row: the search bar, and at its end
+a round filter button** with how many filters are on in a navy disc
+(`OrderSearchAndFilter` on the web; `OrderFilterButton` in the app). The
+search finds an order by its number (whole or in part, with or without its
+dashes), anything in it, **or its store's name in either language** — the
+owner's reason for no store list ("he can search by the filter bar for any
+name — in future maybe he will buy from 100 stores"; the store's English and
+Arabic names are in the words `filterOrders` searches). **No sort, on the
+owner's word**: the list is always newest first, and **every order says when
+it was ordered** on a line of its own under its name ("Ordered on 4 November
+2026", `orders.orderedOn`), with the reference under that.
+
+**The filter button opens the filter page** — the whole screen on a phone and
+a card from `sm` (`useOverlay`, focus on its Close; the app's
+`.fullScreenCover`) — three sections, each a row of pills, **applied together
+by "Show orders"** with Reset beside it, a pill pressed again taken off:
+
+- **Order status** (`ORDER_STATUSES`): Order received, Being prepared,
+  Shipped, Delivered, Cancelled. The owner asked for "pending, received, ready
+  to ship, shipped, delivered"; NetLet's lines have four steps (pending,
+  preparing, shipped, delivered), so pending is Order received and ready to
+  ship is Being prepared — a step the shop does not record cannot be offered.
+  Each is read off `orderProgress` (`statusOfProgress`); the old Processing
+  (`received` and `preparing` together) still answers an address that names
+  it.
+- **When**: the last 30 days, the last 3 months, or "Choose dates" for two
+  days of one's own (`ORDER_DATE_CHOICES`; `From` and `To` on the browser's or
+  the phone's own picker, held to Kuwait's days from the first order's day to
+  today; on the web a day missing or the two the wrong way round is said under
+  the box with focus on it). **By year, the newest year and "More years"** for
+  the ones before it, on the owner's word ("2026, then a more icon to see
+  previous years"); a year chosen earlier stays in view beside it.
+- **Returns and reviews** (`ORDER_LISTS`): the two lists that were the last
+  tabs, here because the tabs went.
+
+**No store, payment or total sections, on the owner's word** ("remove bought
+from … cancel how it's paid, and total order"); the server still takes them,
+for an installed app that sends them, and the page drops them from the address
+as soon as anything is chosen. Under the bar, **each filter that is on is a
+chip with a cross** that takes just that one off (`orders.removeFilter`), and
+Clear all takes them all, leaving the search. The years are read over every
+order (`orders.list`'s `facets`), so a year can always be chosen back.
+**The server filters over every order the shopper has** (`orders.list` with
+`view`, `q`, `period`, `from` and `to`; `filterOrders`, pure, over up to
+`ORDER_SCAN_CEILING` of their newest, saying when it reached it), because a
+filter over the twenty on the page says "none" about the twenty-first; it
+answers each status's count, which tells "nothing matches" from "no orders
+yet". The search folds and stems as the shop's search does (`searchWords`).
 The filters live in the address (`?view=`, `?q=`, `?period=`, `?from=`,
-`?to=`, `?store=`, `?pay=`, `?total=`, `?sort=`, replaced rather than pushed),
-the search sent once typing pauses and the box never overwritten by its own
-search coming back; nothing matching says so with Clear filters, and a
-narrowed list says how many it found. The page draws its own bar, so
-`Account.tsx` draws no section heading over it. The app's tabs, periods,
-sorts, payments, total bands and search length are exported to `rules.json`
-(`orders.filterTabs`, `filterPeriods`, `filterSorts`, `filterPayments`,
-`filterTotals`, `totalBands`, `searchMax`), and `OrderFilterRules` is the
-little the app has to know before it asks (a calendar day, a year's two days,
-this month and last, the count that narrows), on the TypeScript's cases.
-`orders.test.ts` filters a real database by view, search, period, two days, a
-store, a payment and a total, sorts it and reads the facets;
-`orderFilters.test.ts` holds the rule and the tabs' order; the app's
-`OrderFiltersUITests` chooses a year and Oldest first and clears both. Measured at
-320, 390 and 1440 in both languages: the tabs in order, the search opened by
-its icon with focus in the box, a number found by five of its letters, a miss
-offering Clear filters, closing the search restoring every order, Returns and
-Reviews in place, each chip's sheet with focus on its Close, a year, two days
-and a store narrowing the list and their chips saying so, two days the wrong
-way round refused under the box, Clear all, axe clean with every sheet open,
-no sideways scroll (a review row's long reason widened the page at 320 until
-it was allowed to wrap, and the Date sheet's periods are pills, since a row
-each made it taller than a phone). The organised filters were walked again
-the same way (`.scratch/cart-checkout-walk.mjs`): Filters opening one sheet, a
-year chosen and applied by "Show orders" into the address and a chip of its
-own, Sort applying Oldest first on the press, the year's cross taking it off
-alone and Clear all the sort, axe clean with the sheet open, no sideways
-scroll; the app's `OrderFiltersUITests` does the same through the sheet, and
-the CI photographs it open (`115-order-filters`, `-NetLetOpen orderFilters`).
+`?to=`, replaced rather than pushed), the search sent once typing pauses and
+the box never overwritten by its own search coming back. The app's statuses,
+dates and lists are exported to `rules.json` (`orders.filterStatuses`,
+`filterDates`, `filterLists`), and `OrderFilterRules` is the little the app
+has to know before it asks, on the TypeScript's cases. `orders.test.ts`
+filters a real database by status, a store's name, the date and a year;
+`orderFilters.test.ts` holds the rule; the app's `OrderFiltersUITests` checks
+no tabs or sort, the date on an order, the page's choices and none of the old
+ones, a status and a year applied as two chips, one taken off by its cross and
+Clear all. Walked at 320, 390 and 1440 in both languages
+(`.scratch/round345-walk.mjs`): the filter button beside the search, no tabs
+or sort, the date on every order, the page the whole screen on a phone with
+focus on Close, Delivered and 2026 applied into the address as two chips, a
+store's name found by the search, axe clean, no sideways scroll. The CI
+photographs the page open (`115-order-filters`, `-NetLetOpen orderFilters`).
 Orders is the first tile, ahead of the settings: somebody
 opening their account on a shop is usually asking where a parcel is, not
 changing a display name.
@@ -3775,13 +3776,17 @@ even if one is selected; keep as many options as there is for the user"):
 they waited for every item to be chosen, so one item of an unpaid order of two
 offered Track, Buy again, Help and Cancel, and both offered eight. Now one
 item of several offers its own acts and the order's together — its Quantity
-beside Change order, **Cancel item** beside **Cancel order** (the item's
-cancel is named so, "Cancel items" for several, `orders.pickCancelItem(s)`,
-since a bare "Cancel" beside "Cancel order" said nothing) — nine on that
-order, in rows of four. Only with every item chosen do the order's stand in
-for the items' (`everyChosen`): Change order for Quantity, Cancel order for
-cancelling them all, since there they would do the same; the All circle beside
-"In this order" chooses them all in one press. Change order is offered while
+beside Change order, and **Cancel item** ("Cancel items" for several,
+`orders.pickCancelItem(s)`) — in rows of four. **Cancel order is offered only
+with every item chosen, on the owner's word** ("once I choose to cancel
+specific items, then only give the option to cancel the item, not all the
+order"): it stood beside Cancel item whatever was chosen, so somebody who had
+chosen one thing was offered to cancel everything. With every item chosen the
+order's acts stand in for the items' (`everyChosen`): Change order for
+Quantity, Cancel order for cancelling them all, and never Cancel items beside
+it; the All circle beside "In this order" chooses them all in one press. **The
+bar puts itself away with Close** (`orders.chosenClear`, on the owner's word:
+"back or close instead of clear"), which empties the choice as Clear did. Change order is offered while
 any item of the order may change, the chosen one or not (`modifiable`, the
 change form being the order's). **The room the bar needs is at the page's
 foot** (portalled to the end of `<main>`, about 80px a row): it sat under the
@@ -3898,7 +3903,7 @@ presses: on a
 phone it floats over the tab bar (`PhoneActionBar` on the web, which puts the
 assistant aside; `ChosenItemsBar` in the app, `floatsAtFoot`, with
 `ShopPage(assistant:)` off), on a wide screen it sticks to the window's foot
-while the order is on screen. It says how many are chosen, has Clear, and
+while the order is on screen. It says how many are chosen, has Close, and
 offers **every act the chosen items allow and none they do not**:
 `Shared/commerce/orderSelection.ts` (`selectionOffers`, pure; the app's
 `OrderSelection`, on the same cases) reads the facts the server already sent
@@ -11313,7 +11318,12 @@ in the tabs has its bottom edge effect hidden (`NoBottomEdge`,
 does. What keeps the selected tab readable is that the bar rests over the
 page's ground, never navy: the first preview without the band showed the bag's
 footer under the bar and the Cart tab gone but for its badge, and since the
-footer went (above) nothing navy reaches the foot of any page. A
+footer went (above) nothing navy reaches the foot of any page. **No page
+draws the vertical scroll indicator, on the owner's word** ("remove the scroll
+down or up line"): `.scrollIndicators(.hidden, axes: .vertical)` beside
+`NoBottomEdge` in `RootView`, and on every sheet through `languageDirection()`,
+both reaching every scroll view inside through the environment; the sideways
+rows already hid theirs. A
 press ticks
 and pressing the current tab goes to its top, both in the selection binding's
 setter, which the system calls only for a press. Checkout hides it with

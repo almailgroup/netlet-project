@@ -16,7 +16,10 @@ describe("the account's own search", () => {
   it("finds what a page holds by the page's name too", () => {
     /* "profile" is Your profile and every row under it. */
     expect(ids("profile")).toEqual(expect.arrayContaining(["profile", "name", "email", "phone", "password", "about", "photo", "deleteAccount"]));
-    expect(ids("wallet")).toEqual(["wallet", "points", "cards"]);
+    expect(ids("wallet")).toEqual(["wallet", "points"]);
+    /* Payment methods is a page of its own again, under the addresses, on the owner's word. */
+    expect(ids("payment methods")[0]).toBe("cards");
+    expect(ids("saved cards")).toContain("cards");
   });
 
   it("finds a section by the words of its hint", () => {

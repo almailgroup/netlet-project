@@ -49,9 +49,11 @@ struct StoreDeliveryRow: View {
                         (Text(destination + " · " + kind + " · ").foregroundColor(Brand.body)
                             + Text(fee).foregroundColor(free ? Brand.success : Brand.navy).bold())
                             .font(.inter(13, .semibold))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .minimumScaleFactor(0.85)
+                            // A second line where one is not enough, never
+                            // cut in the middle: "To more than one ad…tandard"
+                            // was in the owner's screenshot.
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                         if let chosen {
                             Text(chosen)
                                 .font(.inter(12))

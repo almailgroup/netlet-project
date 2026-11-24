@@ -1,14 +1,18 @@
 /**
- * The filters at the top of My orders, on the owner's word ("add these filter
- * options at the top of the my order page … I want the orders page to have all
- * the tools that the user needs").
+ * The filters on My orders, on the owner's word ("add these filter options at
+ * the top of the my order page … I want the orders page to have all the tools
+ * that the user needs") — **a search bar with a filter button beside it, and
+ * the filter a page of its own, also on the owner's word** ("all bar up
+ * removed, only add search bar and in the side filter"). The row of tabs and
+ * the sort went.
  *
- * A row of views — every order, the ones being processed, the ones on the
- * way, the ones delivered, the ones cancelled — each saying how many it holds,
- * a search by the order's number or anything in it, and how far back to look.
- * The page also carries the returns asked for and the reviews (`ORDER_TABS`'
- * last two), which moved there from the account's home; those are lists of
- * their own and not views of the orders.
+ * The filter page offers the order's status (`ORDER_STATUSES`, in the
+ * owner's order: received, being prepared, shipped, delivered, then
+ * cancelled), the last 30 days, the last 3 months or two days of one's own
+ * (`ORDER_DATE_CHOICES`), and a year; and leads to the returns asked for and
+ * the reviews (`ORDER_LISTS`), which are lists of their own and not views of
+ * the orders. The search finds an order by its number, anything in it, or
+ * the store it came from.
  *
  * **A view is read off `orderProgress`, never a second rule.** The pill on a
  * row says where the order has got to; the view it is filed under is that same
@@ -28,15 +32,32 @@ import { toFils } from "../money.js";
 import { DAY_ONLY, endOfKuwaitDay, kuwaitDay } from "../kuwaitDay.js";
 import { isOnlineMethod } from "./onlinePayment.js";
 
-export const ORDER_VIEWS = ["all", "processing", "onTheWay", "delivered", "cancelled"] as const;
+/**
+ * What an order is filed under. `processing` is `received` and `preparing`
+ * together — the tab before the filter page, kept for an installed app and an
+ * old address.
+ */
+export const ORDER_VIEWS = ["all", "received", "preparing", "processing", "onTheWay", "delivered", "cancelled"] as const;
 export type OrderView = (typeof ORDER_VIEWS)[number];
 
 /**
- * Every tab on the page, in the owner's reference's order — All orders,
- * Processing, Shipped, Delivered, Returns — then Cancelled and Reviews, which
- * the reference's row runs on to.
+ * The statuses the filter page offers, in the owner's order ("pending,
+ * received, ready to ship, shipped, delivered"): an order received and not
+ * yet started (the store's "Pending"), one being prepared, one shipped, one
+ * delivered — then one cancelled. NetLet has no step between a store
+ * preparing an order and it leaving, so "ready to ship" is "being prepared".
  */
-export const ORDER_TABS = ["all", "processing", "onTheWay", "delivered", "returns", "cancelled", "reviews"] as const;
+export const ORDER_STATUSES = ["received", "preparing", "onTheWay", "delivered", "cancelled"] as const;
+export type OrderStatus = (typeof ORDER_STATUSES)[number];
+
+/** The lists of their own the filter page leads to: the returns asked for and the reviews. */
+export const ORDER_LISTS = ["returns", "reviews"] as const;
+
+/** How far back the filter page offers, in days — the last 30 days and the last 3 months — beside two days of one's own. */
+export const ORDER_DATE_CHOICES = ["30", "90"] as const;
+
+/** Everything the page can show: every order, a status, the old Processing, or one of the two lists. */
+export const ORDER_TABS = ["all", "received", "preparing", "processing", "onTheWay", "delivered", "returns", "cancelled", "reviews"] as const;
 export type OrderTab = (typeof ORDER_TABS)[number];
 
 /** How far back to look, in days; "all" is every order. */
@@ -191,10 +212,11 @@ export type OrderFilterSet = {
   sort?: OrderSort;
 };
 
-/** How many of the chips' filters are set — the date counting once, the order of the list never. */
+/** How many filters are set — a status, the date counting once, the order of the list never. */
 export function narrowingCount(filters: OrderFilterSet): number {
   const dated = (filters.period && filters.period !== "all") || isCalendarDay(filters.from) || isCalendarDay(filters.to);
-  return (dated ? 1 : 0)
+  return (filters.view && filters.view !== "all" ? 1 : 0)
+    + (dated ? 1 : 0)
     + (filters.store ? 1 : 0)
     + (filters.payment && filters.payment !== "all" ? 1 : 0)
     + (filters.total && filters.total !== "all" ? 1 : 0);
@@ -222,8 +244,34 @@ export function isOrderPeriod(value: unknown): value is OrderPeriod {
   return typeof value === "string" && (ORDER_PERIODS as readonly string[]).includes(value);
 }
 
-/** The view an order is filed under, from where it has got to. */
-export function viewOfProgress(progress: OrderProgress): Exclude<OrderView, "all"> {
+/**
+ * The status an order is filed under on the filter page, from where it has
+ * got to: received and being prepared apart, part-delivered with shipped, one
+ * that came back whole with delivered (its return is under Returns).
+ */
+export function statusOfProgress(progress: OrderProgress): OrderStatus {
+  switch (progress.kind) {
+    case "received": return "received";
+    case "preparing": return "preparing";
+    case "onTheWay":
+    case "partlyDelivered":
+      return "onTheWay";
+    case "delivered":
+    case "returned":
+      return "delivered";
+    case "cancelled": return "cancelled";
+  }
+}
+
+/** Whether an order is under a view: every order, a status, or Processing (received and being prepared). */
+export function inView(progress: OrderProgress, view: OrderView): boolean {
+  if (view === "all") return true;
+  if (view === "processing") return viewOfProgress(progress) === "processing";
+  return statusOfProgress(progress) === view;
+}
+
+/** The coarser view an order was filed under before the filter page, for an installed app. */
+export function viewOfProgress(progress: OrderProgress): "processing" | "onTheWay" | "delivered" | "cancelled" {
   switch (progress.kind) {
     case "received":
     case "preparing":
@@ -252,7 +300,9 @@ function compactReference(text: string): string {
 
 /**
  * Whether an order answers the search: its number, typed whole or in part
- * with or without its dashes, or every word typed found in what was bought —
+ * with or without its dashes, or every word typed found in what was bought or
+ * the store it came from (the server adds the stores' names to `titles`, on
+ * the owner's word: "he can search by the filter bar for any name") —
  * folded and stemmed as the shop's own search compares words, so "ساعه" finds
  * "ساعة ذكية" and "watches" finds "Smart watch", and a word typed in part
  * ("cha") finds the word it starts.
@@ -309,9 +359,12 @@ export function filterOrders<T extends FilterableOrder>(
       && (total === "all" || inTotalBand(order.grandTotal ?? "0", total))
       && matchesOrderSearch(q, order);
   });
-  const counts: OrderCounts = { all: kept.length, processing: 0, onTheWay: 0, delivered: 0, cancelled: 0 };
-  for (const order of kept) counts[viewOfProgress(order.progress)] += 1;
+  const counts: OrderCounts = { all: kept.length, received: 0, preparing: 0, processing: 0, onTheWay: 0, delivered: 0, cancelled: 0 };
+  for (const order of kept) {
+    counts[statusOfProgress(order.progress)] += 1;
+    if (viewOfProgress(order.progress) === "processing") counts.processing += 1;
+  }
   const view = filters.view ?? "all";
-  const viewed = view === "all" ? kept : kept.filter(order => viewOfProgress(order.progress) === view);
+  const viewed = view === "all" ? kept : kept.filter(order => inView(order.progress, view));
   return { shown: sortOrders(viewed, filters.sort ?? "newest"), counts };
 }

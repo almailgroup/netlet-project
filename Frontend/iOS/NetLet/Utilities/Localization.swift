@@ -206,7 +206,10 @@ struct LanguageDirection: ViewModifier {
     @Environment(LanguageSettings.self) private var l
 
     func body(content: Content) -> some View {
-        content.environment(\.layoutDirection, l.layoutDirection)
+        content
+            .environment(\.layoutDirection, l.layoutDirection)
+            // No scroll line in a sheet either, the root's rule (`RootView`).
+            .scrollIndicators(.hidden, axes: .vertical)
     }
 }
 

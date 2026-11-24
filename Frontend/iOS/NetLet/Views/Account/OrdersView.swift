@@ -4,16 +4,14 @@ import SwiftUI
 /// The shopper's orders, each led by what is in it and where it is — the
 /// account's Orders section, drawn as the web's section page.
 ///
-/// **It carries every tool somebody needs about what they bought, on the
-/// owner's word** ("add these filter options at the top of the my order page
-/// … I want the orders page to have all the tools that the user needs"): a
-/// row of chips — All, Processing, On the way, Delivered, Cancelled, each with
-/// how many it holds, then Returns and Reviews — a search by the order's
-/// number or anything in it, and how far back to look. The server filters
-/// over every order (`orders.list`, `Shared/commerce/orderFilters.ts`), so a
-/// chip's number is what pressing it shows. **Returns and Reviews moved here
-/// from the Profile tab**, also on the owner's word: they are lists of their
-/// own (`ReturnsList`, `ReviewsList`) under their chips.
+/// **Its top is a search bar with a filter button beside it, on the owner's
+/// word** ("all bar up removed, only add search bar and in the side filter"):
+/// the search finds an order by its number, anything in it or its store, and
+/// the filter page holds the order's status, the last 30 days or 3 months or
+/// two days of one's own, a year, and Returns and Reviews — lists of their own
+/// (`ReturnsList`, `ReviewsList`) that moved here from the Profile tab. The
+/// server filters over every order (`orders.list`,
+/// `Shared/commerce/orderFilters.ts`).
 struct OrdersView: View {
     /// The chip to open on: "returns" or "reviews" from their old addresses.
     var initialTab = "all"
@@ -138,45 +136,35 @@ struct OrdersView: View {
     }
 }
 
-/// The top of My orders, drawn to the owner's reference (a shop's "Your
-/// orders"), the web's `OrdersTop`: a bar with the way back, "Your orders" in
-/// its middle and a search at its end; then the tabs as plain words in a row
-/// that scrolls sideways — the chosen one dark with a short rounded line under
-/// it that slides to the next, the rest muted, a hairline under the row. A tab
-/// says it is chosen (`isSelected`), the web's `aria-pressed`. The search icon
-/// opens the search under the tabs on the orders' own views; closing it clears
-/// it, so nothing narrows the list out of sight. The chips under the tabs
-/// (`OrderFilterChips`) are always there, each saying what it holds.
+/// The top of My orders: a bar with the way back and "Your orders", then the
+/// search bar with the filter button beside it — **no tabs and no sort, on the
+/// owner's word** ("all bar up removed, only add search bar and in the side
+/// filter"), the web's `OrdersTop`. The statuses, the dates and the returns
+/// and reviews are on the filter page (`OrderFilterButton`); each filter that
+/// is on is a chip under the bar (`OrderFilterTokens`). The search finds an
+/// order by its number, anything in it or its store.
 private struct OrdersTop: View {
     let model: OrdersViewModel
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var still
     @State private var typed = ""
     @State private var sent = ""
-    @State private var opened = false
     @FocusState private var searching: Bool
 
-    private var tabs: [String] { ReferenceData.shared.rules.orders?.filterTabs ?? ["all", "processing", "onTheWay", "delivered", "returns", "cancelled", "reviews"] }
     private var searchMax: Int { ReferenceData.shared.rules.orders?.searchMax ?? 80 }
-    /// Whether the search row shows: opened, or holding words that narrow the list.
-    private var searchShown: Bool { model.onOrders && (opened || !model.filters.q.isEmpty) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             bar
-            tabRow
-            if searchShown {
+            HStack(spacing: 10) {
                 searchField
-                    .transition(.opacity)
+                OrderFilterButton(model: model)
             }
-            if model.onOrders, model.showsChips {
-                OrderFilterChips(model: model)
-            }
+            OrderFilterTokens(model: model)
         }
         // The search sent once typing pauses; the box follows the model only
-        // when something else changed it (Clear filters).
+        // when something else changed it (Clear all).
         .task(id: typed) {
             let value = String(typed.trimmingCharacters(in: .whitespacesAndNewlines).prefix(searchMax))
             guard value != sent else { return }
@@ -212,48 +200,10 @@ private struct OrdersTop: View {
                 .buttonStyle(.tap)
                 .accessibilityLabel(l.t(toAccount ? "account.backToAccount" : "nav.back"))
                 Spacer(minLength: 0)
-                if model.onOrders {
-                    Button { toggleSearch() } label: {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 20, weight: .medium))
-                            .foregroundStyle(Brand.navy)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.tap)
-                    .accessibilityLabel(l.t("orders.searchPlaceholder"))
-                    .accessibilityValue(l.t(searchShown ? "ios.a11y.expanded" : "ios.a11y.collapsed"))
-                }
             }
             .padding(.horizontal, -12)
         }
         .frame(minHeight: 44)
-    }
-
-    private var tabRow: some View {
-        TextTabs(tabs: tabs.map { TextTab(id: $0, label: l.t(Self.label($0))) }, selection: model.tab) { tab in
-            // The tab at once, so the line slides under it; the list is asked for after.
-            model.pick(tab: tab)
-            Task { await model.choose(tab: tab) }
-        }
-    }
-
-    private func toggleSearch() {
-        Haptics.tap()
-        if searchShown {
-            withAnimation(still ? nil : .snappy(duration: 0.22)) { opened = false }
-            typed = ""
-            sent = ""
-            searching = false
-            Task { await model.clearSearch() }
-        } else {
-            withAnimation(still ? nil : .snappy(duration: 0.22)) { opened = true }
-            // The box exists a frame after the row opens.
-            Task {
-                try? await Task.sleep(for: .milliseconds(60))
-                searching = true
-            }
-        }
     }
 
     private var searchField: some View {
@@ -275,6 +225,7 @@ private struct OrdersTop: View {
                     Task { await model.search(value) }
                 }
                 .accessibilityLabel(l.t("orders.searchLabel"))
+                .accessibilityIdentifier("orders-search")
             if !typed.isEmpty {
                 Button {
                     typed = ""
@@ -291,23 +242,11 @@ private struct OrdersTop: View {
                 .accessibilityLabel(l.t("orders.searchClear"))
             }
         }
-        .padding(.leading, 12)
-        .padding(.trailing, typed.isEmpty ? 12 : 2)
-        .frame(minHeight: 44)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(searching ? Brand.navy : Brand.line, lineWidth: searching ? 1.5 : 1))
-    }
-
-    static func label(_ tab: String) -> String {
-        switch tab {
-        case "processing": return "orders.viewProcessing"
-        case "onTheWay": return "orders.viewOnTheWay"
-        case "delivered": return "orders.viewDelivered"
-        case "cancelled": return "orders.viewCancelled"
-        case "returns": return "orders.viewReturns"
-        case "reviews": return "orders.viewReviews"
-        default: return "orders.viewAll"
-        }
+        .padding(.leading, 14)
+        .padding(.trailing, typed.isEmpty ? 14 : 4)
+        .frame(minHeight: 48)
+        .background(Capsule().fill(Color.white))
+        .overlay(Capsule().strokeBorder(searching ? Brand.navy : Brand.line, lineWidth: searching ? 1.5 : 1))
     }
 }
 
@@ -419,17 +358,17 @@ struct OrderRow: View {
                 if !order.isOver, order.owed?.reduced == true {
                     Text(l.t("orders.cancelledNotCharged")).font(.caption).foregroundStyle(Brand.muted)
                 }
-                // Two runs, not one string: the reference reads left to right
-                // and an Arabic date carries its own marks, and joined into one
-                // line on the Arabic page the date came out scrambled.
-                HStack(spacing: 6) {
-                    Text(order.reference)
-                        .font(.caption.monospaced())
-                        .environment(\.layoutDirection, .leftToRight)
-                    Text(OrderWording.date(order.placedAt, language: l.current))
-                        .font(.caption)
-                }
-                .foregroundStyle(Brand.muted)
+                // When it was ordered, on every order and in words of its own,
+                // on the owner's word ("the order date should be shown on all
+                // orders") — the list is newest first. The reference under it
+                // reads left to right on either page.
+                Text(l.t("orders.orderedOn", ["date": OrderWording.date(order.placedAt, language: l.current)]))
+                    .font(.inter(13, .semibold))
+                    .foregroundStyle(JourneyStreet.passed)
+                Text(order.reference)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(Brand.muted)
+                    .environment(\.layoutDirection, .leftToRight)
             }
         }
         .padding(.top, 6)

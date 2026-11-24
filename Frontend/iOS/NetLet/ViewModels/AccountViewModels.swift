@@ -226,14 +226,18 @@ final class OrdersViewModel {
     }
 
     var canLoadMore: Bool { (orders.value?.count ?? 0) < total }
-    /// Whether the chip pressed is a view of the orders, which the search and the period narrow.
+    /// Whether what is shown is the orders, which the search and the date narrow
+    /// — not the returns or the reviews, the filter page's two lists.
     var onOrders: Bool { !["returns", "reviews"].contains(tab) }
     /// Whether anything narrows the list, so an empty answer is "nothing matches" rather than "no orders".
     var narrowed: Bool { filters.view != "all" || !filters.q.isEmpty || chipsNarrow }
-    /// Whether any chip narrows the list (the order of it narrows nothing).
+    /// Whether any filter narrows the list (the order of it narrows nothing).
     var chipsNarrow: Bool { OrderFilterRules.narrowingCount(filters) > 0 }
-    /// Whether the chips are worth drawing: the shopper has ordered, or something is chosen.
-    var showsChips: Bool { !(facets?.years.isEmpty ?? true) || chipsNarrow || filters.sort != "newest" }
+    /// How many filters are on, for the filter button: the status or a list, and the date once.
+    var filtersOn: Int {
+        let dated = filters.period != "all" || filters.from != nil || filters.to != nil
+        return (tab != "all" ? 1 : 0) + (dated ? 1 : 0)
+    }
     /// The Returns chip's number: every return asked for.
     var returnsCount: Int? { returns.value?.count }
     /// The Reviews chip's number: what can still be rated.
@@ -254,6 +258,29 @@ final class OrdersViewModel {
         let typed = q.trimmingCharacters(in: .whitespacesAndNewlines)
         guard typed != filters.q else { return }
         filters.q = typed
+        // A search is of the orders: from the returns or the reviews it goes back to them.
+        if !onOrders, !typed.isEmpty {
+            tab = "all"
+            filters.view = "all"
+        }
+        await load()
+    }
+
+    /// The filter page's choices, applied together by Show orders: a status or
+    /// one of the two lists (or every order), and the date.
+    func apply(tab next: String, period: String, from: String?, to: String?) async {
+        tab = next
+        var changed = filters
+        changed.view = ["returns", "reviews"].contains(next) ? "all" : next
+        changed.period = from != nil || to != nil ? "all" : period
+        changed.from = from
+        changed.to = to
+        // What the filter page no longer offers goes with any choice.
+        changed.store = nil
+        changed.payment = "all"
+        changed.total = "all"
+        changed.sort = "newest"
+        filters = changed
         await load()
     }
 
@@ -266,9 +293,11 @@ final class OrdersViewModel {
         await load()
     }
 
-    /// Every chip back as it was, the order of the list too; the tab and the search stay.
+    /// Every filter back as it was — the status or list and the date; the search stays.
     func clearChips() async {
+        tab = "all"
         await choose { filters in
+            filters.view = "all"
             filters.period = "all"
             filters.from = nil
             filters.to = nil
@@ -277,6 +306,13 @@ final class OrdersViewModel {
             filters.total = "all"
             filters.sort = "newest"
         }
+    }
+
+    /// The status or list chip's cross: every order again.
+    func clearTab() async {
+        tab = "all"
+        filters.view = "all"
+        await load()
     }
 
     /// The search row closed: its words go with it.

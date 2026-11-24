@@ -56,8 +56,11 @@ enum Route: Hashable {
     case help
     case supportThread(id: Int)
     /// The points and the saved cards — the web's `/account/wallet`, which
-    /// `/account/rewards` and `/account/payments` open too.
+    /// `/account/rewards` opens too.
     case wallet
+    /// The saved cards alone — the web's `/account/payments`, a row under the
+    /// addresses again, on the owner's word.
+    case payments
     case affiliate
     case subscriptions
     // The pages the footer leads to.
@@ -147,9 +150,11 @@ enum Route: Hashable {
             case "offers": return .offers
             case "reviews": return .reviews
             case "help": return .help
-            // NetLet points and Payment methods are the Wallet now, on the
-            // owner's word; a notice sent before still links to the old ones.
-            case "wallet", "rewards", "payments": return .wallet
+            // NetLet points are the Wallet, on the owner's word; a notice sent
+            // before still links to the old address. Payment methods is a page
+            // of its own again, under the addresses.
+            case "wallet", "rewards": return .wallet
+            case "payments": return .payments
             case "affiliate": return .affiliate
             case "subscriptions": return .subscriptions
             case "selling": return .portal("/admin")
@@ -757,7 +762,7 @@ final class AppModel {
     func open(_ route: Route) {
         switch route {
         case .orders, .order, .profile, .addresses, .preferences, .notifications, .wishlists, .wishlist, .offers,
-             .reviews, .help, .supportThread, .wallet, .affiliate, .subscriptions, .invoice, .frequent:
+             .reviews, .help, .supportThread, .wallet, .payments, .affiliate, .subscriptions, .invoice, .frequent:
             if session.isSignedIn { push(route) } else { openAccount(route) }
         case .listings, .newListing, .portal:
             if selectedTab == .account { accountPath.append(route) } else { openAccount(route) }

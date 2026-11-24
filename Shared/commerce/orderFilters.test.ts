@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  dayBounds, filterOrders, inTotalBand, isCalendarDay, isOrderTab, narrowingCount, ORDER_TABS, ORDER_VIEWS, matchesOrderSearch,
-  orderYears, paymentOf, periodStart, sortOrders, storesOf, viewOfProgress, yearOfRange, yearRange, type FilterableOrder,
+  dayBounds, filterOrders, inTotalBand, inView, isCalendarDay, isOrderTab, narrowingCount, ORDER_DATE_CHOICES, ORDER_LISTS, ORDER_STATUSES,
+  ORDER_TABS, ORDER_VIEWS, matchesOrderSearch, orderYears, paymentOf, periodStart, sortOrders, statusOfProgress, storesOf, viewOfProgress,
+  yearOfRange, yearRange, type FilterableOrder,
 } from "./orderFilters";
 
 /* The server filters; the app sends one of each and draws the answer. */
@@ -34,9 +35,33 @@ describe("order filters", () => {
     expect(viewOfProgress({ kind: "cancelled" })).toBe("cancelled");
   });
 
+  /* The owner's filter page: received, being prepared, shipped, delivered, cancelled. */
+  it("files every progress under the status the filter page offers", () => {
+    expect(ORDER_STATUSES).toEqual(["received", "preparing", "onTheWay", "delivered", "cancelled"]);
+    expect(statusOfProgress({ kind: "received", preordered: false })).toBe("received");
+    expect(statusOfProgress({ kind: "preparing" })).toBe("preparing");
+    expect(statusOfProgress({ kind: "partlyDelivered", delivered: 1, of: 3 })).toBe("onTheWay");
+    expect(statusOfProgress({ kind: "returned" })).toBe("delivered");
+    expect(inView({ kind: "preparing" }, "processing")).toBe(true);
+    expect(inView({ kind: "preparing" }, "received")).toBe(false);
+    expect(inView({ kind: "received", preordered: false }, "received")).toBe(true);
+    expect(inView({ kind: "cancelled" }, "all")).toBe(true);
+    for (const status of ORDER_STATUSES) expect(isOrderTab(status)).toBe(true);
+    expect(ORDER_LISTS).toEqual(["returns", "reviews"]);
+    expect(ORDER_DATE_CHOICES).toEqual(["30", "90"]);
+  });
+
+  it("shows one status and counts each", () => {
+    const { shown, counts } = filterOrders(orders, { view: "received" }, now);
+    expect(shown.map(entry => entry.reference)).toEqual(["NL-20261108-AAAA2"]);
+    expect(counts.received).toBe(1);
+    expect(counts.preparing).toBe(0);
+    expect(filterOrders(orders, { view: "processing" }, now).shown).toHaveLength(1);
+  });
+
   it("counts each view and shows the one asked for, newest first", () => {
     const { shown, counts } = filterOrders(orders, { view: "onTheWay" }, now);
-    expect(counts).toEqual({ all: 6, processing: 1, onTheWay: 2, delivered: 2, cancelled: 1 });
+    expect(counts).toEqual({ all: 6, received: 1, preparing: 0, processing: 1, onTheWay: 2, delivered: 2, cancelled: 1 });
     expect(shown.map(entry => entry.reference)).toEqual(["NL-20261101-BBBB3", "NL-20261015-CCCC4"]);
     expect(filterOrders(orders, {}, now).shown).toHaveLength(6);
   });
@@ -46,7 +71,7 @@ describe("order filters", () => {
     expect(periodStart("30", now)?.toISOString()).toBe("2026-10-10T12:00:00.000Z");
     const { shown, counts } = filterOrders(orders, { period: "90" }, now);
     expect(shown).toHaveLength(3);
-    expect(counts).toEqual({ all: 3, processing: 1, onTheWay: 2, delivered: 0, cancelled: 0 });
+    expect(counts).toEqual({ all: 3, received: 1, preparing: 0, processing: 1, onTheWay: 2, delivered: 0, cancelled: 0 });
     expect(filterOrders(orders, { period: "365" }, now).counts.all).toBe(5);
   });
 
@@ -72,11 +97,11 @@ describe("order filters", () => {
   it("searches, then views, and the counts follow the search", () => {
     const { shown, counts } = filterOrders(orders, { q: "honey", view: "delivered" }, now);
     expect(shown.map(entry => entry.reference)).toEqual(["NL-20260801-DDDD6"]);
-    expect(counts).toEqual({ all: 1, processing: 0, onTheWay: 0, delivered: 1, cancelled: 0 });
+    expect(counts).toEqual({ all: 1, received: 0, preparing: 0, processing: 0, onTheWay: 0, delivered: 1, cancelled: 0 });
   });
 
-  it("knows its tabs, in the reference's order, every view among them", () => {
-    expect(ORDER_TABS.slice(0, 5)).toEqual(["all", "processing", "onTheWay", "delivered", "returns"]);
+  it("knows everything the page can show, every view among them", () => {
+    expect(ORDER_TABS.slice(0, 3)).toEqual(["all", "received", "preparing"]);
     for (const view of ORDER_VIEWS) expect(isOrderTab(view)).toBe(true);
     expect(isOrderTab("returns")).toBe(true);
     expect(isOrderTab("reviews")).toBe(true);
@@ -168,11 +193,14 @@ describe("order filters", () => {
 
     it("counts each view under every other chip", () => {
       expect(filterOrders(priced, { payment: "cod", total: "over100" }, now).counts)
-        .toEqual({ all: 1, processing: 0, onTheWay: 0, delivered: 0, cancelled: 1 });
+        .toEqual({ all: 1, received: 0, preparing: 0, processing: 0, onTheWay: 0, delivered: 0, cancelled: 1 });
     });
 
     it("counts the chips that narrow, the date once and the order never", () => {
       expect(narrowingCount({})).toBe(0);
+      /* A status is a filter now, on the filter page. */
+      expect(narrowingCount({ view: "delivered" })).toBe(1);
+      expect(narrowingCount({ view: "all" })).toBe(0);
       expect(narrowingCount({ period: "30", from: "2026-01-01" })).toBe(1);
       expect(narrowingCount({ from: "2026-01-01", store: 2, payment: "online", total: "under10", sort: "oldest" })).toBe(4);
       expect(narrowingCount({ period: "all", payment: "all", total: "all", sort: "highest" })).toBe(0);

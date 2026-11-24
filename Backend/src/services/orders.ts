@@ -1266,7 +1266,7 @@ export async function listOrdersForUser(
   userId: number,
   request: { page?: number; pageSize?: number } & OrderFilterSet = {},
 ): Promise<Page<OrderRow> & { counts: OrderCounts; atCeiling: boolean; facets: OrderFacets }> {
-  const noCounts: OrderCounts = { all: 0, processing: 0, onTheWay: 0, delivered: 0, cancelled: 0 };
+  const noCounts: OrderCounts = { all: 0, received: 0, preparing: 0, processing: 0, onTheWay: 0, delivered: 0, cancelled: 0 };
   const noFacets: OrderFacets = { stores: [], years: [], firstDay: null };
   const db = await getDb();
   if (!db) return { ...emptyPage<OrderRow>(request.pageSize), counts: noCounts, atCeiling: false, facets: noFacets };
@@ -1301,6 +1301,14 @@ export async function listOrdersForUser(
     : [];
   const byOrder = new Map<number, typeof lines>();
   for (const line of lines) byOrder.set(line.orderId, [...(byOrder.get(line.orderId) ?? []), line]);
+  /* The stores' Arabic names, read once: the search finds an order by the
+     store it came from in either language (the owner's "search by the filter
+     bar for any name"), and the facets name each store in both. */
+  const vendorIds = [...new Set(lines.map(line => line.vendorId).filter((id): id is number => id !== null))];
+  const arabic = vendorIds.length
+    ? new Map((await db.select({ id: vendors.id, nameAr: vendors.nameAr }).from(vendors).where(inArray(vendors.id, vendorIds)))
+      .map(row => [row.id, row.nameAr?.trim() || null]))
+    : new Map<number, string | null>();
   const filed = heads.map(head => {
     const own = byOrder.get(head.id) ?? [];
     return {
@@ -1308,7 +1316,9 @@ export async function listOrdersForUser(
       reference: head.reference,
       placedAt: head.placedAt,
       progress: orderProgress(head, own),
-      titles: own.flatMap(line => [line.productTitle, line.variantTitle ?? ""]).filter(Boolean),
+      titles: own.flatMap(line => [
+        line.productTitle, line.variantTitle ?? "", line.vendorName ?? "", (line.vendorId !== null ? arabic.get(line.vendorId) : null) ?? "",
+      ]).filter(Boolean),
       stores: own.map(line => ({ id: line.vendorId, name: line.vendorName })),
       paymentMethod: head.paymentMethod,
       grandTotal: head.grandTotal,
@@ -1322,10 +1332,6 @@ export async function listOrdersForUser(
   /* The stores by the name their orders froze, and the Arabic one the store
      keeps today, since an order froze only one. */
   const stores = storesOf(filed);
-  const arabic = stores.length
-    ? new Map((await db.select({ id: vendors.id, nameAr: vendors.nameAr }).from(vendors).where(inArray(vendors.id, stores.map(store => store.id))))
-      .map(row => [row.id, row.nameAr?.trim() || null]))
-    : new Map<number, string | null>();
   const oldest = filed.at(-1);
   const facets: OrderFacets = {
     stores: stores.map(store => ({ ...store, nameAr: arabic.get(store.id) ?? null })),

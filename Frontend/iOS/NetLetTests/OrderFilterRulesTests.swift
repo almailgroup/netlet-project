@@ -48,6 +48,20 @@ final class OrderFilterRulesTests: XCTestCase {
         var sorted = OrderFilters()
         sorted.sort = "highest"
         XCTAssertEqual(OrderFilterRules.narrowingCount(sorted), 0)
+        // A status is a filter now, on the filter page (`narrowingCount` in TypeScript).
+        var status = OrderFilters()
+        status.view = "delivered"
+        XCTAssertEqual(OrderFilterRules.narrowingCount(status), 1)
+    }
+
+    /// The filter page's choices are the server's: the owner's statuses, the
+    /// last 30 days and 3 months, and the two lists.
+    @MainActor
+    func testTheFilterPagesChoicesAreTheServers() {
+        let orders = ReferenceData.shared.rules.orders
+        XCTAssertEqual(orders?.filterStatuses, ["received", "preparing", "onTheWay", "delivered", "cancelled"])
+        XCTAssertEqual(orders?.filterDates, ["30", "90"])
+        XCTAssertEqual(orders?.filterLists, ["returns", "reviews"])
     }
 
     /// The recorded list carries its choices, as the server answers them.

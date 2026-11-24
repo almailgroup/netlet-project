@@ -6,8 +6,8 @@ import SwiftUI
 /// then the NetLet points at the bottom, also on the owner's word — the
 /// balance with the coin and converting it to money (`PointsWallet`), the two
 /// ways to earn (affiliate marketing first, then inviting a friend) and the
-/// history behind the number. The web's `/account/rewards` and
-/// `/account/payments` both open it (`Route.from`).
+/// history behind the number. The web's `/account/rewards` opens it
+/// (`Route.from`).
 struct WalletView: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
@@ -785,6 +785,22 @@ private struct StandingOrderCard: View {
             defer { working = false }
             if await app.attempt(done: "subscriptions.saved", { _ = try await app.services.api.call(API.changeStandingOrder, .init(id: order.id, action: change)) }) {
                 await changed()
+            }
+        }
+    }
+}
+
+/// Payment methods — the saved cards alone, the web's `/account/payments`: a
+/// row under the addresses on the Profile tab again, on the owner's word ("add
+/// payment method below delivery addresses … let them two be connected
+/// together"). The Wallet keeps the same card above the points.
+struct PaymentMethodsView: View {
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        ShopPage(header: false, viewSource: "account") {
+            AccountSection(title: l.t("account.paymentMethods"), hint: l.t("account.hint.payments")) {
+                SavedCardsCard()
             }
         }
     }

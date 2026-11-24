@@ -24,6 +24,7 @@ import { useOverlay } from "@/hooks/useOverlay";
 import { DRAWER_EXIT_MS, usePresence } from "@/hooks/usePresence";
 import { useStockLimit } from "@/hooks/useStockLimit";
 import { StoreDeliveryRow, storeDeliveryOf } from "@/components/cart/StoreDelivery";
+import { useDeliveryArea } from "@/components/layout/deliveryArea";
 import { ArrowRight, Check, ChevronRight, Minus, Plus, ShoppingBag, Store, Trash2, Truck, X } from "lucide-react";
 import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
@@ -97,10 +98,16 @@ export function BagLines({ layout = "drawer", matches }: {
 }) {
   const { cart } = useCart();
   const { t, isArabic } = useTranslation();
+  const { name: mainName } = useDeliveryArea();
   if (!cart) return null;
   const groups = bagGroups(cart)?.map(group => ({ ...group, items: matches ? group.items.filter(matches) : group.items })).filter(group => group.items.length) ?? null;
   const lines = matches ? cart.items.filter(matches) : cart.items;
   const onPage = layout === "page";
+  /* Once any line goes somewhere of its own, every line says where it goes,
+     on the owner's word ("let the other products also show where they're
+     going, to be clear to clients") — the rest to the order's own address. */
+  const split = cart.items.some(item => item.destination);
+  const going = split ? mainName : null;
   return (
     <div className={onPage ? "space-y-3" : "space-y-6"}>
       {/* The basket somebody forgot (3.1.17), said where they will see it
@@ -121,14 +128,14 @@ export function BagLines({ layout = "drawer", matches }: {
           <div key={group.key} role="group" aria-label={t("browse.soldBy", { name })} className={onPage ? `${CARD} overflow-hidden` : ""}>
             <StoreHeading group={group} name={name} padded={onPage} />
             <div className={`divide-y divide-[#eef1f5] ${onPage ? "px-4" : ""}`}>
-              {group.items.map(item => <BagLine key={item.lineId} item={item} />)}
+              {group.items.map(item => <BagLine key={item.lineId} item={item} mainGoing={going} />)}
             </div>
             <StoreDeliveryFoot group={group} name={name} padded={onPage} />
           </div>
         );
       }) : (
         <div className={`divide-y divide-[#eef1f5] ${onPage ? `${CARD} px-4` : ""}`}>
-          {lines.map(item => <BagLine key={item.lineId} item={item} />)}
+          {lines.map(item => <BagLine key={item.lineId} item={item} mainGoing={going} />)}
         </div>
       )}
     </div>
@@ -201,7 +208,11 @@ function StoreDeliveryFoot({ group, name, padded }: { group: BagGroup; name: str
  * the name rather than at the stepper's end, because on a 320px phone the two
  * did not fit on one line and the price was cut at the card's edge.
  */
-function BagLine({ item }: { item: CartItem }) {
+function BagLine({ item, mainGoing = null }: {
+  item: CartItem;
+  /** Where the order's own address is, named, once another line goes elsewhere. */
+  mainGoing?: string | null;
+}) {
   const { cart, updateQuantity, removeItem, closeCart } = useCart();
   const { t, isArabic } = useTranslation();
   const money = useMoney();
@@ -285,13 +296,14 @@ function BagLine({ item }: { item: CartItem }) {
             {left === 0 ? t("cart.lineSoldOut") : t("cart.lineShort", { count: left })}
           </p>
         ) : null}
-        {/* Where this one is going (3.2.6), when it is not going where the
-            rest is — chosen on the delivery button beside the name — under
-            its price and stepper, on the owner's word. */}
-        {item.destination ? (
+        {/* Where this one is going (3.2.6) — chosen on the delivery button
+            beside the name — under its price and stepper, on the owner's
+            word; and, once any line goes elsewhere, where every other one
+            goes too (the order's own address), so the bag says it whole. */}
+        {item.destination || mainGoing ? (
           <p dir="auto" className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#eef1f6] px-2.5 py-1 text-[12px] font-semibold text-[#0a285a]">
             <Truck className="size-3.5 shrink-0 rtl:-scale-x-100" aria-hidden />
-            <span className="truncate">{t("address.sendingTo", { label: item.destination.label })}</span>
+            <span className="truncate">{t("address.sendingTo", { label: item.destination?.label ?? mainGoing ?? "" })}</span>
           </p>
         ) : null}
       </div>

@@ -61,15 +61,20 @@ struct ChosenProfilePhoto {
     let image: UIImage
 }
 
-/// The photo's presses, under the name beside the circle on "Your profile"'s
-/// first row (`ProfileForm`) — the web's `ProfileIdentity`: the photos
-/// library's own picker, the square drawn in the circle before anything is
-/// sent (`chosen`, which the row's circle shows), and Save is what sends it,
+/// The circle on "Your profile"'s first row, and the photo's presses on it —
+/// **the photo is changed on the picture itself, on the owner's word** ("the
+/// image changes should be on the picture's side"): the circle is the photos
+/// library's own picker, with a camera on its corner, and Remove sits under it
+/// once there is a photo; it was an "Add a photo" pill under the name. The web's
+/// `ProfileIdentity`. The square is drawn in the circle before anything is sent
+/// (`chosen`), and Save under the name (`ProfilePhotoSave`) is what sends it —
 /// the page's rule that each detail is its own decision. Remove asks first.
-/// Not drawn until the shop keeps photos (`ready`), so nothing offers what
-/// cannot be kept.
+/// Until the shop keeps photos (`ready`) the circle is not a button, so nothing
+/// offers what cannot be kept.
 struct ProfilePhotoControls: View {
     @Binding var chosen: ChosenProfilePhoto?
+    /// Whether the circle takes a press: not while the name's form is open.
+    var pressable = true
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
     @State private var picked: PhotosPickerItem?
@@ -77,69 +82,63 @@ struct ProfilePhotoControls: View {
     @State private var confirmRemove = false
 
     var body: some View {
-        if app.profilePhoto.ready {
-            VStack(alignment: .leading, spacing: 6) {
-                if chosen != nil {
-                    Text(l.t("profilePhoto.preview"))
-                        .font(.inter(13))
-                        .foregroundStyle(Brand.body)
-                        .fixedSize(horizontal: false, vertical: true)
+        let open = app.profilePhoto.ready && pressable && chosen == nil
+        VStack(spacing: 4) {
+            if open {
+                PhotosPicker(selection: $picked, matching: .images) {
+                    ProfileAvatar(size: 64, preview: chosen?.image)
+                        .overlay(alignment: .bottomTrailing) {
+                            // The camera on the picture's corner says the picture is where it changes.
+                            ZStack {
+                                Circle().fill(Brand.navy)
+                                if preparing {
+                                    ProgressView().tint(.white).scaleEffect(0.6)
+                                } else {
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                            .frame(width: 26, height: 26)
+                            .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
+                            .offset(x: 2, y: 2)
+                        }
+                        .contentShape(Circle())
                 }
-                FlowLayout(spacing: 8) {
-                    if chosen != nil {
-                        Button {
-                            Task { await save() }
-                        } label: {
-                            if app.profilePhoto.saving { ProgressView().tint(Brand.navy) } else { Text(l.t("profilePhoto.save")) }
-                        }
-                        .buttonStyle(OrderActionStyle())
-                        .disabled(app.profilePhoto.saving)
-                        Button(l.t("common.cancel")) { chosen = nil }
-                            .buttonStyle(OrderActionStyle())
-                            .disabled(app.profilePhoto.saving)
-                    } else {
-                        PhotosPicker(selection: $picked, matching: .images) {
-                            Label {
-                                Text(preparing ? l.t("profilePhoto.preparing") : l.t(app.profilePhoto.hasPhoto ? "profilePhoto.change" : "profilePhoto.add"))
-                            } icon: {
-                                if preparing { ProgressView().tint(Brand.navy) } else { Image(systemName: "camera") }
-                            }
-                        }
-                        .buttonStyle(OrderActionStyle())
-                        .disabled(preparing)
-                        if app.profilePhoto.hasPhoto {
-                            Button {
-                                confirmRemove = true
-                            } label: {
-                                Label(l.t("profilePhoto.remove"), systemImage: "trash")
-                            }
-                            .buttonStyle(OrderActionStyle())
-                        }
+                .buttonStyle(.tap)
+                .disabled(preparing)
+                .accessibilityLabel(preparing ? l.t("profilePhoto.preparing") : l.t(app.profilePhoto.hasPhoto ? "profilePhoto.change" : "profilePhoto.add"))
+                if app.profilePhoto.hasPhoto {
+                    Button {
+                        confirmRemove = true
+                    } label: {
+                        Label(l.t("profilePhoto.remove"), systemImage: "trash")
+                            .labelStyle(.titleAndIcon)
+                            .font(.inter(12, .semibold))
+                            .foregroundStyle(Brand.muted)
+                            .padding(.horizontal, 6)
+                            .frame(minHeight: 32)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.tap)
                 }
-                if chosen == nil {
-                    Text(l.t("profilePhoto.note"))
-                        .font(.inter(12))
-                        .foregroundStyle(Brand.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+            } else {
+                ProfileAvatar(size: 64, preview: chosen?.image)
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(l.t("profilePhoto.title"))
-            .onChange(of: picked) { _, item in
-                guard let item else { return }
-                picked = nil
-                Task { await prepare(item) }
+        }
+        .onChange(of: picked) { _, item in
+            guard let item else { return }
+            picked = nil
+            Task { await prepare(item) }
+        }
+        .alert(l.t("profilePhoto.removeTitle"), isPresented: $confirmRemove) {
+            Button(l.t("profilePhoto.remove"), role: .destructive) {
+                Haptics.action()
+                Task { await remove() }
             }
-            .alert(l.t("profilePhoto.removeTitle"), isPresented: $confirmRemove) {
-                Button(l.t("profilePhoto.remove"), role: .destructive) {
-                    Haptics.action()
-                    Task { await remove() }
-                }
-                Button(l.t("common.cancel"), role: .cancel) {}
-            } message: {
-                Text(l.t("profilePhoto.removeBody"))
-            }
+            Button(l.t("common.cancel"), role: .cancel) {}
+        } message: {
+            Text(l.t("profilePhoto.removeBody"))
         }
     }
 
@@ -164,18 +163,6 @@ struct ProfilePhotoControls: View {
         }
     }
 
-    private func save() async {
-        guard let chosen else { return }
-        do {
-            try await app.profilePhoto.save((data: chosen.data, image: chosen.image))
-            self.chosen = nil
-            Haptics.succeeded()
-            app.toast(l.t("profilePhoto.saved"))
-        } catch {
-            refused(error)
-        }
-    }
-
     private func remove() async {
         do {
             try await app.profilePhoto.remove()
@@ -189,5 +176,56 @@ struct ProfilePhotoControls: View {
         Haptics.refused()
         let key = APIError.from(error).messageKey(knownKey: Phrasebook.shared.has)
         app.toast(l.t(key == "error.serverProblem" ? "media.failed" : key))
+    }
+}
+
+/// A photo chosen and squared, not yet sent: saved under the name, with who
+/// sees it — the web's preview step in `ProfileIdentity`.
+struct ProfilePhotoSave: View {
+    @Binding var chosen: ChosenProfilePhoto?
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        if app.profilePhoto.ready, chosen != nil {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(l.t("profilePhoto.preview"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.body)
+                    .fixedSize(horizontal: false, vertical: true)
+                FlowLayout(spacing: 8) {
+                    Button {
+                        Task { await save() }
+                    } label: {
+                        if app.profilePhoto.saving { ProgressView().tint(Brand.navy) } else { Text(l.t("profilePhoto.save")) }
+                    }
+                    .buttonStyle(OrderActionStyle())
+                    .disabled(app.profilePhoto.saving)
+                    Button(l.t("common.cancel")) { chosen = nil }
+                        .buttonStyle(OrderActionStyle())
+                        .disabled(app.profilePhoto.saving)
+                }
+                Text(l.t("profilePhoto.note"))
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(l.t("profilePhoto.title"))
+        }
+    }
+
+    private func save() async {
+        guard let chosen else { return }
+        do {
+            try await app.profilePhoto.save((data: chosen.data, image: chosen.image))
+            self.chosen = nil
+            Haptics.succeeded()
+            app.toast(l.t("profilePhoto.saved"))
+        } catch {
+            Haptics.refused()
+            let key = APIError.from(error).messageKey(knownKey: Phrasebook.shared.has)
+            app.toast(l.t(key == "error.serverProblem" ? "media.failed" : key))
+        }
     }
 }

@@ -775,6 +775,8 @@ struct ChosenItemsBar: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.tap)
+                // Named for the tests apart from a sheet's own Close.
+                .accessibilityIdentifier("chosen-close")
             }
             .padding(.leading, 8)
             .padding(.trailing, 2)

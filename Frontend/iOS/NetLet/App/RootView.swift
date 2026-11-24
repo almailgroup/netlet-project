@@ -51,6 +51,10 @@ struct RootView: View {
             .tag(AppModel.Tab.cart)
         }
         .modifier(NoBottomEdge())
+        // No scroll line down a page's edge, on the owner's word ("remove the
+        // scroll down or up line"): every scroll view in the tabs, and the
+        // sheets through `languageDirection()`, hides its vertical indicator.
+        .scrollIndicators(.hidden, axes: .vertical)
         // The Deals tab's burst, over every page and taking no touch.
         .overlay { DealsBurst() }
         .overlay {
@@ -323,6 +327,7 @@ private struct RouteDestination: View {
         case .help: SupportView()
         case .supportThread(let id): SupportThreadView(conversationId: id)
         case .wallet: WalletView()
+        case .payments: PaymentMethodsView()
         case .affiliate: AffiliateView()
         case .subscriptions: SubscriptionsView()
         case .helpCentre: HelpCentreView()

@@ -452,7 +452,18 @@ describe("reading orders back", () => {
 
     const everything = await ordersModule.listOrdersForUser(ids.shopper);
     expect(everything.total).toBe(3);
-    expect(everything.counts).toEqual({ all: 3, processing: 1, onTheWay: 1, delivered: 0, cancelled: 1 });
+    expect(everything.counts).toEqual({ all: 3, received: 1, preparing: 0, processing: 1, onTheWay: 1, delivered: 0, cancelled: 1 });
+
+    /* A status on the filter page: received, not yet started by the store. */
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { view: "received" })).rows.map(row => row.reference)).toEqual([first.order.reference]);
+
+    /* By the store it came from, in either language — the owner's "search by
+       the filter bar for any name" — so the filter page needs no store list. */
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { q: "other" })).rows.map(row => row.reference).sort())
+      .toEqual([first.order.reference, second.order.reference].sort());
+    await db.update(vendors).set({ nameAr: "أكمي" }).where(eq(vendors.id, ids.acme));
+    expect((await ordersModule.listOrdersForUser(ids.shopper, { q: "أكمي" })).rows.map(row => row.reference).sort())
+      .toEqual([first.order.reference, third.order.reference].sort());
 
     const onTheWay = await ordersModule.listOrdersForUser(ids.shopper, { view: "onTheWay" });
     expect(onTheWay.rows.map(row => row.reference)).toEqual([second.order.reference]);

@@ -7,12 +7,15 @@
  *
  * The name's Edit sits at the row's end, and pressed, the row's foot is the
  * name's form (`ProfileManager` hands it in) while the photo and the name stay
- * where they were. The photo's presses are under the name: a photo is cropped
- * to a square on the device and shown in the circle before anything is sent,
- * and Save is what sends it — the page's rule that each detail is its own
- * decision. Remove asks first. Before migration 0076 is pasted the photo's
- * presses are not drawn and the circle is the default avatar, so nothing
- * offers what cannot be kept.
+ * where they were. **The photo is changed on the picture itself, on the
+ * owner's word** ("the image changes should be on the picture's side"): the
+ * circle is the button, with a camera on its corner, and Remove sits under it
+ * once there is a photo; it was an "Add a photo" pill under the name. A photo
+ * is cropped to a square on the device and shown in the circle before
+ * anything is sent, and Save, under the name with who sees it, is what sends
+ * it — the page's rule that each detail is its own decision. Remove asks
+ * first. Before migration 0076 is pasted the circle is not a button and is
+ * the default avatar, so nothing offers what cannot be kept.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Camera, LoaderCircle, Pencil, Trash2 } from "lucide-react";
@@ -103,10 +106,40 @@ export function ProfileIdentity({ name, editing, onEdit, children }: {
   };
 
   const small = "inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border border-[#d5dfeb] bg-white px-4 text-[14px] font-semibold text-[#0a285a] hover:bg-[#f0f2f5] disabled:opacity-50 pointer-fine:min-h-9";
+  /* The circle is the photo's button while photos can be kept, the name's form is shut and nothing waits to be saved. */
+  const pressable = keepsPhotos && !editing && !chosen;
+  const avatar = <ProfileAvatar size="size-16" src={chosen?.url} alt={keepsPhotos && !pressable ? t("profilePhoto.alt") : ""} />;
   return (
     <div className="relative px-5 py-4 sm:px-6">
       <div className="flex items-start gap-4">
-        <ProfileAvatar size="size-16" src={chosen?.url} alt={keepsPhotos ? t("profilePhoto.alt") : ""} />
+        <div className="flex shrink-0 flex-col items-center gap-1.5">
+          {pressable ? (
+            <button
+              type="button"
+              disabled={preparing}
+              onClick={() => { pressHaptic(); input.current?.click(); }}
+              aria-label={preparing ? t("profilePhoto.preparing") : t(has ? "profilePhoto.change" : "profilePhoto.add")}
+              title={t(has ? "profilePhoto.change" : "profilePhoto.add")}
+              className="relative rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0a285a] focus-visible:ring-offset-2"
+            >
+              {avatar}
+              {/* The camera on the picture's corner says the picture is where it changes. */}
+              <span aria-hidden className="absolute -bottom-0.5 -end-0.5 grid size-7 place-items-center rounded-full bg-[#0a285a] text-white ring-2 ring-white">
+                {preparing ? <LoaderCircle className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+              </span>
+            </button>
+          ) : avatar}
+          {pressable && has ? (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-[12px] font-semibold ink-muted hover:bg-[#f0f2f5]"
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+              {t("profilePhoto.remove")}
+            </button>
+          ) : null}
+        </div>
         <div className="min-w-0 flex-1 self-center">
           <h3 className="sr-only">{t("profile.nameTitle")}</h3>
           {name ? (
@@ -114,34 +147,18 @@ export function ProfileIdentity({ name, editing, onEdit, children }: {
           ) : (
             <p className="text-[16px] font-medium leading-6 ink-muted">{t("profile.notAdded")}</p>
           )}
-          {keepsPhotos && !editing ? (
+          {/* A photo chosen and not yet sent: saved here, said who sees it. */}
+          {keepsPhotos && !editing && chosen ? (
             <div role="group" aria-label={t("profilePhoto.title")} className="mt-2">
-              {chosen ? <p role="status" className="mb-2 text-[13px] leading-5 text-[#1f2a44]">{t("profilePhoto.preview")}</p> : null}
+              <p role="status" className="mb-2 text-[13px] leading-5 text-[#1f2a44]">{t("profilePhoto.preview")}</p>
               <div className="flex flex-wrap gap-2">
-                {chosen ? (
-                  <>
-                    <button type="button" className={`${small} border-[#0a285a] bg-[#0a285a] text-white hover:bg-[#0d3372]`} disabled={saving} onClick={() => { pressHaptic(); void save(); }}>
-                      {saving ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-                      {t("profilePhoto.save")}
-                    </button>
-                    <button type="button" className={small} disabled={saving} onClick={() => setChosen(null)}>{t("common.cancel")}</button>
-                  </>
-                ) : (
-                  <>
-                    <button type="button" className={small} disabled={preparing} onClick={() => input.current?.click()}>
-                      {preparing ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Camera className="size-4" aria-hidden />}
-                      {preparing ? t("profilePhoto.preparing") : t(has ? "profilePhoto.change" : "profilePhoto.add")}
-                    </button>
-                    {has ? (
-                      <button type="button" className={small} onClick={() => setConfirming(true)}>
-                        <Trash2 className="size-4" aria-hidden />
-                        {t("profilePhoto.remove")}
-                      </button>
-                    ) : null}
-                  </>
-                )}
+                <button type="button" className={`${small} border-[#0a285a] bg-[#0a285a] text-white hover:bg-[#0d3372]`} disabled={saving} onClick={() => { pressHaptic(); void save(); }}>
+                  {saving ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+                  {t("profilePhoto.save")}
+                </button>
+                <button type="button" className={small} disabled={saving} onClick={() => setChosen(null)}>{t("common.cancel")}</button>
               </div>
-              {chosen ? null : <p className="mt-2 text-[12px] leading-4 ink-muted">{t("profilePhoto.note")}</p>}
+              <p className="mt-2 text-[12px] leading-4 ink-muted">{t("profilePhoto.note")}</p>
             </div>
           ) : null}
         </div>

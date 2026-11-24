@@ -1,7 +1,8 @@
 /**
  * What can be done with one line of the bag, behind its "⋯", on the owner's
- * word: keep it for later, move it to a wishlist, share it, open it, or take
- * it out.
+ * word: keep it for later, move it to a wishlist, share it, or take it out.
+ * **There is no "View product", on the owner's word** — the line's photo and
+ * name already open it.
  *
  * **Save for later moves the line out of the bag and into Saved** — the
  * hearts — where the cart page lists it under the bag ("Saved for later",
@@ -30,10 +31,8 @@ import { shareProduct } from "@/components/product/ProductCard";
 import { useAuth } from "@/hooks/useAuth";
 import { useFeature } from "@/hooks/useFeature";
 import { useTranslation } from "@/hooks/useTranslation";
-import { navigateWhenReady } from "@/lib/readyNavigation";
-import { appPath } from "@/lib/basePath";
 import type { CartItem } from "@shared/commerce/types";
-import { Bookmark, ExternalLink, Gift, MoreHorizontal, Share2, Trash2 } from "lucide-react";
+import { Bookmark, Gift, MoreHorizontal, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAskRemoveFromCart } from "@/components/ui/ConfirmRemoval";
 import { focusWhereTheShopperIs } from "@/hooks/useOverlay";
@@ -42,7 +41,7 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   const { t } = useTranslation();
   /* A member's Share carries their code, as the product page's does. */
   const memberCode = useMemberCode();
-  const { removeItem, addItem, closeCart } = useCart();
+  const { removeItem, addItem } = useCart();
   const { savedIds, saveForLater, chooseWishlist, unsave } = useCustomer();
   const { isAuthenticated } = useAuth();
   const wishlistsOn = useFeature("wishlists");
@@ -91,12 +90,6 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
     icon: <Share2 className="size-[18px]" aria-hidden />,
     label: t("cart.shareItem"),
     run: () => void shareProduct({ handle: item.productHandle, title }, t, memberCode),
-  });
-  actions.push({
-    key: "view",
-    icon: <ExternalLink className="size-[18px] rtl:-scale-x-100" aria-hidden />,
-    label: t("cart.viewProduct"),
-    run: () => { closeCart(); navigateWhenReady(appPath(`/products/${encodeURIComponent(item.productHandle)}`)); },
   });
   actions.push({
     key: "remove",

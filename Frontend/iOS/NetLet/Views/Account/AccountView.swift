@@ -58,8 +58,13 @@ struct AccountView: View {
     /// (`holdings`). Frequently bought is a tile now, and the password and
     /// deleting the account are "Your profile"'s. **Returns and Reviews went
     /// to My orders, on the owner's word**, as tabs of its own.
+    ///
+    /// **Payment methods sits under the addresses, and Preferences with
+    /// Browsing history, each pair in one card, on the owner's word** ("let
+    /// them two be connected together").
     private static let cards: [[String]] = [
-        ["addresses", "offers", "subscriptions"],
+        ["addresses", "payments"],
+        ["offers", "subscriptions"],
         // Browsing history, less prominent than the home's own shelf, on the owner's word.
         ["preferences", "history"],
     ]
@@ -609,6 +614,7 @@ struct AccountEntry: Identifiable, Hashable {
         AccountEntry(id: "affiliate", label: "affiliate.section", hint: "account.hint.affiliate", symbol: "megaphone", group: "account.groupRewards"),
         AccountEntry(id: "details", label: "account.sectionProfile", hint: "account.hint.details", symbol: "person.crop.circle", group: "account.groupSettings"),
         AccountEntry(id: "addresses", label: "address.book", hint: "account.hint.addresses", symbol: "mappin.and.ellipse", group: "account.groupSettings"),
+        AccountEntry(id: "payments", label: "account.paymentMethods", hint: "account.hint.payments", symbol: "creditcard", group: "account.groupSettings"),
         AccountEntry(id: "preferences", label: "account.sectionPreferences", hint: "account.hint.preferences", symbol: "slider.horizontal.3", group: "account.groupSettings"),
         AccountEntry(id: "selling", label: "account.sectionSelling", hint: "account.hint.selling", symbol: "storefront", group: "account.groupSettings"),
         AccountEntry(id: "history", label: "history.title", hint: "account.hint.history", symbol: "clock.arrow.circlepath", group: "account.groupSettings"),
@@ -631,6 +637,7 @@ struct AccountEntry: Identifiable, Hashable {
         case "affiliate": return .affiliate
         case "details": return .profile
         case "addresses": return .addresses
+        case "payments": return .payments
         case "preferences": return .preferences
         case "history": return .history
         case "selling": return .portal("/admin")
@@ -1012,13 +1019,15 @@ private struct ProfileForm: View {
 
     /// The first row: the circle with the name beside it, on the owner's word
     /// ("put the name next to the profile photo, not below it") — the web's
-    /// `ProfileIdentity`. The photo's presses sit under the name; the name's
-    /// Edit at the row's end, and pressed, the name's form is the row's foot
-    /// while the circle and the name stay where they were.
+    /// `ProfileIdentity`. The photo is changed on the circle itself
+    /// (`ProfilePhotoControls`), also on the owner's word, and a photo chosen
+    /// is saved under the name; the name's Edit at the row's end, and pressed,
+    /// the name's form is the row's foot while the circle and the name stay
+    /// where they were.
     private var identityRow: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 14) {
-                ProfileAvatar(size: 64, preview: chosenPhoto?.image)
+                ProfilePhotoControls(chosen: $chosenPhoto, pressable: editing != .name)
                 VStack(alignment: .leading, spacing: 8) {
                     Group {
                         if let fullName {
@@ -1034,7 +1043,7 @@ private struct ProfileForm: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel("\(l.t("profile.nameTitle")), \(fullName ?? l.t("profile.notAdded"))")
                     if editing != .name {
-                        ProfilePhotoControls(chosen: $chosenPhoto)
+                        ProfilePhotoSave(chosen: $chosenPhoto)
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)

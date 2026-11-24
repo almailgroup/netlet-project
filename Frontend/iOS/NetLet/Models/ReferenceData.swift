@@ -482,6 +482,11 @@ struct Rules: Decodable, Sendable {
         var filterTabs: [String]? = nil
         var filterPeriods: [String]? = nil
         var searchMax: Int? = nil
+        /// The filter page's statuses, its date choices and its two lists
+        /// (`ORDER_STATUSES`, `ORDER_DATE_CHOICES`, `ORDER_LISTS`).
+        var filterStatuses: [String]? = nil
+        var filterDates: [String]? = nil
+        var filterLists: [String]? = nil
         /// The chips' other choices: the orders of the list, how it was paid
         /// and the total's bands, in dinars (`ORDER_SORTS`, `ORDER_PAYMENTS`,
         /// `ORDER_TOTALS`, `ORDER_TOTAL_BANDS`).

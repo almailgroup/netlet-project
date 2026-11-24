@@ -123,10 +123,12 @@ export function selectionOffers(
   }
   /* Help is always there: about the one item, or about the order. */
   add("help", () => true);
-  /* The chosen items that may be cancelled, and the order itself when it may
-     be cancelled whole — which, with every item chosen, is the same act. */
+  /* Cancelling the order is offered only with every item chosen — the All
+     circle — and then stands in for cancelling them all; with some chosen,
+     only those items are cancelled (the owner's "once I choose specific
+     items, only give the option to cancel items, not the whole order"). */
   if (!(all && whole?.cancellable)) add("cancelItems", line => line.changeable);
-  if (whole?.cancellable) addWhole("cancelOrder", true);
+  if (all && whole?.cancellable) addWhole("cancelOrder", true);
   return offers;
 }
 

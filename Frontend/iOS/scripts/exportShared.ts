@@ -27,7 +27,7 @@
  */
 import { BUNDLE_NOTE_MAX } from "../../../Shared/commerce/bundles.js";
 import {
-  ORDER_PAYMENTS, ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_SORTS, ORDER_TABS, ORDER_TOTAL_BANDS, ORDER_TOTALS,
+  ORDER_DATE_CHOICES, ORDER_LISTS, ORDER_PAYMENTS, ORDER_PERIODS, ORDER_SEARCH_MAX, ORDER_SORTS, ORDER_STATUSES, ORDER_TABS, ORDER_TOTAL_BANDS, ORDER_TOTALS,
 } from "../../../Shared/commerce/orderFilters.js";
 import { DISPLAY_CURRENCIES, REFERENCE_RATES, RATES_AS_OF, minorDigits } from "../../../Shared/commerce/currency.js";
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -314,6 +314,10 @@ export function buildResources(): Record<string, string> {
            filters, the app only sends one of these. */
         filterTabs: ORDER_TABS,
         filterPeriods: ORDER_PERIODS,
+        /* The filter page's statuses, its date choices and its two lists (the owner's). */
+        filterStatuses: ORDER_STATUSES,
+        filterDates: ORDER_DATE_CHOICES,
+        filterLists: ORDER_LISTS,
         searchMax: ORDER_SEARCH_MAX,
         filterSorts: ORDER_SORTS,
         filterPayments: ORDER_PAYMENTS,

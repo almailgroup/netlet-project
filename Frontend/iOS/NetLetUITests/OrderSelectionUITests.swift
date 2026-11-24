@@ -6,7 +6,7 @@ import XCTest
 /// circle beside each item brings a bar of Liquid Glass over the page's foot
 /// with every act the chosen items allow — and the whole order's, whatever is
 /// chosen; neither the item nor the order has a ⋯ — Track opens the
-/// tracker for them, and Clear puts the bar away. The recorded order holds one delivered item that can still
+/// tracker for them, and Close puts the bar away. The recorded order holds one delivered item that can still
 /// go back, be claimed on and be rated.
 final class OrderSelectionUITests: XCTestCase {
     override func setUp() {
@@ -46,10 +46,11 @@ final class OrderSelectionUITests: XCTestCase {
         app.buttons["Track"].tap()
         let delivered = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Delivered")).firstMatch
         XCTAssertTrue(delivered.waitForExistence(timeout: 6), "Track did not open the tracker: \(labels(app))")
-        app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@", "Close")).firstMatch.tap()
+        // The tracker's own Close, never the bar's, which is named Close too.
+        app.buttons.matching(NSPredicate(format: "label CONTAINS[c] %@ AND identifier != %@", "Close", "chosen-close")).firstMatch.tap()
 
-        // Clear puts the bar away.
-        let clear = app.buttons["Clear"]
+        // Close puts the bar away (it said Clear; the owner asked for Close).
+        let clear = app.buttons["chosen-close"]
         XCTAssertTrue(clear.waitForExistence(timeout: 6), "The bar went with the tracker: \(labels(app))")
         clear.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: count)
@@ -103,15 +104,23 @@ final class OrderSelectionUITests: XCTestCase {
         XCTAssertEqual(named(app, "Choose Harbour Desk Lamp").exists, true, "The lamp has no circle: \(labels(app))")
         circle.tap()
         XCTAssertTrue(app.staticTexts["1 item chosen"].waitForExistence(timeout: 6), "Choosing the kettle brought no bar: \(labels(app))")
-        for act in ["Track", "Change order", "Buy again", "Address", "Payment", "Receipt", "Help", "Cancel item", "Cancel order"] {
+        for act in ["Track", "Change order", "Buy again", "Address", "Payment", "Receipt", "Help", "Cancel item"] {
             XCTAssertTrue(app.buttons[act].exists, "One item chosen does not offer \(act): \(labels(app))")
         }
+        // Cancel order only from All, on the owner's word: one item of two
+        // offers that item's cancel alone.
+        XCTAssertFalse(app.buttons["Cancel order"].exists, "One item of two offers Cancel order: \(labels(app))")
         // The kettle is one of its kind, so it has no quantity of its own to lower.
         XCTAssertFalse(app.buttons["Quantity"].exists, "The bar offers a quantity for one of a kind.")
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "one item of two chosen"
         shot.lifetime = .keepAlways
         add(shot)
+
+        // Both chosen: Cancel order, and no Cancel items beside it.
+        named(app, "Choose Harbour Desk Lamp").tap()
+        XCTAssertTrue(app.buttons["Cancel order"].waitForExistence(timeout: 6), "Every item chosen does not offer Cancel order: \(labels(app))")
+        XCTAssertFalse(app.buttons["Cancel items"].exists, "Every item chosen offers Cancel items beside Cancel order.")
     }
 
     private func named(_ app: XCUIApplication, _ label: String) -> XCUIElement {

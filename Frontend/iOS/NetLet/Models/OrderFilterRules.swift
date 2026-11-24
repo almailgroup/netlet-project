@@ -47,10 +47,11 @@ enum OrderFilterRules {
         return (span(year, month), span(lastYear, lastMonth))
     }
 
-    /// How many chips narrow the list — the date counting once, the order of the list never.
+    /// How many filters narrow the list — a status, the date counting once, the order of the list never.
     static func narrowingCount(_ filters: OrderFilters) -> Int {
         let dated = filters.period != "all" || isCalendarDay(filters.from) || isCalendarDay(filters.to)
-        return (dated ? 1 : 0)
+        return (filters.view != "all" ? 1 : 0)
+            + (dated ? 1 : 0)
             + (filters.store != nil ? 1 : 0)
             + (filters.payment != "all" ? 1 : 0)
             + (filters.total != "all" ? 1 : 0)

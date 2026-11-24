@@ -122,23 +122,29 @@ type Row = {
 };
 
 /*
- * The cards, top to bottom: what somebody shops with, and their settings and
- * help; signing out is a card of its own at the page's foot. Price requests
- * and Subscribe & Save are rows only while the shopper has one (`has`).
- * Frequently bought is a tile now, and the password and deleting the account
- * are "Your profile"'s, under the pencil.
+ * The cards, top to bottom: where an order goes and how it is paid, together
+ * — Payment methods under the addresses, on the owner's word ("let them two
+ * be connected together"); price requests and Subscribe & Save, rows only
+ * while the shopper has one (`has`); then Preferences with Browsing history,
+ * also together on the owner's word, and the help centre. Signing out is a
+ * card of its own at the page's foot. Frequently bought is a tile, and the
+ * password and deleting the account are "Your profile"'s, under the pencil.
+ * A card left with no row is not drawn.
  */
 const CARDS: Row[][] = [
   [
     { id: "addresses", label: "address.book", icon: MapPin },
+    { id: "payments", label: "account.paymentMethods", icon: CreditCard },
+  ],
+  [
     { id: "offers", label: "offers.mine", icon: Tag },
     { id: "subscriptions", label: "subscriptions.section", icon: Repeat },
   ],
   [
     { id: "preferences", label: "account.sectionPreferences", icon: SlidersHorizontal },
-    { id: "helpCentre", label: "footer.helpCentre", icon: LifeBuoy, href: "/help" },
     /* Less prominent than the home's own shelf, on the owner's word. */
     { id: "history", label: "history.title", icon: History },
+    { id: "helpCentre", label: "footer.helpCentre", icon: LifeBuoy, href: "/help" },
   ],
 ];
 
@@ -376,7 +382,7 @@ const PLACE_OPENS: Record<string, { href: string; icon: ComponentType<{ classNam
   frequent: { href: "/account/frequent", icon: Repeat },
   wallet: { href: "/account/wallet", icon: Wallet },
   points: { href: "/account/wallet", icon: Coins },
-  cards: { href: "/account/wallet", icon: CreditCard },
+  cards: { href: "/account/payments", icon: CreditCard },
   notifications: { href: "/account/notifications", icon: Bell },
   profile: { href: "/account/details", icon: UserRound },
   name: { href: "/account/details", icon: UserRound },

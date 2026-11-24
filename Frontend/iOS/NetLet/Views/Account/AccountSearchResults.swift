@@ -24,7 +24,7 @@ struct AccountSearchResults: View {
         "frequent": (.frequent, "arrow.clockwise.circle"),
         "wallet": (.wallet, "wallet.pass"),
         "points": (.wallet, "dollarsign.circle"),
-        "cards": (.wallet, "creditcard"),
+        "cards": (.payments, "creditcard"),
         "notifications": (.notifications, "bell"),
         "profile": (.profile, "person.crop.circle"),
         "name": (.profile, "person"),

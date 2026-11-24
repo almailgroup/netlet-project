@@ -147,7 +147,7 @@ struct LineMenuButton: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
-    enum LineAction { case later, wishlist, address, price, view, remove }
+    enum LineAction { case later, wishlist, address, price, remove }
 
     var body: some View {
         Button {
@@ -216,8 +216,6 @@ struct LineMenuButton: View {
             onAddress?()
         case .price:
             onPrice?()
-        case .view:
-            app.push(.product(handle: item.productHandle))
         case .remove:
             // Asks first, on the owner's word; saving for later and moving to
             // a wishlist do not, being moves rather than removals.
@@ -278,7 +276,6 @@ private struct LineMenuSheet: View {
                         label("square.and.arrow.up", l.t("cart.shareItem"))
                     }
                     .buttonStyle(PressFillStyle(cornerRadius: 0))
-                    row("arrow.up.forward.square", l.t("cart.viewProduct")) { choose(.view) }
                     row("trash", l.t("cart.removeFromCart"), danger: true) { choose(.remove) }
                 }
                 .padding(.vertical, 6)

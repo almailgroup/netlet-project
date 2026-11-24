@@ -732,6 +732,11 @@ private struct PriceAndStepper: Layout {
 /// and a price agreed with the seller. A press on either opens its sheet where
 /// it can be changed; a guest's address or a price the seller no longer takes
 /// requests on is the badge alone. Setting either is the line's "⋯".
+///
+/// **Once any line goes somewhere of its own, every line says where it goes,
+/// also on the owner's word** ("let the other products also show where
+/// they're going, to be clear to clients"): the rest name the order's own
+/// address (`DeliveryModel.label`), the web's `BagLine` rule.
 private struct LineBadges: View {
     let item: CartItem
     let title: String
@@ -739,17 +744,26 @@ private struct LineBadges: View {
     let changesPrice: Bool
     let onAddress: () -> Void
     let onPrice: () -> Void
+    @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+
+    /// Where this line goes: its own address, or the order's once another line has one.
+    private var going: String? {
+        if let destination = item.destination { return destination.label }
+        guard app.cart.cart?.items.contains(where: { $0.destination != nil }) == true else { return nil }
+        return app.delivery.label(l.current)
+    }
 
     var body: some View {
         // Any reason but a member's: a member's price is said in words below.
         let agreed = item.priceReason == "member" ? nil : item.agreedFrom
-        if item.destination != nil || agreed != nil {
+        let going = self.going
+        if going != nil || agreed != nil {
             FlowLayout(spacing: 6) {
-                if let destination = item.destination {
+                if let going {
                     badge(
                         "truck.box.fill",
-                        l.t("address.sendingTo", ["label": destination.label]),
+                        l.t("address.sendingTo", ["label": going]),
                         hint: l.t("address.forLine", ["name": title]),
                         action: changesAddress ? onAddress : nil
                     )

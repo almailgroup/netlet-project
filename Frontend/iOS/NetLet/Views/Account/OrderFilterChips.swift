@@ -1,60 +1,103 @@
 import SwiftUI
 
-/// The filters under My orders' tabs, on the owner's word ("a filter option
-/// at the top of the my order page in which the user can set custom dates …
-/// give the user as many options as you can, but keep it as user friendly as
-/// possible") — **organised, on the owner's word** ("organize the filter
-/// options for the my orders page, make it better and enhanced"), the web's
-/// `OrderFilterChips`.
+/// My orders' filter, on the owner's word ("all bar up removed, only add
+/// search bar and in the side filter … once you click on filter it will send
+/// you to the filter page") — the web's `OrderSearchAndFilter`.
 ///
-/// Two buttons: **Filters**, with how many are on, and **Sort**, naming the
-/// order the list is in. Filters opens one sheet with every choice in its own
-/// section — the date, the store (once there is more than one), how it was
-/// paid and the total — chosen as pills and applied together by "Show
-/// orders", with Reset beside it. The date has the periods, this month and
-/// last, every year the shopper ordered in, and "Choose dates" for two days of
-/// their own on the system's date pickers, held to Kuwait's days. Sort is a
-/// short list where a press applies at once. Under the two, each filter that
-/// is on is a chip with a cross that takes just that one off, and Clear all
-/// takes them all. The server filters (`orders.list`); the choices come back
-/// with its answer.
-struct OrderFilterChips: View {
+/// **The button at the search bar's end** says how many filters are on and
+/// opens **the filter page**, the whole screen, which asks three things, each
+/// a short row of pills chosen together and applied by "Show orders", with
+/// Reset beside it:
+///
+/// - **Order status**: received, being prepared, shipped, delivered,
+///   cancelled — the owner's "pending, received, ready to ship, shipped,
+///   delivered" in NetLet's own steps.
+/// - **When**: the last 30 days, the last 3 months, or two days of one's own
+///   on the system's date pickers; and by year, the newest with "More years"
+///   for the ones before it, on the owner's word.
+/// - **Returns and reviews**: the lists that were the last two tabs.
+///
+/// A pill pressed again is taken off. **No store list, payment or total, on
+/// the owner's word** ("he can search by the filter bar for any name — in
+/// future maybe he will buy from 100 stores"): the search finds an order by
+/// its store's name. Under the bar each filter that is on is a chip with a
+/// cross (`OrderFilterTokens`), and Clear all takes them all. The server
+/// filters (`orders.list`); the years come back with its answer.
+struct OrderFilterButton: View {
     let model: OrdersViewModel
     @Environment(LanguageSettings.self) private var l
     @Environment(AppModel.self) private var app
-    @State private var open: OrderFilterSheetKind?
+    @State private var open = false
 
     var body: some View {
-        let filters = model.filters
-        let count = OrderFilterRules.narrowingCount(filters)
-        let tokens = OrderFilterWords.on(filters, facets: model.facets, language: l)
-        VStack(alignment: .leading, spacing: 8) {
-            GlassGroup {
-                HStack(spacing: 8) {
-                    bar(symbol: "slider.horizontal.3", text: l.t("orders.filters"), on: count > 0, count: count) {
-                        open = .filters
+        let count = model.filtersOn
+        Button {
+            Haptics.tap()
+            open = true
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Brand.navy)
+                .frame(width: 48, height: 48)
+                .background(Circle().fill(count > 0 ? Brand.tint : Color.white))
+                .overlay(Circle().strokeBorder(count > 0 ? Brand.navy : Brand.line, lineWidth: count > 0 ? 1.5 : 1))
+                .overlay(alignment: .topTrailing) {
+                    if count > 0 {
+                        Text("\(count)")
+                            .font(.inter(11, .bold))
+                            .foregroundStyle(.white)
+                            .frame(minWidth: 20, minHeight: 20)
+                            .background(Circle().fill(Brand.navy))
+                            .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                            .offset(x: 4, y: -4)
+                            .accessibilityHidden(true)
                     }
-                    .accessibilityLabel(l.t("orders.filters"))
-                    .accessibilityValue(count > 0 ? "\(count)" : "")
-                    .accessibilityIdentifier("order-filters-button")
-                    bar(symbol: "arrow.up.arrow.down", text: OrderFilterWords.sort(filters.sort, l), on: filters.sort != "newest", chevron: true) {
-                        open = .sort
-                    }
-                    // Its name first and then what it holds, so voice control can say what it sees.
-                    .accessibilityLabel("\(l.t("orders.chipSort")), \(OrderFilterWords.sort(filters.sort, l))")
-                    .accessibilityIdentifier("order-sort-button")
                 }
+                .contentShape(Circle())
+        }
+        .buttonStyle(SpringPressStyle(cornerRadius: 24))
+        .accessibilityLabel(l.t("orders.filters"))
+        .accessibilityValue(count > 0 ? "\(count)" : "")
+        .accessibilityIdentifier("order-filters-button")
+        .task {
+            // The screenshots' `-NetLetOpen orderFilters`: the page up as My orders opens.
+            if app.orderFiltersStart {
+                app.orderFiltersStart = false
+                open = true
             }
-            if !tokens.isEmpty || filters.sort != "newest" {
+        }
+        .fullScreenCover(isPresented: $open) {
+            OrderFilterPage(model: model)
+                .languageDirection()
+                .buttonStyle(HapticDefaultStyle())
+        }
+    }
+}
+
+/// Each filter that is on, as a chip with a cross that takes just that one
+/// off, and Clear all — drawn under the search bar only while one is on.
+struct OrderFilterTokens: View {
+    let model: OrdersViewModel
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        let tokens = OrderFilterWords.on(tab: model.tab, filters: model.filters, language: l)
+        Group {
+            if !tokens.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(tokens) { token in
                             Button {
                                 Haptics.tap()
-                                Task { await model.choose(token.clear) }
+                                Task {
+                                    switch token.kind {
+                                    case .status: await model.clearTab()
+                                    case .when: await model.choose { $0.period = "all"; $0.from = nil; $0.to = nil }
+                                    }
+                                }
                             } label: {
                                 HStack(spacing: 6) {
-                                    Image(systemName: token.section.symbol)
+                                    Image(systemName: token.symbol)
                                         .font(.system(size: 12, weight: .semibold))
                                         .accessibilityHidden(true)
                                     Text(token.value).lineLimit(1)
@@ -97,215 +140,105 @@ struct OrderFilterChips: View {
                 .accessibilityIdentifier("order-filter-tokens")
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(l.t("orders.filtersLabel"))
-        .accessibilityIdentifier("order-filter-chips")
         .animation(.snappy(duration: 0.25), value: tokens.map(\.id))
-        .task {
-            // The screenshots' `-NetLetOpen orderFilters`: the sheet up as the page opens.
-            if app.orderFiltersStart {
-                app.orderFiltersStart = false
-                open = .filters
-            }
-        }
-        .sheet(item: $open) { kind in
-            Group {
-                switch kind {
-                case .filters: OrderFiltersSheet(model: model)
-                case .sort: OrderSortSheet(model: model)
-                }
-            }
-            .presentationDetents(kind == .filters ? [.large] : [.medium])
-            .presentationDragIndicator(.visible)
-            .languageDirection()
-            .buttonStyle(HapticDefaultStyle())
-        }
-    }
-
-    /// One of the two buttons over the list: navy-rimmed while it narrows or orders the list.
-    private func bar(symbol: String, text: String, on: Bool, count: Int = 0, chevron: Bool = false, action: @escaping () -> Void) -> some View {
-        Button {
-            Haptics.tap()
-            action()
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .semibold))
-                    .accessibilityHidden(true)
-                Text(text).lineLimit(1).minimumScaleFactor(0.85)
-                if count > 0 {
-                    Text("\(count)")
-                        .font(.inter(12, .bold))
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 20, minHeight: 20)
-                        .background(Circle().fill(Brand.navy))
-                        .accessibilityHidden(true)
-                }
-                if chevron {
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(Brand.muted)
-                        .accessibilityHidden(true)
-                }
-            }
-            .font(.inter(14, on ? .bold : .semibold))
-            .foregroundStyle(Brand.navy)
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .liquidGlass(.clear)
-            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5).opacity(on ? 1 : 0))
-        }
-        .buttonStyle(SpringPressStyle(cornerRadius: 22))
-    }
-}
-
-/// Which sheet the bar opened.
-enum OrderFilterSheetKind: String, Identifiable {
-    case filters, sort
-    var id: String { rawValue }
-}
-
-/// The sheet's sections, in the web's order.
-enum OrderFilterSection: String, CaseIterable {
-    case when, store, payment, total
-
-    var titleKey: String {
-        switch self {
-        case .when: return "orders.whenTitle"
-        case .store: return "orders.storeTitle"
-        case .payment: return "orders.paymentTitle"
-        case .total: return "orders.totalTitle"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .when: return "calendar"
-        case .store: return "storefront"
-        case .payment: return "wallet.bifold"
-        case .total: return "dollarsign.circle"
-        }
     }
 }
 
 /// A filter that is on, as the chip that takes it off.
 struct OrderFilterToken: Identifiable {
-    let section: OrderFilterSection
+    enum Kind: String { case status, when }
+    let kind: Kind
+    let symbol: String
     let value: String
-    let clear: (inout OrderFilters) -> Void
-    var id: String { section.rawValue + ":" + value }
+    var id: String { kind.rawValue + ":" + value }
 }
 
 /// The words each chip and choice is said in — the web's labels, from the dictionary.
 @MainActor
 enum OrderFilterWords {
-    static var periods: [String] { ReferenceData.shared.rules.orders?.filterPeriods ?? ["all", "30", "90", "180", "365"] }
-    static var payments: [String] { ReferenceData.shared.rules.orders?.filterPayments ?? ["all", "cod", "online"] }
-    static var totals: [String] { ReferenceData.shared.rules.orders?.filterTotals ?? ["all", "under10", "10to50", "50to100", "over100"] }
-    static var sorts: [String] { ReferenceData.shared.rules.orders?.filterSorts ?? ["newest", "oldest", "highest", "lowest"] }
+    static var statuses: [String] { ReferenceData.shared.rules.orders?.filterStatuses ?? ["received", "preparing", "onTheWay", "delivered", "cancelled"] }
+    static var dates: [String] { ReferenceData.shared.rules.orders?.filterDates ?? ["30", "90"] }
+    static var lists: [String] { ReferenceData.shared.rules.orders?.filterLists ?? ["returns", "reviews"] }
 
-    static func period(_ period: String, _ l: LanguageSettings) -> String {
+    /// A status's or a list's words: the order row's own phrase for the first
+    /// two steps, the old tabs' for the rest.
+    static func status(_ tab: String, _ l: LanguageSettings) -> String {
+        switch tab {
+        case "received": return l.t("orders.progressReceived")
+        case "preparing": return l.t("orders.progressPreparing")
+        case "processing": return l.t("orders.viewProcessing")
+        case "onTheWay": return l.t("orders.viewOnTheWay")
+        case "delivered": return l.t("orders.viewDelivered")
+        case "cancelled": return l.t("orders.viewCancelled")
+        case "returns": return l.t("orders.viewReturns")
+        case "reviews": return l.t("orders.viewReviews")
+        default: return l.t("orders.viewAll")
+        }
+    }
+
+    static func period(_ period: String, _ l: LanguageSettings) -> String? {
         switch period {
         case "30": return l.t("orders.period30")
         case "90": return l.t("orders.period90")
-        case "180": return l.t("orders.period180")
-        case "365": return l.t("orders.period365")
-        default: return l.t("orders.periodAll")
+        default: return nil
         }
     }
 
-    static func payment(_ payment: String, _ l: LanguageSettings) -> String {
-        switch payment {
-        case "cod": return l.t("orders.payCash")
-        case "online": return l.t("orders.payOnline")
-        default: return l.t("orders.payAny")
-        }
-    }
-
-    static func sort(_ sort: String, _ l: LanguageSettings) -> String {
-        switch sort {
-        case "oldest": return l.t("orders.sortOldest")
-        case "highest": return l.t("orders.sortHighest")
-        case "lowest": return l.t("orders.sortLowest")
-        default: return l.t("orders.sortNewest")
-        }
-    }
-
-    /// A band of the total in whole dinars, from the exported bands.
-    static func total(_ band: String, _ l: LanguageSettings) -> String {
-        guard band != "all" else { return l.t("orders.totalAny") }
-        let fallback: [String: (Int?, Int?)] = ["under10": (nil, 10), "10to50": (10, 50), "50to100": (50, 100), "over100": (100, nil)]
-        let exported = ReferenceData.shared.rules.orders?.totalBands?[band]
-        let low = exported.map { $0.min } ?? fallback[band]?.0
-        let high = exported.map { $0.max } ?? fallback[band]?.1
-        switch (low, high) {
-        case (nil, let high?): return l.t("orders.totalUnder", ["amount": "\(high)"])
-        case (let low?, nil): return l.t("orders.totalOver", ["amount": "\(low)"])
-        case (let low?, let high?): return l.t("orders.totalBetween", ["low": "\(low)", "high": "\(high)"])
-        default: return l.t("orders.totalAny")
-        }
-    }
-
-    static func storeName(_ store: OrderFacets.Store, _ l: LanguageSettings) -> String {
-        if l.current.isRightToLeft, let arabic = store.nameAr, !arabic.isEmpty { return arabic }
-        return store.name
-    }
-
-    /// Each filter that is on, as a chip of its own: its section, what it
-    /// says and the change that takes just that one off.
-    static func on(_ filters: OrderFilters, facets: OrderFacets?, language l: LanguageSettings) -> [OrderFilterToken] {
+    /// Each filter that is on: the status or list, then the date.
+    static func on(tab: String, filters: OrderFilters, language l: LanguageSettings) -> [OrderFilterToken] {
         var tokens: [OrderFilterToken] = []
+        if tab != "all" {
+            let list = ["returns", "reviews"].contains(tab)
+            tokens.append(.init(kind: .status, symbol: list ? "text.bubble" : "checklist", value: status(tab, l)))
+        }
         if let when = when(filters, l) {
-            tokens.append(.init(section: .when, value: when) { $0.period = "all"; $0.from = nil; $0.to = nil })
-        }
-        if let id = filters.store {
-            let name = facets?.stores.first { $0.id == id }.map { storeName($0, l) } ?? l.t("orders.storeGone")
-            tokens.append(.init(section: .store, value: name) { $0.store = nil })
-        }
-        if filters.payment != "all" {
-            tokens.append(.init(section: .payment, value: payment(filters.payment, l)) { $0.payment = "all" })
-        }
-        if filters.total != "all" {
-            tokens.append(.init(section: .total, value: total(filters.total, l)) { $0.total = "all" })
+            tokens.append(.init(kind: .when, symbol: "calendar", value: when))
         }
         return tokens
     }
 
+    /// What the date chip says: a period, a year, or the days chosen.
     static func when(_ filters: OrderFilters, _ l: LanguageSettings) -> String? {
         if filters.from != nil || filters.to != nil {
-            let months = OrderFilterRules.monthRanges(today: OrderFilterRules.today)
-            if filters.from == months.thisMonth.from && filters.to == months.thisMonth.to { return l.t("orders.whenThisMonth") }
-            if filters.from == months.lastMonth.from && filters.to == months.lastMonth.to { return l.t("orders.whenLastMonth") }
             if let year = OrderFilterRules.yearOfRange(from: filters.from, to: filters.to) { return String(year) }
             let day = { (text: String) in OrderWording.day(text, language: l.current) }
             if let from = filters.from, let to = filters.to { return l.t("orders.whenBetween", ["from": day(from), "to": day(to)]) }
             if let from = filters.from { return l.t("orders.whenSince", ["date": day(from)]) }
             if let to = filters.to { return l.t("orders.whenUntil", ["date": day(to)]) }
         }
-        return filters.period == "all" ? nil : period(filters.period, l)
+        return period(filters.period, l)
     }
 }
 
-/// Every filter in one sheet, a section each, applied together by "Show
-/// orders" — so somebody narrowing by a year and a store chooses both before
-/// the list moves. Reset empties the draft; nothing changes until Show orders.
-private struct OrderFiltersSheet: View {
+/// The filter page, the whole screen: its title and Close, every choice in a
+/// section of its own, applied together by "Show orders" so somebody choosing
+/// a status and a year chooses both before the list moves. Reset empties the
+/// draft; nothing changes until Show orders.
+private struct OrderFilterPage: View {
     let model: OrdersViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(LanguageSettings.self) private var l
-    @State private var draft: OrderFilters
+    @State private var tab: String
+    @State private var period: String
+    @State private var from: String?
+    @State private var to: String?
     @State private var custom: Bool
+    @State private var allYears = false
 
     init(model: OrdersViewModel) {
         self.model = model
         let filters = model.filters
-        _draft = State(initialValue: filters)
-        let months = OrderFilterRules.monthRanges(today: OrderFilterRules.today)
-        let named = (filters.from == months.thisMonth.from && filters.to == months.thisMonth.to)
-            || (filters.from == months.lastMonth.from && filters.to == months.lastMonth.to)
-            || OrderFilterRules.yearOfRange(from: filters.from, to: filters.to) != nil
-        _custom = State(initialValue: (filters.from != nil || filters.to != nil) && !named)
+        // The old Processing is not on the page; opened on it, the page starts on every order.
+        _tab = State(initialValue: model.tab == "processing" ? "all" : model.tab)
+        _period = State(initialValue: filters.period)
+        _from = State(initialValue: filters.from)
+        _to = State(initialValue: filters.to)
+        _custom = State(initialValue: (filters.from != nil || filters.to != nil)
+            && OrderFilterRules.yearOfRange(from: filters.from, to: filters.to) == nil)
     }
+
+    private var undated: Bool { !custom && from == nil && to == nil }
+    private var chosenYear: Int? { custom ? nil : OrderFilterRules.yearOfRange(from: from, to: to) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -318,7 +251,7 @@ private struct OrderFiltersSheet: View {
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Brand.navy)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
@@ -328,33 +261,22 @@ private struct OrderFiltersSheet: View {
             }
             .padding(.leading, 20)
             .padding(.trailing, 8)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
+            .padding(.vertical, 6)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    section(.when) { whenChoices }
-                    if (model.facets?.stores.count ?? 0) > 1 || draft.store != nil {
-                        section(.store) {
-                            FlowLayout(spacing: 8) {
-                                pill(l.t("orders.storeAny"), chosen: draft.store == nil) { draft.store = nil }
-                                ForEach(model.facets?.stores ?? []) { store in
-                                    pill(OrderFilterWords.storeName(store, l), count: store.count, chosen: draft.store == store.id) { draft.store = store.id }
-                                }
+                    section(symbol: "checklist", title: l.t("orders.statusTitle")) {
+                        FlowLayout(spacing: 8) {
+                            ForEach(OrderFilterWords.statuses, id: \.self) { status in
+                                pill(OrderFilterWords.status(status, l), chosen: tab == status) { tab = tab == status ? "all" : status }
                             }
                         }
                     }
-                    section(.payment) {
+                    section(symbol: "calendar", title: l.t("orders.whenTitle")) { whenChoices }
+                    section(symbol: "text.bubble", title: l.t("orders.listsTitle"), last: true) {
                         FlowLayout(spacing: 8) {
-                            ForEach(OrderFilterWords.payments, id: \.self) { payment in
-                                pill(OrderFilterWords.payment(payment, l), chosen: draft.payment == payment) { draft.payment = payment }
-                            }
-                        }
-                    }
-                    section(.total, last: true) {
-                        FlowLayout(spacing: 8) {
-                            ForEach(OrderFilterWords.totals, id: \.self) { band in
-                                pill(OrderFilterWords.total(band, l), chosen: draft.total == band) { draft.total = band }
+                            ForEach(OrderFilterWords.lists, id: \.self) { list in
+                                pill(OrderFilterWords.status(list, l), chosen: tab == list) { tab = tab == list ? "all" : list }
                             }
                         }
                     }
@@ -362,17 +284,18 @@ private struct OrderFiltersSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
             }
+            .accessibilityIdentifier("order-filter-page")
             Divider()
             HStack(spacing: 12) {
                 Button {
                     Haptics.tap()
-                    draft.period = "all"
-                    draft.from = nil
-                    draft.to = nil
-                    draft.store = nil
-                    draft.payment = "all"
-                    draft.total = "all"
-                    custom = false
+                    withAnimation(.snappy(duration: 0.2)) {
+                        tab = "all"
+                        period = "all"
+                        from = nil
+                        to = nil
+                        custom = false
+                    }
                 } label: {
                     Text(l.t("orders.reset"))
                         .font(.inter(15, .bold))
@@ -385,17 +308,8 @@ private struct OrderFiltersSheet: View {
                 .buttonStyle(.tap)
                 Button {
                     Haptics.tap()
-                    let chosen = draft
-                    Task {
-                        await model.choose { filters in
-                            filters.period = chosen.from != nil || chosen.to != nil ? "all" : chosen.period
-                            filters.from = chosen.from
-                            filters.to = chosen.to
-                            filters.store = chosen.store
-                            filters.payment = chosen.payment
-                            filters.total = chosen.total
-                        }
-                    }
+                    let chosen = (tab: tab, period: period, from: from, to: to)
+                    Task { await model.apply(tab: chosen.tab, period: chosen.period, from: chosen.from, to: chosen.to) }
                     dismiss()
                 } label: {
                     Text(l.t("orders.whenApply"))
@@ -409,20 +323,115 @@ private struct OrderFiltersSheet: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        .background(Brand.ground.ignoresSafeArea())
+        .background(Color.white.ignoresSafeArea())
+    }
+
+    private var whenChoices: some View {
+        let years = model.facets?.years ?? []
+        let shown = shownYears(years)
+        return VStack(alignment: .leading, spacing: 0) {
+            FlowLayout(spacing: 8) {
+                ForEach(OrderFilterWords.dates, id: \.self) { each in
+                    if let words = OrderFilterWords.period(each, l) {
+                        pill(words, chosen: undated && period == each) {
+                            if undated && period == each {
+                                period = "all"
+                            } else {
+                                period = each
+                                from = nil
+                                to = nil
+                                custom = false
+                            }
+                        }
+                    }
+                }
+                pill(l.t("orders.whenChoose"), chosen: custom) {
+                    if custom {
+                        custom = false
+                        from = nil
+                        to = nil
+                    } else {
+                        // Opens on the last 30 days, which the pickers then move.
+                        let today = OrderFilterRules.today
+                        period = "all"
+                        to = today
+                        from = StoreRules.kuwaitDay(OrderCustomDays.date(today).addingTimeInterval(-30 * 86_400))
+                        custom = true
+                    }
+                }
+            }
+            if custom {
+                OrderCustomDays(from: $from, to: $to, firstDay: model.facets?.firstDay)
+                    .padding(.top, 16)
+                    .transition(.opacity)
+            }
+            if !years.isEmpty {
+                Text(l.t("orders.whenYears"))
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(JourneyStreet.passed)
+                    .padding(.top, 16)
+                    .accessibilityAddTraits(.isHeader)
+                FlowLayout(spacing: 8) {
+                    ForEach(shown, id: \.self) { year in
+                        pill(String(year), chosen: chosenYear == year) {
+                            if chosenYear == year {
+                                from = nil
+                                to = nil
+                            } else {
+                                let whole = OrderFilterRules.yearRange(year)
+                                period = "all"
+                                from = whole.from
+                                to = whole.to
+                                custom = false
+                            }
+                        }
+                    }
+                    if !allYears && years.count > 1 {
+                        Button {
+                            Haptics.tap()
+                            withAnimation(.snappy(duration: 0.2)) { allYears = true }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(l.t("orders.moreYears"))
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .accessibilityHidden(true)
+                            }
+                            .font(.inter(14, .bold))
+                            .foregroundStyle(Brand.accentInk)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.tap)
+                        .accessibilityIdentifier("order-more-years")
+                    }
+                }
+                .padding(.top, 8)
+            }
+        }
+    }
+
+    /// The newest year, and the rest behind More (the owner's "2026, then a
+    /// more icon") — with a year chosen earlier kept in view beside it.
+    private func shownYears(_ years: [Int]) -> [Int] {
+        if allYears { return years }
+        var shown: [Int] = Array(years.prefix(1))
+        if let chosen = chosenYear, !shown.contains(chosen) { shown.append(chosen) }
+        return shown
     }
 
     /// One section: its icon and name, then its pills.
-    private func section<Content: View>(_ which: OrderFilterSection, last: Bool = false, @ViewBuilder content: () -> Content) -> some View {
+    private func section<Content: View>(symbol: String, title: String, last: Bool = false, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: which.symbol)
+                Image(systemName: symbol)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Brand.navy)
-                    .frame(width: 30, height: 30)
+                    .frame(width: 32, height: 32)
                     .background(Circle().fill(Brand.tint))
                     .accessibilityHidden(true)
-                Text(l.t(which.titleKey))
+                Text(title)
                     .font(.inter(15, .heavy))
                     .foregroundStyle(Brand.navy)
             }
@@ -437,68 +446,8 @@ private struct OrderFiltersSheet: View {
         }
     }
 
-    private var whenChoices: some View {
-        let months = OrderFilterRules.monthRanges(today: OrderFilterRules.today)
-        let year = custom ? nil : OrderFilterRules.yearOfRange(from: draft.from, to: draft.to)
-        let undated = !custom && draft.from == nil && draft.to == nil
-        let thisMonth = !custom && draft.from == months.thisMonth.from && draft.to == months.thisMonth.to
-        let lastMonth = !custom && draft.from == months.lastMonth.from && draft.to == months.lastMonth.to
-        return VStack(alignment: .leading, spacing: 0) {
-            FlowLayout(spacing: 8) {
-                ForEach(OrderFilterWords.periods, id: \.self) { period in
-                    pill(OrderFilterWords.period(period, l), chosen: undated && draft.period == period) {
-                        draft.period = period
-                        draft.from = nil
-                        draft.to = nil
-                        custom = false
-                    }
-                }
-                pill(l.t("orders.whenThisMonth"), chosen: thisMonth) { span(months.thisMonth.from, months.thisMonth.to) }
-                pill(l.t("orders.whenLastMonth"), chosen: lastMonth) { span(months.lastMonth.from, months.lastMonth.to) }
-                pill(l.t("orders.whenChoose"), chosen: custom) {
-                    // Opens on the last 30 days, which the pickers then move.
-                    if !custom {
-                        let today = OrderFilterRules.today
-                        draft.period = "all"
-                        draft.to = today
-                        draft.from = StoreRules.kuwaitDay(OrderCustomDays.date(today).addingTimeInterval(-30 * 86_400))
-                        custom = true
-                    }
-                }
-            }
-            if let years = model.facets?.years, !years.isEmpty {
-                Text(l.t("orders.whenYears"))
-                    .font(.inter(13, .bold))
-                    .foregroundStyle(JourneyStreet.passed)
-                    .padding(.top, 16)
-                    .accessibilityAddTraits(.isHeader)
-                FlowLayout(spacing: 8) {
-                    ForEach(years, id: \.self) { each in
-                        pill(String(each), chosen: year == each) {
-                            let whole = OrderFilterRules.yearRange(each)
-                            span(whole.from, whole.to)
-                        }
-                    }
-                }
-                .padding(.top, 8)
-            }
-            if custom {
-                OrderCustomDays(from: $draft.from, to: $draft.to, firstDay: model.facets?.firstDay)
-                    .padding(.top, 16)
-                    .transition(.opacity)
-            }
-        }
-    }
-
-    private func span(_ from: String, _ to: String) {
-        draft.period = "all"
-        draft.from = from
-        draft.to = to
-        custom = false
-    }
-
-    /// A choice as a pill: navy-rimmed with a tick once chosen, a count where there is one.
-    private func pill(_ title: String, count: Int? = nil, chosen: Bool, action: @escaping () -> Void) -> some View {
+    /// A choice as a pill: navy-rimmed with a tick once chosen; pressed again, taken off.
+    private func pill(_ title: String, chosen: Bool, action: @escaping () -> Void) -> some View {
         Button {
             Haptics.tap()
             withAnimation(.snappy(duration: 0.2)) { action() }
@@ -510,11 +459,6 @@ private struct OrderFiltersSheet: View {
                         .accessibilityHidden(true)
                 }
                 Text(title).lineLimit(1)
-                if let count {
-                    Text("\(count)")
-                        .font(.inter(12, .semibold))
-                        .foregroundStyle(Brand.muted)
-                }
             }
             .font(.inter(14, chosen ? .bold : .semibold))
             .foregroundStyle(Brand.navy)
@@ -529,85 +473,11 @@ private struct OrderFiltersSheet: View {
     }
 }
 
-/// The orders' order, a short list: a press applies it and puts the sheet away.
-private struct OrderSortSheet: View {
-    let model: OrdersViewModel
-    @Environment(\.dismiss) private var dismiss
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Text(l.t("orders.sortTitle"))
-                    .font(.inter(17, .heavy))
-                    .foregroundStyle(Brand.navy)
-                    .lineLimit(1)
-                    .accessibilityAddTraits(.isHeader)
-                Spacer()
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Brand.navy)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.tap)
-                .accessibilityLabel(l.t("common.close"))
-            }
-            .padding(.leading, 20)
-            .padding(.trailing, 8)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(OrderFilterWords.sorts, id: \.self) { sort in
-                        row(OrderFilterWords.sort(sort, l), chosen: model.filters.sort == sort) {
-                            Task { await model.choose { $0.sort = sort } }
-                            dismiss()
-                        }
-                    }
-                }
-                .padding(.vertical, 8)
-            }
-        }
-        .background(Brand.ground.ignoresSafeArea())
-    }
-
-    private func row(_ title: String, chosen: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Text(title)
-                    .font(.inter(16, chosen ? .bold : .medium))
-                    .foregroundStyle(Brand.navy)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                ZStack {
-                    Circle().strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: 2)
-                    if chosen {
-                        Circle().fill(Brand.navy)
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 10, weight: .black))
-                            .foregroundStyle(.white)
-                    }
-                }
-                .frame(width: 22, height: 22)
-                .accessibilityHidden(true)
-            }
-            .padding(.horizontal, 20)
-            .frame(minHeight: 52)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.tap)
-        .accessibilityAddTraits(chosen ? .isSelected : [])
-    }
-}
-
 /// Two days of one's own on the system's date pickers, held to Kuwait's
 /// calendar: From is no earlier than the first order's day and no later than
 /// To, To no earlier than From and no later than today — so the two can never
 /// be the wrong way round, and nothing needs saying under them. They write
-/// the sheet's draft as they turn; "Show orders" applies it with the rest.
+/// the page's draft as they turn; "Show orders" applies it with the rest.
 private struct OrderCustomDays: View {
     @Binding var from: String?
     @Binding var to: String?
@@ -646,6 +516,10 @@ private struct OrderCustomDays: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            Text(l.t("orders.whenCustomHint"))
+                .font(.inter(13))
+                .foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
             DatePicker(l.t("orders.whenFrom"), selection: start, in: earliest...max(earliest, end.wrappedValue), displayedComponents: .date)
                 .font(.inter(15, .semibold))
                 .foregroundStyle(JourneyStreet.passed)

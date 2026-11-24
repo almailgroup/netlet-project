@@ -65,14 +65,14 @@ final class OrderSelectionTests: XCTestCase {
 
     /// The owner's screenshots: one item of an unpaid order of two offered
     /// Track, Buy again, Help and Cancel, and both offered eight.
-    func testOneChosenItemOfSeveralIsOfferedTheOrdersActsTooAndBothCancels() {
+    func testOneChosenItemOfSeveralIsOfferedTheOrdersActsTooAndOnlyCancelItems() {
         XCTAssertEqual(
             wholeActions([single], open, every: false),
-            ["track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems", "cancelOrder"]
+            ["track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems"]
         )
         XCTAssertEqual(
             wholeActions([waiting], open, every: false),
-            ["track", "quantity", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems", "cancelOrder"]
+            ["track", "quantity", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems"]
         )
         let one = Set(wholeActions([single], open, every: false))
         for action in wholeActions([waiting, single], open) {
@@ -84,8 +84,17 @@ final class OrderSelectionTests: XCTestCase {
         let offers = OrderSelection.offers([waiting], cancelled: false, whole: open, everyChosen: false)
         let about = Dictionary(uniqueKeysWithValues: offers.map { ($0.action.rawValue, $0.lineIds) })
         XCTAssertEqual(about["cancelItems"], [1])
-        XCTAssertEqual(about["cancelOrder"], [1])
+        XCTAssertNil(about["cancelOrder"])
         XCTAssertEqual(about["modify"], [1])
+    }
+
+    /// The owner's screenshot: five of eight chosen offered Cancel items and
+    /// Cancel order side by side. The order is cancelled only from All.
+    func testCancelOrderOnlyWithEveryItemChosenNeverBesideCancelItems() {
+        XCTAssertFalse(wholeActions([waiting, single], open, every: false).contains("cancelOrder"))
+        XCTAssertTrue(wholeActions([waiting, single], open, every: false).contains("cancelItems"))
+        XCTAssertTrue(wholeActions([waiting, single], open).contains("cancelOrder"))
+        XCTAssertFalse(wholeActions([waiting, single], open).contains("cancelItems"))
     }
 
     func testOnlyWhatTheOrderAllowsIsOfferedTheReceiptAlways() {

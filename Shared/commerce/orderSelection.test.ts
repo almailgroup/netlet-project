@@ -77,13 +77,13 @@ describe("the whole order's acts, whatever is chosen", () => {
 
   /* The owner's screenshots: an unpaid order of two, nothing with a driver.
      One chosen offered Track, Buy again, Help and Cancel; both offered eight. */
-  it("offers one chosen item of several the order's acts too, and both cancels", () => {
+  it("offers one chosen item of several the order's acts too, and only Cancel items", () => {
     expect(wholeActions([single], open, false)).toEqual([
-      "track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems", "cancelOrder",
+      "track", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems",
     ]);
     /* Its own quantity beside the order's change form, when there is more than one of it. */
     expect(wholeActions([waiting], open, false)).toEqual([
-      "track", "quantity", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems", "cancelOrder",
+      "track", "quantity", "modify", "buyAgain", "address", "payment", "receipt", "help", "cancelItems",
     ]);
     /* Never fewer than with every item chosen. */
     const one = new Set(wholeActions([single], open, false));
@@ -94,8 +94,17 @@ describe("the whole order's acts, whatever is chosen", () => {
     const offers = selectionOffers([waiting], { cancelled: false, whole: whole(open), everyChosen: false });
     const about = Object.fromEntries(offers.map(offer => [offer.action, offer.lineIds]));
     expect(about.cancelItems).toEqual([1]);
-    expect(about.cancelOrder).toEqual([1]);
+    expect(about.cancelOrder).toBeUndefined();
     expect(about.modify).toEqual([1]);
+  });
+
+  /* The owner's screenshot: five of eight chosen offered Cancel items and
+     Cancel order side by side. The order is cancelled only from All. */
+  it("offers Cancel order only with every item chosen, and never beside Cancel items", () => {
+    expect(wholeActions([waiting, single], open, false)).not.toContain("cancelOrder");
+    expect(wholeActions([waiting, single], open, false)).toContain("cancelItems");
+    expect(wholeActions([waiting, single], open, true)).toContain("cancelOrder");
+    expect(wholeActions([waiting, single], open, true)).not.toContain("cancelItems");
   });
 
   it("offers only what the order allows now, the receipt always", () => {

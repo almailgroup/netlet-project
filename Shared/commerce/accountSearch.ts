@@ -41,7 +41,7 @@ export const ACCOUNT_PLACES: readonly AccountPlace[] = [
   place("frequent", "frequent.section", null, ["account.hint.frequent"], "frequent"),
   place("wallet", "account.wallet", null, ["account.hint.wallet"]),
   place("points", "account.points", "account.wallet"),
-  place("cards", "payments.savedCards", "account.wallet"),
+  place("cards", "account.paymentMethods", null, ["account.hint.payments", "payments.savedCards"]),
   place("notifications", "notices.title", null),
   place("profile", PROFILE, null, ["account.hint.details"]),
   place("name", "profile.nameTitle", PROFILE),

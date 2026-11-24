@@ -17,19 +17,18 @@
  * this file only draws the answer. The page cannot offer a return the API
  * would refuse, which is the same arrangement as the password floor.
  *
- * **It carries every tool a shopper needs for their orders, on the owner's
- * word** ("add these filter options at the top of the my order page … all the
- * tools that the user needs"; `OrderTools`): a row of views with how many each
- * holds — All, Processing, On the way, Delivered, Cancelled — then Returns and
- * Reviews, which moved here from the account's home (`AccountReturns`,
- * `AccountReviews`, drawn in place); a search by the order's number or what is
- * in it; and the chips under the tabs (`OrderFilterChips`) — when it was
- * placed (a period, a year or two days of the shopper's own), the store, how
- * it was paid, what it came to, and the order of the list. All of it is in
- * the address (`?view=`, `?q=`, `?period=`, `?from=`, `?to=`, `?store=`,
- * `?pay=`, `?total=`, `?sort=`), the browse pages' rule, and decided by the
- * server over every order (`Shared/commerce/orderFilters.ts`), never over one
- * page.
+ * **Its top is a search bar with a filter button beside it, on the owner's
+ * word** ("all bar up removed, only add search bar and in the side filter";
+ * `OrderSearchAndFilter`): the search finds an order by its number, anything
+ * in it or its store, and the filter is a page of its own — the order's
+ * status, the last 30 days or 3 months or two days of one's own, a year, and
+ * the returns asked for and the reviews, which moved here from the account's
+ * home (`AccountReturns`, `AccountReviews`, drawn in place). The row of tabs,
+ * the sort and the store, payment and total filters went. All of it is in
+ * the address (`?view=`, `?q=`, `?period=`, `?from=`, `?to=`), the browse
+ * pages' rule, and decided by the server over every order
+ * (`Shared/commerce/orderFilters.ts`), never over one page. The list is
+ * newest first, each order saying when it was ordered.
  */
 import { isOnlineMethod } from "@shared/commerce/onlinePayment";
 import { QueryGate } from "@/components/ui/QueryGate";
@@ -46,18 +45,14 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { useReturnWindow } from "@/hooks/useReturnWindow";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { rateLabel } from "@shared/commerce/tax";
-import { CalendarDays, ChevronDown, ChevronLeft, FileText, PackageSearch, RotateCcw, Search, Star, X, type LucideIcon } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, FileText, PackageSearch, RotateCcw, Search, Star, type LucideIcon } from "lucide-react";
 import { cameFrom, goBack } from "@/lib/inAppBack";
 import { Link, useLocation, useSearch } from "wouter";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { TextTabs } from "@/components/ui/TextTabs";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AccountReturns } from "@/components/account/AccountReturns";
 import { AccountReviews } from "@/components/account/AccountReviews";
-import {
-  isCalendarDay, isOrderPayment, isOrderPeriod, isOrderSort, isOrderTab, isOrderTotal, isOrderView, narrowingCount,
-  ORDER_SEARCH_MAX, ORDER_TABS, type OrderTab,
-} from "@shared/commerce/orderFilters";
-import { OrderFilterChips, type OrderFacets, type OrderFilterChange, type OrderFilterState } from "@/components/account/OrderFilters";
+import { isCalendarDay, isOrderPeriod, isOrderTab, isOrderView, ORDER_SEARCH_MAX, type OrderTab } from "@shared/commerce/orderFilters";
+import { OrderSearchAndFilter, filtersOn, type OrderFacets, type OrderFilterChange, type OrderFilterState } from "@/components/account/OrderFilters";
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
 import { StarRow } from "@/components/product/ProductReviews";
@@ -115,74 +110,18 @@ function OrderPhoto({ photo, more }: { photo: string | null; more: number }) {
   );
 }
 
-/** Each tab's words. */
-const TAB_LABEL: Record<OrderTab, MessageKey> = {
-  all: "orders.viewAll",
-  processing: "orders.viewProcessing",
-  onTheWay: "orders.viewOnTheWay",
-  delivered: "orders.viewDelivered",
-  returns: "orders.viewReturns",
-  cancelled: "orders.viewCancelled",
-  reviews: "orders.viewReviews",
-};
-
 /**
- * The top of the page, drawn to the owner's reference (a shop's "Your
- * orders"): a bar with the way back at its start, "Your orders" in its middle
- * and a search at its end; then the tabs as plain words in one row that
- * scrolls sideways — All orders, Processing, Shipped, Delivered, Returns,
- * Cancelled, Reviews — the chosen one dark with a short rounded line under
- * it, the rest muted, a hairline under the row. The tabs are `aria-pressed`
- * buttons in a named group (they narrow a list, the portal's `Segmented`
- * rule, not a tablist). The search icon opens the search under the tabs, on
- * the orders' own views; closing it clears it, so nothing narrows the list
- * out of sight. The chips under them (`OrderFilterChips`) are always there,
- * each saying what it holds.
+ * The top of the page: a bar with the way back at its start and "Your
+ * orders" in its middle, then the search bar with the filter button beside it
+ * (`OrderSearchAndFilter`) — **no tabs and no sort, on the owner's word**
+ * ("all bar up removed, only add search bar and in the side filter"); the
+ * statuses, the dates and the returns and reviews are on the filter page.
  */
-function OrdersTop({ tab, onTab, q, onSearch, chips }: {
-  tab: OrderTab;
-  onTab: (tab: OrderTab) => void;
-  q: string;
-  onSearch: (q: string) => void;
-  chips: ReactNode;
-}) {
+function OrdersTop({ search }: { search: ReactNode }) {
   const { t } = useTranslation();
-  const viewing = isOrderView(tab);
   /* The way back says where it goes, the account sections' rule. */
   const from = cameFrom();
   const backLabel = !from || from.split("?")[0] === "/account" ? t("account.backToAccount") : t("nav.back");
-  const panelId = useId();
-  const box = useRef<HTMLInputElement>(null);
-  const [opened, setOpened] = useState(Boolean(q));
-  const searching = viewing && (opened || Boolean(q));
-
-  /* What is typed, sent to the address once typing pauses. The box follows
-     the address only when something else changed it (Clear filters), never
-     its own search coming back — which would eat a letter typed meanwhile. */
-  const [typed, setTyped] = useState(q);
-  const sent = useRef(q);
-  const send = (value: string) => { sent.current = value; onSearch(value); };
-  useEffect(() => {
-    if (q !== sent.current) { sent.current = q; setTyped(q); }
-  }, [q]);
-  useEffect(() => {
-    if (typed.trim() === sent.current) return;
-    const timer = window.setTimeout(() => send(typed.trim()), 350);
-    return () => window.clearTimeout(timer);
-  });
-
-  const toggle = () => {
-    if (searching) {
-      setOpened(false);
-      setTyped("");
-      sent.current = "";
-      onSearch("");
-    } else {
-      setOpened(true);
-      window.setTimeout(() => box.current?.focus(), 0);
-    }
-  };
-
   return (
     <div className="mb-4">
       <div className="flex items-center gap-2">
@@ -196,61 +135,9 @@ function OrdersTop({ tab, onTab, q, onSearch, chips }: {
           <ChevronLeft className="size-7 rtl:-scale-x-100" strokeWidth={1.8} aria-hidden />
         </Link>
         <h2 className="min-w-0 flex-1 truncate text-center text-[20px] font-bold text-[#0a285a]">{t("orders.pageTitle")}</h2>
-        {viewing ? (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-expanded={searching}
-            aria-controls={panelId}
-            aria-label={t("orders.searchPlaceholder")}
-            title={t("orders.searchPlaceholder")}
-            className="-me-2.5 grid size-11 shrink-0 place-items-center rounded-full text-[#0a285a]"
-          >
-            <Search className="size-6" strokeWidth={1.9} aria-hidden />
-          </button>
-        ) : (
-          <span className="-me-2.5 size-11 shrink-0" aria-hidden />
-        )}
+        <span className="-me-2.5 size-11 shrink-0" aria-hidden />
       </div>
-
-      <TextTabs
-        items={ORDER_TABS.map(entry => ({ id: entry, label: t(TAB_LABEL[entry]) }))}
-        value={tab}
-        onChange={onTab}
-        label={t("orders.viewsLabel")}
-      />
-
-      <div id={panelId} role="search" hidden={!searching} className="mt-3">
-        <div className="flex flex-wrap gap-2">
-          <label className="relative flex min-w-[12rem] flex-1 items-center">
-            <span className="sr-only">{t("orders.searchLabel")}</span>
-            <Search className="pointer-events-none absolute start-3 size-[18px] text-[#5d6b82]" aria-hidden />
-            <input
-              ref={box}
-              type="search"
-              value={typed}
-              maxLength={ORDER_SEARCH_MAX}
-              onChange={event => setTyped(event.target.value)}
-              onKeyDown={event => { if (event.key === "Enter") send(typed.trim()); }}
-              placeholder={t("orders.searchPlaceholder")}
-              enterKeyHint="search"
-              autoComplete="off"
-              className={`h-11 w-full rounded-xl border border-[#d5dfeb] bg-white ps-10 ${typed ? "pe-11" : "pe-3"} text-[15px] text-[#0a285a] placeholder:text-[#6b7a90] focus:border-[#0a285a] focus:outline-none focus:ring-2 focus:ring-[#0a285a]/15 [&::-webkit-search-cancel-button]:hidden`}
-            />
-            {typed ? (
-              <button
-                type="button"
-                onClick={() => { setTyped(""); send(""); box.current?.focus(); }}
-                aria-label={t("orders.searchClear")}
-                className="absolute end-1 grid size-9 place-items-center rounded-full text-[#5d6b82] hover:bg-[#f0f2f5]"
-              >
-                <X className="size-4" aria-hidden />
-              </button>
-            ) : null}
-          </label>
-        </div>
-      </div>
-      {viewing ? chips : null}
+      {search}
     </div>
   );
 }
@@ -278,34 +165,30 @@ export function AccountOrders() {
   /* Checkout lands here with `?order=` on the order it just placed, open. */
   const search = useSearch();
   const [, navigate] = useLocation();
-  /* The filters, read from the address and written back to it. */
+  /* The filters, read from the address and written back to it: a status or
+     a list, a search, and a date. An older address's store, payment, total
+     or sort are not read: the filter page no longer offers them. */
   const query = new URLSearchParams(search);
   const rawTab = query.get("view");
   const tab: OrderTab = isOrderTab(rawTab) ? rawTab : "all";
   const q = (query.get("q") ?? "").slice(0, ORDER_SEARCH_MAX);
-  /* The chips' choices; anything the address carries that is not one reads as unset. */
   const rawPeriod = query.get("period");
   const rawFrom = query.get("from");
   const rawTo = query.get("to");
-  const rawStore = Number(query.get("store"));
-  const rawPay = query.get("pay");
-  const rawTotal = query.get("total");
-  const rawSort = query.get("sort");
   const chosen: OrderFilterState = {
+    tab,
     period: isOrderPeriod(rawPeriod) ? rawPeriod : "all",
     from: isCalendarDay(rawFrom) ? rawFrom : null,
     to: isCalendarDay(rawTo) ? rawTo : null,
-    store: Number.isInteger(rawStore) && rawStore > 0 && rawStore <= 2_147_483_647 ? rawStore : null,
-    payment: isOrderPayment(rawPay) ? rawPay : "all",
-    total: isOrderTotal(rawTotal) ? rawTotal : "all",
-    sort: isOrderSort(rawSort) ? rawSort : "newest",
   };
-  const setFilters = (changes: Partial<Record<"view" | "q", string | null>> & OrderFilterChange) => {
+  const setFilters = (changes: OrderFilterChange) => {
     const next = new URLSearchParams(window.location.search);
     for (const [key, value] of Object.entries(changes)) {
       if (!value || (key === "view" && value === "all") || (key === "period" && value === "all")) next.delete(key);
       else next.set(key, value);
     }
+    /* What the filter page no longer offers goes with any change. */
+    for (const key of ["store", "pay", "total", "sort"]) next.delete(key);
     /* A filter is a new list: no order left open from the old one. */
     for (const key of ["order", "track", "refund"]) next.delete(key);
     const text = next.toString();
@@ -313,7 +196,6 @@ export function AccountOrders() {
     setOpenRef(null);
     navigate(`/account/orders${text ? `?${text}` : ""}`, { replace: true });
   };
-  const onSearch = (text: string) => setFilters({ q: text || null });
   const [openRef, setOpenRef] = useState<string | null>(() => new URLSearchParams(search).get("order"));
   /* `&track=1` opens the order on its tracking — where a link about a parcel
      on its way should land. */
@@ -335,30 +217,19 @@ export function AccountOrders() {
       period: chosen.period === "all" ? undefined : chosen.period,
       from: chosen.from ?? undefined,
       to: chosen.to ?? undefined,
-      store: chosen.store ?? undefined,
-      payment: chosen.payment === "all" ? undefined : chosen.payment,
-      total: chosen.total === "all" ? undefined : chosen.total,
-      sort: chosen.sort === "newest" ? undefined : chosen.sort,
     },
     /* The last answer stays drawn while the next filter is asked, so the
        chips and the list never blink to an outline under the press. */
     { placeholderData: previous => previous },
   );
-  const narrowing = narrowingCount(chosen) > 0;
-  const filtered = Boolean(q) || narrowing || tab !== "all";
-  const clearEverything = () => setFilters({ view: null, q: null, period: null, from: null, to: null, store: null, pay: null, total: null, sort: null });
-  /* The choices come with the answer; before the first, nothing to choose from. */
+  const narrowing = filtersOn({ ...chosen, tab: viewing ? tab : "all" }) > 0;
+  const filtered = Boolean(q) || narrowing;
+  const clearEverything = () => setFilters({ view: null, q: null, period: null, from: null, to: null });
+  /* The years come with the answer; before the first, nothing to choose from. */
   const facets: OrderFacets = list.data?.facets ?? { stores: [], years: [], firstDay: null };
-  const hasOrders = facets.years.length > 0 || narrowing || chosen.sort !== "newest";
 
   const tools = (
-    <OrdersTop
-      tab={tab}
-      onTab={next => setFilters({ view: next })}
-      q={q}
-      onSearch={onSearch}
-      chips={hasOrders ? <OrderFilterChips state={chosen} facets={facets} onChange={setFilters} /> : null}
-    />
+    <OrdersTop search={<OrderSearchAndFilter state={chosen} q={q} facets={facets} onChange={setFilters} />} />
   );
 
   if (tab === "returns") return <>{tools}<AccountReturns /></>;
@@ -436,13 +307,13 @@ export function AccountOrders() {
                             {summary.lineCount > 1 ? <span className="font-semibold text-[#3d5170]"> {t("orders.andMore", { count: summary.lineCount - 1 })}</span> : null}
                           </span>
                         ) : null}
+                        {/* When it was ordered, on every order and in words of
+                            its own, on the owner's word ("the order date should
+                            be shown on all orders") — the list is newest first. */}
+                        <span className="mt-1 block text-[13px] font-semibold text-[#3d5170]">{t("orders.orderedOn", { date: formatDate(order.placedAt) })}</span>
                         {/* The reference stays on one line: it is read down a
                             phone, and "NL-20261012-" over "3NJA9" is two numbers. */}
-                        <span className="mt-1 flex flex-col text-[12px] ink-muted sm:flex-row sm:items-center sm:gap-x-2">
-                          <span className="whitespace-nowrap"><span className="sr-only">{t("orders.reference")} </span><bdi dir="ltr">{order.reference}</bdi></span>
-                          <span className="hidden sm:inline" aria-hidden>·</span>
-                          <span>{formatDate(order.placedAt)}</span>
-                        </span>
+                        <span className="mt-0.5 block whitespace-nowrap text-[12px] ink-muted"><span className="sr-only">{t("orders.reference")} </span><bdi dir="ltr">{order.reference}</bdi></span>
                         <span className="mt-2 flex flex-wrap items-baseline gap-x-2 sm:hidden">
                           <OrderTotal order={order} />
                         </span>

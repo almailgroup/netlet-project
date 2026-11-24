@@ -223,9 +223,12 @@
       },
       {
         "id": "cards",
-        "label": "payments.savedCards",
-        "within": "account.wallet",
-        "words": [],
+        "label": "account.paymentMethods",
+        "within": null,
+        "words": [
+          "account.hint.payments",
+          "payments.savedCards"
+        ],
         "needs": null
       },
       {
@@ -458,6 +461,8 @@
     "filsPerPoint": 1,
     "filterTabs": [
       "all",
+      "received",
+      "preparing",
       "processing",
       "onTheWay",
       "delivered",
@@ -471,6 +476,21 @@
       "90",
       "180",
       "365"
+    ],
+    "filterStatuses": [
+      "received",
+      "preparing",
+      "onTheWay",
+      "delivered",
+      "cancelled"
+    ],
+    "filterDates": [
+      "30",
+      "90"
+    ],
+    "filterLists": [
+      "returns",
+      "reviews"
     ],
     "searchMax": 80,
     "filterSorts": [

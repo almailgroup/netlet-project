@@ -88,10 +88,11 @@ enum OrderSelection {
             addWhole(.receipt, true)
         }
         add(.help) { _ in true }
-        // The chosen items that may be cancelled, and the order itself when it
-        // may be cancelled whole — with every item chosen, the same act.
+        // Cancelling the order only with every item chosen (the All circle),
+        // where it stands in for cancelling them all; with some chosen, only
+        // those items — on the owner's word.
         if !(all && whole?.cancellable == true) { add(.cancelItems) { $0.changeable } }
-        if whole?.cancellable == true { addWhole(.cancelOrder, true) }
+        if all && whole?.cancellable == true { addWhole(.cancelOrder, true) }
         return offers
     }
 
