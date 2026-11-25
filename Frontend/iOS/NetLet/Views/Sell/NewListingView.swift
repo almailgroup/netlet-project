@@ -125,7 +125,12 @@ private struct NewListingForm: View {
 
     private var generateCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(l.t("admin.genHeading"), systemImage: "sparkles").font(.headline).foregroundStyle(Brand.navy)
+            HStack(spacing: 8) {
+                Label(l.t("admin.genHeading"), systemImage: "sparkles").font(.headline).foregroundStyle(Brand.navy)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                ShowMeButton(tutorial: "generate")
+            }
             Text(l.t("admin.genIntro")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             LabeledField(label: l.t("admin.genNotes"), text: Binding(get: { model.notes }, set: { model.notes = String($0.prefix(ReferenceData.shared.rules.aiRules.maxNotes)) }),
                          placeholder: l.t("admin.genNotesPlaceholder"), hint: l.t("admin.genNotesHint"), axis: .vertical)
@@ -226,7 +231,7 @@ private struct NewListingForm: View {
 
     private var basics: some View {
         VStack(alignment: .leading, spacing: 14) {
-            stepHeading(1, "admin.newStepBasics")
+            stepHeading(1, "admin.newStepBasics", show: "basics")
             if model.isAdmin, !model.stores.isEmpty {
                 ChoiceField(label: l.t("admin.newStore"), hint: l.t("admin.newStoreHint"), current: model.vendorId.map(String.init), placeholder: l.t("admin.newStore"),
                             options: model.stores.map { store in
@@ -270,12 +275,9 @@ private struct NewListingForm: View {
 
     private var photos: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                stepHeading(2, "admin.newStepPhotos")
-                Spacer()
-                Text(l.t("admin.newPhotoCount", ["count": "\(model.photos.count)", "max": "\(listing.maxPhotos)"]))
-                    .font(.footnote).foregroundStyle(Brand.muted)
-            }
+            stepHeading(2, "admin.newStepPhotos", show: "photos")
+            Text(l.t("admin.newPhotoCount", ["count": "\(model.photos.count)", "max": "\(listing.maxPhotos)"]))
+                .font(.footnote).foregroundStyle(Brand.muted)
             Text(l.t("admin.newPhotosHint")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
@@ -366,7 +368,7 @@ private struct NewListingForm: View {
 
     private var price: some View {
         VStack(alignment: .leading, spacing: 14) {
-            stepHeading(3, "admin.newStepPrice")
+            stepHeading(3, "admin.newStepPrice", show: "price")
             HStack(alignment: .top, spacing: 10) {
                 LabeledField(label: l.t("admin.newPrice"), text: bound(\.price, .price), placeholder: "0.000", hint: l.t("admin.priceHint"),
                              problem: model.problem(.price), keyboard: .decimalPad, leftToRight: true)
@@ -411,7 +413,7 @@ private struct NewListingForm: View {
 
     private var extras: some View {
         VStack(alignment: .leading, spacing: 14) {
-            stepHeading(4, "admin.addons")
+            stepHeading(4, "admin.addons", show: "extras")
             Text(l.t("admin.addonsNote")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             AddonsEditor(rows: $model.addons, attempted: model.submitted)
         }
@@ -422,7 +424,7 @@ private struct NewListingForm: View {
 
     private var description: some View {
         VStack(alignment: .leading, spacing: 14) {
-            stepHeading(5, "admin.newStepDescription")
+            stepHeading(5, "admin.newStepDescription", show: "description")
             LabeledField(label: l.t("admin.fieldDescription"), text: bound(\.description, .description),
                          hint: "\(l.t("admin.newDescriptionHint")) \(l.t("admin.newCharacters", ["count": "\(model.draft.description.count)"]))",
                          problem: model.problem(.description), axis: .vertical)
@@ -472,7 +474,7 @@ private struct NewListingForm: View {
             : SearchPreview.text(description, limit: fits.snippet)
         let host = APIConfiguration.current().baseURL.host() ?? "netlet"
         return VStack(alignment: .leading, spacing: 10) {
-            stepHeading(6, "admin.newStepSearch")
+            stepHeading(6, "admin.newStepSearch", show: "search")
             Text(l.t("admin.newSearchHint")).font(.footnote).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             if title.isEmpty {
                 Text(l.t("admin.newSearchEmpty")).font(.footnote).foregroundStyle(Brand.muted)
@@ -532,17 +534,23 @@ private struct NewListingForm: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityValue(l.t(item.done ? "admin.newDone" : "admin.newNotYet"))
             }
+            ShowMeButton(tutorial: "publish").padding(.top, 4)
         }
         .card()
     }
 
     // MARK: Helpers
 
-    private func stepHeading(_ number: Int, _ key: String) -> some View {
+    /// A step's number and name, with "Show me" at the row's end: that step's
+    /// mini tutorial, on the owner's word.
+    private func stepHeading(_ number: Int, _ key: String, show tutorial: String) -> some View {
         HStack(spacing: 8) {
             Text("\(number)").font(.caption.weight(.bold)).foregroundStyle(.white).frame(width: 22, height: 22).background(Circle().fill(Brand.navy))
                 .accessibilityHidden(true)
             Text(l.t(key)).font(.headline).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            ShowMeButton(tutorial: tutorial)
         }
     }
 

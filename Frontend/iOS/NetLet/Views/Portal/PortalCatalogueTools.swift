@@ -424,8 +424,11 @@ struct PortalImportView: View {
         let admin = actor?.kind == "admin"
         let vendorId = admin ? store : actor?.ownVendor
         PortalScreen(title: l.t("admin.import"), intro: l.t("admin.importNote")) {
-            Button { shareTemplate() } label: { Label(l.t("admin.importTemplate"), systemImage: "arrow.down.doc") }
-                .buttonStyle(PortalSmallButtonStyle())
+            HStack(spacing: 8) {
+                ShowMeButton(tutorial: "import")
+                Button { shareTemplate() } label: { Label(l.t("admin.importTemplate"), systemImage: "arrow.down.doc") }
+                    .buttonStyle(PortalSmallButtonStyle())
+            }
             if admin {
                 PortalCard {
                     Text(l.t("admin.importStoreTitle")).font(.inter(15, .bold)).foregroundStyle(Brand.navy)

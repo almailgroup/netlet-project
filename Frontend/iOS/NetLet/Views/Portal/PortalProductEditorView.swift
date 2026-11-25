@@ -109,6 +109,7 @@ struct PortalProductEditorView: View {
             }
         }
         section("variants", l.t("admin.variants")) {
+            if mayEdit { ShowMeButton(tutorial: "variants") }
             VariantsSection(product: product, mayEdit: mayEdit) { await reload() }
         }
         section("shipping", l.t("admin.sectionShipping")) {

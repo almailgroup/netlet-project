@@ -8527,6 +8527,63 @@ Three defects the restyle turned up, each by doing rather than reading:
   grows with it — `innerHeight` came back 2382 on a 900px screen. **Measure
   against the width you asked for**, not against `clientWidth`.
 
+## Seller tutorials
+
+**Every step of adding a product has a "Show me" beside it that plays a
+short tutorial, on the owner's word** ("Add video/mini tutorials for adding
+products (Vendor portal)"). Of the ways offered, the owner chose **animated
+scenes drawn in the page, not filmed video**, **beside each step** rather
+than a library of them, and all four topics: adding a product step by step,
+sizes, colours and options, Generate with AI and the photo fixes, and
+importing a spreadsheet. A recording goes stale the first time a form
+changes, weighs megabytes and cannot be in two languages; a drawn scene is
+the form's own parts acting themselves out (a name typed letter by letter,
+a department chosen, photos dropping in, the fixed photo chosen, a button
+pressed), in the page's language, and changes with the dictionary.
+
+- **Ten tutorials, placed where the step is**: the new-product form's six
+  steps and "Generate with AI" each have one in their card's heading, the
+  form's aside ends with "Create and publish", the editor's variants card has
+  "Sizes, colours and options" (for whoever may edit), and the import page has
+  its own beside the template (`ShowMe`, `Card`'s new `action`).
+- **The scenes are data, and so is the clock**
+  (`components/admin/tutorials/sellerTutorials.ts`): each is a caption and a
+  few parts with times, every word a dictionary key, a department by its
+  slug, or a literal (a price, a SKU); the example product is a brass table
+  lamp at 12.500, was 15.000. The clock is pure and tested
+  (`msPerCharacter`, `typedCount`, `progress`, `sceneEnd`, `statusAt`), and
+  **the app plays the same scenes**: `pnpm ios:resources` exports them to
+  `sellerTutorials.json`, `SellerTutorial`/`TutorialClock` in Swift read it,
+  and `SellerTutorialTests` holds the clock on the TypeScript's own cases. A
+  change to a scene is a change to the app's resources — the export's
+  staleness test says so.
+- **No scene moves for more than `MOTION_LIMIT_MS` (4.6s), in either
+  language** — WCAG 2.2.2 allows five — and each plays once and holds its last
+  frame, with Play again; the test measures every scene with the dictionary's
+  own words in both languages. Under reduced motion the clock is infinite, so
+  each scene is drawn finished (`typedCount` guards `isFinite` in Swift).
+- **The player is a dialog the shop's way** (`TutorialPlayer`: `useOverlay`,
+  focus on Close as it opens and back on its "Show me" after, a sheet from a
+  phone's foot and a card from `sm`; Back, Next and Done; a bar per scene).
+  The drawing is hidden from a screen reader and the caption is the step,
+  said as it changes, with "An example. Nothing here is saved." under it. The
+  app's is a sheet (`SellerTutorialSheet`, `ShowMeButton`), and the portal's
+  words are portal words (`howTo.*` in `portalMessages.ts`), so the shop's
+  first download is unchanged.
+
+Walked on a production build against a local Postgres at 320, 390 and 1440 in
+both languages as a store's owner (`.scratch/howto-walk.mjs`): eight "Show me"
+on the new-product form, one on the editor's variants and one on the import
+page, each opened with focus on Close, stepped to Done, played again and put
+away with focus back on its button; axe clean in every scene, no sideways
+scroll, no page errors. Three things the pictures found first: the Arabic
+mock card's grid let a price push past its column (`[&>*]:min-w-0`), the
+status's chevron pointed the English way on the Arabic page, and a table head
+cut its words. The app's are photographed by the CI
+(`-NetLetOpen sellerTutorial:<id>`, 118–120) and `SellerTutorialUITests`
+steps one to Done in both languages; neither has been seen on a phone from
+this sandbox.
+
 ## Stores in the portal
 
 **A store's page is eight sections, each saving only its own fields.** It was

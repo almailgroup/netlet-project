@@ -30,13 +30,18 @@ struct NetLetApp: App {
     }
 
     /// `-NetLetOpen glassProbe`, Debug only: `GlassUITests`' swatches over
-    /// the whole app; `journeyProbe`, My orders' street at every stage.
+    /// the whole app; `journeyProbe`, My orders' street at every stage;
+    /// `sellerTutorial:<id>`, a seller's mini tutorial playing its first scene.
     private var glassProbe: AnyView? {
         #if DEBUG
-        switch UserDefaults.standard.string(forKey: "NetLetOpen") {
+        let open = UserDefaults.standard.string(forKey: "NetLetOpen") ?? ""
+        switch open {
         case "glassProbe": return AnyView(GlassProbe())
         case "journeyProbe": return AnyView(JourneyProbe())
-        default: break
+        default:
+            if open.hasPrefix("sellerTutorial:"), let tutorial = SellerTutorial.named(String(open.dropFirst("sellerTutorial:".count))) {
+                return AnyView(SellerTutorialSheet(tutorial: tutorial).background(PortalLook.ground.ignoresSafeArea()))
+            }
         }
         #endif
         return nil

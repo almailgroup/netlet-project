@@ -324,6 +324,10 @@ jobs:
             # NetLet's team: the owner's view of every person and role, and HR's.
             shot 109-team "$lang" portal:/admin/staff admin
             shot 110-team-hr "$lang" portal:/admin/staff hr
+            # A seller's mini tutorials for adding a product, playing their first scene.
+            shot 118-tutorial-basics "$lang" sellerTutorial:basics ""
+            shot 119-tutorial-photos "$lang" sellerTutorial:photos ""
+            shot 120-tutorial-import "$lang" sellerTutorial:import ""
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

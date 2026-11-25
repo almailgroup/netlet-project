@@ -1,0 +1,952 @@
+{
+  "motionLimit": 4600,
+  "settle": 400,
+  "tutorials": [
+    {
+      "id": "generate",
+      "title": "howTo.generate.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.generate.notes"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.genNotes"
+              },
+              "value": {
+                "key": "howTo.sample.notes"
+              },
+              "at": 300,
+              "lines": 2
+            },
+            {
+              "kind": "photos",
+              "at": [
+                2600
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.generate.press",
+            "params": {
+              "button": {
+                "key": "admin.genGenerate"
+              }
+            }
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.genGenerate"
+              },
+              "at": 400,
+              "tone": "primary",
+              "icon": "sparkles"
+            },
+            {
+              "kind": "rows",
+              "style": "list",
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "key": "admin.newTitle"
+                    },
+                    {
+                      "key": "howTo.sample.title"
+                    }
+                  ],
+                  "at": 1500
+                },
+                {
+                  "cells": [
+                    {
+                      "key": "admin.fieldCategory"
+                    },
+                    {
+                      "dept": "home-and-kitchen"
+                    }
+                  ],
+                  "at": 1900
+                },
+                {
+                  "cells": [
+                    {
+                      "key": "admin.fieldDescription"
+                    },
+                    {
+                      "key": "howTo.sample.snippet"
+                    }
+                  ],
+                  "at": 2300
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.generate.use",
+            "params": {
+              "button": {
+                "key": "admin.genUse"
+              }
+            }
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.genUse"
+              },
+              "at": 400,
+              "tone": "secondary",
+              "icon": "check"
+            },
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.newTitle"
+              },
+              "value": {
+                "key": "howTo.sample.title"
+              },
+              "at": 1100,
+              "fill": true
+            },
+            {
+              "kind": "select",
+              "label": {
+                "key": "admin.fieldCategory"
+              },
+              "value": {
+                "dept": "home-and-kitchen"
+              },
+              "at": 1400
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "basics",
+      "title": "howTo.basics.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.basics.name"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.newTitle"
+              },
+              "value": {
+                "key": "howTo.sample.title"
+              },
+              "at": 300
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.basics.arabic"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.newTitleAr"
+              },
+              "value": {
+                "raw": "مصباح طاولة نحاسي"
+              },
+              "at": 1200,
+              "fill": true,
+              "dir": "rtl"
+            },
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.arabicDraft"
+              },
+              "at": 400,
+              "tone": "secondary",
+              "icon": "sparkles"
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.basics.department"
+          },
+          "parts": [
+            {
+              "kind": "select",
+              "label": {
+                "key": "admin.fieldCategory"
+              },
+              "value": {
+                "dept": "home-and-kitchen"
+              },
+              "at": 600
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "photos",
+      "title": "howTo.photos.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.photos.add",
+            "params": {
+              "max": 12
+            }
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "media.upload"
+              },
+              "at": 300,
+              "tone": "secondary",
+              "icon": "upload"
+            },
+            {
+              "kind": "photos",
+              "at": [
+                900,
+                1500,
+                2100
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.photos.fixed"
+          },
+          "parts": [
+            {
+              "kind": "fix",
+              "options": [
+                {
+                  "label": {
+                    "key": "media.useTaken"
+                  },
+                  "look": "raw"
+                },
+                {
+                  "label": {
+                    "key": "media.useFixed"
+                  },
+                  "look": "fixed"
+                }
+              ],
+              "pick": 1,
+              "at": 1600
+            },
+            {
+              "kind": "note",
+              "text": {
+                "key": "media.fixedThese",
+                "params": {
+                  "fixes": {
+                    "key": "howTo.photos.fixList"
+                  }
+                }
+              },
+              "at": 2300,
+              "tone": "ok"
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.photos.square"
+          },
+          "parts": [
+            {
+              "kind": "fix",
+              "options": [
+                {
+                  "label": {
+                    "key": "media.useTaken"
+                  },
+                  "look": "raw"
+                },
+                {
+                  "label": {
+                    "key": "media.useFixed"
+                  },
+                  "look": "fixed"
+                },
+                {
+                  "label": {
+                    "key": "media.useAi"
+                  },
+                  "look": "square"
+                }
+              ],
+              "pick": 2,
+              "at": 1200
+            },
+            {
+              "kind": "button",
+              "label": {
+                "key": "media.add"
+              },
+              "at": 2500,
+              "tone": "primary",
+              "icon": "check"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "price",
+      "title": "howTo.price.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.price.price"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.newPrice"
+              },
+              "value": {
+                "raw": "12.500"
+              },
+              "at": 300,
+              "dir": "ltr"
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.price.was"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.newWas"
+              },
+              "value": {
+                "raw": "15.000"
+              },
+              "at": 300,
+              "dir": "ltr"
+            },
+            {
+              "kind": "card",
+              "at": 1500,
+              "was": true
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.price.stock"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.newStock"
+              },
+              "value": {
+                "raw": "8"
+              },
+              "at": 300,
+              "dir": "ltr"
+            },
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.newSku"
+              },
+              "value": {
+                "raw": "LAMP-45"
+              },
+              "at": 1000,
+              "dir": "ltr"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "extras",
+      "title": "howTo.extras.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.extras.install"
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.installAdd"
+              },
+              "at": 300,
+              "tone": "secondary",
+              "icon": "plus"
+            },
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.addonPrice"
+              },
+              "value": {
+                "raw": "3.000"
+              },
+              "at": 1100,
+              "dir": "ltr"
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.extras.warranty"
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.warrantyAdd"
+              },
+              "at": 300,
+              "tone": "secondary",
+              "icon": "plus"
+            },
+            {
+              "kind": "select",
+              "label": {
+                "key": "admin.warrantyLength"
+              },
+              "value": {
+                "key": "addon.lengthYears",
+                "params": {
+                  "count": 2
+                }
+              },
+              "at": 1100
+            },
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.addonPrice"
+              },
+              "value": {
+                "raw": "5.000"
+              },
+              "at": 1800,
+              "dir": "ltr"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "description",
+      "title": "howTo.description.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.description.write"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.fieldDescription"
+              },
+              "value": {
+                "key": "howTo.sample.description"
+              },
+              "at": 300,
+              "lines": 3
+            },
+            {
+              "kind": "bullets",
+              "title": {
+                "key": "howTo.onThePage"
+              },
+              "items": [
+                {
+                  "text": {
+                    "key": "howTo.sample.bulb"
+                  },
+                  "at": 3300
+                },
+                {
+                  "text": {
+                    "key": "howTo.sample.shade"
+                  },
+                  "at": 3600
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.description.tags"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.fieldTags"
+              },
+              "value": {
+                "key": "howTo.sample.tags"
+              },
+              "at": 300
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "search",
+      "title": "howTo.search.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.search.engine"
+          },
+          "parts": [
+            {
+              "kind": "search",
+              "at": 300
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.search.card"
+          },
+          "parts": [
+            {
+              "kind": "card",
+              "at": 300
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "publish",
+      "title": "howTo.publish.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.publish.now",
+            "params": {
+              "button": {
+                "key": "admin.newCreatePublish"
+              }
+            }
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.newCreatePublish"
+              },
+              "at": 400,
+              "tone": "primary",
+              "icon": "send"
+            },
+            {
+              "kind": "status",
+              "items": [
+                {
+                  "label": {
+                    "key": "status.draft"
+                  },
+                  "at": 0,
+                  "tone": "muted"
+                },
+                {
+                  "label": {
+                    "key": "status.published"
+                  },
+                  "at": 1100,
+                  "tone": "live"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.publish.review"
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.newCreateReview"
+              },
+              "at": 400,
+              "tone": "primary",
+              "icon": "send"
+            },
+            {
+              "kind": "status",
+              "items": [
+                {
+                  "label": {
+                    "key": "status.draft"
+                  },
+                  "at": 0,
+                  "tone": "muted"
+                },
+                {
+                  "label": {
+                    "key": "status.pending_review"
+                  },
+                  "at": 1100,
+                  "tone": "waiting"
+                },
+                {
+                  "label": {
+                    "key": "status.published"
+                  },
+                  "at": 2600,
+                  "tone": "live"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.publish.draft",
+            "params": {
+              "button": {
+                "key": "admin.newCreateDraft"
+              }
+            }
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.newCreateDraft"
+              },
+              "at": 400,
+              "tone": "secondary"
+            },
+            {
+              "kind": "status",
+              "items": [
+                {
+                  "label": {
+                    "key": "status.draft"
+                  },
+                  "at": 0,
+                  "tone": "muted"
+                }
+              ]
+            },
+            {
+              "kind": "note",
+              "text": {
+                "key": "howTo.publish.later"
+              },
+              "at": 1400,
+              "tone": "info"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "variants",
+      "title": "howTo.variants.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.variants.each"
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.addVariant"
+              },
+              "at": 300,
+              "tone": "secondary",
+              "icon": "plus"
+            },
+            {
+              "kind": "rows",
+              "style": "table",
+              "head": [
+                {
+                  "key": "admin.variantTitle"
+                },
+                {
+                  "key": "admin.variantPrice"
+                },
+                {
+                  "key": "admin.variantStock"
+                }
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "raw": "M"
+                    },
+                    {
+                      "raw": "12.500"
+                    },
+                    {
+                      "raw": "8"
+                    }
+                  ],
+                  "at": 1000
+                },
+                {
+                  "cells": [
+                    {
+                      "raw": "L"
+                    },
+                    {
+                      "raw": "13.500"
+                    },
+                    {
+                      "raw": "5"
+                    }
+                  ],
+                  "at": 1700
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.variants.options"
+          },
+          "parts": [
+            {
+              "kind": "field",
+              "label": {
+                "key": "admin.variantOptions"
+              },
+              "value": {
+                "key": "howTo.sample.optionBlack"
+              },
+              "at": 300
+            },
+            {
+              "kind": "chips",
+              "label": {
+                "key": "howTo.sample.colour"
+              },
+              "items": [
+                {
+                  "key": "howTo.sample.black"
+                },
+                {
+                  "key": "howTo.sample.brass"
+                }
+              ],
+              "pick": 0,
+              "at": 2300
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "import",
+      "title": "howTo.import.title",
+      "scenes": [
+        {
+          "caption": {
+            "key": "howTo.import.template"
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.importTemplate"
+              },
+              "at": 300,
+              "tone": "secondary",
+              "icon": "download"
+            },
+            {
+              "kind": "rows",
+              "style": "sheet",
+              "head": [
+                {
+                  "key": "admin.newTitle"
+                },
+                {
+                  "key": "admin.newPrice"
+                },
+                {
+                  "key": "admin.newStock"
+                }
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "key": "howTo.sample.title"
+                    },
+                    {
+                      "raw": "12.500"
+                    },
+                    {
+                      "raw": "8"
+                    }
+                  ],
+                  "at": 1000
+                },
+                {
+                  "cells": [
+                    {
+                      "key": "howTo.sample.vase"
+                    },
+                    {
+                      "raw": "6.750"
+                    },
+                    {
+                      "raw": "12"
+                    }
+                  ],
+                  "at": 1500
+                },
+                {
+                  "cells": [
+                    {
+                      "key": "howTo.sample.cushion"
+                    },
+                    {
+                      "raw": "4.250"
+                    },
+                    {
+                      "raw": "20"
+                    }
+                  ],
+                  "at": 2000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.import.check"
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.importChoose"
+              },
+              "at": 300,
+              "tone": "primary",
+              "icon": "upload"
+            },
+            {
+              "kind": "rows",
+              "style": "list",
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "key": "howTo.sample.title"
+                    },
+                    {
+                      "dept": "home-and-kitchen"
+                    }
+                  ],
+                  "at": 1100
+                },
+                {
+                  "cells": [
+                    {
+                      "key": "howTo.sample.vase"
+                    },
+                    {
+                      "dept": "home-and-kitchen"
+                    }
+                  ],
+                  "at": 1500
+                },
+                {
+                  "cells": [
+                    {
+                      "key": "howTo.sample.cushion"
+                    },
+                    {
+                      "dept": "home-and-kitchen"
+                    }
+                  ],
+                  "at": 1900
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "caption": {
+            "key": "howTo.import.create"
+          },
+          "parts": [
+            {
+              "kind": "button",
+              "label": {
+                "key": "admin.importCreate",
+                "params": {
+                  "count": 3
+                }
+              },
+              "at": 400,
+              "tone": "primary",
+              "icon": "upload"
+            },
+            {
+              "kind": "status",
+              "items": [
+                {
+                  "label": {
+                    "key": "status.draft"
+                  },
+                  "at": 1200,
+                  "tone": "muted"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

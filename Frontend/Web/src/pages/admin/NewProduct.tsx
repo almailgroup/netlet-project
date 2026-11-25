@@ -37,6 +37,7 @@ import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { Card, Field, PageHeader, buttonClass, fieldClass, isolate, smallButtonClass } from "@/components/admin/ui";
 import { ConditionChoice } from "@/components/admin/ConditionChoice";
 import type { ProductCondition } from "@shared/commerce/condition";
+import { ShowMe } from "@/components/admin/tutorials/TutorialPlayer";
 import { AddonsEditor, addonsToSend, firstAddonProblem, type EditorAddon } from "@/components/admin/AddonsEditor";
 import { Thumb } from "@/components/product/Thumb";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
@@ -336,7 +337,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
             onUse={applyDraft}
           />
 
-          <Card step={1} title={t("admin.newStepBasics")}>
+          <Card step={1} title={t("admin.newStepBasics")} action={<ShowMe tutorial="basics" />}>
             <div className="grid gap-4 sm:grid-cols-2">
               {/* Always drawn for an administrator, even with one store: which
                   store sells a product decides its commission, its delivery fee
@@ -403,7 +404,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
             </div>
           </Card>
 
-          <Card step={2} title={t("admin.newStepPhotos")} description={t("admin.newPhotosHint")}>
+          <Card step={2} title={t("admin.newStepPhotos")} description={t("admin.newPhotosHint")} action={<ShowMe tutorial="photos" />}>
             {photos.length ? (
               <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 xl:grid-cols-6">
                 {photos.map((url, index) => (
@@ -451,7 +452,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
             ) : null}
           </Card>
 
-          <Card step={3} title={t("admin.newStepPrice")}>
+          <Card step={3} title={t("admin.newStepPrice")} action={<ShowMe tutorial="price" />}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("admin.newPrice")} hint={t("admin.priceHint")} error={shown("price") && t(shown("price")!)}>
                 <input id={idFor("price")} dir="ltr" inputMode="decimal" value={draft.price} onChange={event => edit("price")(event.target.value)} onBlur={leave("price")} placeholder="0.000" autoComplete="off" required className={fieldClass} />
@@ -480,11 +481,11 @@ function NewProductForm({ actor }: { actor: Actor }) {
             ) : null}
           </Card>
 
-          <Card step={4} title={t("admin.addons")} description={t("admin.addonsNote")}>
+          <Card step={4} title={t("admin.addons")} description={t("admin.addonsNote")} action={<ShowMe tutorial="extras" />}>
             <AddonsEditor rows={addons} onChange={setAddons} attempted={attempted} idPrefix="new-addon" />
           </Card>
 
-          <Card step={5} title={t("admin.newStepDescription")}>
+          <Card step={5} title={t("admin.newStepDescription")} action={<ShowMe tutorial="description" />}>
             <div className="grid gap-4">
               <Field label={t("admin.fieldDescription")} hint={`${t("admin.newDescriptionHint")} ${t("admin.newCharacters", { count: draft.description.length })}`} error={shown("description") && t(shown("description")!)}>
                 <textarea id={idFor("description")} dir="auto" value={draft.description} onChange={event => edit("description")(event.target.value)} onBlur={leave("description")} rows={6} className={`${fieldClass} h-auto min-h-36 py-2.5 leading-6`} />
@@ -534,7 +535,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
             </div>
           </Card>
 
-          <Card step={6} title={t("admin.newStepSearch")} description={t("admin.newSearchHint")}>
+          <Card step={6} title={t("admin.newStepSearch")} description={t("admin.newSearchHint")} action={<ShowMe tutorial="search" />}>
             {!draft.title.trim() ? (
               <p className="rounded-xl border border-dashed border-[#cfd9e6] bg-[#fafbfd] px-4 py-6 text-center text-[13px] ink-muted">{t("admin.newSearchEmpty")}</p>
             ) : (
@@ -576,7 +577,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
                   <span className={item.done ? "text-[#0a285a]" : "text-[#536b8c]"}>{t(item.key)}</span>
                   <span className="sr-only">{t(item.done ? "admin.newDone" : "admin.newNotYet")}</span>
                   {!item.done ? (
-                    <span className={`ms-auto rounded-full px-2 py-0.5 text-[12px] font-semibold ${item.required ? "bg-[#fdeceb] text-[#8c2f22]" : "bg-[#eef1f5] text-[#536b8c]"}`}>
+                    <span className={`ms-auto shrink-0 rounded-full px-2 py-0.5 text-[12px] font-semibold whitespace-nowrap ${item.required ? "bg-[#fdeceb] text-[#8c2f22]" : "bg-[#eef1f5] text-[#536b8c]"}`}>
                       {t(item.required ? "admin.newRequired" : "admin.newRecommended")}
                     </span>
                   ) : null}
@@ -597,6 +598,7 @@ function NewProductForm({ actor }: { actor: Actor }) {
               </button>
             </div>
             <p className="mt-3 text-[12px] leading-5 ink-muted">{t("admin.newDraftNote")}</p>
+            <ShowMe tutorial="publish" className="mt-3" />
           </div>
         </aside>
       </form>

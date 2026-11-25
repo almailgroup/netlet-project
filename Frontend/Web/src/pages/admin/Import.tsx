@@ -16,6 +16,7 @@
  * carrying both — to arrive at the same rows. The page says so rather than
  * leaving somebody to discover it from an error.
  */
+import { ShowMe } from "@/components/admin/tutorials/TutorialPlayer";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { buttonClass, Card, Field, fieldClass, Notice, PageHeader, tableClass, Toggle } from "@/components/admin/ui";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -171,9 +172,12 @@ function Import({ actor }: { actor: Actor }) {
         title={t("admin.import")}
         description={t("admin.importNote")}
         actions={
-          <button type="button" onClick={download} className={buttonClass.secondary}>
-            <Download className="size-4" aria-hidden /> {t("admin.importTemplate")}
-          </button>
+          <>
+            <ShowMe tutorial="import" />
+            <button type="button" onClick={download} className={buttonClass.secondary}>
+              <Download className="size-4" aria-hidden /> {t("admin.importTemplate")}
+            </button>
+          </>
         }
       />
 

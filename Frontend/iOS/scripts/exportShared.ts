@@ -69,6 +69,7 @@ import { SYNONYM_GROUPS } from "../../../Shared/commerce/searchSynonyms.js";
 import { HELP_GROUPS, MAX_HELP_QUESTION } from "../../../Shared/commerce/helpArticles.js";
 import { LEGAL_UPDATED, PRIVACY, SELLER_TERMS, TERMS } from "../../Web/src/content/legal.js";
 import { TAB_ICON_SIZE, TAB_ICON_STROKE, TAB_ICONS } from "../../Web/src/content/tabIcons.js";
+import { MOTION_LIMIT_MS, SELLER_TUTORIALS, SETTLE_MS } from "../../Web/src/components/admin/tutorials/sellerTutorials.js";
 import { SETTLEMENT_DAYS } from "../../../Shared/commerce/payoutSchedule.js";
 import { DEFAULT_COMMISSION_PERCENT } from "../../../Shared/inventory/commission.js";
 import { AGREEMENT_VERSION, MAX_COMMISSION_NOTE } from "../../../Shared/inventory/sellerApplication.js";
@@ -382,6 +383,9 @@ export function buildResources(): Record<string, string> {
     "assets.json": json(buildAssets().manifest),
     /* The tab bar's five icons, the web's own paths (`content/tabIcons.ts`). */
     "tabIcons.json": json({ strokeWidth: TAB_ICON_STROKE, size: TAB_ICON_SIZE, icons: TAB_ICONS }),
+    /* The seller's mini tutorials (`sellerTutorials.ts`): the scenes and the
+       clock's two numbers, so the app plays the steps the website plays. */
+    "sellerTutorials.json": json({ motionLimit: MOTION_LIMIT_MS, settle: SETTLE_MS, tutorials: SELLER_TUTORIALS }),
     "content.json": json(buildContent()),
     /* The portal's menu and the permission model it is filtered by
        (`can`), so the app's portal offers the pages the web's does. */

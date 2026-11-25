@@ -311,12 +311,14 @@ export function PageHeader({ title, description, actions, leading, meta, childre
  * its own Save at the foot — one Save per section, so pressing it writes only
  * what that section says.
  */
-export function Card({ id, title, description, step, footer, tone = "normal", children }: {
+export function Card({ id, title, description, step, action, footer, tone = "normal", children }: {
   id?: string;
   title: ReactNode;
   description?: ReactNode;
   /** A number beside the heading, for a form somebody fills in order. */
   step?: number;
+  /** A small control at the heading's end, such as a step's "Show me". */
+  action?: ReactNode;
   footer?: ReactNode;
   tone?: "normal" | "danger";
   children?: ReactNode;
@@ -329,12 +331,15 @@ export function Card({ id, title, description, step, footer, tone = "normal", ch
       className={`scroll-mt-24 rounded-2xl border bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)] ${tone === "danger" ? "border-[#efc6bd]" : "border-[#e3e8f0]"}`}
     >
       <div className="px-5 pt-5 sm:px-6">
-        <h2 id={headingId} className={`flex items-center gap-2.5 text-[16px] leading-6 font-bold ${tone === "danger" ? "text-[#8c2f22]" : "text-[#0a285a]"}`}>
-          {step ? (
-            <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-[#e7edf5] text-[12px] font-bold text-[#0a285a]">{step}</span>
-          ) : null}
-          {title}
-        </h2>
+        <div className={action ? "flex flex-wrap items-center justify-between gap-x-3 gap-y-2" : undefined}>
+          <h2 id={headingId} className={`flex items-center gap-2.5 text-[16px] leading-6 font-bold ${tone === "danger" ? "text-[#8c2f22]" : "text-[#0a285a]"}`}>
+            {step ? (
+              <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-[#e7edf5] text-[12px] font-bold text-[#0a285a]">{step}</span>
+            ) : null}
+            {title}
+          </h2>
+          {action}
+        </div>
         {description ? <p className="mt-1 max-w-2xl text-[13px] leading-5 ink-muted">{description}</p> : null}
       </div>
       {children ? <div className="px-5 pt-4 pb-5 sm:px-6">{children}</div> : <div className="pb-5" />}

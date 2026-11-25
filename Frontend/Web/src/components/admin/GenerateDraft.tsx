@@ -19,6 +19,7 @@
  * (`ai.available`'s `catalog`), and only for somebody who may create a product
  * in the chosen store, since that is who the token is signed for.
  */
+import { ShowMe } from "./tutorials/TutorialPlayer";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ImageOff, LoaderCircle, Sparkles } from "lucide-react";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
@@ -98,6 +99,7 @@ export function GenerateDraft({ vendorId, departmentSlug, photos, canAddPhoto, o
     <Card
       title={<><Sparkles className="size-[18px] shrink-0 text-[#a44a2b]" aria-hidden />{t("admin.genHeading")}</>}
       description={t("admin.genIntro")}
+      action={<ShowMe tutorial="generate" />}
     >
       <div className="grid gap-4">
         <Field label={t("admin.genNotes")} hint={t("admin.genNotesHint")}>

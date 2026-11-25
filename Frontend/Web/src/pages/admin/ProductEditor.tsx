@@ -11,6 +11,7 @@
  * is what happened; setting the box to 47 loses why it changed and races with
  * anyone else editing.
  */
+import { ShowMe } from "@/components/admin/tutorials/TutorialPlayer";
 import { ProductViewsCard } from "@/components/admin/ProductViews";
 import { ProductTaxCard } from "@/components/admin/ProductTaxCard";
 import { STOCK_REASONS, stockMoveProblem } from "@shared/inventory/stockMoves";
@@ -567,6 +568,7 @@ function Editor({ actor, productId }: { actor: Actor; productId: number }) {
           <Card
             id="variants"
             title={t("admin.variants")}
+            action={mayEdit ? <ShowMe tutorial="variants" /> : undefined}
             footer={mayEdit ? (
               <button
                 type="button"
