@@ -55,7 +55,7 @@ export const AREA_CAPABILITIES: Record<TeamArea, readonly Capability[]> = {
   customers: ["portal.home", "support.answer", "membership.manage", "fraud.view", "orders.view"],
   money: [
     "portal.home", "finance.view", "payouts.view", "payouts.record", "vendor.setCommission", "affiliate.manage",
-    "orders.view", "stores.view",
+    "orders.view", "stores.view", "vendor.payments",
   ],
   marketing: [
     "portal.home", "promotion.manage", "promotion.netlet", "ads.book", "ads.review", "content.manage",
@@ -63,7 +63,7 @@ export const AREA_CAPABILITIES: Record<TeamArea, readonly Capability[]> = {
   ],
   stores: [
     "portal.home", "stores.view", "stores.manage", "vendor.approve", "vendor.editProfile",
-    "vendor.viewMembers", "vendor.manageMembers", "product.view",
+    "vendor.viewMembers", "vendor.manageMembers", "product.view", "vendor.payments",
   ],
   team: ["portal.home", "team.manage"],
   settings: ["portal.home", "platform.configure", "audit.view"],

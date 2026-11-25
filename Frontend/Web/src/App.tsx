@@ -103,6 +103,7 @@ const AdminVendorNew = lazyPage(() => import("@/pages/admin/VendorNew"));
 const AdminVendorDetail = lazyPage(() => import("@/pages/admin/VendorDetail"));
 const AdminTeam = lazyPage(() => import("@/pages/admin/Team"));
 const AdminStoreDocuments = lazyPage(() => import("@/pages/admin/StoreDocuments"));
+const AdminPaymentMethods = lazyPage(() => import("@/pages/admin/PaymentMethods"));
 const NotFound = lazyPage(() => import("@/pages/NotFound"));
 /* The portal's frame too: it is fetched with the first admin page, never by a shopper. */
 const loadAdminFrame = () => import("@/components/admin/AdminShell");
@@ -357,6 +358,7 @@ const ROUTES: { path: string; page: ComponentType<RouteComponentProps>; frame: "
   { path: "/admin/fraud", page: AdminFraud, frame: "admin" },
   { path: "/admin/team", page: AdminTeam, frame: "admin" },
   { path: "/admin/store-documents", page: AdminStoreDocuments, frame: "admin" },
+  { path: "/admin/payment-methods", page: AdminPaymentMethods, frame: "admin" },
   /* The portal used to live at /dashboard. Anyone who bookmarked it lands
      there rather than on a 404 that looks like the tool is gone. */
   { path: "/dashboard/:rest*", page: LegacyAdminRedirect, frame: "bare" },

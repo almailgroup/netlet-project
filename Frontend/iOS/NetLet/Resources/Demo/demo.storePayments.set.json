@@ -1,0 +1,24 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "vendorId": 2,
+        "name": "Acme Electronics",
+        "nameAr": null,
+        "ready": true,
+        "cod": true,
+        "codCeiling": "250.000",
+        "online": [
+          "knet",
+          "card"
+        ],
+        "methods": [
+          "cod",
+          "knet",
+          "card"
+        ],
+        "live": false
+      }
+    }
+  }
+}

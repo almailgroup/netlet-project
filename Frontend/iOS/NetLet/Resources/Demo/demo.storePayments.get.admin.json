@@ -1,0 +1,21 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "vendorId": 4,
+        "name": "Rival Home",
+        "nameAr": "رايفل هوم",
+        "ready": true,
+        "cod": false,
+        "codCeiling": null,
+        "online": [
+          "apple_pay"
+        ],
+        "methods": [
+          "apple_pay"
+        ],
+        "live": false
+      }
+    }
+  }
+}

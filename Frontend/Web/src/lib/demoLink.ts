@@ -12,6 +12,7 @@
  */
 import { isRefurbished } from "@shared/commerce/condition";
 import { rankStores } from "@shared/commerce/storesSelling";
+import { cleanOnline, ONLINE_CHECKOUT_LIVE, storeMethods } from "@shared/commerce/storePayments";
 import { RETURN_WINDOW_DAYS } from "@shared/commerce/returns";
 import { resolveIssue, type HelpIssue } from "@shared/commerce/selfService";
 import { REFERENCE_RATES, RATES_AS_OF } from "@shared/commerce/currency";
@@ -988,6 +989,16 @@ function resolve(path: string, rawInput: unknown): unknown {
     case "catalogues.waitingCount":
     case "catalogues.decide":
       throw new Error("FORBIDDEN:product.review");
+    /* The ways a store takes payment (0093): the demo's manager may choose
+       them, and every store takes all four until it has. A save is answered
+       as saved and kept nowhere, the demo's rule for a write. */
+    case "storePayments.get":
+      return demoStorePayments(true, null, ["knet", "card", "apple_pay"]);
+    case "storePayments.set": {
+      const online = Array.isArray(input.online) ? input.online.map(String) : [];
+      if (!input.cod && !online.some((m: string) => ["knet", "card", "apple_pay"].includes(m))) throw new Error("storePay.needOne");
+      return demoStorePayments(Boolean(input.cod), typeof input.codCeiling === "string" && input.codCeiling ? input.codCeiling : null, online);
+    }
     /* A store's documents are its owner's and NetLet's; the demo's manager is neither. */
     case "storeDocuments.list":
     case "storeDocuments.remove":
@@ -1414,4 +1425,10 @@ function demoSellingStores(found: { vendor?: string | null }[]) {
       matching: tally.matching,
     };
   });
+}
+
+/** One store's ways to pay, as `storePayments.get` answers them. */
+function demoStorePayments(cod: boolean, codCeiling: string | null, chosen: string[]) {
+  const online = cleanOnline(chosen);
+  return { vendorId: 1, name: "Demo Store", nameAr: null, ready: true, cod, codCeiling, online, methods: storeMethods(cod, online), live: ONLINE_CHECKOUT_LIVE };
 }

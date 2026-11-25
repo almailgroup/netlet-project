@@ -5047,6 +5047,73 @@ against a local Postgres; the app's answers were recorded off that server
 `demo.invoices.get.taxed`, `demo.inventory.products.tax`) and `TaxTests`
 decodes them.
 
+## The ways a store takes payment
+
+**A store chooses how its shoppers may pay it, on the owner's word** ("the
+vendor can choose what payment method they want users to buy their products
+with. Add that as an option in the vendor panel"; migration 0093,
+`vendor_payment_methods`, approved as shown). `Shared/commerce/storePayments.ts`
+is the rule, pure; `Backend/src/services/storePayments.ts` the database half;
+`storePayments.*` the API. The owner's four answers shape it:
+
+- **All four, one at least**: cash on delivery, KNET, a card (Visa or
+  Mastercard) and Apple Pay (`STORE_METHODS`), and saving none is refused
+  (`storePay.needOne`, said under the ticks with Save and focused on the
+  first). **Cash stays where it was** — `vendors.accepts_cod` and its
+  `cod_ceiling`, which `codAvailability` already refuses by — and only the
+  online three are the new table (`online_methods`, a text array held to the
+  three by a check), **no row meaning all three**, so every store takes
+  everything until it chooses. Turning cash off keeps its limit for when it
+  comes back; NetLet's older store save turning cash off is refused the same
+  way when nothing online is left (`cashOffLeavesNothing`).
+- **A basket is offered what every store in it takes** (`sharedMethods`, a
+  running intersection over the stores being checked out): checkout draws
+  only those ways, and when nothing is shared it names the first store that
+  left nothing in common (`cart.payments.differs`) and says to check its
+  items out on their own — in the cart under that store's lines and at
+  checkout, where no way to pay is then drawn and the order cannot be placed.
+  `getCart` reads it over the lines being checked out (`going`), so a basket
+  narrowed by Buy now is judged on what it holds.
+- **Said on the product page, the store's page and the cart**: "Pay with:"
+  and the ways, cash first and the online ones as coming (`payLine`), under
+  the price, among the store's facts (its old cash line drawn only for a page
+  from before) and under each store's delivery in the cart (`PayWith` on the
+  web, `PayWithLine` in the app); a store that takes only online ways says it
+  cannot be ordered from yet (`storePay.notYet`, amber). `Product.payments`,
+  `StoreProfile.payments` and `Cart.payments` carry them, read in the same
+  grouped pass as the badges (`methodsForStores`).
+- **The store's owner and managers choose, and NetLet on the store's page**
+  (`vendor.payments`, manager rank; the money and stores team areas hold it):
+  `/admin/payment-methods` in the vendor portal ("Ways to pay", `storeOnly`,
+  so an administrator is pointed at Vendors), and a section of
+  `/admin/vendors/:id`, which took the cash switch and limit out of what is
+  now "Payouts and standing orders". Every save is on the trail
+  (`vendor.setPayments`, what it was and what it became, in
+  `SELLER_ACTIONS`).
+
+**Only cash places an order today** (`ONLINE_CHECKOUT_LIVE` is false): KNET,
+a card and Apple Pay are choices a store makes now for the day a card service
+is wired (3.2.1), and the page says so (`storePay.onlineSoon`), and warns a
+store turning cash off that its shoppers cannot pay it at all until then
+(`storePay.cashOffWarning`). **Closed, not broken, until 0093 is pasted**: a
+missing table reads as every store taking all three online ways
+(`paymentTableReady`, asked again a minute later while missing), the page
+says the online choices wait (`storePay.notOpen`) and keeps them ticked and
+fixed, and cash is still saved. `storePayments.test.ts` (both halves) holds
+the rules and a real Postgres: the defaults, who may choose, one at least,
+the trail, the lines on a product, a store and a cart, the store a basket
+cannot share with, a basket narrowed to it, and the table renamed away.
+Walked on a production build against a local Postgres at 320, 390 and 1440 in
+both languages: a manager's page refusing none with focus on the first tick,
+cash off with KNET warned, NetLet saving another store's, the product, store,
+cart and checkout lines, and the rival store named in the cart and at
+checkout; axe clean and no sideways scroll. The app's page is
+`PortalPaymentMethodsView` over `StorePaymentsCard` (also a section of
+`PortalStoreView`), its answers recorded off that server
+(`demo.storePayments.get`, `.admin`, `demo.commerce.cart.get.paydiffers`),
+and `StorePaymentsTests` holds the rule on the TypeScript's cases; the CI
+photographs the page (`117-payment-methods`).
+
 ## Asking for a price
 
 A shopper may ask a seller for a special price, and the seller answers. The
@@ -9452,7 +9519,8 @@ already carried, and the footer lists Stores.
 the store's email, phone, street address, licence numbers, IBAN and commission;
 none of them is named in the select, so no later edit to the shaping can leak
 one. `storeCards.test.ts` writes all six onto a store and checks the page says
-none of them, and that the profile's keys are exactly the public ten. A store
+none of them, and that the profile's keys are exactly the public eleven (the
+ways it takes payment the eleventh). A store
 that is not approved answers null — the same as an address nobody has — and
 its products come through `publishedCatalog({ vendorId })`, so the page shows
 exactly what the shop would.

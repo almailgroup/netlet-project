@@ -61,6 +61,7 @@ import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "../../../Shared/commerce/membe
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { FILS_PER_POINT, MIN_CASH_OUT_POINTS, PRODUCT_LINK_DAYS } from "../../../Shared/commerce/referral.js";
 import { CLAIM_HOLD_DAYS, GIVER_NAME_MAX, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../../../Shared/commerce/wishlist.js";
+import { ONLINE_CHECKOUT_LIVE, STORE_METHODS } from "../../../Shared/commerce/storePayments.js";
 import { ASK_WINDOW_DAYS, MAX_NOTE as MAX_OFFER_NOTE, OFFER_WINDOW_DAYS } from "../../../Shared/commerce/priceOffers.js";
 import { SUBSCRIPTION_INTERVALS } from "../../../Shared/commerce/subscriptions.js";
 import { FOLD_FROM, FOLD_MARKS, FOLD_TO, MAX_QUERY_WORDS } from "../../../Shared/commerce/search.js";
@@ -246,6 +247,9 @@ export function buildResources(): Record<string, string> {
       commonPasswords: COMMON_PASSWORDS,
       maxLineQuantity: MAX_LINE_QUANTITY,
       returnWindowDays: RETURN_WINDOW_DAYS,
+      /* The ways a store may take, in the order they are drawn, and whether
+         the online ones work at checkout yet (`Shared/commerce/storePayments.ts`). */
+      storePayments: { methods: STORE_METHODS, onlineLive: ONLINE_CHECKOUT_LIVE },
       listing: {
         maxTitle: MAX_TITLE,
         maxSku: MAX_SKU,

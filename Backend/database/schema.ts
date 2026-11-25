@@ -29,6 +29,7 @@ import {
   check,
   customType,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -1967,6 +1968,28 @@ export const customerDefaults = pgTable(
   },
   table => [
     check("customer_defaults_payment_check", sql`${table.paymentMethod} in ('cod', 'knet', 'card', 'apple_pay')`),
+  ]
+);
+
+/**
+ * The online ways a store lets its shoppers pay (migration 0093, on the
+ * owner's word): KNET, a card and Apple Pay, any of them. Cash is not here —
+ * it is the store's own `vendors.accepts_cod` and `cod_ceiling`, as it always
+ * was. **A store with no row takes all three**, so nothing changes for a
+ * store until it chooses (`Shared/commerce/storePayments.ts`). A table of its
+ * own rather than a column on `vendors`, for the paste window: every read of
+ * a store names every column Drizzle knows.
+ */
+export const vendorPaymentMethods = pgTable(
+  "vendor_payment_methods",
+  {
+    vendorId: integer("vendor_id").primaryKey().notNull(),
+    onlineMethods: text("online_methods").array().$type<OnlineMethod[]>().notNull().default(sql`'{}'`),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [
+    check("vendor_payment_methods_known", sql`${table.onlineMethods} <@ ARRAY['knet','card','apple_pay']::text[]`),
+    foreignKey({ name: "vendor_payment_methods_vendor_id_fk", columns: [table.vendorId], foreignColumns: [vendors.id] }).onDelete("cascade"),
   ]
 );
 

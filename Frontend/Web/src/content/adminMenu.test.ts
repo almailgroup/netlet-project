@@ -3,7 +3,7 @@ import { ADMIN_MENU, menuFor } from "./adminMenu";
 import type { Actor } from "@shared/inventory/permissions";
 
 const hrefs = (actor: Actor) => menuFor(actor).flatMap(group => group.links.map(link => link.href));
-const STORE_ONLY = ["/admin/team", "/admin/store-documents"];
+const STORE_ONLY = ["/admin/team", "/admin/store-documents", "/admin/payment-methods"];
 
 describe("menuFor", () => {
   it("leaves a store's own pages out of an administrator's menu, on the owner's word", () => {

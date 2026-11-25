@@ -69,6 +69,8 @@ import { featureOn } from "./features.js";
 import { taxForLines } from "./tax.js";
 import { warrantyLengthsReady } from "./warrantyLengths.js";
 import { storeSlotsFor, type StoreSlots } from "./deliverySlots.js";
+import { methodsForStores } from "./storePayments.js";
+import { sharedMethods, type StoreMethod } from "../../../Shared/commerce/storePayments.js";
 import {
   awardedBadges,
   FAST_SHIPPING_HOURS,
@@ -92,6 +94,8 @@ type VendorNamed = Named & {
   deliverySpeed: string | null;
   deliveryProvider: string | null;
   subscriptionPercent: string | null;
+  /* Every way the store lets its shoppers pay (`Shared/commerce/storePayments.ts`). */
+  payments?: StoreMethod[];
 };
 
 /**
@@ -107,16 +111,16 @@ async function contextFor(
 
   const [vendorRows, categoryRows, scoreById] = await Promise.all([
     vendorIds.length
-      ? db.select({ id: vendors.id, slug: vendors.slug, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt, deliverySpeed: vendors.deliverySpeed, deliveryProvider: vendors.deliveryProvider, subscriptionPercent: vendors.subscriptionPercent }).from(vendors).where(inArray(vendors.id, vendorIds))
-      : Promise.resolve([] as VendorNamed[]),
+      ? db.select({ id: vendors.id, slug: vendors.slug, name: vendors.name, nameAr: vendors.nameAr, badges: vendors.badges, discountLicenceNumber: vendors.discountLicenceNumber, discountLicenceExpiresAt: vendors.discountLicenceExpiresAt, deliverySpeed: vendors.deliverySpeed, deliveryProvider: vendors.deliveryProvider, subscriptionPercent: vendors.subscriptionPercent, acceptsCod: vendors.acceptsCod }).from(vendors).where(inArray(vendors.id, vendorIds))
+      : Promise.resolve([] as (VendorNamed & { acceptsCod: boolean })[]),
     categoryIds.length
       ? db.select({ id: categories.id, name: categories.name, nameAr: categories.nameAr }).from(categories).where(inArray(categories.id, categoryIds))
       : Promise.resolve([] as Named[]),
     reviewScores(db, rows.map(row => row.id)),
   ]);
 
-  const badgesById = await badgesFor(db, vendorRows);
-  const vendorById = new Map(vendorRows.map(row => [row.id, { ...row, badges: badgesById.get(row.id) ?? [] }]));
+  const [badgesById, paymentsById] = await Promise.all([badgesFor(db, vendorRows), methodsForStores(db, vendorRows)]);
+  const vendorById = new Map(vendorRows.map(row => [row.id, { ...row, badges: badgesById.get(row.id) ?? [], payments: paymentsById.get(row.id) }]));
   const categoryById = new Map(categoryRows.map(row => [row.id, row]));
   return { vendorById, categoryById, scoreById };
 }
@@ -360,6 +364,8 @@ export type StoreProfile = {
     speed: DeliverySpeed | null;
     cashOnDelivery: boolean;
   };
+  /** Every way the store lets its shoppers pay, in the shop's order. */
+  payments: StoreMethod[];
 };
 
 export type StorePage = {
@@ -404,7 +410,7 @@ export async function getStorePage(slug: string, locale: LocalePick = "en"): Pro
     .limit(1);
   if (!row) return null;
 
-  const [shelf, [counted], badges, ratings, recent] = await Promise.all([
+  const [shelf, [counted], badges, ratings, recent, payments] = await Promise.all([
     /* The whole shelf, both shops: the page draws the refurbished apart. */
     publishedCatalog({ vendorId: row.id, limit: STORE_PAGE_PRODUCTS, condition: "any" }),
     db
@@ -414,6 +420,7 @@ export async function getStorePage(slug: string, locale: LocalePick = "en"): Pro
     badgesFor(db, [row]),
     storeRatings(db, [row.id]),
     recentReviewsForStore(row.id),
+    methodsForStores(db, [{ id: row.id, acceptsCod: row.acceptsCod }]),
   ]);
   const { vendorById, categoryById, scoreById } = await contextFor(db, shelf);
 
@@ -437,6 +444,7 @@ export async function getStorePage(slug: string, locale: LocalePick = "en"): Pro
         speed: isDeliverySpeed(row.deliverySpeed) ? row.deliverySpeed : null,
         cashOnDelivery: row.acceptsCod,
       },
+      payments: payments.get(row.id) ?? [],
     },
     products: shelf.map(product => shape(product, vendorById, categoryById, locale, scoreById)),
     reviews: recent,
@@ -476,6 +484,7 @@ function shape(
   );
   return {
     ...product,
+    ...(vendor?.payments ? { payments: vendor.payments } : {}),
     reviewSummary: scoreById.get(row.id) ?? null,
     subcategory: subcategoryFor({
       department: product.productType,
@@ -887,6 +896,13 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
   })));
   /* One row per seller, so the COD rules line up with the delivery groups. */
   const rules = new Map(going.map(row => [row.vendorId, { accepts: row.acceptsCod, ceiling: row.codCeiling }]));
+  /* How the basket can be paid: what each store takes, and what every store
+     being checked out takes together (`sharedMethods`), in the bag's order. */
+  const storeRows = [...new Map(rows.map(row => [row.vendorId, row])).values()];
+  const methodsById = await methodsForStores(db, storeRows.map(row => ({ id: row.vendorId, acceptsCod: row.acceptsCod })));
+  const goingStores = [...new Set(going.map(row => row.vendorId))].map(vendorId => ({ vendorId, methods: methodsById.get(vendorId) ?? [] }));
+  const together = sharedMethods(goingStores);
+  const differing = together.differs ? storeRows.find(row => row.vendorId === together.differs!.vendorId) : undefined;
 
   return {
     id: cart.id,
@@ -942,6 +958,13 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
     total: money(addMoney(subtractMoney(subtotal, codeDiscount), quote.total, taxed.total)),
     stores: storeDeliveries(items, slots, new Map(rows.map(row => [row.vendorId, { flat: row.deliveryFlat, freeOver: row.deliveryFreeOver }]))),
     slotsReady: slots.ready,
+    payments: {
+      stores: storeRows.map(row => ({ vendorId: row.vendorId, methods: methodsById.get(row.vendorId) ?? [] })),
+      shared: together.methods,
+      differs: differing
+        ? { vendorId: differing.vendorId, vendorName: differing.vendorName, vendorNameAr: differing.vendorNameAr?.trim() || null }
+        : null,
+    },
   };
 }
 

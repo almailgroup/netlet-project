@@ -2484,6 +2484,18 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 CREATE INDEX IF NOT EXISTS "wishlist_gift_givers_order_idx" ON "wishlist_gift_givers" USING btree ("order_id");
 
+-- ===== 0093_vendor_payment_methods.sql =====
+CREATE TABLE IF NOT EXISTS "vendor_payment_methods" (
+	"vendor_id" integer PRIMARY KEY NOT NULL,
+	"online_methods" text[] DEFAULT '{}' NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "vendor_payment_methods_known" CHECK ("vendor_payment_methods"."online_methods" <@ ARRAY['knet','card','apple_pay']::text[])
+);
+DO $$ BEGIN
+  ALTER TABLE "vendor_payment_methods" ADD CONSTRAINT "vendor_payment_methods_vendor_id_fk" FOREIGN KEY ("vendor_id") REFERENCES "public"."vendors"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2535,6 +2547,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  93 AS migrations_in_this_file,
+  94 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

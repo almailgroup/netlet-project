@@ -468,6 +468,7 @@ private struct CartStoreCard: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .accessibilityIdentifier("store-delivery-foot")
+            StorePaysWith(group: group)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
@@ -976,6 +977,38 @@ struct SummaryCard: View {
                 .animation(still ? nil : .snappy(duration: 0.25), value: value)
                 .opacity(faint ? 0.5 : 1)
                 .animation(.easeOut(duration: 0.15), value: faint)
+        }
+    }
+}
+
+
+/// How a store's shoppers may pay (`storePayments.ts`), under its delivery —
+/// and, for the store the rest of the basket shares no way to pay with, what
+/// to do about it instead: the web's `StorePaysWith`.
+private struct StorePaysWith: View {
+    let group: BagGroup
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        if let payments = app.cart.cart?.payments, let id = group.store.id {
+            Group {
+                if payments.differs?.vendorId == id {
+                    Label {
+                        Text(l.t("storePay.differs", ["name": "\u{2068}\(group.store.name(l.current))\u{2069}"]))
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: "exclamationmark.circle")
+                    }
+                    .font(.inter(13, .semibold))
+                    .foregroundStyle(Brand.danger)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    PayWithLine(methods: payments.methods(of: id))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 12)
         }
     }
 }

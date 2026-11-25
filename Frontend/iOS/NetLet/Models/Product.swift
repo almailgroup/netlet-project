@@ -18,6 +18,9 @@ struct Product: Decodable, Identifiable, Hashable, Sendable {
     let specsFrom: String?
     let vendor: String?
     let vendorSlug: String?
+    /// Every way the store lets its shoppers pay (`storePayments.ts`); absent
+    /// from an older server and the recordings, which draws no line.
+    let payments: [String]?
     let vendorBadges: [String]
     let tags: [String]
     let attributes: [ProductAttribute]
@@ -313,6 +316,8 @@ struct StorePage: Decodable, Sendable {
         let rating: StoreCard.Rating?
         let badges: [String]
         let delivery: Delivery
+        /// Every way the store takes (0093); absent from an older server.
+        let payments: [String]?
     }
 
     struct Review: Decodable, Identifiable, Sendable {

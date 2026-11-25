@@ -37,6 +37,7 @@
  * shopper leaves by their own press — it used to jump straight to the order.
  */
 import { lineTitle, storeName } from "@/lib/lineTitle";
+import type { StoreMethod } from "@shared/commerce/storePayments";
 import { useCart } from "@/contexts/CartContext";
 import { Thumb } from "@/components/product/Thumb";
 import { usePageMeta } from "@/hooks/usePageMeta";
@@ -631,12 +632,18 @@ function ItemRow({ item }: { item: CartItem }) {
  */
 function PaymentMethods() {
   const { cart } = useCart();
-  const { t } = useTranslation();
+  const { t, isArabic } = useTranslation();
   const money = useMoney();
   const { isAuthenticated } = useAuth();
   const defaults = trpc.customer.defaults.get.useQuery(undefined, { enabled: isAuthenticated, staleTime: 60_000, retry: false });
   const codRefused = cart?.cod.available === false ? cart.cod.because : null;
   const preferred = defaults.data?.payment ?? "cod";
+  /* Only what every store in the basket takes (`Shared/commerce/storePayments.ts`),
+     on the owner's word; a server from before it offers every way, as it did. */
+  const shared = cart?.payments?.shared;
+  const offered = (method: StoreMethod) => !shared || shared.includes(method);
+  const differs = cart?.payments?.differs ?? null;
+  const soonShown = (["knet", "card", "apple_pay"] as const).some(offered);
   const option = (key: PaymentMark, title: string, chosen: boolean, soon: boolean) => {
     const face = paymentFace(key, chosen);
     return (
@@ -664,13 +671,17 @@ function PaymentMethods() {
       <fieldset className="mt-3">
         <legend className="sr-only">{t("checkout.paymentMethod")}</legend>
         <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-3">
-          {option("cod", t("checkout.payCodShort"), !codRefused, false)}
-          {option("knet", t("checkout.payKnet"), false, true)}
-          {option("card", t("checkout.payCardShort"), false, true)}
-          {option("apple", t("checkout.payApple"), false, true)}
+          {offered("cod") ? option("cod", t("checkout.payCodShort"), !codRefused, false) : null}
+          {offered("knet") ? option("knet", t("checkout.payKnet"), false, true) : null}
+          {offered("card") ? option("card", t("checkout.payCardShort"), false, true) : null}
+          {offered("apple_pay") ? option("apple", t("checkout.payApple"), false, true) : null}
         </div>
       </fieldset>
-      {codRefused ? (
+      {differs ? (
+        <p role="note" className="mt-3 rounded-xl border border-[#f0d3c6] bg-[#fdf3ee] p-3 text-[13px] leading-5 text-[#8c2f22]">
+          {t("storePay.differs", { name: storeName(differs, isArabic) })}
+        </p>
+      ) : codRefused ? (
         <p className="mt-3 rounded-xl border border-[#f0d3c6] bg-[#fdf3ee] p-3 text-[13px] leading-5 text-[#8c2f22]">
           {codRefused.kind === "shop" ? t("checkout.codUnavailableShop")
             : codRefused.kind === "seller" ? t("checkout.codUnavailableSeller", { name: codRefused.vendorName })
@@ -687,7 +698,7 @@ function PaymentMethods() {
           <p className="mt-0.5 text-[12px] leading-5 ink-muted">{t("checkout.payCodNote")}</p>
         </div>
       )}
-      <p id="pay-soon-note" className="mt-2 text-[12px] leading-5 ink-muted">{t("checkout.paySoonNote")}</p>
+      {soonShown ? <p id="pay-soon-note" className="mt-2 text-[12px] leading-5 ink-muted">{t("checkout.paySoonNote")}</p> : null}
     </section>
   );
 }

@@ -232,6 +232,9 @@ enum PortalPage: Hashable, Sendable {
     /// A store's own documents, for its owner (`Shared/inventory/storeDocuments.ts`);
     /// NetLet reads each store's on that store's page.
     case storeDocuments
+    /// The ways a store lets its shoppers pay, for its owner and managers
+    /// (`Shared/commerce/storePayments.ts`); NetLet keeps each store's on its page.
+    case paymentMethods
     /// The seasons and occasions NetLet curates (`Shared/commerce/occasionDesk.ts`).
     case occasions
     /// One of them; nil is a new one, which may start from a calendar occasion (`?from=winter`).
@@ -310,6 +313,7 @@ enum PortalPage: Hashable, Sendable {
             case "staff": self = .staff
             case "subcategory-pictures": self = .subcategoryPictures
             case "store-documents": self = .storeDocuments
+            case "payment-methods": self = .paymentMethods
             case "occasions": self = .occasions
             default: return nil
             }

@@ -652,6 +652,13 @@
       "when": 1795588023833,
       "tag": "0092_wishlist_gift_givers",
       "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1795593679790,
+      "tag": "0093_vendor_payment_methods",
+      "breakpoints": true
     }
   ]
 }

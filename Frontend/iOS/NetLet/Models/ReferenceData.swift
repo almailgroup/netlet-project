@@ -607,6 +607,8 @@ struct Rules: Decodable, Sendable {
     var commonPasswords: [String]? = nil
     var profile: ProfileLimits? = nil
     var afterSales: AfterSales? = nil
+    /// The ways a store may take and whether the online ones are live (`storePayments.ts`).
+    var storePayments: StorePaymentRules? = nil
 
     /// The profile's rules, or the fallback when the export predates them.
     var profileRules: ProfileLimits { profile ?? .fallback }

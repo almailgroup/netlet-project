@@ -16,6 +16,7 @@ import { ProductCatalogues } from "@/components/product/ProductCatalogues";
 import { DeliverySpeedLine } from "@/components/product/DeliverySpeedLine";
 import { UnitPrice } from "@/components/product/UnitPrice";
 import { QuantityPriceBlock } from "@/components/product/QuantityPrice";
+import { PayWith } from "@/components/product/PayWith";
 import { AvailabilityLine, buyLabelFor } from "@/components/product/Availability";
 import { AddonPicker } from "@/components/product/AddonPicker";
 import { BundleOffer } from "@/components/product/BundleOffer";
@@ -1525,6 +1526,10 @@ export default function ProductDetail() {
             {/* The per-kilo figure, when there is one. Nothing for a counted
                 product — "per each" is the price printed twice. */}
             {selectedVariant ? <UnitPrice variant={selectedVariant} className="mt-1 text-sm" /> : null}
+
+            {/* How the store lets its shoppers pay, on the owner's word
+                (`Shared/commerce/storePayments.ts`). */}
+            <PayWith methods={product.payments} className="mt-2" />
 
             <hr className="my-6 border-[#0a285a]/8" />
 

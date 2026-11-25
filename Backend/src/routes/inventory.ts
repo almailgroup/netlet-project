@@ -114,6 +114,8 @@ import { productTaxStatus, setProductTax } from "../services/tax.js";
 import { BULK_UPLOAD_LIMIT, MAX_CATEGORISE_ROWS } from "../../../Shared/inventory/bulkUpload.js";
 import { categoriseRows } from "../services/importCategories.js";
 import { MAX_SIZE_LABEL, MAX_SIZES, MEASURES, type BodyMeasure, type SizeChart } from "../../../Shared/commerce/sizeGuide.js";
+import { cashOffLeavesNothing } from "../services/storePayments.js";
+import { getDb } from "../services/db.js";
 
 /**
  * One extra as the editor and the new-product form send it: installation, a
@@ -1323,6 +1325,13 @@ export const inventoryRouter = router({
       .mutation(async ({ ctx, input }) => {
         const { vendorId, ...patch } = input;
         const actor = await resolveActor(ctx.user);
+        /* Cash turned off here (an installed app still saves it with the
+           store's details) must leave the store a way to be paid — the
+           ways-to-pay page's rule (`Shared/commerce/storePayments.ts`). */
+        if (patch.acceptsCod === false) {
+          const db = await getDb();
+          if (db && (await cashOffLeavesNothing(db, vendorId))) throw new TRPCError({ code: "BAD_REQUEST", message: "storePay.needOne" });
+        }
         return guard(() => updateVendorProfile(actor, vendorId, patch));
       }),
 

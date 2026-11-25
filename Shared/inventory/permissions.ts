@@ -117,6 +117,12 @@ export type Capability =
   | "vendor.manageMembers"
   | "vendor.editProfile"
   /*
+   * Which ways the store's shoppers may pay (`Shared/commerce/storePayments.ts`),
+   * on the owner's word: its owner and its managers, since it decides who
+   * can buy and is not the payout account an owner alone edits.
+   */
+  | "vendor.payments"
+  /*
    * Dispatch (2.2, 3.4.2). `view` is the board; `move` is "collected" and
    * "handed over", the two things a delivery company actually witnesses.
    * Assigning a parcel to a company is admin-only and listed below — a courier
@@ -240,6 +246,7 @@ export const NEEDS: Partial<Record<Capability, VendorRole>> = {
   "offer.answer": "manager",
   "promotion.manage": "manager",
   "payouts.view": "manager",
+  "vendor.payments": "manager",
   "vendor.editProfile": "owner",
   "vendor.manageMembers": "owner",
   "ads.book": "owner",

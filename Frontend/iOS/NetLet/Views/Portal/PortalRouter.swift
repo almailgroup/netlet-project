@@ -46,6 +46,7 @@ struct PortalRouter: View {
         case .staff: PortalStaffView()
         case .subcategoryPictures: PortalSubcategoryPicturesView()
         case .storeDocuments: PortalStoreDocumentsView()
+        case .paymentMethods: PortalPaymentMethodsView()
         case .occasions: PortalOccasionsView()
         case .occasion(let id, let from): PortalOccasionEditorView(occasionId: id, from: from)
         case .membership: PortalMembershipView()

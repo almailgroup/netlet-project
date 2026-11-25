@@ -23,6 +23,15 @@
   ],
   "maxLineQuantity": 99,
   "returnWindowDays": 14,
+  "storePayments": {
+    "methods": [
+      "cod",
+      "knet",
+      "card",
+      "apple_pay"
+    ],
+    "onlineLive": false
+  },
   "listing": {
     "maxTitle": 255,
     "maxSku": 120,

@@ -92,6 +92,8 @@ export const ADMIN_MENU: AdminMenuGroup[] = [
     { href: "/admin/team", label: "admin.team", need: "vendor.viewMembers", storeOnly: true },
     /* The store's own papers, for its owner; NetLet reads each store's on its page. */
     { href: "/admin/store-documents", label: "storeDocs.title", need: "vendor.editProfile", storeOnly: true },
+    /* How the store's shoppers may pay, for its owner and managers (0093). */
+    { href: "/admin/payment-methods", label: "storePay.title", need: "vendor.payments", storeOnly: true },
     { href: "/admin/vendors", label: "admin.vendors", need: "stores.view" },
     { href: "/admin/applications", label: "admin.applications", need: "stores.manage" },
     /* NetLet's own team: who opens which part of this panel, with which role. */

@@ -522,11 +522,19 @@ private struct PaymentMethods: View {
                 .foregroundStyle(Brand.navy)
                 .accessibilityAddTraits(.isHeader)
             HStack(alignment: .top, spacing: 4) {
-                ForEach(PaymentMark.allCases) { mark in
+                ForEach(offered) { mark in
                     option(mark, chosen: mark == .cod && refused == nil)
                 }
             }
-            if let refused {
+            if let differs = cart?.payments?.differs {
+                Text(l.t("storePay.differs", ["name": "\u{2068}\(l.current == .ar ? (differs.vendorNameAr ?? differs.vendorName) : differs.vendorName)\u{2069}"]))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.accentWash))
+            } else if let refused {
                 Text(refused)
                     .font(.inter(13))
                     .foregroundStyle(Brand.danger)
@@ -558,13 +566,22 @@ private struct PaymentMethods: View {
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255)))
                 .accessibilityElement(children: .combine)
             }
-            Text(l.t("checkout.paySoonNote"))
-                .font(.inter(12))
-                .foregroundStyle(Brand.muted)
-                .fixedSize(horizontal: false, vertical: true)
+            if offered.contains(where: { $0 != .cod }) {
+                Text(l.t("checkout.paySoonNote"))
+                    .font(.inter(12))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
+    }
+
+    /// Only what every store in the basket takes (`storePayments.ts`), on the
+    /// owner's word; a server from before it offers every way, as it did.
+    private var offered: [PaymentMark] {
+        guard let shared = cart?.payments?.shared else { return PaymentMark.allCases }
+        return PaymentMark.allCases.filter { shared.contains($0 == .apple ? "apple_pay" : $0.rawValue) }
     }
 
     /// One way to pay: its circle, its name and whether it is chosen or coming.

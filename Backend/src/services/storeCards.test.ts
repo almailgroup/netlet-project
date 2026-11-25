@@ -162,7 +162,8 @@ describe("getStorePage", () => {
        at 11:53:12.516 carried it in its timestamp. */
     for (const secret of ["owner@busy.test", "99887766", "Block 1", "LIC-1", "KW81", "87.25"]) expect(said).not.toContain(secret);
     expect(Object.keys(page!.store).sort()).toEqual(
-      ["badges", "delivery", "description", "governorate", "logoUrl", "name", "products", "rating", "since", "slug"],
+      /* The ways it takes are public: they are said on its page (0093). */
+      ["badges", "delivery", "description", "governorate", "logoUrl", "name", "payments", "products", "rating", "since", "slug"],
     );
   });
 

@@ -323,6 +323,8 @@ private struct ProductPage: View {
         if let quote {
             QuantityPriceView(quote: quote, savingPercent: variant?.savingPercent)
         }
+        // How the store lets its shoppers pay, on the owner's word (0093).
+        PayWithLine(methods: product.payments).padding(.top, 6)
     }
 
     /// A member's own price, shown only to a member — a price somebody is told

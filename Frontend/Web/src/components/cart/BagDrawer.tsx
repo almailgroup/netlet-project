@@ -25,7 +25,8 @@ import { DRAWER_EXIT_MS, usePresence } from "@/hooks/usePresence";
 import { useStockLimit } from "@/hooks/useStockLimit";
 import { StoreDeliveryRow, storeDeliveryOf } from "@/components/cart/StoreDelivery";
 import { useDeliveryArea } from "@/components/layout/deliveryArea";
-import { ArrowRight, Check, ChevronRight, Minus, Plus, ShoppingBag, Store, Trash2, Truck, X } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, CircleAlert, Minus, Plus, ShoppingBag, Store, Trash2, Truck, X } from "lucide-react";
+import { PayWith } from "@/components/product/PayWith";
 import { Link } from "wouter";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -198,8 +199,30 @@ function StoreDeliveryFoot({ group, name, padded }: { group: BagGroup; name: str
           </div>
         );
       })}
+      <StorePaysWith group={group} name={name} />
     </div>
   );
+}
+
+/**
+ * How this store's shoppers may pay (`Shared/commerce/storePayments.ts`),
+ * under its delivery — and, for the store the rest of the basket shares no
+ * way to pay with, what to do about it instead.
+ */
+function StorePaysWith({ group, name }: { group: BagGroup; name: string }) {
+  const { cart } = useCart();
+  const { t } = useTranslation();
+  const id = group.store.id;
+  if (id == null || !cart?.payments) return null;
+  if (cart.payments.differs?.vendorId === id) {
+    return (
+      <p role="note" className="mt-2 flex items-start gap-1.5 text-[13px] leading-5 font-semibold text-[#8c2f22]">
+        <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <span>{t("storePay.differs", { name })}</span>
+      </p>
+    );
+  }
+  return <PayWith methods={cart.payments.stores.find(store => store.vendorId === id)?.methods} className="mt-2" />;
 }
 
 /**

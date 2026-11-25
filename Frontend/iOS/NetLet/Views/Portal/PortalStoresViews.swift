@@ -337,8 +337,6 @@ private struct StoreDraft {
     var fastDeliverySpeed: String?
     var ownDelivery = false
     var deliveryCourierId: Int?
-    var acceptsCod = true
-    var codCeiling = ""
     var subscriptionPercent = ""
     var payoutIban = ""
     var percent = ""
@@ -368,8 +366,6 @@ private struct StoreDraft {
         fastDeliverySpeed = store.fastDeliverySpeed
         ownDelivery = store.deliveryMode == "own"
         deliveryCourierId = store.deliveryCourierId
-        acceptsCod = store.acceptsCod ?? true
-        codCeiling = store.codCeiling ?? ""
         subscriptionPercent = store.subscriptionPercent ?? ""
         payoutIban = store.payoutIban ?? ""
         percent = store.commissionPercent
@@ -415,6 +411,9 @@ struct PortalStoreView: View {
                    records by number — added by NetLet or the store's owner. */
                 if may("vendor.editProfile") { StoreDocumentsCard(vendorId: vendorId, audience: .netlet) }
                 delivery
+                /* How its shoppers pay it (`storePayments.set`), its own save:
+                   cash with its limit and the online three, one at least. */
+                if may("vendor.payments") { StorePaymentsCard(vendorId: vendorId) }
                 payments
                 terms(store)
                 badges(store)
@@ -628,13 +627,9 @@ struct PortalStoreView: View {
     }
 
     private var payments: some View {
-        section("admin.sectionPayments", note: "admin.sectionPaymentsNote", key: "payments", editable: may("stores.manage"), disabled: ibanProblem != nil, save: {
-            save("payments", .init(vendorId: vendorId, acceptsCod: draft.acceptsCod, codCeiling: .text(PhoneNumber.foldDigits(draft.codCeiling)),
-                                   subscriptionPercent: .text(PhoneNumber.foldDigits(draft.subscriptionPercent)), payoutIban: .text(draft.payoutIban)))
+        section("admin.sectionPayouts", note: "admin.sectionPayoutsNote", key: "payments", editable: may("stores.manage"), disabled: ibanProblem != nil, save: {
+            save("payments", .init(vendorId: vendorId, subscriptionPercent: .text(PhoneNumber.foldDigits(draft.subscriptionPercent)), payoutIban: .text(draft.payoutIban)))
         }) {
-            toggle("admin.acceptsCod", hint: "admin.acceptsCodHint", isOn: $draft.acceptsCod)
-            LabeledField(label: l.t("admin.codCeiling"), text: $draft.codCeiling, placeholder: "0.000", keyboard: .decimalPad, leftToRight: true)
-                .disabled(!draft.acceptsCod)
             LabeledField(label: l.t("admin.subscriptionPercent"), text: $draft.subscriptionPercent, hint: l.t("admin.subscriptionPercentHint"), keyboard: .decimalPad, leftToRight: true)
             LabeledField(label: l.t("admin.payoutIban"), text: $draft.payoutIban, hint: ibanRead(draft.payoutIban), problem: ibanProblem, keyboard: .asciiCapable, leftToRight: true)
         }

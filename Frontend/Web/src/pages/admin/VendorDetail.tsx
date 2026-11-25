@@ -22,6 +22,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/ui/QueryGate";
 import { StoreAvatar, StoreStatusPill } from "@/components/admin/StoreAvatar";
 import { StoreDocuments } from "@/components/admin/StoreDocuments";
+import { StorePayments } from "@/components/admin/StorePayments";
 import { StoreWarnings } from "@/components/admin/StoreWarnings";
 import { Card, Field, PageHeader, PasswordBox, Stat, Toggle, buttonClass, fieldClass, isolate } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
@@ -79,7 +80,7 @@ type Draft = {
   licenceNumber: string; underPlatformLicence: boolean; discountLicenceNumber: string; discountLicenceExpiresAt: string;
   deliverySpeed: string; deliveryFlat: string; deliveryFreeOver: string; deliveryProvider: string;
   fastDeliveryFee: string; fastDeliverySpeed: string; deliveryMode: "own" | "netlet"; deliveryCourierId: string;
-  acceptsCod: boolean; codCeiling: string; subscriptionPercent: string; payoutIban: string;
+  subscriptionPercent: string; payoutIban: string;
 };
 
 const textarea = `${fieldClass} h-auto min-h-24 py-2.5 leading-6`;
@@ -96,6 +97,7 @@ function VendorDetail({ vendorId, actor }: { vendorId: number; actor: Actor }) {
     rate: can(actor, "vendor.setCommission", vendorId),
     review: can(actor, "product.review"),
     papers: can(actor, "vendor.editProfile", vendorId),
+    payments: can(actor, "vendor.payments", vendorId),
     team: can(actor, "vendor.viewMembers", vendorId),
     products: can(actor, "product.view", vendorId),
     add: can(actor, "product.create", vendorId),
@@ -143,7 +145,6 @@ function VendorDetail({ vendorId, actor }: { vendorId: number; actor: Actor }) {
       deliveryFreeOver: row.deliveryFreeOver ?? "", deliveryProvider: row.deliveryProvider ?? "",
       fastDeliveryFee: row.fastDeliveryFee ?? "", fastDeliverySpeed: row.fastDeliverySpeed ?? "",
       deliveryMode: row.deliveryMode === "own" ? "own" : "netlet", deliveryCourierId: row.deliveryCourierId ? String(row.deliveryCourierId) : "",
-      acceptsCod: row.acceptsCod ?? true, codCeiling: row.codCeiling ?? "",
       subscriptionPercent: row.subscriptionPercent ?? "", payoutIban: row.payoutIban ?? "",
     });
     setTerms({ commissionPercent: row.commissionPercent, commissionFixed: row.commissionFixed ?? "" });
@@ -200,7 +201,8 @@ function VendorDetail({ vendorId, actor }: { vendorId: number; actor: Actor }) {
     { id: "licences", label: "admin.sectionLicences" },
     { id: "documents", label: "storeDocs.title", shown: may.papers },
     { id: "delivery", label: "admin.sectionDelivery" },
-    { id: "payments", label: "admin.sectionPayments" },
+    { id: "ways-to-pay", label: "storePay.title", shown: may.payments },
+    { id: "payments", label: "admin.sectionPayouts" },
     { id: "terms", label: "admin.commercialTerms" },
     { id: "badges", label: "admin.badges" },
     { id: "warnings", label: "warnings.title" },
@@ -471,32 +473,23 @@ function VendorDetail({ vendorId, actor }: { vendorId: number; actor: Actor }) {
             </fieldset>
           </Card>
 
-          {/* Cash on delivery (3.2.2) is on by default — a seller opts out — and
-              the ceiling is their own risk appetite. The IBAN is checked by the
-              mod-97 rule the server applies, so a transposed pair is caught here. */}
+          {/* How shoppers may pay this store, cash and its limit included
+              (`Shared/commerce/storePayments.ts`): a save of its own. */}
+          {may.payments ? <StorePayments vendorId={vendorId} /> : null}
+
+          {/* The IBAN is checked by the mod-97 rule the server applies, so a
+              transposed pair is caught here. */}
           <Card
             id="payments"
-            title={t("admin.sectionPayments")}
-            description={t("admin.sectionPaymentsNote")}
+            title={t("admin.sectionPayouts")}
+            description={t("admin.sectionPayoutsNote")}
             footer={may.edit && saveButton("payments", () => save("payments", {
-              acceptsCod: draft.acceptsCod,
-              codCeiling: blank(draft.codCeiling),
               subscriptionPercent: blank(draft.subscriptionPercent),
               payoutIban: blank(draft.payoutIban),
             }), Boolean(ibanProblem))}
           >
             <fieldset disabled={!may.edit} className="min-w-0">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Toggle
-                  checked={draft.acceptsCod}
-                  onChange={value => set("acceptsCod", value)}
-                  label={t("admin.acceptsCod")}
-                  hint={t("admin.acceptsCodHint")}
-                  className="sm:col-span-2"
-                />
-                <Field label={t("admin.codCeiling")} optional>
-                  <input dir="ltr" inputMode="decimal" placeholder="0.000" value={draft.codCeiling} disabled={!draft.acceptsCod} onChange={e => set("codCeiling", e.target.value)} className={fieldClass} />
-                </Field>
                 <Field label={t("admin.subscriptionPercent")} hint={t("admin.subscriptionPercentHint")}>
                   <input dir="ltr" inputMode="decimal" value={draft.subscriptionPercent} onChange={e => set("subscriptionPercent", e.target.value)} className={fieldClass} />
                 </Field>

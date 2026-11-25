@@ -305,6 +305,8 @@ jobs:
             shot 94-deals-burst "$lang" dealsBurst ""
             # A store's own documents, as its owner sees them.
             shot 95-store-documents "$lang" portal:/admin/store-documents shopper
+            # The ways a store lets its shoppers pay, as its owner chooses them.
+            shot 117-payment-methods "$lang" portal:/admin/payment-methods shopper
             # The occasions NetLet curates: the desk, one occasion's editor, and its page in the shop.
             shot 96-occasions "$lang" portal:/admin/occasions admin
             shot 97-occasion-editor "$lang" portal:/admin/occasions/3 admin

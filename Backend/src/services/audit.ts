@@ -143,6 +143,9 @@ export const AUDIT_ACTIONS = [
      by the store's owner (`Shared/inventory/storeDocuments.ts`). */
   "vendor.document.add",
   "vendor.document.remove",
+  /* The ways a store's shoppers may pay, chosen by its owner, a manager or
+     NetLet (`Shared/commerce/storePayments.ts`). */
+  "vendor.setPayments",
   /* A PDF put under a product, taken off it, or NetLet's answer to one
      waiting for a look (`Shared/inventory/productCatalogues.ts`). */
   "product.catalogue.add",
@@ -371,6 +374,8 @@ const SELLER_ACTIONS: AuditAction[] = [
      how NetLet hears that a licence was renewed without anybody writing in. */
   "vendor.document.add",
   "vendor.document.remove",
+  /* A store choosing how its shoppers may pay. */
+  "vendor.setPayments",
   /* A store putting a catalogue under one of its products, or taking one off. */
   "product.catalogue.add",
   "product.catalogue.remove",

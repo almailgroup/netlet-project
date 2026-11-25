@@ -45,6 +45,7 @@ import type { Product } from "@shared/commerce/types";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { privatePageMeta, storeMeta } from "@shared/seo";
+import { PayWith } from "@/components/product/PayWith";
 
 const SORT_LABELS: Record<BrowseSort, MessageKey> = {
   relevance: "browse.sort.relevance",
@@ -184,7 +185,8 @@ export default function Store() {
   const facts: { icon: typeof Truck; label: string }[] = [
     { icon: Truck, label: deliveryLine },
     ...(store.delivery.speed ? [{ icon: Zap, label: t(`speed.${store.delivery.speed}` as MessageKey) }] : []),
-    ...(store.delivery.cashOnDelivery ? [{ icon: Wallet, label: t("home.payOnDelivery") }] : []),
+    /* The ways it takes are their own line below; a server from before them said cash alone. */
+    ...(!store.payments && store.delivery.cashOnDelivery ? [{ icon: Wallet, label: t("home.payOnDelivery") }] : []),
   ];
   const narrowed = Boolean(view.department || view.term.trim());
 
@@ -226,6 +228,8 @@ export default function Store() {
               </li>
             ))}
           </ul>
+          {/* How the store lets its shoppers pay, on the owner's word. */}
+          <PayWith methods={store.payments} className="mt-3" />
         </section>
 
         <section aria-labelledby="store-products" className="mt-8 sm:mt-10">

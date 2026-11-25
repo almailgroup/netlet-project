@@ -190,6 +190,12 @@
           "storeOnly": true
         },
         {
+          "href": "/admin/payment-methods",
+          "label": "storePay.title",
+          "need": "vendor.payments",
+          "storeOnly": true
+        },
+        {
           "href": "/admin/vendors",
           "label": "admin.vendors",
           "need": "stores.view"
@@ -258,6 +264,7 @@
     "offer.answer": "manager",
     "promotion.manage": "manager",
     "payouts.view": "manager",
+    "vendor.payments": "manager",
     "vendor.editProfile": "owner",
     "vendor.manageMembers": "owner",
     "ads.book": "owner",
@@ -357,7 +364,8 @@
         "vendor.setCommission",
         "affiliate.manage",
         "orders.view",
-        "stores.view"
+        "stores.view",
+        "vendor.payments"
       ],
       "marketing": [
         "portal.home",
@@ -377,7 +385,8 @@
         "vendor.editProfile",
         "vendor.viewMembers",
         "vendor.manageMembers",
-        "product.view"
+        "product.view",
+        "vendor.payments"
       ],
       "team": [
         "portal.home",

@@ -434,6 +434,8 @@ struct StoreView: View {
                 }
             }
             .padding(.top, 20)
+            // How the store lets its shoppers pay, on the owner's word (0093).
+            PayWithLine(methods: store.payments).padding(.top, 12)
         }
         .card(padding: 20)
     }
@@ -461,7 +463,8 @@ struct StoreView: View {
         }
         var facts = [Fact(symbol: "truck.box", label: delivery)]
         if let speed = store.delivery.speed { facts.append(Fact(symbol: "bolt", label: l.t("speed.\(speed)"))) }
-        if store.delivery.cashOnDelivery { facts.append(Fact(symbol: "wallet.pass", label: l.t("home.payOnDelivery"))) }
+        /* The ways it takes are their own line; a server from before them said cash alone. */
+        if store.payments == nil, store.delivery.cashOnDelivery { facts.append(Fact(symbol: "wallet.pass", label: l.t("home.payOnDelivery"))) }
         return facts
     }
 

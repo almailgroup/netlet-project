@@ -30,6 +30,9 @@ struct Cart: Decodable, Identifiable, Hashable, Sendable {
     var stores: [CartStoreDelivery]? = nil
     /// Whether a day and time can be chosen: false until 0085 is pasted.
     var slotsReady: Bool? = nil
+    /// How the basket can be paid (`storePayments.ts`); nil from an older
+    /// server, which offers every way as it did.
+    var payments: CartPayments? = nil
     /// The units chosen for this checkout (`CartChoice`): the subtotal, the
     /// delivery, the cash rule and the total are of these alone. Nil from a
     /// bag read before the choice existed, which is all chosen.

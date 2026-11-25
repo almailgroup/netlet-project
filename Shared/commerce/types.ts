@@ -1,6 +1,7 @@
 import type { SizeChart } from "./sizeGuide.js";
 import type { Measure } from "./units.js";
 import type { DeliverySpeed } from "./deliverySpeed.js";
+import type { StoreMethod } from "./storePayments.js";
 /**
  * Backend-agnostic commerce types.
  *
@@ -162,6 +163,12 @@ export type Product = {
    * Optional because a demo catalogue and a cart line's snapshot carry none.
    */
   vendorSlug?: string | null;
+  /**
+   * Every way the store lets its shoppers pay, in the shop's order
+   * (`Shared/commerce/storePayments.ts`): drawn under the price. Optional
+   * because a demo catalogue and a cart line's snapshot carry none.
+   */
+  payments?: StoreMethod[];
   /**
    * Trust badges the vendor has been awarded, as plain keys the client
    * translates. They are here rather than on a vendor object because the
@@ -468,6 +475,19 @@ export type Cart = {
   stores?: CartStoreDelivery[];
   /** Whether a day and time can be chosen at all: false until 0085 is pasted. */
   slotsReady?: boolean;
+  /**
+   * How this basket can be paid (`Shared/commerce/storePayments.ts`): what
+   * each store takes, what every store being checked out takes, and the
+   * store that leaves nothing in common, if one does. Absent from a server
+   * before it, which offers what it always offered.
+   */
+  payments?: CartPayments;
+};
+
+export type CartPayments = {
+  stores: { vendorId: number; methods: StoreMethod[] }[];
+  shared: StoreMethod[];
+  differs: { vendorId: number; vendorName: string; vendorNameAr: string | null } | null;
 };
 
 /** One store's delivery in the bag, for the row beside its car (migration 0085). */
