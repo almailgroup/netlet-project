@@ -70,14 +70,14 @@ final class StorePaymentsTests: XCTestCase {
     }
 
     func testACartNamesTheStoreItCannotShareAWayWith() async throws {
-        let cart = try await recorded("paydiffers").call(API.cart, .init(cartId: "paydiffers"))
-        let payments = try XCTUnwrap(cart.payments)
+        let read = try await recorded("paydiffers").call(API.cart, .init(cartId: "paydiffers"))
+        let payments = try XCTUnwrap(read?.payments)
         XCTAssertEqual(payments.shared, [])
         XCTAssertEqual(payments.differs?.vendorName, "Rival Home")
         XCTAssertEqual(payments.differs?.vendorNameAr, "رايفل هوم")
         XCTAssertEqual(payments.methods(of: 2), ["cod", "knet", "card"])
         XCTAssertEqual(payments.methods(of: 4), ["apple_pay"])
-        XCTAssertNil(payments.methods(of: nil))
+        XCTAssertNil(payments.methods(of: Int?.none))
         // The rule the app holds agrees with the server's answer.
         let together = StorePay.shared(payments.stores.map { (vendorId: $0.vendorId, methods: $0.methods) })
         XCTAssertEqual(together.methods, payments.shared)
@@ -85,7 +85,8 @@ final class StorePaymentsTests: XCTestCase {
     }
 
     func testAnswersFromBeforeTheWaysToPayStillDecode() async throws {
-        let cart = try await client.call(API.cart, .init(cartId: "demo"))
+        let read = try await client.call(API.cart, .init(cartId: "demo"))
+        let cart = try XCTUnwrap(read)
         XCTAssertNil(cart.payments, "an older answer has none, and the cart is drawn as it was")
     }
 

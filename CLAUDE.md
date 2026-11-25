@@ -12527,7 +12527,13 @@ side branches crowded the repository's branch list, and the owner asked for
 finished pieces, checked on the Mac CI's first run on `main` — which is the run
 that decides the upload — rather than fix by fix. A push whose tests failed never
 uploads, a pull request's run never does, and it checks out the commit the
-tests passed on rather than whatever `main` holds by then. **A run of the iOS
+tests passed on rather than whatever `main` holds by then. **A TestFlight run
+that will be skipped never shares the uploads' concurrency group**: GitHub
+keeps one waiting run per group and a newer one cancels it, so the skipped run
+a failed iOS push queued once cancelled a green build's upload that was still
+waiting for a Mac (the gift-giver build, fa97fea, never reached Apple; the next
+green push carried it). The group is `testflight` only for a run that uploads.
+**A run of the iOS
 workflow started by hand waits behind a push's rather than cancelling it**
 (`cancel-in-progress` only for a push): the first `share` run for previews,
 started while a push's tests ran, would have cancelled them — and with them

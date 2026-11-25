@@ -29,8 +29,13 @@ on:
     types: [completed]
     branches: [main]
 
+# One upload at a time, and a newer upload waiting replaces an older one still
+# waiting (it carries the older one's changes). A run that will be skipped — a
+# failed or pull-request iOS run — goes in a group of its own: in this one it
+# would replace, and so cancel, an upload still waiting for a runner, which is
+# how a green build once never reached Apple.
 concurrency:
-  group: testflight
+  group: ${{ (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')) && 'testflight' || format('testflight-skip-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
