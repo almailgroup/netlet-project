@@ -158,8 +158,17 @@ private struct GiftListCard: View {
     let changed: () async -> Void
     @State private var products: [String: Product] = [:]
     @State private var settled = false
+    /* Who a gift is from (migration 0092), one choice for the page: a typed
+       name to start, the account's first name in the box, or anonymous. */
+    @State private var showName = true
+    @State private var typed: String?
+    @State private var nameProblem: String?
+    @FocusState private var nameFocused: Bool
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+
+    private var namesOpen: Bool { list.namesOpen == true }
+    private var shownName: String { typed ?? GiverName.suggested(app.session.user?.name) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -167,15 +176,22 @@ private struct GiftListCard: View {
                 .font(.inter(13, .semibold))
                 .foregroundStyle(Brand.accentInk)
             Text(list.title).font(.inter(20, .heavy)).foregroundStyle(Brand.navy)
-            Label(l.t("gift.secret"), systemImage: "lock").font(.inter(12)).foregroundStyle(Brand.muted)
+            Label(l.t(namesOpen ? "gift.secretUntilArrival" : "gift.secret"), systemImage: "lock")
+                .font(.inter(12))
+                .foregroundStyle(Brand.muted)
+                .fixedSize(horizontal: false, vertical: true)
             if !app.session.isSignedIn && list.items.contains(where: { $0.state == "available" }) {
                 Text(l.t("gift.signInToRelease")).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            }
+            if namesOpen && list.items.contains(where: { $0.state == "available" }) {
+                giverChoice
             }
             if list.items.isEmpty {
                 Text(l.t("gift.emptyList")).font(.inter(14)).foregroundStyle(Brand.muted)
             } else {
                 ForEach(list.items, id: \.productId) { item in
-                    GiftRow(token: list.token, item: item, product: products[item.productId], settled: settled, changed: changed)
+                    GiftRow(token: list.token, item: item, product: products[item.productId], settled: settled,
+                            namesOpen: namesOpen, giverFor: giverFor, changed: changed)
                     if item.productId != list.items.last?.productId { Divider() }
                 }
             }
@@ -190,6 +206,105 @@ private struct GiftListCard: View {
             settled = true
         }
     }
+
+    /// What a claim pressed on this page says it is from: the name to show,
+    /// nil to stay anonymous — or `.refused` when the name cannot be shown,
+    /// said under the box, which takes focus, and nothing is claimed.
+    private func giverFor() -> GiverChoice {
+        guard namesOpen, app.session.isSignedIn, showName else { return .from(nil) }
+        if let problem = GiverName.problem(shownName) {
+            nameProblem = problem
+            nameFocused = true
+            Haptics.refused()
+            return .refused
+        }
+        nameProblem = nil
+        return .from(GiverName.clean(shownName))
+    }
+
+    /// "Who is it from?" — Show my name, with the name to show, or Stay
+    /// anonymous; a signed-out giver is told they stay anonymous.
+    private var giverChoice: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(l.t("gift.fromTitle")).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
+                .accessibilityAddTraits(.isHeader)
+            Text(list.ownerName.map { l.t("gift.fromIntroNamed", ["name": $0]) } ?? l.t("gift.fromIntro"))
+                .font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            if app.session.isSignedIn {
+                choiceTile(chosen: showName, title: "gift.fromName", note: "gift.fromNameNote", symbol: "person") {
+                    showName = true
+                    nameProblem = nil
+                }
+                choiceTile(chosen: !showName, title: "gift.fromAnonymous", note: "gift.fromAnonymousNote", symbol: "eye.slash") {
+                    showName = false
+                    nameProblem = nil
+                }
+                if showName {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(l.t("gift.fromNameLabel")).font(.inter(13, .semibold)).foregroundStyle(Brand.ink)
+                        TextField("", text: Binding(get: { shownName }, set: { value in
+                            typed = value
+                            if nameProblem != nil { nameProblem = GiverName.problem(value) }
+                        }))
+                        .focused($nameFocused)
+                        .textContentType(.nickname)
+                        .textInputAutocapitalization(.words)
+                        .font(.inter(16))
+                        .padding(.horizontal, 14)
+                        .frame(minHeight: 48)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(nameProblem != nil ? Brand.danger : Brand.line, lineWidth: nameProblem == nil ? 1 : 1.5)
+                        )
+                        .accessibilityLabel(l.t("gift.fromNameLabel"))
+                        FieldProblem(key: nameProblem.map { "wishlist.\($0)" })
+                    }
+                    .padding(.top, 2)
+                }
+            } else {
+                Label(l.t("gift.fromSignedOut"), systemImage: "eye.slash")
+                    .font(.inter(12)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                Button(l.t("gift.fromSignIn")) { app.selectedTab = .account }
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .buttonStyle(.tap)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.tint.opacity(0.5)))
+    }
+
+    private func choiceTile(chosen: Bool, title: String, note: String, symbol: String, choose: @escaping () -> Void) -> some View {
+        Button(action: choose) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: chosen ? "largecircle.fill.circle" : "circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(chosen ? Brand.navy : Brand.muted)
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(l.t(title), systemImage: symbol).font(.inter(14, .bold)).foregroundStyle(Brand.navy)
+                    Text(l.t(note)).font(.inter(12)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 2 : 1)
+            )
+        }
+        .buttonStyle(.tap)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(chosen ? [.isSelected] : [])
+    }
+}
+
+/// What a claim pressed on the gift page says it is from.
+private enum GiverChoice {
+    case from(String?)
+    case refused
 }
 
 private struct GiftRow: View {
@@ -197,6 +312,8 @@ private struct GiftRow: View {
     let item: GiftList.Item
     let product: Product?
     let settled: Bool
+    let namesOpen: Bool
+    let giverFor: () -> GiverChoice
     let changed: () async -> Void
     @State private var chosen: String?
     @State private var askChoice = false
@@ -246,6 +363,15 @@ private struct GiftRow: View {
                                 .buttonStyle(.tap)
                                 .disabled(working)
                         }
+                    }
+                    /* Who the giver said it is from, a fact about them alone. */
+                    if namesOpen {
+                        let name = item.claimedByYou ? item.yourName : nil
+                        Label(name.map { l.t("gift.yourFromName", ["name": $0]) } ?? l.t("gift.yourFromAnonymous"),
+                              systemImage: name == nil ? "eye.slash" : "person")
+                            .font(.inter(12))
+                            .foregroundStyle(Brand.muted)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 } else if item.state == "claimed" {
                     tag(l.t("gift.claimed"), success: false)
@@ -304,10 +430,11 @@ private struct GiftRow: View {
             Haptics.refused()
             return
         }
+        guard case .from(let shownAs) = giverFor() else { return }
         working = true
         defer { working = false }
         let worked = await app.attempt(done: "gift.claimed_toast", fallback: "gift.loadFailed") {
-            _ = try await app.services.api.call(API.claimGift, .init(token: token, productId: item.productId))
+            _ = try await app.services.api.call(API.claimGift, .init(token: token, productId: item.productId, shownAs: shownAs))
         }
         guard worked else {
             await changed()

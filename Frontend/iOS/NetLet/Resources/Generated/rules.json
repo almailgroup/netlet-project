@@ -99,6 +99,7 @@
     "maxLists": 12,
     "maxListItems": 200,
     "claimHoldDays": 14,
+    "giverNameMax": 60,
     "askWindowDays": 7,
     "offerWindowDays": 3,
     "maxOfferNote": 400,

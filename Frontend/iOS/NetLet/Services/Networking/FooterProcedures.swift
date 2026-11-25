@@ -29,6 +29,14 @@ extension API {
         let productId: String
     }
 
+    /// A claim as the gift page presses it: who it is from, the name to show
+    /// the owner once it arrives, or nil (left out) to stay anonymous.
+    struct GiftClaimFrom: Encodable, Sendable {
+        let token: String
+        let productId: String
+        var shownAs: String? = nil
+    }
+
     /// The application as the form sends it; a blank box is sent as null.
     struct ApplicationInput: Encodable, Sendable {
         let storeName: String
@@ -82,7 +90,7 @@ extension API {
     static let giftListsByPhone = Procedure<Phone, [GiftList]>(query: "wishlists.findByPhone")
     /// The name an owner shows on a public list, whole or its first word.
     static let giftListsByName = Procedure<ListName, [GiftList]>(query: "wishlists.findByName")
-    static let claimGift = Procedure<GiftClaim, Acknowledged>(mutation: "wishlists.claim")
+    static let claimGift = Procedure<GiftClaimFrom, Acknowledged>(mutation: "wishlists.claim")
     static let releaseGift = Procedure<GiftClaim, Acknowledged>(mutation: "wishlists.release")
     static let myApplication = Procedure<NoInput, StoreApplication?>(query: "inventory.applications.mine")
     static let saveApplication = Procedure<ApplicationInput, Acknowledged>(mutation: "inventory.applications.save")

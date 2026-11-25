@@ -141,11 +141,18 @@ struct WishlistDetail: Decodable, Sendable {
     }
 
     struct Item: Decodable, Identifiable, Hashable, Sendable {
+        /// Who a gift that has arrived is from (migration 0092): the name its
+        /// giver chose, or nil for "someone". Absent until it is delivered.
+        struct GiftFrom: Decodable, Hashable, Sendable {
+            let name: String?
+        }
+
         let id: Int
         /// The storefront's product id, a string.
         let productId: String
         let note: String?
         let quantity: Int
+        var giftFrom: GiftFrom? = nil
     }
 
     let list: List

@@ -382,6 +382,108 @@ describe("placing an order", () => {
     await db.delete(wishlists);
   });
 
+  /*
+   * Who a gift is from (migration 0092, on the owner's word): the giver types
+   * a name or stays anonymous, a signed-out giver is anonymous whatever is
+   * sent, and the list's owner is told only once that gift is delivered.
+   */
+  it("tells the owner who a gift is from only once it is delivered, and a signed-out giver is anonymous", async () => {
+    const wishlistsModule = await import("./wishlists.js");
+    const token = `tok-from-${Date.now()}`;
+    const [list] = await db.insert(wishlists).values({
+      userId: ids.admin, title: "Birthday", visibility: "public", shareToken: token,
+    }).returning();
+    await db.insert(wishlistItems).values([
+      { wishlistId: list.id, productId: String(ids.lamp) },
+      { wishlistId: list.id, productId: String(ids.kettle) },
+    ]);
+
+    /* A refused name claims nothing. */
+    await expect(wishlistsModule.claimItem(token, String(ids.lamp), ids.shopper, "call 99887766"))
+      .rejects.toMatchObject({ reason: "giverNameContact" });
+    await expect(wishlistsModule.claimItem(token, String(ids.lamp), ids.shopper, "   "))
+      .rejects.toMatchObject({ reason: "giverNameNeeded" });
+    expect((await wishlistsModule.publicListByToken(token, ids.shopper))!.items.every(item => item.state === "available")).toBe(true);
+
+    await wishlistsModule.claimItem(token, String(ids.lamp), ids.shopper, "  Aunt   Mona ");
+    /* Signed out: the name sent is dropped, and the giver is anonymous. */
+    await wishlistsModule.claimItem(token, String(ids.kettle), null, "Uncle Ali");
+
+    const asGiver = (await wishlistsModule.publicListByToken(token, ids.shopper))!;
+    expect(asGiver.namesOpen).toBe(true);
+    const lampForGiver = asGiver.items.find(item => item.productId === String(ids.lamp))!;
+    expect(lampForGiver.claimedByYou).toBe(true);
+    expect(lampForGiver.yourName).toBe("Aunt Mona");
+    /* Nobody else is told what anybody chose. */
+    const asStranger = (await wishlistsModule.publicListByToken(token, null))!;
+    expect(JSON.stringify(asStranger)).not.toContain("Mona");
+    expect(JSON.stringify(asStranger)).not.toContain("Ali");
+
+    /* Claimed, not yet ordered: the owner is told nothing. */
+    let owner = await wishlistsModule.itemsForOwner(ids.admin, list.id);
+    expect(owner.items.map(item => item.giftFrom)).toEqual([null, null]);
+    expect(JSON.stringify(owner)).not.toContain("Mona");
+
+    const placed = await ordersModule.placeOrder(
+      await basket([{ variantId: ids.lampVariant, quantity: 1 }, { variantId: ids.kettleVariant, quantity: 1 }], ids.shopper),
+      { ...DETAILS, userId: ids.shopper, giftClaims: [{ token, productId: String(ids.kettle) }] },
+    );
+
+    /* Ordered, on its way: still nothing. */
+    owner = await wishlistsModule.itemsForOwner(ids.admin, list.id);
+    expect(owner.items.map(item => item.giftFrom)).toEqual([null, null]);
+
+    /* The lamp arrives: its giver's name, and the kettle still nothing. */
+    await db.update(orderItems).set({ deliveredAt: new Date() })
+      .where(and(eq(orderItems.orderId, placed.order.id), eq(orderItems.productId, ids.lamp)));
+    owner = await wishlistsModule.itemsForOwner(ids.admin, list.id);
+    const fromOf = (productId: number) => owner.items.find(item => item.productId === String(productId))!.giftFrom;
+    expect(fromOf(ids.lamp)).toEqual({ name: "Aunt Mona" });
+    expect(fromOf(ids.kettle)).toBeNull();
+
+    /* The kettle arrives: from someone, the signed-out claim having named nobody. */
+    await db.update(orderItems).set({ deliveredAt: new Date() })
+      .where(and(eq(orderItems.orderId, placed.order.id), eq(orderItems.productId, ids.kettle)));
+    owner = await wishlistsModule.itemsForOwner(ids.admin, list.id);
+    expect(fromOf(ids.kettle)).toEqual({ name: null });
+
+    await db.delete(wishlistItems);
+    await db.delete(wishlists);
+  });
+
+  it("lets go of the chosen name with the claim, and before 0092 claims as it did with no name kept", async () => {
+    const wishlistsModule = await import("./wishlists.js");
+    const token = `tok-release-${Date.now()}`;
+    const [list] = await db.insert(wishlists).values({
+      userId: ids.admin, title: "Eid", visibility: "public", shareToken: token,
+    }).returning();
+    const [item] = await db.insert(wishlistItems).values({ wishlistId: list.id, productId: String(ids.lamp) }).returning();
+
+    await wishlistsModule.claimItem(token, String(ids.lamp), ids.shopper, "Mona");
+    await wishlistsModule.releaseClaim(token, String(ids.lamp), ids.shopper);
+    expect(await db.execute(sql`select count(*)::int as n from wishlist_gift_givers where item_id = ${item.id}`))
+      .toMatchObject({ rows: [{ n: 0 }] });
+    /* The next giver writes their own, anonymously here. */
+    await wishlistsModule.claimItem(token, String(ids.lamp), ids.acmeOwner, null);
+    expect((await wishlistsModule.publicListByToken(token, ids.acmeOwner))!.items[0].yourName).toBeNull();
+    await wishlistsModule.releaseClaim(token, String(ids.lamp), ids.acmeOwner);
+
+    /* With the table not yet pasted: no choice offered, the claim still works, the owner told nothing. */
+    await db.execute(sql`alter table wishlist_gift_givers rename to wishlist_gift_givers_away`);
+    wishlistsModule.forgetGiverReadiness();
+    try {
+      expect((await wishlistsModule.publicListByToken(token, ids.shopper))!.namesOpen).toBe(false);
+      await wishlistsModule.claimItem(token, String(ids.lamp), ids.shopper, "Mona");
+      expect((await wishlistsModule.publicListByToken(token, ids.shopper))!.items[0].state).toBe("claimed");
+      expect((await wishlistsModule.itemsForOwner(ids.admin, list.id)).items[0].giftFrom).toBeNull();
+    } finally {
+      await db.execute(sql`alter table wishlist_gift_givers_away rename to wishlist_gift_givers`);
+      wishlistsModule.forgetGiverReadiness();
+    }
+    await db.delete(wishlistItems);
+    await db.delete(wishlists);
+  });
+
   it("matches a device's claim only while it still stands, and only for what the order bought", async () => {
     const token = `tok-lapsed-${Date.now()}`;
     const [list] = await db.insert(wishlists).values({

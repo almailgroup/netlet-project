@@ -7447,6 +7447,57 @@ order (`giftClaims`, `HeldClaim`); the server marks one bought only while the
 hold still stands, still names nobody, and the order has that product. Only a
 signed-in claim can be let go, which the card says before the press.
 
+**A giver chooses whether the gift says who it is from, on the owner's word**
+("the user that wants to buy another user's wishlist can choose whether they
+want their profile to show as public or private"; migration 0092,
+`wishlist_gift_givers`, approved as shown). The owner's four answers are the
+rule (`giverNameProblem`, `cleanGiverName`, `suggestedGiverName` in
+`Shared/commerce/wishlist.ts`; the app's `GiverName`, on the same cases):
+
+- **The list's owner sees it only once the gift is delivered**, so the
+  surprise lasts until the gift does: "Arrived as a gift from Uncle Salem", or
+  "… from someone" for a giver who stayed anonymous, on the owner's list
+  (`giftFrom` on `wishlists.get`, `WishlistManager` and the app's
+  `WishlistDetailBody`). Nothing before: claimed, ordered and on its way all
+  read as they always did, and nobody else is told what anybody chose.
+- **The name is one the giver types**, held to `GIVER_NAME_MAX` (60, counted
+  as a person sees it) and the contact filter, since the owner reads it; the
+  box starts with the account's first name.
+- **Public is chosen to start**: "Who is it from?" on the gift page is two
+  radios, Show my name with the box, or Stay anonymous — one choice for the
+  page, applied to every claim pressed on it (`GiverChoice` in `GiftList.tsx`,
+  the app's `giverChoice` in `GiftListsView`). A name that cannot be shown is
+  said under the box with the press, which takes focus, and claims nothing.
+- **A giver who is not signed in is always anonymous** — nothing would say the
+  name was theirs — and is offered "Sign in to show your name", back to the
+  list; the server drops a name sent without a session.
+
+**The row is the claim's**: written in the claim's own transaction (a later
+giver's claim on a lapsed hold replaces it), gone with a released claim, and
+given the order's id at checkout (`markClaimsBought`'s `orderId`, a signed-out
+claim's included, so it reads "from someone"). The owner's read is two plain
+reads — the givers with an order, then which of those order lines are
+delivered. The giver's own row says what they chose ("They'll see it's from
+Uncle Salem", `yourName` beside `claimedByYou`, a fact about them alone). **A
+table of its own, not columns on `wishlist_items`**: every read of an item
+names every column Drizzle knows, and the giver names stay out of every read
+that already tells the owner nothing. **Closed, not broken, until 0092 is
+pasted** (`giverNamesReady`): `namesOpen` is false, the choice is not drawn,
+claims work as before and the owner is told nothing. `orders.test.ts` holds
+the whole flow against a real Postgres (a refused name claiming nothing, a
+signed-out name dropped, nothing told before delivery, the name after it, a
+release taking the name, and the table renamed away). Walked on a production
+build against a local Postgres at 320, 390 and 1440 in both languages: the
+guest told they stay anonymous with the sign-in back to the list, Salem's
+first name in the box, a phone number refused under it with focus and nothing
+claimed, the fix clearing it, the lamp claimed as Uncle Salem and the charger
+anonymously, and once the lamp was delivered Noura's list saying who it came
+from and the charger, still on its way, saying nothing; axe clean and no
+sideways scroll. The app's recordings carry the new fields as the server sends
+them, and `GiverNameTests` decodes both shapes. The privacy policy says what
+is kept and who sees it (`privacy.keep.gifts`), and `LEGAL_UPDATED` moved. Not
+yet seen on a phone from this sandbox.
+
 **A present with sizes asks which before it is claimed.** It put the first
 variant in stock in the bag, so a shirt wished for in M went out in S. The row
 draws the shop's `Select` of the variants (sold-out ones disabled) under the

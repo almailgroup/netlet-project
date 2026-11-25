@@ -30,11 +30,13 @@
  * against a real database.
  */
 import { randomBytes } from "node:crypto";
-import { and, eq, gte, inArray, isNull, like, lt, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
 import { outer } from "./sqlRefs.js";
 import {
   customerPreferences,
+  orderItems,
   savedProducts,
+  wishlistGiftGivers,
   wishlistItems,
   wishlists,
 } from "../../database/schema.js";
@@ -45,6 +47,10 @@ import {
   MAX_ITEMS_PER_LIST,
   MAX_LISTS_PER_SHOPPER,
   claimStateFor,
+  cleanGiverName,
+  type GiftFrom,
+  giverNameProblem,
+  type GiverNameProblem,
   type HeldClaim,
   normalisePhone,
   type OwnerListView,
@@ -65,7 +71,8 @@ export type WishlistRefusal =
   | "listFull"
   | "phoneInvalid"
   | "phoneTaken"
-  | "alreadyClaimed";
+  | "alreadyClaimed"
+  | GiverNameProblem;
 
 export class WishlistError extends Error {
   constructor(readonly reason: WishlistRefusal) {
@@ -86,6 +93,76 @@ async function db() {
   const database = await getDb();
   if (!database) throw new Error("wishlists: no database configured");
   return database;
+}
+
+type Database = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
+/* ------------------------------------------------- who it is from (0092) --- */
+
+/* Once the table is found it stays found; while it is missing it is asked
+   about again a minute later, not on every read. */
+const ASK_AGAIN_MS = 60_000;
+let giversPresent = false;
+let giversCheckedAt = 0;
+
+/**
+ * Has migration 0092 been pasted? Until it is, nobody is offered the choice of
+ * a name (`namesOpen`), a claim keeps none and the owner is told nothing —
+ * wishlists work as they did. Asked before a write rather than caught after
+ * one, because a failed insert inside a transaction aborts the rest of it.
+ */
+export async function giverNamesReady(database: Database | Tx): Promise<boolean> {
+  if (giversPresent) return true;
+  if (giversCheckedAt !== 0 && Date.now() - giversCheckedAt < ASK_AGAIN_MS) return false;
+  const result = await database.execute<{ ready: boolean }>(
+    sql`select to_regclass('public.wishlist_gift_givers') is not null as ready`,
+  );
+  const rows = Array.isArray(result) ? result : (result as { rows: { ready: boolean }[] }).rows;
+  giversPresent = Boolean(rows[0]?.ready);
+  giversCheckedAt = Date.now();
+  return giversPresent;
+}
+
+/** For tests that rename the table away and back. */
+export function forgetGiverReadiness(): void {
+  giversPresent = false;
+  giversCheckedAt = 0;
+}
+
+/**
+ * Who each delivered gift on a list is from, for its owner and nobody else.
+ *
+ * Only an item whose giver row names the order that bought it, and only once
+ * that order's line for the product has been delivered: until then the owner
+ * is told nothing, as before, so the surprise lasts until the gift does. Two
+ * plain reads rather than a correlated subquery — the giver rows, then which
+ * of their order lines have arrived.
+ */
+async function giftsFromFor(
+  database: Database,
+  items: { id: number; productId: string }[],
+): Promise<Map<number, GiftFrom>> {
+  const found = new Map<number, GiftFrom>();
+  if (items.length === 0 || !(await giverNamesReady(database))) return found;
+  const givers = await database
+    .select({ itemId: wishlistGiftGivers.itemId, giverName: wishlistGiftGivers.giverName, orderId: wishlistGiftGivers.orderId })
+    .from(wishlistGiftGivers)
+    .where(and(inArray(wishlistGiftGivers.itemId, items.map(item => item.id)), isNotNull(wishlistGiftGivers.orderId)));
+  if (givers.length === 0) return found;
+  const orderIds = [...new Set(givers.map(giver => giver.orderId as number))];
+  const arrived = await database
+    .select({ orderId: orderItems.orderId, productId: orderItems.productId })
+    .from(orderItems)
+    .where(and(inArray(orderItems.orderId, orderIds), isNotNull(orderItems.deliveredAt)));
+  const delivered = new Set(arrived.map(line => `${line.orderId}:${line.productId}`));
+  const productOf = new Map(items.map(item => [item.id, item.productId]));
+  for (const giver of givers) {
+    if (delivered.has(`${giver.orderId}:${productOf.get(giver.itemId)}`)) {
+      found.set(giver.itemId, { name: giver.giverName });
+    }
+  }
+  return found;
 }
 
 /* --------------------------------------------------------- the owner --- */
@@ -132,7 +209,11 @@ export async function shareTokenFor(userId: number, listId: number): Promise<str
   return row.visibility === "public" ? row.token : null;
 }
 
-/** What the owner sees of one list: the wishes, and nothing about claims. */
+/**
+ * What the owner sees of one list: the wishes, and nothing about claims — but
+ * for a gift that has arrived, who it is from (`giftFrom`: the name the giver
+ * chose, or null for "someone"). Never before it is delivered.
+ */
 export async function itemsForOwner(userId: number, listId: number) {
   const database = await db();
   const [list] = await database
@@ -153,7 +234,8 @@ export async function itemsForOwner(userId: number, listId: number) {
     .where(eq(wishlistItems.wishlistId, listId))
     .orderBy(wishlistItems.createdAt, wishlistItems.id);
 
-  return { list, items };
+  const from = await giftsFromFor(database, items);
+  return { list, items: items.map(item => ({ ...item, giftFrom: from.get(item.id) ?? null })) };
 }
 
 export async function createList(userId: number, title: string): Promise<number> {
@@ -558,8 +640,10 @@ async function publicFrom(
   list: { id: number; title: string; ownerName: string | null; shareToken: string },
   viewerId: number | null,
 ): Promise<PublicListView> {
-  const items = await (await db())
+  const database = await db();
+  const items = await database
     .select({
+      id: wishlistItems.id,
       productId: wishlistItems.productId,
       note: wishlistItems.note,
       quantity: wishlistItems.quantity,
@@ -572,10 +656,27 @@ async function publicFrom(
     .orderBy(wishlistItems.createdAt, wishlistItems.id);
 
   const now = new Date();
+  const yours = (item: (typeof items)[number]) =>
+    viewerId !== null && item.claimedBy === viewerId && claimStateFor(item, now) === "claimed";
+
+  /* The name a viewer chose for their own claims, and only theirs: the one
+     thing about a giver row that is safe to say is what *you* said. */
+  const namesOpen = await giverNamesReady(database);
+  const mine = items.filter(yours).map(item => item.id);
+  const chosen = new Map<number, string | null>();
+  if (namesOpen && mine.length > 0) {
+    const rows = await database
+      .select({ itemId: wishlistGiftGivers.itemId, giverName: wishlistGiftGivers.giverName })
+      .from(wishlistGiftGivers)
+      .where(inArray(wishlistGiftGivers.itemId, mine));
+    for (const row of rows) chosen.set(row.itemId, row.giverName);
+  }
+
   return {
     token: list.shareToken,
     title: list.title,
     ownerName: list.ownerName,
+    namesOpen,
     items: items.map(item => ({
       productId: item.productId,
       note: item.note,
@@ -584,9 +685,8 @@ async function publicFrom(
       // somebody else pressed the button, and `claimedBy` never leaves as an
       // id — only as the one boolean that is a fact about the viewer.
       state: claimStateFor(item, now),
-      claimedByYou: viewerId !== null
-        && item.claimedBy === viewerId
-        && claimStateFor(item, now) === "claimed",
+      claimedByYou: yours(item),
+      yourName: yours(item) ? chosen.get(item.id) ?? null : null,
     })),
   };
 }
@@ -690,12 +790,27 @@ export async function publicListByToken(token: string, viewerId: number | null =
  * Reached by token rather than by list id, because the person doing it is
  * usually signed out — the token is the capability, and a claim on a list
  * nobody published is refused for the same reason reading one is.
+ *
+ * **Who it is from goes with it** (migration 0092): `shownAs` is the name the
+ * giver typed to be shown to the owner once the gift arrives, or null to stay
+ * anonymous. A giver who is not signed in is always anonymous, whatever was
+ * sent — nothing would say the name was theirs — and a name is checked before
+ * anything is claimed, so a refused name claims nothing. The giver row is
+ * written in the claim's own transaction, so a claim never stands with
+ * somebody else's name from an earlier hold on it.
  */
 export async function claimItem(
   token: string,
   productId: string,
   byUserId: number | null,
+  shownAs: string | null = null,
 ): Promise<void> {
+  const name = byUserId === null || shownAs === null ? null : cleanGiverName(shownAs);
+  if (name !== null) {
+    const problem = giverNameProblem(name);
+    if (problem) throw new WishlistError(problem);
+  }
+
   const database = await db();
   const [list] = await database
     .select({ id: wishlists.id })
@@ -703,13 +818,27 @@ export async function claimItem(
     .where(and(eq(wishlists.shareToken, token), eq(wishlists.visibility, "public")));
   if (!list) throw new WishlistError("notFound");
 
+  const namesOpen = await giverNamesReady(database);
+  await database.transaction(async tx => {
+    const [claimed] = await claimTheItem(tx, list.id, productId, byUserId);
+    if (!claimed) throw new WishlistError("alreadyClaimed");
+    if (!namesOpen) return;
+    await tx
+      .insert(wishlistGiftGivers)
+      .values({ itemId: claimed.id, giverName: name, orderId: null })
+      .onConflictDoUpdate({ target: wishlistGiftGivers.itemId, set: { giverName: name, orderId: null, updatedAt: new Date() } });
+  });
+}
+
+/** The claim's write, with its predicate; see `claimItem`. */
+function claimTheItem(tx: Tx, listId: number, productId: string, byUserId: number | null) {
   const lapsed = new Date(Date.now() - CLAIM_HOLD_DAYS * 24 * 60 * 60 * 1000);
-  const updated = await database
+  return tx
     .update(wishlistItems)
     .set({ claimedAt: new Date(), claimedBy: byUserId })
     .where(
       and(
-        eq(wishlistItems.wishlistId, list.id),
+        eq(wishlistItems.wishlistId, listId),
         eq(wishlistItems.productId, productId),
         isNull(wishlistItems.boughtAt),
         /*
@@ -727,8 +856,6 @@ export async function claimItem(
       ),
     )
     .returning({ id: wishlistItems.id });
-
-  if (updated.length === 0) throw new WishlistError("alreadyClaimed");
 }
 
 /**
@@ -747,28 +874,36 @@ export async function claimItem(
  * and is for something in this order. It then names this account, so the
  * purchase has a name like any other. Matched only when it is still standing,
  * because a lapsed one may have been taken since by somebody else's device.
+ *
+ * **And the order is written beside who the gift is from** (migration 0092),
+ * which is how the owner's read learns it has arrived: a giver row gains this
+ * order's id, and an item bought with no row — claimed before the table, or
+ * signed out — gains one with no name, so it reads to the owner as "From
+ * someone" once it is delivered.
  */
 export async function markClaimsBought(
   database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   userId: number,
   productIds: string[],
   heldHere: HeldClaim[] = [],
+  orderId: number | null = null,
 ): Promise<void> {
   if (productIds.length === 0) return;
   const now = new Date();
-  await database
+  const bought = await database
     .update(wishlistItems)
     .set({ boughtAt: now })
     .where(and(
       eq(wishlistItems.claimedBy, userId),
       inArray(wishlistItems.productId, productIds),
       isNull(wishlistItems.boughtAt),
-    ));
+    ))
+    .returning({ id: wishlistItems.id });
 
   const inOrder = new Set(productIds);
   const lapsed = new Date(now.getTime() - CLAIM_HOLD_DAYS * 24 * 60 * 60 * 1000);
   for (const held of heldHere.filter(claim => inOrder.has(claim.productId)).slice(0, MAX_HELD_CLAIMS)) {
-    await database
+    const taken = await database
       .update(wishlistItems)
       .set({ boughtAt: now, claimedBy: userId })
       .where(and(
@@ -777,8 +912,16 @@ export async function markClaimsBought(
         isNull(wishlistItems.claimedBy),
         isNull(wishlistItems.boughtAt),
         gte(wishlistItems.claimedAt, lapsed),
-      ));
+      ))
+      .returning({ id: wishlistItems.id });
+    bought.push(...taken);
   }
+
+  if (orderId === null || bought.length === 0 || !(await giverNamesReady(database))) return;
+  await database
+    .insert(wishlistGiftGivers)
+    .values(bought.map(item => ({ itemId: item.id, giverName: null, orderId })))
+    .onConflictDoUpdate({ target: wishlistGiftGivers.itemId, set: { orderId, updatedAt: now } });
 }
 
 /**
@@ -798,15 +941,23 @@ export async function releaseClaim(token: string, productId: string, byUserId: n
     .where(and(eq(wishlists.shareToken, token), eq(wishlists.visibility, "public")));
   if (!list) throw new WishlistError("notFound");
 
-  await database
-    .update(wishlistItems)
-    .set({ claimedAt: null, claimedBy: null })
-    .where(
-      and(
-        eq(wishlistItems.wishlistId, list.id),
-        eq(wishlistItems.productId, productId),
-        eq(wishlistItems.claimedBy, byUserId),
-        isNull(wishlistItems.boughtAt),
-      ),
-    );
+  /* The name chosen goes with the claim, in the same transaction: an item let
+     go of is nobody's gift, and the next giver writes their own. */
+  const namesOpen = await giverNamesReady(database);
+  await database.transaction(async tx => {
+    const released = await tx
+      .update(wishlistItems)
+      .set({ claimedAt: null, claimedBy: null })
+      .where(
+        and(
+          eq(wishlistItems.wishlistId, list.id),
+          eq(wishlistItems.productId, productId),
+          eq(wishlistItems.claimedBy, byUserId),
+          isNull(wishlistItems.boughtAt),
+        ),
+      )
+      .returning({ id: wishlistItems.id });
+    if (!namesOpen || released.length === 0) return;
+    await tx.delete(wishlistGiftGivers).where(inArray(wishlistGiftGivers.itemId, released.map(item => item.id)));
+  });
 }

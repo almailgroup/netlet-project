@@ -60,7 +60,7 @@ import { MAX_AFFILIATE_PERCENT, MIN_AFFILIATE_PAYOUT_FILS } from "../../../Share
 import { MAX_GRANT_MONTHS, MAX_GRANT_NOTE } from "../../../Shared/commerce/membership.js";
 import { VOUCHER_KINDS } from "../../../Shared/commerce/vouchers.js";
 import { FILS_PER_POINT, MIN_CASH_OUT_POINTS, PRODUCT_LINK_DAYS } from "../../../Shared/commerce/referral.js";
-import { CLAIM_HOLD_DAYS, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../../../Shared/commerce/wishlist.js";
+import { CLAIM_HOLD_DAYS, GIVER_NAME_MAX, MAX_ITEMS_PER_LIST, MAX_LISTS_PER_SHOPPER } from "../../../Shared/commerce/wishlist.js";
 import { ASK_WINDOW_DAYS, MAX_NOTE as MAX_OFFER_NOTE, OFFER_WINDOW_DAYS } from "../../../Shared/commerce/priceOffers.js";
 import { SUBSCRIPTION_INTERVALS } from "../../../Shared/commerce/subscriptions.js";
 import { FOLD_FROM, FOLD_MARKS, FOLD_TO, MAX_QUERY_WORDS } from "../../../Shared/commerce/search.js";
@@ -285,6 +285,7 @@ export function buildResources(): Record<string, string> {
         maxLists: MAX_LISTS_PER_SHOPPER,
         maxListItems: MAX_ITEMS_PER_LIST,
         claimHoldDays: CLAIM_HOLD_DAYS,
+        giverNameMax: GIVER_NAME_MAX,
         askWindowDays: ASK_WINDOW_DAYS,
         offerWindowDays: OFFER_WINDOW_DAYS,
         maxOfferNote: MAX_OFFER_NOTE,

@@ -351,6 +351,42 @@ export const wishlistItems = pgTable(
 );
 
 /**
+ * Who a gift off somebody's list is from, as the giver chose to be shown
+ * (migration 0092, on the owner's word: "the user that wants to buy another
+ * user's wishlist can choose whether they want their profile to show as
+ * public or private").
+ *
+ * One row per claimed item, written when it is claimed and gone when the
+ * claim is let go. `giver_name` is the name the giver typed — null is
+ * anonymous, and a giver who is not signed in is always anonymous — and
+ * `order_id` is the order that bought it, written at checkout, which is what
+ * tells the owner's read the gift has arrived. **The owner is shown it only
+ * once that order's line for the product is delivered**, so the surprise
+ * lasts until the gift does.
+ *
+ * A table of its own rather than columns on `wishlist_items`, for two reasons
+ * that both matter: every read of an item names every column Drizzle knows,
+ * so a column added before the paste would fail every wishlist read until it,
+ * where a missing table reads as nobody named; and it keeps giver names out of
+ * every existing read of the items, which already decline to tell the owner
+ * anything about claims.
+ */
+export const wishlistGiftGivers = pgTable(
+  "wishlist_gift_givers",
+  {
+    itemId: integer("item_id")
+      .primaryKey()
+      .references(() => wishlistItems.id, { onDelete: "cascade" }),
+    /** What the giver typed to be shown as; null is anonymous. */
+    giverName: varchar("giver_name", { length: 60 }),
+    /** The order it was bought in, once it was. */
+    orderId: integer("order_id").references(() => orders.id, { onDelete: "set null" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  table => [index("wishlist_gift_givers_order_idx").on(table.orderId)]
+);
+
+/**
  * Products a shopper asked to be told about.
  *
  * Distinct from `savedProducts`: saving is "I might buy this", following is

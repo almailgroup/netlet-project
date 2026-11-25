@@ -538,6 +538,18 @@ private struct WishlistDetailBody: View {
                     } else {
                         Text(name).font(.inter(14, .bold)).foregroundStyle(Brand.muted)
                     }
+                    /* Who a gift that has arrived is from, as its giver chose
+                       (migration 0092) — never before it arrives. */
+                    if let from = item.giftFrom {
+                        Label(from.name.map { l.t("wish.giftFrom", ["name": $0]) } ?? l.t("wish.giftFromSomeone"), systemImage: "gift")
+                            .font(.inter(12, .bold))
+                            .foregroundStyle(Brand.success)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.successFill))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 3)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 IconButton(symbol: "trash", label: l.t("wish.removeItem", ["name": name.isEmpty ? item.productId : name]), role: .destructive) {

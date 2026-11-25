@@ -29,6 +29,7 @@
  * database; `Shared/auth/rateLimit.ts` holds the policy and the ceiling for
  * this door is `MAX_LOOKUPS_PER_ADDRESS`.
  */
+import { contactFindings } from "./contactFilter.js";
 import type { Product } from "./types.js";
 
 /* ------------------------------------------------------------- the key --- */
@@ -152,6 +153,63 @@ export type HeldClaim = { token: string; productId: string };
 /** The most held claims one order may carry — far more than a family buys at once. */
 export const MAX_HELD_CLAIMS = 50;
 
+/* ---------------------------------------------------- who it is from --- */
+
+/**
+ * Whether a gift says who it is from, the giver's choice (migration 0092, on
+ * the owner's word: "the user that wants to buy another user's wishlist can
+ * choose whether they want their profile to show as public or private").
+ *
+ * The owner's four answers are the rule: **the list's owner sees the name only
+ * once the gift is delivered**, so the surprise lasts until the gift does;
+ * **the name is one the giver types**, not their account's; **public is chosen
+ * to start**, with the account's first name in the box; and **a giver who is
+ * not signed in is always anonymous**, since nothing would say the name was
+ * theirs. Anonymous reads to the owner as "From someone".
+ */
+export const GIVER_NAME_MAX = 60;
+
+/** Why a name typed to be shown on a gift cannot be: a message key's last part. */
+export type GiverNameProblem = "giverNameNeeded" | "giverNameTooLong" | "giverNameContact";
+
+/** The name as it will be kept: composed, trimmed, its runs of space one. */
+export function cleanGiverName(raw: string | null | undefined): string {
+  return (raw ?? "").normalize("NFC").trim().replace(/\s+/g, " ");
+}
+
+/**
+ * What is wrong with a name typed to be shown, or null.
+ *
+ * Held to the contact filter, because the owner reads it: a phone number in
+ * the "from" box is a way to reach somebody off the shop, and the box is not
+ * for that. Counted in characters a person sees (code points), so an Arabic
+ * name is not cut short by how it is stored.
+ */
+export function giverNameProblem(raw: string | null | undefined): GiverNameProblem | null {
+  const name = cleanGiverName(raw);
+  if (name.length === 0) return "giverNameNeeded";
+  if ([...name].length > GIVER_NAME_MAX) return "giverNameTooLong";
+  if (contactFindings(name).length > 0) return "giverNameContact";
+  return null;
+}
+
+/**
+ * The name a signed-in giver's box starts with: the first word of what their
+ * account is called, or nothing for an account with no name. Only a start —
+ * what is kept is what they leave in the box.
+ */
+export function suggestedGiverName(accountName: string | null | undefined): string {
+  const first = cleanGiverName(accountName).split(" ")[0] ?? "";
+  return [...first].slice(0, GIVER_NAME_MAX).join("");
+}
+
+/**
+ * Who a delivered gift is from, as the owner is told it: the name the giver
+ * chose, or null for "someone". Absent (`null` from the caller) until the gift
+ * has arrived.
+ */
+export type GiftFrom = { name: string | null };
+
 export type ClaimState = "available" | "claimed" | "bought";
 
 export type WishlistItemFacts = {
@@ -240,6 +298,11 @@ export type PublicListView = {
   /** Null when the owner did not publish a name. */
   ownerName: string | null;
   items: PublicItemView[];
+  /**
+   * Whether a giver may say who a gift is from. False until migration 0092 is
+   * pasted, when nothing could keep the name, so the choice is not offered.
+   */
+  namesOpen: boolean;
 };
 
 export type PublicItemView = {
@@ -262,6 +325,12 @@ export type PublicItemView = {
    * cost of not making people register to buy a present.
    */
   claimedByYou: boolean;
+  /**
+   * Who *this* viewer said their gift is from: the name they typed, or null
+   * for anonymous. Only ever set beside `claimedByYou`, being a fact about the
+   * viewer for the same reason; null for everybody else.
+   */
+  yourName: string | null;
 };
 
 /**

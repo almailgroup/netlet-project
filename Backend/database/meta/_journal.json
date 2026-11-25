@@ -645,6 +645,13 @@
       "when": 1795202002575,
       "tag": "0091_bundle_agreements",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1795588023833,
+      "tag": "0092_wishlist_gift_givers",
+      "breakpoints": true
     }
   ]
 }

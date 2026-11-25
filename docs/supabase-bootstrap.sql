@@ -2467,6 +2467,23 @@ END $$;
 CREATE UNIQUE INDEX IF NOT EXISTS "bundle_agreements_unique" ON "bundle_agreements" USING btree ("bundle_id","vendor_id");
 CREATE INDEX IF NOT EXISTS "bundle_agreements_vendor_idx" ON "bundle_agreements" USING btree ("vendor_id");
 
+-- ===== 0092_wishlist_gift_givers.sql =====
+CREATE TABLE IF NOT EXISTS "wishlist_gift_givers" (
+	"item_id" integer PRIMARY KEY NOT NULL,
+	"giver_name" varchar(60),
+	"order_id" integer,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+DO $$ BEGIN
+  ALTER TABLE "wishlist_gift_givers" ADD CONSTRAINT "wishlist_gift_givers_item_id_wishlist_items_id_fk" FOREIGN KEY ("item_id") REFERENCES "public"."wishlist_items"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "wishlist_gift_givers" ADD CONSTRAINT "wishlist_gift_givers_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+CREATE INDEX IF NOT EXISTS "wishlist_gift_givers_order_idx" ON "wishlist_gift_givers" USING btree ("order_id");
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2518,6 +2535,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  92 AS migrations_in_this_file,
+  93 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   CLAIM_HOLD_DAYS,
   claimStateFor,
+  cleanGiverName,
+  GIVER_NAME_MAX,
+  giverNameProblem,
+  suggestedGiverName,
   formatPhone,
   giftLookup,
   LOOKUP_NAME_MAX,
@@ -156,5 +160,41 @@ describe("giftLookup", () => {
     expect(giftLookup("")).toBeNull();
     expect(giftLookup(undefined)).toBeNull();
     expect(giftLookup("a".repeat(LOOKUP_NAME_MAX + 1))).toBeNull();
+  });
+});
+
+/* Who a gift is from (migration 0092): the name a giver types, held to the
+   contact filter because the list's owner reads it. */
+describe("the name a gift is from", () => {
+  it("keeps a name as typed, its spaces tidied", () => {
+    expect(cleanGiverName("  Aunt   Mona ")).toBe("Aunt Mona");
+    expect(giverNameProblem("Aunt Mona")).toBeNull();
+    expect(giverNameProblem("خالتك منى")).toBeNull();
+    expect(giverNameProblem("The Al-Sabah family")).toBeNull();
+  });
+
+  it("needs a name to show one", () => {
+    expect(giverNameProblem("")).toBe("giverNameNeeded");
+    expect(giverNameProblem("   ")).toBe("giverNameNeeded");
+    expect(giverNameProblem(null)).toBe("giverNameNeeded");
+  });
+
+  it("counts what a person sees, so an Arabic name is not cut short", () => {
+    expect(giverNameProblem("م".repeat(GIVER_NAME_MAX))).toBeNull();
+    expect(giverNameProblem("م".repeat(GIVER_NAME_MAX + 1))).toBe("giverNameTooLong");
+  });
+
+  it("refuses a way to reach somebody off the shop", () => {
+    expect(giverNameProblem("Mona 99887766")).toBe("giverNameContact");
+    expect(giverNameProblem("mona@example.com")).toBe("giverNameContact");
+    expect(giverNameProblem("٩٩٨٨٧٧٦٦")).toBe("giverNameContact");
+    expect(giverNameProblem("insta @mona.k")).toBe("giverNameContact");
+  });
+
+  it("starts the box at the account's first name, never more of it", () => {
+    expect(suggestedGiverName("Noura Al-Sabah")).toBe("Noura");
+    expect(suggestedGiverName("  منى   الكندري ")).toBe("منى");
+    expect(suggestedGiverName(null)).toBe("");
+    expect(suggestedGiverName("")).toBe("");
   });
 });

@@ -1029,7 +1029,7 @@ export async function placeOrder(cartId: string, details: PlaceOrderDetails) {
        thing than an order that fails to exist. */
     if (details.userId) {
       const productIds = [...new Set(draft.lines.map(line => String(line.productId)))];
-      await markClaimsBought(db, details.userId, productIds, details.giftClaims ?? [])
+      await markClaimsBought(db, details.userId, productIds, details.giftClaims ?? [], order.id)
         .catch(error => console.error(`[orders] marking order ${order.id}'s wishlist claims bought failed`, error));
     }
 

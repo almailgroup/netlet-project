@@ -160,14 +160,52 @@ struct GiftList: Decodable, Identifiable, Sendable {
         /// available, claimed or bought.
         let state: String
         let claimedByYou: Bool
+        /// What *this* viewer said their gift is from: the name they typed,
+        /// or nil for anonymous (migration 0092). Only beside `claimedByYou`.
+        var yourName: String? = nil
     }
 
     let token: String
     let title: String
     let ownerName: String?
     let items: [Item]
+    /// Whether a giver may say who a gift is from; false until migration 0092
+    /// is pasted, and absent from an older server.
+    var namesOpen: Bool? = nil
 
     var id: String { token }
+}
+
+/// Who a gift off somebody's list is from, the giver's choice (migration
+/// 0092, on the owner's word): a name they type, shown to the list's owner
+/// once the gift arrives, or anonymous — "From someone". The Swift twin of
+/// `giverNameProblem`, `cleanGiverName` and `suggestedGiverName` in
+/// `Shared/commerce/wishlist.ts`, on the same cases; the server refuses the
+/// same names whatever the app says.
+enum GiverName {
+    static var maxLength: Int { ReferenceData.shared.rules.accountRules.giverNameMax ?? 60 }
+
+    /// Composed, trimmed, its runs of space one.
+    static func clean(_ raw: String?) -> String {
+        (raw ?? "").precomposedStringWithCanonicalMapping
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
+    /// The last part of the refusal's key (`wishlist.<problem>`), or nil.
+    static func problem(_ raw: String?) -> String? {
+        let name = clean(raw)
+        if name.isEmpty { return "giverNameNeeded" }
+        if name.unicodeScalars.count > maxLength { return "giverNameTooLong" }
+        if !ContactFilter.findings(name).isEmpty { return "giverNameContact" }
+        return nil
+    }
+
+    /// The box's start: the first word of the account's name, never more.
+    static func suggested(_ accountName: String?) -> String {
+        let first = clean(accountName).split(separator: " ").first.map(String.init) ?? ""
+        return String(String.UnicodeScalarView(first.unicodeScalars.prefix(maxLength)))
+    }
 }
 
 /// The presents a guest took on this phone — the web's `giftClaims`: the

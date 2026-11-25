@@ -13,19 +13,22 @@
             "id": 9,
             "productId": "216",
             "note": null,
-            "quantity": 1
+            "quantity": 1,
+            "giftFrom": null
           },
           {
             "id": 10,
             "productId": "10",
             "note": "Size M please",
-            "quantity": 1
+            "quantity": 1,
+            "giftFrom": null
           },
           {
             "id": 11,
             "productId": "223",
             "note": null,
-            "quantity": 1
+            "quantity": 1,
+            "giftFrom": null
           }
         ]
       }

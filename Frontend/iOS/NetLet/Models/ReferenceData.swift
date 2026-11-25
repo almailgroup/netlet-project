@@ -432,6 +432,8 @@ struct Rules: Decodable, Sendable {
         let maxLists: Int
         let maxListItems: Int
         let claimHoldDays: Int
+        /// The longest name a giver may show on a gift (`GIVER_NAME_MAX`).
+        var giverNameMax: Int? = nil
         let askWindowDays: Int
         let offerWindowDays: Int
         let maxOfferNote: Int

@@ -100,7 +100,7 @@
     "maxQuestion": 300
   },
   "legal": {
-    "updated": "2026-11-15",
+    "updated": "2026-11-25",
     "figures": {
       "days": 14,
       "commission": 10,
@@ -254,6 +254,9 @@
               },
               {
                 "key": "privacy.keep.views"
+              },
+              {
+                "key": "privacy.keep.gifts"
               }
             ]
           },

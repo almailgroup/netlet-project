@@ -11,23 +11,27 @@
             "note": null,
             "quantity": 1,
             "state": "available",
-            "claimedByYou": false
+            "claimedByYou": false,
+            "yourName": null
           },
           {
             "productId": "10",
             "note": "Size M please",
             "quantity": 1,
             "state": "available",
-            "claimedByYou": false
+            "claimedByYou": false,
+            "yourName": null
           },
           {
             "productId": "223",
             "note": null,
             "quantity": 1,
             "state": "available",
-            "claimedByYou": false
+            "claimedByYou": false,
+            "yourName": null
           }
-        ]
+        ],
+        "namesOpen": true
       }
     }
   }

@@ -43,9 +43,18 @@ import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { isMessageKey } from "@shared/i18n/dictionary";
-import { giftLookup, type GiftLookup } from "@shared/commerce/wishlist";
+import {
+  cleanGiverName,
+  GIVER_NAME_MAX,
+  giftLookup,
+  giverNameProblem,
+  suggestedGiverName,
+  type GiftLookup,
+  type GiverNameProblem,
+} from "@shared/commerce/wishlist";
+import { isolate } from "@/lib/isolate";
 import type { Product } from "@shared/commerce/types";
-import { AlertTriangle, Check, Gift, Lock, RotateCw, Search, ShoppingBag } from "lucide-react";
+import { AlertTriangle, Check, EyeOff, Gift, Lock, RotateCw, Search, ShoppingBag, UserRound } from "lucide-react";
 import { useId, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { toast } from "sonner";
@@ -251,17 +260,55 @@ type PublicList = {
   token: string;
   title: string;
   ownerName: string | null;
+  /** Whether a giver may say who a gift is from (migration 0092 pasted). */
+  namesOpen?: boolean;
   items: {
     productId: string; note: string | null; quantity: number;
     state: "available" | "claimed" | "bought"; claimedByYou: boolean;
+    /** What this viewer said their gift is from; null is anonymous. */
+    yourName?: string | null;
   }[];
 };
 
+/**
+ * What a claim pressed on this page says it is from: the name to show, or
+ * null to stay anonymous — or false when the name typed cannot be shown, in
+ * which case the box has said why and taken focus, and nothing is claimed.
+ */
+type GiverFor = () => { shownAs: string | null } | false;
+
 function ListCard({ list, onChanged }: { list: PublicList; onChanged: () => void }) {
   const { t } = useTranslation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const products = useProductsByIds(list.items.map(item => item.productId));
   const anyOpen = list.items.some(item => item.state === "available");
+  const namesOpen = list.namesOpen === true;
+
+  /*
+   * Who a gift is from, the giver's choice, on the owner's word (migration
+   * 0092): a name they type, shown to the list's owner once the gift arrives,
+   * or anonymous ("From someone"). Public is chosen to start, the account's
+   * first name in the box; a giver who is not signed in is anonymous. One
+   * choice for the page, applied to every claim pressed on it.
+   */
+  const [mode, setMode] = useState<"name" | "anonymous">("name");
+  const [typed, setTyped] = useState<string | null>(null);
+  const [nameProblem, setNameProblem] = useState<GiverNameProblem | null>(null);
+  const nameId = useId();
+  const shownName = typed ?? suggestedGiverName(user?.name);
+  const giverFor: GiverFor = () => {
+    if (!namesOpen || !isAuthenticated || mode === "anonymous") return { shownAs: null };
+    const problem = giverNameProblem(shownName);
+    if (problem) {
+      setNameProblem(problem);
+      const box = document.getElementById(nameId);
+      box?.focus();
+      box?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return false;
+    }
+    setNameProblem(null);
+    return { shownAs: cleanGiverName(shownName) };
+  };
 
   return (
     <section className="mt-6 rounded-[1.5rem] border border-[#d5dfeb] bg-white p-5 sm:p-7">
@@ -270,12 +317,26 @@ function ListCard({ list, onChanged }: { list: PublicList; onChanged: () => void
       </p>
       <h2 dir="auto" className="type-product mt-1 text-2xl text-[#0a285a]">{list.title}</h2>
       <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 ink-muted">
-        <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t("gift.secret")}
+        <Lock className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t(namesOpen ? "gift.secretUntilArrival" : "gift.secret")}
       </p>
       {/* Said before the press, not after: a claim made signed out cannot be
           let go (the server cannot tell it is yours), only waited out. */}
       {!isAuthenticated && anyOpen ? (
         <p className="mt-1 text-xs leading-5 ink-muted">{t("gift.signInToRelease")}</p>
+      ) : null}
+
+      {namesOpen && anyOpen ? (
+        <GiverChoice
+          token={list.token}
+          ownerName={list.ownerName}
+          signedIn={isAuthenticated}
+          mode={mode}
+          onMode={next => { setMode(next); setNameProblem(null); }}
+          name={shownName}
+          onName={value => { setTyped(value); if (nameProblem) setNameProblem(giverNameProblem(value)); }}
+          nameId={nameId}
+          problem={nameProblem}
+        />
       ) : null}
 
       {list.items.length === 0 ? (
@@ -292,6 +353,8 @@ function ListCard({ list, onChanged }: { list: PublicList; onChanged: () => void
               waiting={!products.settled && !products.byId.has(item.productId)}
               token={list.token}
               signedIn={isAuthenticated}
+              namesOpen={namesOpen}
+              giverFor={giverFor}
               onChanged={onChanged}
             />
           ))}
@@ -301,19 +364,120 @@ function ListCard({ list, onChanged }: { list: PublicList; onChanged: () => void
   );
 }
 
+/**
+ * "Who is it from?" — Show my name, with the name to show, or Stay anonymous.
+ * Two real radios in a named group, so the arrow keys move between them; a
+ * signed-out giver is told they stay anonymous and offered the sign-in, which
+ * comes back to this list.
+ */
+function GiverChoice({ token, ownerName, signedIn, mode, onMode, name, onName, nameId, problem }: {
+  token: string;
+  ownerName: string | null;
+  signedIn: boolean;
+  mode: "name" | "anonymous";
+  onMode: (mode: "name" | "anonymous") => void;
+  name: string;
+  onName: (value: string) => void;
+  nameId: string;
+  problem: GiverNameProblem | null;
+}) {
+  const { t } = useTranslation();
+  const groupName = useId();
+  const intro = ownerName ? t("gift.fromIntroNamed", { name: isolate(ownerName) }) : t("gift.fromIntro");
+  const choices = [
+    { value: "name" as const, label: t("gift.fromName"), note: t("gift.fromNameNote"), Icon: UserRound },
+    { value: "anonymous" as const, label: t("gift.fromAnonymous"), note: t("gift.fromAnonymousNote"), Icon: EyeOff },
+  ];
+
+  return (
+    <div className="mt-4 rounded-2xl border border-[#e7edf5] bg-[#f7f9fc] p-4">
+      <fieldset>
+        <legend className="text-sm font-extrabold text-[#0a285a]">{t("gift.fromTitle")}</legend>
+        <p className="mt-1 text-xs leading-5 ink-muted">{intro}</p>
+        {signedIn ? (
+          <>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {choices.map(({ value, label, note, Icon }) => {
+                const chosen = mode === value;
+                return (
+                  <label
+                    key={value}
+                    className={`flex cursor-pointer items-start gap-2.5 rounded-2xl border bg-white p-3 ${chosen ? "border-[#0a285a] shadow-[inset_0_0_0_1px_#0a285a]" : "border-[#d5dfeb] hover:bg-[#f0f2f5]"}`}
+                  >
+                    <input
+                      type="radio"
+                      name={groupName}
+                      value={value}
+                      checked={chosen}
+                      onChange={() => onMode(value)}
+                      className="mt-0.5 size-4 shrink-0 accent-[#0a285a]"
+                    />
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#0a285a]">
+                        <Icon className="size-3.5 shrink-0" aria-hidden />{label}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-5 ink-muted">{note}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            {mode === "name" ? (
+              <>
+                <label htmlFor={nameId} className="mt-3 block">
+                  <span className="block text-[12px] font-semibold ink-muted">{t("gift.fromNameLabel")}</span>
+                  <input
+                    id={nameId}
+                    value={name}
+                    onChange={event => onName(event.target.value)}
+                    /* A name types in its own language. */
+                    dir="auto"
+                    autoComplete="nickname"
+                    maxLength={GIVER_NAME_MAX * 2}
+                    aria-invalid={problem ? true : undefined}
+                    aria-describedby={problem ? `${nameId}-error` : undefined}
+                    className="glass-field mt-1 w-full rounded-full px-4 py-3 text-base"
+                  />
+                </label>
+                {problem ? (
+                  <p id={`${nameId}-error`} className="mt-1.5 text-xs font-semibold text-[#8c2f22]">{t(`wishlist.${problem}`)}</p>
+                ) : null}
+              </>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-[#2b3a55]">
+              <EyeOff className="mt-0.5 size-3.5 shrink-0" aria-hidden />{t("gift.fromSignedOut")}
+            </p>
+            <Link
+              href={`/signin?next=${encodeURIComponent(`/gifts/${token}`)}`}
+              className="mt-2 inline-flex min-h-10 items-center rounded-full border border-[#d5dfeb] bg-white px-4 text-[12px] font-extrabold text-[#0a285a] hover:bg-[#f0f2f5]"
+            >
+              {t("gift.fromSignIn")}
+            </Link>
+          </>
+        )}
+      </fieldset>
+    </div>
+  );
+}
+
 /** A variant as a giver chooses it: its option values, or its name. */
 function variantLabel(variant: Product["variants"][number]) {
   const values = variant.selectedOptions.map(option => option.value).filter(Boolean);
   return values.length ? values.join(" · ") : variant.title;
 }
 
-function GiftRow({ item, product, waiting, token, signedIn, onChanged }: {
+function GiftRow({ item, product, waiting, token, signedIn, namesOpen, giverFor, onChanged }: {
   item: PublicList["items"][number];
   product: Product | null;
   /** Its product has not been read yet, so nothing about it is known. */
   waiting: boolean;
   token: string;
   signedIn: boolean;
+  namesOpen: boolean;
+  giverFor: GiverFor;
   onChanged: () => void;
 }) {
   const { t } = useTranslation();
@@ -353,7 +517,9 @@ function GiftRow({ item, product, waiting, token, signedIn, onChanged }: {
       }
       return;
     }
-    claim.mutate({ token, productId: item.productId }, {
+    const giver = giverFor();
+    if (giver === false) return;
+    claim.mutate({ token, productId: item.productId, shownAs: giver.shownAs }, {
       onSuccess: () => {
         if (!signedIn) rememberClaim(token, item.productId);
         setTook(true);
@@ -483,6 +649,15 @@ function GiftRow({ item, product, waiting, token, signedIn, onChanged }: {
             </>
           )}
         </div>
+        {/* Who the giver said it is from, a fact about them alone. */}
+        {yours && namesOpen ? (
+          <p className="mt-1.5 flex items-center gap-1.5 text-xs leading-5 ink-muted">
+            {item.yourName ? <UserRound className="size-3.5 shrink-0" aria-hidden /> : <EyeOff className="size-3.5 shrink-0" aria-hidden />}
+            {item.claimedByYou && item.yourName
+              ? t("gift.yourFromName", { name: isolate(item.yourName) })
+              : t("gift.yourFromAnonymous")}
+          </p>
+        ) : null}
         {askChoice && !variant ? (
           <p id={`${selectId}-error`} className="mt-1.5 text-xs font-semibold text-[#8c2f22]">{t("gift.chooseFirst")}</p>
         ) : null}

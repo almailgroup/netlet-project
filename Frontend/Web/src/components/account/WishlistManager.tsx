@@ -487,6 +487,16 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                           {product ? (
                             <p className="text-xs font-semibold text-[#0a285a]">{formatMoney(product.priceRange.min, { locale })}</p>
                           ) : null}
+                          {/* Who a gift that has arrived is from, as its giver
+                              chose (migration 0092) — never before it arrives. */}
+                          {item.giftFrom ? (
+                            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-xl bg-[#d8ead8] px-3 py-1.5 text-[12px] font-extrabold text-[#2f5d33]">
+                              <Gift className="size-3.5 shrink-0" aria-hidden />
+                              {item.giftFrom.name
+                                ? t("wish.giftFrom", { name: isolated(item.giftFrom.name) })
+                                : t("wish.giftFromSomeone")}
+                            </p>
+                          ) : null}
                           {on ? (
                             <NoteField
                               listId={listId}

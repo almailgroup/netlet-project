@@ -263,8 +263,17 @@ export const wishlistsRouter = router({
    * against them, which is the only thing that later lets them release it.
    */
   claim: publicProcedure
-    .input(z.object({ token: z.string().min(8).max(64), productId: z.string().min(1).max(191) }))
-    .mutation(({ ctx, input }) => guard(() => claimItem(input.token, input.productId, ctx.user?.id ?? null))),
+    .input(z.object({
+      token: z.string().min(8).max(64),
+      productId: z.string().min(1).max(191),
+      /**
+       * The name to show the owner once it arrives, or null (or absent, as an
+       * installed app sends) to stay anonymous. Held to `giverNameProblem` in
+       * the service; a signed-out giver's is dropped there.
+       */
+      shownAs: z.string().max(400).nullable().optional(),
+    }))
+    .mutation(({ ctx, input }) => guard(() => claimItem(input.token, input.productId, ctx.user?.id ?? null, input.shownAs ?? null))),
 
   /** Let go of a claim. Signed in only; see `releaseClaim`. */
   release: protectedProcedure
