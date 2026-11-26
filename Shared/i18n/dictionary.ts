@@ -1380,6 +1380,7 @@ export const en = {
 
   // --- errors and 404 ------------------------------------------------
   "error.unexpected": "An unexpected error occurred.",
+  "error.network": "NetLet could not be reached. Try again in a moment.",
   "error.reload": "Reload page",
   "error.updated": "NetLet has just been updated",
   "error.updating": "Loading the newest version…",
@@ -2844,6 +2845,7 @@ export const ar: Record<ShopMessageKey, string> = {
 
   // --- errors and 404 ------------------------------------------------
   "error.unexpected": "حدث خطأ غير متوقع.",
+  "error.network": "تعذّر الوصول إلى نت‑لت. حاول مرة أخرى بعد قليل.",
   "error.reload": "إعادة تحميل الصفحة",
   "error.updated": "تم تحديث نت‑لت للتو",
   "error.updating": "جارٍ تحميل أحدث نسخة…",

@@ -10499,6 +10499,30 @@ the page had drawn. Three things said something false:
   `ReviewsFailedUITests`, through `-NetLetDemoOffline reviews.forProduct`).
   The web's is behind `QueryGate`.
 
+- **The help centre's answer that could not be read still leads somewhere.**
+  An issue chosen, an order picked and `support.selfHelp` failing left the
+  page with nothing under the order: in the app no answer, no Try again and
+  no person (a `try?`); on the web the error and no person, since the person
+  card waited for an answer. It says what failed with Try again now, and a
+  person stays one press away, as the next step (`IssueAnswer` in
+  `IssueCentre.tsx`, `IssueAnswer.test.ts`, which failed on the old
+  condition; the app's `answerFailed`, `HelpAnswerFailedUITests`, through
+  `-NetLetDemoOffline support.selfHelp`).
+
+- **A shopper never reads the browser's or the parser's words.** That walk
+  showed the help line as "Unexpected token 'd', "down" is not valid JSON":
+  `tError` passes on any message that is not a key, which is right for a
+  sentence the server wrote and wrong for a fetch that failed or a body that
+  was not JSON. `isTransportFailure` (`lib/transportFailure.ts`: each engine's
+  failed fetch, a parse error, tRPC's "Unable to transform response", the
+  client's own deadline, an abort) is said as `error.network` ("NetLet could
+  not be reached. Try again in a moment."), and an empty message as
+  `error.serverProblem`, in every one of the shop's fifty-odd `tError` calls
+  at once (`useTranslation.test.ts`, which failed on the old line). **A raw
+  message is never handed to `t()`**: `translate` gives back any string that
+  is not a key, so `t(error.message as …)` was the same leak; the wishlists'
+  and the price request's toasts go through `tError` now.
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s

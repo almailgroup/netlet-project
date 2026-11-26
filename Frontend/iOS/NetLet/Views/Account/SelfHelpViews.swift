@@ -378,6 +378,9 @@ struct IssueCentre: View {
     @State private var reference: String?
     @State private var lineId: Int?
     @State private var answer: SelfHelpAnswer?
+    /// The answer could not be read: said with Try again, and a person is
+    /// still one press away — it left nothing at all, no answer and no way on.
+    @State private var answerFailed: APIError?
     @State private var loading = false
     @State private var done: [API.Handover.Done] = []
     @State private var sentTo: Int?
@@ -408,6 +411,17 @@ struct IssueCentre: View {
                 orderPicker
             }
             if loading { ProgressView().tint(Brand.navy) }
+            if answer == nil, !loading, let answerFailed {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(l.t(answerFailed.messageKey(knownKey: Phrasebook.shared.has)))
+                        .font(.inter(14)).foregroundStyle(Brand.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(l.t("home.refreshCatalog")) { Task { await load() } }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .accessibilityIdentifier("help-answer-retry")
+                }
+                person(next: true)
+            }
             if let answer {
                 if answer.picksItem {
                     HelpItemPicker(items: answer.items) { picked in
@@ -541,6 +555,7 @@ struct IssueCentre: View {
         reference = nil
         lineId = nil
         answer = nil
+        answerFailed = nil
         done = []
         sentTo = nil
         if next == "account", app.session.isSignedIn { Task { await load() } }
@@ -550,7 +565,16 @@ struct IssueCentre: View {
         guard let issue else { return }
         loading = true
         defer { loading = false }
-        answer = try? await app.services.api.call(API.selfHelp, .init(issue: issue, reference: reference, lineId: lineId, locale: l.current.rawValue))
+        do {
+            answer = try await app.services.api.call(API.selfHelp, .init(issue: issue, reference: reference, lineId: lineId, locale: l.current.rawValue))
+            answerFailed = nil
+        } catch {
+            let failure = APIError.from(error)
+            if failure != .cancelled {
+                answer = nil
+                answerFailed = failure
+            }
+        }
     }
 
     /// A panel that needs words or photos opens the order on it.

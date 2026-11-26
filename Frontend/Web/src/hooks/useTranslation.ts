@@ -9,6 +9,7 @@
 import { useCustomer } from "@/contexts/CustomerContext";
 import { formatMoney } from "@/lib/format";
 import { useShownCurrency } from "@/hooks/useDisplayCurrency";
+import { isTransportFailure } from "@/lib/transportFailure";
 import { SHOP_CURRENCY, convertFromDinars } from "@shared/commerce/currency";
 import { isMessageKey, translate, type MessageKey } from "@shared/i18n/dictionary";
 import { useCallback } from "react";
@@ -27,10 +28,21 @@ export function useTranslation() {
    * The auth endpoints answer with a message key so the refusal can be read in
    * Arabic. Everything else — validation, configuration — comes back as
    * English prose and is shown as it arrived rather than replaced by a vaguer
-   * sentence that hides what went wrong.
+   * sentence that hides what went wrong. **Except what the browser or the
+   * parser said** — a fetch that failed, a body that was not JSON, NetLet's
+   * own deadline (`isTransportFailure`) — which is said as `error.network`:
+   * it told a shopper "Unexpected token 'd', "down" is not valid JSON". An
+   * empty message is `error.serverProblem`, never a blank line.
    */
   const tError = useCallback(
-    (message: string) => (isMessageKey(message) ? translate(locale, message) : message),
+    (message: string) =>
+      isMessageKey(message)
+        ? translate(locale, message)
+        : isTransportFailure(message)
+          ? translate(locale, "error.network")
+          : message.trim()
+            ? message
+            : translate(locale, "error.serverProblem"),
     [locale],
   );
 

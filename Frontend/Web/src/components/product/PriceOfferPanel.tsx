@@ -58,7 +58,7 @@ export function PriceOfferPanel({ variantId, listPrice, embedded = false, onSign
   /** Where a guest signs in, when the panel is somewhere that can offer it. */
   onSignIn?: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const money = useMoney();
   const { isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
@@ -101,12 +101,12 @@ export function PriceOfferPanel({ variantId, listPrice, embedded = false, onSign
     },
     /* The server's key, translated here. A sentence assembled on the server
        would be an English one on an Arabic page. */
-    onError: error => toast.error(t(error.message as MessageKey)),
+    onError: error => toast.error(tError(error.message)),
   });
 
   const withdraw = trpc.offers.withdraw.useMutation({
     onSuccess: refresh,
-    onError: error => toast.error(t(error.message as MessageKey)),
+    onError: error => toast.error(tError(error.message)),
   });
 
   // Nothing at all when this seller does not take requests on this product.

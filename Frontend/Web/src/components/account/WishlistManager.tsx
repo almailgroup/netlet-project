@@ -148,7 +148,7 @@ export function PhoneCard({ current, failed = false, onRetry, onSaved }: {
   onRetry?: () => void;
   onSaved: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const [value, setValue] = useState("");
   const save = trpc.wishlists.setPhone.useMutation();
 
@@ -162,7 +162,7 @@ export function PhoneCard({ current, failed = false, onRetry, onSaved }: {
         onSaved();
         toast.success(t(next === null ? "wish.phoneCleared" : "wish.phoneSaved"));
       },
-      onError: error => toast.error(t(error.message as "wishlist.phoneTaken")),
+      onError: error => toast.error(tError(error.message)),
     });
   };
 
@@ -233,7 +233,7 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
   onOpen: () => void;
   onChanged: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const [confirming, setConfirming] = useState<"unpublish" | "delete" | null>(null);
   const update = trpc.wishlists.update.useMutation();
   const remove = trpc.wishlists.remove.useMutation();
@@ -245,7 +245,7 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
   const setVisibility = (visibility: "private" | "public") =>
     update.mutate({ listId: list.id, visibility }, {
       onSuccess: () => { onChanged(); void link.refetch(); setConfirming(null); },
-      onError: error => toast.error(t(error.message as "wishlist.notFound")),
+      onError: error => toast.error(tError(error.message)),
     });
 
   /*
@@ -386,7 +386,7 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
         pending={remove.isPending}
         onConfirm={() => remove.mutate({ listId: list.id }, {
           onSuccess: () => { setConfirming(null); onChanged(); void utils.wishlists.wishedIds.invalidate(); },
-          onError: error => toast.error(t(error.message as "wishlist.notFound")),
+          onError: error => toast.error(tError(error.message)),
         })}
         onClose={() => setConfirming(null)}
       />
@@ -395,7 +395,7 @@ function ListRow({ list, hasPhone, onOpen, onChanged }: {
 }
 
 function NewList({ onCreated }: { onCreated: () => void }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const [title, setTitle] = useState("");
   const create = trpc.wishlists.create.useMutation();
 
@@ -407,7 +407,7 @@ function NewList({ onCreated }: { onCreated: () => void }) {
         if (!title.trim()) return;
         create.mutate({ title: title.trim() }, {
           onSuccess: () => { setTitle(""); onCreated(); },
-          onError: error => toast.error(t(error.message as "wishlist.tooManyLists")),
+          onError: error => toast.error(tError(error.message)),
         });
       }}
     >
@@ -434,7 +434,7 @@ function NewList({ onCreated }: { onCreated: () => void }) {
 
 /** One list: what is on it, and what can be added from Saved. */
 export function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) {
-  const { t, locale } = useTranslation();
+  const { t, tError, locale } = useTranslation();
   const on = useFeature("wishlists");
   const detail = trpc.wishlists.get.useQuery({ listId });
   const add = trpc.wishlists.addItem.useMutation();
@@ -463,7 +463,7 @@ export function ListDetail({ listId, onBack }: { listId: number; onBack: () => v
         void utils.customer.saved.list.invalidate();
         toast.success(answer.to === "saved" ? t("wish.movedToSaved") : t("wish.movedTo", { list: answer.title ?? "" }));
       },
-      onError: error => toast.error(t(error.message as "wishlist.listFull")),
+      onError: error => toast.error(tError(error.message)),
     });
 
   /*
@@ -621,7 +621,7 @@ export function ListDetail({ listId, onBack }: { listId: number; onBack: () => v
                         <button
                           onClick={() => add.mutate({ listId, productId: product.id }, {
                             onSuccess: () => { void detail.refetch(); void utils.wishlists.wishedIds.invalidate(); toast.success(t("wish.added", { list: detail.data?.list.title ?? "" })); },
-                            onError: error => toast.error(t(error.message as "wishlist.listFull")),
+                            onError: error => toast.error(tError(error.message)),
                           })}
                           disabled={already || add.isPending}
                           aria-label={already ? undefined : `${t("wish.add")}: ${product.title}`}
@@ -657,7 +657,7 @@ export function ListDetail({ listId, onBack }: { listId: number; onBack: () => v
               void utils.wishlists.wishedIds.invalidate();
               toast.success(t("wish.removed"));
             },
-            onError: error => toast.error(t(error.message as "wishlist.listFull")),
+            onError: error => toast.error(tError(error.message)),
           });
         }}
         onClose={() => setRemoving(null)}
@@ -697,7 +697,7 @@ function ItemPhoto({ product, href, waiting }: { product: Product | null; href: 
 function NoteField({ listId, productId, current, onSaved }: {
   listId: number; productId: string; current: string | null; onSaved: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const [value, setValue] = useState(current ?? "");
   const save = trpc.wishlists.addItem.useMutation();
 
@@ -707,7 +707,7 @@ function NoteField({ listId, productId, current, onSaved }: {
       /* Saved on leaving the box, so it says so — a field that saves with no
          word leaves somebody pressing around for a Save that is not there. */
       onSuccess: () => { onSaved(); toast.success(t("wish.savedToast")); },
-      onError: error => toast.error(t(error.message as "wishlist.notFound")),
+      onError: error => toast.error(tError(error.message)),
     });
   };
 

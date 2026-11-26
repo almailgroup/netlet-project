@@ -13,6 +13,8 @@
  * asks to sign in, coming back here.
  */
 import { useState } from "react";
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "../../../../../Backend/src/routes";
 import { Link, useLocation } from "wouter";
 import { LoaderCircle, PackageSearch } from "lucide-react";
 import { Thumb } from "@/components/product/Thumb";
@@ -24,8 +26,65 @@ import { trpc } from "@/lib/trpc";
 import { failedToLoad } from "@/lib/queryState";
 import { HELP_ISSUES, issueNeeds, type HelpIssue, type HelpPanel } from "@shared/commerce/selfService";
 
+type SelfHelpAnswer = inferRouterOutputs<AppRouter>["support"]["selfHelp"];
+
+/**
+ * The answer to an issue, and a person under it. **A person is one press away
+ * whatever the answer did**: the card was drawn only beside an answer, so an
+ * answer that could not be read left a sentence and no way on.
+ */
+export function IssueAnswer({ answer, pickingItem, reference, issue, lineId, done, onPickItem, onOpen, onDone }: {
+  answer: {
+    data: SelfHelpAnswer | undefined;
+    error: { message: string } | null;
+    isError: boolean;
+    isLoading: boolean;
+    isPlaceholderData: boolean;
+    refetch: () => unknown;
+  };
+  pickingItem: boolean;
+  reference: string | null;
+  issue: HelpIssue;
+  lineId: number | null;
+  done: DoneAct[];
+  onPickItem: (lineId: number) => void;
+  onOpen: (panel: HelpPanel) => void;
+  onDone: (act: DoneAct) => void;
+}) {
+  const { t, tError } = useTranslation();
+  const unread = failedToLoad(answer);
+  return (
+    <>
+      {answer.isLoading ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
+      {unread ? (
+        <div role="alert" className="flex flex-wrap items-center gap-3 text-[13px] font-semibold text-[#8c2f22]">
+          <span>{tError(answer.error?.message ?? "")}</span>
+          <button type="button" onClick={() => void answer.refetch()} className="inline-flex min-h-10 items-center rounded-full border border-[#0a285a]/25 bg-white px-4 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
+            {t("home.refreshCatalog")}
+          </button>
+        </div>
+      ) : null}
+      {pickingItem && answer.data ? <ItemPicker items={answer.data.items} onPick={onPickItem} /> : null}
+      {answer.data && !pickingItem ? (
+        <HelpAnswer reference={reference} answer={answer.data} items={answer.data.items} onOpen={onOpen} onDone={onDone} />
+      ) : null}
+      {(answer.data && !pickingItem) || unread ? (
+        <PersonCard
+          reference={reference}
+          issue={issue}
+          lineId={lineId}
+          done={done}
+          body={() => t(`help.issue.${issue}`)}
+          emphasis={unread || answer.data?.person === "next"}
+          ready
+        />
+      ) : null}
+    </>
+  );
+}
+
 export function IssueCentre({ className }: { className: string }) {
-  const { t, tError, locale } = useTranslation();
+  const { t, locale } = useTranslation();
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [issue, setIssue] = useState<HelpIssue | null>(null);
@@ -90,23 +149,17 @@ export function IssueCentre({ className }: { className: string }) {
 
       {ready ? (
         <div className="mt-4 space-y-3">
-          {answer.isLoading ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : null}
-          {answer.error ? <p role="alert" className="text-[13px] font-semibold text-[#8c2f22]">{tError(answer.error.message)}</p> : null}
-          {pickingItem && answer.data ? <ItemPicker items={answer.data.items} onPick={setLineId} /> : null}
-          {answer.data && !pickingItem ? (
-            <HelpAnswer reference={reference} answer={answer.data} items={answer.data.items} onOpen={open} onDone={act => setDone(current => [...current, act])} />
-          ) : null}
-          {answer.data && !pickingItem ? (
-            <PersonCard
-              reference={reference}
-              issue={issue}
-              lineId={lineId}
-              done={done}
-              body={() => t(`help.issue.${issue!}`)}
-              emphasis={answer.data.person === "next"}
-              ready
-            />
-          ) : null}
+          <IssueAnswer
+            answer={answer}
+            pickingItem={pickingItem}
+            reference={reference}
+            issue={issue!}
+            lineId={lineId}
+            done={done}
+            onPickItem={setLineId}
+            onOpen={open}
+            onDone={act => setDone(current => [...current, act])}
+          />
           {aboutOrder ? (
             <button type="button" onClick={() => { setReference(null); setLineId(null); setDone([]); }} className="text-[12px] font-bold text-[#0a285a] underline underline-offset-2">
               {t("help.otherOrder")}
