@@ -10492,6 +10492,13 @@ the page had drawn. Three things said something false:
   the list says it could not be loaded with Try again (`GiftProductsTests`).
   The web's gift page already did (`LoadFailed`).
 
+- **A product's reviews that could not be read say so, in the app.** The
+  first read was a `try?`, so a failure left the section a spinner under its
+  heading for good; it is the shop's error card with Try again now, and a
+  refresh that fails keeps the reviews drawn (`ReviewsSection.readReviews`,
+  `ReviewsFailedUITests`, through `-NetLetDemoOffline reviews.forProduct`).
+  The web's is behind `QueryGate`.
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s

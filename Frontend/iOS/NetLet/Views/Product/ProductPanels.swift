@@ -765,6 +765,8 @@ struct BundlesPanel: View {
 struct ReviewsSection: View {
     let product: Product
     @State private var page: ProductReviewsPage?
+    /// The first read failed: said with Try again, never a spinner for good.
+    @State private var failed: APIError?
     @State private var sort = "newest"
     @State private var shown = ReferenceData.shared.rules.accountRules.reviewPage
     @State private var loadingMore = false
@@ -841,18 +843,30 @@ struct ReviewsSection: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .card()
                 }
+            } else if let failed {
+                ErrorStateView(error: failed) { await readReviews() }
+                    .card(padding: 0)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("reviews-failed")
             } else {
                 ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 80)
             }
         }
-        .task(id: "\(product.id)|\(sort)|\(shown)") {
-            loadingMore = page != nil
-            defer { loadingMore = false }
-            if let next = try? await app.services.api.call(API.productReviews, .init(productId: product.id, limit: shown, sort: sort)) {
-                page = next
-            }
-        }
+        .task(id: "\(product.id)|\(sort)|\(shown)") { await readReviews() }
         .sheet(item: $viewing) { photos in ReviewPhotoViewer(photos: photos).languageDirection() }
+    }
+
+    /// The reviews in the order chosen; a refresh that fails keeps what is drawn.
+    private func readReviews() async {
+        loadingMore = page != nil
+        defer { loadingMore = false }
+        do {
+            page = try await app.services.api.call(API.productReviews, .init(productId: product.id, limit: shown, sort: sort))
+            failed = nil
+        } catch {
+            let failure = APIError.from(error)
+            if failure != .cancelled, page == nil { failed = failure }
+        }
     }
 
     private func summaryCard(_ summary: ProductReviewsPage.Summary, written: Int) -> some View {
