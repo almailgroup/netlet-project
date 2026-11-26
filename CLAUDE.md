@@ -6438,7 +6438,11 @@ short names are whole words that wrap in a seventh of a phone. The app's start-d
 picker is Kuwait's day whatever zone the phone is set to
 (`AdWords.todayInKuwait`): it took the phone's own, so a phone set west of
 Kuwait late in the evening offered a day already gone there, and the booking
-was refused.
+was refused. **A run's days are counted in UTC too** (`AdWords.addDays`,
+`daysInclusive`): they read a day at UTC midnight and counted with a calendar
+in the phone's zone, so on a phone that keeps summer time a run across the
+change ended a day early or counted a day short — the booking calendar, a
+run's last day and a sponsorship's pay-by.
 
 Disclosed on the shelf and on every card, and never folded into a sort: a
 department's paid products are a strip above a grid that stays in the
@@ -11908,7 +11912,11 @@ a screen unchanged by the press. Under `-NetLetUITest` the preview holds its
 tick eight seconds (`UITestHooks.on`, Debug only), which is long enough to be
 read; a press that did nothing still fails. **A test that waits on something
 that lasts under two seconds is waiting on the runner's speed**, and anything
-that lengthens a touch's animation will find it.
+that lengthens a touch's animation will find it. A card's photo stepper found
+it again: it folds 2.5 seconds after the last press (`settleSeconds`), and the
+first run of `GroupLifecycleUITests` read that fold, a second after a glass
+tap returned, as the old bug folding it at once; it waits 8 seconds under a UI
+test now, and the test notes how long the tap took.
 **`NetLetUITests` is the proof, and the first UI test target the app has**:
 it opens the home page in both languages, all products, Categories, a product
 and the account from the recordings and moves each the ways a thumb does —
@@ -12524,6 +12532,17 @@ own name. A long example is drawn a little smaller rather than cut
 every call from `NetLet/Resources/Demo/demo.<procedure>.json`, captured off a
 real server with the development seed, and `FixtureDecodingTests` decodes each
 one — the contract test that fails when the API changes shape under the app.
+**What the app sends is held to the server too** (`iosRequests.test.ts`, in
+`pnpm test`): it reads every `Procedure<In, Out>(query|mutation: "…")` and the
+Swift type it sends — its stored properties, or what its own `encode(to:)`
+writes, through `CodingKeys` and `OrNull` — and fails on a procedure the
+server lacks or holds as the other kind, a key the server needs that is never
+sent or sent as a nil optional, a key the server would drop, and a null where
+the server takes none, nested types and union inputs included. Nothing checked
+this before: a field renamed on the server passed every demo test and failed
+on the live site. A type whose encoder writes a nested container is checked
+by hand and named, with its shape, in `WRITTEN_BY_HAND`. Its first run found
+only a `vendorId` the server dropped on two desks, never set.
 No Swift toolchain runs on Linux here, so `.github/workflows/ios.yml` builds
 and tests on macOS for every push that touches `Frontend/iOS`; the project is
 Xcode 16's synchronized folders, so a new file needs no project edit. **Swift

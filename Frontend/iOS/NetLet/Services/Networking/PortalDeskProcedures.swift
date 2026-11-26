@@ -6,9 +6,11 @@ import Foundation
 extension API {
     // MARK: Orders
 
+    /// A page of a desk. The server scopes it to who is asking, so there is
+    /// no store to name here (`iosRequests.test.ts` refused a `vendorId` the
+    /// server dropped).
     struct DeskPage: Encodable, Sendable {
         var page: Int?
-        var vendorId: Int?
     }
 
     struct OrderIds: Encodable, Sendable {
