@@ -10483,6 +10483,17 @@ the page had drawn. Three things said something false:
   `LineMenuSaveForLater.test.ts`, which failed on the old run), and the heart
   question's "Saved items" says it only once it is.
 
+- **A shop's press the server refuses is always said, and a test reads for
+  it** (`mutationRefusals.test.ts`): every mutation the shop's pages,
+  components, hooks and contexts make must have an `onError` in its options
+  (or in an options object handed over by name), on every send, a caught
+  `mutateAsync`, or a page that reads its `error` — or be a background write
+  named with the reason nobody is told (marking a page read, counting a
+  view, syncing the language). It counts what it read. It found two with no
+  failure handler at all: the notifications' email switch and a gift list's
+  "Shown as" name, each a press that changed nothing and said nothing; both
+  toast the refusal now.
+
 - **The wishlists' number is the account's own or unread.** A failed
   `wishlists.phone` drew the "add a number" form, and "a number is needed"
   under every public list, over a number the account holds. Until it is read

@@ -737,7 +737,7 @@ function NoteField({ listId, productId, current, onSaved }: {
  * ever having to join to `users`.
  */
 function ShownAs({ listId, current, onSaved }: { listId: number; current: string | null; onSaved: () => void }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const [value, setValue] = useState(current ?? "");
   const update = trpc.wishlists.update.useMutation();
 
@@ -748,6 +748,7 @@ function ShownAs({ listId, current, onSaved }: { listId: number; current: string
         event.preventDefault();
         update.mutate({ listId, ownerName: value.trim() }, {
           onSuccess: () => { onSaved(); toast.success(t("wish.savedToast")); },
+          onError: error => toast.error(tError(error.message)),
         });
       }}
     >

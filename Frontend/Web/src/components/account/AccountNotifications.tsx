@@ -64,7 +64,7 @@ export function useMarkAllRead() {
 }
 
 export function AccountNotifications() {
-  const { t, isArabic, locale } = useTranslation();
+  const { t, tError, isArabic, locale } = useTranslation();
   const { user } = useAuth();
   const formatWhen = useDateTimeFormat();
   const utils = trpc.useUtils();
@@ -84,6 +84,9 @@ export function AccountNotifications() {
   const markAll = useMarkAllRead();
   const setEmail = trpc.notifications.setEmail.useMutation({
     onSuccess: allows => utils.notifications.email.setData(undefined, allows),
+    /* The switch stays as it was; the refusal is said, or it reads as a
+       press that did not take. */
+    onError: error => toast.error(tError(error.message)),
   });
 
   /* What this visit saw as new, kept after the server has been told they are read. */
