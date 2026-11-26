@@ -204,6 +204,10 @@ final class OrdersViewModel {
     private(set) var orders: LoadState<[OrderSummary]> = .idle
     private(set) var total = 0
     private(set) var loadingMore = false
+    /// The next page could not be read: the list's foot says so with Try
+    /// again. It ended the list instead, so a shopper with thirty orders saw
+    /// twenty and took them for all.
+    private(set) var moreFailed = false
     /// How many orders each view holds under the search and period (the chips).
     private(set) var counts: [String: Int]?
     private(set) var atCeiling = false
@@ -348,6 +352,7 @@ final class OrdersViewModel {
             let first = try await service.orders(page: 1, filters: filters)
             guard mine == asked else { return }
             page = 1
+            moreFailed = false
             total = first.total
             counts = first.counts
             atCeiling = first.atCeiling ?? false
@@ -373,17 +378,27 @@ final class OrdersViewModel {
         await returned
     }
 
+    /// Try again at the list's foot.
+    func retryMore() async {
+        moreFailed = false
+        await loadMore()
+    }
+
     func loadMore() async {
-        guard canLoadMore, !loadingMore, let shown = orders.value else { return }
+        guard canLoadMore, !loadingMore, !moreFailed, let shown = orders.value else { return }
         loadingMore = true
         defer { loadingMore = false }
         let mine = asked
-        guard let next = try? await service.orders(page: page + 1, filters: filters) else {
-            // A page that cannot be read ends the list rather than spinning for ever.
-            if mine == asked { total = shown.count }
+        let next: OrderPage
+        do {
+            next = try await service.orders(page: page + 1, filters: filters)
+        } catch {
+            // Said at the list's foot, never taken for its end.
+            if mine == asked, APIError.from(error) != .cancelled { moreFailed = true }
             return
         }
         guard mine == asked else { return }
+        moreFailed = false
         page += 1
         let known = Set(shown.map(\.id))
         let fresh = next.rows.filter { !known.contains($0.id) }

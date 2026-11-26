@@ -118,7 +118,18 @@ struct OrdersView: View {
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
                         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                     }
-                    if model.canLoadMore {
+                    if model.canLoadMore, model.moreFailed {
+                        VStack(spacing: 8) {
+                            Text(l.t("account.sectionFailed"))
+                                .font(.inter(13))
+                                .foregroundStyle(Brand.muted)
+                                .multilineTextAlignment(.center)
+                            Button(l.t("home.refreshCatalog")) { Task { await model.retryMore() } }
+                                .buttonStyle(SecondaryButtonStyle())
+                                .accessibilityIdentifier("orders-more-retry")
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 60)
+                    } else if model.canLoadMore {
                         ProgressView()
                             .tint(Brand.navy)
                             .frame(maxWidth: .infinity, minHeight: 60)

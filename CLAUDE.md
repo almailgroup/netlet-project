@@ -10535,6 +10535,13 @@ the page had drawn. Three things said something false:
   fails (`balanceFailed`; `BagSavingsPoints.test.ts`, which failed on the old
   box, and `SavingsBalanceTests`).
 
+- **A next page of orders that could not be read is not the list's end**, in
+  the app (`OrdersViewModel.moreFailed`): it set the total to what was shown,
+  so a shopper with thirty orders saw twenty and took them for all. The foot
+  says the part could not be loaded with Try again (`retryMore`,
+  `OrdersMoreFailedTests`). The web pages with Previous and Next under
+  `QueryGate`.
+
 - **A shopper never reads the browser's or the parser's words.** That walk
   showed the help line as "Unexpected token 'd', "down" is not valid JSON":
   `tError` passes on any message that is not a key, which is right for a
