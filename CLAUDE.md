@@ -12113,6 +12113,23 @@ start the task — so a panel written `Group { if !items.isEmpty { … } }.task
 { load items }` waits for items it never asks for. Bought-together, the help
 page's guides, the bundles, the price request and the shop's other channels
 were all that shape; each is a `VStack` now, which exists while empty.
+**And a `Group` whose children come and go runs it again for each one that
+appears**, which was the worse half, and it was still in the app 31 times
+until a scan for it (`Frontend/iOS/scripts/swiftGroups.test.ts`, which fails
+on `.task`, `.onAppear`, `.onDisappear`, `.onChange`, `.alert`,
+`.confirmationDialog` or a sheet chained onto any `Group`, and counts the
+`Group`s it read): the product editor's sections each put the saved product
+back over the form with `.onAppear(perform: fill)`, so "Add a size" was
+undone, "Offer this product to affiliates" snapped back off as its rate box
+appeared and a photo just added could be wiped; a card's photo stepper folded
+the moment it opened, the plus leaving firing the control's `.onDisappear`,
+so the quantity could not be changed from a card; the store's warnings card
+and "Send stock to NetLet" never loaded; a product page fetched the product
+twice; the fulfilment desk asked once per child. A section is a `VStack` with
+its parent's spacing, a page that is one of two a `ZStack`, and the warnings
+card is drawn by the page that read the warnings (`initial`), since an empty
+stack would still take a gap. `GroupLifecycleUITests` holds the four a person
+meets.
 
 **Haptic feedback can be turned off for the whole app, on the owner's word**
 ("an option in the preferences that will allow the user to fully disable
