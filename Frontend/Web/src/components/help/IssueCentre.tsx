@@ -21,11 +21,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
+import { failedToLoad } from "@/lib/queryState";
 import { HELP_ISSUES, issueNeeds, type HelpIssue, type HelpPanel } from "@shared/commerce/selfService";
 
 export function IssueCentre({ className }: { className: string }) {
   const { t, tError, locale } = useTranslation();
-  const formatDate = useDateFormat();
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const [issue, setIssue] = useState<HelpIssue | null>(null);
@@ -85,24 +85,7 @@ export function IssueCentre({ className }: { className: string }) {
       ) : null}
 
       {isAuthenticated && aboutOrder && !reference ? (
-        <fieldset className="mt-4">
-          <legend className="text-[13px] font-extrabold text-[#0a285a]">{t("help.chooseOrder")}</legend>
-          {orders.isLoading ? <LoaderCircle className="mt-2 size-4 animate-spin" aria-hidden /> : null}
-          {orders.data && orders.data.rows.length === 0 ? <p className="mt-2 text-[13px] ink-muted">{t("help.noOrders")}</p> : null}
-          <ul className="mt-2 space-y-2">
-            {(orders.data?.rows ?? []).map(row => (
-              <li key={row.reference}>
-                <button type="button" onClick={() => setReference(row.reference)} className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-[#e7edf5] bg-white px-3 py-2 text-start hover:bg-[#f0f2f5]">
-                  <Thumb src={row.summary?.photos[0] ?? null} alt="" className="size-10 shrink-0 rounded-lg border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-4" />} />
-                  <span className="min-w-0 flex-1">
-                    <span dir="auto" className="block truncate text-[13px] font-bold text-[#0a285a]">{row.summary?.first?.title ?? row.reference}</span>
-                    <span className="block truncate text-[12px] ink-muted"><bdi dir="ltr">{row.reference}</bdi> · {formatDate(row.placedAt)}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </fieldset>
+        <OrderChoices orders={orders} onChoose={setReference} />
       ) : null}
 
       {ready ? (
@@ -132,5 +115,47 @@ export function IssueCentre({ className }: { className: string }) {
         </div>
       ) : null}
     </section>
+  );
+}
+
+type OrderRows = { reference: string; placedAt: string | Date; summary?: { photos: (string | null)[]; first?: { title: string } | null } | null };
+
+/**
+ * The account's latest orders to choose one from. A list that could not be
+ * read says so with Try again — never "no orders", and never an empty list
+ * with no way on.
+ */
+export function OrderChoices({ orders, onChoose }: {
+  orders: { isLoading: boolean; isError: boolean; data?: { rows: OrderRows[] }; isPlaceholderData?: boolean; refetch: () => unknown };
+  onChoose: (reference: string) => void;
+}) {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
+  return (
+    <fieldset className="mt-4">
+      <legend className="text-[13px] font-extrabold text-[#0a285a]">{t("help.chooseOrder")}</legend>
+      {orders.isLoading ? <LoaderCircle className="mt-2 size-4 animate-spin" aria-hidden /> : null}
+      {orders.data && orders.data.rows.length === 0 ? <p className="mt-2 text-[13px] ink-muted">{t("help.noOrders")}</p> : null}
+      {/* Never "no orders" for a list that could not be read, and never an empty list with no way on. */}
+      {failedToLoad(orders) ? (
+        <p role="alert" className="mt-2 text-[13px] ink-muted">
+          {t("help.ordersFailed")}{" "}
+          <button type="button" onClick={() => void orders.refetch()} className="font-bold text-[#0a285a] underline underline-offset-2">{t("home.refreshCatalog")}</button>
+        </p>
+      ) : null}
+      <ul className="mt-2 space-y-2">
+        {(orders.data?.rows ?? []).map(row => (
+          <li key={row.reference}>
+            <button type="button" onClick={() => onChoose(row.reference)} className="flex min-h-14 w-full items-center gap-3 rounded-xl border border-[#e7edf5] bg-white px-3 py-2 text-start hover:bg-[#f0f2f5]">
+              <Thumb src={row.summary?.photos[0] ?? null} alt="" className="size-10 shrink-0 rounded-lg border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-4" />} />
+              <span className="min-w-0 flex-1">
+                <span dir="auto" className="block truncate text-[13px] font-bold text-[#0a285a]">{row.summary?.first?.title ?? row.reference}</span>
+                <span className="block truncate text-[12px] ink-muted"><bdi dir="ltr">{row.reference}</bdi> · {formatDate(row.placedAt)}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </fieldset>
   );
 }

@@ -217,6 +217,8 @@ struct BrowsingHistoryView: View {
     @Environment(LanguageSettings.self) private var l
     @State private var products: [Product] = []
     @State private var loaded = false
+    /// The device holds a history the shop could not read back just now.
+    @State private var failed = false
     @State private var asking = false
     /// The products chosen for Delete (n) — the web's circles, on the owner's word.
     @State private var chosen: Set<String> = []
@@ -232,6 +234,15 @@ struct BrowsingHistoryView: View {
             ) {
                 if !loaded {
                     ProgressView().tint(Brand.navy).frame(maxWidth: .infinity)
+                } else if failed {
+                    // Never "nothing here yet" for a history the device holds.
+                    EmptyStateView(
+                        systemImage: "clock.arrow.circlepath",
+                        title: l.t("history.loadFailed"),
+                        note: l.t("common.loadFailedNote"),
+                        actionTitle: l.t("home.refreshCatalog")
+                    ) { Task { await load() } }
+                    .accessibilityIdentifier("history-failed")
                 } else if products.isEmpty {
                     Text(l.t("history.empty"))
                         .font(.inter(15))
@@ -340,16 +351,34 @@ struct BrowsingHistoryView: View {
     }
 
     private func load() async {
-        let wanted = app.viewed.ids
-        guard !wanted.isEmpty else {
-            products = []
+        let api = app.services.api
+        let language = l.current.rawValue
+        switch await Self.readBack(app.viewed.ids, fetch: { ids in
+            try await api.call(API.productsByIds, .init(ids: ids, locale: language))
+        }) {
+        case .success(let found):
+            products = found
+            failed = false
             loaded = true
-            return
+        case .failure(.cancelled):
+            break
+        case .failure:
+            failed = products.isEmpty
+            loaded = true
         }
-        let found = (try? await app.services.api.call(API.productsByIds, .init(ids: wanted, locale: l.current.rawValue))) ?? []
-        let byId = Dictionary(found.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        products = wanted.compactMap { byId[$0] }
-        loaded = true
+    }
+
+    /// The device's history read back by id, newest first. A failure is the
+    /// read's, never an empty history: the device still holds the ids.
+    static func readBack(_ wanted: [String], fetch: ([String]) async throws -> [Product]) async -> Result<[Product], APIError> {
+        guard !wanted.isEmpty else { return .success([]) }
+        do {
+            let found = try await fetch(wanted)
+            let byId = Dictionary(found.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            return .success(wanted.compactMap { byId[$0] })
+        } catch {
+            return .failure(APIError.from(error))
+        }
     }
 }
 

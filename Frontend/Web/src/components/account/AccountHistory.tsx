@@ -18,7 +18,7 @@ import { History, PackageSearch, Trash2, X } from "lucide-react";
 import { ChoiceCircle } from "@/components/cart/ChoiceCircle";
 import { toast } from "sonner";
 import { PANEL } from "@/components/account/profileParts";
-import { EmptyState } from "@/components/layout/Page";
+import { BUTTON_PRIMARY, EmptyState } from "@/components/layout/Page";
 import { Thumb } from "@/components/product/Thumb";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useProductsByIds } from "@/hooks/useCatalog";
@@ -26,6 +26,7 @@ import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { clearViewed, forgetViewed, VIEWED_DAYS, viewedIds } from "@/lib/recentlyViewed";
 import { useConfirmRemoval } from "@/components/ui/ConfirmRemoval";
 import { isolate } from "@/lib/isolate";
+import { failedToLoad } from "@/lib/queryState";
 
 export function AccountHistory() {
   const { t } = useTranslation();
@@ -33,7 +34,7 @@ export function AccountHistory() {
   const money = useMoney();
   const [ids, setIds] = useState(() => viewedIds());
   const [asking, setAsking] = useState(false);
-  const { byId, settled } = useProductsByIds(ids, { enabled: ids.length > 0 });
+  const { byId, settled, query } = useProductsByIds(ids, { enabled: ids.length > 0 });
   const products = useMemo(() => ids.flatMap(id => byId.get(id) ?? []), [ids, byId]);
   const [status, setStatus] = useState("");
   /* The products chosen for Delete (n). */
@@ -68,7 +69,13 @@ export function AccountHistory() {
   return (
     <div className="space-y-3">
       <p className="text-[14px] leading-6 ink-muted">{t("history.intro", { days: VIEWED_DAYS })}</p>
-      {products.length === 0 && (settled || ids.length === 0) ? (
+      {/* A history the shop could not read back is not an empty one: the
+          device still holds it, and asking again usually finds it. */}
+      {products.length === 0 && ids.length > 0 && failedToLoad(query) ? (
+        <EmptyState heading="h3" icon={<History className="size-6" />} title={t("history.loadFailed")} note={t("common.loadFailedNote")}>
+          <button type="button" onClick={() => void query.refetch()} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
+        </EmptyState>
+      ) : products.length === 0 && (settled || ids.length === 0) ? (
         <EmptyState heading="h3" icon={<History className="size-6" />} title={t("history.empty")} />
       ) : (
         <>

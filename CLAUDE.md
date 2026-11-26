@@ -10414,6 +10414,17 @@ the page had drawn. Three things said something false:
   `ProfileManager.test.ts`, which failed on the old code) and in the app
   (`ProfileViewModel.detailsFailed`, `ProfileForm`'s `unknown`).
 
+- **A browsing history or a list of orders that could not be read is said
+  as one.** The history the device holds read back as "nothing here yet" in
+  the app when the shop could not be asked, and on the web as the selection
+  row over no rows; help's order picker said "You have no orders yet" in the
+  app and showed an empty list with no way on on the web. Each now says what
+  could not be loaded (`history.loadFailed`, `help.ordersFailed`) with Try
+  again (`BrowsingHistoryView.readBack` and `BrowsingHistoryTests`,
+  `HelpOrdersUITests`; on the web `AccountHistory.test.ts` and
+  `IssueCentre.test.ts`, over `OrderChoices`, the picker drawn on its own so
+  a static render can reach it — both failed without the fix).
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s

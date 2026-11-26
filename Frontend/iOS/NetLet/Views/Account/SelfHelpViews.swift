@@ -373,6 +373,8 @@ struct IssueCentre: View {
     @Environment(LanguageSettings.self) private var l
     @State private var issue: String?
     @State private var orders: [OrderSummary]?
+    /// The orders could not be read: said with Try again, never "no orders".
+    @State private var ordersFailed = false
     @State private var reference: String?
     @State private var lineId: Int?
     @State private var answer: SelfHelpAnswer?
@@ -452,7 +454,14 @@ struct IssueCentre: View {
     private var orderPicker: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(l.t("help.chooseOrder")).font(.inter(14, .heavy)).foregroundStyle(Brand.navy)
-            if let orders {
+            if orders == nil, ordersFailed {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(l.t("help.ordersFailed")).font(.inter(14)).foregroundStyle(Brand.muted)
+                    Button(l.t("home.refreshCatalog")) { Task { await readOrders() } }
+                        .buttonStyle(SecondaryButtonStyle())
+                        .accessibilityIdentifier("help-orders-retry")
+                }
+            } else if let orders {
                 if orders.isEmpty {
                     Text(l.t("help.noOrders")).font(.inter(14)).foregroundStyle(Brand.muted)
                 }
@@ -485,7 +494,18 @@ struct IssueCentre: View {
             }
         }
         .task {
-            if orders == nil { orders = (try? await app.services.api.call(API.orders, .init(page: 1, pageSize: 10)))?.rows ?? [] }
+            if orders == nil { await readOrders() }
+        }
+    }
+
+    /// The account's latest orders to choose from; a read that failed is
+    /// said as one, never as an account with no orders.
+    private func readOrders() async {
+        do {
+            orders = try await app.services.api.call(API.orders, .init(page: 1, pageSize: 10)).rows
+            ordersFailed = false
+        } catch {
+            if APIError.from(error) != .cancelled { ordersFailed = true }
         }
     }
 
