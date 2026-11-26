@@ -91,28 +91,38 @@ final class SavedModel {
 
     /// Into Saved without asking which list — the bag's "Save for later",
     /// the web's `saveForLater`.
-    func save(_ productId: String) async {
-        guard !ids.contains(productId) else { return }
-        await set(productId, saved: true)
+    /// Answers whether it took, for the caller to say a refusal.
+    @discardableResult
+    func save(_ productId: String) async -> Bool {
+        guard !ids.contains(productId) else { return true }
+        return await set(productId, saved: true)
     }
 
     /// Out of Saved alone: a wishlist the product is on keeps it, since a
     /// list somebody shared is not the bag's to edit (`unsave`).
-    func unsave(_ productId: String) async {
-        guard ids.contains(productId) else { return }
-        await set(productId, saved: false)
+    @discardableResult
+    func unsave(_ productId: String) async -> Bool {
+        guard ids.contains(productId) else { return true }
+        return await set(productId, saved: false)
     }
 
-    private func set(_ productId: String, saved saving: Bool) async {
+    /// Answers whether it took: the heart's toast said "saved" or "removed"
+    /// over a refusal that had put the heart back as it was.
+    private func set(_ productId: String, saved saving: Bool) async -> Bool {
         let before = ids
         ids = saving ? ids + [productId] : ids.filter { $0 != productId }
-        if signedIn {
-            // The server's list is what is kept; a refusal puts the heart back
-            // as it was, rather than leaving it drawn saved over nothing saved.
-            if let answer = try? await account.setSaved(productId, saved: saving) { ids = answer } else { ids = before }
-        } else {
+        guard signedIn else {
             defaults.set(ids, forKey: Self.key)
+            return true
         }
+        // The server's list is what is kept; a refusal puts the heart back
+        // as it was, rather than leaving it drawn saved over nothing saved.
+        guard let answer = try? await account.setSaved(productId, saved: saving) else {
+            ids = before
+            return false
+        }
+        ids = answer
+        return true
     }
 
     /// The heart's question answered with a wishlist — a private or a public
@@ -135,12 +145,25 @@ final class SavedModel {
     /// A filled heart on something on a wishlist: off every list of the
     /// shopper's and out of Saved, since the heart is how they said they
     /// wanted it.
-    func unwish(_ productId: String) async {
+    ///
+    /// Answers whether it took. A refusal puts both back as they were: it
+    /// left the heart drawn empty over a product the account still held, under
+    /// a toast saying it was off the lists.
+    @discardableResult
+    func unwish(_ productId: String) async -> Bool {
+        let (savedBefore, wishedBefore) = (ids, wished)
         ids = ids.filter { $0 != productId }
         wished = wished.filter { $0 != productId }
-        try? await account.unwish(productId)
+        do {
+            try await account.unwish(productId)
+        } catch {
+            ids = savedBefore
+            wished = wishedBefore
+            return false
+        }
         if let stored = try? await account.savedProducts() { ids = stored }
         await refreshWished()
+        return true
     }
 
     private var deviceIds: [String] { defaults.stringArray(forKey: Self.key) ?? [] }

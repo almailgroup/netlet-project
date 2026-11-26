@@ -567,6 +567,30 @@ final class SavedModelTests: XCTestCase {
         XCTAssertFalse(saved.isHearted("41"))
     }
 
+    /// A heart the shop refused answers so, and stays as it was: the toast
+    /// said "removed" over a heart that had filled back in, and a refused
+    /// unwish left it drawn empty over a product the account still held.
+    func testARefusedHeartSaysSoAndStaysAsItWas() async throws {
+        let account = FakeAccountService()
+        account.saved = ["7"]
+        let saved = SavedModel(account: account, defaults: isolatedDefaults())
+        await saved.adoptAccount()
+        account.setSavedError = .offline
+        let unsaved = await saved.unsave("7")
+        XCTAssertFalse(unsaved, "a refused unsave said it took")
+        XCTAssertEqual(saved.ids, ["7"])
+        let savedAgain = await saved.save("8")
+        XCTAssertFalse(savedAgain, "a refused save said it took")
+        XCTAssertFalse(saved.ids.contains("8"))
+
+        account.setSavedError = nil
+        _ = try await saved.wish("41", visibility: "private", title: "My wishlist")
+        account.unwishError = .offline
+        let unwished = await saved.unwish("41")
+        XCTAssertFalse(unwished, "a refused unwish said it took")
+        XCTAssertTrue(saved.isHearted("41"), "the heart was drawn empty over a product still on a list")
+    }
+
     func testAGuestsHeartsJoinTheAccountAndLeaveTheDevice() async {
         let account = FakeAccountService()
         let defaults = isolatedDefaults()

@@ -10465,6 +10465,22 @@ the page had drawn. Three things said something false:
   `onError`; `NotificationsModel.markAll` answers the key,
   `NotificationsMarkAllTests`, with `demo.notifications.markRead` recorded).
 
+- **A heart the shop refused says so, and Save for later keeps the line until
+  it is saved.** The heart's toast ("Saved", "Removed from saved", "off your
+  wishlists") is said with the press, and a refusal said nothing after it: on
+  the web the heart stayed as it was under that sentence, in the app an
+  unsave filled back in under it and a refused unwish left the heart drawn
+  empty over a product the account still held. Both say the refusal now
+  (`CustomerContext`'s `heartRefused` and `errorSentence`, tError's rule for
+  code with a locale and no hook, `HeartRefused.test.ts`, which failed
+  without it; `SavedModel`'s `save`, `unsave` and `unwish` answer whether
+  they took, `AppModel.heart` says only what did,
+  `testARefusedHeartSaysSoAndStaysAsItWas`). **The app's cart "Save for
+  later" took the line out of the bag whether or not the save had taken**,
+  so a refused save kept the product nowhere; the line leaves the bag only
+  once it is in Saved now, and the heart question's "Saved items" says it
+  only once it is.
+
 - **The wishlists' number is the account's own or unread.** A failed
   `wishlists.phone` drew the "add a number" form, and "a number is needed"
   under every public list, over a number the account holds. Until it is read

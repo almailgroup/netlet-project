@@ -310,7 +310,10 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
         return saved
     }
 
+    /// A save or an unsave the server refuses, when set.
+    var setSavedError: APIError?
     func setSaved(_ productId: String, saved isSaved: Bool) async throws -> [String] {
+        if let setSavedError { throw setSavedError }
         savedWrites.append((productId, isSaved))
         saved = isSaved ? Array(Set(saved + [productId])).sorted() : saved.filter { $0 != productId }
         return saved
@@ -327,7 +330,10 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
         return WishAnswer(listId: visibility == "public" ? 2 : 1, title: title, created: true)
     }
 
+    /// Taking a product off the lists, refused when set.
+    var unwishError: APIError?
     func unwish(_ productId: String) async throws {
+        if let unwishError { throw unwishError }
         unwished.append(productId)
         saved = saved.filter { $0 != productId }
         wished = wished.filter { $0 != productId }

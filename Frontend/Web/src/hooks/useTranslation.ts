@@ -9,9 +9,9 @@
 import { useCustomer } from "@/contexts/CustomerContext";
 import { formatMoney } from "@/lib/format";
 import { useShownCurrency } from "@/hooks/useDisplayCurrency";
-import { isTransportFailure } from "@/lib/transportFailure";
+import { errorSentence } from "@/lib/errorSentence";
 import { SHOP_CURRENCY, convertFromDinars } from "@shared/commerce/currency";
-import { isMessageKey, translate, type MessageKey } from "@shared/i18n/dictionary";
+import { translate, type MessageKey } from "@shared/i18n/dictionary";
 import { useCallback } from "react";
 
 export function useTranslation() {
@@ -34,17 +34,7 @@ export function useTranslation() {
    * it told a shopper "Unexpected token 'd', "down" is not valid JSON". An
    * empty message is `error.serverProblem`, never a blank line.
    */
-  const tError = useCallback(
-    (message: string) =>
-      isMessageKey(message)
-        ? translate(locale, message)
-        : isTransportFailure(message)
-          ? translate(locale, "error.network")
-          : message.trim()
-            ? message
-            : translate(locale, "error.serverProblem"),
-    [locale],
-  );
+  const tError = useCallback((message: string) => errorSentence(locale, message), [locale]);
 
   return { locale, direction, isArabic, t, tError };
 }

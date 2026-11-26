@@ -12,6 +12,8 @@ import { lazyPage } from "@/lib/lazyPage";
 import { whenIdle } from "@/lib/idle";
 import { createContext, type ReactNode, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { failedToLoad } from "@/lib/queryState";
+import { errorSentence } from "@/lib/errorSentence";
+import { toast } from "sonner";
 
 /* One empty list, so a guest's `wishedIds` is the same array every render. */
 const NONE: string[] = [];
@@ -206,6 +208,15 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
   const toggleLocale = useCallback(() => setLocale(locale === "en" ? "ar" : "en"), [locale, setLocale]);
 
+  /* A heart the server refused says so. The press's own toast ("Saved",
+     "Removed") is said at once, and the heart is drawn from the server's
+     answer, so a refusal left the heart as it was under a sentence saying it
+     had changed, with nothing after it. */
+  const heartRefused = useMemo(
+    () => ({ onError: (error: { message: string }) => void toast.error(errorSentence(locale, error.message)) }),
+    [locale],
+  );
+
   const toggleSaved = useCallback((productId: string): SaveOutcome => {
     const hearted = heartedIds.includes(productId);
     if (!hearted && wishlistsOn) {
@@ -214,14 +225,14 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     }
     if (isAuthenticated) {
       if (!hearted) {
-        updateSaved.mutate({ productId, saved: true });
+        updateSaved.mutate({ productId, saved: true }, heartRefused);
         return "saved";
       }
       if (wishedIds?.includes(productId)) {
-        unwish.mutate({ productId });
+        unwish.mutate({ productId }, heartRefused);
         return "unwished";
       }
-      updateSaved.mutate({ productId, saved: false });
+      updateSaved.mutate({ productId, saved: false }, heartRefused);
       return "removed";
     }
     setGuestSavedIds(current => {
@@ -230,7 +241,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       return next;
     });
     return hearted ? "removed" : "saved";
-  }, [heartedIds, isAuthenticated, unwish, updateSaved, wishedIds, wishlistsOn]);
+  }, [heartRefused, heartedIds, isAuthenticated, unwish, updateSaved, wishedIds, wishlistsOn]);
 
   /* No "already saved" check here: both stores take a second save as nothing,
      and a check against the ids read at render time turned an Undo pressed
@@ -238,7 +249,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
      saved. */
   const saveForLater = useCallback((productId: string) => {
     if (isAuthenticated) {
-      updateSaved.mutate({ productId, saved: true });
+      updateSaved.mutate({ productId, saved: true }, heartRefused);
       return;
     }
     setGuestSavedIds(current => {
@@ -246,11 +257,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       writeValue(SAVED_STORAGE_KEY, next);
       return next;
     });
-  }, [isAuthenticated, updateSaved]);
+  }, [heartRefused, isAuthenticated, updateSaved]);
 
   const unsave = useCallback((productId: string) => {
     if (isAuthenticated) {
-      updateSaved.mutate({ productId, saved: false });
+      updateSaved.mutate({ productId, saved: false }, heartRefused);
       return;
     }
     setGuestSavedIds(current => {
@@ -258,7 +269,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       writeValue(SAVED_STORAGE_KEY, next);
       return next;
     });
-  }, [isAuthenticated, updateSaved]);
+  }, [heartRefused, isAuthenticated, updateSaved]);
 
   const chooseWishlist = useCallback((productId: string, onWished?: () => void) => {
     if (!isAuthenticated) return;

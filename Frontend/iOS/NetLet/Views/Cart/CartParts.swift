@@ -193,22 +193,30 @@ struct LineMenuButton: View {
             let variantId = item.variantId
             let quantity = item.quantity
             let refused = l.t("cart.updateFailed")
-            Task {
-                await app.saved.save(productId)
-                if !(await app.cart.setQuantity(lineId: lineId, to: 0)) { app.toast(refused) }
-            }
             // A plain line can be put straight back; one with extras or a set's price cannot.
-            var undo: (@MainActor () -> Void)?
+            let addFailed = l.t("cart.addFailed")
+            let undo: (@MainActor () -> Void)?
             if plain {
-                let addFailed = l.t("cart.addFailed")
                 undo = {
                     Task {
                         if !(await app.cart.add(variantId: variantId, quantity: quantity)) { app.toast(addFailed) }
                         if !wasSaved { await app.saved.unsave(productId) }
                     }
                 }
+            } else {
+                undo = nil
             }
-            app.toast(l.t("cart.savedForLater", ["name": "\u{2068}\(title)\u{2069}"]), undo: undo)
+            let savedForLater = l.t("cart.savedForLater", ["name": "\u{2068}\(title)\u{2069}"])
+            Task {
+                // Out of the bag only once it is in Saved: a save that failed
+                // still took the line away, and kept it nowhere.
+                guard await app.saved.save(productId) else {
+                    Haptics.refused()
+                    return app.toast(refused)
+                }
+                guard await app.cart.setQuantity(lineId: lineId, to: 0) else { return app.toast(refused) }
+                app.toast(savedForLater, undo: undo)
+            }
         case .wishlist:
             guard let productId = item.productId else { return }
             let refused = l.t("cart.updateFailed")

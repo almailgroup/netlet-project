@@ -141,7 +141,11 @@ struct WishSheet: View {
         let productId = target.productId
         dismiss()
         Task {
-            await app.saved.save(productId)
+            // Said only once it took; a refusal is said as one.
+            guard await app.saved.save(productId) else {
+                Haptics.refused()
+                return app.toast(l.t("cart.updateFailed"))
+            }
             app.toast(l.t("wish.addedToSaved"))
         }
     }

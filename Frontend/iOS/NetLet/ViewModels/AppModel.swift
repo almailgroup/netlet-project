@@ -729,19 +729,28 @@ final class AppModel {
             // A filled heart asks before it takes anything away, on the owner's word.
             let onLists = session.isSignedIn && saved.wished.contains(product.id)
             guard await RemovalQuestion.unheart(product.title, wished: onLists, language) else { return }
+            // Said only once it took: a refusal is said as one, the heart
+            // as it was.
             if onLists {
-                await saved.unwish(product.id)
+                guard await saved.unwish(product.id) else { return heartRefused() }
                 toast(language.t("wish.unwished", ["name": name]))
             } else {
-                await saved.unsave(product.id)
+                guard await saved.unsave(product.id) else { return heartRefused() }
                 toast(language.t("saved.removed", ["name": name]))
             }
         } else if features.isOn("wishlists") {
             wishAsking = WishTarget(productId: product.id, title: product.title)
         } else {
-            await saved.save(product.id)
+            guard await saved.save(product.id) else { return heartRefused() }
             toast(language.t("saved.savedForLater", ["name": name]))
         }
+    }
+
+    /// A heart the shop refused: two taps and the bag's own sentence for a
+    /// press that did not take.
+    private func heartRefused() {
+        Haptics.refused()
+        toast(language.t("cart.updateFailed"))
     }
 
     /// Says something briefly — a heart saved, an add that failed — and takes
