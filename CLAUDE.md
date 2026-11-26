@@ -10507,7 +10507,19 @@ the page had drawn. Three things said something false:
   person stays one press away, as the next step (`IssueAnswer` in
   `IssueCentre.tsx`, `IssueAnswer.test.ts`, which failed on the old
   condition; the app's `answerFailed`, `HelpAnswerFailedUITests`, through
-  `-NetLetDemoOffline support.selfHelp`).
+  `-NetLetDemoOffline support.selfHelp`). **The order sheet's own help was
+  the same in the app** (`OrderHelpSheet`'s `answerFailed`, its person card
+  always there): a failed answer drew nothing under the issue chosen.
+
+- **"Your profile" never says a password is set before it knows.** The
+  password row read "A password is set" with Change while how the account
+  signs in (`auth.myProviders`) was read, and for good when that failed —
+  false for an Apple, Google or phone account, whose Change then asked for a
+  current password it never had. Until the ways are read the row is the
+  details' outline, a failed read says so with Try again, on the web
+  (`waysUnknown` in `ProfileManager`, `ProfileManager.test.ts`, which failed
+  on the old row) and in the app (`waysFailed`, `PasswordRowUITests`, through
+  `-NetLetDemoOffline auth.myProviders`).
 
 - **A shopper never reads the browser's or the parser's words.** That walk
   showed the help line as "Unexpected token 'd', "down" is not valid JSON":

@@ -41,6 +41,36 @@ final class HelpAnswerFailedUITests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground, file: file, line: line)
     }
 
+    /// The order's own help sheet, the same answer failing: it drew nothing
+    /// at all under the issue chosen.
+    func testTheOrderSheetsHelpSaysAnAnswerThatCouldNotBeRead() {
+        orderSheet(language: "en", other: "Another issue", issue: "Delayed order or delivery")
+    }
+
+    func testTheOrderSheetsHelpSaysAnAnswerThatCouldNotBeReadInArabic() {
+        orderSheet(language: "ar", other: "مشكلة أخرى", issue: "تأخر الطلب أو التوصيل")
+    }
+
+    private func orderSheet(language: String, other: String, issue: String, file: StaticString = #filePath, line: UInt = #line) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-NetLetDemo", "YES", "-netlet.language", language, "-NetLetUITest", "YES",
+                               "-NetLetDemoAs", "shopper", "-NetLetDemoOffline", "support.selfHelp",
+                               "-NetLetOpen", "helpIssue:NL-20261001-J7MWY"]
+        app.launch()
+        let another = app.buttons[other]
+        XCTAssertTrue(another.waitForExistence(timeout: 20), "The help sheet did not open on its issue: \(labels(app))", file: file, line: line)
+        another.tap()
+        let chip = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", issue)).firstMatch
+        XCTAssertTrue(chip.waitForExistence(timeout: 10), "No issues to choose from: \(labels(app))", file: file, line: line)
+        chip.tap()
+        let retry = app.buttons["order-help-answer-retry"]
+        XCTAssertTrue(retry.waitForExistence(timeout: 10),
+                      "The order's help did not say an answer it could not read: \(labels(app))", file: file, line: line)
+        retry.tap()
+        XCTAssertTrue(app.buttons["order-help-answer-retry"].waitForExistence(timeout: 10), "Try again lost the failure.", file: file, line: line)
+        XCTAssertEqual(app.state, .runningForeground, file: file, line: line)
+    }
+
     private func labels(_ app: XCUIApplication) -> String {
         app.staticTexts.allElementsBoundByIndex.prefix(30).map(\.label).filter { !$0.isEmpty }.joined(separator: " | ")
     }

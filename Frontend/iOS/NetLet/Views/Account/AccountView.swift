@@ -743,6 +743,10 @@ private struct ProfileForm: View {
     /// password to change, and sets one by the same emailed code a forgotten
     /// one is.
     @State private var ways: AccountSignInWays?
+    /// How the account signs in could not be read: the password row says so
+    /// rather than "A password is set" over an Apple, Google or phone account
+    /// that has none, whose Change then asked for a password it never had.
+    @State private var waysFailed = false
     /// The one row open; nil is the list.
     @State private var editing: Row?
     /// A profile photo chosen and not yet saved, which the circle shows.
@@ -782,7 +786,18 @@ private struct ProfileForm: View {
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .panel()
-        .task { if ways == nil { ways = try? await app.services.account.accountSignInWays() } }
+        .task { if ways == nil { await readWays() } }
+    }
+
+    /// How the account signs in; a read that failed is said as one, never
+    /// as an account with a password.
+    private func readWays() async {
+        do {
+            ways = try await app.services.account.accountSignInWays()
+            waysFailed = false
+        } catch {
+            if APIError.from(error) != .cancelled { waysFailed = true }
+        }
     }
 
     private var fullName: String? {
@@ -834,6 +849,9 @@ private struct ProfileForm: View {
         /// What is saved has not been read: no "Not added", and no editor
         /// opened on blanks.
         unknown: Bool = false,
+        /// Whether what is unknown failed to be read, where that is not the
+        /// details' read (the password row's sign-in ways).
+        unknownFailed: Bool? = nil,
         /// What VoiceOver says for the value, where the drawing is not words (the password's dots).
         spokenValue: String? = nil,
         /// Two details in one row, each its name and what is saved — the gender and the birthday.
@@ -859,7 +877,7 @@ private struct ProfileForm: View {
                         .foregroundStyle(Brand.muted)
                     Group {
                         if unknown {
-                            Text(model.detailsFailed ? l.t("account.sectionFailed") : "…")
+                            Text((unknownFailed ?? model.detailsFailed) ? l.t("account.sectionFailed") : "…")
                                 .font(.inter(15, .medium))
                                 .foregroundStyle(Brand.muted)
                         } else if lines.contains(where: { $0.value != nil }) {
@@ -1080,7 +1098,15 @@ private struct ProfileForm: View {
 
     @ViewBuilder
     private var passwordRow: some View {
-        if noPassword {
+        if ways == nil {
+            row(.password, label: "account.password", value: nil, symbol: "key", unknown: true, unknownFailed: waysFailed) { passwordEditor }
+            if waysFailed {
+                Button(l.t("home.refreshCatalog")) { Task { await readWays() } }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .padding(.bottom, 12)
+                    .accessibilityIdentifier("profile-ways-retry")
+            }
+        } else if noPassword {
             row(.password, label: "account.password", value: nil, action: "account.setPassword", symbol: "key") { passwordEditor }
         } else {
             row(.password, label: "account.password", value: "••••••••", action: "profile.change", symbol: "key", spokenValue: l.t("profile.passwordIsSet")) { passwordEditor }
@@ -1096,7 +1122,7 @@ private struct ProfileForm: View {
                     .fixedSize(horizontal: false, vertical: true)
                 ResetByCodeFields(email: user.email ?? "", signedIn: { signed in
                     app.session.updated(signed)
-                    ways = try? await app.services.account.accountSignInWays()
+                    await readWays()
                     done(.password, "account.passwordChanged")
                     recovering = .idle
                 })

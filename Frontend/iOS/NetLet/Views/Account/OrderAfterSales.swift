@@ -665,6 +665,9 @@ struct OrderHelpSheet: View {
     @State private var issue: String?
     @State private var itemId: Int?
     @State private var answer: SelfHelpAnswer?
+    /// The answer could not be read: said with Try again, where nothing at
+    /// all was drawn under the issue chosen.
+    @State private var answerFailed: APIError?
     @State private var answering = false
     @State private var done: [API.Handover.Done] = []
     @State private var turns: [API.HelpTurn] = []
@@ -719,6 +722,15 @@ struct OrderHelpSheet: View {
                                 ProgressView().tint(Brand.navy)
                             } else if let answer {
                                 HelpAnswerView(reference: reference, answer: answer, items: items, reload: reload, open: open, record: record)
+                            } else if let answerFailed {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(l.t(answerFailed.messageKey(knownKey: Phrasebook.shared.has)))
+                                        .font(.inter(14)).foregroundStyle(Brand.muted)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    Button(l.t("home.refreshCatalog")) { Task { await loadAnswer() } }
+                                        .buttonStyle(SecondaryButtonStyle())
+                                        .accessibilityIdentifier("order-help-answer-retry")
+                                }
                             }
                         }
                         ForEach(Array(turns.enumerated()), id: \.offset) { index, turn in
@@ -784,6 +796,7 @@ struct OrderHelpSheet: View {
         issue = next
         itemId = lineId
         answer = nil
+        answerFailed = nil
         if next != nil, !needsItem { Task { await loadAnswer() } }
     }
 
@@ -791,7 +804,16 @@ struct OrderHelpSheet: View {
         guard let issue else { return }
         answering = true
         defer { answering = false }
-        answer = try? await app.services.api.call(API.selfHelp, .init(issue: issue, reference: reference, lineId: itemId, locale: l.current.rawValue))
+        do {
+            answer = try await app.services.api.call(API.selfHelp, .init(issue: issue, reference: reference, lineId: itemId, locale: l.current.rawValue))
+            answerFailed = nil
+        } catch {
+            let failure = APIError.from(error)
+            if failure != .cancelled {
+                answer = nil
+                answerFailed = failure
+            }
+        }
     }
 
     /// A panel an answer opens, as the order's own actions name it; the sheet goes down first.

@@ -88,12 +88,17 @@ export function ProfileManager({ user }: { user: PublicUser }) {
   /* The details not read yet, or not readable: never "Not added" over a
      phone or a birthday the account holds, and no editor opened on blanks. */
   const unknown = details.data === undefined;
-  const notYet = failedToLoad(details) ? (
+  const notYetFor = (read: { isError: boolean; isPlaceholderData?: boolean; data?: unknown; refetch: () => unknown }) => failedToLoad(read) ? (
     <span role="alert" className="text-[13px] font-medium ink-muted">
       {t("account.sectionFailed")}{" "}
-      <button type="button" onClick={() => void details.refetch()} className="font-bold text-[#0a285a] underline underline-offset-2">{t("home.refreshCatalog")}</button>
+      <button type="button" onClick={() => void read.refetch()} className="font-bold text-[#0a285a] underline underline-offset-2">{t("home.refreshCatalog")}</button>
     </span>
   ) : <span aria-hidden className="mt-1 block h-4 w-28 animate-pulse rounded bg-[#e7edf5]" />;
+  const notYet = notYetFor(details);
+  /* How the account signs in, not read yet or not readable: never "A
+     password is set" with Change over an Apple, Google or phone account
+     that has none, whose Change then asked for a password it never had. */
+  const waysUnknown = ways.data === undefined;
 
   return (
     <div className="space-y-3">
@@ -119,7 +124,8 @@ export function ProfileManager({ user }: { user: PublicUser }) {
           <DetailRow
             {...rowOf("password", t("account.password"), t(noPassword ? "account.setPassword" : "profile.change"))}
             actionIcon={<KeyRound className="size-4" aria-hidden />}
-            value={noPassword ? <NotAdded>{t("profile.noPassword")}</NotAdded> : (
+            readOnly={waysUnknown}
+            value={waysUnknown ? notYetFor(ways) : noPassword ? <NotAdded>{t("profile.noPassword")}</NotAdded> : (
               <><span aria-hidden className="tracking-[.2em]">••••••••</span><span className="sr-only">{t("profile.passwordIsSet")}</span></>
             )}
           >
