@@ -563,6 +563,8 @@ struct SubscribePanel: View {
     @State private var interval = 2
     @State private var firstRun = Date().addingTimeInterval(86_400)
     @State private var addresses: [SavedAddress]?
+    /// The book could not be read: never "add an address first".
+    @State private var bookFailed = false
     @State private var addressId: Int?
     @State private var working = false
     @Environment(AppModel.self) private var app
@@ -606,7 +608,15 @@ struct SubscribePanel: View {
                            in: Date().addingTimeInterval(86_400)...Date().addingTimeInterval(60 * 86_400), displayedComponents: .date)
                     .font(.inter(14))
                     .kuwaitDays()
-                if let addresses {
+                if bookFailed, addresses == nil {
+                    HStack {
+                        Text(l.t("delivery.loadFailed")).font(.inter(13)).foregroundStyle(Brand.body)
+                        Button(l.t("home.refreshCatalog")) { Task { await readBook() } }
+                            .font(.inter(13, .bold))
+                            .foregroundStyle(Brand.navy)
+                            .buttonStyle(.tap)
+                    }
+                } else if let addresses {
                     if addresses.isEmpty {
                         HStack {
                             Text(l.t("subscribe.needAddress")).font(.inter(13)).foregroundStyle(Brand.body)
@@ -635,7 +645,16 @@ struct SubscribePanel: View {
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.tint.opacity(0.6)))
         .task(id: open) {
-            if open, addresses == nil { addresses = (try? await app.services.account.addresses()) ?? [] }
+            if open, addresses == nil { await readBook() }
+        }
+    }
+
+    private func readBook() async {
+        bookFailed = false
+        do {
+            addresses = try await app.services.account.addresses()
+        } catch {
+            if APIError.from(error) != .cancelled { bookFailed = true }
         }
     }
 

@@ -17,6 +17,24 @@ struct NoticeCategoriesList: View {
     private var categories: [Rules.Account.NoticeCategory] { ReferenceData.shared.rules.accountRules.noticeCategories }
 
     var body: some View {
+        if !model.noticesRead, model.noticesError != nil {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(l.t("account.sectionFailed")).font(.inter(14, .semibold)).foregroundStyle(Brand.ink)
+                Button(l.t("home.refreshCatalog")) { Task { await model.load() } }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .frame(maxWidth: 220)
+                    .accessibilityIdentifier("notices-retry")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
+        } else if !model.noticesRead {
+            ProgressView().frame(maxWidth: .infinity, minHeight: 96)
+        } else {
+            switches
+        }
+    }
+
+    private var switches: some View {
         VStack(spacing: 0) {
             ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
                 if index > 0 { Divider() }

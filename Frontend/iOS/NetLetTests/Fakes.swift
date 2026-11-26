@@ -143,6 +143,12 @@ extension Cart {
 }
 
 /// An account service whose answers each test sets.
+/// An API every call to which fails as a phone with no connection does.
+struct OfflineAPI: APICalling {
+    func call<Input, Output>(_ procedure: Procedure<Input, Output>, _ input: Input) async throws -> Output { throw APIError.offline }
+    func call<Output>(_ procedure: Procedure<NoInput, Output>) async throws -> Output { throw APIError.offline }
+}
+
 final class FakeAccountService: AccountServicing, @unchecked Sendable {
     var signInResult: Result<User, APIError> = .failure(.server(code: "UNAUTHORIZED", message: "auth.invalidCredentials", status: 401))
     var registerResult: Result<RegistrationResult, APIError> = .success(.verify(email: "noura@shop.test"))

@@ -10396,6 +10396,12 @@ the page had drawn. Three things said something false:
   `bookError` now — the sheet says what failed with Try again, the cart's card
   says it too, and the app asks again on coming back to the foreground
   (`testAnAddressBookThatCouldNotBeReadIsNotAnEmptyOne`).
+- **The notification switches are the shopper's own or none.** Preferences
+  drew each group's switch from the defaults while the shopper's choices were
+  read and when the read failed, so a group the shopper had turned off read as
+  on; on the web the list is behind `QueryGate`, and in the app the switches
+  are drawn only once read (`PreferencesModel.noticesRead`), with what failed
+  and Try again in their place otherwise (`PreferencesModelTests`).
 
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page

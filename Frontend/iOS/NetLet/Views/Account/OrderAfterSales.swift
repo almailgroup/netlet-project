@@ -521,6 +521,8 @@ struct OrderAddressSheet: View {
     @Environment(LanguageSettings.self) private var l
     @Environment(\.dismiss) private var dismiss
     @State private var addresses: [SavedAddress]?
+    /// The book could not be read: never "you have no saved address".
+    @State private var bookFailed = false
     @State private var chosen: Int?
     @State private var moving = false
 
@@ -532,7 +534,14 @@ struct OrderAddressSheet: View {
                         .font(.inter(14))
                         .foregroundStyle(Brand.ink)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let addresses {
+                    if bookFailed, addresses == nil {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(l.t("delivery.loadFailed")).font(.inter(14, .semibold)).foregroundStyle(Brand.ink)
+                            Button(l.t("home.refreshCatalog")) { Task { await readBook() } }
+                                .buttonStyle(SecondaryButtonStyle())
+                                .frame(maxWidth: 220)
+                        }
+                    } else if let addresses {
                         if addresses.isEmpty {
                             Text(l.t("orders.addressNone")).font(.inter(14)).foregroundStyle(Brand.muted)
                         } else {
@@ -576,7 +585,16 @@ struct OrderAddressSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .task { addresses = (try? await app.services.account.addresses()) ?? [] }
+        .task { await readBook() }
+    }
+
+    private func readBook() async {
+        bookFailed = false
+        do {
+            addresses = try await app.services.account.addresses()
+        } catch {
+            if APIError.from(error) != .cancelled { bookFailed = true }
+        }
     }
 
     private func choice(_ address: SavedAddress) -> some View {

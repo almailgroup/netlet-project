@@ -76,6 +76,12 @@ final class PreferencesModel {
     private(set) var zone: String?
     private(set) var stored: [String: Bool] = [:]
     private(set) var switching = false
+    /// The shopper's own switches have been read. Until then, and when the
+    /// read failed, the groups are not drawn as switches at all: drawn early
+    /// they showed the defaults, so a group the shopper had turned off read
+    /// as on — the web's `QueryGate` round the same list.
+    private(set) var noticesRead = false
+    private(set) var noticesError: APIError?
     private let api: APICalling
     private let account: AccountServicing
 
@@ -86,8 +92,15 @@ final class PreferencesModel {
 
     func load() async {
         if let profile = try? await account.profile() { zone = profile.deliveryZoneId }
-        if let preferences = try? await api.call(API.noticePreferences) {
+        do {
+            let preferences = try await api.call(API.noticePreferences)
             stored = Dictionary(preferences.map { ($0.kind, $0.enabled) }, uniquingKeysWith: { _, last in last })
+            noticesRead = true
+            noticesError = nil
+        } catch {
+            // What was read stays; only switches never read say it failed.
+            let failure = APIError.from(error)
+            if failure != .cancelled, !noticesRead { noticesError = failure }
         }
     }
 

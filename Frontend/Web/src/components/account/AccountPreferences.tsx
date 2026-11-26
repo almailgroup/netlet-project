@@ -18,6 +18,7 @@
 import { useCustomer } from "@/contexts/CustomerContext";
 import { useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
+import { QueryGate } from "@/components/ui/QueryGate";
 import {
   defaultNotificationPreferences,
   kuwaitDeliveryZones,
@@ -68,6 +69,10 @@ export function AccountPreferences() {
       </SettingPanel>
 
       <SettingPanel icon={<Bell className="size-5" />} title={t("notify.title")} note={t("notify.intro")}>
+        {/* The shopper's own switches or nothing: drawn before they were read,
+            or after the read failed, they showed the defaults, so a switch the
+            shopper had turned off read as on. */}
+        <QueryGate queries={[notifications]} audience="shopper">{() => (
         <ul className="space-y-2" aria-label={t("notify.title")}>
           {NOTICE_CATEGORIES.map(category => {
             const enabled = category.preference ? stored.get(category.preference) ?? defaultNotificationPreferences[category.preference] : true;
@@ -103,6 +108,7 @@ export function AccountPreferences() {
             );
           })}
         </ul>
+        )}</QueryGate>
       </SettingPanel>
 
       <HapticsPanel />
