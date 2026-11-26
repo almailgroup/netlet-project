@@ -144,13 +144,24 @@ enum AdWords {
         return formatter.string(from: date)
     }
 
+    /// The calendar `addDays` and `daysInclusive` count with: UTC, the zone
+    /// they read a day in. A calendar left in the phone's own zone added a
+    /// day as that zone's wall clock does, so on a phone that keeps summer
+    /// time a run crossing the change came out an hour off — the day before,
+    /// once read back in UTC — and a run was counted a day short.
+    private static var utc: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+
     static func addDays(_ day: String, _ days: Int) -> String {
         let reader = DateFormatter()
-        reader.calendar = Calendar(identifier: .gregorian)
+        reader.calendar = utc
         reader.locale = Locale(identifier: "en_US_POSIX")
-        reader.timeZone = TimeZone(identifier: "UTC")
+        reader.timeZone = utc.timeZone
         reader.dateFormat = "yyyy-MM-dd"
-        guard let date = reader.date(from: day), let moved = Calendar(identifier: .gregorian).date(byAdding: .day, value: days, to: date) else { return day }
+        guard let date = reader.date(from: day), let moved = utc.date(byAdding: .day, value: days, to: date) else { return day }
         return reader.string(from: moved)
     }
 
@@ -167,12 +178,12 @@ enum AdWords {
     /// Days from one `yyyy-mm-dd` to another, both counted (`daysInclusive`).
     static func daysInclusive(_ from: String, _ to: String) -> Int {
         let reader = DateFormatter()
-        reader.calendar = Calendar(identifier: .gregorian)
+        reader.calendar = utc
         reader.locale = Locale(identifier: "en_US_POSIX")
-        reader.timeZone = TimeZone(identifier: "UTC")
+        reader.timeZone = utc.timeZone
         reader.dateFormat = "yyyy-MM-dd"
         guard let start = reader.date(from: from), let end = reader.date(from: to) else { return 0 }
-        return (Calendar(identifier: .gregorian).dateComponents([.day], from: start, to: end).day ?? -1) + 1
+        return (utc.dateComponents([.day], from: start, to: end).day ?? -1) + 1
     }
 
     /// `approvalStart`: an approval after the booked start runs from today.

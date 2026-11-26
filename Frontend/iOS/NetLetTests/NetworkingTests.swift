@@ -1105,6 +1105,23 @@ final class FixtureDecodingTests: XCTestCase {
         XCTAssertEqual(PortalPage("/admin/fulfilment"), .fulfilment)
     }
 
+    /// A placement's run is counted in whole days whatever zone the phone is
+    /// set to. New York keeps summer time: it began on 8 March 2026 and ended
+    /// on 1 November, and a calendar in the phone's zone made the first run
+    /// end a day early and counted the second a day short.
+    func testARunIsCountedInWholeDaysOnAPhoneThatKeepsSummerTime() {
+        let before = NSTimeZone.default
+        NSTimeZone.default = TimeZone(identifier: "America/New_York")!
+        defer { NSTimeZone.default = before }
+        let took = Calendar(identifier: .gregorian).timeZone.identifier == "America/New_York"
+        print("TEST-NOTE summer time: the phone's zone was taken by a new calendar: \(took)")
+        XCTAssertEqual(AdWords.addDays("2026-03-07", 2), "2026-03-09")
+        XCTAssertEqual(AdWords.addDays("2026-03-09", -2), "2026-03-07")
+        XCTAssertEqual(AdWords.daysInclusive("2026-10-31", "2026-11-02"), 3)
+        XCTAssertEqual(AdWords.daysInclusive("2026-03-07", "2026-03-09"), 3)
+        XCTAssertEqual(AdWords.addDays("2026-10-30", 3), "2026-11-02")
+    }
+
     func testALineMovesOnlyWhereTheServerWouldTakeIt() {
         let rules = PortalRules.shared
         XCTAssertEqual(rules.nextStates("returned"), [], "a returned line is over")
