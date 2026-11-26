@@ -88,7 +88,13 @@ final class ApplicationModel {
             let row = try await api.call(API.myApplication)
             application = .loaded(row)
             if let row { fill(row) }
-            documents = row == nil ? [] : (try? await api.call(API.applicationDocuments)) ?? []
+            // A refresh whose documents read fails keeps the papers drawn,
+            // the uploads' own rule (lines below): it emptied the list.
+            if row == nil {
+                documents = []
+            } else if let read = try? await api.call(API.applicationDocuments) {
+                documents = read
+            }
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, application.value == nil { application = .failed(failure) }
