@@ -42,17 +42,23 @@ final class GroupLifecycleUITests: XCTestCase {
 
     /// The recorded bag holds two bags of rice, so the rice card shows its
     /// folded count. A press opens the stepper, which waits for presses and
-    /// folds again on its own a couple of seconds later (`settleSeconds`).
+    /// folds again on its own (`settleSeconds`: 2.5 seconds for a shopper, 8
+    /// under a UI test, since a tap returns only once the glass has settled
+    /// and the first run of this test read 2.5 seconds of it as a fold).
     private func stepperStaysOpen(language: String, folded: String, more: String, file: StaticString = #filePath, line: UInt = #line) {
         let app = launch(open: "department:", language: language)
         let count = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", folded)).firstMatch
         XCTAssertTrue(count.waitForExistence(timeout: 12), "The rice card shows no count. \(labels(app))", file: file, line: line)
+        let pressed = Date()
         count.tap()
+        let tapTook = Date().timeIntervalSince(pressed)
         let plus = app.buttons[more]
         XCTAssertTrue(plus.waitForExistence(timeout: 3), "The count opened no stepper. \(labels(app))", file: file, line: line)
-        sleep(1)
-        XCTAssertTrue(plus.exists, "The stepper folded the moment it opened. \(labels(app))", file: file, line: line)
-        XCTAssertTrue(count.waitForExistence(timeout: 6), "The stepper never folded back to the count.", file: file, line: line)
+        sleep(2)
+        let open = plus.exists
+        print("TEST-NOTE card stepper \(language): the tap returned after \(String(format: "%.2f", tapTook))s, open \(String(format: "%.2f", Date().timeIntervalSince(pressed)))s after the press: \(open)")
+        XCTAssertTrue(open, "The stepper folded the moment it opened. \(labels(app))", file: file, line: line)
+        XCTAssertTrue(count.waitForExistence(timeout: 14), "The stepper never folded back to the count.", file: file, line: line)
         XCTAssertEqual(app.state, .runningForeground, file: file, line: line)
     }
 

@@ -809,8 +809,13 @@ struct PhotoCartControl: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
 
-    /// How long the stepper stays open after the last press — the web's `SETTLE_MS`.
-    static let settleSeconds: Double = 2.5
+    /// How long the stepper stays open after the last press — the web's
+    /// `SETTLE_MS`. Under a UI test it waits longer: a tap returns only once
+    /// the app has settled, which the glass's own touch animation can make
+    /// last most of 2.5 seconds, so a test could not tell the stepper folding
+    /// on its clock from one folding the moment it opened (`UITestHooks`,
+    /// the preview's tick's rule).
+    static let settleSeconds: Double = UITestHooks.on ? 8 : 2.5
 
     var body: some View {
         if let variant = product.leadVariant, variant.availableForSale {
@@ -820,7 +825,7 @@ struct PhotoCartControl: View {
                to each face, so the plus going as the stepper came fired the
                `.onDisappear` below and folded the stepper the moment it
                opened, and a press on the folded count did the same
-               (`swiftGroups.test.ts`, `CardStepperUITests`). */
+               (`swiftGroups.test.ts`, `GroupLifecycleUITests`). */
             ZStack {
                 if product.needsChoice {
                     plus(label: l.t("card.chooseName", ["name": product.title])) {
