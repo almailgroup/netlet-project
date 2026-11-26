@@ -707,6 +707,25 @@ final class ProfileViewModelTests: XCTestCase {
         XCTAssertFalse(model.phoneChanged)
     }
 
+    /// Details that could not be read are not "Not added": the rows say they
+    /// could not be loaded and offer Try again, and nothing is guessed.
+    func testDetailsThatCouldNotBeReadAreNotDrawnAsMissing() async {
+        let account = FakeAccountService()
+        account.details = ProfileDetails(firstName: "Noura", lastName: "Al-Sabah", phone: "+96555001122", gender: "female", birthday: "1994-02-03")
+        account.detailsError = .offline
+        let model = ProfileViewModel(account: account, user: FakeAccountService.user)
+        await model.load()
+        XCTAssertFalse(model.loaded)
+        XCTAssertTrue(model.detailsFailed)
+        XCTAssertEqual(model.phone, "", "nothing guessed for a phone not read")
+
+        account.detailsError = nil
+        await model.load()
+        XCTAssertTrue(model.loaded)
+        XCTAssertFalse(model.detailsFailed)
+        XCTAssertEqual(model.phone, "5500 1122")
+    }
+
     func testTheNameNeedsBothPartsBeforeAnythingIsSent() async {
         let account = FakeAccountService()
         let model = ProfileViewModel(account: account, user: FakeAccountService.user)

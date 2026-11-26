@@ -10387,7 +10387,9 @@ the page had drawn. Three things said something false:
   cart's "Deliver to" card and the header's address book drew an outline that
   pulsed for good, since they waited on `isSuccess`. Now the account's book is
   behind `QueryGate`, the other three say "Your addresses could not be loaded
-  just now" (`delivery.loadFailed`) with Try again, and **a refresh that fails
+  just now" (`delivery.loadFailed`) with Try again — so do Subscribe & Save
+  and checkout, whose Place order was greyed with no sentence beside it and
+  now names it as its blocker, a press asking again — and **a refresh that fails
   behind a book already drawn leaves it drawn** — `loaded` is
   `data !== undefined`, not `isSuccess`, which React Query turns false then
   (`DeliveryAddressCard.test.ts`, the first web component test that mocks
@@ -10402,6 +10404,15 @@ the page had drawn. Three things said something false:
   on; on the web the list is behind `QueryGate`, and in the app the switches
   are drawn only once read (`PreferencesModel.noticesRead`), with what failed
   and Try again in their place otherwise (`PreferencesModelTests`).
+
+- **"Your profile" never says "Not added" over details it has not read.**
+  The phone and the gender and birthday read "Not added" while the
+  profile's details were asked for and when the read failed — over a number
+  the account holds — and their Edit opened an editor on blanks. Until the
+  details are read the rows show a quiet outline and no Edit; a failed read
+  says so with Try again, on the web (`ProfileManager`, held by
+  `ProfileManager.test.ts`, which failed on the old code) and in the app
+  (`ProfileViewModel.detailsFailed`, `ProfileForm`'s `unknown`).
 
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page

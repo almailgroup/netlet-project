@@ -250,7 +250,13 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
         return Self.user
     }
 
-    func profileDetails() async throws -> ProfileDetails { details }
+    /// Set to make reading the profile's details fail, as a phone offline would.
+    var detailsError: APIError?
+
+    func profileDetails() async throws -> ProfileDetails {
+        if let detailsError { throw detailsError }
+        return details
+    }
 
     var photo = ProfilePhotoInfo(ready: true, url: nil)
     var photoBytes: [String: Data] = [:]

@@ -34,6 +34,7 @@
  * form's (`passwordAgainProblem`).
  */
 import { trpc } from "@/lib/trpc";
+import { failedToLoad } from "@/lib/queryState";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { checkPassword, passwordAgainProblem } from "@shared/auth/passwordStrength";
@@ -84,6 +85,15 @@ export function ProfileManager({ user }: { user: PublicUser }) {
   const phone = details.data?.phone ?? null;
   const gender = details.data?.gender ?? null;
   const birthday = details.data?.birthday ?? null;
+  /* The details not read yet, or not readable: never "Not added" over a
+     phone or a birthday the account holds, and no editor opened on blanks. */
+  const unknown = details.data === undefined;
+  const notYet = failedToLoad(details) ? (
+    <span role="alert" className="text-[13px] font-medium ink-muted">
+      {t("account.sectionFailed")}{" "}
+      <button type="button" onClick={() => void details.refetch()} className="font-bold text-[#0a285a] underline underline-offset-2">{t("home.refreshCatalog")}</button>
+    </span>
+  ) : <span aria-hidden className="mt-1 block h-4 w-28 animate-pulse rounded bg-[#e7edf5]" />;
 
   return (
     <div className="space-y-3">
@@ -102,7 +112,7 @@ export function ProfileManager({ user }: { user: PublicUser }) {
             <AddEmail phone={user.phone ?? null} onAdded={() => { refresh(); close(); }} onCancel={close} />
           </DetailRow>
         )}
-        <DetailRow {...rowOf("phone", t("profile.phoneTitle"))} value={phone ? <bdi dir="ltr">+965 {formatPhone(phone)}</bdi> : <NotAdded>{t("profile.notAdded")}</NotAdded>}>
+        <DetailRow {...rowOf("phone", t("profile.phoneTitle"))} readOnly={unknown} value={unknown ? notYet : phone ? <bdi dir="ltr">+965 {formatPhone(phone)}</bdi> : <NotAdded>{t("profile.notAdded")}</NotAdded>}>
           <PhoneEditor details={details.data ?? null} saving={detailsSave.pending} onSave={next => detailsSave.send({ phone: next })} onDone={close} />
         </DetailRow>
         {user.email ? (
@@ -124,7 +134,8 @@ export function ProfileManager({ user }: { user: PublicUser }) {
         {/* Both optional, so one row after everything the account needs. */}
         <DetailRow
           {...rowOf("about", t("profile.aboutTitle"))}
-          value={gender || birthday ? (
+          readOnly={unknown}
+          value={unknown ? notYet : gender || birthday ? (
             <span className="block space-y-0.5">
               <AboutLine label={t("profile.genderTitle")}>
                 {gender ? t(gender === "male" ? "profile.male" : "profile.female") : <NotAdded>{t("profile.notAdded")}</NotAdded>}

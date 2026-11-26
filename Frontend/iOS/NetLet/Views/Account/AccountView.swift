@@ -759,17 +759,23 @@ private struct ProfileForm: View {
             DashedRule()
             emailRow
             DashedRule()
-            row(.phone, label: "profile.phoneTitle", value: model.details.phone.map { "+965 " + PhoneNumber.display($0) }, leftToRight: true) { phoneEditor }
+            row(.phone, label: "profile.phoneTitle", value: model.details.phone.map { "+965 " + PhoneNumber.display($0) }, leftToRight: true, unknown: !model.loaded) { phoneEditor }
             if app.session.user?.email != nil {
                 DashedRule()
                 passwordRow
             }
             DashedRule()
             // Both optional, so one row after everything the account needs.
-            row(.about, label: "profile.aboutTitle", value: nil, lines: [
+            row(.about, label: "profile.aboutTitle", value: nil, unknown: !model.loaded, lines: [
                 ("profile.genderTitle", model.details.gender.map { l.t($0 == "male" ? "profile.male" : "profile.female") }),
                 ("profile.birthdayTitle", model.details.birthday.map { OrderWording.day($0, language: l.current) }),
             ]) { aboutEditor }
+            if model.detailsFailed {
+                Button(l.t("home.refreshCatalog")) { Task { await model.load() } }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .padding(.vertical, 12)
+                    .accessibilityIdentifier("profile-details-retry")
+            }
         }
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -823,6 +829,9 @@ private struct ProfileForm: View {
         symbol: String = "pencil",
         leftToRight: Bool = false,
         readOnly: Bool = false,
+        /// What is saved has not been read: no "Not added", and no editor
+        /// opened on blanks.
+        unknown: Bool = false,
         /// What VoiceOver says for the value, where the drawing is not words (the password's dots).
         spokenValue: String? = nil,
         /// Two details in one row, each its name and what is saved — the gender and the birthday.
@@ -847,7 +856,11 @@ private struct ProfileForm: View {
                         .font(.inter(13, .medium))
                         .foregroundStyle(Brand.muted)
                     Group {
-                        if lines.contains(where: { $0.value != nil }) {
+                        if unknown {
+                            Text(model.detailsFailed ? l.t("account.sectionFailed") : "…")
+                                .font(.inter(15, .medium))
+                                .foregroundStyle(Brand.muted)
+                        } else if lines.contains(where: { $0.value != nil }) {
                             VStack(alignment: .leading, spacing: 2) {
                                 ForEach(lines.indices, id: \.self) { index in
                                     let line = lines[index]
@@ -876,7 +889,7 @@ private struct ProfileForm: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
-                if !readOnly {
+                if !readOnly && !unknown {
                     Button { open(which) } label: {
                         Label(l.t(action), systemImage: symbol)
                             .font(.inter(14, .semibold))

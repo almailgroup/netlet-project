@@ -182,6 +182,8 @@ export default function Checkout() {
    */
   const blocker: MessageKey | null = !isAuthenticated
     ? null /* said by the sign-in card */
+    /* Said rather than a greyed Place order with no sentence beside it. */
+    : delivery.failed ? "delivery.loadFailed"
     : settling || !delivery.loaded ? null
     : !items.length ? (cart?.items.length ? "order.nothingChosen" : "checkout.needItems")
     : shortLines(items).size ? "checkout.needFewer"
@@ -206,6 +208,10 @@ export default function Checkout() {
       return;
     }
     if (blocker === "checkout.needCod" || blocker === "checkout.needItems") return;
+    if (blocker === "delivery.loadFailed") {
+      delivery.retry();
+      return;
+    }
     /* A product's code that no longer applies is removed on its own line. */
     if (blocker === "checkout.codeProblem") {
       const line = items.find(item => item.codeProblem);

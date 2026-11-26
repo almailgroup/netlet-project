@@ -28,6 +28,9 @@ final class ProfileViewModel {
     /// What the server holds, which the boxes are compared with.
     private(set) var details = ProfileDetails.none
     private(set) var loaded = false
+    /// The details could not be read: the rows say so rather than "Not
+    /// added" over a phone or a birthday the account holds.
+    private(set) var detailsFailed = false
     private(set) var savedFirst = ""
     private(set) var savedLast = ""
 
@@ -50,7 +53,15 @@ final class ProfileViewModel {
     /// The details, once; an account with no name parts keeps the split of its
     /// display name as the starting guess, never saved for it.
     func load() async {
-        guard !loaded, let answer = try? await account.profileDetails() else { return }
+        guard !loaded else { return }
+        let answer: ProfileDetails
+        do {
+            answer = try await account.profileDetails()
+        } catch {
+            if APIError.from(error) != .cancelled { detailsFailed = true }
+            return
+        }
+        detailsFailed = false
         loaded = true
         adopt(answer)
         if answer.firstName?.isEmpty == false || answer.lastName?.isEmpty == false {
