@@ -10561,7 +10561,10 @@ the page had drawn. Three things said something false:
   client's own deadline, an abort) is said as `error.network` ("NetLet could
   not be reached. Try again in a moment."), and an empty message as
   `error.serverProblem`, in every one of the shop's fifty-odd `tError` calls
-  at once (`useTranslation.test.ts`, which failed on the old line). **A raw
+  at once (`useTranslation.test.ts`, which failed on the old line). So does
+  a delivery rating's or a damage claim's refusal (`ParcelCare`'s
+  `useRefusal`, which passed any non-key through as it came;
+  `ParcelCareRefusal.test.ts`). **A raw
   message is never handed to `t()`**: `translate` gives back any string that
   is not a key, so `t(error.message as …)` was the same leak; the wishlists'
   and the price request's toasts go through `tError` now.

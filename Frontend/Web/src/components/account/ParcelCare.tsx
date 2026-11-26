@@ -31,11 +31,12 @@ import { toast } from "sonner";
 type OrderDetail = NonNullable<inferRouterOutputs<AppRouter>["orders"]["get"]>;
 type Parcel = OrderDetail["parcels"][number];
 
-/** A refusal, with whichever window it is about filled in. */
-function useRefusal() {
-  const { t } = useTranslation();
+/** A refusal, with whichever window it is about filled in. Anything that is
+    not a key is `tError`'s: it showed "Failed to fetch" as it came. */
+export function useRefusal() {
+  const { t, tError } = useTranslation();
   return (key: string) => {
-    if (!isMessageKey(key)) return key;
+    if (!isMessageKey(key)) return tError(key);
     const days = key.startsWith("claims.") ? CLAIM_WINDOW_DAYS : DELIVERY_RATING_WINDOW_DAYS;
     return t(key as MessageKey, { days: String(days) });
   };
