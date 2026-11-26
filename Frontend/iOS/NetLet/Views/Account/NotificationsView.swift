@@ -40,7 +40,12 @@ struct NotificationsView: View {
                     Text(l.t("notices.title")).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
                     Spacer()
                     if page.unread > 0 {
-                        Button(l.t("notices.markAll")) { Task { await model.markAll() } }
+                        Button(l.t("notices.markAll")) {
+                            Task {
+                                // A refusal is said: it buzzed as a success and changed nothing.
+                                if let failed = await model.markAll() { app.toast(l.t(failed)) }
+                            }
+                        }
                             .font(.inter(13, .bold))
                             .foregroundStyle(Brand.navy)
                             .frame(minHeight: 44)
@@ -228,10 +233,20 @@ final class NotificationsModel {
         }
     }
 
-    func markAll() async {
-        _ = try? await api.call(API.markNoticesRead, .init(all: true))
+    /// Marks every notice read; answers the refusal's message key, or nil
+    /// once it took — it played a success and said nothing when it failed.
+    func markAll() async -> String? {
+        do {
+            _ = try await api.call(API.markNoticesRead, .init(all: true))
+        } catch {
+            let failure = APIError.from(error)
+            guard failure != .cancelled else { return nil }
+            Haptics.refused()
+            return failure.messageKey(knownKey: Phrasebook.shared.has)
+        }
         Haptics.succeeded()
         await go(to: number)
+        return nil
     }
 
     func setEmail(_ allows: Bool) async throws {

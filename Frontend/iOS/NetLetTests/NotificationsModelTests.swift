@@ -45,3 +45,20 @@ final class NotificationsModelTests: XCTestCase {
         XCTAssertFalse(model.emailUnread)
     }
 }
+
+/// "Mark all as read" when it could not be done: the refusal is answered for
+/// the page to say, never a success buzz over a page that changed nothing.
+@MainActor
+final class NotificationsMarkAllTests: XCTestCase {
+    func testMarkAllThatFailedSaysSo() async {
+        let model = NotificationsModel(api: OfflineAPI())
+        let failed = await model.markAll()
+        XCTAssertEqual(failed, "ios.error.offline", "Mark all as read failed and said nothing.")
+    }
+
+    func testMarkAllThatTookSaysNothing() async {
+        let model = NotificationsModel(api: Fixtures.client)
+        let failed = await model.markAll()
+        XCTAssertNil(failed)
+    }
+}

@@ -10458,6 +10458,12 @@ the page had drawn. Three things said something false:
   (`NoticeEmailSwitch`, `NoticeEmailSwitch.test.ts`); the app draws no switch
   until it is read and says the same when it could not be
   (`NotificationsModel.emailRead`, `emailUnread`, `NotificationsModelTests`).
+  **And "Mark all as read" says when it could not be done**: on the web a
+  refused press changed nothing and said nothing, and the app played a
+  success buzz over a page that had not changed. Both toast the refusal now
+  (`useMarkAllRead`, `MarkAllRead.test.ts`, which failed without the
+  `onError`; `NotificationsModel.markAll` answers the key,
+  `NotificationsMarkAllTests`, with `demo.notifications.markRead` recorded).
 
 - **The wishlists' number is the account's own or unread.** A failed
   `wishlists.phone` drew the "add a number" form, and "a number is needed"

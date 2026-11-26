@@ -12,6 +12,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { toast } from "sonner";
 import { Ban, Bell, CheckCircle2, LifeBuoy, Package, RotateCcw, ShoppingBag, Sparkles, Store, Tag, TriangleAlert, Truck, Wallet, XCircle, type LucideIcon } from "lucide-react";
 import { QueryGate } from "@/components/ui/QueryGate";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,6 +48,21 @@ const ICONS: Partial<Record<NoticeKind, LucideIcon>> = {
   seller_suspended: Ban,
 };
 
+/** "Mark all as read". A refusal is said: it changed nothing and said
+    nothing, which reads as a press that did not take. */
+export function useMarkAllRead() {
+  const utils = trpc.useUtils();
+  const { tError } = useTranslation();
+  const markRead = trpc.notifications.markRead.useMutation({
+    onSuccess: () => {
+      void utils.notifications.unread.invalidate();
+      void utils.notifications.list.invalidate();
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
+  return () => markRead.mutate({ all: true });
+}
+
 export function AccountNotifications() {
   const { t, isArabic, locale } = useTranslation();
   const { user } = useAuth();
@@ -65,6 +81,7 @@ export function AccountNotifications() {
       void utils.notifications.unread.invalidate();
     },
   });
+  const markAll = useMarkAllRead();
   const setEmail = trpc.notifications.setEmail.useMutation({
     onSuccess: allows => utils.notifications.email.setData(undefined, allows),
   });
@@ -109,7 +126,7 @@ export function AccountNotifications() {
                 {data.unread > 0 ? (
                   <button
                     type="button"
-                    onClick={() => markRead.mutate({ all: true }, { onSuccess: () => void utils.notifications.list.invalidate() })}
+                    onClick={markAll}
                     className="min-h-11 rounded-full px-3 text-[13px] font-bold text-[#0a285a] underline underline-offset-4"
                   >
                     {t("notices.markAll")}
