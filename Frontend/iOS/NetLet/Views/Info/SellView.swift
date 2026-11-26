@@ -59,6 +59,10 @@ final class ApplicationModel {
 
     private(set) var application: LoadState<StoreApplication?> = .idle
     private(set) var documents: [ApplicationDocument] = []
+    /// The papers already sent could not be read: never every paper offering
+    /// "Upload" as though nothing had been sent.
+    private(set) var documentsUnread = false
+    private var documentsRead = false
     private(set) var saving = false
     private(set) var uploading: String?
     let api: APICalling
@@ -92,12 +96,27 @@ final class ApplicationModel {
             // the uploads' own rule (lines below): it emptied the list.
             if row == nil {
                 documents = []
-            } else if let read = try? await api.call(API.applicationDocuments) {
-                documents = read
+                documentsRead = true
+                documentsUnread = false
+            } else {
+                await readDocuments()
             }
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, application.value == nil { application = .failed(failure) }
+        }
+    }
+
+    /// The application's papers; a failure keeps what was read before, and is
+    /// said only when nothing has been.
+    func readDocuments() async {
+        do {
+            documents = try await api.call(API.applicationDocuments)
+            documentsRead = true
+            documentsUnread = false
+        } catch {
+            if APIError.from(error) == .cancelled { return }
+            documentsUnread = !documentsRead
         }
     }
 
@@ -283,6 +302,19 @@ private struct ApplicationForm: View {
                         Text(l.t("documents.note")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
                         if model.application.value ?? nil == nil {
                             Text(l.t("documents.saveFirst")).font(.inter(13)).foregroundStyle(Brand.body)
+                        } else if model.documentsUnread {
+                            Text(l.t("account.sectionFailed")).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                            Button {
+                                Task { await model.readDocuments() }
+                            } label: {
+                                Text(l.t("home.refreshCatalog"))
+                                    .font(.inter(13, .bold))
+                                    .foregroundStyle(Brand.navy)
+                                    .underline()
+                                    .frame(minHeight: 44)
+                            }
+                            .buttonStyle(.tap)
+                            .accessibilityIdentifier("documents-retry")
                         } else {
                             // The papers applied with; the contract and its signed copy come after (3.3.1).
                             ForEach((SiteContent.shared?.selling.documentKinds ?? []).filter { $0 != "contract" && $0 != "signed_contract" }, id: \.self) { kind in

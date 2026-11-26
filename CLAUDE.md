@@ -10477,6 +10477,14 @@ the page had drawn. Three things said something false:
   failing on the old code; in the app `WishlistDetailModel.productsUnread`
   and `savedUnread`, `WishlistDetailFailedTests`).
 
+- **An application whose papers could not be read says so.** A failed
+  `inventory.applications.myDocuments` drew every paper on `/sell` with
+  "Upload", as though nothing had been sent; it says the section could not
+  be loaded with Try again now, on the web (`DocumentUploads`,
+  `DocumentUploadsFailed.test.ts`, failing on the old code) and in the app
+  (`ApplicationModel.documentsUnread`, which keeps the papers already read
+  through a refresh that fails, `ApplicationDocumentsFailedTests`).
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s

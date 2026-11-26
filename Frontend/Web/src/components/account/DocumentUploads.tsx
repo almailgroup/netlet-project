@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useFileSize } from "@/lib/fileSize";
 import { trpc } from "@/lib/trpc";
+import { failedToLoad } from "@/lib/queryState";
 import {
   DOCUMENT_KINDS,
   DOCUMENT_TYPES,
@@ -110,6 +111,18 @@ export function DocumentUploads({ saved, editable, step = "papers" }: {
 
   if (!saved) return step === "papers" ? <p className="mt-4 text-[13px] leading-6 text-[#536b8c]">{t("documents.saveFirst")}</p> : null;
 
+  /* The papers already sent could not be read: never every row offering
+     "Upload" as though nothing had been sent. */
+  if (failedToLoad(documents)) {
+    return step === "papers" ? (
+      <div role="alert" className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#f2b69e] bg-white px-4 py-3 text-[13px] font-semibold text-[#a44a2b]">
+        <span>{t("account.sectionFailed")}</span>
+        <button type="button" onClick={() => void documents.refetch()} className="inline-flex min-h-10 items-center rounded-full border border-[#0a285a]/25 bg-white px-4 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
+          {t("home.refreshCatalog")}
+        </button>
+      </div>
+    ) : null;
+  }
   const current = currentByKind(documents.data ?? []);
   const row = (kind: DocumentKind, mayUpload: boolean) => {
         const entry = current.get(kind);
