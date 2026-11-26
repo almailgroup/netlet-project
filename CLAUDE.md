@@ -10477,9 +10477,11 @@ the page had drawn. Three things said something false:
   they took, `AppModel.heart` says only what did,
   `testARefusedHeartSaysSoAndStaysAsItWas`). **The app's cart "Save for
   later" took the line out of the bag whether or not the save had taken**,
-  so a refused save kept the product nowhere; the line leaves the bag only
-  once it is in Saved now, and the heart question's "Saved items" says it
-  only once it is.
+  so a refused save kept the product nowhere — **and so did the web's line
+  menu**; on both the line leaves the bag only once it is in Saved now
+  (`saveForLater` answers whether it took, `useLineActions`,
+  `LineMenuSaveForLater.test.ts`, which failed on the old run), and the heart
+  question's "Saved items" says it only once it is.
 
 - **The wishlists' number is the account's own or unread.** A failed
   `wishlists.phone` drew the "add a number" form, and "a number is needed"

@@ -80,9 +80,10 @@ type CustomerContextValue = {
   /**
    * Into Saved without the heart's question — the bag's "Save for later",
    * which keeps something for later rather than putting it on a list. A
-   * product already saved stays saved.
+   * product already saved stays saved. Answers whether it took, so the bag
+   * takes the line out only once it is kept; a refusal is said here.
    */
-  saveForLater: (productId: string) => void;
+  saveForLater: (productId: string) => Promise<boolean>;
   /**
    * The heart's second question asked outright — which list, private or
    * public — for the bag's "Move to wishlist". `onWished` runs once the
@@ -247,16 +248,22 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
      and a check against the ids read at render time turned an Undo pressed
      after removing several into nothing at all — the closure still saw them
      saved. */
-  const saveForLater = useCallback((productId: string) => {
+  const saveForLater = useCallback((productId: string): Promise<boolean> => {
     if (isAuthenticated) {
-      updateSaved.mutate({ productId, saved: true }, heartRefused);
-      return;
+      return updateSaved.mutateAsync({ productId, saved: true }).then(
+        () => true,
+        (error: { message: string }) => {
+          heartRefused.onError(error);
+          return false;
+        },
+      );
     }
     setGuestSavedIds(current => {
       const next = Array.from(new Set([...current, productId]));
       writeValue(SAVED_STORAGE_KEY, next);
       return next;
     });
+    return Promise.resolve(true);
   }, [heartRefused, isAuthenticated, updateSaved]);
 
   const unsave = useCallback((productId: string) => {

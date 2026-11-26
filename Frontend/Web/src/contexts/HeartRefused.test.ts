@@ -33,6 +33,16 @@ vi.mock("@tanstack/react-query", () => ({ useQueryClient: () => ({ invalidateQue
 
 const { CustomerProvider, useCustomer } = await import("./CustomerContext");
 
+function customer() {
+  let value: ReturnType<typeof useCustomer> | undefined;
+  function Probe() {
+    value = useCustomer();
+    return null;
+  }
+  renderToStaticMarkup(createElement(CustomerProvider, null, createElement(Probe)));
+  return value!;
+}
+
 function pressHeart(productId: string) {
   let toggle: ((id: string) => unknown) | undefined;
   function Probe() {
@@ -54,5 +64,11 @@ describe("a heart the server refused", () => {
     shown.errors.length = 0;
     expect(pressHeart("9")).toBe("unwished");
     expect(shown.errors).toHaveLength(1);
+  });
+
+  it("answers that Save for later did not take, and says so", async () => {
+    shown.errors.length = 0;
+    expect(await customer().saveForLater("12")).toBe(false);
+    expect(shown.errors).toEqual(["NetLet could not be reached. Try again in a moment."]);
   });
 });

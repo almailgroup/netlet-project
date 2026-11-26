@@ -39,6 +39,22 @@ import { focusWhereTheShopperIs } from "@/hooks/useOverlay";
 
 export function LineMenu({ item, title }: { item: CartItem; title: string }) {
   const { t } = useTranslation();
+  const actions = useLineActions(item, title);
+  return (
+    <LinePopover
+      item={item}
+      title={title}
+      label={t("cart.lineMenu", { name: title })}
+      short={t("cart.lineMenuShort")}
+      trigger={<MoreHorizontal className="size-5" aria-hidden />}
+      actions={actions}
+    />
+  );
+}
+
+/** What the line's "⋯" offers, each with what pressing it does. */
+export function useLineActions(item: CartItem, title: string): LineAction[] {
+  const { t } = useTranslation();
   /* A member's Share carries their code, as the product page's does. */
   const memberCode = useMemberCode();
   const { removeItem, addItem } = useCart();
@@ -60,20 +76,25 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
       key: "later",
       icon: <Bookmark className="size-[18px]" aria-hidden />,
       label: t("cart.saveForLater"),
+      /* Out of the bag only once it is in Saved: a save that failed still
+         took the line away, and kept the product nowhere. A refusal is said
+         by the save itself. */
       run: () => {
         const wasSaved = savedIds.includes(productId);
-        saveForLater(productId);
-        drop();
-        toPage();
-        toast.success(t("cart.savedForLater", { name: title }), plain ? {
-          action: {
-            label: t("cart.undo"),
-            onClick: () => {
-              if (!wasSaved) unsave(productId);
-              void addItem(item.variantId, item.quantity, { reveal: false }).catch(() => toast.error(t("cart.addFailed")));
+        void saveForLater(productId).then(kept => {
+          if (!kept) return;
+          drop();
+          toPage();
+          toast.success(t("cart.savedForLater", { name: title }), plain ? {
+            action: {
+              label: t("cart.undo"),
+              onClick: () => {
+                if (!wasSaved) unsave(productId);
+                void addItem(item.variantId, item.quantity, { reveal: false }).catch(() => toast.error(t("cart.addFailed")));
+              },
             },
-          },
-        } : undefined);
+          } : undefined);
+        });
       },
     });
     if (isAuthenticated && wishlistsOn) {
@@ -105,14 +126,5 @@ export function LineMenu({ item, title }: { item: CartItem; title: string }) {
     }),
   });
 
-  return (
-    <LinePopover
-      item={item}
-      title={title}
-      label={t("cart.lineMenu", { name: title })}
-      short={t("cart.lineMenuShort")}
-      trigger={<MoreHorizontal className="size-5" aria-hidden />}
-      actions={actions}
-    />
-  );
+  return actions;
 }
