@@ -81,12 +81,14 @@ final class OrderSelectionUITests: XCTestCase {
         XCTAssertEqual(app.buttons["order-edit"].label, "Edit order", "After Close the button is not Edit order again.")
     }
 
-    /// "I cannot see product details" from an order (the owner's word): with
-    /// the circles away a press on the item opens its product; while the
-    /// order is edited a press on its name chooses it and a second puts it
-    /// back (the owner's "tap on its name … should choose it"), and one item
-    /// chosen offers View product on the bar, which opens it too.
-    func testAPressOnTheItemOpensItsProductAndChoosesItWhileEditing() {
+    /// With the circles away, a press on the item's words opens where it is
+    /// and a press on its photo its product, on the owner's word ("when you
+    /// tap on the product text it should show you the product tracking …
+    /// when you tap on the product image, it should take you to the product
+    /// page"); while the order is edited a press on its name chooses it and a
+    /// second puts it back (the owner's "tap on its name … should choose it"),
+    /// and one item chosen offers View product on the bar, which opens it too.
+    func testItsWordsTrackTheItemItsPhotoOpensItsProductAndEditingChoosesIt() {
         let app = XCUIApplication()
         app.launchArguments = [
             "-NetLetDemo", "YES", "-netlet.language", "en", "-NetLetUITest", "YES",
@@ -98,10 +100,24 @@ final class OrderSelectionUITests: XCTestCase {
         XCTAssertTrue(name.waitForExistence(timeout: 20), "The order's item has no name: \(labels(app))")
         let count = app.staticTexts["1 item chosen"]
 
-        // Not editing: the press opens the product's page (the demo answers
-        // every product with its earbuds), and nothing is chosen.
+        // Not editing: a press on the words opens the item's tracker, and
+        // nothing is chosen.
         name.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertTrue(productPage(app).waitForExistence(timeout: 12), "A press on the item did not open its product: \(labels(app))")
+        let tracker = app.navigationBars["Track your order"]
+        XCTAssertTrue(tracker.waitForExistence(timeout: 8), "A press on the item's words did not open its tracking: \(labels(app))")
+        XCTAssertFalse(productPage(app).exists, "A press on the item's words opened its product.")
+        XCTAssertFalse(count.exists, "A press outside editing chose the item.")
+        app.buttons["Close"].firstMatch.tap()
+        let trackerGone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: tracker)
+        wait(for: [trackerGone], timeout: 6)
+
+        // Its photo opens the product's page (the demo answers every product
+        // with its earbuds).
+        let photo = app.descendants(matching: .any)["order-item-photo"].firstMatch
+        XCTAssertTrue(photo.waitForExistence(timeout: 6), "The item's photo is not a way to its product: \(labels(app))")
+        XCTAssertEqual(photo.label, "View USB-C charger 65W")
+        photo.tap()
+        XCTAssertTrue(productPage(app).waitForExistence(timeout: 12), "A press on the item's photo did not open its product: \(labels(app))")
         XCTAssertFalse(count.exists, "A press outside editing chose the item.")
         backFromProduct(app)
 
@@ -113,6 +129,7 @@ final class OrderSelectionUITests: XCTestCase {
         onTheName.tap()
         XCTAssertTrue(count.waitForExistence(timeout: 6), "While editing, a press on the item's name did not choose it: \(labels(app))")
         XCTAssertFalse(productPage(app).exists, "While editing, a press on the item opened its product.")
+        XCTAssertFalse(tracker.exists, "While editing, a press on the item opened its tracking.")
         onTheName.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: count)
         wait(for: [gone], timeout: 4)

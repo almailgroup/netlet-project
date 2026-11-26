@@ -217,6 +217,14 @@ struct OrderSteps: Decodable, Hashable, Sendable {
     let parcels: [ParcelSteps]
 
     static let order = ["placed", "preparing", "onTheWay", "delivered"]
+
+    /// Whether an item can be tracked: it is in one of the parcels — the
+    /// web's `tracksItem`. A cancelled item leaves its parcel and a cancelled
+    /// order has none, so a press on such an item's words opens its product
+    /// page rather than a tracker with nothing in it.
+    func tracks(_ lineId: Int) -> Bool {
+        !cancelled && parcels.contains { $0.lineIds.contains(lineId) }
+    }
 }
 
 struct ParcelSteps: Decodable, Hashable, Identifiable, Sendable {

@@ -32,9 +32,9 @@
  * alone, and "Edit order" at the end of "In this order" brings the All
  * circle, the items' circles and the line saying what they are for; "Done",
  * or the bar's Close, puts them away with the choice. Outside editing a press
- * on an item opens its page on the shop (on the owner's word: "I cannot see
- * product details"); while editing it chooses the item, and one item chosen
- * offers View product on the bar.
+ * on an item's words opens where it is and a press on its photo its page on
+ * the shop (on the owner's word); while editing it chooses the item, and one
+ * item chosen offers View product on the bar.
  *
  * **Nothing here decides.** Each action is drawn from the server's own answer
  * about this order — `cancel` (`shopperCancelState`), `change` and
@@ -93,7 +93,7 @@ import { useShortDayFormat } from "@/hooks/useDateFormat";
 import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { MAX_RETURN_NOTE, RETURN_REASONS, type ReturnReason } from "@shared/commerce/returnRequests";
-import { TRACK_STEPS, type ParcelTrack, type TrackPromise, type TrackStep } from "@shared/commerce/orderTracking";
+import { TRACK_STEPS, tracksItem, type ParcelTrack, type TrackPromise, type TrackStep } from "@shared/commerce/orderTracking";
 import { orderProgress } from "@shared/commerce/orderProgress";
 import type { OrderHelpAction } from "@shared/commerce/orderHelp";
 import { chosenState, firstToRate, selectionOffers, type SelectionAction, type SelectionOffer } from "@shared/commerce/orderSelection";
@@ -448,14 +448,17 @@ export function OrderLineChoice({ line }: { line: Line }) {
 const OWN_PRESS = "a, button, input, select, textarea, label, summary, [role='button'], [role='link'], [role='checkbox'], [role='radio'], [contenteditable='true']";
 
 /**
- * An item's row. **Outside editing, a press on it opens its page on the
- * shop**, on the owner's word ("I cannot see product details" from an order):
- * while the circles are put away nothing is being chosen, so the item is a
- * way to its product, as a cart's line is. Its name is the link the keyboard
- * and a screen reader meet (`OrderLineTitle`), its photo the same link for
- * the eye (`OrderLinePhoto`), and the rest of the row the pointer's and the
- * finger's larger target. A product the shop no longer shows has no page, and
- * its row opens nothing.
+ * An item's row. **Outside editing, a press on its words opens where it is,
+ * and a press on its photo opens its page on the shop**, on the owner's word
+ * ("when you tap on the product text it should show you the product
+ * tracking … when you tap on the product image, it should take you to the
+ * product page"). Its name is the button the keyboard and a screen reader
+ * meet for the tracker (`OrderLineTitle`), drawn under the item, and its
+ * photo the link to its page (`OrderLinePhoto`); the rest of the row — the
+ * price, the expected day, the status under the photo — is the pointer's and
+ * the finger's larger target for the tracker. An item no parcel holds (one
+ * cancelled, an order cancelled) has nothing to track, and its words open
+ * its page instead; a product the shop no longer shows has no page.
  *
  * **While editing, a press anywhere on it chooses it, or puts it back**, on
  * the owner's word ("when you tap on its name or anywhere near that specific
@@ -466,11 +469,12 @@ const OWN_PRESS = "a, button, input, select, textarea, label, summary, [role='bu
  * does that thing alone, and a press that ends a text selection selects.
  */
 export function OrderLineRow({ line, children }: { line: Line; children: ReactNode }) {
-  const { chosen, choose, editing } = useControls();
+  const { chosen, choose, editing, detail, open } = useControls();
   const [, navigate] = useLocation();
   const on = chosen.includes(line.id);
   const href = productHref(line);
-  const acts = editing || href !== null;
+  const tracked = tracksItem(detail.steps, line.id);
+  const acts = editing || tracked || href !== null;
   return (
     <div
       data-chosen={on ? "" : undefined}
@@ -479,7 +483,8 @@ export function OrderLineRow({ line, children }: { line: Line; children: ReactNo
         if (target?.closest(OWN_PRESS)) return;
         if ((window.getSelection?.()?.toString() ?? "") !== "") return;
         if (!editing) {
-          if (href) navigate(href);
+          if (tracked) { pressHaptic(); open({ kind: "track", lineId: line.id }); }
+          else if (href) navigate(href);
           return;
         }
         pressHaptic();
@@ -500,15 +505,38 @@ function productHref(line: Line): string | null {
 }
 
 /**
- * An item's name: outside editing, a link to its page on the shop — the one
- * the keyboard and a screen reader meet; while editing, words, since a press
- * there chooses the item.
+ * An item's name: outside editing, the button that opens where the item is,
+ * under it — pressed again, it closes — or, for an item with nothing to
+ * track, a link to its page on the shop; while editing, words, since a press
+ * there chooses the item. The tracker's name is the words drawn (WCAG
+ * 2.5.3), and "Track this item" its description.
  */
 export function OrderLineTitle({ line }: { line: Line }) {
-  const { editing } = useControls();
+  const { t } = useTranslation();
+  const { editing, detail, panel, open, panelId } = useControls();
   const href = productHref(line);
   const className = "type-product line-clamp-2 pt-1.5 text-sm text-[#0a285a]";
-  if (editing || !href) return <p dir="auto" className={className}>{line.productTitle}</p>;
+  if (editing) return <p dir="auto" className={className}>{line.productTitle}</p>;
+  if (tracksItem(detail.steps, line.id)) {
+    const opened = panel?.kind === "track" && panel.lineId === line.id;
+    return (
+      <p dir="auto" className={className}>
+        <button
+          type="button"
+          dir="auto"
+          aria-expanded={opened}
+          aria-controls={panelId(line.id)}
+          onClick={() => { pressHaptic(); open({ kind: "track", lineId: line.id }); }}
+          aria-describedby={`${panelId(line.id)}-hint`}
+          className="text-start hover:underline"
+        >
+          {line.productTitle}
+        </button>
+        <span id={`${panelId(line.id)}-hint`} className="sr-only">{t("orders.trackItem")}</span>
+      </p>
+    );
+  }
+  if (!href) return <p dir="auto" className={className}>{line.productTitle}</p>;
   return (
     <p dir="auto" className={className}>
       <Link href={href} dir="auto" className="hover:underline">{line.productTitle}</Link>
@@ -517,15 +545,23 @@ export function OrderLineTitle({ line }: { line: Line }) {
 }
 
 /**
- * An item's photo: outside editing, the same link as its name, for the eye
- * alone (hidden from the keyboard and a screen reader, the card's rule: two
- * links to one place read twice).
+ * An item's photo: outside editing, the link to its page on the shop, named
+ * "View …" for the keyboard and a screen reader, since its name opens the
+ * tracker. Where the name is that same link — an item with nothing to track —
+ * the photo is for the eye alone (the card's rule: two links to one place
+ * read twice).
  */
 export function OrderLinePhoto({ line, children }: { line: Line; children: ReactNode }) {
-  const { editing } = useControls();
+  const { t } = useTranslation();
+  const { editing, detail } = useControls();
   const href = productHref(line);
   if (editing || !href) return <>{children}</>;
-  return <Link href={href} tabIndex={-1} aria-hidden className="block">{children}</Link>;
+  if (!tracksItem(detail.steps, line.id)) return <Link href={href} tabIndex={-1} aria-hidden className="block">{children}</Link>;
+  return (
+    <Link href={href} aria-label={t("product.view", { name: line.productTitle })} className="block rounded-2xl">
+      {children}
+    </Link>
+  );
 }
 
 /**

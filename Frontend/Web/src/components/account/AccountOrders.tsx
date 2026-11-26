@@ -480,8 +480,9 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
             {data.lines.map(line => {
               return (
                 <li key={line.id}>
-                  {/* A press on the item opens its product, or chooses it while
-                      the order is edited (on the owner's word). */}
+                  {/* A press on the item's words opens where it is and on its
+                      photo its product, or chooses it while the order is
+                      edited (on the owner's word). */}
                   <OrderLineRow line={line}>
                   {/* Chosen for the bar's acts, the cart's own circle (on the owner's word). */}
                   <OrderLineChoice line={line} />

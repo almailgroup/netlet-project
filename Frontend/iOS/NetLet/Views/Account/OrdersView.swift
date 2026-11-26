@@ -507,21 +507,46 @@ struct OrderDetailView: View {
         }
     }
 
-    /// A press on an item. **Outside editing it opens the item's page on the
-    /// shop**, on the owner's word ("I cannot see product details" from an
-    /// order): nothing is being chosen while the circles are away, so the
-    /// item is a way to its product, as a cart's line is; one the shop no
-    /// longer shows opens nothing. **While editing it chooses the item or
-    /// puts it back** (the owner's "tap anywhere on the product chooses it"),
-    /// and one item chosen offers View product on the bar.
-    private func press(_ line: OrderLine) {
+    /// A press on an item's words, its price or the status under its photo.
+    /// **Outside editing it opens where the item is** — its parcel's tracker
+    /// — on the owner's word ("when you tap on the product text it should
+    /// show you the product tracking"); an item no parcel holds (one
+    /// cancelled, an order cancelled) opens its product instead, and one the
+    /// shop no longer shows opens nothing. **While editing it chooses the
+    /// item or puts it back** (the owner's "tap anywhere on the product
+    /// chooses it"), and one item chosen offers View product on the bar.
+    private func press(_ line: OrderLine, detail: OrderDetail) {
         guard editing else {
-            if let handle = line.productHandle {
+            if detail.steps?.tracks(line.id) == true {
                 Haptics.tap()
-                app.push(.product(handle: handle))
+                sheet = OrderSheet(kind: .track, lineId: line.id)
+            } else {
+                openProduct(line)
             }
             return
         }
+        choose(line)
+    }
+
+    /// A press on an item's photo: **outside editing its page on the shop**,
+    /// on the owner's word ("when you tap on the product image, it should
+    /// take you to the product page"); while editing, the item chosen or put
+    /// back, as anywhere on it.
+    private func pressPhoto(_ line: OrderLine) {
+        guard editing else {
+            openProduct(line)
+            return
+        }
+        choose(line)
+    }
+
+    private func openProduct(_ line: OrderLine) {
+        guard let handle = line.productHandle else { return }
+        Haptics.tap()
+        app.push(.product(handle: handle))
+    }
+
+    private func choose(_ line: OrderLine) {
         Haptics.tap()
         withAnimation(still ? nil : .snappy(duration: 0.25)) {
             if chosen.contains(line.id) { chosen.remove(line.id) } else { chosen.insert(line.id) }
@@ -679,11 +704,21 @@ struct OrderDetailView: View {
                         // is — once it has arrived, its review — the picture at
                         // the row's start and the word after it (on the owner's word).
                         VStack(alignment: .leading, spacing: 8) {
+                            // The photo is the way to the product (on the
+                            // owner's word), the words beside it the tracker.
+                            let linksToProduct = !editing && line.productHandle != nil
                             Color.clear
                                 .frame(width: ItemStatusTile.width, height: ItemStatusTile.width)
                                 .overlay { RemoteImage(reference: line.photo) }
                                 .background(Color.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .onTapGesture { pressPhoto(line) }
+                                .accessibilityElement()
+                                .accessibilityLabel(l.t("product.view", ["name": line.productTitle]))
+                                .accessibilityAddTraits(.isLink)
+                                .accessibilityHidden(!linksToProduct)
+                                .accessibilityIdentifier("order-item-photo")
                             ItemStatusTile(
                                 progress: ReceiptRules.progress(status: detail.order.status, lines: [(fulfilment: line.fulfilment, deliveredAt: line.deliveredAt, preordered: line.preordered ?? false)]),
                                 rating: line.review?.rating,
@@ -694,11 +729,15 @@ struct OrderDetailView: View {
                             }
                         }
                         VStack(alignment: .leading, spacing: 4) {
+                            let tracked = !editing && detail.steps?.tracks(line.id) == true
                             Text(line.productTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
                                 .fixedSize(horizontal: false, vertical: true)
-                                // Outside editing, the name is how VoiceOver reaches the product.
-                                .accessibilityAddTraits(!editing && line.productHandle != nil ? .isLink : [])
-                                .accessibilityHint(!editing && line.productHandle != nil ? l.t("orders.pickView") : "")
+                                // Outside editing, the name is how VoiceOver
+                                // reaches where the item is — or, with nothing
+                                // to track, its product.
+                                .accessibilityAddTraits(tracked ? .isButton : !editing && line.productHandle != nil ? .isLink : [])
+                                .accessibilityHint(tracked ? l.t("orders.trackItem") : !editing && line.productHandle != nil ? l.t("orders.pickView") : "")
+                                .accessibilityIdentifier("order-item-name")
                             if let variant = line.variantLabel {
                                 Text(variant).font(.caption).foregroundStyle(Brand.muted)
                             }
@@ -726,14 +765,15 @@ struct OrderDetailView: View {
                         // is chosen: the item has no ⋯ of its own (on the owner's word).
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    // A press anywhere on the item — its photo, its name, its
-                    // price — opens its product while the order is not being
-                    // edited, and chooses it or puts it back while it is (on the
-                    // owner's word, `press`). The circle is the one control
-                    // VoiceOver meets for choosing; it is a button, so a press on
-                    // it is its own and never counted twice.
+                    // A press on the item's words, its price or its status
+                    // opens where it is while the order is not being edited,
+                    // and its photo (its own gesture, which wins) its product;
+                    // while it is edited, anywhere chooses it or puts it back
+                    // (on the owner's word, `press`). The circle is the one
+                    // control VoiceOver meets for choosing; it is a button, so
+                    // a press on it is its own and never counted twice.
                     .contentShape(Rectangle())
-                    .onTapGesture { press(line) }
+                    .onTapGesture { press(line, detail: detail) }
                     .background(
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(Brand.navy.opacity(chosen.contains(line.id) ? 0.05 : 0))

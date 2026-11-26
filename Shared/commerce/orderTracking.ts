@@ -117,6 +117,16 @@ export function stepsForOrder(order: { placedAt: Date | string; status: string }
 }
 
 /**
+ * Whether an item of the order can be tracked: it is in one of the parcels
+ * `stepsForOrder` made. A cancelled item leaves its parcel, and a cancelled
+ * order has none, so a press on such an item's words opens its product page
+ * instead of a tracker with nothing in it.
+ */
+export function tracksItem(track: Pick<OrderTrack, "cancelled" | "parcels">, lineId: number): boolean {
+  return !track.cancelled && track.parcels.some(parcel => parcel.lineIds.includes(lineId));
+}
+
+/**
  * The seller's word on when, for a parcel still coming.
  *
  * Every line a pre-order: the latest release date, or none once that has

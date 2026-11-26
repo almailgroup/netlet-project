@@ -3961,17 +3961,30 @@ choose it"): its photo, name, price and lines are one target (`OrderLineRow`
 on the web, an `onTapGesture` over the item's row in the app, the chosen row on
 a faint navy wash), and a press on a link or button inside it does that alone;
 the circle stays the one control a keyboard, a screen reader and VoiceOver
-meet. **Outside editing, the same press opens the item's page on the shop, on
-the owner's word** ("now I cannot see product details from [the order] and
-there is no option inside either"): with the circles away nothing is being
-chosen, so the item is a way to its product, as a cart's line is — its name
-the link a keyboard and a screen reader meet (`OrderLineTitle`; the app's name
-carries the link trait), its photo the same link for the eye alone
-(`OrderLinePhoto`), the rest of the row the finger's larger target. The order
-sends each line's `productHandle` (`shownHandles` in `services/orders.ts`, the
-shop's own rule — a published product of an approved store), so a product
-taken off the shelf since opens nothing rather than a page saying it is not
-found. **The circles are out only while
+meet. **Outside editing, a press on the item's words opens where it is and a
+press on its photo opens its page on the shop, on the owner's word** ("when you
+tap on the product text it should show you the product tracking … when you tap
+on the product image, it should take you to the product page"; both had opened
+the product, after "I cannot see product details from [the order]"). The
+words — its name, its lines, its price, the status under the photo — open its
+parcel's tracker (under the item on the web, `OrderLinePanel`; the app's
+`TrackOrderSheet` with its `lineId`), and a second press on the web puts it
+away; its name is the button a keyboard and a screen reader meet
+(`OrderLineTitle`, "Track this item" its description; the app's name
+carries the button trait and that hint). The photo is the link to the product,
+named "View …" for both (`OrderLinePhoto`; the app's photo is a link element of
+its own, `order-item-photo`), and in the app its own tap gesture, which wins
+over the row's. **An item no parcel holds has nothing to track** —
+`tracksItem` in `Shared/commerce/orderTracking.ts`, the app's
+`OrderSteps.tracks`, on the same cases: a cancelled item, an order cancelled —
+and its words open its product instead, the name then the link and the photo
+for the eye alone, as before. The order sends each line's `productHandle`
+(`shownHandles` in `services/orders.ts`, the shop's own rule — a published
+product of an approved store), so a product taken off the shelf since opens
+nothing rather than a page saying it is not found; it is still tracked.
+`OrderLinePress.test.ts` holds the web's name and photo, and
+`OrderSelectionUITests` presses the app's name for the tracker and its photo
+for the product. **The circles are out only while
 the order is being edited, on the owner's word** ("when I came to this page no
 need to see it in this way … add an icon like edit your order, once you click
 it, it will open like that to control all or each one separately"): the order

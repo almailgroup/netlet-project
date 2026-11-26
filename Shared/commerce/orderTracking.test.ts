@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { stepsForOrder, type TrackLine } from "./orderTracking.js";
+import { stepsForOrder, tracksItem, type TrackLine } from "./orderTracking.js";
 
 /* Sunday 1 November 2026, 10:00 in Kuwait. */
 const placedAt = new Date("2026-11-01T07:00:00Z");
@@ -81,5 +81,26 @@ describe("stepsForOrder", () => {
     const parcels = stepsForOrder(order, [line(), line({ deliveryChoice: "fast", speed: "same_day" })], placedAt).parcels;
     expect(parcels.map(parcel => parcel.fast)).toEqual([false, true]);
     expect(parcels[1].promise).toMatchObject({ kind: "window", from: "2026-11-01T00:00:00.000Z" });
+  });
+});
+
+describe("tracksItem", () => {
+  it("tracks an item in a parcel, never a cancelled item or one on a cancelled order", () => {
+    const kept = line({ fulfilment: "shipped" });
+    const gone = line({ fulfilment: "cancelled" });
+    const track = stepsForOrder(order, [kept, gone], placedAt);
+    expect(tracksItem(track, kept.lineId)).toBe(true);
+    expect(tracksItem(track, gone.lineId)).toBe(false);
+    expect(tracksItem(track, 9999)).toBe(false);
+    const over = line();
+    expect(tracksItem(stepsForOrder({ placedAt, status: "cancelled" }, [over], placedAt), over.lineId)).toBe(false);
+  });
+
+  it("tracks a delivered item, and one sent back after it arrived", () => {
+    const arrived = line({ fulfilment: "delivered", deliveredAt: "2026-11-03T12:00:00Z" });
+    const back = line({ fulfilment: "returned", deliveredAt: "2026-11-04T12:00:00Z" });
+    const track = stepsForOrder(order, [arrived, back], placedAt);
+    expect(tracksItem(track, arrived.lineId)).toBe(true);
+    expect(tracksItem(track, back.lineId)).toBe(true);
   });
 });

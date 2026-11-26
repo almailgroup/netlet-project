@@ -54,6 +54,18 @@ final class OrderSelectionTests: XCTestCase {
         XCTAssertEqual(OrderSelection.offers([shown], cancelled: false).first, OrderSelection.Offer(action: .view, lineIds: [6]))
     }
 
+    /// What a press on an item's words opens (on the owner's word): its
+    /// tracker while a parcel holds it — the web's `tracksItem`, on its
+    /// cases — and its product otherwise.
+    func testAnItemIsTrackedOnlyWhileAParcelHoldsIt() async throws {
+        let answer = try await Fixtures.client.call(API.order, .init(reference: "NL-20261001-J7MWY"))
+        let steps = try XCTUnwrap(XCTUnwrap(answer).steps)
+        XCTAssertEqual(steps.parcels.first?.lineIds, [2])
+        XCTAssertTrue(steps.tracks(2), "the delivered charger is in its parcel")
+        XCTAssertFalse(steps.tracks(9999), "an item no parcel holds")
+        XCTAssertFalse(OrderSteps(placedAt: steps.placedAt, cancelled: true, parcels: steps.parcels).tracks(2), "a cancelled order tracks nothing")
+    }
+
     func testAnOrderCancelledWholeIsOfferedOnlyWhatIsLeftToDo() {
         XCTAssertEqual(actions([gone], cancelled: true), ["help"])
         XCTAssertEqual(actions([OrderSelection.Line(id: 5)], cancelled: true), ["buyAgain", "help"])
