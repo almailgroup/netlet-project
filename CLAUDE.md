@@ -10450,6 +10450,15 @@ the page had drawn. Three things said something false:
   both are read, and the button waits for both (`DeleteAccount.test.ts`;
   `DeleteAccountUITests`, through `-NetLetDemoOffline auth.deletionCheck`).
 
+- **The notifications' email switch is the shopper's own setting or none.**
+  The web drew `email.data ?? true` and the app its model's default, both
+  pressable, whenever `notifications.email` had not come back — on, over a
+  shopper who had turned email off. Until the setting is read the web's box
+  is off and not pressable, and a failed read says so with Try again
+  (`NoticeEmailSwitch`, `NoticeEmailSwitch.test.ts`); the app draws no switch
+  until it is read and says the same when it could not be
+  (`NotificationsModel.emailRead`, `emailUnread`, `NotificationsModelTests`).
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s

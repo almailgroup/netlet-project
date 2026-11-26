@@ -16,7 +16,13 @@ struct NotificationsView: View {
                         LoadStateView(state: model.page, retry: { await model.load() }) { page in
                             inbox(page, model: model)
                         }
-                        if model.emailOffered { emailSwitch(model) }
+                        if model.emailOffered {
+                            if model.emailRead {
+                                emailSwitch(model)
+                            } else if model.emailUnread {
+                                emailUnread(model)
+                            }
+                        }
                     }
                 }
             }
@@ -123,6 +129,29 @@ struct NotificationsView: View {
         .card()
     }
 
+    private func emailUnread(_ model: NotificationsModel) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(l.t("notices.email")).font(.inter(14, .bold)).foregroundStyle(Brand.ink)
+            Text(l.t("account.sectionFailed"))
+                .font(.inter(13))
+                .foregroundStyle(Brand.body)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                Task { await model.readEmail() }
+            } label: {
+                Text(l.t("home.refreshCatalog"))
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .underline()
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.tap)
+            .accessibilityIdentifier("notice-email-retry")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+
     /// The web's icon per kind, as the nearest SF Symbol.
     static func symbol(_ kind: String) -> String {
         switch kind {
@@ -152,6 +181,11 @@ final class NotificationsModel {
     private(set) var fresh: Set<Int> = []
     private(set) var emailOffered = false
     private(set) var email = true
+    /// The shopper's email setting has been read: until then the switch is
+    /// not drawn, never drawn on over a setting that may be off.
+    private(set) var emailRead = false
+    /// It could not be read: said with Try again in the switch's place.
+    private(set) var emailUnread = false
     private var number = 1
     private let api: APICalling
 
@@ -161,9 +195,19 @@ final class NotificationsModel {
 
     func load() async {
         await go(to: number)
-        if let channels = try? await api.call(API.noticeChannels), channels.email {
-            emailOffered = true
-            if let allows = try? await api.call(API.noticeEmail) { email = allows }
+        guard let channels = try? await api.call(API.noticeChannels), channels.email else { return }
+        emailOffered = true
+        await readEmail()
+    }
+
+    /// The shopper's own email setting; a failure is said, never drawn as on.
+    func readEmail() async {
+        do {
+            email = try await api.call(API.noticeEmail)
+            emailRead = true
+            emailUnread = false
+        } catch {
+            if APIError.from(error) != .cancelled, !emailRead { emailUnread = true }
         }
     }
 

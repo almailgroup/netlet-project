@@ -19,6 +19,7 @@ import { useDateTimeFormat } from "@/hooks/useDateFormat";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatMoney } from "@/lib/format";
 import { isolate } from "@/lib/isolate";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { usePortalDoor } from "@/hooks/usePortalDoor";
 import { isPortalPath, portalSideFor } from "@shared/portal";
@@ -180,22 +181,61 @@ export function AccountNotifications() {
       {/* Only while NetLet sends email: a switch for mail that never goes is a
           control that changes nothing. */}
       {channels.data?.email ? (
-      <label className="tint-on-hover flex cursor-pointer items-start justify-between gap-4 rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
-        <span className="min-w-0">
-          <span className="block text-sm font-bold text-[#0a285a]">{t("notices.email")}</span>
-          <span className="mt-1 block text-[13px] leading-5 ink-muted">
-            {t("notices.emailNote", { email: isolate(user?.email ?? "") })}
-          </span>
-        </span>
-        <input
-          type="checkbox"
-          checked={email.data ?? true}
-          disabled={email.isLoading || setEmail.isPending}
-          onChange={event => setEmail.mutate({ allows: event.target.checked })}
-          className="mt-1 size-4 shrink-0 accent-[#0a285a]"
+        <NoticeEmailSwitch
+          email={email}
+          address={user?.email ?? ""}
+          pending={setEmail.isPending}
+          onChange={allows => setEmail.mutate({ allows })}
         />
-      </label>
       ) : null}
     </div>
+  );
+}
+
+/** The email switch: the shopper's own setting, or what could not be read.
+ *  It drew `email.data ?? true` — on, and pressable — when the setting had
+ *  not come back, over a shopper who had turned email off. */
+export function NoticeEmailSwitch({
+  email,
+  address,
+  pending,
+  onChange,
+}: {
+  email: { data: boolean | undefined; isError: boolean; isPlaceholderData?: boolean; refetch: () => unknown };
+  address: string;
+  pending: boolean;
+  onChange: (allows: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const heading = (
+    <span className="min-w-0">
+      <span className="block text-sm font-bold text-[#0a285a]">{t("notices.email")}</span>
+      <span className="mt-1 block text-[13px] leading-5 ink-muted">{t("notices.emailNote", { email: isolate(address) })}</span>
+    </span>
+  );
+  if (failedToLoad(email)) {
+    return (
+      <div className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
+        {heading}
+        <p role="alert" className="mt-2 text-[13px] leading-5 text-[#404553]">
+          {t("account.sectionFailed")}{" "}
+          <button type="button" onClick={() => void email.refetch()} className="font-bold text-[#0a285a] underline underline-offset-2">
+            {t("home.refreshCatalog")}
+          </button>
+        </p>
+      </div>
+    );
+  }
+  return (
+    <label className="tint-on-hover flex cursor-pointer items-start justify-between gap-4 rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
+      {heading}
+      <input
+        type="checkbox"
+        checked={email.data === true}
+        disabled={email.data === undefined || pending}
+        onChange={event => onChange(event.target.checked)}
+        className="mt-1 size-4 shrink-0 accent-[#0a285a]"
+      />
+    </label>
   );
 }
