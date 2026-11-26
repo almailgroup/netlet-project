@@ -126,10 +126,18 @@ final class SavingsModel {
     /// A percentage and a minimum spend are of the goods, so each held code
     /// is asked about again when the goods change; a code that works is not a
     /// guess, and costs nothing against the ceiling.
+    ///
+    /// A question that fails keeps the last answer, the web's rule: set to
+    /// nothing, the bill dropped the code's discount while the order still
+    /// sent the code, so checkout showed more than the shopper would pay.
     func requote(cartId: String) async {
         guard cartId == self.cartId, let api else { return }
-        if !code.isEmpty { codeQuote = try? await api.call(API.quoteVoucher, .init(cartId: cartId, code: code, skip: skip().nilIfEmpty)) }
-        if !giftCard.isEmpty { giftQuote = try? await api.call(API.quoteVoucher, .init(cartId: cartId, code: giftCard, skip: skip().nilIfEmpty)) }
+        if !code.isEmpty, let fresh = try? await api.call(API.quoteVoucher, .init(cartId: cartId, code: code, skip: skip().nilIfEmpty)) {
+            codeQuote = fresh
+        }
+        if !giftCard.isEmpty, let fresh = try? await api.call(API.quoteVoucher, .init(cartId: cartId, code: giftCard, skip: skip().nilIfEmpty)) {
+            giftQuote = fresh
+        }
     }
 
     /// What this bag comes to with the code, the card and the points.

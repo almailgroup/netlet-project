@@ -10533,7 +10533,11 @@ the page had drawn. Three things said something false:
   none (`SavingsModel.loadBalance`). Both say the section could not be loaded
   with Try again now, and a balance already read stays through a refresh that
   fails (`balanceFailed`; `BagSavingsPoints.test.ts`, which failed on the old
-  box, and `SavingsBalanceTests`).
+  box, and `SavingsBalanceTests`). **A held code asked about again keeps its
+  last answer when the question fails** (`SavingsModel.requote`, the web's
+  query keeping its data): set to nothing, the app's bill dropped the code's
+  discount while the order still sent the code, so checkout showed more than
+  the shopper would pay (`SavingsRequoteTests`).
 
 - **A next page of orders that could not be read is not the list's end**, in
   the app (`OrdersViewModel.moreFailed`): it set the total to what was shown,
