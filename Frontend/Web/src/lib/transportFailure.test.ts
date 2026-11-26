@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isTransportFailure } from "./transportFailure";
+import { isTransportFailure, saysEmailFailure } from "./transportFailure";
 
 describe("a transport failure", () => {
   it("is each engine's failed fetch, a body that is not JSON, and NetLet's own deadline", () => {
@@ -36,5 +36,22 @@ describe("a transport failure", () => {
     ]) {
       expect(isTransportFailure(said), said).toBe(false);
     }
+  });
+});
+
+describe("which failed email requests are said", () => {
+  /* A reset or a one-time code reads every failure as sent so that it cannot
+     say which address has an account — but an offline press then said "check
+     your email" over a mail that never went. */
+  it("says the throttle and a request that never reached NetLet", () => {
+    expect(saysEmailFailure("auth.tooManyAttempts")).toBe(true);
+    expect(saysEmailFailure("Failed to fetch")).toBe(true);
+    expect(saysEmailFailure("Load failed")).toBe(true);
+    expect(saysEmailFailure("The request took too long")).toBe(true);
+  });
+
+  it("reads a fault of the server's as sent, since one could vary by address", () => {
+    expect(saysEmailFailure("error.serverProblem")).toBe(false);
+    expect(saysEmailFailure("auth.notConfigured")).toBe(false);
   });
 });

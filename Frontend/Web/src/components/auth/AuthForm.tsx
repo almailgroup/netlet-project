@@ -67,6 +67,7 @@
  */
 import { trpc } from "@/lib/trpc";
 import { appPath } from "@/lib/basePath";
+import { saysEmailFailure } from "@/lib/transportFailure";
 import { ResetByCode } from "@/components/auth/ResetByCode";
 import {
   ArrowLeft, Check, CircleAlert, CircleCheck, Eye, EyeOff, KeyRound, LoaderCircle, LockKeyhole, Mail, MailCheck, Smartphone,
@@ -319,21 +320,22 @@ export function AuthForm({
     onSettled: () => { setCaptcha(null); setCaptchaReset(count => count + 1); },
   });
   const reset = trpc.auth.requestPasswordReset.useMutation({
-    onSuccess: (_answer, input) => { setSentTo(input.email); setWait(RESEND_WAIT_SECONDS); },
+    onSuccess: (_answer, input) => { setSentTo(input.email); setWait(RESEND_WAIT_SECONDS); setRefusal(null); },
     onError: (error, input) => {
-      /* The throttle counts every request whoever the address belongs to, so
-         saying so tells nobody anything; any other failure reads as sent,
-         because the reply must not vary by address. */
-      if (error.message === "auth.tooManyAttempts") setRefusal({ message: error.message });
+      /* The throttle counts every request whoever the address belongs to, and
+         a request that never arrived says nothing about anybody, so both are
+         said; any other failure reads as sent, because the reply must not
+         vary by address (`saysEmailFailure`). */
+      if (saysEmailFailure(error.message)) setRefusal({ message: error.message });
       else { setSentTo(input.email); setWait(RESEND_WAIT_SECONDS); }
     },
   });
   /* A one-time code: the same answer for an address with no account, so any
-     failure but the throttle reads as sent (the reset's rule). */
+     failure but the throttle or no connection reads as sent (the reset's rule). */
   const codeStart = trpc.auth.codeStart.useMutation({
     onSuccess: answer => setCodeFor(answer.email),
     onError: (error, input) => {
-      if (error.message === "auth.tooManyAttempts") setRefusal({ message: error.message });
+      if (saysEmailFailure(error.message)) setRefusal({ message: error.message });
       else setCodeFor(input.email.trim().toLowerCase());
     },
   });
@@ -507,9 +509,10 @@ export function AuthForm({
         headingId={headingId}
         wait={wait}
         sending={reset.isPending}
+        refusal={refusal?.message ?? null}
         headingRef={sentRef}
-        onResend={() => reset.mutate({ email: sentTo, locale })}
-        onDifferent={() => { setSentTo(null); window.setTimeout(() => emailRef.current?.focus(), 30); }}
+        onResend={() => { setRefusal(null); reset.mutate({ email: sentTo, locale }); }}
+        onDifferent={() => { setRefusal(null); setSentTo(null); window.setTimeout(() => emailRef.current?.focus(), 30); }}
         onBack={() => go("signin")}
         onSignedIn={displayName => { setSentTo(null); void settle(displayName); }}
         onVerify={(address, chosen) => {
@@ -1177,12 +1180,15 @@ function NewPassword({ arrival, Heading, headingId, onSignedIn, onVerify, onAskA
  * address. "Send again" waits half a minute, which is about how long a mail
  * takes. The link in the same mail still works for anybody who opens it instead.
  */
-function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onResend, onDifferent, onBack, onSignedIn, onVerify }: {
+export function ResetSent({ email, Heading, headingId, wait, sending, refusal = null, headingRef, onResend, onDifferent, onBack, onSignedIn, onVerify }: {
   email: string;
   Heading: "h1" | "h2";
   headingId: string;
   wait: number;
   sending: boolean;
+  /** "Send it again" refused — the throttle, or no connection. This page drew
+      no refusal, so a refused resend changed nothing and said nothing. */
+  refusal?: string | null;
   headingRef: React.RefObject<HTMLHeadingElement | null>;
   onResend: () => void;
   onDifferent: () => void;
@@ -1190,7 +1196,7 @@ function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onRes
   onSignedIn: (displayName: string | null) => void;
   onVerify: (email: string, password: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, tError } = useTranslation();
   const marker = "\u2063";
   const [before, after = ""] = t("auth.resetSentBody", { email: marker }).split(marker);
   return (
@@ -1207,6 +1213,12 @@ function ResetSent({ email, Heading, headingId, wait, sending, headingRef, onRes
       <div className="mt-6">
         <ResetByCode email={email} onSignedIn={onSignedIn} onVerify={onVerify} autoFocus={false} />
       </div>
+      {refusal ? (
+        <div role="alert" className={`mt-6 ${alertClass}`}>
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <p>{tError(refusal)}</p>
+        </div>
+      ) : null}
       <NotArrived
         resendLabel={sending ? t("auth.sending") : wait > 0 ? t("auth.resendIn", { seconds: wait }) : t("auth.resend")}
         resendDisabled={wait > 0 || sending}

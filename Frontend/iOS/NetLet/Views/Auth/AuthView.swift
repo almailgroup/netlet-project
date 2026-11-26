@@ -548,6 +548,12 @@ private struct AuthForm: View {
             }
             .id(email)
             .padding(.top, 22)
+            // "Send it again" refused — the throttle, or no connection — is
+            // said here; this page drew no refusal, so it read as sent.
+            if let refusal = model.refusal {
+                RefusalBox(key: refusal) { EmptyView() }
+                    .padding(.top, 18)
+            }
             notArrived(resend: "auth.resend", resendIn: "auth.resendIn")
         }
     }

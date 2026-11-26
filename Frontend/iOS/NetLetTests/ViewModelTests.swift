@@ -511,6 +511,32 @@ final class AuthViewModelTests: XCTestCase {
         _ = await model.submit()
         XCTAssertEqual(model.refusal, "auth.tooManyAttempts")
     }
+
+    /// A reset that never reached NetLet is said, not read as sent: the page
+    /// said "check your email" over a mail that never went. A fault on the
+    /// server's side still reads as sent (above), since one could vary by
+    /// address; a request that never arrived cannot.
+    func testAResetThatNeverReachedNetLetIsSaid() async {
+        let account = FakeAccountService()
+        account.resetError = .offline
+        let model = AuthViewModel(account: account)
+        model.mode = .reset
+        model.email = "noura@shop.test"
+        _ = await model.submit()
+        XCTAssertEqual(model.step, .form, "an offline reset read as sent")
+        XCTAssertEqual(model.refusal, "ios.error.offline")
+    }
+
+    /// Which failed email requests are said: the throttle and a request that
+    /// never arrived; never a fault of the server's, nor a cancelled one.
+    func testWhichEmailFailuresAreSaid() {
+        XCTAssertTrue(AuthViewModel.saysEmailFailure(.offline))
+        XCTAssertTrue(AuthViewModel.saysEmailFailure(.timedOut))
+        XCTAssertTrue(AuthViewModel.saysEmailFailure(.transport("lost")))
+        XCTAssertTrue(AuthViewModel.saysEmailFailure(.server(code: "TOO_MANY_REQUESTS", message: "auth.tooManyAttempts", status: 429)))
+        XCTAssertFalse(AuthViewModel.saysEmailFailure(.server(code: "INTERNAL_SERVER_ERROR", message: "error.serverProblem", status: 500)))
+        XCTAssertFalse(AuthViewModel.saysEmailFailure(.cancelled))
+    }
 }
 
 /// Saved and the wishlists are two different things, on the owner's word: a

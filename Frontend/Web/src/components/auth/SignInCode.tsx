@@ -13,6 +13,7 @@
 import { CircleAlert, Check, LoaderCircle } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { saysEmailFailure } from "@/lib/transportFailure";
 import { useTranslation } from "@/hooks/useTranslation";
 import { CODE_LENGTH, isCodeShaped, normaliseCode, RESEND_WAIT_SECONDS } from "@shared/auth/emailCode";
 import { PORTAL_SIDE } from "@/lib/portalHost";
@@ -48,11 +49,12 @@ export function SignInCode({ email, remember, Heading, headingId, onSignedIn, on
       input.current?.select();
     },
   });
-  /* Sent or not, the answer is the same: only the throttle is said. */
+  /* Sent or not, the answer is the same: only the throttle, or a request
+     that never reached NetLet, is said (`saysEmailFailure`). */
   const resend = trpc.auth.codeStart.useMutation({
     onSuccess: () => { setWait(RESEND_WAIT_SECONDS); setResent(true); setRefusal(null); },
     onError: error => {
-      if (error.message === "auth.tooManyAttempts") setRefusal(error.message);
+      if (saysEmailFailure(error.message)) setRefusal(error.message);
       else { setWait(RESEND_WAIT_SECONDS); setResent(true); }
     },
   });

@@ -35,3 +35,16 @@ export function isTransportFailure(message: string): boolean {
   const said = message.trim();
   return TRANSPORT.some(shape => shape.test(said));
 }
+
+/**
+ * Whether a failed email request — a reset, a one-time code — is said rather
+ * than read as sent. The server answers every address alike and a fault of
+ * its own reads as sent too, so a fault on one address cannot say it has an
+ * account; what is said is what cannot vary by address: the throttle, and a
+ * request that never reached NetLet. It read every failure but the throttle
+ * as sent, so an offline press said "check your email" over a mail that never
+ * went.
+ */
+export function saysEmailFailure(message: string): boolean {
+  return message === "auth.tooManyAttempts" || isTransportFailure(message);
+}

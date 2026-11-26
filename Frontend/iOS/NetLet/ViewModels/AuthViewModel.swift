@@ -313,7 +313,7 @@ final class AuthViewModel {
                 // The answer is the same for every address; only the throttle,
                 // or a phone that could not reach NetLet, is said.
                 let failure = APIError.from(error)
-                if failure.serverMessage == nil || failure.serverMessage == "auth.tooManyAttempts" {
+                if Self.saysEmailFailure(failure) {
                     refusal = key(for: failure)
                     return nil
                 }
@@ -364,9 +364,10 @@ final class AuthViewModel {
                 step = .resetSent(email: address)
                 startCountdown()
             } catch {
-                // The reply must not vary by address; only the throttle is said.
+                // The reply must not vary by address: only the throttle, or a
+                // phone that could not reach NetLet, is said.
                 let failure = APIError.from(error)
-                if failure.serverMessage == "auth.tooManyAttempts" { refusal = "auth.tooManyAttempts" } else {
+                if Self.saysEmailFailure(failure) { refusal = key(for: failure) } else {
                     step = .resetSent(email: address)
                     startCountdown()
                 }
@@ -415,7 +416,7 @@ final class AuthViewModel {
                 resentTo = address
             } catch {
                 let failure = APIError.from(error)
-                if failure.serverMessage == nil || failure.serverMessage == "auth.tooManyAttempts" {
+                if Self.saysEmailFailure(failure) {
                     refusal = key(for: failure)
                     return
                 }
@@ -424,7 +425,18 @@ final class AuthViewModel {
             startCountdown(seconds: Self.signInCodeWaitSeconds)
             return
         case .resetSent(let address):
-            try? await account.requestPasswordReset(email: address)
+            // "Send it again" was `try?`: the throttle and a phone with no
+            // connection both read as sent, and the wait started again over
+            // a mail that never went.
+            do {
+                try await account.requestPasswordReset(email: address)
+            } catch {
+                let failure = APIError.from(error)
+                if Self.saysEmailFailure(failure) {
+                    refusal = key(for: failure)
+                    return
+                }
+            }
         case .form:
             return
         }
@@ -475,6 +487,16 @@ final class AuthViewModel {
                 self.resendWait -= 1
             }
         }
+    }
+
+    /// Whether a failed email request — a reset, a one-time code — is said.
+    /// The server answers every address alike, and a fault of its own reads
+    /// as sent too, so a fault on one address cannot say it has an account;
+    /// what is said is what cannot vary by address: the throttle, and a
+    /// request that never reached NetLet. A cancelled one is nobody's news.
+    nonisolated static func saysEmailFailure(_ failure: APIError) -> Bool {
+        if failure == .cancelled { return false }
+        return failure.serverMessage == nil || failure.serverMessage == "auth.tooManyAttempts"
     }
 
     private func key(for error: APIError) -> String {

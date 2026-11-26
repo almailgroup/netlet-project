@@ -478,7 +478,8 @@ account with a phone number alone"). `auth.codeStart` asks Supabase to send it
 (`sendSupabaseSignInCode`, `/auth/v1/otp` with `create_user: false`, so asking
 never makes an account; the "Magic Link" template has to print `{{ .Token }}`,
 `docs/SUPABASE-AUTH.md`) and **answers the same whether or not the address has
-an account** — only the throttle is said, a code sent counting as `codeSend`
+an account** — only the throttle, and a request that never reached NetLet,
+are said (`saysEmailFailure`, below), a code sent counting as `codeSend`
 and a wrong one as `codeMiss`. `auth.codeSignIn` checks it
 (`verifySupabaseSignupCode`, type `email`) and lands on the account through
 `linkProviderAccount`, Apple's and Google's rule, the inbox having been
@@ -660,7 +661,16 @@ What the form does, each for a reason:
   there is no mail provider to configure. The reply is identical for an address
   with no account, like sign-in, so it cannot be used to ask who is registered;
   only the throttle is said, since it counts every request whoever's address it
-  is. Both services are asked when both are configured, for that same reason.
+  is — **and a request that never reached NetLet, which says nothing about
+  anybody** (`saysEmailFailure` in `lib/transportFailure.ts`, the app's
+  `AuthViewModel.saysEmailFailure`, for the reset and the one-time code alike).
+  Both read every other failure as sent, so an offline press said "Check your
+  email" over a mail that never went; a fault of the server's own still reads
+  as sent, since one could happen for one address and not another. The sent
+  page draws a refused "Send it again" too (`ResetSent`'s `refusal`; the app's
+  `resetSent`): it drew none, and the app's was a `try?`, so the throttle there
+  changed nothing and said nothing. Both services are asked when both are
+  configured, for that same reason.
   The project's default mailer is rate-limited and meant for development; a
   real deployment points Supabase at its own SMTP, a dashboard setting.
 - **The link in the reset mail ends on "Choose a new password"**, and it used
