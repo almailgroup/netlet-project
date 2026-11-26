@@ -63,7 +63,7 @@ private struct AnnounceSection: View {
     var body: some View {
         let parsed = lines.map { (variantId: $0.variantId, quantity: Int($0.quantity) ?? 0) }
         let problem = WarehouseRules.shared.inboundProblem(parsed)
-        Group {
+        VStack(alignment: .leading, spacing: 16) {
             if open == false {
                 PortalEmpty(text: l.t("fulfilment.notOpen"))
             } else if open == true {
@@ -171,7 +171,7 @@ private struct PickListSection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 16) {
             PortalSectionHeading(title: l.t("fulfilment.pickTitle"), note: l.t("fulfilment.pickNote"))
             if let picks {
                 if picks.orders.isEmpty {
@@ -224,7 +224,7 @@ private struct ShipmentsSection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 16) {
             PortalSectionHeading(title: l.t(isOperator ? "fulfilment.toReceive" : "fulfilment.yourShipments"))
             PortalSegmented(label: l.t("fulfilment.yourShipments"), value: $status, options: [
                 ("all", l.t("support.filterAll")), ("announced", l.t("fulfilment.statusAnnounced")),
@@ -358,7 +358,7 @@ private struct HeldSection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 16) {
             PortalSectionHeading(title: l.t(isOperator ? "fulfilment.heldAll" : "fulfilment.heldYours"))
             if let held {
                 if held.rows.isEmpty {
@@ -414,7 +414,7 @@ private struct ChargesSection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 16) {
             PortalSectionHeading(title: l.t("fulfilment.chargesTitle"), note: l.t("fulfilment.chargesNote"))
             if let charges {
                 if charges.rows.isEmpty {
@@ -462,7 +462,7 @@ private struct CentresSection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 16) {
             PortalSectionHeading(title: l.t("fulfilment.centres"), note: l.t("fulfilment.centresNote"))
             if centres.isEmpty { PortalEmpty(text: l.t("fulfilment.noCentres")) }
             ForEach(centres) { centre in

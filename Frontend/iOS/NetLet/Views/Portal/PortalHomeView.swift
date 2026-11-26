@@ -12,6 +12,9 @@ struct PortalHomeView: View {
     @State private var actor: SellerIdentity?
     @State private var counts: PortalCounts?
     @State private var health: StoreHealth?
+    /// The store's own warnings (3.3.18), read with the rest of the front page,
+    /// so the card is drawn only for a store that has some.
+    @State private var warnings: StoreWarnings?
     @State private var board: PortalDashboard?
     @State private var boardFailed: APIError?
     @State private var shelf: ShelfHealth?
@@ -82,7 +85,7 @@ struct PortalHomeView: View {
         }
         if let health { HealthPanel(health: health) }
         // The store's own warnings (3.3.18), drawn only when it has any.
-        if actor.kind == "vendor" { StoreWarningsCard(manage: false) }
+        if actor.kind == "vendor", let warnings, !warnings.rows.isEmpty { StoreWarningsCard(manage: false, initial: warnings) }
         if let counts, actor.kind != "courier" {
             PortalSectionHeading(title: l.t("admin.atAGlance"))
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
@@ -196,6 +199,7 @@ struct PortalHomeView: View {
             }
             let overview = start(true) { try await api.call(API.portalCounts, .init()) }
             let score = start(true) { try await api.call(API.storeHealth, .init()) }
+            let standing = start(who.kind == "vendor") { try await api.call(API.storeWarnings, .init(vendorId: nil)) }
             let shelfHealth = start(!money && who.can("product.view", vendorId: own)) { try await api.call(API.shelfHealth) }
             let offers = count("offer.answer") { try await api.call(API.offersWaiting, .init(vendorId: own)) }
             let changes = count("audit.view") { try await api.call(API.sellerChanges, .init(limit: 1)).unseen }
@@ -220,6 +224,7 @@ struct PortalHomeView: View {
             let devices = count("platform.devices") { try await api.call(API.devicesWaiting) }
             counts = await overview.value
             health = await score.value ?? nil
+            warnings = await standing.value ?? warnings
             if let dashboard {
                 do {
                     board = try await dashboard.value

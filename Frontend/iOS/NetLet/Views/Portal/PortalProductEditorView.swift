@@ -304,7 +304,7 @@ private struct DetailsSection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             LabeledField(label: l.t("admin.fieldTitle"), text: $title)
             LabeledField(label: l.t("admin.fieldTitleAr"), text: $titleAr)
                 .environment(\.layoutDirection, .rightToLeft)
@@ -376,7 +376,7 @@ private struct GallerySection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             Text(l.t("admin.imagesHint")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             if items.isEmpty {
                 Text(l.t("admin.noImages")).font(.inter(14)).foregroundStyle(Brand.muted)
@@ -797,7 +797,7 @@ private struct ShippingSection: View {
     var body: some View {
         let fields = rules.fields(departmentSlug)
         let kept = rules.freeFormRows(product.attributes ?? [], departmentSlug: departmentSlug)
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             // A seller's band, or the store's when it says nothing: NetLet
             // promises nothing for a seller.
             ChoiceField(label: l.t("admin.fieldDeliverySpeedProduct"), current: product.deliverySpeed, placeholder: l.t("admin.speedInherit"),
@@ -922,7 +922,7 @@ private struct SizeChartSection: View {
     }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             Text(l.t("sizeGuide.editorHint")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             if !drafting {
                 if mayEdit {
@@ -1085,7 +1085,7 @@ private struct AddonsSection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             Text(l.t("admin.addonsNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             AddonsEditor(rows: $rows, enabled: mayEdit, attempted: attempted)
             if mayEdit {
@@ -1143,7 +1143,7 @@ private struct CommissionSection: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             Text(l.t("admin.productCommissionNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .top, spacing: 8) {
                 LabeledField(label: l.t("admin.commissionPercent"), text: $percent, hint: l.t("admin.commissionPercentHint"), keyboard: .decimalPad, leftToRight: true)
@@ -1189,7 +1189,7 @@ private struct AffiliateSection: View {
     }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             Text(l.t("admin.productAffiliatesNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             Toggle(l.t("admin.affiliateOffer"), isOn: $offered)
                 .font(.inter(14, .semibold))
@@ -1247,7 +1247,7 @@ private struct ProposeCommissionSection: View {
     }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             Text(l.t("commission.proposeNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             if mayStoreWide {
                 Picker(l.t("commission.scope"), selection: $storeWide) {
@@ -1359,7 +1359,7 @@ private struct StoreSection: View {
     var body: some View {
         let current = stores.first { $0.id == product.vendorId }?.name ?? "#\(product.vendorId)"
         let others = stores.filter { $0.id != product.vendorId }
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
             Text(l.t("admin.sectionStoreNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
             Text(current).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
             if !others.isEmpty {

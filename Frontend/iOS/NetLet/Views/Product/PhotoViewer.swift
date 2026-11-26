@@ -607,7 +607,7 @@ private struct ZoomPage: View {
     @Environment(AppModel.self) private var app
 
     var body: some View {
-        Group {
+        ZStack {
             if media.isVideo {
                 GalleryVideo(url: media.url, poster: media.posterUrl, playLabel: playLabel)
             } else if let image {

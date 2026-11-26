@@ -37,7 +37,7 @@ private struct NewListingForm: View {
     private var listing: Rules.Listing { ReferenceData.shared.rules.listing }
 
     var body: some View {
-        Group {
+        ZStack {
             if model.noStore {
                 Text(l.t("admin.needVendorFirst")).font(.subheadline).foregroundStyle(Brand.muted).padding(24)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

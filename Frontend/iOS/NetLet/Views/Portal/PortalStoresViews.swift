@@ -387,6 +387,9 @@ struct PortalStoreView: View {
     @State private var saving: String?
     /// The delivery companies on NetLet, for a store that uses its own (3.3.13).
     @State private var companies: [DeliveryCompany] = []
+    /// The store's warnings, for somebody who reads them and does not issue
+    /// them: the card is drawn for them only when there are some.
+    @State private var warnings: StoreWarnings?
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
@@ -417,7 +420,11 @@ struct PortalStoreView: View {
                 payments
                 terms(store)
                 badges(store)
-                StoreWarningsCard(vendorId: vendorId, storeName: store.name, manage: may("vendor.approve"))
+                if may("vendor.approve") {
+                    StoreWarningsCard(vendorId: vendorId, storeName: store.name, manage: true)
+                } else if let warnings, !warnings.rows.isEmpty {
+                    StoreWarningsCard(vendorId: vendorId, storeName: store.name, manage: false, initial: warnings)
+                }
                 if may("vendor.viewMembers") { StoreTeamSection(vendorId: vendorId) { await load() } }
             } else if missing {
                 PortalEmpty(text: l.t("admin.storeNotFound"))
@@ -707,6 +714,9 @@ struct PortalStoreView: View {
             if store == nil { draft = StoreDraft(answer) }
             store = answer
             failed = nil
+            if !may("vendor.approve") {
+                warnings = (try? await app.services.api.call(API.storeWarnings, .init(vendorId: vendorId))) ?? warnings
+            }
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, store == nil { failed = failure }

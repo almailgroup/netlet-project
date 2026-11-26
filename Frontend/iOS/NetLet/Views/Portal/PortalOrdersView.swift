@@ -148,7 +148,7 @@ private struct DeskOrderDetailView: View {
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        Group {
+        ZStack(alignment: .topLeading) {
             if let detail {
                 content(detail)
             } else if loaded {

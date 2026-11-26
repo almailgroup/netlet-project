@@ -14,7 +14,7 @@ struct ProductDetailView: View {
 
     @ViewBuilder
     private func content(_ model: ProductDetailViewModel) -> some View {
-        Group {
+        ZStack {
             if case .loaded(let found) = model.product, let product = found {
                 ProductPage(product: product, model: model)
             } else {

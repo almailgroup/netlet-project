@@ -5,6 +5,13 @@ import SwiftUI
 /// overview, where its people read each one's reason, the product it names
 /// and the day it stops counting, under "1 of 3 standing". Issuing asks first
 /// and says when this one would suspend the store.
+///
+/// The page that draws it decides whether it is drawn — always for somebody
+/// who issues warnings, and for anybody else only once they have read that
+/// the store has some (`initial`) — so the card is one view whatever it
+/// holds. It was a `Group` that drew nothing until its own read came back,
+/// and a `.task` on an empty `Group` never runs, so the store's own overview
+/// never asked and never showed a warning (`swiftGroups.test.ts`).
 struct StoreWarningsCard: View {
     var vendorId: Int?
     var storeName: String?
@@ -20,33 +27,35 @@ struct StoreWarningsCard: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
+    init(vendorId: Int? = nil, storeName: String? = nil, manage: Bool, initial: StoreWarnings? = nil) {
+        self.vendorId = vendorId
+        self.storeName = storeName
+        self.manage = manage
+        _summary = State(initialValue: initial)
+    }
+
     private var rules: WarningRules { .init() }
 
     var body: some View {
-        Group {
-            /* A store with nothing on its record sees nothing on its overview. */
-            if manage || summary?.rows.isEmpty == false {
-                PortalCard {
-                    Text(l.t("warnings.title")).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
-                    Text(l.t(manage ? "warnings.noteAdmin" : "warnings.noteStore", ["suspendAt": "\(rules.suspendAt)", "days": "\(rules.days)"]))
-                        .font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-                    if let summary {
-                        Label(l.t("warnings.standing", ["count": "\(summary.standing)", "suspendAt": "\(summary.suspendAt)"]), systemImage: "exclamationmark.triangle")
-                            .font(.inter(14, .semibold))
-                            .foregroundStyle(summary.standing > 0 ? Brand.danger : Brand.navy)
-                        if summary.rows.isEmpty {
-                            Text(l.t("warnings.none")).font(.inter(13)).foregroundStyle(Brand.muted)
-                        }
-                        ForEach(summary.rows) { row in
-                            Divider()
-                            line(row)
-                        }
-                    } else {
-                        ProgressView().tint(Brand.navy)
-                    }
-                    if manage { issueForm }
+        PortalCard {
+            Text(l.t("warnings.title")).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
+            Text(l.t(manage ? "warnings.noteAdmin" : "warnings.noteStore", ["suspendAt": "\(rules.suspendAt)", "days": "\(rules.days)"]))
+                .font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
+            if let summary {
+                Label(l.t("warnings.standing", ["count": "\(summary.standing)", "suspendAt": "\(summary.suspendAt)"]), systemImage: "exclamationmark.triangle")
+                    .font(.inter(14, .semibold))
+                    .foregroundStyle(summary.standing > 0 ? Brand.danger : Brand.navy)
+                if summary.rows.isEmpty {
+                    Text(l.t("warnings.none")).font(.inter(13)).foregroundStyle(Brand.muted)
                 }
+                ForEach(summary.rows) { row in
+                    Divider()
+                    line(row)
+                }
+            } else {
+                ProgressView().tint(Brand.navy)
             }
+            if manage { issueForm }
         }
         .task { await load() }
         .confirmationDialog(l.t("warnings.issueTitle", ["store": storeName ?? ""]), isPresented: $confirming, titleVisibility: .visible) {

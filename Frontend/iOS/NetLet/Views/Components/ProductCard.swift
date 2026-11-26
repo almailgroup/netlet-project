@@ -816,7 +816,12 @@ struct PhotoCartControl: View {
         if let variant = product.leadVariant, variant.availableForSale {
             let line = product.needsChoice ? nil : app.cart.cart?.plainLine(for: variant.id)
             let stepping = open && line != nil
-            Group {
+            /* One view whatever face it shows. A `Group` handed what follows
+               to each face, so the plus going as the stepper came fired the
+               `.onDisappear` below and folded the stepper the moment it
+               opened, and a press on the folded count did the same
+               (`swiftGroups.test.ts`, `CardStepperUITests`). */
+            ZStack {
                 if product.needsChoice {
                     plus(label: l.t("card.chooseName", ["name": product.title])) {
                         app.push(.product(handle: product.handle))
