@@ -10527,6 +10527,14 @@ the page had drawn. Three things said something false:
   and the governorates can still be chosen (`PreferencesModelTests`). The web
   reads the area from what the device holds, so has no such read.
 
+- **Checkout's points say when the balance could not be read.** The web's
+  box pulsed for good (`balanceKnown` waited on `isSuccess`), and the app took
+  a failed read as a balance of nought and told an account with points it had
+  none (`SavingsModel.loadBalance`). Both say the section could not be loaded
+  with Try again now, and a balance already read stays through a refresh that
+  fails (`balanceFailed`; `BagSavingsPoints.test.ts`, which failed on the old
+  box, and `SavingsBalanceTests`).
+
 - **A shopper never reads the browser's or the parser's words.** That walk
   showed the help line as "Unexpected token 'd', "down" is not valid JSON":
   `tError` passes on any message that is not a key, which is right for a

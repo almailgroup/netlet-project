@@ -277,6 +277,14 @@ private struct PointsRow: View {
                         .frame(minHeight: 36)
                         .buttonStyle(.tap)
                 }
+            } else if savings.balanceFailed {
+                Text(l.t("account.sectionFailed")).font(.inter(13)).foregroundStyle(Brand.muted)
+                Button(l.t("home.refreshCatalog")) { Task { await savings.loadBalance(signedIn: true) } }
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .frame(minHeight: 36)
+                    .buttonStyle(.tap)
+                    .accessibilityIdentifier("points-retry")
             } else {
                 ProgressView().frame(height: 20)
             }

@@ -41,6 +41,7 @@ import { setSavings, useSavings } from "@/lib/bagSavings";
 import { formatCount } from "@/lib/format";
 import { pressHaptic } from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
+import { failedToLoad } from "@/lib/queryState";
 import { pointsSpendableOn, spendValue } from "@shared/commerce/referral";
 import { giftCardPayment, normaliseCode, settle } from "@shared/commerce/vouchers";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
@@ -110,7 +111,11 @@ export function useSavingsBill({ withBalance = false }: { withBalance?: boolean 
     discount,
     gift,
     balance,
-    balanceKnown: !isAuthenticated || rewards.isSuccess,
+    /* Known once read, kept through a refresh that fails; a first read that
+       failed is said as one, where the box pulsed for good. */
+    balanceKnown: !isAuthenticated || rewards.data !== undefined,
+    balanceFailed: isAuthenticated && failedToLoad(rewards),
+    readBalanceAgain: () => void rewards.refetch(),
     pointsApplied,
     discountOff: bill.discount,
     pointsOff: bill.points,
@@ -336,7 +341,7 @@ function CodeBox({ kind, bill }: { kind: "discount" | "gift"; bill: ReturnType<t
   );
 }
 
-function PointsSwitch({ bill }: { bill: ReturnType<typeof useSavingsBill> }) {
+export function PointsSwitch({ bill }: { bill: Pick<ReturnType<typeof useSavingsBill>, "balance" | "balanceKnown" | "balanceFailed" | "readBalanceAgain" | "chosen"> }) {
   const { t, locale } = useTranslation();
   const money = useMoney();
   const { cart } = useCart();
@@ -357,6 +362,17 @@ function PointsSwitch({ bill }: { bill: ReturnType<typeof useSavingsBill> }) {
           <button type="button" onClick={() => setSigningIn(true)} className="font-bold text-[#0a285a] underline underline-offset-2">{t("header.signIn")}</button>
         </p>
         {signingIn ? createPortal(<Suspense fallback={null}><AuthDialog open onClose={() => setSigningIn(false)} /></Suspense>, document.body) : null}
+      </div>
+    );
+  }
+  if (!bill.balanceKnown && bill.balanceFailed) {
+    return (
+      <div>
+        {heading}
+        <p role="alert" className="text-[13px] leading-5 ink-muted">
+          {t("account.sectionFailed")}{" "}
+          <button type="button" onClick={bill.readBalanceAgain} className="font-bold text-[#0a285a] underline underline-offset-2">{t("home.refreshCatalog")}</button>
+        </p>
       </div>
     );
   }

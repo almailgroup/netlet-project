@@ -24,6 +24,9 @@ final class SavingsModel {
     private(set) var giftQuote: API.VoucherQuote?
     /// The points balance; nil until read, zero for a guest.
     private(set) var balance: Int?
+    /// The balance could not be read: said with Try again, never "no points"
+    /// to an account that has some — a failed read was taken as zero.
+    private(set) var balanceFailed = false
     /// A line under a box once something was asked: a refusal's key, or
     /// where a code went. `good` draws it green.
     private(set) var notes: [Box: (key: String, good: Bool)] = [:]
@@ -54,10 +57,17 @@ final class SavingsModel {
     func loadBalance(signedIn: Bool) async {
         guard signedIn, let api else {
             balance = 0
+            balanceFailed = false
             usePoints = false
             return
         }
-        balance = (try? await api.call(API.rewards))?.balance ?? balance ?? 0
+        do {
+            balance = try await api.call(API.rewards).balance
+            balanceFailed = false
+        } catch {
+            // A balance already read stays; only one never read says it failed.
+            if APIError.from(error) != .cancelled, balance == nil { balanceFailed = true }
+        }
     }
 
     /// Asks what `typed` is, on the press — only a code naming nothing counts
