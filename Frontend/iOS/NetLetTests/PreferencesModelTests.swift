@@ -19,4 +19,19 @@ final class PreferencesModelTests: XCTestCase {
         XCTAssertTrue(model.noticesRead)
         XCTAssertNil(model.noticesError)
     }
+
+    /// The area read failing said "Choose your area" over an account that has one.
+    func testAnAreaThatCouldNotBeReadIsNotNoArea() async {
+        let account = FakeAccountService()
+        account.profileError = .offline
+        let model = PreferencesModel(api: OfflineAPI(), account: account)
+        await model.load()
+        XCTAssertNil(model.zone)
+        XCTAssertTrue(model.zoneUnread)
+        account.profileError = nil
+        account.profileZone = "hawalli"
+        await model.load()
+        XCTAssertEqual(model.zone, "hawalli")
+        XCTAssertFalse(model.zoneUnread)
+    }
 }

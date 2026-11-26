@@ -10521,6 +10521,12 @@ the page had drawn. Three things said something false:
   on the old row) and in the app (`waysFailed`, `PasswordRowUITests`, through
   `-NetLetDemoOffline auth.myProviders`).
 
+- **Preferences never says "Choose your area" over an area it could not
+  read**, in the app (`PreferencesModel.zoneUnread`; the account's profile
+  read was a `try?`): it says the section could not be loaded with Try again,
+  and the governorates can still be chosen (`PreferencesModelTests`). The web
+  reads the area from what the device holds, so has no such read.
+
 - **A shopper never reads the browser's or the parser's words.** That walk
   showed the help line as "Unexpected token 'd', "down" is not valid JSON":
   `tError` passes on any message that is not a key, which is right for a

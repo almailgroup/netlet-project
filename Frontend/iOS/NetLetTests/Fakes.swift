@@ -283,7 +283,13 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
     }
     func changePassword(current: String, new: String) async throws {}
     func changeEmail(_ email: String, currentPassword: String) async throws -> User { Self.user }
-    func profile() async throws -> Profile { Profile(locale: nil, deliveryZoneId: nil, cartId: nil) }
+    /// When set, reading the profile fails with it; `profileZone` is the area it answers.
+    var profileError: APIError?
+    var profileZone: String?
+    func profile() async throws -> Profile {
+        if let profileError { throw profileError }
+        return Profile(locale: nil, deliveryZoneId: profileZone, cartId: nil)
+    }
     func claimCart(_ cartId: String?, language: Language) async throws -> Profile { Profile(locale: nil, deliveryZoneId: nil, cartId: cartId) }
     func saveLanguage(_ language: Language) async throws {}
     /// When set, reading the address book fails with it.

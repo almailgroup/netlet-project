@@ -52,9 +52,18 @@ struct PreferencesView: View {
     private func area(_ model: PreferencesModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             let zone = ReferenceData.shared.governorate(id: model.zone)
-            Text(zone.map { l.t("account.zoneSelected", ["name": $0.name(l.current)]) } ?? l.t("account.chooseZone"))
-                .font(.inter(14, .semibold))
-                .foregroundStyle(Brand.ink)
+            if zone == nil, model.zoneUnread {
+                Text(l.t("account.sectionFailed"))
+                    .font(.inter(14, .semibold))
+                    .foregroundStyle(Brand.muted)
+                Button(l.t("home.refreshCatalog")) { Task { await model.load() } }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .accessibilityIdentifier("preferences-zone-retry")
+            } else {
+                Text(zone.map { l.t("account.zoneSelected", ["name": $0.name(l.current)]) } ?? l.t("account.chooseZone"))
+                    .font(.inter(14, .semibold))
+                    .foregroundStyle(Brand.ink)
+            }
             Text(l.t("delivery.governorate")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
             Menu {
                 ForEach(ReferenceData.shared.governorates) { governorate in
@@ -74,6 +83,9 @@ struct PreferencesView: View {
 @MainActor
 final class PreferencesModel {
     private(set) var zone: String?
+    /// The account's area could not be read: said as such, never "Choose
+    /// your area" over an account that has one.
+    private(set) var zoneUnread = false
     private(set) var stored: [String: Bool] = [:]
     private(set) var switching = false
     /// The shopper's own switches have been read. Until then, and when the
@@ -91,7 +103,12 @@ final class PreferencesModel {
     }
 
     func load() async {
-        if let profile = try? await account.profile() { zone = profile.deliveryZoneId }
+        do {
+            zone = try await account.profile().deliveryZoneId
+            zoneUnread = false
+        } catch {
+            if APIError.from(error) != .cancelled { zoneUnread = true }
+        }
         do {
             let preferences = try await api.call(API.noticePreferences)
             stored = Dictionary(preferences.map { ($0.kind, $0.enabled) }, uniquingKeysWith: { _, last in last })
