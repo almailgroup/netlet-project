@@ -31,6 +31,7 @@
  * else's list, which needs no account.
  */
 import { toastHeart } from "@/lib/heartToast";
+import { failedToLoad } from "@/lib/queryState";
 import { useProductsByIds } from "@/hooks/useCatalog";
 import { QuickView } from "@/components/product/QuickView";
 import { SavedCard, useSavedMoves } from "@/components/cart/SavedForLater";
@@ -59,7 +60,7 @@ const AuthDialog = lazyPage(() => import("@/components/auth/AuthDialog"));
 
 type SavedTab = "saved" | "wishlists";
 
-function SavedItems() {
+export function SavedItems() {
   const { savedIds, saveForLater, savedUnread, readSavedAgain } = useCustomer();
   /* The products chosen for Move to cart or Remove. */
   const [chosen, setChosen] = useState<Set<string>>(() => new Set());
@@ -80,6 +81,11 @@ function SavedItems() {
   // available" is information; silently showing fewer cards is a bug report.
   // Only once the server has answered: the shelves' copy is not the catalogue.
   const missingCount = saved.missing;
+  /* The hearts were read and the products behind them were not: never
+     "nothing saved yet" over a list that holds something. */
+  const productsFailed = savedIds.length > 0 && failedToLoad(saved.query);
+  const unread = savedUnread || productsFailed;
+  const readAgain = savedUnread ? readSavedAgain : () => void saved.query.refetch();
 
   const ids = savedProducts.map(product => product.id);
   const picked = savedProducts.filter(product => chosen.has(product.id));
@@ -111,7 +117,7 @@ function SavedItems() {
     <>
         {/* A line held while the list loads, so the grid does not drop when it lands. */}
         <p className="mb-5 text-[14px] leading-6 ink-muted">
-          {isLoading || (savedUnread && savedProducts.length === 0) ? "\u00a0" : savedProducts.length === 0
+          {isLoading || (unread && savedProducts.length === 0) ? "\u00a0" : savedProducts.length === 0
             ? t("saved.emptyPrompt")
             : savedProducts.length === 1
               ? t("saved.countOne")
@@ -129,13 +135,23 @@ function SavedItems() {
               <div key={i} className="h-[330px] animate-pulse rounded-2xl border border-[#d5dfeb] bg-white/60" />
             ))}
           </div>
-        ) : savedUnread && !savedProducts.length ? (
-          /* The account's list could not be read: never "nothing saved yet". */
+        ) : unread && !savedProducts.length ? (
+          /* The account's list, or the products on it, could not be read:
+             never "nothing saved yet". */
           <EmptyState icon={<Heart className="size-6" />} title={t("saved.loadFailed")} note={t("common.loadFailedNote")}>
-            <button type="button" onClick={readSavedAgain} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
+            <button type="button" onClick={readAgain} className={BUTTON_PRIMARY}>{t("home.refreshCatalog")}</button>
           </EmptyState>
         ) : savedProducts.length ? (
           <>
+          {productsFailed ? (
+            /* Some cards are the shelves' copies; the rest could not be read. */
+            <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[#f2b69e] bg-white px-4 py-3 text-[13px] font-semibold text-[#a44a2b]">
+              <span>{t("saved.loadFailed")}</span>
+              <button type="button" onClick={readAgain} className="inline-flex min-h-10 items-center rounded-full border border-[#0a285a]/25 bg-white px-4 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
+                {t("home.refreshCatalog")}
+              </button>
+            </div>
+          ) : null}
           {/* The cards are h3s under the page's h1: the department grid's rung. */}
           <h2 className="sr-only">{t("browse.resultsRegion")}</h2>
           <p aria-live="polite" className="sr-only">{moves.said}</p>

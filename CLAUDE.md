@@ -10466,6 +10466,17 @@ the page had drawn. Three things said something false:
   Try again (`PhoneCard`, `WishlistPhoneCard.test.ts`;
   `WishlistsModel.phoneRead`, `phoneUnread`, `WishlistPhoneTests`).
 
+- **Saved and a wishlist whose products could not be read say so.** The
+  hearts were read and `commerce.products.byIds` behind them failed: Saved
+  said "nothing saved yet" over saved products, a wishlist drew its items
+  with no names under photos that pulsed for good, and Add from Saved said
+  nothing was saved — and in the app every item read "no longer available",
+  since a failed read still marked the products settled. Each now says what
+  could not be loaded with Try again, keeping any card already drawn (on the
+  web `SavedProductsFailed.test.ts` and `WishlistItemsFailed.test.ts`, both
+  failing on the old code; in the app `WishlistDetailModel.productsUnread`
+  and `savedUnread`, `WishlistDetailFailedTests`).
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s

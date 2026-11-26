@@ -409,8 +409,13 @@ final class WishlistDetailModel {
     let detail: Loader<WishlistDetail>
     private(set) var products: [String: Product] = [:]
     private(set) var savedIds: [String] = []
-    /// Set once the products have been asked for, so "no longer available" is said only after.
+    /// Set once the products have been read, so "no longer available" is said only after.
     private(set) var settled = false
+    /// The list was read and its products were not: never "no longer
+    /// available" under every item.
+    private(set) var productsUnread = false
+    /// Saved could not be read: never "nothing saved yet".
+    private(set) var savedUnread = false
     let api: APICalling
     private let account: AccountServicing
     private let language: Language
@@ -425,12 +430,34 @@ final class WishlistDetailModel {
 
     func load() async {
         await detail.load()
-        savedIds = (try? await account.savedProducts()) ?? savedIds
-        let wanted = Array(Set((detail.value?.items.map(\.productId) ?? []) + savedIds)).filter { products[$0] == nil }
-        if !wanted.isEmpty, let found = try? await api.call(API.productsByIds, .init(ids: wanted, locale: language.rawValue)) {
-            for product in found { products[product.id] = product }
+        await readProducts()
+    }
+
+    /// Saved and the products on the list and in Saved — each said, with Try
+    /// again, when it could not be read.
+    func readProducts() async {
+        do {
+            savedIds = try await account.savedProducts()
+            savedUnread = false
+        } catch {
+            if APIError.from(error) == .cancelled { return }
+            savedUnread = true
         }
-        settled = true
+        let wanted = Array(Set((detail.value?.items.map(\.productId) ?? []) + savedIds)).filter { products[$0] == nil }
+        guard !wanted.isEmpty else {
+            settled = true
+            productsUnread = false
+            return
+        }
+        do {
+            let found = try await api.call(API.productsByIds, .init(ids: wanted, locale: language.rawValue))
+            for product in found { products[product.id] = product }
+            settled = true
+            productsUnread = false
+        } catch {
+            if APIError.from(error) == .cancelled { return }
+            productsUnread = true
+        }
     }
 
     func add(_ product: Product) async throws {
@@ -489,6 +516,9 @@ private struct WishlistDetailBody: View {
             .onAppear { shownAs = detail.list.ownerName ?? "" }
 
             VStack(alignment: .leading, spacing: 10) {
+                if model.productsUnread && !detail.items.isEmpty {
+                    retry(id: "wish-items-retry")
+                }
                 if detail.items.isEmpty {
                     Text(l.t("wish.listEmpty")).font(.inter(14)).foregroundStyle(Brand.muted)
                 } else {
@@ -503,7 +533,9 @@ private struct WishlistDetailBody: View {
                     Text(l.t("wish.addFromSaved")).font(.inter(16, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
                     Text(l.t("wish.addFromSavedNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
                     let saved = model.savedIds.compactMap { model.products[$0] }
-                    if saved.isEmpty {
+                    if model.savedUnread || (model.productsUnread && saved.isEmpty && !model.savedIds.isEmpty) {
+                        retry(id: "wish-saved-retry")
+                    } else if saved.isEmpty {
                         Text(l.t("wish.nothingSaved")).font(.inter(13)).foregroundStyle(Brand.muted)
                     } else {
                         ForEach(saved) { product in savedRow(product, already: onList.contains(product.id)) }
@@ -520,6 +552,27 @@ private struct WishlistDetailBody: View {
             Button(l.t("common.cancel"), role: .cancel) {}
         } message: { item in
             Text(l.t("wish.removeAskBody", ["name": displayName(item), "list": detail.list.title]))
+        }
+    }
+
+    /// What could not be read, and Try again.
+    private func retry(id: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(l.t("account.sectionFailed"))
+                .font(.inter(13))
+                .foregroundStyle(Brand.body)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                Task { await model.readProducts() }
+            } label: {
+                Text(l.t("home.refreshCatalog"))
+                    .font(.inter(13, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .underline()
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.tap)
+            .accessibilityIdentifier(id)
         }
     }
 

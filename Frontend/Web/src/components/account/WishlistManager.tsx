@@ -433,7 +433,7 @@ function NewList({ onCreated }: { onCreated: () => void }) {
 }
 
 /** One list: what is on it, and what can be added from Saved. */
-function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) {
+export function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) {
   const { t, locale } = useTranslation();
   const on = useFeature("wishlists");
   const detail = trpc.wishlists.get.useQuery({ listId });
@@ -476,6 +476,10 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
   const products = useProductsByIds([...items.map(item => item.productId), ...(savedIds.data ?? [])]);
   const savedProducts = (savedIds.data ?? []).flatMap(id => products.byId.get(id) ?? []);
   const nameOf = (productId: string) => products.byId.get(productId)?.title ?? (products.settled ? t("product.unavailable") : "");
+  /* The list was read and the products on it were not: a sentence and Try
+     again, never rows with no names under photos that wait for good. */
+  const productsFailed = failedToLoad(products.query);
+  const savedUnread = failedToLoad(savedIds);
 
   const onList = new Set(items.map(item => item.productId));
 
@@ -492,6 +496,14 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
 
             <div className="rounded-[1.35rem] border border-[#d5dfeb] bg-white p-5">
               <h3 dir="auto" className="type-product text-lg text-[#0a285a]">{detail.data?.list.title}</h3>
+              {productsFailed && items.length > 0 ? (
+                <div role="alert" className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#f2b69e] bg-white px-4 py-3 text-[13px] font-semibold text-[#a44a2b]">
+                  <span>{t("account.sectionFailed")}</span>
+                  <button type="button" onClick={() => void products.query.refetch()} className="inline-flex min-h-10 items-center rounded-full border border-[#0a285a]/25 bg-white px-4 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
+                    {t("home.refreshCatalog")}
+                  </button>
+                </div>
+              ) : null}
               {items.length === 0 ? (
                 <p className="mt-2 text-sm ink-muted">{t("wish.listEmpty")}</p>
               ) : (
@@ -501,7 +513,7 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
                     const href = product ? `/products/${encodeURIComponent(product.handle)}` : null;
                     return (
                       <li key={item.id} className="flex items-start gap-3 py-3">
-                        <ItemPhoto product={product} href={href} waiting={!product && !products.settled} />
+                        <ItemPhoto product={product} href={href} waiting={!product && !products.settled && !productsFailed} />
                         <div className="min-w-0 flex-1">
                           {href ? (
                             <Link href={href} dir="auto" className="line-clamp-2 text-sm font-extrabold text-[#0a285a] hover:text-[#a44a2b]">
@@ -574,7 +586,18 @@ function ListDetail({ listId, onBack }: { listId: number; onBack: () => void }) 
               <h3 className="text-sm font-extrabold text-[#0a285a]">{t("wish.addFromSaved")}</h3>
               <p className="mt-1 max-w-prose text-xs leading-5 ink-muted">{t("wish.addFromSavedNote")}</p>
 
-              {products.waiting && (savedIds.data ?? []).length > 0 ? (
+              {savedUnread || (productsFailed && savedProducts.length === 0 && (savedIds.data ?? []).length > 0) ? (
+                <div role="alert" className="mt-3 flex flex-wrap items-center gap-3 text-[13px] font-semibold text-[#a44a2b]">
+                  <span>{t("account.sectionFailed")}</span>
+                  <button
+                    type="button"
+                    onClick={() => void (savedUnread ? savedIds.refetch() : products.query.refetch())}
+                    className="inline-flex min-h-10 items-center rounded-full border border-[#0a285a]/25 bg-white px-4 text-[13px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]"
+                  >
+                    {t("home.refreshCatalog")}
+                  </button>
+                </div>
+              ) : savedIds.isPending || (products.waiting && (savedIds.data ?? []).length > 0) ? (
                 <div aria-hidden className="mt-3 grid gap-2 sm:grid-cols-2">
                   {[0, 1].map(index => <div key={index} className="h-[4.25rem] animate-pulse rounded-2xl bg-[#f3f5f9]" />)}
                 </div>
