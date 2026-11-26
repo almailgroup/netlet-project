@@ -154,7 +154,9 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
 
     static let user = User(id: 2, email: "noura@shop.test", name: "Noura Al-Sabah", role: "user", createdAt: nil)
 
-    func currentUser() async throws -> User? { nil }
+    /// Who the cookie belongs to, or why the server could not be asked.
+    var currentUserAnswer: Result<User?, APIError> = .success(nil)
+    func currentUser() async throws -> User? { try currentUserAnswer.get() }
     func signupOptions() async throws -> SignupOptions { SignupOptions(captchaSiteKey: nil) }
     /// Whether the server says Supabase has Apple on.
     var appleOn = false

@@ -226,6 +226,11 @@ final class AppModel {
     var photoViewerStart: PhotoViewerStart?
     /// Which of the shop's switchable features are on (`features.states`).
     private(set) var features = FeatureStates.unknown
+    /// Whether the switches have been read at all: a launch that could not
+    /// read them asks again when the app comes back (`readAgainWhatFailed`).
+    private var featuresRead = false
+    /// One `readAgainWhatFailed` at a time.
+    private var readingAgain = false
     /// What is waiting in the account: unread notices and messages, parcels on the way.
     let signals: AccountSignals
     /// What the Profile tab draws beside who is signed in, asked as soon as
@@ -855,6 +860,29 @@ final class AppModel {
     func appReturned(at now: Date = Date()) {
         if let leftAt, DealsBurstRule.opensAfresh(awayFor: now.timeIntervalSince(leftAt)) { dealsPresses = 0 }
         leftAt = nil
+        // What could not be read — offline at launch, the server down — is
+        // asked again on the way back, the web's reconnect and refocus.
+        if session.isUnreachable || cart.unread || !featuresRead {
+            Task { await self.readAgainWhatFailed() }
+        }
+    }
+
+    /// Who is signed in, the bag and the shop's switches, each asked again
+    /// only if it could not be read, the way `start` asks them; and, once an
+    /// account is found, everything that follows from it. The Profile tab's
+    /// Try again, and the app coming back to the foreground.
+    func readAgainWhatFailed() async {
+        guard !readingAgain else { return }
+        readingAgain = true
+        defer { readingAgain = false }
+        let whoUnknown = session.isUnreachable
+        let who: Task<Void, Never>? = whoUnknown ? Task { await self.session.restore() } : nil
+        let bag: Task<Void, Never>? = cart.unread ? Task { await self.cart.restore() } : nil
+        let switches: Task<Void, Never>? = featuresRead ? nil : Task { await self.loadFeatures() }
+        await who?.value
+        await bag?.value
+        await switches?.value
+        if whoUnknown, session.isSignedIn { await linkAccount() }
     }
 
     /// The search the header's field sends: its results page, on the tab
@@ -943,7 +971,10 @@ final class AppModel {
         async let available = try? services.api.call(API.aiAvailable)
         async let photo = try? services.api.call(API.photoAvailable)
         async let policy = try? services.api.call(API.returnPolicy)
-        if let states = await states { features = states }
+        if let states = await states {
+            features = states
+            featuresRead = true
+        }
         if let days = await policy?.returnWindowDays, days > 0 { returnWindowDays = days }
         ai = await available ?? AIAvailability(chat: false, catalog: false)
         photoSearchReady = await photo?.available ?? false

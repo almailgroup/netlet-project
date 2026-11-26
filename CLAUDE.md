@@ -8751,7 +8751,9 @@ under its reorder point), in stock — which the dashboard counts in SQL and
 the stock page draws.
 
 **The stock page keeps itself current** (asked again every 30 seconds while
-open, with the time it last heard and Refresh), opens on the four states
+open, with the time it last heard and Refresh — greyed out only while its own
+press is answered: it faded out and back on every 30-second read, which read
+as the page blinking and which the browser sweep's axe caught mid-fade), opens on the four states
 counted, and each low shelf says its state, how many are left against its
 reorder point, **how long it lasts at the last four weeks' pace**
 (`daysOfCover`), and — for a rank that moves stock — takes a reorder point
@@ -10344,7 +10346,20 @@ the page had drawn. Three things said something false:
   (`unread`), with Try again, and `CartModelTests` holds both halves.
 - **A failed session check is not signed out** (`useAuth`'s `unknown`). `/account`
   drew the sign-in form, telling a signed-in shopper they had been signed out;
-  it says the account could not be reached now, with Try again.
+  it says the account could not be reached now, with Try again. **The app had
+  the same fault, and has the same answer**: `SessionModel.restore` read any
+  failure to ask as signed out, so a phone offline at launch drew the Profile
+  tab's sign-in form for somebody signed in. A failure before anything is
+  known is `unreachable` now (a failure while signed in or out changes
+  nothing), and the tab says "Your account could not be loaded just now" with
+  Try again (`AccountUnreachable`). **And the app asks again by itself on
+  coming back to the foreground** (`AppModel.readAgainWhatFailed`, from
+  `appReturned`): who is signed in while unreachable, the bag while `unread`
+  and the shop's switches if they were never read — the web's reconnect and
+  refocus, which the app had none of. `SessionModelTests` holds the states and
+  `SessionUITests` the tab in both languages, through the demo's Debug-only
+  `-NetLetDemoOffline auth.me`, which fails the procedures it names as a phone
+  with no connection would.
 - **Saved is not "nothing saved yet" when its list could not be read**
   (`CustomerContext`'s `savedUnread`): a failed read of a signed-in shopper's
   hearts fell back to the device's guest list, empty after sign-in, and its

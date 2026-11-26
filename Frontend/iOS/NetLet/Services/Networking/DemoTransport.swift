@@ -27,6 +27,15 @@ struct DemoTransport: HTTPTransport {
         // The refurbished section asks the same procedures as the new shop
         // with `condition: "refurbished"`; it is answered from its own
         // recording or not at all, never from the new shop's.
+        #if DEBUG
+        // `-NetLetDemoOffline auth.me` (procedures, comma-separated) fails
+        // them as a phone with no connection would — for the UI tests of
+        // what the app says when a read could not be made.
+        if let offline = UserDefaults.standard.string(forKey: "NetLetDemoOffline"),
+           offline.split(separator: ",").contains(where: { $0.trimmingCharacters(in: .whitespaces) == procedure }) {
+            throw URLError(.notConnectedToInternet)
+        }
+        #endif
         let input = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "input" }?.value ?? ""
         let data: Data
         if input.contains(#""condition":"refurbished""#) {

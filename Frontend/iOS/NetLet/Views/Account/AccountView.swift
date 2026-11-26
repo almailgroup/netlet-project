@@ -34,6 +34,10 @@ struct AccountView: View {
         switch app.session.state {
         case .unknown:
             LoadingView().background(Brand.ground.ignoresSafeArea())
+        case .unreachable:
+            // Who is signed in could not be asked: never the sign-in form,
+            // which would tell a signed-in shopper they had been signed out.
+            AccountUnreachable()
         case .signedOut:
             AuthView()
         case .signedIn(let user):
@@ -1369,5 +1373,51 @@ private struct TileTitle: View {
             .lineLimit(2)
             .minimumScaleFactor(0.9)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The Profile tab when who is signed in could not be asked — offline at
+/// launch, or the server not answering: the web's `/account` in the same
+/// case, its words and its Try again, never the sign-in form. The app asks
+/// again by itself when it comes back to the foreground (`AppModel.appReturned`).
+private struct AccountUnreachable: View {
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+    @State private var asking = false
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                .font(.system(size: 40, weight: .regular))
+                .foregroundStyle(Brand.muted)
+                .accessibilityHidden(true)
+            Text(l.t("account.loadFailed"))
+                .font(.inter(18, .bold))
+                .foregroundStyle(Brand.navy)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text(l.t("common.loadFailedNote"))
+                .font(.inter(15))
+                .foregroundStyle(Brand.body)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Button {
+                Task {
+                    asking = true
+                    await app.readAgainWhatFailed()
+                    asking = false
+                }
+            } label: {
+                if asking { ProgressView().tint(.white) } else { Text(l.t("home.refreshCatalog")) }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .frame(maxWidth: 240)
+            .disabled(asking)
+            .accessibilityIdentifier("account-unreachable-retry")
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Brand.ground.ignoresSafeArea())
     }
 }

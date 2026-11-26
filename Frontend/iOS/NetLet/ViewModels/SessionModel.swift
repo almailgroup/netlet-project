@@ -11,6 +11,11 @@ import Observation
 final class SessionModel {
     enum State: Equatable {
         case unknown
+        /// Asking who is signed in failed — offline at launch, the server
+        /// down. Never read as signed out: the Profile tab says the account
+        /// could not be reached and offers to try again, the web's `unknown`
+        /// in `useAuth`, rather than telling a signed-in shopper to sign in.
+        case unreachable
         case signedOut
         case signedIn(User)
     }
@@ -32,8 +37,14 @@ final class SessionModel {
 
     var isSignedIn: Bool { user != nil }
 
-    /// Asks the server who the cookie belongs to. A failure to ask leaves the
-    /// shopper signed out for this launch rather than stuck on a placeholder.
+    /// Whether the last ask could not be answered and nothing is known yet.
+    var isUnreachable: Bool { state == .unreachable }
+
+    /// Asks the server who the cookie belongs to. A failure to ask before
+    /// anything is known is `unreachable`, never signed out — the cookie is
+    /// still there, and the next ask (Try again, or the app coming back to
+    /// the foreground) finds who it belongs to. A failure while signed in or
+    /// out leaves that as it was.
     func restore() async {
         do {
             if let user = try await account.currentUser() {
@@ -43,7 +54,10 @@ final class SessionModel {
                 seller = nil
             }
         } catch {
-            if case .unknown = state { state = .signedOut }
+            switch state {
+            case .unknown, .unreachable: state = .unreachable
+            case .signedOut, .signedIn: break
+            }
         }
     }
 

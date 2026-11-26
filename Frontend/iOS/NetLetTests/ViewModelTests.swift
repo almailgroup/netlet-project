@@ -268,6 +268,54 @@ final class SearchViewModelTests: XCTestCase {
     }
 }
 
+/// Who is signed in, when the server cannot be asked: never read as signed
+/// out, which drew the sign-in form for a signed-in shopper offline at launch
+/// (the web's `unknown` in `useAuth`).
+@MainActor
+final class SessionModelTests: XCTestCase {
+    func testAFailedAskIsUnreachableNotSignedOut() async {
+        let account = FakeAccountService()
+        account.currentUserAnswer = .failure(.offline)
+        let session = SessionModel(account: account)
+        await session.restore()
+        XCTAssertEqual(session.state, .unreachable, "a failed ask at launch is not signed out")
+        XCTAssertTrue(session.isUnreachable)
+        XCTAssertFalse(session.isSignedIn)
+
+        // Asked again and still failing, it stays unreachable.
+        account.currentUserAnswer = .failure(.server(code: "INTERNAL_SERVER_ERROR", message: "error.serverProblem", status: 500))
+        await session.restore()
+        XCTAssertEqual(session.state, .unreachable)
+
+        // The server answers: whoever the cookie belongs to.
+        account.currentUserAnswer = .success(FakeAccountService.user)
+        await session.restore()
+        XCTAssertEqual(session.state, .signedIn(FakeAccountService.user))
+        XCTAssertFalse(session.isUnreachable)
+    }
+
+    func testAFailedAskLeavesWhatIsKnownAsItWas() async {
+        let account = FakeAccountService()
+        account.currentUserAnswer = .success(FakeAccountService.user)
+        let session = SessionModel(account: account)
+        await session.restore()
+        account.currentUserAnswer = .failure(.timedOut)
+        await session.restore()
+        XCTAssertEqual(session.state, .signedIn(FakeAccountService.user), "a pull to refresh that fails does not sign anybody out")
+
+        let guest = SessionModel(account: FakeAccountService())
+        await guest.restore()
+        XCTAssertEqual(guest.state, .signedOut, "no account answers as signed out")
+        let offline = FakeAccountService()
+        offline.currentUserAnswer = .failure(.offline)
+        let later = SessionModel(account: offline)
+        await later.restore()
+        offline.currentUserAnswer = .success(nil)
+        await later.restore()
+        XCTAssertEqual(later.state, .signedOut, "once the server answers, nobody signed in is signed out")
+    }
+}
+
 @MainActor
 final class AuthViewModelTests: XCTestCase {
     func testNothingIsSentUntilTheFormIsWhole() async {
