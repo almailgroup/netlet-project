@@ -507,6 +507,29 @@ final class AuthViewModelTests: XCTestCase {
 /// heart fills for either, and choosing a wishlist never puts it in Saved.
 @MainActor
 final class SavedModelTests: XCTestCase {
+    /// The account's list could not be read: not "nothing saved yet" (the
+    /// web's `savedUnread`), and the next read that answers clears it.
+    func testAListThatCouldNotBeReadIsUnreadNotEmpty() async {
+        let account = FakeAccountService()
+        account.saved = ["7", "9"]
+        account.savedError = .offline
+        let saved = SavedModel(account: account, defaults: isolatedDefaults())
+        await saved.adoptAccount()
+        XCTAssertTrue(saved.unread, "a list that could not be read is unread")
+        XCTAssertEqual(saved.ids, [])
+
+        account.savedError = nil
+        await saved.adoptAccount()
+        XCTAssertFalse(saved.unread)
+        XCTAssertEqual(saved.ids, ["7", "9"])
+
+        account.savedError = .offline
+        await saved.adoptAccount()
+        XCTAssertEqual(saved.ids, ["7", "9"], "a later failure never empties what was read")
+        saved.signedOut()
+        XCTAssertFalse(saved.unread, "signed out, the device's list is the list")
+    }
+
     func testAWishlistIsNotSaved() async throws {
         let account = FakeAccountService()
         let saved = SavedModel(account: account, defaults: isolatedDefaults())

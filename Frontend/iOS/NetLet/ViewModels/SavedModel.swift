@@ -21,6 +21,10 @@ final class SavedModel {
     /// What is on the shopper's wishlists, once each; empty signed out.
     private(set) var wished: [String] = []
     private var signedIn = false
+    /// Signed in and the account's list could not be read: the Saved page
+    /// says so with Try again rather than "nothing saved yet", the web's
+    /// `savedUnread`, and the app asks again on coming back.
+    private(set) var unread = false
 
     private let account: AccountServicing
     private let defaults: UserDefaults
@@ -43,7 +47,11 @@ final class SavedModel {
     /// left the account's hearts on a phone somebody else might use.
     func adoptAccount() async {
         signedIn = true
-        guard let stored = try? await account.savedProducts() else { return }
+        guard let stored = try? await account.savedProducts() else {
+            unread = true
+            return
+        }
+        unread = false
         var merged = stored
         var allKept = true
         for productId in deviceIds where !stored.contains(productId) {
@@ -59,6 +67,7 @@ final class SavedModel {
     func refreshSaved() async {
         guard signedIn, let stored = try? await account.savedProducts() else { return }
         ids = stored
+        unread = false
     }
 
     /// The lists read again — after an item is added to or taken off one
@@ -71,6 +80,7 @@ final class SavedModel {
     /// Back to the hearts kept on this device.
     func signedOut() {
         signedIn = false
+        unread = false
         ids = deviceIds
         wished = []
     }

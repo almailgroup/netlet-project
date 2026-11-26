@@ -10369,7 +10369,11 @@ the page had drawn. Three things said something false:
 - **Saved is not "nothing saved yet" when its list could not be read**
   (`CustomerContext`'s `savedUnread`): a failed read of a signed-in shopper's
   hearts fell back to the device's guest list, empty after sign-in, and its
-  Wishlists tab offered them "Sign in". And **a shop page's `QueryGate` is
+  Wishlists tab offered them "Sign in". The app did the same
+  (`SavedModel.adoptAccount` kept the device's list on a failed read): it is
+  `unread` now, Saved says "Your saved items could not be loaded just now"
+  with Try again, and the app asks again on coming back
+  (`SavedModelTests`). And **a shop page's `QueryGate` is
   always `audience="shopper"`** — `RecommendedRail`, the reviews and the
   invoice were left at the staff default and showed a shopper the raw
   "Unexpected token 'd', "down" is not valid JSON"; the rail now draws nothing

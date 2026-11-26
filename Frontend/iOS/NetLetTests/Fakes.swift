@@ -280,7 +280,12 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
     var saved: [String] = []
     var savedWrites: [(String, Bool)] = []
 
-    func savedProducts() async throws -> [String] { saved }
+    /// Why the account's Saved list could not be read, when a test says so.
+    var savedError: APIError?
+    func savedProducts() async throws -> [String] {
+        if let savedError { throw savedError }
+        return saved
+    }
 
     func setSaved(_ productId: String, saved isSaved: Bool) async throws -> [String] {
         savedWrites.append((productId, isSaved))

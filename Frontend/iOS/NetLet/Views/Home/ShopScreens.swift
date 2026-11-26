@@ -123,7 +123,11 @@ struct SavedView: View {
         let found = (catalogue.value ?? []).filter { ids.contains($0.id) }
             .sorted { (ids.firstIndex(of: $0.id) ?? 0) < (ids.firstIndex(of: $1.id) ?? 0) }
         let missing = catalogue.value == nil ? 0 : max(0, ids.count - found.count)
-        ShopPage(refresh: { if tab == .saved { await load() } }, viewSource: "account") {
+        ShopPage(refresh: {
+            guard tab == .saved else { return }
+            if app.saved.unread { await app.saved.adoptAccount() }
+            await load()
+        }, viewSource: "account") {
             VStack(alignment: .leading, spacing: 0) {
                 Text(l.t("saved.andWishlists")).pageTitle()
                 TextTabs(tabs: [TextTab(id: Showing.saved, label: l.t("footer.savedItems")), TextTab(id: Showing.wishlists, label: l.t("saved.tabWishlists"))], selection: tab) { tab = $0 }
@@ -131,7 +135,9 @@ struct SavedView: View {
                 if tab == .wishlists {
                     WishlistsTab().padding(.top, 20)
                 } else {
-                Text(ids.isEmpty ? l.t("saved.emptyPrompt") : found.count == 1 ? l.t("saved.countOne") : l.t("saved.count", ["count": "\(found.count)"]))
+                // Nothing read is not nothing saved: no count while the
+                // account's list could not be read.
+                Text(ids.isEmpty ? (app.saved.unread ? " " : l.t("saved.emptyPrompt")) : found.count == 1 ? l.t("saved.countOne") : l.t("saved.count", ["count": "\(found.count)"]))
                     .font(.inter(15))
                     .foregroundStyle(Brand.body)
                     .padding(.top, 16)
@@ -142,7 +148,12 @@ struct SavedView: View {
                         .foregroundStyle(Brand.muted)
                         .padding(.bottom, 16)
                 }
-                if ids.isEmpty {
+                if ids.isEmpty && app.saved.unread {
+                    EmptyStateView(systemImage: "heart", title: l.t("saved.loadFailed"), note: l.t("common.loadFailedNote"), actionTitle: l.t("home.refreshCatalog")) {
+                        Task { await app.saved.adoptAccount() }
+                    }
+                    .card(padding: 0)
+                } else if ids.isEmpty {
                     EmptyStateView(systemImage: "heart", title: l.t("saved.emptyTitle"), note: l.t("saved.emptyNote"), actionTitle: l.t("saved.browse")) {
                         app.push(.department(slug: nil))
                     }
