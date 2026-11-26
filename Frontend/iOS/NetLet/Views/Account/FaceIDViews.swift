@@ -212,8 +212,9 @@ struct FaceIDCard: View {
 
     private func lastUsed(_ key: API.BiometricKey) -> String {
         guard let at = key.lastUsedAt else { return l.t("ios.biometric.neverUsed") }
-        let day = at.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted).locale(l.current.locale))
-        return l.t("ios.biometric.lastUsed", ["date": "\u{2068}\(day)\u{2069}"])
+        // Kuwait's day, isolated, as every date the app draws: formatted in
+        // the phone's own zone it read as the day before west of Greenwich.
+        return l.t("ios.biometric.lastUsed", ["date": OrderWording.date(at, language: l.current)])
     }
 
     private func load() async {

@@ -10145,7 +10145,12 @@ zone too** (`kuwaitDays()`, the birthday's `BirthdayDay.zone`), because every da
 it sends is a Kuwaiti day: drawn in the phone's own zone, a seller whose phone
 was set to Dubai time who picked the 5th sent the 4th — the pre-order date, a
 code's last day, a gift card's, the discount permit's and a standing order's
-first delivery all did.
+first delivery all did. **And a date the app draws goes through
+`OrderWording.date`** (or `dateTime`, `day`), never SwiftUI's own
+`date.formatted(…)` or `Text(date, style:)`, which write the phone's zone: the
+Face ID card's "Last used" was the last one, and read as the day before on a
+phone set west of Greenwich. `Frontend/iOS/scripts/swiftDates.test.ts` fails
+on any of those shapes.
 
 The server counts days the same way. An order reference, an inbound
 shipment's reference, the delivery band's business days and the membership
