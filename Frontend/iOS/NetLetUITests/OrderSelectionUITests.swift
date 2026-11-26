@@ -96,8 +96,12 @@ final class OrderSelectionUITests: XCTestCase {
         ]
         app.launch()
 
-        let name = app.staticTexts["USB-C charger 65W"].firstMatch
+        // Found by its identifier: outside editing the name is a button (it
+        // opens the tracker), while editing it is words.
+        let name = app.descendants(matching: .any)["order-item-name"].firstMatch
         XCTAssertTrue(name.waitForExistence(timeout: 20), "The order's item has no name: \(labels(app))")
+        XCTAssertEqual(name.label, "USB-C charger 65W")
+        XCTAssertEqual(name.elementType, .button, "Outside editing the name is not the tracker's button.")
         let count = app.staticTexts["1 item chosen"]
 
         // Not editing: a press on the words opens the item's tracker, and
