@@ -18,6 +18,7 @@ import { Link } from "wouter";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatMoney } from "@/lib/format";
 import { trpc } from "@/lib/trpc";
+import { failedToLoad } from "@/lib/queryState";
 import type { Detail } from "@/components/account/LineReturn";
 
 export function OrderAddress({ reference, detail, onDone, onCancel }: {
@@ -47,6 +48,14 @@ export function OrderAddress({ reference, detail, onDone, onCancel }: {
       </p>
       {addresses.isPending ? (
         <div aria-hidden className="mt-3 h-24 animate-pulse rounded-xl bg-[#f1f2f6]" />
+      ) : failedToLoad(addresses) ? (
+        /* Never "you have no saved address" for a book that did not answer. */
+        <div role="alert" className="mt-3">
+          <p className="text-[13px] font-bold text-[#0a285a]">{t("delivery.loadFailed")}</p>
+          <button type="button" onClick={() => void addresses.refetch()} className="mt-2 inline-flex min-h-9 items-center rounded-full border border-[#d6dfeb] px-3.5 text-[12px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]">
+            {t("home.refreshCatalog")}
+          </button>
+        </div>
       ) : rows.length === 0 ? (
         <p className="mt-3 text-[13px] ink-muted">{t("orders.addressNone")}</p>
       ) : (

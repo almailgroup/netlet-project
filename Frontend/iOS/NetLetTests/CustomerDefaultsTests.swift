@@ -43,4 +43,34 @@ final class CustomerDefaultsTests: XCTestCase {
         XCTAssertEqual(model.payment, "cod")
         XCTAssertEqual(defaults.object(forKey: CheckoutViewModel.lastAddressKey) as? Int, 8)
     }
+
+    /// A book that could not be read is said as that (`bookError`), never as
+    /// an empty book the sheet would offer to start; asking again clears it,
+    /// and a later failure leaves the book already on the phone as it was.
+    func testAnAddressBookThatCouldNotBeReadIsNotAnEmptyOne() async {
+        let defaults = UserDefaults(suiteName: "DeliveryBookTests")!
+        defaults.removePersistentDomain(forName: "DeliveryBookTests")
+        let account = FakeAccountService()
+        account.bookError = .offline
+        let model = DeliveryModel(api: client, account: account, defaults: defaults)
+        await model.refresh(signedIn: true)
+        XCTAssertTrue(model.loaded)
+        XCTAssertTrue(model.addresses.isEmpty)
+        XCTAssertEqual(model.bookError, .offline)
+
+        account.bookError = nil
+        account.book = [SavedAddress(id: 8, label: "Home", contactName: nil, contactPhone: "50000000", governorate: "hawalli",
+                                     addressLine: "Salmiya", addressNotes: nil, parts: nil)]
+        await model.refresh(signedIn: true)
+        XCTAssertNil(model.bookError)
+        XCTAssertEqual(model.addresses.map(\.id), [8])
+
+        account.bookError = .timedOut
+        await model.refresh(signedIn: true)
+        XCTAssertNil(model.bookError, "a book on the phone stays drawn")
+        XCTAssertEqual(model.addresses.map(\.id), [8])
+
+        model.signedOut()
+        XCTAssertNil(model.bookError)
+    }
 }

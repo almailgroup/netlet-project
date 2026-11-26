@@ -24,6 +24,7 @@ import { useEverOpened } from "@/hooks/usePresence";
 import { pressHaptic } from "@/lib/haptics";
 import { addressInUse } from "@/lib/lastAddress";
 import { lazyPage } from "@/lib/lazyPage";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { addressLineIn } from "@shared/commerce/addresses";
 import { formatPhone } from "@shared/commerce/wishlist";
@@ -42,7 +43,14 @@ export function useDeliveryAddress() {
   return {
     address,
     book: book.data ?? [],
-    loaded: isAuthenticated ? book.isSuccess : !loading,
+    /* Answered at least once: a refresh that failed behind a book already
+       drawn leaves it drawn, rather than an outline (`isSuccess` is false
+       then, the data kept). */
+    loaded: isAuthenticated ? book.data !== undefined : !loading,
+    /* The book could not be read and nothing of it is here: said as that,
+       never as an empty book or an outline that never ends. */
+    failed: isAuthenticated && failedToLoad(book),
+    retry: () => void book.refetch(),
     isAuthenticated,
     zone: deliveryZone,
   };
@@ -58,7 +66,7 @@ export function DeliveryAddressCard({ open, onOpen, onClose, accountName, accoun
   accountPhone?: string | null;
 }) {
   const { t, isArabic } = useTranslation();
-  const { address, loaded, isAuthenticated, zone } = useDeliveryAddress();
+  const { address, loaded, failed, retry, isAuthenticated, zone } = useDeliveryAddress();
   const used = useEverOpened(open);
   const zoneName = zone ? (isArabic ? zone.labelAr : zone.label) : null;
   const line = address ? addressLineIn(address, isArabic) : "";
@@ -72,7 +80,12 @@ export function DeliveryAddressCard({ open, onOpen, onClose, accountName, accoun
         </span>
         <div className="min-w-0 flex-1">
           <h2 id="deliver-to-title" className="text-[12px] font-semibold leading-4 ink-muted">{t("home.deliverTo")}</h2>
-          {!loaded ? (
+          {failed ? (
+            <div role="alert">
+              <p className="mt-0.5 text-[15px] font-extrabold leading-5 text-[#0a285a]">{t("delivery.loadFailed")}</p>
+              <p className="mt-0.5 text-[13px] leading-5 ink-muted">{t("common.loadFailedNote")}</p>
+            </div>
+          ) : !loaded ? (
             <div aria-hidden className="mt-1.5 space-y-1.5">
               <div className="h-4 w-1/3 animate-pulse rounded bg-[#e7edf5]" />
               <div className="h-3 w-2/3 animate-pulse rounded bg-[#e7edf5]" />
@@ -107,11 +120,11 @@ export function DeliveryAddressCard({ open, onOpen, onClose, accountName, accoun
         </div>
         <button
           type="button"
-          onClick={() => { pressHaptic(); onOpen(); }}
+          onClick={() => { pressHaptic(); if (failed) retry(); else onOpen(); }}
           aria-label={address ? t("cart.changeAddress") : undefined}
           className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-bold ${address ? "border border-[#0a285a]/20 bg-white text-[#0a285a] hover:bg-[#f0f2f5]" : "bg-[#0a285a] text-white hover:bg-[#0d3372]"}`}
         >
-          {address ? t("cart.change") : t("cart.choose")}
+          {failed ? t("home.refreshCatalog") : address ? t("cart.change") : t("cart.choose")}
         </button>
       </div>
       {used ? <Suspense fallback={null}><DeliveryZoneDialog open={open} onClose={onClose} /></Suspense> : null}

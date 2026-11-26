@@ -274,7 +274,12 @@ final class FakeAccountService: AccountServicing, @unchecked Sendable {
     func profile() async throws -> Profile { Profile(locale: nil, deliveryZoneId: nil, cartId: nil) }
     func claimCart(_ cartId: String?, language: Language) async throws -> Profile { Profile(locale: nil, deliveryZoneId: nil, cartId: cartId) }
     func saveLanguage(_ language: Language) async throws {}
-    func addresses() async throws -> [SavedAddress] { book }
+    /// When set, reading the address book fails with it.
+    var bookError: APIError?
+    func addresses() async throws -> [SavedAddress] {
+        if let bookError { throw bookError }
+        return book
+    }
     func sellerIdentity() async throws -> SellerIdentity { SellerIdentity(kind: "customer", userId: 2, vendorId: nil, role: nil) }
 
     var saved: [String] = []

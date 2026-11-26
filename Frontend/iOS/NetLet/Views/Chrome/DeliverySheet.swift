@@ -73,6 +73,17 @@ struct DeliverySheet: View {
         let delivery = app.delivery
         if !delivery.loaded {
             ProgressView().frame(maxWidth: .infinity).padding(.vertical, 24)
+        } else if delivery.addresses.isEmpty, delivery.bookError != nil {
+            // Never "add your first address" for a book that did not answer.
+            EmptyStateView(
+                systemImage: "mappin.slash",
+                title: l.t("delivery.loadFailed"),
+                note: l.t("common.loadFailedNote"),
+                actionTitle: l.t("home.refreshCatalog")
+            ) {
+                Task { await delivery.refresh(signedIn: true) }
+            }
+            .accessibilityIdentifier("delivery-book-failed")
         } else if delivery.addresses.isEmpty {
             Text(l.t("delivery.firstTitle")).font(.inter(17, .bold)).foregroundStyle(Brand.navy)
             Text(l.t("delivery.firstNote")).font(.inter(14)).foregroundStyle(Brand.body)

@@ -863,12 +863,12 @@ final class AppModel {
         leftAt = nil
         // What could not be read — offline at launch, the server down — is
         // asked again on the way back, the web's reconnect and refocus.
-        if session.isUnreachable || cart.unread || saved.unread || !featuresRead {
+        if session.isUnreachable || cart.unread || saved.unread || delivery.bookError != nil || !featuresRead {
             Task { await self.readAgainWhatFailed() }
         }
     }
 
-    /// Who is signed in, the bag, the hearts and the shop's switches, each asked again
+    /// Who is signed in, the bag, the hearts, the address book and the shop's switches, each asked again
     /// only if it could not be read, the way `start` asks them; and, once an
     /// account is found, everything that follows from it. The Profile tab's
     /// Try again, and the app coming back to the foreground.
@@ -885,8 +885,9 @@ final class AppModel {
         await switches?.value
         if whoUnknown, session.isSignedIn {
             await linkAccount()
-        } else if saved.unread {
-            await saved.adoptAccount()
+        } else {
+            if saved.unread { await saved.adoptAccount() }
+            if session.isSignedIn, delivery.bookError != nil { await delivery.refresh(signedIn: true) }
         }
     }
 

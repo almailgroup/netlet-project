@@ -10380,6 +10380,22 @@ the page had drawn. Three things said something false:
   "Unexpected token 'd', "down" is not valid JSON"; the rail now draws nothing
   when its read fails, and `queryState.test.ts` fails on a shop `QueryGate`
   without the shopper's audience.
+- **An address book that could not be read is not an empty one**, on the
+  web and in the app. The account's address book said "No addresses saved
+  yet" (and offered a first) both while it was read and when the read failed;
+  the order's "Change address" said "You have no saved address yet"; and the
+  cart's "Deliver to" card and the header's address book drew an outline that
+  pulsed for good, since they waited on `isSuccess`. Now the account's book is
+  behind `QueryGate`, the other three say "Your addresses could not be loaded
+  just now" (`delivery.loadFailed`) with Try again, and **a refresh that fails
+  behind a book already drawn leaves it drawn** — `loaded` is
+  `data !== undefined`, not `isSuccess`, which React Query turns false then
+  (`DeliveryAddressCard.test.ts`, the first web component test that mocks
+  tRPC, failed on both before the fix). The app's `DeliveryModel` had the same
+  fault: a failed book read was drawn as "Add your delivery address". It is
+  `bookError` now — the sheet says what failed with Try again, the cart's card
+  says it too, and the app asks again on coming back to the foreground
+  (`testAnAddressBookThatCouldNotBeReadIsNotAnEmptyOne`).
 
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page

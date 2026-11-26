@@ -25,6 +25,7 @@ import { isMessageKey } from "@shared/i18n/dictionary";
 import { kuwaitDeliveryZones } from "@shared/customer";
 import { MAX_ADDRESSES, addressLineIn, missingFromAddress } from "@shared/commerce/addresses";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { QueryGate } from "@/components/ui/QueryGate";
 import { PinLink } from "@/components/map/PinLink";
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -79,6 +80,9 @@ export function AddressBook() {
     <div className="space-y-4">
       <p className="text-[13px] leading-6 text-[#536b8c]">{t("address.bookNote")}</p>
 
+      {/* Loading, failed or the book — never "no addresses saved" for a book
+          that has not answered, which also offered to add a first one. */}
+      <QueryGate queries={[addresses]} audience="shopper">{() => (<>
       {rows.length === 0 ? (
         <p className="rounded-2xl border border-[#e6e9ef] bg-white px-5 py-6 text-sm text-[#536b8c]">
           {t("address.none")}
@@ -176,6 +180,7 @@ export function AddressBook() {
           onCancel={() => setEditing(null)}
         />
       )}
+      </>)}</QueryGate>
 
       <ConfirmDialog
         open={removing !== null}

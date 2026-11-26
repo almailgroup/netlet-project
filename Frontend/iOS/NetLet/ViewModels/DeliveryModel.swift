@@ -25,6 +25,11 @@ final class DeliveryModel {
     private(set) var addresses: [SavedAddress] = []
     private(set) var lastAddressId: Int?
     private(set) var loaded = false
+    /// The address book could not be read, and nothing of it is on the phone.
+    /// Never drawn as an empty book: the sheet says what failed and offers to
+    /// try again, rather than telling a signed-in shopper to add their first
+    /// address — the web's `failedToLoad`.
+    private(set) var bookError: APIError?
     /// The account's defaults, as `customer.defaults.get` last answered.
     private(set) var accountDefaults: CustomerDefaults?
 
@@ -67,10 +72,17 @@ final class DeliveryModel {
             return
         }
         async let profile = try? account.profile()
-        async let book = try? account.addresses()
+        async let book = readBook()
         async let kept = try? api.call(API.customerDefaults)
         if let stored = await profile?.deliveryZoneId { zoneId = stored }
-        if let book = await book { addresses = book }
+        switch await book {
+        case .success(let read):
+            addresses = read
+            bookError = nil
+        case .failure(let failure):
+            // A book already on the phone stays; only an empty one says so.
+            if failure != .cancelled, addresses.isEmpty { bookError = failure }
+        }
         if let kept = await kept { await adopt(kept) }
         // An account that never chose an area still delivers somewhere: the
         // governorate of the address checkout would pick. A guess never
@@ -79,6 +91,10 @@ final class DeliveryModel {
             zoneId = (addresses.first { $0.id == lastAddressId } ?? addresses.first)?.governorate
         }
         loaded = true
+    }
+
+    private func readBook() async -> Result<[SavedAddress], APIError> {
+        do { return .success(try await account.addresses()) } catch { return .failure(APIError.from(error)) }
     }
 
     /// The account's default address, read into the phone — or, for an account
@@ -136,6 +152,7 @@ final class DeliveryModel {
 
     func signedOut() {
         addresses = []
+        bookError = nil
         accountDefaults = nil
         zoneId = defaults.string(forKey: Self.guestZoneKey)
         loaded = true

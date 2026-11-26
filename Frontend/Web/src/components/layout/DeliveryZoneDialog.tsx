@@ -33,6 +33,7 @@ import { EXIT_MS, usePresence } from "@/hooks/usePresence";
 import { useTranslation } from "@/hooks/useTranslation";
 import { DEMO_MODE } from "@/lib/demoMode";
 import { addressInUse, rememberAddress } from "@/lib/lastAddress";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { MAX_ADDRESSES, addressLineIn } from "@shared/commerce/addresses";
 import { kuwaitDeliveryZones } from "@shared/customer";
@@ -69,7 +70,11 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
   }, [open]);
 
   const rows: Row[] = isAuthenticated ? book.data ?? [] : [];
-  const loaded = isAuthenticated ? book.isSuccess : !sessionLoading;
+  /* Answered at least once — a refresh that failed keeps the book drawn. */
+  const loaded = isAuthenticated ? book.data !== undefined : !sessionLoading;
+  /* A book that could not be read says so, with Try again — it was an
+     outline that pulsed for as long as the dialog stayed open. */
+  const failed = isAuthenticated && failedToLoad(book);
   const empty = isAuthenticated && loaded && rows.length === 0;
   const showingForm = isAuthenticated && loaded && (form !== null || empty);
   const chosenId = addressInUse(rows, lastId, deliveryZoneId)?.id ?? null;
@@ -81,14 +86,14 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
    * the first thing in the panel. Every press here replaces what was pressed.
    */
   useEffect(() => {
-    if (!open || authOpen || !loaded) return;
+    if (!open || authOpen || (!loaded && !failed)) return;
     const root = panel.current;
     if (!root) return;
     const target = showingForm
       ? root.querySelector<HTMLElement>("form input")
       : root.querySelector<HTMLElement>("[data-chosen=true]") ?? root.querySelector<HTMLElement>("[data-first]");
     target?.focus();
-  }, [open, authOpen, loaded, showingForm, form]);
+  }, [open, authOpen, loaded, failed, showingForm, form]);
 
   const { mounted, closing } = usePresence(open);
   if (!mounted) return null;
@@ -157,7 +162,21 @@ export function DeliveryZoneDialog({ open, onClose }: { open: boolean; onClose: 
           </button>
         </div>
 
-        {!loaded ? (
+        {failed ? (
+          <div role="alert" className="mt-6 rounded-2xl border border-[#e6e9ef] bg-white p-5">
+            <p className="text-[15px] font-bold text-[#0a285a]">{t("delivery.loadFailed")}</p>
+            <p className="mt-1 text-sm text-[#536b8c]">{t("common.loadFailedNote")}</p>
+            <button
+              type="button"
+              data-first
+              onClick={() => void book.refetch()}
+              disabled={book.isFetching}
+              className="glass glass-navy pressable mt-4 inline-flex h-11 items-center justify-center rounded-xl px-6 text-sm font-extrabold disabled:opacity-60"
+            >
+              {t("home.refreshCatalog")}
+            </button>
+          </div>
+        ) : !loaded ? (
           <div className="mt-6 grid gap-2" aria-hidden>
             {[0, 1].map(index => <div key={index} className="h-[72px] animate-pulse rounded-2xl bg-[#e9edf3]" />)}
           </div>

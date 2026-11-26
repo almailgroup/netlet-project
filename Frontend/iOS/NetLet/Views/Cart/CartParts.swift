@@ -41,6 +41,9 @@ struct DeliveryAddressCard: View {
                     .accessibilityHidden(true)
                 } else if let address {
                     filled(address)
+                } else if signedIn, delivery.bookError != nil, delivery.addresses.isEmpty {
+                    heading(l.t("delivery.loadFailed"))
+                    note(l.t("common.loadFailedNote"))
                 } else if signedIn {
                     heading(l.t("cart.chooseAddress"))
                     note(l.t("cart.chooseAddressNote"))
