@@ -23,6 +23,7 @@ import { FloatingField, PANEL } from "@/components/account/profileParts";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatCount } from "@/lib/format";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { isMessageKey, type MessageKey } from "@shared/i18n/dictionary";
 import { ChevronDown, CircleAlert, LoaderCircle, Trash2 } from "lucide-react";
@@ -93,6 +94,11 @@ export function DeleteAccount() {
 
   const blockers = check.data?.blockers ?? [];
   const points = check.data?.points ?? 0;
+  /* What stands in the way, and how the account signs in, could not be read:
+     said with Try again, never a delete button pressed blind — it opened the
+     password's confirmation over an Apple account whose way in it had not
+     read, and over blockers it had not heard. */
+  const unread = failedToLoad(check) || failedToLoad(ways);
   const close = () => {
     if (remove.isPending) return;
     setAsking(false);
@@ -138,11 +144,25 @@ export function DeleteAccount() {
               ))}
             </ul>
           </div>
+        ) : unread ? (
+          <p role="alert" className="text-[14px] leading-5 text-[#404553]">
+            {t("account.sectionFailed")}{" "}
+            <button
+              type="button"
+              onClick={() => {
+                if (check.isError) void check.refetch();
+                if (ways.isError) void ways.refetch();
+              }}
+              className="font-bold text-[#0a285a] underline underline-offset-2"
+            >
+              {t("home.refreshCatalog")}
+            </button>
+          </p>
         ) : (
           <button
             type="button"
             onClick={() => setAsking(true)}
-            disabled={check.isLoading}
+            disabled={check.isLoading || ways.isLoading}
             className="inline-flex h-12 items-center gap-2 rounded-full border border-[#e9b8b0] bg-white px-6 text-[15px] font-semibold text-[#b42318] hover:bg-[#fdeceb] disabled:opacity-50"
           >
             <Trash2 className="size-4" aria-hidden />

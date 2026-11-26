@@ -37,6 +37,9 @@ struct DeleteAccountCard: View {
     @State private var deleting = false
     /// The server's refusal, said under the button.
     @State private var problem: String?
+    /// What stands in the way, or how the account signs in, could not be
+    /// read: said with Try again, never a greyed button with no sentence.
+    @State private var unread = false
 
     /// Each reason the server gives, in its own sentence.
     private static let sentence: [String: String] = [
@@ -84,6 +87,24 @@ struct DeleteAccountCard: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.orange.opacity(0.1)))
+            } else if unread, check == nil || ways == nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(l.t("account.sectionFailed"))
+                        .font(.inter(14))
+                        .foregroundStyle(Brand.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button {
+                        Task { await load() }
+                    } label: {
+                        Text(l.t("home.refreshCatalog"))
+                            .font(.inter(14, .bold))
+                            .foregroundStyle(Brand.navy)
+                            .underline()
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.tap)
+                    .accessibilityIdentifier("delete-check-retry")
+                }
             } else {
                 Button {
                     problem = nil
@@ -103,7 +124,7 @@ struct DeleteAccountCard: View {
                     .liquidGlass(.clear)
                 }
                 .buttonStyle(.tap)
-                .disabled(check == nil || deleting)
+                .disabled(check == nil || ways == nil || deleting)
                 // The second alert of a phone account's delete: the code.
                 .alert(l.t("account.deleteConfirmTitle"), isPresented: $askingCode) {
                     TextField(l.t("account.deletePhoneCode"), text: $phoneCode)
@@ -195,8 +216,22 @@ struct DeleteAccountCard: View {
     }
 
     private func load() async {
-        if let answer = try? await app.services.api.call(API.accountDeletionCheck) { check = answer }
-        if ways == nil { ways = try? await app.services.account.accountSignInWays() }
+        var failed = false
+        do {
+            check = try await app.services.api.call(API.accountDeletionCheck)
+        } catch {
+            if APIError.from(error) == .cancelled { return }
+            failed = check == nil
+        }
+        if ways == nil {
+            do {
+                ways = try await app.services.account.accountSignInWays()
+            } catch {
+                if APIError.from(error) == .cancelled { return }
+                failed = true
+            }
+        }
+        unread = failed
         if ways?.google == true, googleClientId == nil {
             googleClientId = (try? await app.services.account.signInWays())?.google?.ios
         }

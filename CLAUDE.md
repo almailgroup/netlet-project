@@ -10436,6 +10436,15 @@ the page had drawn. Three things said something false:
   `AccountHomeTests`; on the web `PreviewTile`'s `failed`,
   `AccountHome.test.ts`).
 
+- **"Delete your account" says when it could not read what stands in the
+  way.** In the app the delete button was greyed with no sentence beside it
+  when `auth.deletionCheck` failed; on the web it stayed live, so a press
+  opened the password's confirmation over blockers nobody had heard and an
+  Apple or Google account whose way in (`auth.myProviders`) was unread. Both
+  now say `account.sectionFailed` with Try again in the button's place until
+  both are read, and the button waits for both (`DeleteAccount.test.ts`;
+  `DeleteAccountUITests`, through `-NetLetDemoOffline auth.deletionCheck`).
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s
