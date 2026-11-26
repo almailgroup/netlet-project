@@ -68,6 +68,10 @@ function Stock({ actor }: { actor: Actor }) {
     ? new Date(low.dataUpdatedAt).toLocaleTimeString(isArabic ? "ar-KW-u-nu-latn" : "en-GB", { hour: "2-digit", minute: "2-digit", timeZone: SHOP_TIME_ZONE })
     : null;
   const refreshing = low.isFetching || health.isFetching || history.isFetching;
+  /* Refresh is greyed out only while its own press is being answered: the
+     page asks again by itself every 30 seconds, and a button that faded out
+     and back on each of those read as the page blinking. */
+  const [asked, setAsked] = useState(false);
 
   const status = (row: (typeof lowRows)[number]) => {
     const look = STATE_LOOK[stockState(row)];
@@ -97,8 +101,11 @@ function Stock({ actor }: { actor: Actor }) {
             {heard ? <span role="status" className="text-[12px] ink-muted">{t("stock.updated", { time: heard })}</span> : null}
             <button
               type="button"
-              disabled={refreshing}
-              onClick={() => void Promise.all([low.refetch(), health.refetch(), history.refetch()])}
+              disabled={asked}
+              onClick={() => {
+                setAsked(true);
+                void Promise.all([low.refetch(), health.refetch(), history.refetch()]).finally(() => setAsked(false));
+              }}
               className={buttonClass.secondary}
             >
               <RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden />{t("stock.refresh")}
