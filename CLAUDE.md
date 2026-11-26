@@ -10485,6 +10485,13 @@ the page had drawn. Three things said something false:
   (`ApplicationModel.documentsUnread`, which keeps the papers already read
   through a refresh that fails, `ApplicationDocumentsFailedTests`).
 
+- **A gift list whose products could not be read says so, in the app.** The
+  giver's page marked the presents settled after a failed
+  `commerce.products.byIds`, so every one read "no longer available"; the
+  read is `GiftProducts.read` now, which tells a failure from an answer, and
+  the list says it could not be loaded with Try again (`GiftProductsTests`).
+  The web's gift page already did (`LoadFailed`).
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s

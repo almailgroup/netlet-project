@@ -150,6 +150,27 @@ private struct GiftNotFound: View {
     }
 }
 
+/// The products on a gift list, by id — and whether they could be read at
+/// all, since a present whose product was not read is not one the shop no
+/// longer shows.
+enum GiftProducts {
+    enum Outcome {
+        case read([Product])
+        case failed
+        case cancelled
+    }
+
+    @MainActor
+    static func read(_ ids: [String], api: APICalling, language: Language) async -> Outcome {
+        guard !ids.isEmpty else { return .read([]) }
+        do {
+            return .read(try await api.call(API.productsByIds, .init(ids: ids, locale: language.rawValue)))
+        } catch {
+            return APIError.from(error) == .cancelled ? .cancelled : .failed
+        }
+    }
+}
+
 /// A list as a giver sees it: whose it is, each present and whether it is
 /// still free. Claiming is one press with bagging, because they are one
 /// intention; a present with sizes asks which before it is claimed.
@@ -158,6 +179,9 @@ private struct GiftListCard: View {
     let changed: () async -> Void
     @State private var products: [String: Product] = [:]
     @State private var settled = false
+    /// The presents' products could not be read: never "no longer available"
+    /// under every present.
+    @State private var productsFailed = false
     /* Who a gift is from (migration 0092), one choice for the page: a typed
        name to start, the account's first name in the box, or anonymous. */
     @State private var showName = true
@@ -189,6 +213,25 @@ private struct GiftListCard: View {
             if list.items.isEmpty {
                 Text(l.t("gift.emptyList")).font(.inter(14)).foregroundStyle(Brand.muted)
             } else {
+                if productsFailed {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(l.t("account.sectionFailed"))
+                            .font(.inter(13))
+                            .foregroundStyle(Brand.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button {
+                            Task { await readProducts() }
+                        } label: {
+                            Text(l.t("home.refreshCatalog"))
+                                .font(.inter(13, .bold))
+                                .foregroundStyle(Brand.navy)
+                                .underline()
+                                .frame(minHeight: 44)
+                        }
+                        .buttonStyle(.tap)
+                        .accessibilityIdentifier("gift-products-retry")
+                    }
+                }
                 ForEach(list.items, id: \.productId) { item in
                     GiftRow(token: list.token, item: item, product: products[item.productId], settled: settled,
                             namesOpen: namesOpen, giverFor: giverFor, changed: changed)
@@ -198,12 +241,19 @@ private struct GiftListCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
-        .task(id: list.items.map(\.productId)) {
-            let ids = list.items.map(\.productId)
-            if let found = try? await app.services.api.call(API.productsByIds, .init(ids: ids, locale: l.current.rawValue)) {
-                for product in found { products[product.id] = product }
-            }
+        .task(id: list.items.map(\.productId)) { await readProducts() }
+    }
+
+    private func readProducts() async {
+        switch await GiftProducts.read(list.items.map(\.productId), api: app.services.api, language: l.current) {
+        case .read(let found):
+            for product in found { products[product.id] = product }
             settled = true
+            productsFailed = false
+        case .failed:
+            productsFailed = true
+        case .cancelled:
+            break
         }
     }
 
