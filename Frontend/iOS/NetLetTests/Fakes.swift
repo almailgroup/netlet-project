@@ -315,9 +315,10 @@ final class FakeOrderService: OrderServicing, @unchecked Sendable {
 
     func orders(page: Int, filters: OrderFilters) async throws -> OrderPage { OrderPage(rows: [], total: 0, page: page, pageSize: 20) }
 
-    /// No order by any reference, which is what the server answers for one
-    /// that is not this account's.
-    func order(reference: String) async throws -> OrderDetail? { nil }
+    /// No order by any reference unless a test sets one, which is what the
+    /// server answers for one that is not this account's.
+    var orderAnswer: Result<OrderDetail?, APIError> = .success(nil)
+    func order(reference: String) async throws -> OrderDetail? { try orderAnswer.get() }
 
     func place(_ order: API.PlaceOrder) async throws -> PlacedOrder {
         if let refusal { throw refusal }

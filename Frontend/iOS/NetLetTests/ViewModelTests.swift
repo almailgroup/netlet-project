@@ -768,6 +768,28 @@ final class OrderDetailViewModelTests: XCTestCase {
         XCTAssertNil(model.detail.value)
         if case .failed = model.detail { XCTFail("not found is not a failure") }
     }
+
+    /// A reload that fails — after an act on the order, or a pull — keeps the
+    /// order on screen rather than replacing it with Try again (the web's
+    /// `failedToLoad`); only a first read that failed is drawn as a failure.
+    func testAFailedReloadKeepsTheOrderOnScreen() async throws {
+        let read = try await Fixtures.client.call(API.order, .init(reference: "NL-20261104-FQG37"))
+        let order = try XCTUnwrap(read, "the recording answers an order")
+        let service = FakeOrderService()
+        service.orderAnswer = .success(order)
+        let model = OrderDetailViewModel(reference: "NL-20261104-FQG37", service: service)
+        await model.load()
+        XCTAssertNotNil(model.detail.value)
+
+        service.orderAnswer = .failure(.offline)
+        await model.load()
+        XCTAssertNotNil(model.detail.value, "a reload that failed replaced the order with an error")
+        XCTAssertNil(model.detail.error)
+
+        let fresh = OrderDetailViewModel(reference: "NL-20261104-FQG37", service: service)
+        await fresh.load()
+        XCTAssertEqual(fresh.detail.error, .offline, "a first read that failed is a failure")
+    }
 }
 
 /// Face ID, the third way to sign in: shown only for an address this phone

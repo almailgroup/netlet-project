@@ -411,7 +411,10 @@ final class OrderDetailViewModel {
             detail = .loaded(found)
         } catch {
             let failure = APIError.from(error)
-            if failure != .cancelled { detail = .failed(failure) }
+            // A reload that failed — after an act, or a pull — keeps the order
+            // on screen; only a first read that failed is drawn as a failure
+            // (the web's `failedToLoad`).
+            if failure != .cancelled, detail.value == nil { detail = .failed(failure) }
         }
     }
 }
@@ -527,7 +530,7 @@ final class SellerListingsViewModel {
             listings = .loaded(page.rows)
         } catch {
             let failure = APIError.from(error)
-            if failure != .cancelled { listings = .failed(failure) }
+            if failure != .cancelled, listings.value == nil { listings = .failed(failure) }
         }
     }
 }

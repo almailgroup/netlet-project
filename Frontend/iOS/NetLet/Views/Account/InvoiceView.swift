@@ -67,7 +67,7 @@ struct InvoiceView: View {
             record = .loaded(try await app.services.api.call(API.invoice, .init(number: number)))
         } catch {
             let failure = APIError.from(error)
-            if failure != .cancelled { record = .failed(failure) }
+            if failure != .cancelled, record.value == nil { record = .failed(failure) }
         }
     }
 

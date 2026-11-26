@@ -10333,6 +10333,12 @@ the page had drawn. Three things said something false:
   ("This product could not be loaded just now", "Stores could not …") with
   Try again; `/stores` said "Products could not be loaded". `queryState.test.ts`
   refuses the old shapes in the source (`.isError ? (`, `x.error || !…`).
+  **The app keeps the same rule** (`LoadState`: `.failed` only while
+  `value == nil`), and three screens had missed it — an opened order, a
+  store's listings and an invoice each replaced what was drawn with Try
+  again when a reload failed, so a flaky connection just after cancelling an
+  item turned the order it was cancelled on into an error page.
+  `OrderDetailViewModelTests` holds the order.
 - **A guest's bag is never dropped for a failed read** (`CartContext`). Reading
   the stored bag dropped its id on any error, and the id is a guest's only key
   to it, so one timeout on a phone lost the whole bag for good — reproduced:
