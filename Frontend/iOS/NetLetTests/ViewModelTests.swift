@@ -276,7 +276,7 @@ final class SessionModelTests: XCTestCase {
     func testAFailedAskIsUnreachableNotSignedOut() async {
         let account = FakeAccountService()
         account.currentUserAnswer = .failure(.offline)
-        let session = SessionModel(account: account)
+        let session = SessionModel(account: account, holdsSession: { true })
         await session.restore()
         XCTAssertEqual(session.state, .unreachable, "a failed ask at launch is not signed out")
         XCTAssertTrue(session.isUnreachable)
@@ -297,22 +297,32 @@ final class SessionModelTests: XCTestCase {
     func testAFailedAskLeavesWhatIsKnownAsItWas() async {
         let account = FakeAccountService()
         account.currentUserAnswer = .success(FakeAccountService.user)
-        let session = SessionModel(account: account)
+        let session = SessionModel(account: account, holdsSession: { true })
         await session.restore()
         account.currentUserAnswer = .failure(.timedOut)
         await session.restore()
         XCTAssertEqual(session.state, .signedIn(FakeAccountService.user), "a pull to refresh that fails does not sign anybody out")
 
-        let guest = SessionModel(account: FakeAccountService())
+        let guest = SessionModel(account: FakeAccountService(), holdsSession: { true })
         await guest.restore()
         XCTAssertEqual(guest.state, .signedOut, "no account answers as signed out")
         let offline = FakeAccountService()
         offline.currentUserAnswer = .failure(.offline)
-        let later = SessionModel(account: offline)
+        let later = SessionModel(account: offline, holdsSession: { true })
         await later.restore()
         offline.currentUserAnswer = .success(nil)
         await later.restore()
         XCTAssertEqual(later.state, .signedOut, "once the server answers, nobody signed in is signed out")
+    }
+
+    /// A fresh install offline: no session cookie, so nobody it could be — the
+    /// sign-in form, as before.
+    func testWithNoSessionAFailedAskIsSignedOut() async {
+        let account = FakeAccountService()
+        account.currentUserAnswer = .failure(.offline)
+        let session = SessionModel(account: account, holdsSession: { false })
+        await session.restore()
+        XCTAssertEqual(session.state, .signedOut)
     }
 }
 

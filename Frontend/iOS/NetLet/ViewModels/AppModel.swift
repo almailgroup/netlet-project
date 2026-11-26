@@ -386,7 +386,8 @@ final class AppModel {
         self.services = services
         self.language = language ?? LanguageSettings()
         self.isDemo = isDemo
-        session = SessionModel(account: services.account)
+        // The demo holds no cookie: whoever its recordings answer is whoever it is.
+        session = isDemo ? SessionModel(account: services.account, holdsSession: { true }) : SessionModel(account: services.account)
         cart = CartModel(service: services.cart, defaults: cartDefaults)
         profilePhoto = ProfilePhotoModel(account: services.account)
         saved = SavedModel(account: services.account, defaults: cartDefaults)

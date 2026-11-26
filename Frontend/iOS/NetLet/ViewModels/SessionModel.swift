@@ -25,9 +25,20 @@ final class SessionModel {
     private(set) var seller: SellerIdentity?
 
     private let account: AccountServicing
+    /// Whether this install holds a session at all. With none, a failure to
+    /// ask is signed out after all: there is nobody it could be.
+    private let holdsSession: () -> Bool
 
-    init(account: AccountServicing) {
+    init(account: AccountServicing, holdsSession: @escaping () -> Bool = SessionModel.cookieStored) {
         self.account = account
+        self.holdsSession = holdsSession
+    }
+
+    /// NetLet's session cookie is in the system's store — the same question
+    /// the first launch's tutorial asks.
+    nonisolated static func cookieStored() -> Bool {
+        let name = ReferenceData.shared.rules.sessionCookie
+        return HTTPCookieStorage.shared.cookies?.contains(where: { $0.name == name }) == true
     }
 
     var user: User? {
@@ -43,8 +54,9 @@ final class SessionModel {
     /// Asks the server who the cookie belongs to. A failure to ask before
     /// anything is known is `unreachable`, never signed out — the cookie is
     /// still there, and the next ask (Try again, or the app coming back to
-    /// the foreground) finds who it belongs to. A failure while signed in or
-    /// out leaves that as it was.
+    /// the foreground) finds who it belongs to; with no cookie at all it is
+    /// signed out, since there is nobody it could be. A failure while signed
+    /// in or out leaves that as it was.
     func restore() async {
         do {
             if let user = try await account.currentUser() {
@@ -55,7 +67,7 @@ final class SessionModel {
             }
         } catch {
             switch state {
-            case .unknown, .unreachable: state = .unreachable
+            case .unknown, .unreachable: state = holdsSession() ? .unreachable : .signedOut
             case .signedOut, .signedIn: break
             }
         }

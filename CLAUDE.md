@@ -10356,8 +10356,9 @@ the page had drawn. Three things said something false:
   the same fault, and has the same answer**: `SessionModel.restore` read any
   failure to ask as signed out, so a phone offline at launch drew the Profile
   tab's sign-in form for somebody signed in. A failure before anything is
-  known is `unreachable` now (a failure while signed in or out changes
-  nothing), and the tab says "Your account could not be loaded just now" with
+  known is `unreachable` now — unless the install holds no session cookie at
+  all, when there is nobody it could be and it is signed out as before (a
+  failure while signed in or out changes nothing) — and the tab says "Your account could not be loaded just now" with
   Try again (`AccountUnreachable`). **And the app asks again by itself on
   coming back to the foreground** (`AppModel.readAgainWhatFailed`, from
   `appReturned`): who is signed in while unreachable, the bag while `unread`
