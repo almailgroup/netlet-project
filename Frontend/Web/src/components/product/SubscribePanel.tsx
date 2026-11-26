@@ -25,6 +25,7 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { useFeature } from "@/hooks/useFeature";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { trpc } from "@/lib/trpc";
+import { failedToLoad } from "@/lib/queryState";
 import { addDays, kuwaitToday } from "@shared/commerce/adBookings";
 import { MAX_FIRST_RUN_DAYS, MAX_SUBSCRIPTION_QUANTITY, SUBSCRIPTION_INTERVALS, subscriberPrice } from "@shared/commerce/subscriptions";
 import type { Product, ProductVariant } from "@shared/commerce/types";
@@ -109,7 +110,14 @@ function Panel({ percent, variant, quantity }: { percent: number; variant: Produ
             <input type="date" required value={firstRunOn} min={addDays(today, 1)} max={addDays(today, MAX_FIRST_RUN_DAYS)} onChange={event => setFirstRunOn(event.target.value)} className={field} />
           </label>
           <div className="sm:col-span-2">
-            {book.data && book.data.length === 0 ? (
+            {failedToLoad(book) ? (
+              /* An empty list to choose from and a Confirm that cannot be
+                 pressed said nothing of why. */
+              <p role="alert" className="text-[12px] text-[#0a285a]">
+                {t("delivery.loadFailed")}{" "}
+                <button type="button" onClick={() => void book.refetch()} className="font-extrabold ink-accent underline underline-offset-2">{t("home.refreshCatalog")}</button>
+              </p>
+            ) : book.data && book.data.length === 0 ? (
               <p className="text-[12px] text-[#0a285a]">
                 {t("subscribe.needAddress")}{" "}
                 <Link href="/account/addresses" className="font-extrabold ink-accent underline underline-offset-2">{t("subscribe.addAddress")}</Link>
