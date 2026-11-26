@@ -35,6 +35,12 @@ final class AccountHome {
     private(set) var points: Int?
     /// The phone the driver calls, saved under Your profile — nil until asked.
     private(set) var phone: String??
+    /// Tiles whose read did not come back and that have nothing drawn: each
+    /// says it could not load, never its empty line — "No orders yet" over
+    /// an account with orders.
+    private(set) var failedTiles: Set<Tile> = []
+
+    enum Tile: Hashable { case orders, saved, frequent }
 
     /// How long an answer is drawn without asking again when the tab opens.
     static let freshFor: TimeInterval = 30
@@ -96,17 +102,26 @@ final class AccountHome {
         if let page = await orders.value {
             var seen = Set<String>()
             orderPhotos = page.rows.flatMap(\.summary.photos).filter { seen.insert($0).inserted }.prefix(4).map { $0 }
+            failedTiles.remove(.orders)
         } else if orderPhotos == nil {
-            orderPhotos = []
+            failedTiles.insert(.orders)
         }
-        if let photos = await saved.value { savedPhotos = photos } else if savedPhotos == nil { savedPhotos = [] }
+        if let photos = await saved.value {
+            savedPhotos = photos
+            failedTiles.remove(.saved)
+        } else if savedPhotos == nil {
+            failedTiles.insert(.saved)
+        }
         if let list = await frequent.value {
             var seen = Set<String>()
             frequentPhotos = list.items.compactMap { $0.product?.images.first?.url }.filter { seen.insert($0).inserted }.prefix(4).map { $0 }
+            failedTiles.remove(.frequent)
         } else if frequentPhotos == nil {
-            frequentPhotos = []
+            failedTiles.insert(.frequent)
         }
-        if let found = await details.value { phone = .some(found.phone) } else if phone == nil { phone = .some(nil) }
+        // A phone not read is left unasked, which draws nothing — never
+        // "Add a phone" over a number the account holds.
+        if let found = await details.value { phone = .some(found.phone) }
         if let balance = await rewards.value?.balance { points = balance }
         if let list = await standing.value { holdings.subscriptions = !list.isEmpty }
         if let list = await offers.value { holdings.offers = !list.isEmpty }
@@ -118,7 +133,10 @@ final class AccountHome {
 
     /// The Saved tile's pictures again, when the hearts change.
     func reloadSaved(ids: [String], language: Language) async {
-        if let photos = await Self.savedPhotos(api: api, ids: ids, locale: language.rawValue) { savedPhotos = photos }
+        if let photos = await Self.savedPhotos(api: api, ids: ids, locale: language.rawValue) {
+            savedPhotos = photos
+            failedTiles.remove(.saved)
+        }
     }
 
     /// The phone the profile saved, when "Your profile" changes it.
@@ -140,6 +158,7 @@ final class AccountHome {
         frequentPhotos = nil
         points = nil
         phone = nil
+        failedTiles = []
         loadedFor = nil
         loadedAt = nil
     }

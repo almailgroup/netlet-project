@@ -108,13 +108,14 @@ struct AccountView: View {
                     previewTile(
                         title: l.t("account.myOrders"),
                         photos: orderPhotos,
+                        failed: app.accountHome.failedTiles.contains(.orders),
                         empty: l.t("orders.emptyTitle"),
                         waiting: app.signals.onTheWay > 0 ? l.t("header.onTheWay", ["count": "\(app.signals.onTheWay)"]) : nil
                     ) { app.push(.orders) }
-                    previewTile(title: l.t("saved.andWishlists"), photos: savedPhotos, empty: l.t("saved.emptyTitle"), waiting: nil) {
+                    previewTile(title: l.t("saved.andWishlists"), photos: savedPhotos, failed: app.accountHome.failedTiles.contains(.saved), empty: l.t("saved.emptyTitle"), waiting: nil) {
                         app.push(.saved)
                     }
-                    previewTile(title: l.t("frequent.section"), photos: frequentPhotos, empty: l.t("frequent.emptyTitle"), waiting: nil) {
+                    previewTile(title: l.t("frequent.section"), photos: frequentPhotos, failed: app.accountHome.failedTiles.contains(.frequent), empty: l.t("frequent.emptyTitle"), waiting: nil) {
                         app.push(.frequent)
                     }
                     pointsTile
@@ -266,7 +267,7 @@ struct AccountView: View {
 
     /// A tile with a title and the last few pictures of what is in it, or a
     /// line saying there is nothing yet.
-    private func previewTile(title: String, photos: [String]?, empty: String, waiting: String?, open: @escaping () -> Void) -> some View {
+    private func previewTile(title: String, photos: [String]?, failed: Bool = false, empty: String, waiting: String?, open: @escaping () -> Void) -> some View {
         Button(action: open) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 6) {
@@ -297,11 +298,12 @@ struct AccountView: View {
                                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white, lineWidth: 2))
                                 }
                             }
-                        } else if photos == nil {
+                        } else if photos == nil, !failed {
                             RoundedRectangle(cornerRadius: 12, style: .continuous).fill(ProfileInk.chip)
                                 .frame(height: width * 4 / 3)
                         } else {
-                            Text(empty)
+                            // Not read is said as that, never as the empty line.
+                            Text(failed && photos == nil ? l.t("account.tileFailed") : empty)
                                 .font(.inter(13))
                                 .foregroundStyle(Brand.muted)
                                 .padding(.horizontal, 12)

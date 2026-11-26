@@ -10425,6 +10425,17 @@ the page had drawn. Three things said something false:
   `IssueCentre.test.ts`, over `OrderChoices`, the picker drawn on its own so
   a static render can reach it — both failed without the fix).
 
+- **The account home's tiles never draw their empty line over a read that
+  failed.** My orders, Saved items and Frequently bought said "No orders
+  yet" and the like whenever their read did not come back — on the web
+  because a failed query is not pending, in the app because a failure set
+  the tile's photos to none — and the app's name card offered "Add a phone"
+  over a number it had not read. A tile now says it couldn't load
+  (`account.tileFailed`), a tile already drawn keeps its pictures, and an
+  unread phone is left unasked (`AccountHome.failedTiles`,
+  `AccountHomeTests`; on the web `PreviewTile`'s `failed`,
+  `AccountHome.test.ts`).
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s

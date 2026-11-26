@@ -72,6 +72,7 @@ import { canBuzz, pressHaptic } from "@/lib/haptics";
 import { PageSearchField, PageSearchMissed, useHeaderDrawn, usePageTerm } from "@/components/layout/PageSearch";
 import { accountPlacesMatching, type AccountPlace } from "@shared/commerce/accountSearch";
 import { trpc } from "@/lib/trpc";
+import { failedToLoad } from "@/lib/queryState";
 import { usePortalDoor } from "@/hooks/usePortalDoor";
 import { portalSideFor } from "@shared/portal";
 import { adminHeldBack } from "@shared/inventory/permissions";
@@ -160,7 +161,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
   const { t, locale } = useTranslation();
   const signals = useAccountSignals();
   const details = trpc.customer.details.get.useQuery(undefined, { staleTime: 60_000 });
-  const { savedIds } = useCustomer();
+  const { savedIds, savedUnread } = useCustomer();
   const orders = trpc.orders.list.useQuery({ pageSize: 4 }, { staleTime: 60_000 });
   const saved = useProductsByIds(savedIds.slice(0, 4));
   const rewards = trpc.rewards.mine.useQuery(undefined, { staleTime: 60_000 });
@@ -248,6 +249,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           title={t("account.myOrders")}
           photos={orderPhotos}
           loading={orders.isPending}
+          failed={failedToLoad(orders) ? t("account.tileFailed") : null}
           empty={t("orders.emptyTitle")}
           waiting={signals.onTheWay ? t("header.onTheWay", { count: signals.onTheWay }) : null}
         />
@@ -256,6 +258,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
           title={t("saved.andWishlists")}
           photos={savedPhotos}
           loading={saved.waiting}
+          failed={savedUnread || (savedIds.length > 0 && failedToLoad(saved.query)) ? t("account.tileFailed") : null}
           empty={t("saved.emptyTitle")}
           waiting={null}
         />
@@ -265,6 +268,7 @@ export function AccountHome({ user, has, badge, onSignOut }: {
             title={t("frequent.section")}
             photos={frequentPhotos}
             loading={frequent.isPending}
+            failed={failedToLoad(frequent) ? t("account.tileFailed") : null}
             empty={t("frequent.emptyTitle")}
             waiting={null}
           />
@@ -520,11 +524,13 @@ function RowLink({ row, waiting, value = null }: { row: Row; waiting: string | n
  * saved or frequently bought things — or a line saying there is nothing yet;
  * or a body of its own (the points' coin and balance) in the same place.
  */
-function PreviewTile({ href, title, photos, loading, empty, waiting, body: own, label }: {
+export function PreviewTile({ href, title, photos, loading, failed = null, empty, waiting, body: own, label }: {
   href: string;
   title: string;
   photos: (string | null)[];
   loading: boolean;
+  /** Its read did not come back: said as that, never as the empty line. */
+  failed?: string | null;
   empty: string;
   waiting: string | null;
   body?: ReactNode;
@@ -550,6 +556,8 @@ function PreviewTile({ href, title, photos, loading, empty, waiting, body: own, 
     );
   } else if (loading) {
     body = <div aria-hidden className="mt-3 aspect-[4/1.3] animate-pulse rounded-xl bg-[#f1f2f6]" />;
+  } else if (failed) {
+    body = <p className="mt-3 flex aspect-[4/1.3] items-center rounded-xl bg-[#f4f6f9] px-3 text-[13px] leading-snug ink-muted">{failed}</p>;
   } else {
     body = <p className="mt-3 flex aspect-[4/1.3] items-center rounded-xl bg-[#f4f6f9] px-3 text-[13px] leading-snug ink-muted">{empty}</p>;
   }
