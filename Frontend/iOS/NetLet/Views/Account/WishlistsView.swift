@@ -78,6 +78,11 @@ struct WishlistsTab: View {
 final class WishlistsModel {
     let lists: Loader<[WishlistSummary]>
     private(set) var phone: String?
+    /// The number has been read: until then nothing asks for one, and no
+    /// public list says a number is needed over one the account holds.
+    private(set) var phoneRead = false
+    /// It could not be read: said with Try again in the card.
+    private(set) var phoneUnread = false
     /// Each published list's share token, read as the list is drawn.
     private(set) var tokens: [Int: String] = [:]
     let api: APICalling
@@ -89,14 +94,27 @@ final class WishlistsModel {
 
     func load() async {
         await lists.load()
-        phone = (try? await api.call(API.wishlistPhone)) ?? phone
+        await readPhone()
         for list in lists.value ?? [] where list.isPublic && tokens[list.id] == nil {
             if let token = try? await api.call(API.wishlistShareToken, .init(listId: list.id)) { tokens[list.id] = token }
         }
     }
 
+    /// The number a family finds the lists by; a failure is said, never drawn as none.
+    func readPhone() async {
+        do {
+            phone = try await api.call(API.wishlistPhone)
+            phoneRead = true
+            phoneUnread = false
+        } catch {
+            if APIError.from(error) != .cancelled, !phoneRead { phoneUnread = true }
+        }
+    }
+
     func setPhone(_ value: String?) async throws {
         phone = try await api.call(API.setWishlistPhone, .init(phone: value))
+        phoneRead = true
+        phoneUnread = false
     }
 
     func create(_ title: String) async throws {
@@ -174,7 +192,27 @@ private struct PhoneCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(l.t("wish.phoneHeading")).font(.inter(16, .heavy)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
             Text(l.t("wish.phoneNote")).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
-            if let current = model.phone {
+            if !model.phoneRead {
+                if model.phoneUnread {
+                    Text(l.t("account.sectionFailed"))
+                        .font(.inter(13))
+                        .foregroundStyle(Brand.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button {
+                        Task { await model.readPhone() }
+                    } label: {
+                        Text(l.t("home.refreshCatalog"))
+                            .font(.inter(13, .bold))
+                            .foregroundStyle(Brand.navy)
+                            .underline()
+                            .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.tap)
+                    .accessibilityIdentifier("wish-phone-retry")
+                } else {
+                    ProgressView().tint(Brand.navy).frame(minHeight: 44)
+                }
+            } else if let current = model.phone {
                 HStack {
                     Text("\u{2066}\(PhoneNumber.display(current))\u{2069}").font(.inter(16, .bold)).foregroundStyle(Brand.ink)
                     Spacer()
@@ -250,7 +288,7 @@ private struct ListRow: View {
                 .font(.inter(13))
                 .foregroundStyle(Brand.body)
                 .fixedSize(horizontal: false, vertical: true)
-            if list.isPublic && model.phone == nil {
+            if list.isPublic && model.phoneRead && model.phone == nil {
                 Text(l.t("wish.phoneNeeded")).font(.inter(12)).foregroundStyle(Brand.accentInk)
             }
             FlowLayout(spacing: 8) {

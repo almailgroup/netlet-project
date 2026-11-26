@@ -30,6 +30,7 @@ import { QueryGate } from "@/components/ui/QueryGate";
 import { Thumb } from "@/components/product/Thumb";
 import { appPath } from "@/lib/basePath";
 import { formatMoney } from "@/lib/format";
+import { failedToLoad } from "@/lib/queryState";
 import { trpc } from "@/lib/trpc";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useFeature } from "@/hooks/useFeature";
@@ -63,7 +64,12 @@ export function WishlistManager() {
     <div className="space-y-5">
       <p className="max-w-prose text-sm leading-6 ink-muted">{t(on ? "wish.intro" : "wish.switchedOff")}</p>
 
-      <PhoneCard current={phone.data ?? null} onSaved={() => void phone.refetch()} />
+      <PhoneCard
+        current={phone.data === undefined ? undefined : phone.data ?? null}
+        failed={failedToLoad(phone)}
+        onRetry={() => void phone.refetch()}
+        onSaved={() => void phone.refetch()}
+      />
 
       {/* Somebody else's list, found by their number or the name on it — here,
           on the owner's word, where the account's own lists are. */}
@@ -105,7 +111,8 @@ export function WishlistManager() {
                         <ListRow
                           key={list.id}
                           list={list}
-                          hasPhone={Boolean(phone.data)}
+                          /* "Add a number" only once the account is known to hold none. */
+                          hasPhone={phone.data !== null}
                           onOpen={() => setOpenList(list.id)}
                           onChanged={() => void lists.refetch()}
                         />
@@ -132,7 +139,15 @@ export function WishlistManager() {
  * could not key would simply never find anybody, and the shopper would blame
  * the feature.
  */
-function PhoneCard({ current, onSaved }: { current: string | null; onSaved: () => void }) {
+/** The number a family finds the published lists by. `current` is undefined
+ *  until it is read: the card drew the "add a number" form over a number the
+ *  account holds whenever the read had not come back. */
+export function PhoneCard({ current, failed = false, onRetry, onSaved }: {
+  current: string | null | undefined;
+  failed?: boolean;
+  onRetry?: () => void;
+  onSaved: () => void;
+}) {
   const { t } = useTranslation();
   const [value, setValue] = useState("");
   const save = trpc.wishlists.setPhone.useMutation();
@@ -156,7 +171,18 @@ function PhoneCard({ current, onSaved }: { current: string | null; onSaved: () =
       <h3 className="text-sm font-extrabold text-[#0a285a]">{t("wish.phoneHeading")}</h3>
       <p className="mt-1 max-w-prose text-xs leading-5 ink-muted">{t("wish.phoneNote")}</p>
 
-      {current ? (
+      {current === undefined ? (
+        failed ? (
+          <p role="alert" className="mt-3 text-[13px] leading-5 text-[#404553]">
+            {t("account.sectionFailed")}{" "}
+            <button type="button" onClick={onRetry} className="font-bold text-[#0a285a] underline underline-offset-2">
+              {t("home.refreshCatalog")}
+            </button>
+          </p>
+        ) : (
+          <span className="mt-3 block h-10 w-48 max-w-full animate-pulse rounded-full bg-[#eef1f6]" aria-hidden />
+        )
+      ) : current ? (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {/* A phone number is Latin whichever language the page is in, and
               belongs on the line's own side. bdi, never dir on the block. */}

@@ -10459,6 +10459,13 @@ the page had drawn. Three things said something false:
   until it is read and says the same when it could not be
   (`NotificationsModel.emailRead`, `emailUnread`, `NotificationsModelTests`).
 
+- **The wishlists' number is the account's own or unread.** A failed
+  `wishlists.phone` drew the "add a number" form, and "a number is needed"
+  under every public list, over a number the account holds. Until it is read
+  the card asks for nothing and no list says so; a failed read says it with
+  Try again (`PhoneCard`, `WishlistPhoneCard.test.ts`;
+  `WishlistsModel.phoneRead`, `phoneUnread`, `WishlistPhoneTests`).
+
 - **The admin portal says it could not reach NetLet, never that the device
   is refused** (`PortalUnreachable` in `SignIn.tsx`, drawn by the sign-in page
   when `devices.access` failed to load and by `AdminLayout` when `useAuth`'s
