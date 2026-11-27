@@ -1488,6 +1488,44 @@ final class FixtureDecodingTests: XCTestCase {
     /// page's live ones, the store's editor with each state (a store that
     /// publishes under review waits for NetLet, and NetLet's own goes live),
     /// and NetLet's queue with its count.
+    /// The store's products in shoppers' carts (`offers.cartInterest`), recorded
+    /// off the real service: naming nobody, each with what the store may do.
+    func testTheStoresProductsInCartsDecode() async throws {
+        let page = try await client.call(API.cartInterest, .init(page: 1))
+        XCTAssertTrue(page.ready)
+        XCTAssertEqual(page.rows.count, 2)
+        let held = try XCTUnwrap(page.rows.first)
+        XCTAssertEqual(held.action, "held")
+        XCTAssertEqual(held.offer?.startedBy, "store")
+        XCTAssertEqual(held.offer?.price, Money(fils: 21_500))
+        XCTAssertEqual(held.title(.ar), "سماعات لاسلكية")
+        XCTAssertEqual(held.variantLabel, "Black")
+        let open = try XCTUnwrap(page.rows.last)
+        XCTAssertEqual(open.action, "send")
+        XCTAssertNil(open.offer)
+        XCTAssertNil(open.variantLabel, "a lone Default says nothing")
+        XCTAssertEqual(open.listPrice, Money(fils: 8_750))
+        let count = try await client.call(API.cartInterestCount, .init())
+        XCTAssertEqual(count, 2)
+        let sent = try await client.call(API.sendCartPrice, .init(lineId: open.lineId, price: "8.000", note: nil, vendorId: nil))
+        XCTAssertGreaterThan(sent.offerId, 0)
+    }
+
+    /// The store's price is below the listed price and above nothing, in whole
+    /// fils — `acceptableStorePrice`, on its own cases.
+    func testAStoresPriceForACartIsBelowTheShelfAndAboveNothing() {
+        let listed = Money(fils: 100_000)
+        XCTAssertTrue(CartInterestRules.acceptable("85.000", below: listed))
+        XCTAssertTrue(CartInterestRules.acceptable("99.999", below: listed))
+        XCTAssertFalse(CartInterestRules.acceptable("100.000", below: listed), "at the shelf price tells the shopper nothing")
+        XCTAssertFalse(CartInterestRules.acceptable("120", below: listed))
+        XCTAssertFalse(CartInterestRules.acceptable("0", below: listed))
+        XCTAssertFalse(CartInterestRules.acceptable("8.5000", below: listed), "no more than three places")
+        XCTAssertFalse(CartInterestRules.acceptable("abc", below: listed))
+        XCTAssertEqual(CartInterestRules.windowDays, 14)
+        XCTAssertEqual(CartInterestRules.offerDays, 3)
+    }
+
     func testAProductsCataloguesDecode() async throws {
         let shown = try await client.call(API.cataloguesForProduct, .init(productId: "2"))
         XCTAssertEqual(shown.count, 2)

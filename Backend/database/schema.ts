@@ -2280,10 +2280,20 @@ export const priceOffers = pgTable(
     answeredBy: integer("answered_by").references(() => users.id, { onDelete: "set null" }),
     /** Set null rather than cascade: spending it is a fact even if the order goes. */
     usedOnOrderId: integer("used_on_order_id").references(() => orders.id, { onDelete: "set null" }),
+    /**
+     * Who began it (migration 0094, on the owner's word): the shopper asking,
+     * or the store sending a price to a cart its product is in. A store's is
+     * born `offered`, with what was asked the price it sent, and never names
+     * the shopper to the store. **Read through `offerStarts.ts`**, never by a
+     * plain `select()` of this table: Drizzle names every column it knows, so
+     * a read that knows this one fails until 0094 is pasted.
+     */
+    startedBy: varchar("started_by", { length: 8 }).notNull().default("shopper"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
   },
   table => [
+    check("price_offers_started_by_check", sql`${table.startedBy} in ('shopper', 'store')`),
     /*
      * One live request per shopper per variant, enforced here rather than by a
      * check in application code: two browser tabs are enough to make a

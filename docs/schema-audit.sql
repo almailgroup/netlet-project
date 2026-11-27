@@ -20,7 +20,7 @@
 -- If the editor shows a syntax error instead, the paste was cut short — this is
 -- one statement, so a partial paste can never report a clean bill.
 --
--- Checks 94 tables, 941 columns, 156 indexes, 212 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
+-- Checks 94 tables, 942 columns, 156 indexes, 212 foreign keys, 21 enums, what later migrations dropped, and the seed rows.
 
 WITH
 expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
@@ -85,7 +85,7 @@ expected_tables (table_name, columns, indexes, foreign_keys) AS (VALUES
   ('payout_runs', 'bank_reference,file_id,iban_used,id:pnd,paid_at,paid_by,prepared_at,prepared_by,status:nd,total:n,vendor_id,vendor_name:n', 'payout_runs_status_idx,payout_runs_vendor_idx', 'file_id>payout_files:n,paid_by>users:n,prepared_by>users:n,vendor_id>vendors:n'),
   ('platform_settings', 'key:pn,updated_at:nd,updated_by,value:n', '', 'updated_by>users:n'),
   ('point_entries', 'available_at,created_at:nd,id:pnd,note,order_id,order_item_id,points:n,pot:nd,reason:n,referral_id,settled_at,user_id:n', 'point_entries_affiliate_line_unique:uw,point_entries_affiliate_order_unique:uw,point_entries_invite_commission_unique:uw,point_entries_pot_idx,point_entries_product_referral_unique:uw,point_entries_referral_reason_unique:uw,point_entries_referral_reversal_unique:uw,point_entries_user_idx', 'order_id>orders:n,order_item_id>order_items:n,referral_id>referrals:n,user_id>users:c'),
-  ('price_offers', 'answered_at,answered_by,asked_price:n,created_at:nd,expires_at,id:pnd,list_price:n,offered_price,product_id,product_title:n,quantity:nd,shopper_note,status:nd,updated_at:nd,used_on_order_id,user_id:n,variant_id:n,vendor_id,vendor_note', 'price_offers_open_unique:uw,price_offers_user_idx,price_offers_variant_idx,price_offers_vendor_idx', 'answered_by>users:n,product_id>products:n,used_on_order_id>orders:n,user_id>users:c,variant_id>product_variants:c,vendor_id>vendors:n'),
+  ('price_offers', 'answered_at,answered_by,asked_price:n,created_at:nd,expires_at,id:pnd,list_price:n,offered_price,product_id,product_title:n,quantity:nd,shopper_note,started_by:nd,status:nd,updated_at:nd,used_on_order_id,user_id:n,variant_id:n,vendor_id,vendor_note', 'price_offers_open_unique:uw,price_offers_user_idx,price_offers_variant_idx,price_offers_vendor_idx', 'answered_by>users:n,product_id>products:n,used_on_order_id>orders:n,user_id>users:c,variant_id>product_variants:c,vendor_id>vendors:n'),
   ('product_addons', 'created_at:nd,id:pnd,kind:nd,label:n,label_ar,position:nd,price:n,product_id:n,warranty_months', 'product_addons_product_idx', 'product_id>products:c'),
   ('product_catalogues', 'bytes:n,content_type:n,created_at:nd,file_name:n,id:pnd,position:nd,product_id:n,review_note,size_bytes:n,status:nd,title,title_ar,uploaded_by', 'product_catalogues_product_idx', 'product_id>products:c,uploaded_by>users:n'),
   ('product_images', 'alt_text,created_at:nd,id:pnd,kind:nd,position:nd,poster_url,product_id:n,url:n', 'product_images_product_id_idx', 'product_id>products:c'),
@@ -281,7 +281,7 @@ SELECT area, object, finding FROM (
   SELECT * FROM security
   UNION ALL
   SELECT 10, 'result', 'everything',
-    CASE WHEN count(*) = 0 THEN 'complete — 94 tables, 941 columns, 156 indexes, 212 foreign keys, 21 enums, the drops and the seed all match'
+    CASE WHEN count(*) = 0 THEN 'complete — 94 tables, 942 columns, 156 indexes, 212 foreign keys, 21 enums, the drops and the seed all match'
       ELSE count(*) || ' problem' || CASE WHEN count(*) = 1 THEN '' ELSE 's' END || ' above: run docs/supabase-bootstrap.sql again, in full, then this again' END
   FROM problems
 ) AS report

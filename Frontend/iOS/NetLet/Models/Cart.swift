@@ -120,6 +120,9 @@ struct CartItem: Decodable, Identifiable, Hashable, Sendable {
     /// price, a subscriber's or a member's, which `priceReason` names.
     var agreedFrom: Money? = nil
     var priceReason: String? = nil
+    /// The agreed price was one the store sent to this cart unasked
+    /// (migration 0094): the line says "Your price from the store".
+    var agreedByStore: Bool? = nil
     /// The line's own discount code (migration 0074) and what it takes off this
     /// line alone; `lineTotal` is the line before it.
     var code: LineCode? = nil

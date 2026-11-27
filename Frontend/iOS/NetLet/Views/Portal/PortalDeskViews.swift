@@ -353,7 +353,10 @@ enum StockWords {
 /// Shoppers asking for a special price — the web's `/admin/offers`. The
 /// answer is a price for one shopper, never an advertised saving, so it
 /// needs no permit; the store's owner decides whether the store takes them.
+/// Its second view is the store's products in shoppers' carts, where a price
+/// can be sent to a cart (on the owner's word, the web's `?view=carts`).
 struct PortalOffersView: View {
+    @State private var inCarts = false
     @State private var page = 1
     @State private var openOnly = true
     @State private var inbox: PortalPageOf<PriceAsk>?
@@ -368,7 +371,29 @@ struct PortalOffersView: View {
     private var vendorId: Int? { app.session.seller?.ownVendor }
 
     var body: some View {
-        PortalScreen(title: l.t("admin.offersTitle"), intro: l.t("admin.offersNote"), refresh: { await load() }) {
+        PortalScreen(
+            title: l.t("admin.offersTitle"),
+            intro: inCarts
+                ? l.t("admin.cartsNote", ["days": "\(CartInterestRules.windowDays)", "offerDays": "\(CartInterestRules.offerDays)"])
+                : l.t("admin.offersNote"),
+            refresh: { await load() }
+        ) {
+            PortalSegmented(label: l.t("admin.offersTitle"), value: $inCarts, options: [(false, l.t("admin.offersViewRequests")), (true, l.t("admin.offersViewCarts"))])
+            if inCarts {
+                PortalCartInterestList(vendorId: vendorId) { inCarts = false }
+            } else {
+                requests
+            }
+        }
+        .task { await load() }
+        .onChange(of: openOnly) {
+            page = 1
+            Task { await load() }
+        }
+    }
+
+    @ViewBuilder
+    private var requests: some View {
             if let vendorId, app.session.seller?.can("vendor.editProfile", vendorId: vendorId) == true, let takes {
                 Toggle(isOn: Binding(get: { takes }, set: { value in Task { await setTakes(value, vendorId: vendorId) } })) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -395,12 +420,6 @@ struct PortalOffersView: View {
             } else {
                 ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 120)
             }
-        }
-        .task { await load() }
-        .onChange(of: openOnly) {
-            page = 1
-            Task { await load() }
-        }
     }
 
     private func askCard(_ row: PriceAsk) -> some View {
@@ -408,10 +427,10 @@ struct PortalOffersView: View {
             HStack(alignment: .top, spacing: 8) {
                 Text(row.productTitle).font(.inter(15, .bold)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 6)
-                StatusPill(label: l.t(OfferWords.state(row.state)), tone: .portal(row.state == "pending" ? "warning" : row.state == "offered" ? "good" : row.state == "used" ? "navy" : "neutral"))
+                StatusPill(label: l.t(row.state == "offered" && row.sentByStore ? "admin.offersSentToCart" : OfferWords.state(row.state)), tone: .portal(row.state == "pending" ? "warning" : row.state == "offered" ? "good" : row.state == "used" ? "navy" : "neutral"))
             }
             FlowLayout(spacing: 10) {
-                Text(l.t("admin.offersShopperAsked", ["price": row.askedPrice.formatted(l.current)])).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
+                Text(l.t(row.sentByStore ? "admin.offersYouSent" : "admin.offersShopperAsked", ["price": row.askedPrice.formatted(l.current)])).font(.inter(13, .semibold)).foregroundStyle(Brand.navy)
                 Text(l.t("admin.offersListed", ["price": row.listPrice.formatted(l.current)])).font(.inter(13)).foregroundStyle(Brand.body)
                 Text(l.t("admin.offersQuantity", ["count": "\(row.quantity)"])).font(.inter(13)).foregroundStyle(Brand.body)
                 Text(OrderWording.date(row.createdAt, language: l.current)).font(.inter(13)).foregroundStyle(Brand.muted)
@@ -488,6 +507,153 @@ struct PortalOffersView: View {
         } catch {
             let failure = APIError.from(error)
             if failure != .cancelled, inbox == nil { failed = failure }
+        }
+    }
+}
+
+/// The days a store's list of its products in carts reaches back, and the days
+/// a price it sends lasts — the server's `CART_INTEREST_DAYS` and
+/// `OFFER_WINDOW_DAYS`, exported in `rules.json`.
+enum CartInterestRules {
+    static var windowDays: Int { ReferenceData.shared.rules.accountRules.cartInterestDays ?? 14 }
+    static var offerDays: Int { ReferenceData.shared.rules.accountRules.offerWindowDays }
+
+    /// Below the listed price and above nothing, in whole fils — the server's
+    /// `acceptableStorePrice`, asked before the press so the box says it.
+    static func acceptable(_ text: String, below listed: Money) -> Bool {
+        let typed = text.trimmingCharacters(in: .whitespaces)
+        guard typed.range(of: #"^\d+(\.\d{1,3})?$"#, options: .regularExpression) != nil, let fils = Money.parseFils(typed) else { return false }
+        return fils > 0 && fils < listed.fils
+    }
+}
+
+/// The store's products in signed-in shoppers' carts (`offers.cartInterest`),
+/// naming nobody, each with what the server says may be done: send a price,
+/// answer the shopper's own request in Price requests, or the price they hold.
+struct PortalCartInterestList: View {
+    let vendorId: Int?
+    let onRequests: () -> Void
+    @State private var page = 1
+    @State private var list: CartInterestPage?
+    @State private var failed: APIError?
+    @State private var prices: [Int: String] = [:]
+    @State private var notes: [Int: String] = [:]
+    @State private var problems: Set<Int> = []
+    @State private var busy: Int?
+    @FocusState private var focused: Int?
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let list {
+                if !list.ready {
+                    Text(l.t("offers.storeClosed")).font(.inter(14)).foregroundStyle(Brand.body).card(padding: 14)
+                } else if list.rows.isEmpty {
+                    PortalEmpty(text: l.t("admin.cartsEmpty"))
+                } else {
+                    ForEach(list.rows) { row in card(row) }
+                    PortalPager(page: list.page, pageSize: list.pageSize, total: list.total) { next in
+                        page = next
+                        Task { await load() }
+                    }
+                }
+            } else if let failed {
+                ErrorStateView(error: failed) { await load() }
+            } else {
+                ProgressView().tint(Brand.navy).frame(maxWidth: .infinity, minHeight: 120)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func card(_ row: CartInterest) -> some View {
+        PortalCard {
+            HStack(alignment: .top, spacing: 12) {
+                Color.clear.frame(width: 56, height: 56)
+                    .overlay { RemoteImage(reference: row.image, contentMode: .fit) }
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(row.title(l.current)).font(.inter(15, .bold)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
+                    if let variant = row.variantLabel {
+                        Text(variant).font(.inter(13)).foregroundStyle(Brand.body)
+                    }
+                    FlowLayout(spacing: 10) {
+                        Text(l.t("admin.offersListed", ["price": row.listPrice.formatted(l.current)])).font(.inter(13)).foregroundStyle(Brand.body)
+                        Text(l.t("admin.cartsQuantity", ["count": "\(row.quantity)"])).font(.inter(13)).foregroundStyle(Brand.body)
+                        Text(l.t("admin.cartsAdded", ["date": OrderWording.date(row.addedAt, language: l.current)])).font(.inter(13)).foregroundStyle(Brand.muted)
+                    }
+                }
+            }
+            switch row.action {
+            case "send":
+                LabeledField(
+                    label: l.t("admin.cartsPrice"),
+                    text: price(row.lineId),
+                    problem: problems.contains(row.lineId) ? l.t("offers.storePriceRange") : nil,
+                    keyboard: .decimalPad,
+                    leftToRight: true
+                )
+                .focused($focused, equals: row.lineId)
+                LabeledField(label: "\(l.t("admin.offersAnswerNote")) (\(l.t("admin.optional")))", text: noteBox(row.lineId))
+                HStack {
+                    Spacer()
+                    Button { Task { await send(row) } } label: {
+                        if busy == row.lineId { ProgressView().tint(.white) } else { Label(l.t("admin.cartsSend"), systemImage: "checkmark") }
+                    }
+                    .buttonStyle(PortalSmallButtonStyle(kind: .primary))
+                    .disabled(busy != nil)
+                }
+            case "answer":
+                Text(l.t("offers.askedOpen")).font(.inter(13)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
+                Button(l.t("admin.cartsOpenRequests"), action: onRequests)
+                    .buttonStyle(PortalSmallButtonStyle(kind: .secondary))
+            default:
+                if let held = row.offer, let price = held.price {
+                    Text(l.t(held.startedBy == "store" ? "admin.cartsHeldStore" : "admin.cartsHeldAnswer", [
+                        "price": price.formatted(l.current),
+                        "date": held.expiresAt.map { OrderWording.date($0, language: l.current) } ?? "—",
+                    ]))
+                    .font(.inter(13, .semibold))
+                    .foregroundStyle(Brand.success)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func price(_ id: Int) -> Binding<String> {
+        Binding(get: { prices[id] ?? "" }, set: { prices[id] = $0; problems.remove(id) })
+    }
+
+    private func noteBox(_ id: Int) -> Binding<String> {
+        Binding(get: { notes[id] ?? "" }, set: { notes[id] = String($0.prefix(ReferenceData.shared.rules.accountRules.maxOfferNote)) })
+    }
+
+    private func send(_ row: CartInterest) async {
+        let typed = (prices[row.lineId] ?? "").trimmingCharacters(in: .whitespaces)
+        guard CartInterestRules.acceptable(typed, below: row.listPrice) else {
+            problems.insert(row.lineId)
+            focused = row.lineId
+            return
+        }
+        busy = row.lineId
+        defer { busy = nil }
+        let note = (notes[row.lineId] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if await app.attempt(done: "admin.cartsSent", fallback: "admin.saveFailed", {
+            _ = try await app.services.api.call(API.sendCartPrice, .init(lineId: row.lineId, price: typed, note: note.isEmpty ? nil : note, vendorId: vendorId))
+        }) { await load() }
+    }
+
+    private func load() async {
+        do {
+            list = try await app.services.api.call(API.cartInterest, .init(page: page))
+            failed = nil
+        } catch {
+            let failure = APIError.from(error)
+            if failure != .cancelled, list == nil { failed = failure }
         }
     }
 }

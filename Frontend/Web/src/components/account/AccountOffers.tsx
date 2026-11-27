@@ -62,7 +62,7 @@ export function AccountOffers() {
                     )}
                     <span className="text-[12px] font-semibold ink-muted">
                       {row.state === "offered" && row.offeredPrice
-                        ? t("offers.statusOffered", { price: amount(row.offeredPrice) })
+                        ? t(row.startedBy === "store" ? "offers.statusFromStore" : "offers.statusOffered", { price: amount(row.offeredPrice) })
                         : t(STATE_LABEL[row.state])}
                     </span>
                   </div>

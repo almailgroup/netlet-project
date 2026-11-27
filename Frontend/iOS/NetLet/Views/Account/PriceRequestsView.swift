@@ -71,7 +71,7 @@ struct PriceRequestsView: View {
 
     private func state(_ row: PriceRequest) -> String {
         if row.state == "offered", let price = row.offeredPrice {
-            return l.t("offers.statusOffered", ["price": price.formatted(l.current)])
+            return l.t(row.startedBy == "store" ? "offers.statusFromStore" : "offers.statusOffered", ["price": price.formatted(l.current)])
         }
         switch row.state {
         case "declined": return l.t("offers.statusDeclined")

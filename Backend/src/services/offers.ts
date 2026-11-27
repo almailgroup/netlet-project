@@ -16,7 +16,7 @@
  * `Backend/src/services/inventory.ts` makes, and the same `assertCan` throwing
  * `FORBIDDEN:<capability>` for the router to turn into a 403.
  */
-import { and, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { priceOffers, products, productVariants, vendors } from "../../database/schema.js";
 import {
   acceptableAsk,
@@ -34,6 +34,7 @@ import { clampPage, clampPageSize, offsetFor, type Page } from "../../../Shared/
 import { violatesUnique } from "../core/describeError.js";
 import { getDb } from "./db.js";
 import { tellOfferAnswered } from "./notifications.js";
+import { offerFields, offerStartsReady, priceOffersBefore0094, starterOf, type OfferStarter } from "./offerStarts.js";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
@@ -58,6 +59,12 @@ export type OfferView = {
   createdAt: Date;
   /** Only ever filled for the vendor's own inbox. */
   shopperName: string | null;
+  /**
+   * Who began it: the shopper asking, or the store sending a price to a cart
+   * its product was in (migration 0094). A store's is shown to the shopper as
+   * "Your price from the store", and to the store as the price it sent.
+   */
+  startedBy: OfferStarter;
 };
 
 /* Every failure is a string the router translates, never a sentence. A message
@@ -69,6 +76,11 @@ export const OFFER_REFUSALS = [
   "OFFER_OUT_OF_RANGE",
   "ALREADY_OPEN",
   "NOT_OPEN",
+  /* A store's price for a cart (`cartOffers.ts`). */
+  "CLOSED",
+  "LINE_GONE",
+  "STORE_PRICE_OUT_OF_RANGE",
+  "ASKED_OPEN",
 ] as const;
 export type OfferRefusal = (typeof OFFER_REFUSALS)[number];
 
@@ -111,7 +123,32 @@ function viewOf(row: {
     expiresAt: offer.expiresAt,
     createdAt: offer.createdAt,
     shopperName: row.shopperName ?? null,
+    startedBy: starterOf(offer.startedBy),
   };
+}
+
+/**
+ * Free the one open slot for a shopper and variant from a price that ran out.
+ *
+ * The open-price index cannot read the clock, so an answered price past its
+ * three days — or a request past its week — went on holding the slot, and the
+ * shopper could never ask for that variant again (`ALREADY_OPEN`), nor a store
+ * send one. Moved to the stored `expired`, which means what the row already
+ * meant (`resolveOffer`), before a new one is written. Names no `started_by`,
+ * so it runs before 0094 is pasted.
+ */
+export async function retireLapsed(db: Db, userId: number, variantId: number, now: Date = new Date()): Promise<void> {
+  await db
+    .update(priceOffers)
+    .set({ status: "expired" })
+    .where(and(
+      eq(priceOffers.userId, userId),
+      eq(priceOffers.variantId, variantId),
+      inArray(priceOffers.status, ["pending", "offered"]),
+      isNull(priceOffers.usedOnOrderId),
+      isNotNull(priceOffers.expiresAt),
+      lte(priceOffers.expiresAt, now),
+    ));
 }
 
 /**
@@ -189,10 +226,14 @@ export async function requestOffer(input: {
   if (!acceptableAsk(variant.price, input.askedPrice)) throw new OfferError("ASK_OUT_OF_RANGE");
 
   const now = new Date();
+  await retireLapsed(db, input.userId, variant.variantId, now);
   let inserted;
   try {
+    /* Through the table as it was before 0094, which has no `started_by`, so
+       it writes before the column is pasted — and the column's default says
+       "shopper" once it is. */
     [inserted] = await db
-      .insert(priceOffers)
+      .insert(priceOffersBefore0094)
       .values({
         userId: input.userId,
         variantId: variant.variantId,
@@ -218,8 +259,9 @@ export async function requestOffer(input: {
     throw error;
   }
 
+  if (!inserted) throw new OfferError("UNAVAILABLE");
   return viewOf(
-    { offer: inserted, productHandle: null, variantTitle: variant.variantTitle, vendorName: variant.vendorName },
+    { offer: { ...inserted, startedBy: "shopper" }, productHandle: null, variantTitle: variant.variantTitle, vendorName: variant.vendorName },
     now,
   );
 }
@@ -229,10 +271,11 @@ export async function listOffersForShopper(userId: number): Promise<OfferView[]>
   const db = await getDb();
   if (!db) return [];
   const now = new Date();
+  const ready = await offerStartsReady(db);
 
   const rows = await db
     .select({
-      offer: priceOffers,
+      offer: offerFields(ready),
       productHandle: products.handle,
       variantTitle: productVariants.title,
       vendorName: vendors.name,
@@ -253,10 +296,11 @@ export async function offerForVariant(userId: number, variantId: number): Promis
   const db = await getDb();
   if (!db) return null;
   const now = new Date();
+  const ready = await offerStartsReady(db);
 
   const [row] = await db
     .select({
-      offer: priceOffers,
+      offer: offerFields(ready),
       productHandle: products.handle,
       variantTitle: productVariants.title,
       vendorName: vendors.name,
@@ -286,12 +330,14 @@ export async function liveOffersFor(
   userId: number | null | undefined,
   variantIds: number[],
   now: Date = new Date(),
-): Promise<Map<number, OfferRow & { id: number }>> {
-  const live = new Map<number, OfferRow & { id: number }>();
+): Promise<Map<number, OfferRow & { id: number; startedBy: OfferStarter }>> {
+  const live = new Map<number, OfferRow & { id: number; startedBy: OfferStarter }>();
   if (!userId || !variantIds.length) return live;
 
+  const ready = await offerStartsReady(db);
   const rows = await db
     .select({
+      startedBy: offerFields(ready).startedBy,
       id: priceOffers.id,
       variantId: priceOffers.variantId,
       status: priceOffers.status,
@@ -310,7 +356,7 @@ export async function liveOffersFor(
     );
 
   for (const row of rows) {
-    const offer = { ...row, status: row.status as OfferRow["status"] };
+    const offer = { ...row, status: row.status as OfferRow["status"], startedBy: starterOf(row.startedBy) };
     if (resolveOffer(offer, now) !== "offered" || row.offeredPrice === null) continue;
     /* Newest wins if a shopper somehow holds two on one variant — the unique
        index makes that impossible today, and relying on impossibility is how
@@ -400,9 +446,10 @@ export async function listOffersForVendor(
   const total = counted?.n ?? 0;
   const page = clampPage(request.page ?? 1, total, pageSize);
 
+  const ready = await offerStartsReady(db);
   const rows = await db
     .select({
-      offer: priceOffers,
+      offer: offerFields(ready),
       productHandle: products.handle,
       variantTitle: productVariants.title,
       vendorName: vendors.name,
@@ -426,7 +473,7 @@ export async function listOffersForVendor(
 
 /** The row, with the actor's scope checked against the vendor that owns it. */
 async function answerable(db: Db, actor: Actor, offerId: number) {
-  const [row] = await db.select().from(priceOffers).where(eq(priceOffers.id, offerId)).limit(1);
+  const [row] = await db.select(offerFields(await offerStartsReady(db))).from(priceOffers).where(eq(priceOffers.id, offerId)).limit(1);
   if (!row) throw new OfferError("NOT_OPEN");
   // Checked against the request's own vendor, so asking with somebody else's
   // id is a refusal rather than a leak.

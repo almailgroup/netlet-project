@@ -283,6 +283,8 @@ struct HeldPriceRequest: Decodable, Sendable {
     let offeredPrice: Money?
     let expiresAt: Date?
     let vendorNote: String?
+    /// "store" when the store sent this price to the cart unasked (0094).
+    var startedBy: String? = nil
 }
 
 /// What subscribing answers: when the first delivery is ordered.

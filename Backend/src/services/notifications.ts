@@ -14,6 +14,7 @@
  * predicate on the row, so a sweep and a send racing for one email send it
  * once.
  */
+import { createHash } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import {
   cartItems,
@@ -755,6 +756,83 @@ export async function tellOfferAnswered(offerId: number, state: "offered" | "dec
     });
   } catch (error) {
     console.error(`[notices] price request ${offerId} not told: ${describeError(error)}`);
+  }
+}
+
+/**
+ * The name a cart goes by in a dedupe key: never its id, which is the bag's
+ * only key and must not sit in another table.
+ */
+export function cartKey(cartId: string): string {
+  return createHash("sha256").update(`netlet-cart:${cartId}`).digest("hex").slice(0, 24);
+}
+
+/**
+ * Tell each store whose product went into a shopper's cart (on the owner's
+ * word), once per cart and product, naming nobody — so the store can send
+ * that cart a price (`cartOffers.ts`).
+ *
+ * Only a signed-in shopper's cart: a store's price is a price for an account,
+ * and a guest's bag has none to give it to, so a notice about one would be a
+ * door that opens on nothing. Not a store's own people trying their own
+ * product, and only what the shop would sell. Never throws into the add.
+ */
+export async function tellCartAdd(cartId: string, variantIds: readonly number[]): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db || !variantIds.length) return;
+    const [cart] = await db.select({ userId: carts.userId }).from(carts).where(eq(carts.id, cartId)).limit(1);
+    if (!cart?.userId) return;
+    const added = await db
+      .selectDistinct({ productId: products.id, product: products.title, productAr: products.titleAr, vendorId: products.vendorId })
+      .from(productVariants)
+      .innerJoin(products, eq(products.id, productVariants.productId))
+      .innerJoin(vendors, eq(vendors.id, products.vendorId))
+      .where(and(inArray(productVariants.id, [...new Set(variantIds)]), eq(products.status, "published"), eq(vendors.status, "approved")));
+    if (!added.length) return;
+    const own = new Set((await db
+      .select({ vendorId: vendorMembers.vendorId })
+      .from(vendorMembers)
+      .where(and(eq(vendorMembers.userId, cart.userId), inArray(vendorMembers.vendorId, [...new Set(added.map(row => row.vendorId))]))))
+      .map(row => row.vendorId));
+    const key = cartKey(cartId);
+    for (const row of added) {
+      if (own.has(row.vendorId)) continue;
+      await notifyStore(row.vendorId, {
+        kind: "seller_cart_add",
+        params: { product: row.product, productAr: row.productAr ?? "" },
+        link: "/admin/offers?view=carts",
+        dedupe: dedupe.cartAdd(key, row.productId),
+      });
+    }
+  } catch (error) {
+    console.error(`[notices] cart add not told: ${describeError(error)}`);
+  }
+}
+
+/** A store sent a price to something in a shopper's cart: tell the shopper, who never learns more than the store's name. */
+export async function tellStoreOffered(offerId: number): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const [row] = await db
+      .select({ userId: priceOffers.userId, price: priceOffers.offeredPrice, product: products.title, productAr: products.titleAr, store: vendors.name, storeAr: vendors.nameAr })
+      .from(priceOffers)
+      .innerJoin(productVariants, eq(productVariants.id, priceOffers.variantId))
+      .innerJoin(products, eq(products.id, productVariants.productId))
+      .innerJoin(vendors, eq(vendors.id, products.vendorId))
+      .where(eq(priceOffers.id, offerId))
+      .limit(1);
+    if (!row?.price) return;
+    await notifyQuietly({
+      userId: row.userId,
+      kind: "offer_from_store",
+      params: { product: row.product, productAr: row.productAr ?? "", store: row.store, storeAr: row.storeAr ?? "", price: row.price },
+      link: "/cart",
+      dedupe: dedupe.offer(offerId, "store"),
+    });
+  } catch (error) {
+    console.error(`[notices] store price ${offerId} not told: ${describeError(error)}`);
   }
 }
 

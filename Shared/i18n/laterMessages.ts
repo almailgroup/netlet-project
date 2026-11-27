@@ -1371,6 +1371,7 @@ export const laterEn = {
   "offers.statusPending": "Waiting on the seller",
   "offers.statusPendingNote": "You asked {price}. They have until {date} to answer.",
   "offers.statusOffered": "The seller agreed {price}",
+  "offers.statusFromStore": "Your price from the store: {price}",
   "offers.statusOfferedToday": "Yours until the end of today. It is applied in your bag automatically.",
   "offers.statusDeclined": "The seller said no this time",
   "offers.statusExpired": "That request ran out",
@@ -1379,6 +1380,7 @@ export const laterEn = {
   "offers.withdraw": "Take it back",
   "offers.sellerSaid": "The seller says: {note}",
   "offers.agreedFrom": "Your agreed price · listed at {price}",
+  "offers.storeFrom": "Your price from the store · listed at {price}",
   "offers.mineEmpty": "You have not asked any seller for a price yet.",
   /* The seller's side, in the admin portal. */
   "product.shippedBy": "Delivered by {name}",
@@ -3603,6 +3605,7 @@ export const laterAr: Record<LaterMessageKey, string> = {
   "offers.statusPending": "بانتظار ردّ البائع",
   "offers.statusPendingNote": "طلبت {price}. أمامه حتى {date} للردّ.",
   "offers.statusOffered": "وافق البائع على {price}",
+  "offers.statusFromStore": "سعرك الخاص من المتجر: {price}",
   "offers.statusOfferedToday": "السعر لك حتى نهاية اليوم، ويُطبَّق في سلتك تلقائياً.",
   "offers.statusDeclined": "اعتذر البائع هذه المرة",
   "offers.statusExpired": "انتهت مدة ذلك الطلب",
@@ -3611,6 +3614,7 @@ export const laterAr: Record<LaterMessageKey, string> = {
   "offers.withdraw": "اسحب الطلب",
   "offers.sellerSaid": "يقول البائع: {note}",
   "offers.agreedFrom": "سعرك المتّفق عليه · المعروض {price}",
+  "offers.storeFrom": "سعرك الخاص من المتجر · المعروض {price}",
   "offers.mineEmpty": "لم تطلب سعراً من أي بائع بعد.",
   /* جانب البائع في لوحة الإدارة. */
   "product.shippedBy": "التوصيل عبر {name}",

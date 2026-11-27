@@ -772,7 +772,7 @@ private struct LineBadges: View {
                 if let agreed {
                     badge(
                         "tag.fill",
-                        l.t("offers.agreedFrom", ["price": l.price(agreed)]),
+                        l.t(item.agreedByStore == true ? "offers.storeFrom" : "offers.agreedFrom", ["price": l.price(agreed)]),
                         hint: l.t("offers.forLine", ["name": title]),
                         action: changesPrice ? onPrice : nil
                     )

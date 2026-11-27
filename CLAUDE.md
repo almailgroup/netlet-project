@@ -5218,6 +5218,68 @@ every "Saved" in the portal, in both languages, under the bar. It survived
 every earlier audit because a toast is transient and the audits measured pages
 with none.
 
+**A price that ran out frees its slot, and for a long time it did not.** The
+one-open-price index is on `pending` and `offered`, and an index cannot read
+the clock, so an answered price past its three days — or a request past its
+week — went on holding the slot, and the shopper could never ask about that
+variant again (`ALREADY_OPEN`, for good). `retireLapsed` moves such a row to a
+stored `expired` before a new one is written, which means what the row already
+meant (`resolveOffer`); `lapsed` is the rule, and `cartOffers.test.ts` asks
+again after an answer ran out (it failed with `ALREADY_OPEN` before).
+
+### A store hears when its product goes in a cart
+
+**On the owner's word** ("make the vendor notified when a user adds their
+product to their cart"; migration 0094, `price_offers.started_by`, approved as
+shown). The owner's four answers shape it:
+
+- **Once per cart and product** (`seller_cart_add`, every member of the store,
+  inbox only — a busy store hears of it often, and it is an opening rather
+  than something owed): `tellCartAdd`, after `createCart` and `addCartLines`
+  put lines in, never throwing into the add. **Only a signed-in shopper's
+  cart**, since a price is a price for an account and a guest's bag has none
+  to give it to; **never a store's own people** trying their product; only
+  what the shop would sell. The dedupe key names the cart by a hash
+  (`cartKey`), never its id, which is the bag's only key.
+- **The store may send that cart a special price**, from `/admin/offers?view=carts`
+  (the notice's link; "In shoppers' carts" beside Price requests, the app's
+  `PortalCartInterestList`): the store's products in signed-in carts from the
+  last `CART_INTEREST_DAYS` (14), newest first, each with its photo, the
+  listed price, the quantity and when it went in, and what the server says may
+  be done (`cartLineAction`): `send` a price (below the shelf and above
+  nothing, `acceptableStorePrice`, said under the box), `answer` the shopper's
+  own waiting request in Price requests rather than a second price on top
+  (`ASKED_OPEN`), or the price they already `held` and until when.
+- **It is an ordinary agreed price** (`sendCartOffer`): a `price_offers` row
+  born `offered`, `started_by` the store, what was "asked" the price sent, for
+  `OFFER_WINDOW_DAYS`. So the bag and the order apply it by the rule they
+  already have (`liveOffersFor`, `priceFor`: a ceiling, never a floor), and
+  **it needs no permit**: it is quoted to one shopper, never advertised, and
+  never a struck-through price. The shopper reads "Your price from the store"
+  on the bag line (`agreedByStore`, a flag beside `priceReason` so an older app
+  still reads the bag), in Price requests and on the product page; the store's
+  inbox lists it as "Sent to a cart".
+- **The store never learns who**: nothing in what it reads names the shopper,
+  their email or account; a line is named by the cart line's own id, which
+  can only send a price to the cart that holds the store's product, every
+  query asking that the product is the store's (`interestScope`).
+  `cartOffers.test.ts` reads the whole answer for the shopper's name.
+- **The shopper is told by `offer_from_store`**, inbox only, under
+  "Personalised offers" (`bag_reminder`'s switch, off unless the shopper turns
+  it on — the store began it, not the shopper, the new-arrival rule). The
+  price is in the cart either way.
+
+**Closed, not broken, until 0094 is pasted** (`offerStarts.ts`, the warranty
+lengths' rule): Drizzle names every column it knows, so every whole-row read of
+`price_offers` goes through `offerFields(ready)`, which reads the starter as
+the shopper until the column is found; a shopper's request is written through
+`priceOffersBefore0094`, which does not know the column (a test holds the two
+tables column for column); the list answers `ready: false` and sending refuses
+with `CLOSED`. The cart notices work from the deploy. `cartOffers.test.ts`
+drops the column and walks a request, its answer, the bag and the inbox. The
+app's answers were recorded off the real service (`demo.offers.cartInterest`,
+`.cartInterestCount`, `.sendToCart`), and `NetworkingTests` decodes them.
+
 ## Delivery
 
 Four requirements, one area, and the rules are all in `Shared/` because every

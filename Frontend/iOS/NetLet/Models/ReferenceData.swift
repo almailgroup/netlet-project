@@ -437,6 +437,8 @@ struct Rules: Decodable, Sendable {
         let askWindowDays: Int
         let offerWindowDays: Int
         let maxOfferNote: Int
+        /// How far back a store's list of its products in carts reaches (`CART_INTEREST_DAYS`).
+        var cartInterestDays: Int? = nil
         let subscriptionIntervals: [Int]
         /// In the order they are listed; empty before the file is read.
         var accountPlaces: [Place]? = nil

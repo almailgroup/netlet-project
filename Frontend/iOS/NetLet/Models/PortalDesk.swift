@@ -172,6 +172,60 @@ struct PriceAsk: Decodable, Identifiable, Hashable, Sendable {
     let shopperNote: String?
     let vendorNote: String?
     let createdAt: Date
+    /// "store" for a price the store sent to a cart (migration 0094), which
+    /// the inbox lists as sent rather than asked; nil from a server before it.
+    var startedBy: String? = nil
+
+    var sentByStore: Bool { startedBy == "store" }
+}
+
+/// One of the store's products in a signed-in shopper's cart
+/// (`offers.cartInterest`), naming nobody, with what the store may do about it:
+/// `send` a price, `answer` the shopper's own request in Price requests, or
+/// say the price they already `held`.
+struct CartInterest: Decodable, Identifiable, Hashable, Sendable {
+    struct HeldPrice: Decodable, Hashable, Sendable {
+        let state: String
+        let price: Money?
+        let expiresAt: Date?
+        let startedBy: String
+    }
+
+    var id: Int { lineId }
+    let lineId: Int
+    let productTitle: String
+    let productTitleAr: String?
+    let variantTitle: String
+    let image: String?
+    let quantity: Int
+    let listPrice: Money
+    let addedAt: Date
+    let offer: HeldPrice?
+    let action: String
+
+    func title(_ language: Language) -> String {
+        if language == .ar, let arabic = productTitleAr, !arabic.isEmpty { return arabic }
+        return productTitle
+    }
+
+    var variantLabel: String? {
+        variantTitle == "Default" || variantTitle.isEmpty ? nil : variantTitle
+    }
+}
+
+/// A page of them, and whether migration 0094 is pasted.
+struct CartInterestPage: Decodable, Sendable {
+    let rows: [CartInterest]
+    let total: Int
+    let page: Int
+    let pageSize: Int
+    let ready: Bool
+}
+
+/// What sending a price to a cart answers.
+struct SentCartPrice: Decodable, Sendable {
+    let offerId: Int
+    let expiresAt: Date
 }
 
 // MARK: Returns

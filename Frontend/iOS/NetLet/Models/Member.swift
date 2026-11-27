@@ -215,6 +215,8 @@ struct PriceRequest: Decodable, Identifiable, Hashable, Sendable {
     let vendorNote: String?
     let expiresAt: Date?
     let createdAt: Date
+    /// "store" when the store sent this price to the cart unasked (0094).
+    var startedBy: String? = nil
 
     var variantLabel: String? {
         guard let variantTitle, variantTitle != "Default", !variantTitle.isEmpty else { return nil }

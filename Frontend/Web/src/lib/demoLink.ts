@@ -1059,6 +1059,12 @@ function resolve(path: string, rawInput: unknown): unknown {
       return 0;
     case "offers.storeOpen":
       return false;
+    case "offers.cartInterest":
+      return { rows: [], total: 0, page: 1, pageSize: 50, ready: true };
+    case "offers.cartInterestCount":
+      return 0;
+    case "offers.sendToCart":
+      throw new Error("offers.lineGone");
     case "offers.request":
     case "offers.withdraw":
     case "offers.answer":

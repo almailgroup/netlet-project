@@ -32,6 +32,7 @@ import {
   vendorAcceptsOffers,
   withdrawOffer,
 } from "../services/offers.js";
+import { countCartInterest, listCartInterest, sendCartOffer } from "../services/cartOffers.js";
 import { resolveActor } from "../services/inventory.js";
 import { checkOfferRequestAllowed, recordOfferRequest } from "../services/rateLimit.js";
 import { MAX_NOTE } from "../../../Shared/commerce/priceOffers.js";
@@ -40,13 +41,17 @@ import { protectedProcedure, publicProcedure, router } from "../core/trpc.js";
 /** Money as the client sends it: three decimal places, and nothing clever. */
 const amount = z.string().regex(/^\d+(\.\d{1,3})?$/, "offers.badAmount");
 
-const REFUSALS: Record<string, { code: "BAD_REQUEST" | "CONFLICT" | "NOT_FOUND"; message: string }> = {
+const REFUSALS: Record<string, { code: "BAD_REQUEST" | "CONFLICT" | "NOT_FOUND" | "PRECONDITION_FAILED"; message: string }> = {
   NOT_NEGOTIABLE: { code: "BAD_REQUEST", message: "offers.notNegotiable" },
   UNAVAILABLE: { code: "NOT_FOUND", message: "offers.unavailable" },
   ASK_OUT_OF_RANGE: { code: "BAD_REQUEST", message: "offers.askOutOfRange" },
   OFFER_OUT_OF_RANGE: { code: "BAD_REQUEST", message: "offers.offerOutOfRange" },
   ALREADY_OPEN: { code: "CONFLICT", message: "offers.alreadyOpen" },
   NOT_OPEN: { code: "NOT_FOUND", message: "offers.notOpen" },
+  CLOSED: { code: "PRECONDITION_FAILED", message: "offers.storeClosed" },
+  LINE_GONE: { code: "NOT_FOUND", message: "offers.lineGone" },
+  STORE_PRICE_OUT_OF_RANGE: { code: "BAD_REQUEST", message: "offers.storePriceRange" },
+  ASKED_OPEN: { code: "CONFLICT", message: "offers.askedOpen" },
 };
 
 /**
@@ -161,6 +166,44 @@ export const offersRouter = router({
       await answerOffer(await resolveActor(ctx.user, input.vendorId), { ...input, actorUserId: ctx.user.id });
       return { ok: true } as const;
     })),
+
+  /* ------------------------------------------------- prices for carts --- */
+
+  /**
+   * The store's products in signed-in shoppers' carts, newest first, naming
+   * nobody (on the owner's word) — what a store's "in a cart" notice opens.
+   */
+  cartInterest: protectedProcedure
+    .input(z.object({
+      page: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      vendorId: rowId.optional(),
+    }).optional())
+    .query(({ ctx, input }) => guard(async () =>
+      listCartInterest(await resolveActor(ctx.user, input?.vendorId), input ?? {})),
+    ),
+
+  /** How many of the store's products sit in shoppers' carts now, for the overview. */
+  cartInterestCount: protectedProcedure
+    .input(z.object({ vendorId: rowId.optional() }).optional())
+    .query(({ ctx, input }) => guard(async () =>
+      countCartInterest(await resolveActor(ctx.user, input?.vendorId))),
+    ),
+
+  /**
+   * Send a price to the cart a line is in. The shopper is told, the cart
+   * applies it as an agreed price, and the store never learns who.
+   */
+  sendToCart: protectedProcedure
+    .input(z.object({
+      lineId: rowId,
+      price: amount,
+      note: z.string().trim().max(MAX_NOTE).nullish(),
+      vendorId: rowId.optional(),
+    }))
+    .mutation(({ ctx, input }) => guard(async () =>
+      sendCartOffer(await resolveActor(ctx.user, input.vendorId), { lineId: input.lineId, price: input.price, note: input.note, actorUserId: ctx.user.id }),
+    )),
 
   /* --------------------------------------------------------- opting in --- */
 

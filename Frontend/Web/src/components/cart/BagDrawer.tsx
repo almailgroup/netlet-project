@@ -278,7 +278,7 @@ function BagLine({ item, mainGoing = null }: {
                 it is. Never a strikethrough and never a percentage badge: those
                 are the machinery of an advertised saving, which needs a Ministry
                 of Commerce permit, and this is a private answer to one person. */}
-            {item.agreedFrom ? <p className="mt-0.5 text-[11px] font-bold ink-accent">{t(item.priceReason === "member" ? "membership.priceFrom" : "offers.agreedFrom", { price: money(item.agreedFrom) })}</p> : null}
+            {item.agreedFrom ? <p className="mt-0.5 text-[11px] font-bold ink-accent">{t(item.priceReason === "member" ? "membership.priceFrom" : item.agreedByStore ? "offers.storeFrom" : "offers.agreedFrom", { price: money(item.agreedFrom) })}</p> : null}
             {/* The product's own code (0074), applied at checkout: what it takes
                 off this line, or why it no longer does. */}
             {item.code ? <p className="mt-0.5 text-[12px] font-bold text-[#2f5d33]"><bdi dir="ltr">{item.code.code}</bdi> · {t("checkout.lineCodeOff", { amount: money(item.code.amount) })}</p> : null}

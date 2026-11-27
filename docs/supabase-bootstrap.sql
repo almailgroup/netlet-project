@@ -2496,6 +2496,13 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+-- ===== 0094_price_offers_started_by.sql =====
+ALTER TABLE "price_offers" ADD COLUMN IF NOT EXISTS "started_by" varchar(8) DEFAULT 'shopper' NOT NULL;
+DO $$ BEGIN
+  ALTER TABLE "price_offers" ADD CONSTRAINT "price_offers_started_by_check" CHECK ("price_offers"."started_by" in ('shopper', 'store'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ===== seed: departments and the house vendor =====
 -- Mirrors `pnpm db:seed`. Safe to run again: both inserts skip a row that is
 -- already there, so re-running after adding a department disturbs nothing.
@@ -2547,6 +2554,6 @@ COMMIT;
 -- scroll to the end of what you pasted, and paste the file again in full.
 SELECT
   'bootstrap complete' AS status,
-  94 AS migrations_in_this_file,
+  95 AS migrations_in_this_file,
   (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public') AS tables,
   (SELECT count(*) FROM categories) AS departments;

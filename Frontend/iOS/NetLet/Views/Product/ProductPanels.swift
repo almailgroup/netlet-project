@@ -398,7 +398,7 @@ struct PriceRequestPanel: View {
         } else if let held, standing {
             VStack(alignment: .leading, spacing: 6) {
                 Text(held.state == "offered" && held.offeredPrice != nil
-                     ? l.t("offers.statusOffered", ["price": held.offeredPrice!.formatted(l.current)])
+                     ? l.t(held.startedBy == "store" ? "offers.statusFromStore" : "offers.statusOffered", ["price": held.offeredPrice!.formatted(l.current)])
                      : l.t("offers.statusPending"))
                     .font(.inter(14, .bold))
                     .foregroundStyle(Brand.navy)

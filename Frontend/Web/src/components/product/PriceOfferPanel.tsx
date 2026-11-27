@@ -266,7 +266,7 @@ export function PriceOfferPanel({ variantId, listPrice, embedded = false, onSign
 
 /** A request that is still live: where it stands, and when it runs out. */
 function Standing({ offer, onWithdraw, pending }: {
-  offer: { id: number; state: string; askedPrice: string; offeredPrice: string | null; expiresAt: Date | string | null; vendorNote: string | null; usedOnOrderId?: number | null };
+  offer: { id: number; state: string; askedPrice: string; offeredPrice: string | null; expiresAt: Date | string | null; vendorNote: string | null; usedOnOrderId?: number | null; startedBy?: "shopper" | "store" };
   onWithdraw: () => void;
   pending: boolean;
 }) {
@@ -280,7 +280,7 @@ function Standing({ offer, onWithdraw, pending }: {
     <div className="mt-1 rounded-xl border border-[#d5dfeb] bg-white px-4 py-3.5">
       <p className="text-[13px] font-extrabold text-[#0a285a]">
         {offer.state === "offered" && offer.offeredPrice
-          ? t("offers.statusOffered", { price: amount(offer.offeredPrice) })
+          ? t(offer.startedBy === "store" ? "offers.statusFromStore" : "offers.statusOffered", { price: amount(offer.offeredPrice) })
           : t("offers.statusPending")}
       </p>
       <p className="mt-0.5 text-[12px] leading-5 ink-muted">

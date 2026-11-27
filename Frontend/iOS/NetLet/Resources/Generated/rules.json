@@ -112,6 +112,7 @@
     "askWindowDays": 7,
     "offerWindowDays": 3,
     "maxOfferNote": 400,
+    "cartInterestDays": 14,
     "subscriptionIntervals": [
       1,
       2,

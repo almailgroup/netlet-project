@@ -1,0 +1,2 @@
+ALTER TABLE "price_offers" ADD COLUMN "started_by" varchar(8) DEFAULT 'shopper' NOT NULL;--> statement-breakpoint
+ALTER TABLE "price_offers" ADD CONSTRAINT "price_offers_started_by_check" CHECK ("price_offers"."started_by" in ('shopper', 'store'));

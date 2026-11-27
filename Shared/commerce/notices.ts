@@ -70,6 +70,8 @@ export const NOTICE_KINDS = [
   "seller_bundle_asked",
   "seller_bundle_agreed",
   "seller_bundle_declined",
+  "seller_cart_add",
+  "offer_from_store",
   "account_password_changed",
   "account_email_changed",
 ] as const;
@@ -160,6 +162,14 @@ export const NOTICE_RULES: Record<NoticeKind, NoticeRule> = {
   seller_bundle_asked: { audience: "seller", preference: null, email: true, key: "notice.sellerBundleAsked" },
   seller_bundle_agreed: { audience: "seller", preference: null, email: true, key: "notice.sellerBundleAgreed" },
   seller_bundle_declined: { audience: "seller", preference: null, email: true, key: "notice.sellerBundleDeclined" },
+  /* A store's product went in a shopper's cart (on the owner's word), once per
+     cart and product, naming nobody. In the inbox only: a busy store hears of
+     it often, and it is an opening rather than something owed. */
+  seller_cart_add: { audience: "seller", preference: null, email: false, key: "notice.sellerCartAdd" },
+  /* A store sent a price to something in the shopper's cart. The store began
+     it, not the shopper, so it is the "Personalised offers" switch's and the
+     inbox's only — the new-arrival rule; the price is in the cart either way. */
+  offer_from_store: { audience: "shopper", preference: "bag_reminder", email: false, key: "notice.offerFromStore" },
   /* A change to how the account is signed into (on the owner's word: "account
      and security" notifications stay on). Never silenced: it is how somebody
      learns that a password they did not change was changed. */
@@ -265,6 +275,8 @@ export const dedupe = {
   thread: (kind: "support", threadId: number, at: Date) => `${kind}:${threadId}:${dayOf(at)}`,
   /** One reminder per basket as it stands: touching the basket is a new basket to remind about. */
   bag: (cartId: string, updatedAt: Date) => `bag:${cartId}:${updatedAt.getTime()}`,
+  /** A store's product in one cart, once: the cart is named by `cartKey`, never by its id, which is the bag's key. */
+  cartAdd: (cartKey: string, productId: number) => `cart:${cartKey}:${productId}`,
   /** A store's new listings, one notice a week whatever it publishes. */
   newArrival: (vendorId: number, at: Date) => `new:${vendorId}:${isoWeek(at)}`,
 };

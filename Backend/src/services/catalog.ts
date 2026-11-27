@@ -56,6 +56,7 @@ import { listAddresses } from "./addresses.js";
 import { codAvailability } from "../../../Shared/commerce/payment.js";
 import { recoveryFor } from "../../../Shared/commerce/cartRecovery.js";
 import { liveOffersFor } from "./offers.js";
+import { tellCartAdd } from "./notifications.js";
 import { freeDeliveryOver, isMemberNow } from "./membership.js";
 import { shopperPrice } from "../../../Shared/commerce/shopperPrice.js";
 import { memberPriceFor, waiveDelivery } from "../../../Shared/commerce/membership.js";
@@ -825,6 +826,9 @@ export async function getCart(cartId: string, skip: readonly string[] = []): Pro
        advertised claim and need a Ministry permit this does not. */
     agreedFrom: row.charged === row.price || row.inBundle ? null : money(row.price),
     priceReason: row.reason === "agreed" || row.reason === "member" || row.reason === "subscriber" ? row.reason : null,
+    /* The agreed price was the store's own, sent to this cart (0094): the
+       line says "Your price from the store" rather than "Your agreed price". */
+    agreedByStore: row.reason === "agreed" && agreed.get(row.variantId)?.startedBy === "store",
     /* Named on the line, because a shopper who sees a lower figure should be
        able to see which set put it there. */
     bundleName: row.inBundle?.bundleName ?? null,
@@ -1099,11 +1103,13 @@ async function bundlesHolding(
   return new Set(rows.map(row => `${row.bundleId}:${row.variantId}`));
 }
 
+/** Puts lines in a bag, and answers which variants went in. */
 async function putLines(
   db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   cartId: string,
   lines: Line[],
-) {
+): Promise<number[]> {
+  const put: number[] = [];
   const wanted = lines
     .map(line => ({
       variantId: Number(line.variantId),
@@ -1138,6 +1144,7 @@ async function putLines(
         },
       })
       .returning({ id: cartItems.id });
+    if (row) put.push(line.variantId);
 
     if (line.addonIds.length === 0 || !row) continue;
 
@@ -1170,6 +1177,7 @@ async function putLines(
       .values(offered.map(addon => ({ cartItemId: row.id, addonId: addon.id })))
       .onConflictDoNothing();
   }
+  return put;
 }
 
 export async function createCart(lines: Line[], userId?: number | null, skip: readonly string[] = []): Promise<Cart | null> {
@@ -1177,7 +1185,9 @@ export async function createCart(lines: Line[], userId?: number | null, skip: re
   if (!db) return null;
   const id = newCartId();
   await db.insert(carts).values({ id, userId: userId ?? null });
-  await putLines(db, id, lines);
+  /* Each store whose product went in hears of it, once per cart and product
+     (`tellCartAdd`, which never throws into the add). */
+  await tellCartAdd(id, await putLines(db, id, lines));
   return getCart(id, skip);
 }
 
@@ -1186,8 +1196,9 @@ export async function addCartLines(cartId: string, lines: Line[], skip: readonly
   if (!db) return null;
   const [cart] = await db.select({ id: carts.id }).from(carts).where(eq(carts.id, cartId)).limit(1);
   if (!cart) return null;
-  await putLines(db, cartId, lines);
+  const put = await putLines(db, cartId, lines);
   await db.update(carts).set({ updatedAt: new Date() }).where(eq(carts.id, cartId));
+  await tellCartAdd(cartId, put);
   return getCart(cartId, skip);
 }
 

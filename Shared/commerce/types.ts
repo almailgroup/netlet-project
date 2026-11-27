@@ -304,6 +304,14 @@ export type CartItem = {
    * beside the struck figure, so a member is told why it is lower.
    */
   priceReason?: "agreed" | "subscriber" | "member" | null;
+  /**
+   * The agreed price was one the store sent to this cart unasked (on the
+   * owner's word), rather than an answer to the shopper's own request: the
+   * line reads "Your price from the store". A flag beside `priceReason`
+   * rather than a fourth reason, so an app built before it still reads the
+   * bag.
+   */
+  agreedByStore?: boolean;
   quantity: number;
   /**
    * The most of this variant there is to sell — the shelf, or for a pre-order

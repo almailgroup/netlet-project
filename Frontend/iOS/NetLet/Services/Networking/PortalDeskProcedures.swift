@@ -53,6 +53,17 @@ extension API {
         let open: Bool
     }
 
+    struct CartInterestRequest: Encodable, Sendable {
+        let page: Int
+    }
+
+    struct CartPriceSend: Encodable, Sendable {
+        let lineId: Int
+        let price: String
+        let note: String?
+        let vendorId: Int?
+    }
+
     struct AskAnswer: Encodable, Sendable {
         let offerId: Int
         let offeredPrice: String
@@ -72,6 +83,9 @@ extension API {
     }
 
     static let askInbox = Procedure<AskInbox, PortalPageOf<PriceAsk>>(query: "offers.inbox")
+    static let cartInterest = Procedure<CartInterestRequest, CartInterestPage>(query: "offers.cartInterest")
+    static let cartInterestCount = Procedure<VendorScope, Int>(query: "offers.cartInterestCount")
+    static let sendCartPrice = Procedure<CartPriceSend, SentCartPrice>(mutation: "offers.sendToCart")
     static let storeTakesAsks = Procedure<VendorScope, Bool>(query: "offers.storeOpen")
     static let answerAsk = Procedure<AskAnswer, Acknowledged>(mutation: "offers.answer")
     static let declineAsk = Procedure<AskDecline, Acknowledged>(mutation: "offers.decline")

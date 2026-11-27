@@ -1,0 +1,60 @@
+{
+  "result": {
+    "data": {
+      "json": {
+        "rows": [
+          {
+            "lineId": 2,
+            "productId": 2,
+            "productHandle": "wireless-earbuds",
+            "productTitle": "Wireless earbuds",
+            "productTitleAr": "سماعات لاسلكية",
+            "variantTitle": "Black",
+            "image": "/departments/electronics.webp",
+            "quantity": 1,
+            "listPrice": "24.900",
+            "addedAt": "2026-11-27T09:05:00.000Z",
+            "offer": {
+              "state": "offered",
+              "price": "21.500",
+              "expiresAt": "2026-11-30T10:00:00.000Z",
+              "startedBy": "store"
+            },
+            "action": "held"
+          },
+          {
+            "lineId": 1,
+            "productId": 1,
+            "productHandle": "usb-c-charger-65w",
+            "productTitle": "USB-C charger 65W",
+            "productTitleAr": "شاحن USB-C بقدرة 65 واط",
+            "variantTitle": "Default",
+            "image": "/departments/electronics.webp",
+            "quantity": 2,
+            "listPrice": "8.750",
+            "addedAt": "2026-11-26T18:20:00.000Z",
+            "offer": null,
+            "action": "send"
+          }
+        ],
+        "total": 2,
+        "page": 1,
+        "pageSize": 50,
+        "ready": true
+      },
+      "meta": {
+        "values": {
+          "rows.0.addedAt": [
+            "Date"
+          ],
+          "rows.0.offer.expiresAt": [
+            "Date"
+          ],
+          "rows.1.addedAt": [
+            "Date"
+          ]
+        }
+      }
+    }
+  }
+}

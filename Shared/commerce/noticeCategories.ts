@@ -54,7 +54,7 @@ export const NOTICE_CATEGORIES: readonly NoticeCategory[] = [
     title: "notify.cat.personal.title",
     body: "notify.cat.personal.body",
     preference: "bag_reminder",
-    switched: ["bag_reminder"],
+    switched: ["bag_reminder", "offer_from_store"],
     always: ["offer_answered"],
     alwaysNote: "notify.cat.personal.always",
   },

@@ -16,26 +16,62 @@
  * a store is `vendor.editProfile`, so an owner does it themselves rather than
  * asking an administrator — unlike commission, which sits outside a vendor's
  * control entirely because it is NetLet's side of the deal.
+ *
+ * **Its second view is the store's products in shoppers' carts** (on the
+ * owner's word, `?view=carts`, where a store's "in a cart" notice lands): each
+ * one a line in a signed-in shopper's cart from the last fortnight, naming
+ * nobody, with a price the store can send that cart. What it sends is an
+ * agreed price like any answer here — applied in the cart, never advertised.
  */
 import { AdminShell } from "@/components/admin/AdminShell";
 import { QueryGate } from "@/components/ui/QueryGate";
 import { Pager } from "@/components/ui/Pager";
-import { EmptyState, fieldClass, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass, Toggle } from "@/components/admin/ui";
+import { EmptyState, fieldClass, Notice, PageHeader, Pill, Segmented, SkeletonRows, smallButtonClass, Toggle } from "@/components/admin/ui";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { useMoney, useTranslation } from "@/hooks/useTranslation";
 import { usePageMeta } from "@/hooks/usePageMeta";
 import { privatePageMeta } from "@shared/seo";
 import { can, type Actor } from "@shared/inventory/permissions";
-import { MAX_NOTE } from "@shared/commerce/priceOffers";
+import { acceptableStorePrice, CART_INTEREST_DAYS, MAX_NOTE, OFFER_WINDOW_DAYS } from "@shared/commerce/priceOffers";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { trpc } from "@/lib/trpc";
-import { Check, LoaderCircle, X } from "lucide-react";
+import { Thumb } from "@/components/product/Thumb";
+import { Check, LoaderCircle, ShoppingBag, X } from "lucide-react";
 import { useState } from "react";
+import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 
 export default function AdminOffers() {
   usePageMeta(privatePageMeta("Price requests"));
-  return <AdminShell need="offer.answer">{actor => <Inbox actor={actor} />}</AdminShell>;
+  return <AdminShell need="offer.answer">{actor => <OffersPage actor={actor} />}</AdminShell>;
+}
+
+/** The two views, in the address so a notice can open the second. */
+function OffersPage({ actor }: { actor: Actor }) {
+  const { t } = useTranslation();
+  const address = useSearch();
+  const [, navigate] = useLocation();
+  const view = new URLSearchParams(address).get("view") === "carts" ? "carts" : "requests";
+  const vendorId = actor.kind === "vendor" ? actor.vendorId : undefined;
+  const inCarts = trpc.offers.cartInterestCount.useQuery({ vendorId });
+  const show = (next: "requests" | "carts") => navigate(next === "carts" ? "/admin/offers?view=carts" : "/admin/offers", { replace: true });
+
+  return (
+    <>
+      <PageHeader title={t("admin.offersTitle")} description={t(view === "carts" ? "admin.cartsNote" : "admin.offersNote", { days: String(CART_INTEREST_DAYS), offerDays: String(OFFER_WINDOW_DAYS) })} />
+      <Segmented
+        label={t("admin.offersTitle")}
+        className="mb-5 w-fit"
+        value={view}
+        onChange={show}
+        options={[
+          { value: "requests", label: t("admin.offersViewRequests") },
+          { value: "carts", label: t("admin.offersViewCarts"), count: inCarts.data ?? null },
+        ]}
+      />
+      {view === "carts" ? <CartInterestList actor={actor} onRequests={() => show("requests")} /> : <Inbox actor={actor} />}
+    </>
+  );
 }
 
 /*
@@ -91,8 +127,6 @@ function Inbox({ actor }: { actor: Actor }) {
 
   return (
     <>
-      <PageHeader title={t("admin.offersTitle")} description={t("admin.offersNote")} />
-
       {/* Only a vendor has one store to switch. An admin reading every seller's
           inbox has no single store this could mean, so it is not drawn. */}
       {vendorId !== undefined && can(actor, "vendor.editProfile", vendorId) ? (
@@ -132,12 +166,12 @@ function Inbox({ actor }: { actor: Actor }) {
                         <div className="p-4 sm:p-5">
                           <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
                             <p dir="auto" className="min-w-0 text-[15px] font-bold text-[#0a285a]">{row.productTitle}</p>
-                            <Pill tone={tone(row.state)}>{t(STATE_LABEL[row.state])}</Pill>
+                            <Pill tone={tone(row.state)}>{t(row.state === "offered" && row.startedBy === "store" ? "admin.offersSentToCart" : STATE_LABEL[row.state])}</Pill>
                           </div>
                           {/* The sentences follow the page; only the amounts
                               inside them are isolated. */}
                           <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#3d5376]">
-                            <span className="font-semibold text-[#0a285a]">{t("admin.offersShopperAsked", { price: amount(row.askedPrice) })}</span>
+                            <span className="font-semibold text-[#0a285a]">{t(row.startedBy === "store" ? "admin.offersYouSent" : "admin.offersShopperAsked", { price: amount(row.askedPrice) })}</span>
                             <span>{t("admin.offersListed", { price: amount(row.listPrice) })}</span>
                             <span>{t("admin.offersQuantity", { count: row.quantity })}</span>
                             <span className="ink-muted">{formatDate(row.createdAt)}</span>
@@ -216,5 +250,146 @@ function Inbox({ actor }: { actor: Actor }) {
         </QueryGate>
       )}
     </>
+  );
+}
+
+/*
+ * The store's products in signed-in shoppers' carts, and a price for each
+ * (`offers.cartInterest`, `offers.sendToCart`). The server answers what may be
+ * done with each line (`action`), so the page draws only what it accepts:
+ * send a price, answer the shopper's own request instead, or say the price
+ * they already hold.
+ */
+function CartInterestList({ actor, onRequests }: { actor: Actor; onRequests: () => void }) {
+  const { t, tError } = useTranslation();
+  const money = useMoney();
+  const formatDate = useDateFormat();
+  const utils = trpc.useUtils();
+  const vendorId = actor.kind === "vendor" ? actor.vendorId : undefined;
+  const [page, setPage] = useState(1);
+  const [prices, setPrices] = useState<Record<number, string>>({});
+  const [notes, setNotes] = useState<Record<number, string>>({});
+  const [problems, setProblems] = useState<Record<number, MessageKey | null>>({});
+  const list = trpc.offers.cartInterest.useQuery({ page, vendorId }, { placeholderData: previous => previous });
+  const send = trpc.offers.sendToCart.useMutation({
+    onSuccess: () => {
+      void utils.offers.cartInterest.invalidate();
+      void utils.offers.inbox.invalidate();
+      toast.success(t("admin.cartsSent"));
+    },
+    onError: error => toast.error(tError(error.message)),
+  });
+  const amount = (value: string) => money({ amount: value, currencyCode: "KWD" });
+
+  const press = (lineId: number, listPrice: string) => {
+    const price = (prices[lineId] ?? "").trim();
+    if (!/^\d+(\.\d{1,3})?$/.test(price) || !acceptableStorePrice(listPrice, price)) {
+      setProblems(map => ({ ...map, [lineId]: "offers.storePriceRange" }));
+      document.getElementById(`cart-price-${lineId}`)?.focus();
+      return;
+    }
+    setProblems(map => ({ ...map, [lineId]: null }));
+    send.mutate({ lineId, price, note: (notes[lineId] ?? "").trim() || null, vendorId });
+  };
+
+  if (list.isLoading) return <SkeletonRows rows={3} label={t("admin.loading")} />;
+  return (
+    <QueryGate queries={[list]}>
+      {() => {
+        const data = list.data;
+        if (data && !data.ready) return <Notice tone="warning">{t("offers.storeClosed")}</Notice>;
+        const rows = data?.rows ?? [];
+        if (!rows.length) return <EmptyState title={t("admin.cartsEmpty")} />;
+        return (
+          <>
+            <ul className="space-y-3">
+              {rows.map(row => {
+                const priceId = `cart-price-${row.lineId}`;
+                const noteId = `cart-note-${row.lineId}`;
+                const errorId = `cart-price-error-${row.lineId}`;
+                const problem = problems[row.lineId];
+                const sending = send.isPending && send.variables?.lineId === row.lineId;
+                return (
+                  <li key={row.lineId} className="overflow-hidden rounded-2xl border border-[#e3e8f0] bg-white shadow-[0_1px_2px_rgba(10,40,90,0.05)]">
+                    <div className="flex gap-3.5 p-4 sm:p-5">
+                      <span className="size-16 shrink-0 overflow-hidden rounded-xl border border-[#eef1f5] bg-white">
+                        <Thumb src={row.image ?? undefined} alt="" className="size-full bg-white object-contain" icon={<ShoppingBag className="size-4 text-[#536b8c]" />} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p dir="auto" className="text-[15px] font-bold text-[#0a285a]">{row.productTitle}</p>
+                        {row.variantTitle && row.variantTitle !== "Default" ? <p dir="auto" className="mt-0.5 text-[13px] text-[#3d5376]">{row.variantTitle}</p> : null}
+                        <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#3d5376]">
+                          <span>{t("admin.offersListed", { price: amount(row.listPrice) })}</span>
+                          <span>{t("admin.cartsQuantity", { count: String(row.quantity) })}</span>
+                          <span className="ink-muted">{t("admin.cartsAdded", { date: formatDate(row.addedAt) })}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {row.action === "send" ? (
+                      <div className="grid gap-3 border-t border-[#eef1f5] bg-[#fafbfd] px-4 py-4 sm:grid-cols-[170px_minmax(0,1fr)] sm:px-5">
+                        <div>
+                          <label htmlFor={priceId} className="block text-[13px] font-semibold text-[#0a285a]">{t("admin.cartsPrice")}</label>
+                          <input
+                            id={priceId}
+                            dir="ltr"
+                            inputMode="decimal"
+                            value={prices[row.lineId] ?? ""}
+                            aria-invalid={problem ? true : undefined}
+                            aria-describedby={problem ? errorId : undefined}
+                            onChange={event => {
+                              const value = event.target.value;
+                              setPrices(map => ({ ...map, [row.lineId]: value }));
+                              if (problem) setProblems(map => ({ ...map, [row.lineId]: null }));
+                            }}
+                            className={`${fieldClass} mt-1.5`}
+                          />
+                          {problem ? <p id={errorId} className="mt-1.5 text-[12px] font-semibold text-[#a3281a]">{t(problem)}</p> : null}
+                        </div>
+                        <div>
+                          <label htmlFor={noteId} className="block text-[13px] font-semibold text-[#0a285a]">
+                            {t("admin.offersAnswerNote")} <span className="text-[12px] font-normal ink-muted">{t("admin.optional")}</span>
+                          </label>
+                          <input
+                            id={noteId}
+                            dir="auto"
+                            maxLength={MAX_NOTE}
+                            value={notes[row.lineId] ?? ""}
+                            onChange={event => {
+                              const value = event.target.value;
+                              setNotes(map => ({ ...map, [row.lineId]: value }));
+                            }}
+                            className={`${fieldClass} mt-1.5`}
+                          />
+                        </div>
+                        <div className="flex justify-end sm:col-span-2">
+                          <button type="button" onClick={() => press(row.lineId, row.listPrice)} disabled={send.isPending} className={smallButtonClass.primary}>
+                            {sending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}
+                            {t("admin.cartsSend")}
+                          </button>
+                        </div>
+                      </div>
+                    ) : row.action === "answer" ? (
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eef1f5] bg-[#fffaf0] px-4 py-3.5 sm:px-5">
+                        <p className="text-[13px] text-[#5c4300]">{t("offers.askedOpen")}</p>
+                        <button type="button" onClick={onRequests} className={smallButtonClass.secondary}>{t("admin.cartsOpenRequests")}</button>
+                      </div>
+                    ) : row.offer?.price ? (
+                      <p className="border-t border-[#eef1f5] bg-[#f3faf5] px-4 py-3.5 text-[13px] font-semibold text-[#1f5130] sm:px-5">
+                        {t(row.offer.startedBy === "store" ? "admin.cartsHeldStore" : "admin.cartsHeldAnswer", {
+                          price: amount(row.offer.price),
+                          date: row.offer.expiresAt ? formatDate(row.offer.expiresAt) : "—",
+                        })}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+            {data ? <Pager page={data} onPage={setPage} /> : null}
+          </>
+        );
+      }}
+    </QueryGate>
   );
 }

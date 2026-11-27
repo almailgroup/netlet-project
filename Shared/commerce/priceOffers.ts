@@ -16,6 +16,13 @@
  * something to go round and write it, and until that something runs the row
  * says a price is still good when it is not. Nothing has to run here.
  *
+ * **`expired` is written once, and only to free the slot.** One open price per
+ * shopper and variant is a partial unique index on `pending` and `offered`,
+ * which cannot read the clock — so a price that ran out went on holding the
+ * slot, and nobody could ask for that variant again, or a store send one.
+ * Asking again first moves a lapsed row to `expired` (`lapsed` says which), so
+ * what the row means is unchanged and the index is free.
+ *
  * ## The rules that cost money
  *
  * **An agreed price is a ceiling, never a floor.** If the catalog price falls
@@ -60,7 +67,7 @@ export const OFFER_WINDOW_DAYS = 3;
 export const MAX_NOTE = 400;
 
 /** What the row holds. */
-export const OFFER_STATUSES = ["pending", "offered", "declined", "withdrawn"] as const;
+export const OFFER_STATUSES = ["pending", "offered", "declined", "withdrawn", "expired"] as const;
 export type OfferStatus = (typeof OFFER_STATUSES)[number];
 
 /** What the row *means*, once the clock and the order are taken into account. */
@@ -90,7 +97,7 @@ function asDate(value: Date | string | null): Date | null {
  */
 export function resolveOffer(row: OfferRow, now: Date = new Date()): OfferState {
   if (row.usedOnOrderId !== null) return "used";
-  if (row.status === "declined" || row.status === "withdrawn") return row.status;
+  if (row.status === "declined" || row.status === "withdrawn" || row.status === "expired") return row.status;
   const expires = asDate(row.expiresAt);
   /*
    * A missing date leaves it open, which is the direction `missingStoreDetails`
@@ -183,4 +190,59 @@ export function daysLeft(row: OfferRow, now: Date = new Date()): number | null {
   const expires = asDate(row.expiresAt);
   if (!expires || !isSpendable(row, now)) return null;
   return Math.max(1, Math.ceil((expires.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)));
+}
+
+/**
+ * Whether a row still holds the one open slot for its shopper and variant
+ * while meaning nothing any more: pending or offered, unspent, and past its
+ * date. Such a row is moved to `expired` before a new one is written.
+ */
+export function lapsed(row: OfferRow, now: Date = new Date()): boolean {
+  return (row.status === "pending" || row.status === "offered") && row.usedOnOrderId === null && resolveOffer(row, now) === "expired";
+}
+
+/* ------------------------------------------------- a store's price for a cart --- */
+
+/**
+ * How far back a store's list of its products in shoppers' carts reaches, in
+ * days (on the owner's word: a store is told when its product goes in a cart,
+ * and may send that cart a price). A line older than this is a basket nobody
+ * is deciding about any more.
+ */
+export const CART_INTEREST_DAYS = 14;
+
+/** The oldest moment a cart line may have been added and still be on the store's list. */
+export function cartInterestSince(now: Date = new Date()): Date {
+  return new Date(now.getTime() - CART_INTEREST_DAYS * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * May a store send this price to a cart?
+ *
+ * Below the shelf and above nothing — the shopper's own rule (`acceptableAsk`),
+ * because a store's price "at the shelf price" tells the shopper nothing, and
+ * one above it would be a price the cart then ignores (`priceFor` is a ceiling).
+ */
+export function acceptableStorePrice(listPrice: string, price: string): boolean {
+  return acceptableAsk(listPrice, price);
+}
+
+/**
+ * What a store may do about one of its products in a shopper's cart, from the
+ * newest price on that shopper and variant:
+ *
+ * - `send` — nothing open: the store may send a price;
+ * - `answer` — the shopper has asked the store for one and is waiting: the
+ *   store answers it in Price requests, rather than a second price on top;
+ * - `held` — the shopper already holds a price on it, from the store or an
+ *   answer to their own request, until it runs out or is spent.
+ */
+export type CartLineAction = "send" | "answer" | "held";
+
+export function cartLineAction(row: OfferRow | null, now: Date = new Date()): CartLineAction {
+  if (!row) return "send";
+  const state = resolveOffer(row, now);
+  if (state === "pending") return "answer";
+  if (state === "offered") return "held";
+  return "send";
 }
