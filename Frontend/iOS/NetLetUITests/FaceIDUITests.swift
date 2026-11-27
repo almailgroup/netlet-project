@@ -22,6 +22,11 @@ final class FaceIDUITests: XCTestCase {
         let email = app.textFields.firstMatch
         XCTAssertTrue(email.exists)
         email.tap()
+        // Once (run 344) the tap left the field without the keyboard's focus
+        // after the screen had taken 37 seconds to settle; say what the tap
+        // left behind, so a second time says whether it is the screen.
+        let focused = (email.value(forKey: "hasKeyboardFocus") as? Bool) ?? false
+        print("TEST-NOTE faceid tap: field focused \(focused), keyboards \(app.keyboards.count)")
         let typed = (email.value as? String) ?? ""
         email.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: typed.count) + "someone@shop.test")
         XCTAssertTrue(gone(app.buttons["Face ID"]), "The tile stayed for an address this phone has no key for.")

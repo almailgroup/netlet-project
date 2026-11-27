@@ -29,7 +29,16 @@ final class HomeWidgetUITests: XCTestCase {
         let medium = mark(app, "widget-deals-medium")
         XCTAssertTrue(medium.waitForExistence(timeout: 20), "The widget probe did not open.")
         XCTAssertTrue(medium.label.contains("Today's deals"), medium.label)
-        XCTAssertTrue(medium.label.contains("−30%"), "the saving is on the deal: \(medium.label)")
+        // Each deal there is a link of its own, so it is read on its own
+        // rather than in the face's words: by its name, which the medium row
+        // does not draw, and its saving.
+        let deals = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "Wireless earbuds", "−30%"))
+            .allElementsBoundByIndex
+        XCTAssertTrue(
+            deals.contains { medium.frame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) },
+            "the medium widget's deal is read by its name and saving: \(deals.map(\.label)), the face reads \(medium.label)"
+        )
         XCTAssertTrue(mark(app, "widget-order-small").label.contains("About 15 to 20 minutes away"), mark(app, "widget-order-small").label)
         XCTAssertTrue(mark(app, "widget-order-small").label.contains("NL-20261104-HMGQQ"), "VoiceOver hears which order")
         XCTAssertTrue(mark(app, "widget-deals-empty").label.contains("No deals right now"))

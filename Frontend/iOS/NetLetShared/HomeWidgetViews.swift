@@ -157,6 +157,7 @@ struct DealsWidgetView: View {
                         prices(deal, large: false)
                     }
                 }
+                .accessibilityLabel(spoken(deal))
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             // A short list keeps each deal the width three would have.
@@ -186,6 +187,7 @@ struct DealsWidgetView: View {
                         badge(deal.percent)
                     }
                 }
+                .accessibilityLabel(spoken(deal))
                 if deal.id != content.deals.prefix(4).last?.id {
                     Rectangle().fill(ink.rim).frame(height: 0.5)
                 }
@@ -213,6 +215,15 @@ struct DealsWidgetView: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+    }
+
+    /// What VoiceOver reads for a deal that is a link of its own: its name,
+    /// its price and the saving. A link keeps its words to itself rather than
+    /// lending them to the widget, and the medium row draws no name, so without
+    /// this a deal there was read as "−30%, KWD 17.500" with nothing saying
+    /// what it was.
+    private func spoken(_ deal: DealsWidgetContent.Deal) -> String {
+        [deal.title, deal.price, "−\(deal.percent)%"].joined(separator: ", ")
     }
 
     /// The saving, navy on the brand orange (4.65:1), as the card draws it.

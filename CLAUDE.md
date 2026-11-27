@@ -13051,7 +13051,14 @@ made-up catalogue and the recorded one, the order plan, which order is
 followed, the snapshot through JSON and every link; `HomeWidgetUITests` reads
 the faces in both languages off the probe (`-NetLetOpen widgetProbe`, Debug
 only, `WidgetProbe`), which the CI photographs (`122-widgets`), the dark face
-included. Not yet seen on a phone's home screen from this sandbox.
+included. **A deal that is a link reads its own name** (`spoken`): a widget's
+`Link` keeps its words to itself rather than lending them to the face, and
+the medium row draws no name, so each deal there was read as "−30%, KWD
+17.500" with nothing saying what it was; each deal link in the medium and
+large sizes is labelled with its name, price and saving, and the UI test
+finds the earbuds by name and saving inside the medium face (its first run
+had asked the face's own words for the saving). Not yet seen on a phone's
+home screen from this sandbox.
 
 **The app has a dark mode, chosen in Preferences, on the owner's word**
 (option 9 of the list; `Appearance` and `AppearanceCard` in
