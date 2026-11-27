@@ -34,13 +34,15 @@ const LIFECYCLE = new Set([
   "popover",
 ]);
 
-const APP = path.resolve(import.meta.dirname, "..", "NetLet");
+const IOS = path.resolve(import.meta.dirname, "..");
+/** The app's own sources, the code it shares with its widget extension, and the extension's. */
+const APP_FOLDERS = ["NetLet", "NetLetShared", "NetLetWidgets"].map((folder) => path.join(IOS, folder));
 
 function swiftSources(dir: string): { file: string; text: string }[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return entry.name.startsWith(".") ? [] : swiftSources(full);
-    return entry.name.endsWith(".swift") ? [{ file: path.relative(APP, full), text: readFileSync(full, "utf-8") }] : [];
+    return entry.name.endsWith(".swift") ? [{ file: path.relative(IOS, full), text: readFileSync(full, "utf-8") }] : [];
   });
 }
 
@@ -121,7 +123,7 @@ describe("a Group in the app", () => {
   });
 
   it("never carries what runs when a view appears, changes or presents", () => {
-    const sources = swiftSources(APP);
+    const sources = APP_FOLDERS.flatMap((folder) => swiftSources(folder));
     const offenders: string[] = [];
     let groups = 0;
     for (const { file, text } of sources) {

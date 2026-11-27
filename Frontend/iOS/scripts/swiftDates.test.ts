@@ -17,13 +17,15 @@ const PHONE_ZONE = [
   /Text\([^)]*,\s*format:\s*\.dateTime/,
 ];
 
-const APP = path.resolve(import.meta.dirname, "..", "NetLet");
+const IOS = path.resolve(import.meta.dirname, "..");
+/** The app's own sources, the code it shares with its widget extension, and the extension's. */
+const APP_FOLDERS = ["NetLet", "NetLetShared", "NetLetWidgets"].map((folder) => path.join(IOS, folder));
 
 function swiftSources(dir: string): { file: string; text: string }[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) return entry.name.startsWith(".") ? [] : swiftSources(full);
-    return entry.name.endsWith(".swift") ? [{ file: path.relative(APP, full), text: readFileSync(full, "utf-8") }] : [];
+    return entry.name.endsWith(".swift") ? [{ file: path.relative(IOS, full), text: readFileSync(full, "utf-8") }] : [];
   });
 }
 
@@ -45,7 +47,7 @@ describe("a date in the app", () => {
   });
 
   it("is never drawn in the phone's own zone", () => {
-    const sources = swiftSources(APP);
+    const sources = APP_FOLDERS.flatMap((folder) => swiftSources(folder));
     const offenders = sources.flatMap(({ file, text }) => phoneZoneDates(text).map((line) => `${file}:${line}`));
     // A scan that finds nothing passes: it has read the app.
     expect(sources.length).toBeGreaterThan(200);

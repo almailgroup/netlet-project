@@ -12875,6 +12875,61 @@ NetLet's crash reports from `~/Library/Logs/DiagnosticReports` — the reason
 and the faulting thread with file and line — which is what named the portal
 front page's `async let`s.
 
+**An order on its way is followed on the Lock Screen and in the Dynamic
+Island, on the owner's word** (option 6 of the list of improvements, "live
+tracking on the lock screen"; `LiveTracking` in `Services/LiveTracking.swift`).
+The card is white words on the shop's navy — the roof mark, the driver's
+minutes in an orange pill, where the parcel is in large type, from which store
+and, while no driver shares a position, the store's own estimate, and the four
+steps on one road (the order, the box, the van, the house) — and the island is
+the van at the start and the minutes at the end, held open the same card.
+**The app composes every word** (`OrderActivityContent`, from `orders.get` and
+`orders.tracking` by the order page's own rules: `ParcelStepsCard.promiseText`,
+`tracking.band`, `track.deliveredOn`), in the shop's language and direction,
+and hands them to the activity, so the extension carries no dictionary and says
+what the order page says. A press opens the order (`netlet:///account/orders?order=…`,
+the `netlet` scheme in `Info.plist`, `AppModel.openLink` through
+`Route.from(link:)`). **Which orders show is `LiveTrackingPlan`, pure**: the
+newest on their way (`orders.list`, view `onTheWay`), at most three, started
+only while the app is open (iOS lets nothing else start one) and brought up to
+date where one is up; an activity whose order left the list is settled —
+delivered ends on "Delivered" and stays an hour, cancelled or gone ends at once,
+an order that could not be read is left to say it is old. **Without push it
+is as live as the app is**: read when the app opens or comes back, every 90
+seconds while it stays open, and whenever iOS gives it a background refresh
+(`.backgroundTask(.appRefresh("com.netlet.marketplace.tracking"))`,
+`UIBackgroundModes` fetch, `BGTaskSchedulerPermittedIdentifiers`), with a
+`staleDate` half an hour on so the card says "Open NetLet to see where it is
+now" rather than standing still as if current; a change the moment a driver
+moves needs ActivityKit's push updates, which wait on an APNs key. Never in the
+recorded demo, a UI test or a screenshot run; signing out ends every card, and
+Preferences has the switch ("Show orders on the Lock Screen", `LiveTrackingCard`,
+on until turned off, with a line when the phone's Settings have Live Activities
+off for NetLet). **The views are `NetLetShared/OrderActivity.swift`**, which the
+app draws too (`-NetLetOpen liveActivityProbe`, Debug only, `LiveActivityProbe`,
+photographed as `121-live-activity`), and `LiveTrackingTests` and
+`LiveActivityUITests` hold the rule, the words on the recorded orders in both
+languages and the link. Not yet seen on a phone from this sandbox.
+
+**The app is two targets now, and a folder they share** (`project.pbxproj`):
+`NetLet` and its widget extension `NetLetWidgets` (`NetLetWidgets/`, the Lock
+Screen's order today, the home screen widget next; `Config/NetLetWidgets-Info.plist`,
+`com.apple.widgetkit-extension`), both compiling `NetLetShared/` — the palette
+(`Brand`, moved out of `Theme.swift`), the roof mark (`RoofMark`, `RoofGlyph`,
+moved out of `LaunchSplash.swift`) and the activity — and nothing in that
+folder may use what an extension cannot (`UIApplication.shared`, the app's
+models; the extension builds with `APPLICATION_EXTENSION_API_ONLY`). **The
+bundle identifier is `NETLET_BUNDLE_ID`** (`Config/Shared.xcconfig`), the app's
+`$(NETLET_BUNDLE_ID)` and the extension's `$(NETLET_BUNDLE_ID).widgets`, and
+TestFlight passes another one as that rather than as
+`PRODUCT_BUNDLE_IDENTIFIER`, which on the command line reaches every target and
+would give the extension the app's own. **The archive is signed from the
+inside out**: the workflow ad-hoc signs each `PlugIns/*.appex` before the app,
+since a bundle is signed only once what is nested in it is. The extension's App
+ID is registered by the export's automatic signing (the README says what to do
+if it is not). The Swift checks (`exportShared.test.ts`, `swiftGroups.test.ts`,
+`swiftDates.test.ts`) read all three folders.
+
 **TestFlight uploads by itself after every green iOS run on a push to
 `main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was
 run by hand at first, and the owner asked for an app change to reach the

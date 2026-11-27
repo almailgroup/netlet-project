@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BC6042FD1EB4DF14CD3AE7A1 /* NetLetWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6005481264EEF9FD4C0ECC40 /* NetLetWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D3207848849BBC9F6CC487CF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,7 +25,28 @@
 			remoteGlobalIDString = 1998869C72E0CC95CE1719EA;
 			remoteInfo = NetLet;
 		};
+		A49440106BC3C1B84A74F8AA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = FB7B4EE6679CA887CF16F112 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A4D5288E22ED5E20500EB8E2;
+			remoteInfo = NetLetWidgets;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		39AE98152E8D360A8697E618 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BC6042FD1EB4DF14CD3AE7A1 /* NetLetWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		507A9CF260505999CF80F67D /* NetLet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NetLet.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -29,6 +54,7 @@
 		DCC9DF10D9932D47083BD50D /* NetLetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NetLetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		951DFB6FCB3776D4FD1C4F94 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
 		0005649A19C56C015AB0F6F3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		6005481264EEF9FD4C0ECC40 /* NetLetWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NetLetWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -45,6 +71,16 @@
 		103111407FCB399E5AEBEF59 /* NetLetUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = NetLetUITests;
+			sourceTree = "<group>";
+		};
+		B2A49F7738E86B179783EA26 /* NetLetShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NetLetShared;
+			sourceTree = "<group>";
+		};
+		0A2E15D180E02F9159B2CB7D /* NetLetWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = NetLetWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -71,6 +107,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B436017306B7040E3360174C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +121,8 @@
 			isa = PBXGroup;
 			children = (
 				2D94C82548C616106B042742 /* NetLet */,
+				B2A49F7738E86B179783EA26 /* NetLetShared */,
+				0A2E15D180E02F9159B2CB7D /* NetLetWidgets */,
 				DBB82AAD1F2617EBE5FF942F /* NetLetTests */,
 				103111407FCB399E5AEBEF59 /* NetLetUITests */,
 				69D124D5072BD51E84A85C6A /* Config */,
@@ -91,6 +136,7 @@
 				507A9CF260505999CF80F67D /* NetLet.app */,
 				DCC9DF10D9932D47083BD50D /* NetLetTests.xctest */,
 				43B858367E0543A67E5BE593 /* NetLetUITests.xctest */,
+				6005481264EEF9FD4C0ECC40 /* NetLetWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -114,13 +160,16 @@
 				F50802ACF97749460001E726 /* Sources */,
 				A537DC95A239964120541A4D /* Frameworks */,
 				642A7B459C7142E17CDAD3D1 /* Resources */,
+				39AE98152E8D360A8697E618 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B490F9F740686C22015B4E65 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				2D94C82548C616106B042742 /* NetLet */,
+				B2A49F7738E86B179783EA26 /* NetLetShared */,
 			);
 			name = NetLet;
 			packageProductDependencies = (
@@ -175,6 +224,29 @@
 			productReference = 43B858367E0543A67E5BE593 /* NetLetUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		A4D5288E22ED5E20500EB8E2 /* NetLetWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F24CD26BC365BD15D52D3D13 /* Build configuration list for PBXNativeTarget "NetLetWidgets" */;
+			buildPhases = (
+				746E854EF996958D2F15A3C4 /* Sources */,
+				B436017306B7040E3360174C /* Frameworks */,
+				C4875E54D243AC36E447E57A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				0A2E15D180E02F9159B2CB7D /* NetLetWidgets */,
+				B2A49F7738E86B179783EA26 /* NetLetShared */,
+			);
+			name = NetLetWidgets;
+			packageProductDependencies = (
+			);
+			productName = NetLetWidgets;
+			productReference = 6005481264EEF9FD4C0ECC40 /* NetLetWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -196,6 +268,9 @@
 						CreatedOnToolsVersion = 16.0;
 						TestTargetID = 1998869C72E0CC95CE1719EA;
 					};
+					A4D5288E22ED5E20500EB8E2 = {
+						CreatedOnToolsVersion = 16.0;
+					};
 				};
 			};
 			buildConfigurationList = 0D0A939B95ABA6586CF3A3E0 /* Build configuration list for PBXProject "NetLet" */;
@@ -216,6 +291,7 @@
 				1998869C72E0CC95CE1719EA /* NetLet */,
 				A6C73E0538C2AF31FE87240F /* NetLetTests */,
 				BB20FE94C0BCB8B66C8D5373 /* NetLetUITests */,
+				A4D5288E22ED5E20500EB8E2 /* NetLetWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +312,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		0FB3E14FDD8A4088BB356CB7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4875E54D243AC36E447E57A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,6 +349,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		746E854EF996958D2F15A3C4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -278,6 +368,11 @@
 			isa = PBXTargetDependency;
 			target = 1998869C72E0CC95CE1719EA /* NetLet */;
 			targetProxy = EA5B19883AD6C216FEA3EE72 /* PBXContainerItemProxy */;
+		};
+		B490F9F740686C22015B4E65 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A4D5288E22ED5E20500EB8E2 /* NetLetWidgets */;
+			targetProxy = A49440106BC3C1B84A74F8AA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -423,7 +518,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.netlet.marketplace;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(NETLET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -450,7 +545,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.netlet.marketplace;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(NETLET_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -519,6 +614,52 @@
 			};
 			name = Release;
 		};
+		884F0A74A2FEF5E08C34D3BF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/NetLetWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = NetLet;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(NETLET_BUNDLE_ID).widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8DA801A71D49D636E74175F3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/NetLetWidgets-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = NetLet;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(NETLET_BUNDLE_ID).widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -554,6 +695,15 @@
 			buildConfigurations = (
 				F022E9DAB46A5BA2CD6DEA41 /* Debug */,
 				0DB2951E1F69225F1E4B6758 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F24CD26BC365BD15D52D3D13 /* Build configuration list for PBXNativeTarget "NetLetWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				884F0A74A2FEF5E08C34D3BF /* Debug */,
+				8DA801A71D49D636E74175F3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -34,9 +34,11 @@ describe("the iOS app's copy of Shared/", () => {
     const namespaces = new Set(Object.keys(en).map((key) => key.split(".")[0]));
     const capabilities = new Set<string>([...Object.keys(NEEDS), ...ADMIN_ONLY, ...COURIER_CAPABILITIES, ...SETTING_KEYS]);
     const missing: string[] = [];
-    // The app's own sources, where a key becomes words on screen; the tests
-    // quote recorded answers whose JSON carries procedure paths.
-    for (const { file, text } of swiftSources(path.join(APP, "NetLet"))) {
+    // The app's own sources, the code it shares with its widget extension and
+    // the extension's, where a key becomes words on screen; the tests quote
+    // recorded answers whose JSON carries procedure paths.
+    const sources = ["NetLet", "NetLetShared", "NetLetWidgets"].flatMap((folder) => swiftSources(path.join(APP, folder)));
+    for (const { file, text } of sources) {
       for (const match of text.matchAll(/(query: |mutation: )?"([a-z][A-Za-z]*(?:\.[A-Za-z_]+)+)"/g)) {
         const [, procedure, key] = match;
         if (procedure || capabilities.has(key) || !namespaces.has(key.split(".")[0])) continue;

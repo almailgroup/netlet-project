@@ -188,6 +188,9 @@ final class AppModel {
     /// Face ID's keys on this phone, which account each signs in to, and the
     /// offer after signing in (`FaceIDModel`).
     let faceID: FaceIDModel
+    /// Orders on their way, followed on the Lock Screen and in the Dynamic
+    /// Island (`LiveTracking`).
+    let liveTracking: LiveTracking
     let isDemo: Bool
 
     /// Set while the sign-in sheet is up, for the screens that need an account
@@ -405,6 +408,7 @@ final class AppModel {
         let gateway = AIGateway(mint: { try await api.call(API.chatSession) })
         self.gateway = gateway
         let settings = self.language
+        liveTracking = LiveTracking(api: api, language: settings, defaults: cartDefaults, isDemo: isDemo)
         shopChat = ChatModel(gateway: gateway, language: { settings.current })
         shopChat.onAnswered = { [weak self] in
             guard let self, !self.chatOpen else { return }
@@ -863,6 +867,9 @@ final class AppModel {
     /// The app went to the background.
     func appLeft(at now: Date = Date()) {
         leftAt = now
+        // Off screen, the cards are kept current by background refreshes.
+        liveTracking.stopFollowing()
+        liveTracking.scheduleRefresh()
     }
 
     /// The app came back: after long enough away it has been opened again, and
@@ -875,6 +882,31 @@ final class AppModel {
         if session.isUnreachable || cart.unread || saved.unread || delivery.bookError != nil || !featuresRead {
             Task { await self.readAgainWhatFailed() }
         }
+        // Back in the foreground, where a new order on its way can start its card.
+        if session.isSignedIn {
+            Task { await self.followOrdersOnTheirWay() }
+        }
+    }
+
+    /// The Lock Screen brought in line with the orders on their way, and kept
+    /// so while the app stays open (`LiveTracking`).
+    func followOrdersOnTheirWay() async {
+        await liveTracking.sync(signedIn: session.isSignedIn, canStart: true)
+        liveTracking.follow()
+    }
+
+    /// A background refresh iOS gave the app, for the cards on the Lock Screen.
+    func refreshLiveTrackingInBackground() async {
+        await liveTracking.refreshInBackground()
+    }
+
+    /// A press on a Lock Screen card or a widget: `netlet:///account/orders?order=…`,
+    /// opened as the site's own link would be.
+    func openLink(_ url: URL) {
+        guard url.scheme == OrderActivityLink.scheme else { return }
+        let link = url.path + (url.query.map { "?\($0)" } ?? "")
+        guard let route = Route.from(link: link) else { return }
+        open(route)
     }
 
     /// Who is signed in, the bag, the hearts, the address book and the shop's switches, each asked again
@@ -1010,6 +1042,8 @@ final class AppModel {
     }
 
     func signOut() async {
+        liveTracking.stopFollowing()
+        await liveTracking.endAll()
         memberCode = nil
         affiliateJoined = nil
         signals.clear()
@@ -1063,6 +1097,7 @@ final class AppModel {
         // The device's hearts joined the account's while the tiles were
         // asked for: the Saved tile shows the account's.
         if saved.ids != heartsBefore { await accountHome.reloadSaved(ids: saved.ids, language: language.current) }
+        await followOrdersOnTheirWay()
     }
 
     /// What the Profile tab draws — the counts waiting, the photo, the

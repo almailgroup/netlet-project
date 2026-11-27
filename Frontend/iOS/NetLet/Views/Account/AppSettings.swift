@@ -443,6 +443,39 @@ struct SellerEntryCard: View {
 /// Haptic feedback on or off for the whole app, on the owner's word — the
 /// switch `Haptics.impact` asks before every tap, kept on this phone. Turned
 /// back on, it taps once, so the shopper feels what they turned on.
+/// "Show orders on the Lock Screen": an order on its way followed on the
+/// Lock Screen and in the Dynamic Island (`LiveTracking`), on until turned
+/// off — turning it off puts away what is up — and a line when the phone's
+/// own Settings have Live Activities off for NetLet, so the switch is never
+/// a promise nothing keeps.
+struct LiveTrackingCard: View {
+    @Environment(AppModel.self) private var app
+    @Environment(LanguageSettings.self) private var l
+    @AppStorage(LiveTracking.switchKey) private var on = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle(isOn: $on) {
+                Text(l.t("ios.live.switch"))
+                    .font(.inter(14, .semibold))
+                    .foregroundStyle(Brand.navy)
+            }
+            .tint(Brand.navy)
+            .accessibilityIdentifier("live-tracking-switch")
+            if !app.liveTracking.systemAllows {
+                Text(l.t("ios.live.systemOff"))
+                    .font(.inter(13))
+                    .foregroundStyle(Brand.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .onChange(of: on) { _, now in
+            Haptics.tap()
+            Task { await app.liveTracking.setSwitchedOn(now, signedIn: app.session.isSignedIn) }
+        }
+    }
+}
+
 struct HapticsCard: View {
     @Environment(LanguageSettings.self) private var l
     @AppStorage(Haptics.enabledKey) private var on = true

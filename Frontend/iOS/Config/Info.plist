@@ -41,6 +41,27 @@
 		<key>UIColorName</key>
 		<string>AccentColor</string>
 	</dict>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.netlet.marketplace.tracking</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.netlet.marketplace.links</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>netlet</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
 </dict>

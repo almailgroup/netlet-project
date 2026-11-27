@@ -20,6 +20,10 @@ name: TestFlight
 # Two optional repository variables: IOS_BUNDLE_ID when the app is registered
 # under another identifier than com.netlet.marketplace, and NETLET_API_BASE_URL
 # when the build should talk to another server than the one in the xcconfig.
+# The bundle identifier is passed as NETLET_BUNDLE_ID, which the app's own
+# identifier and its widget extension's (`<id>.widgets`) are both built from;
+# PRODUCT_BUNDLE_IDENTIFIER on the command line would give the extension the
+# app's identifier too, and Apple refuses a bundle holding two of one.
 on:
   workflow_dispatch:
   # After the iOS workflow (build, tests, previews) — which runs only for a
@@ -119,7 +123,7 @@ jobs:
             -archivePath build/NetLet.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            NETLET_BUNDLE_ID="$BUNDLE_ID" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             "${extra[@]}" \
             2>&1 | tee build/archive.log | grep --line-buffered -E "error:|\*\* ARCHIVE"
@@ -129,10 +133,17 @@ jobs:
       # what the app's own signature says it needs — so without this the build
       # would reach TestFlight without Sign in with Apple, and Apple's sheet
       # would fail on the phone. An ad-hoc signature carrying the project's
-      # entitlements is what export then re-signs with Apple's identity.
+      # entitlements is what export then re-signs with Apple's identity. The
+      # widget extension inside it (the Lock Screen's order card) is signed
+      # first: a bundle is signed only once everything nested in it is, and
+      # the extension needs no entitlement of its own.
       - name: Entitlements
         run: |
           app=build/NetLet.xcarchive/Products/Applications/NetLet.app
+          for extension in "$app"/PlugIns/*.appex; do
+            [ -d "$extension" ] || continue
+            codesign --force --sign - --timestamp=none "$extension"
+          done
           codesign --force --sign - --entitlements Config/NetLet.entitlements --timestamp=none "$app"
           codesign -d --entitlements - --xml "$app" 2>/dev/null | grep -q "com.apple.developer.applesignin" \
             || { echo "::error::The archive does not carry the Sign in with Apple entitlement"; exit 1; }
@@ -172,7 +183,7 @@ jobs:
             -archivePath build/NetLet.xcarchive \
             CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+            NETLET_BUNDLE_ID="$BUNDLE_ID" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             "${extra[@]}" \
             "${auth[@]}" \

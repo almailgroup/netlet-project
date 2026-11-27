@@ -9,3 +9,9 @@
 // A launch argument overrides it for development, without editing this file:
 //   -NetLetAPIBaseURL http://localhost:3000
 NETLET_API_BASE_URL = https:/$()/netlet.net
+
+// The app's bundle identifier, which its widget extension's is built from
+// (`$(NETLET_BUNDLE_ID).widgets`): TestFlight passes another one as
+// `NETLET_BUNDLE_ID` rather than `PRODUCT_BUNDLE_IDENTIFIER`, which on the
+// command line would give the extension the app's own identifier too.
+NETLET_BUNDLE_ID = com.netlet.marketplace

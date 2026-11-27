@@ -2234,6 +2234,15 @@ export const laterEn = {
   "checkout.payYourDefault": "Your default",
   "cart.savingsOpen": "Add",
   "cart.savingsNotApplied": "Not applied",
+  "ios.live.cardTitle": "Lock Screen tracking",
+  "ios.live.note": "While an order is on its way, see where it is on your Lock Screen and in the Dynamic Island.",
+  "ios.live.switch": "Show orders on the Lock Screen",
+  "ios.live.systemOff": "Live Activities are turned off for NetLet in your phone's Settings, so nothing can show there.",
+  "ios.live.stale": "Open NetLet to see where it is now",
+  "ios.live.minutes": "{low}–{high} min",
+  "ios.live.now": "Now",
+  "ios.live.moreParcels": "More parcels on the way",
+  "ios.live.title": "Order {reference}",
 } as const;
 
 export type LaterMessageKey = keyof typeof laterEn;
@@ -4428,6 +4437,15 @@ export const laterAr: Record<LaterMessageKey, string> = {
   "checkout.payYourDefault": "الافتراضية",
   "cart.savingsOpen": "أضف",
   "cart.savingsNotApplied": "غير مُطبّق",
+  "ios.live.cardTitle": "التتبّع على شاشة القفل",
+  "ios.live.note": "أثناء توصيل طلبك، تابع مكانه على شاشة القفل وفي الجزيرة الديناميكية.",
+  "ios.live.switch": "اعرض الطلبات على شاشة القفل",
+  "ios.live.systemOff": "الأنشطة المباشرة متوقفة لتطبيق نت لت في إعدادات هاتفك، فلا يظهر هناك شيء.",
+  "ios.live.stale": "افتح نت لت لترى مكانه الآن",
+  "ios.live.minutes": "{low}–{high} دقيقة",
+  "ios.live.now": "الآن",
+  "ios.live.moreParcels": "طرود أخرى في الطريق",
+  "ios.live.title": "الطلب {reference}",
 };
 
 addMessages({ en: laterEn, ar: laterAr });
