@@ -47,11 +47,13 @@ enum OrderActivityLink {
 }
 
 /// The Lock Screen's card, white words on the shop's navy: the mark, the
-/// driver's minutes, where it is and the four steps. The same view is drawn
-/// by the app's probe for the screenshots.
+/// driver's minutes, where it is and the four steps. The same view is the
+/// medium order widget's face, and the app's probes draw both.
 struct OrderActivityCard: View {
     let state: OrderActivityAttributes.ContentState
     var stale = false
+    /// The Lock Screen's own margins; a home screen widget has the system's.
+    var padded = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -67,7 +69,7 @@ struct OrderActivityCard: View {
                     Text(minutes)
                         .font(.system(size: 13, weight: .bold))
                         .monospacedDigit()
-                        .foregroundStyle(Brand.navy)
+                        .foregroundStyle(Brand.deepNavy)
                         .lineLimit(1)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 3)
@@ -90,8 +92,8 @@ struct OrderActivityCard: View {
             }
             OrderActivitySteps(state: state)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, padded ? 16 : 0)
+        .padding(.vertical, padded ? 14 : 0)
         .frame(maxWidth: .infinity, alignment: .leading)
         .environment(\.layoutDirection, state.rightToLeft ? .rightToLeft : .leftToRight)
         .accessibilityElement(children: .ignore)
@@ -159,7 +161,7 @@ struct OrderActivitySteps: View {
             Circle().fill(isDone ? Color.white : now ? Brand.orange : Color(red: 0.2, green: 0.3, blue: 0.47))
             Image(systemName: Self.symbols[index])
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(isDone || now ? Brand.navy : Color.white.opacity(0.65))
+                .foregroundStyle(isDone || now ? Brand.deepNavy : Color.white.opacity(0.65))
                 .flipsForRightToLeftLayoutDirection(Self.symbols[index].hasPrefix("truck"))
         }
         .frame(width: 26, height: 26)

@@ -99,6 +99,8 @@ enum Route: Hashable {
             // Grocery while it waits for NetLet Groceries (`hiddenFromShop`).
             let slug = segments[1] == "all" || ReferenceData.shared.hiddenFromShop(segments[1]) ? nil : segments[1]
             if let words = query["q"], !words.isEmpty { return .search(query: words, department: slug) }
+            // The whole shop narrowed to what is on offer is the Deals page.
+            if slug == nil, query["offer"] == "1", query["occasion"] == nil { return .tab(.deals) }
             if let slug, let sub = query["sub"], !sub.isEmpty { return .subcategory(department: slug, sub: sub) }
             if slug == nil, let occasion = query["occasion"], !occasion.isEmpty { return .occasion(slug: occasion) }
             return .department(slug: slug)
@@ -191,6 +193,9 @@ final class AppModel {
     /// Orders on their way, followed on the Lock Screen and in the Dynamic
     /// Island (`LiveTracking`).
     let liveTracking: LiveTracking
+    /// What the home screen widgets show: the app's language and the newest
+    /// order (`WidgetFeed`).
+    let widgetFeed: WidgetFeed
     let isDemo: Bool
 
     /// Set while the sign-in sheet is up, for the screens that need an account
@@ -409,6 +414,7 @@ final class AppModel {
         self.gateway = gateway
         let settings = self.language
         liveTracking = LiveTracking(api: api, language: settings, defaults: cartDefaults, isDemo: isDemo)
+        widgetFeed = WidgetFeed(api: api, language: settings, isDemo: isDemo)
         shopChat = ChatModel(gateway: gateway, language: { settings.current })
         shopChat.onAnswered = { [weak self] in
             guard let self, !self.chatOpen else { return }
@@ -464,7 +470,12 @@ final class AppModel {
         async let cart: Void = self.cart.restore()
         async let features: Void = loadFeatures()
         _ = await (session, cart, features)
-        if self.session.isSignedIn { await linkAccount() }
+        if self.session.isSignedIn {
+            await linkAccount()
+        } else if !self.session.isUnreachable {
+            // A guest's widgets say to sign in, in the app's language.
+            await widgetFeed.refresh(signedIn: false)
+        }
         #if DEBUG
         openScreen(UserDefaults.standard.string(forKey: "NetLetOpen"))
         #endif
@@ -867,9 +878,9 @@ final class AppModel {
     /// The app went to the background.
     func appLeft(at now: Date = Date()) {
         leftAt = now
-        // Off screen, the cards are kept current by background refreshes.
+        // Off screen, the cards and the order widget are kept current by background refreshes.
         liveTracking.stopFollowing()
-        liveTracking.scheduleRefresh()
+        liveTracking.scheduleRefresh(alsoFor: widgetFeed.followsAnOrder)
     }
 
     /// The app came back: after long enough away it has been opened again, and
@@ -885,6 +896,8 @@ final class AppModel {
         // Back in the foreground, where a new order on its way can start its card.
         if session.isSignedIn {
             Task { await self.followOrdersOnTheirWay() }
+        } else if !session.isUnreachable {
+            Task { await self.widgetFeed.refresh(signedIn: false) }
         }
     }
 
@@ -893,11 +906,14 @@ final class AppModel {
     func followOrdersOnTheirWay() async {
         await liveTracking.sync(signedIn: session.isSignedIn, canStart: true)
         liveTracking.follow()
+        await widgetFeed.refresh(signedIn: session.isSignedIn)
     }
 
-    /// A background refresh iOS gave the app, for the cards on the Lock Screen.
+    /// A background refresh iOS gave the app, for the cards on the Lock
+    /// Screen and the order widget on the home screen.
     func refreshLiveTrackingInBackground() async {
-        await liveTracking.refreshInBackground()
+        await widgetFeed.refresh(signedIn: session.isSignedIn, force: true)
+        await liveTracking.refreshInBackground(alsoFor: widgetFeed.followsAnOrder)
     }
 
     /// A press on a Lock Screen card or a widget: `netlet:///account/orders?order=…`,
@@ -1044,6 +1060,7 @@ final class AppModel {
     func signOut() async {
         liveTracking.stopFollowing()
         await liveTracking.endAll()
+        widgetFeed.signedOut()
         memberCode = nil
         affiliateJoined = nil
         signals.clear()
@@ -1069,6 +1086,9 @@ final class AppModel {
 
     func setLanguage(_ next: Language) {
         language.set(next)
+        // The widgets' words follow, and an order's are composed again in it.
+        let signedIn = session.isSignedIn
+        Task { await self.widgetFeed.refresh(signedIn: signedIn, force: true) }
         guard session.isSignedIn else { return }
         Task { try? await services.account.saveLanguage(next) }
     }

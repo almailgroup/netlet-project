@@ -141,10 +141,13 @@ it; `docs/SUPABASE-AUTH.md` has the rest of the setup.
 **The widget extension has an App ID of its own**, `com.netlet.marketplace.widgets`
 (the app's identifier and `.widgets`; `NETLET_BUNDLE_ID` in
 `Config/Shared.xcconfig` is where both come from). It carries the order on the
-Lock Screen and in the Dynamic Island, needs no capability, and the export's
-automatic signing registers it with the API key above. If a run's export says
-no profile matches it, register it by hand the way step 1 registered the
-app's, with no capabilities.
+Lock Screen and in the Dynamic Island and the home screen's widgets, needs no
+capability, and the export's automatic signing registers it with the API key
+above. If a run's export says no profile matches it, register it by hand the
+way step 1 registered the app's, with no capabilities. The app and the
+extension share a Keychain group (`<team>.com.netlet.marketplace.shared`, the
+order widget's words), which needs nothing registered: every profile allows
+the team's own groups.
 
 A run takes about fifteen minutes and names any secret that is missing. Apple
 then processes the build for ten to thirty minutes. In App Store Connect →

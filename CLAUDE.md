@@ -12913,7 +12913,7 @@ languages and the link. Not yet seen on a phone from this sandbox.
 
 **The app is two targets now, and a folder they share** (`project.pbxproj`):
 `NetLet` and its widget extension `NetLetWidgets` (`NetLetWidgets/`, the Lock
-Screen's order today, the home screen widget next; `Config/NetLetWidgets-Info.plist`,
+Screen's order and the home screen's widgets; `Config/NetLetWidgets-Info.plist`,
 `com.apple.widgetkit-extension`), both compiling `NetLetShared/` — the palette
 (`Brand`, moved out of `Theme.swift`), the roof mark (`RoofMark`, `RoofGlyph`,
 moved out of `LaunchSplash.swift`) and the activity — and nothing in that
@@ -12929,6 +12929,66 @@ since a bundle is signed only once what is nested in it is. The extension's App
 ID is registered by the export's automatic signing (the README says what to do
 if it is not). The Swift checks (`exportShared.test.ts`, `swiftGroups.test.ts`,
 `swiftDates.test.ts`) read all three folders.
+
+**Two home screen widgets, on the owner's word** (option 8 of the list, "a
+home screen widget: today's deals or the latest order" — both were built).
+**Today's deals** (`DealsWidget`, small, medium and large) is the deepest
+savings NetLet has now — one, three or four — each with its photo, the saving
+in the card's own badge (navy on the orange, `−27%`), the price and the
+was-price, a press opening that product in the app and "View all" the Deals
+tab. Deals are public, so the extension asks NetLet itself
+(`commerce.products.list`, sixty products, three-hourly, half an hour after a
+read that failed, which it says so rather than "no deals"), and a saving is
+only what the server sends as one, the permit's rule on the read. `DealPicker`
+(`NetLetShared/WidgetRules.swift`) is the rule — each product's best saving
+among the options that can be bought, deepest first, the catalogue's order
+between equals — and the photos are decoded straight to 240 pixels by ImageIO,
+never whole, for a widget's memory. **Your order** (`OrderWidget`, small and
+medium) is the newest order on its way, else the newest order at all, in the
+Lock Screen card's words and navy (the medium face *is* `OrderActivityCard`,
+`padded: false`), or a line saying why there is none: open NetLet once, sign
+in, or nothing to follow. **An extension has no session, so the app hands it
+the order**: `WidgetFeed` reads it (one list read on the way, one of all only
+when nothing is, the order and the driver's position), composes it by
+`OrderActivityContent`, and writes a `WidgetSnapshot` — the app's language,
+signed in or not, the order's words, when — to the Keychain, then reloads the
+order widget (the deals widget too when the language moved). It runs at
+launch, on coming back, after a sign-in, a sign-out (which takes the order off
+at once), a change of language and a background refresh, which is now also
+asked for while the widget follows an order still coming (`scheduleRefresh`'s
+`alsoFor`); never in the demo, a UI test or a screenshot run. Half an hour
+after the app read it the card says to open NetLet (`OrderWidgetPlan`, the
+Lock Screen's `staleAfter`), and a delivered order never goes stale. **The
+handoff is a Keychain group, not an App Group** (`SharedShelf`): an App Group
+must be registered in the Apple Developer site and on both App IDs, which the
+CI's cloud signing might not do, where a Keychain group needs nothing
+registered — every profile allows `<team>.*`. The app's entitlement lists its
+own `$(AppIdentifierPrefix)$(NETLET_BUNDLE_ID)` first, so its default group
+and every item it kept before (the admin device's secret, Face ID's keys) stay
+where they were, then `….shared`; the extension's lists the shared group
+alone (`Config/NetLetWidgets.entitlements`). The app writes into the group by
+name (`NetLetSharedKeychain` in both Info.plists, the team read off a small
+item in the app's own default group, since a Keychain item names its group)
+and the extension reads without naming one. **TestFlight expands the
+entitlements itself**: an unsigned archive leaves `$(AppIdentifierPrefix)` as
+written, so the Entitlements step writes the team and the bundle identifier
+in, refuses a file that still names a build setting, signs the extension with
+its own and checks the app's signature carries the shared group. An unsigned
+simulator build has no such group, so its write fails quietly and the order
+widget says to open NetLet. **The extension's words are the dictionary's**:
+`pnpm ios:resources` writes `NetLetWidgets/Generated/widgetWords.json` with
+every key the extension's own Swift names, read from that Swift
+(`widgetKeys`) rather than listed in the script — the script is shared code
+to `messagePlacement.test.ts`, so a key named there would be dragged into the
+first download — and `WidgetWords` reads the app's language from the snapshot,
+else the phone's. Prices are KWD, the app's `Money.formatted`, not the display
+currency. A press opens the app by the `netlet` scheme; `/category/all?offer=1`
+is the Deals tab now (`Route.from`). `HomeWidgetTests` holds the deal rule on a
+made-up catalogue and the recorded one, the order plan, which order is
+followed, the snapshot through JSON and every link; `HomeWidgetUITests` reads
+the faces in both languages off the probe (`-NetLetOpen widgetProbe`, Debug
+only, `WidgetProbe`), which the CI photographs (`122-widgets`), the dark face
+included. Not yet seen on a phone's home screen from this sandbox.
 
 **TestFlight uploads by itself after every green iOS run on a push to
 `main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was

@@ -134,19 +134,31 @@ jobs:
       # would reach TestFlight without Sign in with Apple, and Apple's sheet
       # would fail on the phone. An ad-hoc signature carrying the project's
       # entitlements is what export then re-signs with Apple's identity. The
-      # widget extension inside it (the Lock Screen's order card) is signed
-      # first: a bundle is signed only once everything nested in it is, and
-      # the extension needs no entitlement of its own.
+      # widget extension inside it (the Lock Screen's order card, the home
+      # screen's widgets) is signed first: a bundle is signed only once
+      # everything nested in it is. Both carry the Keychain group they share
+      # (the order widget's words), whose names Xcode would expand while
+      # signing and an unsigned archive leaves as written — so they are
+      # expanded here: the team's prefix and the bundle identifier. A Keychain
+      # group needs nothing registered in the Apple Developer site.
       - name: Entitlements
         run: |
           app=build/NetLet.xcarchive/Products/Applications/NetLet.app
+          expand() {
+            sed -e 's/$(AppIdentifierPrefix)/'"$TEAM_ID"'./g' -e 's/$(NETLET_BUNDLE_ID)/'"$BUNDLE_ID"'/g' "$1" > "$2"
+            if grep -q '\$(' "$2"; then echo "::error::$1 still names a build setting after expanding it"; exit 1; fi
+          }
+          expand Config/NetLet.entitlements build/app.entitlements
+          expand Config/NetLetWidgets.entitlements build/widgets.entitlements
           for extension in "$app"/PlugIns/*.appex; do
             [ -d "$extension" ] || continue
-            codesign --force --sign - --timestamp=none "$extension"
+            codesign --force --sign - --entitlements build/widgets.entitlements --timestamp=none "$extension"
           done
-          codesign --force --sign - --entitlements Config/NetLet.entitlements --timestamp=none "$app"
+          codesign --force --sign - --entitlements build/app.entitlements --timestamp=none "$app"
           codesign -d --entitlements - --xml "$app" 2>/dev/null | grep -q "com.apple.developer.applesignin" \
             || { echo "::error::The archive does not carry the Sign in with Apple entitlement"; exit 1; }
+          codesign -d --entitlements - --xml "$app" 2>/dev/null | grep -q "$TEAM_ID.$BUNDLE_ID.shared" \
+            || { echo "::error::The archive does not carry the Keychain group the widgets read"; exit 1; }
 
       - name: Sign and upload
         id: upload

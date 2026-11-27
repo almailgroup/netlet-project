@@ -123,6 +123,8 @@ import {
 import { PAY_WITHIN_DAYS, SPONSOR_MAX_RATE, SPONSOR_NOTE_MAX, SPONSOR_REFERENCE_MAX } from "../../../Shared/commerce/sponsorRequests.js";
 
 export const OUT_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Generated");
+/** The widget extension's own copy of the few words it says (`WidgetWords.swift`). */
+export const WIDGET_DIR = path.resolve(import.meta.dirname, "../NetLetWidgets/Generated");
 export const ASSET_DIR = path.resolve(import.meta.dirname, "../NetLet/Resources/Web");
 const RESOURCES = path.resolve(import.meta.dirname, "../NetLet/Resources");
 const INFO_PLIST = path.resolve(import.meta.dirname, "../Config/Info.plist");
@@ -508,6 +510,29 @@ export function buildContent() {
 }
 
 /** The names of committed files that differ from what would be written. */
+/**
+ * The words the home screen widgets say themselves — the deals widget's
+ * heading and its empty state, the order widget's lines when it has no order
+ * to show — in both languages: every key the extension's own Swift names, so
+ * a word the extension says is in its copy by construction, and nothing it
+ * does not say is. An extension carries no copy of the whole dictionary.
+ */
+export function widgetKeys(): string[] {
+  const dir = path.resolve(import.meta.dirname, "../NetLetWidgets");
+  const keys = new Set<string>();
+  for (const name of readdirSync(dir).filter((file) => file.endsWith(".swift"))) {
+    const text = readFileSync(path.join(dir, name), "utf-8");
+    for (const [, key] of text.matchAll(/"([a-z][A-Za-z]*(?:\.[A-Za-z_]+)+)"/g)) if (key in en) keys.add(key);
+  }
+  return [...keys].sort();
+}
+
+export function buildWidgetResources(): Record<string, string> {
+  const keys = widgetKeys();
+  const pick = (table: Record<string, string>) => inKeyOrder(Object.fromEntries(keys.map((key) => [key, table[key]])));
+  return { "widgetWords.json": json({ en: pick(en), ar: pick(ar) }) };
+}
+
 export function staleResources(): string[] {
   const texts = Object.entries(buildResources())
     .filter(([name, text]) => {
@@ -518,6 +543,15 @@ export function staleResources(): string[] {
       }
     })
     .map(([name]) => name);
+  const widgetTexts = Object.entries(buildWidgetResources())
+    .filter(([name, text]) => {
+      try {
+        return readFileSync(path.join(WIDGET_DIR, name), "utf-8") !== text;
+      } catch {
+        return true;
+      }
+    })
+    .map(([name]) => `NetLetWidgets/Generated/${name}`);
   const { files } = buildAssets();
   const pictures = Object.entries(files)
     .filter(([name, source]) => {
@@ -539,7 +573,7 @@ export function staleResources(): string[] {
       }
     })
     .map(([name]) => name);
-  return [...texts, ...pictures, ...leftover, ...permissions, ...plistPermissionsStale()];
+  return [...texts, ...widgetTexts, ...pictures, ...leftover, ...permissions, ...plistPermissionsStale()];
 }
 
 function listed(dir: string): string[] {
@@ -567,6 +601,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(import.met
   } else {
     mkdirSync(OUT_DIR, { recursive: true });
     for (const [name, text] of Object.entries(buildResources())) writeFileSync(path.join(OUT_DIR, name), text);
+    mkdirSync(WIDGET_DIR, { recursive: true });
+    for (const [name, text] of Object.entries(buildWidgetResources())) writeFileSync(path.join(WIDGET_DIR, name), text);
     writeAssets();
     for (const [name, text] of Object.entries(buildPermissionStrings())) {
       mkdirSync(path.dirname(path.join(RESOURCES, name)), { recursive: true });

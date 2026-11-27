@@ -248,9 +248,10 @@ final class LiveTracking {
         following = nil
     }
 
-    /// Asks iOS for a background refresh while something is on the Lock Screen.
-    func scheduleRefresh() {
-        guard isShowing else { return }
+    /// Asks iOS for a background refresh while something is on the Lock
+    /// Screen, or (`alsoFor`) the order widget follows an order still coming.
+    func scheduleRefresh(alsoFor widgetOrder: Bool = false) {
+        guard isShowing || widgetOrder else { return }
         let request = BGAppRefreshTaskRequest(identifier: Self.refreshTask)
         request.earliestBeginDate = Date().addingTimeInterval(Self.backgroundEvery)
         try? BGTaskScheduler.shared.submit(request)
@@ -258,9 +259,9 @@ final class LiveTracking {
 
     /// A background refresh: the cards brought up to date (nothing new can be
     /// started from the background), and the next one asked for.
-    func refreshInBackground() async {
+    func refreshInBackground(alsoFor widgetOrder: Bool = false) async {
         await sync(signedIn: true, canStart: false)
-        scheduleRefresh()
+        scheduleRefresh(alsoFor: widgetOrder)
     }
 
     private enum Read {

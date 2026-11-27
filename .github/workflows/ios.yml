@@ -330,6 +330,7 @@ jobs:
             shot 120-tutorial-import "$lang" sellerTutorial:import ""
             # An order on its way on the Lock Screen and in the Dynamic Island, as the widget extension draws it.
             shot 121-live-activity "$lang" liveActivityProbe ""
+            shot 122-widgets "$lang" widgetProbe ""
           done
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is

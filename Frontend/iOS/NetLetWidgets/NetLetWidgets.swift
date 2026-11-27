@@ -2,13 +2,17 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
-/// NetLet's widget extension: what the app shows outside itself. For now an
-/// order on its way on the Lock Screen and in the Dynamic Island; its views
-/// are `NetLetShared/OrderActivity.swift`, which the app draws too.
+/// NetLet's widget extension: what the app shows outside itself — an order on
+/// its way on the Lock Screen and in the Dynamic Island, and on the home
+/// screen today's deals and your newest order. Their faces are in
+/// `NetLetShared/` (`OrderActivity.swift`, `HomeWidgetViews.swift`), which the
+/// app draws too, for the screenshots.
 @main
 struct NetLetWidgetBundle: WidgetBundle {
     var body: some Widget {
         OrderLiveActivity()
+        DealsWidget()
+        OrderWidget()
     }
 }
 
@@ -18,7 +22,7 @@ struct OrderLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: OrderActivityAttributes.self) { context in
             OrderActivityCard(state: context.state, stale: context.isStale)
-                .activityBackgroundTint(Brand.navy)
+                .activityBackgroundTint(Brand.deepNavy)
                 .activitySystemActionForegroundColor(.white)
                 .widgetURL(OrderActivityLink.url(context.attributes.reference))
         } dynamicIsland: { context in

@@ -4,6 +4,10 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>NetLet</string>
+	<key>NetLetAPIBaseURL</key>
+	<string>$(NETLET_API_BASE_URL)</string>
+	<key>NetLetSharedKeychain</key>
+	<string>$(NETLET_BUNDLE_ID).shared</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionPointIdentifier</key>

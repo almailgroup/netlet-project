@@ -39,6 +39,7 @@ struct NetLetApp: App {
         case "glassProbe": return AnyView(GlassProbe())
         case "journeyProbe": return AnyView(JourneyProbe())
         case "liveActivityProbe": return AnyView(LiveActivityProbe())
+        case "widgetProbe": return AnyView(WidgetProbe())
         default:
             if open.hasPrefix("sellerTutorial:"), let tutorial = SellerTutorial.named(String(open.dropFirst("sellerTutorial:".count))) {
                 return AnyView(SellerTutorialSheet(tutorial: tutorial).background(PortalLook.ground.ignoresSafeArea()))

@@ -71,7 +71,7 @@ struct LiveActivityProbe: View {
     /// A card as the Lock Screen draws it: navy, rounded, the system's margins.
     private func card(_ state: OrderActivityAttributes.ContentState, id: String, stale: Bool = false) -> some View {
         OrderActivityCard(state: state, stale: stale)
-            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Brand.navy))
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Brand.deepNavy))
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier(id)
     }

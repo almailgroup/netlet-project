@@ -2243,6 +2243,17 @@ export const laterEn = {
   "ios.live.now": "Now",
   "ios.live.moreParcels": "More parcels on the way",
   "ios.live.title": "Order {reference}",
+  "ios.widget.dealsNote": "The deepest savings on NetLet today.",
+  "ios.widget.dealsUnread": "Deals couldn't be loaded",
+  "ios.widget.dealsUnreadNote": "They'll show here once NetLet can be reached.",
+  "ios.widget.orderName": "Your order",
+  "ios.widget.orderNote": "Where your newest order is, from the store to your door.",
+  "ios.widget.openTitle": "Open NetLet",
+  "ios.widget.openNote": "Open the app once to see your orders here.",
+  "ios.widget.signInTitle": "Sign in to follow your orders",
+  "ios.widget.signInNote": "Your newest order shows here once you're signed in.",
+  "ios.widget.nothingTitle": "No order to follow",
+  "ios.widget.nothingNote": "Your next order will show here.",
 } as const;
 
 export type LaterMessageKey = keyof typeof laterEn;
@@ -4446,6 +4457,17 @@ export const laterAr: Record<LaterMessageKey, string> = {
   "ios.live.now": "الآن",
   "ios.live.moreParcels": "طرود أخرى في الطريق",
   "ios.live.title": "الطلب {reference}",
+  "ios.widget.dealsNote": "أكبر التخفيضات على نت لت اليوم.",
+  "ios.widget.dealsUnread": "تعذّر تحميل العروض",
+  "ios.widget.dealsUnreadNote": "ستظهر هنا حين يمكن الوصول إلى نت لت.",
+  "ios.widget.orderName": "طلبك",
+  "ios.widget.orderNote": "أين طلبك الأحدث، من المتجر إلى بابك.",
+  "ios.widget.openTitle": "افتح نت لت",
+  "ios.widget.openNote": "افتح التطبيق مرة لترى طلباتك هنا.",
+  "ios.widget.signInTitle": "سجّل الدخول لتتابع طلباتك",
+  "ios.widget.signInNote": "يظهر طلبك الأحدث هنا بعد تسجيل الدخول.",
+  "ios.widget.nothingTitle": "لا يوجد طلب لمتابعته",
+  "ios.widget.nothingNote": "سيظهر طلبك القادم هنا.",
 };
 
 addMessages({ en: laterEn, ar: laterAr });
