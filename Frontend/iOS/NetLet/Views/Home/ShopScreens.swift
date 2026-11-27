@@ -74,7 +74,7 @@ struct RefurbishedEntry: View {
                 Image(systemName: "arrow.3.trianglepath")
                     .font(.system(size: 22, weight: .semibold))
                     .frame(width: 48, height: 48)
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(l.t("refurbished.title")).font(.inter(16, .heavy))
@@ -441,7 +441,7 @@ struct StoreView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(Capsule().fill(Color(red: 243 / 255, green: 245 / 255, blue: 249 / 255)))
+                    .background(Capsule().fill(Color(light: 0xF3F5F9, dark: 0x1D273A)))
                 }
             }
             .padding(.top, 20)
@@ -512,7 +512,7 @@ struct StoreView: View {
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 12)
                     .frame(minHeight: 40)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
                     .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
                 }
                 .accessibilityLabel(l.t("browse.sortBy"))
@@ -534,7 +534,7 @@ struct StoreView: View {
                 }
                 .padding(.horizontal, 12)
                 .frame(height: 44)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             }
             if departments.count > 1 {

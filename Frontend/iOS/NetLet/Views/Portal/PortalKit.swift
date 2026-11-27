@@ -6,11 +6,11 @@ import SwiftUI
 /// the one bold band, and a validated categorical order for charts — given to
 /// series in that order and never by rank.
 enum PortalLook {
-    static let ground = Color(red: 244 / 255, green: 246 / 255, blue: 251 / 255)
-    static let hairline = Color(red: 227 / 255, green: 232 / 255, blue: 240 / 255)
+    static let ground = Color(light: 0xF4F6FB, dark: 0x0E121B)
+    static let hairline = Color(light: 0xE3E8F0, dark: 0x344156)
     static let deep = Color(red: 10 / 255, green: 31 / 255, blue: 69 / 255)
-    static let grid = Color(red: 232 / 255, green: 236 / 255, blue: 242 / 255)
-    static let shimmer = Color(red: 234 / 255, green: 238 / 255, blue: 245 / 255)
+    static let grid = Color(light: 0xE8ECF2, dark: 0x344156)
+    static let shimmer = Color(light: 0xEAEEF5, dark: 0x1C273B)
     /// Indigo, amber, cyan, raspberry, green, violet — every adjacent pair apart for colour-blind eyes.
     static let series: [Color] = [
         Color(red: 79 / 255, green: 70 / 255, blue: 229 / 255),
@@ -21,10 +21,10 @@ enum PortalLook {
         Color(red: 147 / 255, green: 51 / 255, blue: 234 / 255),
     ]
     static let previous = Color(red: 148 / 255, green: 163 / 255, blue: 184 / 255)
-    static let indigoInk = Color(red: 55 / 255, green: 48 / 255, blue: 163 / 255)
-    static let indigoWash = Color(red: 238 / 255, green: 240 / 255, blue: 253 / 255)
-    static let up = Color(red: 0, green: 99 / 255, blue: 0)
-    static let down = Color(red: 180 / 255, green: 35 / 255, blue: 24 / 255)
+    static let indigoInk = Color(light: 0x3730A3, dark: 0xACA8E5)
+    static let indigoWash = Color(light: 0xEEF0FD, dark: 0x1A1F3D)
+    static let up = Color(light: 0x006300, dark: 0xA5E9A5)
+    static let down = Color(light: 0xB42318, dark: 0xE9AAA5)
 
     /// A state's mark (status colours, reserved for state), its ink and its plate — always with an icon and a word.
     struct Tone {
@@ -36,10 +36,10 @@ enum PortalLook {
 
     static func tone(_ state: ShelfState) -> Tone {
         switch state {
-        case .healthy: return Tone(mark: Color(red: 12 / 255, green: 163 / 255, blue: 12 / 255), ink: Color(red: 10 / 255, green: 122 / 255, blue: 10 / 255), plate: Color(red: 233 / 255, green: 247 / 255, blue: 233 / 255), symbol: "checkmark.circle.fill")
-        case .low: return Tone(mark: Color(red: 250 / 255, green: 178 / 255, blue: 25 / 255), ink: Color(red: 138 / 255, green: 90 / 255, blue: 0), plate: Color(red: 255 / 255, green: 244 / 255, blue: 220 / 255), symbol: "exclamationmark.triangle.fill")
-        case .out: return Tone(mark: Color(red: 208 / 255, green: 59 / 255, blue: 59 / 255), ink: Color(red: 180 / 255, green: 35 / 255, blue: 24 / 255), plate: Color(red: 253 / 255, green: 236 / 255, blue: 234 / 255), symbol: "xmark.circle.fill")
-        case .preorder: return Tone(mark: Color(red: 100 / 255, green: 116 / 255, blue: 139 / 255), ink: Color(red: 71 / 255, green: 85 / 255, blue: 105 / 255), plate: Color(red: 238 / 255, green: 241 / 255, blue: 245 / 255), symbol: "clock.fill")
+        case .healthy: return Tone(mark: Color(red: 12 / 255, green: 163 / 255, blue: 12 / 255), ink: Color(light: 0x0A7A0A, dark: 0xA5E9A5), plate: Color(light: 0xE9F7E9, dark: 0x1A3D1A), symbol: "checkmark.circle.fill")
+        case .low: return Tone(mark: Color(red: 250 / 255, green: 178 / 255, blue: 25 / 255), ink: Color(light: 0x8A5A00, dark: 0xE9D1A5), plate: Color(light: 0xFFF4DC, dark: 0x3D321A), symbol: "exclamationmark.triangle.fill")
+        case .out: return Tone(mark: Color(red: 208 / 255, green: 59 / 255, blue: 59 / 255), ink: Color(light: 0xB42318, dark: 0xE9AAA5), plate: Color(light: 0xFDECEA, dark: 0x3D1E1A), symbol: "xmark.circle.fill")
+        case .preorder: return Tone(mark: Color(red: 100 / 255, green: 116 / 255, blue: 139 / 255), ink: Color(light: 0x475569, dark: 0xBCC5D2), plate: Color(light: 0xEEF1F5, dark: 0x202A37), symbol: "clock.fill")
         }
     }
 
@@ -47,8 +47,8 @@ enum PortalLook {
     static func insight(_ tone: String) -> Tone {
         switch tone {
         case "good": return self.tone(.healthy)
-        case "warning": return Tone(mark: Color(red: 250 / 255, green: 178 / 255, blue: 25 / 255), ink: Color(red: 138 / 255, green: 90 / 255, blue: 0), plate: Color(red: 255 / 255, green: 244 / 255, blue: 220 / 255), symbol: "exclamationmark.circle.fill")
-        case "critical": return Tone(mark: Color(red: 208 / 255, green: 59 / 255, blue: 59 / 255), ink: Color(red: 180 / 255, green: 35 / 255, blue: 24 / 255), plate: Color(red: 253 / 255, green: 236 / 255, blue: 234 / 255), symbol: "exclamationmark.triangle.fill")
+        case "warning": return Tone(mark: Color(red: 250 / 255, green: 178 / 255, blue: 25 / 255), ink: Color(light: 0x8A5A00, dark: 0xE9D1A5), plate: Color(light: 0xFFF4DC, dark: 0x3D321A), symbol: "exclamationmark.circle.fill")
+        case "critical": return Tone(mark: Color(red: 208 / 255, green: 59 / 255, blue: 59 / 255), ink: Color(light: 0xB42318, dark: 0xE9AAA5), plate: Color(light: 0xFDECEA, dark: 0x3D1E1A), symbol: "exclamationmark.triangle.fill")
         default: return Tone(mark: series[0], ink: Color(red: 67 / 255, green: 56 / 255, blue: 202 / 255), plate: indigoWash, symbol: "info.circle.fill")
         }
     }
@@ -59,8 +59,8 @@ extension View {
     func portalSurface(cornerRadius: CGFloat = 16, highlighted: Bool = false) -> some View {
         background(
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(Color.white)
-                .shadow(color: Brand.navy.opacity(0.05), radius: 1, y: 1)
+                .fill(Brand.surface)
+                .shadow(color: Brand.shadow.opacity(0.05), radius: 1, y: 1)
         )
         .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).strokeBorder(highlighted ? Brand.navy.opacity(0.3) : PortalLook.hairline, lineWidth: 1))
     }
@@ -263,7 +263,7 @@ struct PortalSegmented<Value: Hashable>: View {
                             .foregroundStyle(value == option.0 ? Color.white : Brand.navy)
                             .padding(.horizontal, 12)
                             .frame(minHeight: 36)
-                            .background(Capsule().fill(value == option.0 ? Brand.navy : Color.white))
+                            .background(Capsule().fill(value == option.0 ? Brand.navyFill : Brand.surface))
                             .overlay(Capsule().strokeBorder(Brand.line, lineWidth: value == option.0 ? 0 : 1))
                     }
                     .buttonStyle(.tap)
@@ -357,7 +357,7 @@ struct PortalSmallButtonStyle: ButtonStyle {
             .foregroundStyle(kind == .primary ? Color.white : kind == .danger ? Brand.danger : Brand.navy)
             .padding(.horizontal, 12)
             .frame(minHeight: 40)
-            .background(Capsule().fill(kind == .primary ? (configuration.isPressed ? Brand.navyPressed : Brand.navy) : configuration.isPressed ? Brand.tint : Color.white))
+            .background(Capsule().fill(kind == .primary ? (configuration.isPressed ? Brand.navyPressed : Brand.navyFill) : configuration.isPressed ? Brand.tint : Brand.surface))
             .overlay(Capsule().strokeBorder(kind == .primary ? Color.clear : kind == .danger ? Brand.danger.opacity(0.35) : Brand.line, lineWidth: 1))
             .opacity(isEnabled ? 1 : 0.45)
             .pressHaptic(configuration.isPressed)
@@ -440,8 +440,8 @@ struct PortalNotice: View {
     private var fill: Color {
         switch tone {
         case .success: return Brand.successFill
-        case .warning: return Color(red: 254 / 255, green: 241 / 255, blue: 233 / 255)
-        case .danger: return Color(red: 251 / 255, green: 234 / 255, blue: 232 / 255)
+        case .warning: return Color(light: 0xFEF1E9, dark: 0x3D271A)
+        case .danger: return Color(light: 0xFBEAE8, dark: 0x3D1E1A)
         case .info: return Brand.tint
         }
     }

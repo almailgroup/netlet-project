@@ -180,7 +180,7 @@ struct PortalProductEditorView: View {
                 VStack(alignment: .leading, spacing: 12, content: content).padding(14)
             }
         }
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }

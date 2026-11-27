@@ -134,7 +134,7 @@ struct CopilotSheet: View {
                         .foregroundStyle(Color.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Capsule().fill(Brand.navy))
+                        .background(Capsule().fill(Brand.navyFill))
                         .environment(\.layoutDirection, .leftToRight)
                         .padding(.top, 5)
                 }
@@ -188,7 +188,7 @@ struct CopilotSheet: View {
                                 .foregroundStyle(Brand.navy)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
-                                .background(Capsule().fill(Color.white))
+                                .background(Capsule().fill(Brand.surface))
                                 .overlay(Capsule().strokeBorder(PortalLook.hairline, lineWidth: 1))
                         }
                         .buttonStyle(.tap)
@@ -208,7 +208,7 @@ struct CopilotSheet: View {
                     .foregroundStyle(Color.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.navy))
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.navyFill))
                     .accessibilityLabel("\(l.t("copilot.you")): \(turn.text)")
             }
             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -245,7 +245,7 @@ struct CopilotSheet: View {
                     .focused($boxFocused)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Brand.surface))
                     .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(boxFocused ? Brand.navy : PortalLook.hairline, lineWidth: boxFocused ? 1.5 : 1))
                     .onChange(of: draft) { if problem != nil { problem = nil } }
                     .submitLabel(.send)
@@ -257,7 +257,7 @@ struct CopilotSheet: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Color.white)
                         .frame(width: 42, height: 42)
-                        .background(Circle().fill(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || asking ? Brand.chevron : Brand.navy))
+                        .background(Circle().fill(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || asking ? Brand.chevron : Brand.navyFill))
                 }
                 .buttonStyle(.tap)
                 .disabled(asking)

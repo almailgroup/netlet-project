@@ -316,8 +316,8 @@ private struct PictureCard<Content: View>: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: Brand.navy.opacity(0.1), radius: 18, x: 0, y: 10)
+                    .fill(Brand.surface)
+                    .shadow(color: Brand.shadow.opacity(0.1), radius: 18, x: 0, y: 10)
             )
             .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             .padding(.horizontal, 24)
@@ -377,10 +377,10 @@ private struct WelcomePicture: View {
                         .frame(width: 110, height: 40)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(Capsule().fill(Color.white))
+                        .background(Capsule().fill(Brand.photoFrame))
                         .padding(14)
                 }
-                .shadow(color: Brand.navy.opacity(0.14), radius: 18, x: 0, y: 10)
+                .shadow(color: Brand.shadow.opacity(0.14), radius: 18, x: 0, y: 10)
                 .padding(.horizontal, 40)
             floating("electronics", x: -130, y: -110, delay: 0)
             floating("beauty", x: 135, y: -80, delay: 0.4)
@@ -397,8 +397,8 @@ private struct WelcomePicture: View {
             .frame(width: 74, height: 74)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: Brand.navy.opacity(0.12), radius: 10, x: 0, y: 6)
+                    .fill(Brand.surface)
+                    .shadow(color: Brand.shadow.opacity(0.12), radius: 10, x: 0, y: 6)
             )
             .offset(x: x, y: y + (float && !still ? -6 : 6))
             .animation(still ? nil : .easeInOut(duration: 2.2).repeatForever(autoreverses: true).delay(delay), value: float)
@@ -440,7 +440,7 @@ private struct AccountPicture: View {
                             .frame(height: 46)
                             .background(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(filled ? Brand.tint : Color.white)
+                                    .fill(filled ? Brand.tint : Brand.surface)
                             )
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -454,7 +454,7 @@ private struct AccountPicture: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 26, weight: .bold))
                         .foregroundStyle(Brand.success, Color.white)
-                        .background(Circle().fill(Color.white).padding(2))
+                        .background(Circle().fill(Brand.surface).padding(2))
                         .offset(x: 10, y: -14)
                         .scaleEffect(moment >= code.count + 2 ? 1 : 0.2)
                         .opacity(moment >= code.count + 2 ? 1 : 0)
@@ -470,7 +470,7 @@ private struct AccountPicture: View {
             half(l.t("auth.modeRegister"), on: moment >= 1)
         }
         .padding(4)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(red: 238 / 255, green: 240 / 255, blue: 244 / 255)))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(light: 0xEEF0F4, dark: 0x222835)))
     }
 
     private func half(_ title: String, on: Bool) -> some View {
@@ -482,8 +482,8 @@ private struct AccountPicture: View {
             .frame(maxWidth: .infinity, minHeight: 36)
             .background(
                 RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(on ? Color.white : Color.clear)
-                    .shadow(color: Brand.navy.opacity(on ? 0.12 : 0), radius: 4, x: 0, y: 2)
+                    .fill(on ? Brand.surface : Color.clear)
+                    .shadow(color: Brand.shadow.opacity(on ? 0.12 : 0), radius: 4, x: 0, y: 2)
             )
     }
 }
@@ -512,7 +512,7 @@ private struct FindPicture: View {
                         .foregroundStyle(Brand.ink)
                         .lineLimit(1)
                     Rectangle()
-                        .fill(Brand.navy)
+                        .fill(Brand.navyFill)
                         .frame(width: 2, height: 20)
                         .opacity(moment <= letters.count ? 1 : 0)
                     Spacer(minLength: 0)
@@ -526,12 +526,12 @@ private struct FindPicture: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(width: 36, height: 36)
-                        .background(Circle().fill(Brand.navy))
+                        .background(Circle().fill(Brand.navyFill))
                 }
                 .padding(.leading, 14)
                 .padding(.trailing, 5)
                 .frame(height: 48)
-                .background(Capsule().fill(Color.white))
+                .background(Capsule().fill(Brand.surface))
                 .overlay(Capsule().strokeBorder(moment > 0 ? Brand.navy : Brand.line, lineWidth: moment > 0 ? 1.5 : 1))
                 HStack(spacing: 12) {
                     ForEach(Array(ReferenceData.shared.shopDepartments.prefix(3).enumerated()), id: \.element.id) { index, department in
@@ -594,8 +594,8 @@ private struct CartPicture: View {
         .frame(maxWidth: 220)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white)
-                .shadow(color: Brand.navy.opacity(0.1), radius: 16, x: 0, y: 8)
+                .fill(Brand.surface)
+                .shadow(color: Brand.shadow.opacity(0.1), radius: 16, x: 0, y: 8)
         )
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
@@ -612,7 +612,7 @@ private struct CartPicture: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 12)
             .frame(height: 36)
-            .background(Capsule().fill(Brand.navy))
+            .background(Capsule().fill(Brand.navyFill))
             .environment(\.layoutDirection, .leftToRight)
             .transition(.scale(scale: 0.4, anchor: .trailing).combined(with: .opacity))
         } else {
@@ -620,7 +620,7 @@ private struct CartPicture: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(Brand.navy)
                 .frame(width: 36, height: 36)
-                .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.18), radius: 4, x: 0, y: 2))
+                .background(Circle().fill(Brand.surface).shadow(color: Brand.shadow.opacity(0.18), radius: 4, x: 0, y: 2))
                 .overlay(alignment: .bottomTrailing) {
                     Image(systemName: "hand.point.up.left.fill")
                         .font(.system(size: 24))
@@ -645,9 +645,9 @@ private struct CartPicture: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(Capsule().fill(moment >= 3 ? Color(red: 236 / 255, green: 236 / 255, blue: 239 / 255) : Color.white))
+            .background(Capsule().fill(moment >= 3 ? Color(light: 0xECECEF, dark: 0x23232A) : Brand.surface))
             .padding(5)
-            .background(Capsule().fill(Color.white).shadow(color: Brand.navy.opacity(0.1), radius: 10, x: 0, y: 4))
+            .background(Capsule().fill(Brand.surface).shadow(color: Brand.shadow.opacity(0.1), radius: 10, x: 0, y: 4))
     }
 }
 
@@ -685,7 +685,7 @@ private struct OrdersPicture: View {
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(done ? Color.white : Brand.muted)
                                 .frame(width: 34, height: 34)
-                                .background(Circle().fill(done ? Brand.navy : Brand.photo))
+                                .background(Circle().fill(done ? Brand.navyFill : Brand.well))
                                 .scaleEffect(moment == index + 1 ? 1.1 : 1)
                             Text(l.t(step.key))
                                 .font(.inter(14.5, done ? .bold : .medium))

@@ -86,7 +86,7 @@ enum PaymentMark: String, CaseIterable, Identifiable {
     /// The circle's own fill: cash in navy once chosen, Apple Pay on black, the cards on white.
     func fill(chosen: Bool) -> Color {
         switch self {
-        case .cod: return chosen ? Brand.navy : Color(red: 238 / 255, green: 243 / 255, blue: 250 / 255)
+        case .cod: return chosen ? Brand.navyFill : Color(light: 0xEEF3FA, dark: 0x1A283D)
         case .apple: return .black
         case .knet, .card: return .white
         }
@@ -139,9 +139,9 @@ enum SavingsMark: String, CaseIterable, Identifiable {
 
     var fill: Color {
         switch self {
-        case .discount: return Color(red: 234 / 255, green: 241 / 255, blue: 251 / 255)
-        case .gift: return Color(red: 253 / 255, green: 240 / 255, blue: 232 / 255)
-        case .points: return Color(red: 255 / 255, green: 246 / 255, blue: 223 / 255)
+        case .discount: return Color(light: 0xEAF1FB, dark: 0x1A283D)
+        case .gift: return Color(light: 0xFDF0E8, dark: 0x3A2219)
+        case .points: return Color(light: 0xFFF6DF, dark: 0x3A321A)
         }
     }
 

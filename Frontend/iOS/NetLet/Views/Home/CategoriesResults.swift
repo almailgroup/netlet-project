@@ -111,7 +111,7 @@ struct CategoriesResults: View {
                     }
                 }
                 .frame(width: 44, height: 44)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                 .accessibilityHidden(true)
                 caption(title: title, note: note)

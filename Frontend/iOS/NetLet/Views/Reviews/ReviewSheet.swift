@@ -130,7 +130,7 @@ struct ReviewSheet: View {
         HStack(alignment: .top, spacing: 12) {
             RemoteImage(reference: target.photo, contentMode: .fit)
                 .frame(width: 56, height: 56)
-                .background(Color.white)
+                .background(Brand.photoFrame)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Brand.line, lineWidth: 1))
             VStack(alignment: .leading, spacing: 4) {
@@ -219,7 +219,7 @@ struct ReviewStatePill: View {
         case "published":
             return Look(key: "review.statePublished", symbol: "checkmark.circle", ink: Brand.success, fill: Brand.success.opacity(0.12))
         case "waiting":
-            return Look(key: "review.stateWaiting", symbol: "clock", ink: Color(red: 0.48, green: 0.32, blue: 0), fill: Color(red: 0.99, green: 0.95, blue: 0.84))
+            return Look(key: "review.stateWaiting", symbol: "clock", ink: Color(light: 0x7A5200, dark: 0xE9D2A5), fill: Color(light: 0xFCF2D6, dark: 0x3D341A))
         default:
             return Look(key: "review.stateRemoved", symbol: "eye.slash", ink: Brand.muted, fill: Brand.tint)
         }

@@ -397,7 +397,7 @@ private struct NewListingForm: View {
                 if let was, was.fils > now.fils {
                     Text(was.formatted(l.current)).font(.footnote).strikethrough().foregroundStyle(Brand.muted)
                     Text("−\(Int((Double(was.fils - now.fils) / Double(was.fils) * 100).rounded()))%")
-                        .font(.caption.weight(.bold)).foregroundStyle(Brand.navy)
+                        .font(.caption.weight(.bold)).foregroundStyle(Brand.deepNavy)
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Capsule().fill(Brand.orange))
                         .environment(\.layoutDirection, .leftToRight)
@@ -483,12 +483,12 @@ private struct NewListingForm: View {
                     Text("\(host) › products › \(SearchPreview.handle(title))").font(.caption).foregroundStyle(Brand.success).lineLimit(1)
                         .environment(\.layoutDirection, .leftToRight)
                     Text(heading.count > fits.title ? String(heading.prefix(fits.title - 1)).trimmingCharacters(in: .whitespaces) + "…" : heading)
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(Color(red: 0.10, green: 0.05, blue: 0.67)).lineLimit(1)
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(Color(light: 0x1A0DAB, dark: 0xABA5E9)).lineLimit(1)
                     Text(snippet).font(.footnote).foregroundStyle(Brand.body).lineLimit(3)
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(l.t("admin.newSearchPreview"))
@@ -545,7 +545,7 @@ private struct NewListingForm: View {
     /// mini tutorial, on the owner's word.
     private func stepHeading(_ number: Int, _ key: String, show tutorial: String) -> some View {
         HStack(spacing: 8) {
-            Text("\(number)").font(.caption.weight(.bold)).foregroundStyle(.white).frame(width: 22, height: 22).background(Circle().fill(Brand.navy))
+            Text("\(number)").font(.caption.weight(.bold)).foregroundStyle(.white).frame(width: 22, height: 22).background(Circle().fill(Brand.navyFill))
                 .accessibilityHidden(true)
             Text(l.t(key)).font(.headline).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
                 .fixedSize(horizontal: false, vertical: true)
@@ -623,7 +623,7 @@ private struct PhotoTile: View {
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
-                    .background(Capsule().fill(Brand.navy))
+                    .background(Capsule().fill(Brand.navyFill))
                     .padding(4)
             }
         }
@@ -648,7 +648,7 @@ private struct PhotoTile: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(Brand.navy)
                         .frame(width: 26, height: 26)
-                        .background(Circle().fill(Color.white))
+                        .background(Circle().fill(Brand.surface))
                         .frame(width: 44, height: 44, alignment: .bottomTrailing)
                         .padding(4)
                 }

@@ -19,19 +19,19 @@ enum OrderTone {
 
     var fill: Color {
         switch self {
-        case .waiting, .over: return Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)
-        case .preparing: return Color(red: 255 / 255, green: 240 / 255, blue: 171 / 255)
-        case .shipped: return Color(red: 219 / 255, green: 231 / 255, blue: 251 / 255)
-        case .done: return Color(red: 216 / 255, green: 234 / 255, blue: 216 / 255)
-        case .stopped: return Color(red: 253 / 255, green: 236 / 255, blue: 235 / 255)
+        case .waiting, .over: return Color(light: 0xE7EDF5, dark: 0x1A293D)
+        case .preparing: return Color(light: 0xFFF0AB, dark: 0x3D361A)
+        case .shipped: return Color(light: 0xDBE7FB, dark: 0x1A273D)
+        case .done: return Color(light: 0xD8EAD8, dark: 0x1E381E)
+        case .stopped: return Color(light: 0xFDECEB, dark: 0x3D1C1A)
         }
     }
 
     var ink: Color {
         switch self {
         case .waiting, .over: return Brand.muted
-        case .preparing: return Color(red: 112 / 255, green: 85 / 255, blue: 35 / 255)
-        case .shipped: return Color(red: 39 / 255, green: 75 / 255, blue: 134 / 255)
+        case .preparing: return Color(light: 0x705523, dark: 0xE4D0AA)
+        case .shipped: return Color(light: 0x274B86, dark: 0xA8BFE6)
         case .done: return Brand.success
         case .stopped: return Brand.danger
         }
@@ -163,7 +163,7 @@ struct LineReturnPanel: View {
                         .font(.inter(14, .medium))
                         .padding(.horizontal, 12)
                         .frame(minHeight: 44)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(kind == option ? Brand.navy : Brand.line, lineWidth: 1))
                     }
                     .buttonStyle(.tap)
@@ -666,14 +666,14 @@ private struct TrackMap: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
-                    .background(Circle().fill(Brand.navy))
+                    .background(Circle().fill(Brand.navyFill))
                     .overlay(Circle().strokeBorder(.white, lineWidth: 2))
             }
             if let door {
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: door.lat, longitude: door.lng)) {
                     Image(systemName: "house.fill")
                         .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Brand.navy)
+                        .foregroundStyle(Brand.deepNavy)
                         .frame(width: 30, height: 30)
                         .background(Circle().fill(Brand.orange))
                         .overlay(Circle().strokeBorder(.white, lineWidth: 2))

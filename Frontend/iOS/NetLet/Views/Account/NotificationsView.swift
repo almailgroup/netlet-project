@@ -80,7 +80,7 @@ struct NotificationsView: View {
             if isNew {
                 Text(l.t("notices.new"))
                     .font(.inter(11, .bold))
-                    .foregroundStyle(Brand.navy)
+                    .foregroundStyle(Brand.deepNavy)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
                     .background(Capsule().fill(Brand.orange))
@@ -88,7 +88,7 @@ struct NotificationsView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(isNew ? Brand.tint.opacity(0.7) : Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(isNew ? Brand.tint.opacity(0.7) : Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         return Group {
             if let link = entry.link, let route = Route.from(link: link) {

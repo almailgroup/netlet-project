@@ -69,7 +69,7 @@ struct DeliveryAddressCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .task(id: signedIn) { await app.delivery.refresh(signedIn: signedIn) }
@@ -295,7 +295,7 @@ private struct LineMenuSheet: View {
             // detent Remove from cart, the last, fell below the sheet's foot.
             .sheetFit(initial: 460)
         }
-        .background(Color.white)
+        .background(Brand.surface)
         .presentationDragIndicator(.visible)
     }
 
@@ -465,7 +465,7 @@ private struct LineDiscountSheet: View {
                 }
                 .padding(20)
             }
-            .background(Color.white)
+            .background(Brand.surface)
             .navigationTitle(l.t("offers.heading"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -530,7 +530,7 @@ private struct LineDestinationSheet: View {
                 .padding(.vertical, 6)
             }
         }
-        .background(Color.white)
+        .background(Brand.surface)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
@@ -662,7 +662,7 @@ struct SavedForLaterRow: View {
         }
         .padding(8)
         .frame(width: 152)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .accessibilityHidden(true)
     }
@@ -733,7 +733,7 @@ struct SavedProductCard: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(Brand.navy)
                         .frame(width: 28, height: 28)
-                        .background(Circle().fill(Color.white).shadow(color: Brand.navy.opacity(0.18), radius: 2, y: 1))
+                        .background(Circle().fill(Brand.surface).shadow(color: Brand.shadow.opacity(0.18), radius: 2, y: 1))
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
@@ -807,7 +807,7 @@ struct SavedProductCard: View {
         .frame(width: grid ? nil : 152)
         // As tall as what it is offered: the grid's row, or the sideways row's tallest card (`RowHeight`).
         .frame(maxWidth: grid ? .infinity : nil, maxHeight: .infinity, alignment: .top)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 

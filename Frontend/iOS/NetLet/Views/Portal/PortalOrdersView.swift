@@ -113,19 +113,19 @@ private struct DeskOrderCard: View {
                         ForEach(risk.flags, id: \.signal) { flag in
                             Text("· " + l.t(DeskWords.signal(flag.signal), DeskWords.detail(flag.detail, language: l.current)))
                                 .font(.inter(13, flag.serious ? .semibold : .regular))
-                                .foregroundStyle(flag.serious ? Brand.danger : Color(red: 92 / 255, green: 63 / 255, blue: 12 / 255))
+                                .foregroundStyle(flag.serious ? Brand.danger : Color(light: 0x5C3F0C, dark: 0xE9D0A5))
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(red: 1, green: 250 / 255, blue: 240 / 255))
+                    .background(Color(light: 0xFFFAF0, dark: 0x3D311A))
                 }
                 Divider()
                 DeskOrderDetailView(orderId: row.id, reference: row.reference, changed: changed).padding(14)
             }
         }
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(open ? Brand.navy.opacity(0.3) : Brand.cardLine, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
@@ -365,8 +365,8 @@ private struct TransitDamageForm: View {
                 }
             }
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color(red: 239 / 255, green: 198 / 255, blue: 189 / 255), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color(light: 0xEFC6BD, dark: 0x563A34), lineWidth: 1))
         }
     }
 

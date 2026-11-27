@@ -275,7 +275,7 @@ struct AccountView: View {
                     if let waiting {
                         Text(waiting)
                             .font(.inter(11, .bold))
-                            .foregroundStyle(Brand.navy)
+                            .foregroundStyle(Brand.deepNavy)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Capsule().fill(Brand.orange))
@@ -392,11 +392,11 @@ struct AccountView: View {
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(Capsule().fill(Color.white))
+                    .background(Capsule().fill(Brand.surface))
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Brand.navy))
+            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Brand.navyFill))
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
         .buttonStyle(.tap)
@@ -443,7 +443,7 @@ struct AccountView: View {
             if let waiting {
                 Text(waiting)
                     .font(.inter(12, .bold))
-                    .foregroundStyle(Brand.navy)
+                    .foregroundStyle(Brand.deepNavy)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 2)
                     .background(Capsule().fill(Brand.orange))
@@ -521,11 +521,11 @@ struct AccountView: View {
 /// rather than statics on the view, so a default argument can name one —
 /// Swift 5 evaluates those outside the main actor.
 enum ProfileInk {
-    static let chip = Color(red: 241 / 255, green: 242 / 255, blue: 246 / 255)
+    static let chip = Color(light: 0xF1F2F6, dark: 0x222635)
     static let icon = Color(red: 93 / 255, green: 107 / 255, blue: 130 / 255)
     static let signOutRed = Color(red: 194 / 255, green: 54 / 255, blue: 42 / 255)
     /// The points tile's warm ground behind the coin, the web's `#fff6ef`.
-    static let pointsGround = Color(red: 1, green: 246 / 255, blue: 239 / 255)
+    static let pointsGround = Color(light: 0xFFF6EF, dark: 0x3D291A)
 }
 
 /// What the account home's Wallet tile says (`AccountView.pointsTile`).
@@ -544,7 +544,7 @@ enum WalletTile {
 struct DashedRule: View {
     var body: some View {
         Line()
-            .stroke(Color(red: 227 / 255, green: 230 / 255, blue: 236 / 255), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            .stroke(Color(light: 0xE3E6EC, dark: 0x384052), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             .frame(height: 1)
             .accessibilityHidden(true)
     }
@@ -565,8 +565,8 @@ extension View {
         // The shadow is the card's shape's, not the whole card's.
         background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white)
-                .shadow(color: Brand.navy.opacity(0.05), radius: 1, y: 1)
+                .fill(Brand.surface)
+                .shadow(color: Brand.shadow.opacity(0.05), radius: 1, y: 1)
         )
     }
 }
@@ -1199,13 +1199,13 @@ private struct ProfileForm: View {
                 Spacer(minLength: 0)
                 ZStack {
                     Circle().strokeBorder(chosen ? Brand.navy : Brand.chevron, lineWidth: 2).frame(width: 20, height: 20)
-                    if chosen { Circle().fill(Brand.navy).frame(width: 10, height: 10) }
+                    if chosen { Circle().fill(Brand.navyFill).frame(width: 10, height: 10) }
                 }
                 .accessibilityHidden(true)
             }
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 56)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(chosen ? Brand.tint : Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(chosen ? Brand.tint : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 1.5 : 1))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
@@ -1240,7 +1240,7 @@ private struct ProfileForm: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(model.problems[.about] != nil ? Brand.danger : choosingBirthday ? Brand.navy : Brand.line,
@@ -1375,7 +1375,7 @@ struct MembershipCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(light: 0xE7EDF5, dark: 0x1A293D)))
     }
 
     private func load() async {

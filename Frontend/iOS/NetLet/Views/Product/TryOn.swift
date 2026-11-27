@@ -126,7 +126,7 @@ private struct TryOnSheet: View {
             }
             .padding(20)
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(Brand.surface.ignoresSafeArea())
         .onChange(of: picked) { _, item in
             guard let item else { return }
             Task { await choose(item) }

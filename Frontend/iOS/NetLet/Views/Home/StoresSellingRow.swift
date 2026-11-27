@@ -43,7 +43,7 @@ struct StoresSellingRow: View {
         } label: {
             VStack(spacing: 8) {
                 ZStack {
-                    Circle().fill(Color(red: 241 / 255, green: 243 / 255, blue: 246 / 255))
+                    Circle().fill(Color(light: 0xF1F3F6, dark: 0x222935))
                     if let logo = store.logoUrl, !logo.isEmpty {
                         RemoteImage(reference: logo, contentMode: .fit)
                             .padding(14)

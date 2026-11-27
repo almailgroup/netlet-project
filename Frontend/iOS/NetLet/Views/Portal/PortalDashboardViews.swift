@@ -387,7 +387,7 @@ struct DashboardTrend: View {
             }
         }
         .padding(8)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 6, y: 2))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.surface).shadow(color: Brand.shadow.opacity(0.12), radius: 6, y: 2))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(PortalLook.hairline, lineWidth: 1))
     }
 
@@ -676,7 +676,7 @@ struct DashboardNeedsYou: View {
                                     .foregroundStyle(Color.white)
                                     .padding(.horizontal, 9)
                                     .padding(.vertical, 3)
-                                    .background(Capsule().fill(Brand.navy))
+                                    .background(Capsule().fill(Brand.navyFill))
                                     .environment(\.layoutDirection, .leftToRight)
                                 Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(Brand.chevron).flipsForRightToLeftLayoutDirection(true)
                             }

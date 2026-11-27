@@ -162,7 +162,7 @@ private struct CommissionStoreRates: View {
         }
         .padding(.horizontal, 12)
         .frame(minHeight: 44)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
         .task(id: query) {
             if stores != nil {

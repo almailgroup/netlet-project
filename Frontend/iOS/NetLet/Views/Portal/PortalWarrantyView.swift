@@ -92,7 +92,7 @@ private struct WarrantyDeskCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.photo))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.well))
             if !row.photos.isEmpty {
                 HStack(spacing: 8) {
                     ForEach(row.photos, id: \.self) { photo in

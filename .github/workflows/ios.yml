@@ -37,8 +37,9 @@ jobs:
     # languages — and grow with every screen added; the push of the address
     # screens finished 0s inside the old 40 minutes, and a run that times out
     # uploads nothing to TestFlight. 785f630's took 83 of 90 (28 testing,
-    # 54 photographing), so the limit leaves room for a slower runner.
-    timeout-minutes: 110
+    # 54 photographing), so the limit leaves room for a slower runner; 0901314's
+    # took 108 of 110, and the dark-mode pictures add some 26 screens more.
+    timeout-minutes: 140
     defaults:
       run:
         working-directory: Frontend/iOS
@@ -160,6 +161,7 @@ jobs:
             xcrun simctl terminate "$SIM" com.netlet.marketplace 2>/dev/null || true
             args=(-NetLetDemo YES -netlet.language "$2" -NetLetOpen "$3")
             [ -n "$4" ] && args+=(-NetLetDemoAs "$4")
+            [ -n "${APPEARANCE:-}" ] && args+=(-NetLetAppearance "$APPEARANCE")
             xcrun simctl launch "$SIM" com.netlet.marketplace "${args[@]}" >/dev/null
             sleep 9
             xcrun simctl io "$SIM" screenshot --type=png "build/previews/$2-$1.png" >/dev/null 2>&1
@@ -332,6 +334,35 @@ jobs:
             shot 121-live-activity "$lang" liveActivityProbe ""
             shot 122-widgets "$lang" widgetProbe ""
           done
+          # Dark mode (Preferences' Appearance): a screen of each kind in the
+          # dark colours, every one in English and the busiest in Arabic, so
+          # the dark values are looked at before "Same as the phone" becomes
+          # the default.
+          APPEARANCE=dark
+          for lang in en ar; do
+            shot dark-01-home "$lang" home ""
+            shot dark-02-department "$lang" department:electronics ""
+            shot dark-03-product "$lang" product:basmati-rice-5kg ""
+            shot dark-06-cart "$lang" cart shopper
+            shot dark-07-checkout "$lang" checkout shopper
+            shot dark-09-account "$lang" account shopper
+            [ "$lang" = en ] || continue
+            shot dark-05-sign-in "$lang" account ""
+            shot dark-12-categories "$lang" categories:electronics ""
+            shot dark-13-search-sheet "$lang" searchOpen:rice ""
+            shot dark-15-preferences "$lang" section:preferences shopper
+            shot dark-20-wallet "$lang" section:wallet shopper
+            shot dark-27-order "$lang" order:NL-20261001-J7MWY shopper
+            shot dark-28-invoice "$lang" page:invoices/INV-2026-000002 shopper
+            shot dark-29-assistant "$lang" chat ""
+            shot dark-53-product-preview "$lang" preview:wireless-earbuds ""
+            shot dark-55-address-pin "$lang" address:pin shopper
+            shot dark-70-deals "$lang" deals ""
+            shot dark-83-your-profile "$lang" profile shopper
+            shot dark-90-portal-dashboard "$lang" portal:/admin shopper
+            shot dark-30-portal-products "$lang" portal:/admin/products shopper
+          done
+          unset APPEARANCE
           # The live shop, not the recordings: its sellers' own photo servers
           # are what a recording cannot show — slow, large, uncached, which is
           # what left every photo but one empty under AsyncImage.

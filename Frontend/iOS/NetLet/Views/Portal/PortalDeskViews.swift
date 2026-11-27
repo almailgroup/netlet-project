@@ -572,7 +572,7 @@ struct PortalCartInterestList: View {
             HStack(alignment: .top, spacing: 12) {
                 Color.clear.frame(width: 56, height: 56)
                     .overlay { RemoteImage(reference: row.image, contentMode: .fit) }
-                    .background(Color.white)
+                    .background(Brand.photoFrame)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {

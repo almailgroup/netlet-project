@@ -114,7 +114,7 @@ struct AddressBookView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(Capsule().fill(Brand.navy))
+                            .background(Capsule().fill(Brand.navyFill))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -430,7 +430,7 @@ struct AddressConfirmSheet: View {
                 }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                 Button {
                     onConfirm()

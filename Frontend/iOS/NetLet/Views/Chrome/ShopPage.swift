@@ -488,7 +488,7 @@ struct SearchRow: View {
             // The edge of a pane: a bright line along the glass's foot over
             // the navy hairline, the web's phone header.
             VStack(spacing: 0) {
-                Rectangle().fill(Color.white.opacity(0.7)).frame(height: 1)
+                Rectangle().fill(Brand.glassRim.opacity(0.7)).frame(height: 1)
                 Rectangle().fill(Brand.navy.opacity(0.08)).frame(height: 1)
             }
             .allowsHitTesting(false)
@@ -530,7 +530,7 @@ struct SearchRow: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Brand.muted)
                         .frame(width: 28, height: 28)
-                        .background(Circle().fill(Color.white))
+                        .background(Circle().fill(Brand.surface))
                         .overlay(Circle().strokeBorder(Brand.line, lineWidth: 1))
                         .frame(width: 36, height: 36)
                         .contentShape(Rectangle())
@@ -541,7 +541,7 @@ struct SearchRow: View {
                 if voiceOn { otherWay("mic", label: "search.voice", start: .voice) }
                 if photoOn { otherWay("camera", label: "search.photo", start: .photo) }
                 Rectangle()
-                    .fill(Color(red: 201 / 255, green: 214 / 255, blue: 230 / 255))
+                    .fill(Brand.line)
                     .frame(width: 1, height: 20)
                     .padding(.horizontal, 2)
                     .accessibilityHidden(true)
@@ -554,7 +554,7 @@ struct SearchRow: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
-                    .background(Circle().fill(Brand.navy))
+                    .background(Circle().fill(Brand.navyFill))
             }
             .buttonStyle(.tap)
             .accessibilityLabel(l.t("header.searchSubmit"))

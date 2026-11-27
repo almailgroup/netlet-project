@@ -72,7 +72,7 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 40)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 242 / 255, green: 182 / 255, blue: 158 / 255), lineWidth: 1))
                 .padding(16)
         case .loaded:
@@ -158,7 +158,7 @@ struct HomeHero: View {
                 .overlay(alignment: .bottom) {
                     Self.foot.frame(height: Self.footHeight).allowsHitTesting(false)
                 }
-                .background(Brand.navy)
+                .background(Brand.navyFill)
                 .task(id: still) { await run() }
         }
     }
@@ -269,7 +269,7 @@ struct DealsBand: View {
         }
         .padding(.vertical, 32)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Brand.navy)
+        .background(Brand.navyFill)
         .padding(.top, 24)
     }
 }
@@ -306,7 +306,7 @@ private struct EarlierShelfNote: View {
             .disabled(retrying)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 }

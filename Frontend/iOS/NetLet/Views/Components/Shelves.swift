@@ -202,7 +202,7 @@ struct OccasionBanner: View {
     let reference: String
 
     var body: some View {
-        Color(red: 253 / 255, green: 227 / 255, blue: 214 / 255)
+        Color(light: 0xFDE3D6, dark: 0x3D261A)
             .aspectRatio(3, contentMode: .fit)
             .overlay { RemoteImage(reference: reference) }
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -241,7 +241,7 @@ struct TabbedShelf: View {
     @Environment(\.accessibilityReduceMotion) private var still
 
     /// The web's `#fff3ec`, the pale orange a season's shelf sits on.
-    static let paleOrange = Color(red: 1, green: 243 / 255, blue: 236 / 255)
+    static let paleOrange = Color(light: 0xFFF3EC, dark: 0x3D271A)
 
     var body: some View {
         if tinted {
@@ -440,8 +440,8 @@ struct DepartmentCardGrid: View {
             // `PhotoCartControl`).
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: Brand.navy.opacity(0.06), radius: 1, x: 0, y: 1)
+                    .fill(Brand.surface)
+                    .shadow(color: Brand.shadow.opacity(0.06), radius: 1, x: 0, y: 1)
             )
             .overlay {
                 if columns != 3 {
@@ -477,14 +477,14 @@ struct SquareFace<Content: View>: View {
             .aspectRatio(1, contentMode: .fit)
             .overlay { content }
             .clipShape(shape)
-            .background(shape.fill(fill).shadow(color: Brand.navy.opacity(0.05), radius: 2, x: 0, y: 1))
+            .background(shape.fill(fill).shadow(color: Brand.shadow.opacity(0.05), radius: 2, x: 0, y: 1))
             .overlay(shape.strokeBorder(Brand.cardLine, lineWidth: 1.5))
     }
 }
 
 /// The pale blue-grey a tile with no picture of its own is drawn on.
 extension Brand {
-    static let tileField = Color(red: 238 / 255, green: 241 / 255, blue: 246 / 255)
+    static let tileField = Color(light: 0xEEF1F6, dark: 0x1E2839)
 }
 
 /// A store on the stores' page: a rounded square with its logo — or its
@@ -521,7 +521,7 @@ struct StoreTile: View {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 17))
                             .foregroundStyle(Brand.success)
-                            .background(Circle().fill(Color.white).padding(3))
+                            .background(Circle().fill(Brand.surface).padding(3))
                             .padding(7)
                     }
                 }
@@ -574,7 +574,7 @@ struct StoreMark: View {
                 Color.white
                 RemoteImage(reference: logoUrl, contentMode: .fit).padding(4)
             } else {
-                Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)
+                Color(light: 0xE7EDF5, dark: 0x1A293D)
                 Text(name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "·")
                     .font(.inter(large ? 24 : 18, .bold))
                     .foregroundStyle(Brand.navy)
@@ -582,7 +582,7 @@ struct StoreMark: View {
         }
         .frame(width: side, height: side)
         .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Color(red: 225 / 255, green: 231 / 255, blue: 239 / 255), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Color(light: 0xE1E7EF, dark: 0x344256), lineWidth: 1))
         .accessibilityHidden(true)
     }
 }
@@ -688,7 +688,7 @@ struct FlowChips: View {
                         .lineLimit(1)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 40)
-                        .background(Capsule().fill(Color.white.opacity(0.9)))
+                        .background(Capsule().fill(Brand.surface.opacity(0.9)))
                         .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
                 }
                 .buttonStyle(.tap)
@@ -772,7 +772,7 @@ struct GridSkeleton: View {
             }
             .padding(10)
         }
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 
@@ -796,7 +796,7 @@ struct ShelfSkeleton: View {
                 }
                 .padding(12)
                 .frame(width: 164)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             }
         }

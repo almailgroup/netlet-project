@@ -72,7 +72,7 @@ struct AddonPicker: View {
             if let symbol { Image(systemName: symbol).font(.system(size: 15)).foregroundStyle(Brand.navy).accessibilityHidden(true) }
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? Brand.tint : Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? Brand.tint : Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
         .contentShape(Rectangle())
     }
@@ -211,7 +211,7 @@ private struct SizeGuideSheet: View {
             }
             .padding(14)
         }
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .accessibilityLabel(l.t("sizeGuide.chartLabel"))
     }
@@ -377,7 +377,7 @@ struct PriceRequestPanel: View {
                     if standing || expanded { content(standing: standing) }
                 }
                 .padding(14)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             }
         }
@@ -517,7 +517,7 @@ struct FollowButton: View {
                         .font(.inter(14, .bold))
                         .foregroundStyle(Brand.navy)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(active ? Brand.tint : Color.white))
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(active ? Brand.tint : Brand.surface))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
                 }
                 .buttonStyle(.action)
@@ -728,7 +728,7 @@ struct BundlesPanel: View {
                             Text(l.t("bundle.allOrNothing")).font(.inter(12)).foregroundStyle(Brand.muted)
                         }
                         .padding(14)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
                         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
                     }
                 }
@@ -987,7 +987,7 @@ struct ReviewPhotoViewer: View {
             }
             .tabViewStyle(.page(indexDisplayMode: photos.photos.count > 1 ? .always : .never))
             .indexViewStyle(.page(backgroundDisplayMode: .always))
-            .background(Color.white)
+            .background(Brand.surface)
             .navigationTitle(l.t("review.photoOf", ["index": "\(index + 1)", "count": "\(photos.photos.count)", "author": photos.author]))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1096,7 +1096,7 @@ struct FrequentProductButton: View {
                             .font(.inter(14, .bold))
                             .foregroundStyle(entry != nil ? Color.white : Brand.navy)
                             .frame(maxWidth: .infinity, minHeight: 44)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(entry != nil ? Brand.navy : Color.white))
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(entry != nil ? Brand.navyFill : Brand.surface))
                             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: entry != nil ? 0 : 1))
                     }
                     .buttonStyle(.action)

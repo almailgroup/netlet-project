@@ -309,7 +309,7 @@ struct BrowsingHistoryView: View {
             } label: {
                 HStack(spacing: 12) {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white)
+                        .fill(Brand.surface)
                         .frame(width: 56, height: 56)
                         .overlay { RemoteImage(reference: product.images.first?.url, label: product.title) }
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -426,7 +426,7 @@ struct SellerEntryCard: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Capsule().fill(Brand.navy))
+                    .background(Capsule().fill(Brand.navyFill))
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)

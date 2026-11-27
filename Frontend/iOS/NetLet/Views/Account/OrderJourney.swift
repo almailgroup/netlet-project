@@ -192,7 +192,9 @@ enum JourneyStreet {
 /// the van can turn its wheels and the store can be NetLet's — the web's SVGs
 /// in the same coordinates.
 enum JourneyArt {
-    static let navy = Brand.navy
+    /// Navy that never turns pale: the van and the roofs sit on pale plates
+    /// in either scheme.
+    static let navy = Brand.deepNavy
     static let orange = Brand.orange
     static let green = Color(red: 47 / 255, green: 125 / 255, blue: 58 / 255)
     static let amber = Color(red: 224 / 255, green: 169 / 255, blue: 46 / 255)

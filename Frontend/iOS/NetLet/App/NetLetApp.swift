@@ -9,12 +9,28 @@ struct NetLetApp: App {
     /// The opening's zoom has begun, and the shop behind it settles from a
     /// little large to its own size as the roof opens onto it.
     @State private var revealed = false
+    /// Light, dark or as the phone is (`Appearance`), chosen in Preferences.
+    @AppStorage(Appearance.key) private var appearanceChoice = Appearance.fallback.rawValue
+
+    /// What the app is drawn in: the choice, or a screenshot run's
+    /// `-NetLetAppearance` (Debug only). Reading the stored choice here is what
+    /// redraws the root when it changes.
+    private var appearance: Appearance {
+        _ = appearanceChoice
+        return Appearance.current
+    }
 
     // Made in the initialiser, which is on the main actor, rather than as the
     // property's initial value, which Swift 5 mode evaluates outside it.
     init() {
         let model = AppModel.live()
         let open = UserDefaults.standard.string(forKey: "NetLetOpen")
+        #if DEBUG
+        // Every UI test and screenshot starts in the light colours whatever
+        // an earlier launch chose, so a test that presses Dark changes only
+        // its own launch; a dark picture passes `-NetLetAppearance dark`.
+        if UITestHooks.on || open != nil { UserDefaults.standard.removeObject(forKey: Appearance.key) }
+        #endif
         // A new install opens on the tutorial, under the opening animation, so
         // the roof's window opens onto its first page (`AppTutorial`).
         model.tutorialShowing = AppTutorial.showsAtLaunch(open: open)
@@ -77,6 +93,9 @@ struct NetLetApp: App {
             .environment(\.locale, app.language.current.locale)
             .tint(Brand.navy)
             .buttonStyle(HapticDefaultStyle())
+            .preferredColorScheme(appearance.colorScheme)
+            .onAppear { Appearance.applyToWindows(appearance) }
+            .onChange(of: appearanceChoice) { _, _ in Appearance.applyToWindows(appearance) }
             .task { await app.start() }
             // A press on an order's Lock Screen card opens the order.
             .onOpenURL { url in app.openLink(url) }

@@ -10,7 +10,7 @@ struct AssistantMark: View {
             .font(.system(size: size * 0.42, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(Circle().fill(Brand.navy))
+            .background(Circle().fill(Brand.navyFill))
             .accessibilityHidden(true)
     }
 }
@@ -169,7 +169,7 @@ struct ChatSearchShelf: View {
             }
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.9)))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface.opacity(0.9)))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .task(id: term) {
             products = (try? await app.services.api.call(API.search, .init(q: term, locale: l.current.rawValue, limit: 4)))?.products ?? []
@@ -231,7 +231,7 @@ private struct ShelfCard: View {
                     }
                 }
                 .frame(width: 30, height: 30)
-                .background(Circle().fill(count > 0 ? Brand.navy : Color.white))
+                .background(Circle().fill(count > 0 ? Brand.navyFill : Brand.surface))
                 .overlay(Circle().strokeBorder(Brand.line, lineWidth: count > 0 ? 0 : 1))
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -344,7 +344,7 @@ struct ChatComposer: View {
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(dictation.listening ? Color.white : Brand.navy)
                             .frame(width: 40, height: 40)
-                            .background(Circle().fill(dictation.listening ? Brand.navy : Color.clear))
+                            .background(Circle().fill(dictation.listening ? Brand.navyFill : Color.clear))
                     }
                     .buttonStyle(.tap)
                     .accessibilityLabel(l.t(dictation.listening ? "shopChat.stopListening" : "shopChat.speak"))
@@ -380,7 +380,7 @@ struct ChatComposer: View {
             }
             .padding(.leading, 14)
             .padding(.trailing, 4)
-            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
         }
         .onDisappear { dictation.cancel() }

@@ -59,7 +59,7 @@ struct PortalStoresView: View {
             }
             .padding(.horizontal, 12)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             PortalSegmented(label: l.t("admin.filterStatus"), value: $filter, options: ["all", "approved", "pending", "suspended"].map { ($0, label($0)) })
             if let list {
@@ -267,7 +267,7 @@ struct PortalNewStoreView: View {
     private func step<Content: View>(_ number: Int, _ title: String, note: String? = nil, @ViewBuilder _ content: @escaping () -> Content) -> some View {
         PortalCard {
             HStack(spacing: 8) {
-                Text("\(number)").font(.inter(13, .bold)).foregroundStyle(.white).frame(width: 24, height: 24).background(Circle().fill(Brand.navy))
+                Text("\(number)").font(.inter(13, .bold)).foregroundStyle(.white).frame(width: 24, height: 24).background(Circle().fill(Brand.navyFill))
                 Text(l.t(title)).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
             }
             if let note { Text(l.t(note)).font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true) }
@@ -758,7 +758,7 @@ private struct StoreStat: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 86, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         if let open {
             Button(action: open) { face }.buttonStyle(PressFillStyle(cornerRadius: 12))

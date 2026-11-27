@@ -106,7 +106,7 @@ struct PortalAuditView: View {
                         }
                     }
                     .padding(.horizontal, 14)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                 }
             } else if let failed {
@@ -167,7 +167,7 @@ private struct AuditRow: View {
                         .foregroundStyle(Brand.ink)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(Brand.photo))
+                        .background(RoundedRectangle(cornerRadius: 6).fill(Brand.well))
                 }
                 Text(entry.automatic || entry.actorEmail == nil
                     ? l.t("admin.auditAutomatic")
@@ -840,7 +840,7 @@ struct PortalPeopleView: View {
             }
             .padding(.horizontal, 12)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             if let people {
                 if people.rows.isEmpty {

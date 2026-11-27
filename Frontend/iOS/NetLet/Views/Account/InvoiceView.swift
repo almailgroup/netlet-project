@@ -40,8 +40,11 @@ struct InvoiceView: View {
                 } else {
                     LoadStateView(state: record, retry: { await load() }) { loaded in
                         VStack(alignment: .leading, spacing: 16) {
+                            /* The invoice is paper, white in dark mode too: its
+                               words are the document's, not the app's. */
                             InvoicePaper(record: loaded, language: l.current, verifyURL: verifyURL(loaded), onOpen: { app.open(.invoice(number: $0)) })
                                 .card()
+                                .environment(\.colorScheme, .light)
                             InvoiceChecks(record: loaded, verifyURL: verifyURL(loaded))
                         }
                     }
@@ -520,6 +523,7 @@ struct InvoicePDF: Transferable {
             .padding(36)
             .frame(width: 595)
             .background(Color.white)
+            .environment(\.colorScheme, .light)
         let renderer = ImageRenderer(content: paper)
         let data = NSMutableData()
         renderer.render { size, draw in

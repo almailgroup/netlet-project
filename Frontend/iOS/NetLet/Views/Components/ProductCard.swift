@@ -111,7 +111,7 @@ struct ConditionChoice: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(12)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(chosen ? Brand.tint : Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(chosen ? Brand.tint : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 1.5 : 1))
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
@@ -128,7 +128,7 @@ struct SavingBadge: View {
     var body: some View {
         Text("−\(percent)%")
             .font(.inter(large ? 15 : 13, .bold))
-            .foregroundStyle(Brand.navy)
+            .foregroundStyle(Brand.deepNavy)
             .padding(.horizontal, large ? 10 : 7)
             .padding(.vertical, large ? 5 : 3)
             .background(Capsule().fill(Brand.orange))
@@ -188,7 +188,7 @@ struct QuantityStepper: View {
                     .foregroundStyle(Brand.navy)
                     .focused($typing)
                     .frame(width: compact ? 38 : 42, height: compact ? 28 : 34)
-                    .background(RoundedRectangle(cornerRadius: compact ? 8 : 9, style: .continuous).fill(typing ? Color.white : Brand.navy.opacity(0.06)))
+                    .background(RoundedRectangle(cornerRadius: compact ? 8 : 9, style: .continuous).fill(typing ? Brand.surface : Brand.navy.opacity(0.06)))
                     .overlay(RoundedRectangle(cornerRadius: compact ? 8 : 9, style: .continuous).strokeBorder(Brand.navy, lineWidth: typing ? 1.5 : 0))
                     .onAppear { draft = "\(quantity)" }
                     .onChange(of: quantity) { _, next in if !typing { draft = "\(next)" } }
@@ -375,7 +375,7 @@ struct ProductCard: View {
         }
         .id(identity)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
@@ -399,7 +399,7 @@ struct ProductCard: View {
                 SavingBadge(percent: percent, large: feature)
             }
             if variant?.preorder != nil {
-                tag(l.t("product.preorder"), fill: Brand.navy)
+                tag(l.t("product.preorder"), fill: Brand.navyFill)
             }
             if product.isRefurbished {
                 RefurbishedBadge()
@@ -413,7 +413,7 @@ struct ProductCard: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Brand.navy))
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Brand.navyFill))
             }
             if !product.isAvailable {
                 tag(l.t("product.soldOut"), fill: Brand.body)
@@ -658,7 +658,7 @@ struct CardGallery: View {
         HStack(spacing: 4) {
             ForEach(0..<count, id: \.self) { dot in
                 Capsule()
-                    .fill(Brand.navy.opacity(dot == index ? 1 : 0.3))
+                    .fill(Brand.deepNavy.opacity(dot == index ? 1 : 0.3))
                     .frame(width: dot == index ? 12 : 6, height: 6)
             }
         }
@@ -925,7 +925,7 @@ struct PhotoCartControl: View {
                 .focused($typing)
                 .frame(maxWidth: .infinity)
                 .frame(height: 32)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(typing ? Color.white : Color.clear))
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(typing ? Brand.surface : Color.clear))
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Brand.navy, lineWidth: typing ? 1.5 : 0))
                 .onAppear { draft = "\(count)" }
                 .onChange(of: count) { _, next in if !typing { draft = "\(next)" } }
@@ -1180,7 +1180,7 @@ struct PhotoGlass: ViewModifier {
                 .overlay(shape.strokeBorder(Color.black.opacity(0.12), lineWidth: 1))
                 // The shadow is the shape's, never the control's: a shadow round
                 // a composite is drawn off screen again on every frame it moves.
-                .background(shape.fill(Color.white.opacity(0.01)).shadow(color: Brand.navy.opacity(0.16), radius: 7, y: 3))
+                .background(shape.fill(Color.white.opacity(0.01)).shadow(color: Brand.shadow.opacity(0.16), radius: 7, y: 3))
         }
     }
 }

@@ -75,7 +75,7 @@ struct LaunchSplash: View {
             ZStack {
                 // The screen with the roof cut out of it, once the roof is a window.
                 RoofCurtain(zoom: zoom, width: Self.width, cut: open)
-                    .fill(Brand.navy, style: FillStyle(eoFill: true))
+                    .fill(Brand.deepNavy, style: FillStyle(eoFill: true))
                 // The roof in orange over the window, until the zoom fades it out.
                 RoofShape(zoom: zoom, width: Self.width)
                     .fill(Brand.orange)

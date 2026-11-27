@@ -39,7 +39,7 @@ struct AuthView: View {
             // The form says what the sheet is; its bar carries Close alone.
             ScrollView { AuthForm(model: model, band: false) }
                 .scrollDismissesKeyboard(.interactively)
-                .background(Color.white.ignoresSafeArea())
+                .background(Brand.surface.ignoresSafeArea())
                 .navigationBarTitleDisplayMode(.inline)
         } else {
             // Signed out, the account page is the form itself, in the
@@ -124,7 +124,7 @@ private struct AuthForm: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
                 UnevenRoundedRectangle(topLeadingRadius: band ? 24 : 0, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: band ? 24 : 0, style: .continuous)
-                    .fill(Color.white)
+                    .fill(Brand.surface)
             }
             .padding(.top, band && WebAssets.street != nil ? -24 : 0)
         }
@@ -747,7 +747,7 @@ struct SignInMethodChoice: View {
             .padding(.horizontal, stacked ? 6 : 12)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: stacked ? 84 : 60)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Calm.chosen : Color.white))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Calm.chosen : Brand.surface))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(on ? Brand.navy : Calm.rim, lineWidth: on ? 2 : 1)
@@ -758,7 +758,7 @@ struct SignInMethodChoice: View {
                         .font(.system(size: 10, weight: .heavy))
                         .foregroundStyle(.white)
                         .frame(width: 20, height: 20)
-                        .background(Circle().fill(Brand.navy))
+                        .background(Circle().fill(Brand.navyFill))
                         .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
                         // Out over the tile's end corner, whichever side that is.
                         .offset(x: l.layoutDirection == .rightToLeft ? -6 : 6, y: -6)
@@ -803,8 +803,8 @@ struct RefusalBox<Next: View>: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(red: 253 / 255, green: 236 / 255, blue: 235 / 255)))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color(red: 242 / 255, green: 196 / 255, blue: 185 / 255), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(light: 0xFDECEB, dark: 0x3D1C1A)))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color(light: 0xF2C4B9, dark: 0x563A34), lineWidth: 1))
     }
 }
 
@@ -815,7 +815,7 @@ struct MailTile: View {
             .font(.system(size: 22, weight: .medium))
             .foregroundStyle(Brand.navy)
             .frame(width: 48, height: 48)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 238 / 255, green: 242 / 255, blue: 248 / 255)))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(light: 0xEEF2F8, dark: 0x1A283D)))
             .accessibilityHidden(true)
     }
 }
@@ -836,7 +836,7 @@ struct PasswordMeter: View {
                     HStack(spacing: 4) {
                         ForEach(0..<4, id: \.self) { segment in
                             Capsule()
-                                .fill(segment < max(verdict.score, 1) ? Self.fill(verdict.band) : Color(red: 227 / 255, green: 231 / 255, blue: 238 / 255))
+                                .fill(segment < max(verdict.score, 1) ? Self.fill(verdict.band) : Color(light: 0xE3E7EE, dark: 0x212836))
                                 .frame(height: 4)
                         }
                     }
@@ -867,7 +867,7 @@ struct PasswordMeter: View {
         HStack(spacing: 6) {
             Image(systemName: met ? "checkmark.circle.fill" : failed ? "exclamationmark.circle.fill" : "circle")
                 .font(.system(size: 14))
-                .foregroundStyle(met ? Color(red: 47 / 255, green: 125 / 255, blue: 79 / 255) : failed ? Brand.danger : Brand.muted.opacity(0.7))
+                .foregroundStyle(met ? Color(light: 0x2F7D4F, dark: 0xADE0C2) : failed ? Brand.danger : Brand.muted.opacity(0.7))
             Text(l.t(key))
                 .font(.inter(13))
                 .foregroundStyle(met ? Brand.success : failed ? Brand.danger : Brand.muted)
@@ -891,8 +891,8 @@ struct PasswordMeter: View {
         switch band {
         case .weak: return Color(red: 208 / 255, green: 69 / 255, blue: 58 / 255)
         case .fair: return Color(red: 208 / 255, green: 138 / 255, blue: 30 / 255)
-        case .good: return Color(red: 47 / 255, green: 125 / 255, blue: 79 / 255)
-        case .strong: return Color(red: 29 / 255, green: 107 / 255, blue: 64 / 255)
+        case .good: return Color(light: 0x2F7D4F, dark: 0xADE0C2)
+        case .strong: return Color(light: 0x1D6B40, dark: 0xA7E7C4)
         }
     }
 }
@@ -922,7 +922,7 @@ struct CodeBoxes<Value: Hashable>: View {
                         // An empty box wears the form's soft fill; one holding
                         // a digit, or the one being typed in, is white.
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(here || index < digits.count || invalid ? Color.white : Calm.field)
+                            .fill(here || index < digits.count || invalid ? Brand.surface : Calm.field)
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .strokeBorder(here ? Brand.navy : invalid ? Brand.danger : index < digits.count ? Brand.muted.opacity(0.5) : Calm.rim, lineWidth: here ? 2 : 1)
                         if index < digits.count {

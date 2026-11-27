@@ -295,8 +295,8 @@ private struct ProductPage: View {
         // was drawn off screen again on every frame of the page's scroll.
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color.white)
-                .shadow(color: Brand.navy.opacity(0.05), radius: 16, x: 0, y: 8)
+                .fill(Brand.surface)
+                .shadow(color: Brand.shadow.opacity(0.05), radius: 16, x: 0, y: 8)
         )
         .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
     }
@@ -343,7 +343,7 @@ private struct ProductPage: View {
                     .foregroundStyle(Brand.navy)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(Color(red: 231 / 255, green: 237 / 255, blue: 245 / 255)))
+                    .background(Capsule().fill(Color(light: 0xE7EDF5, dark: 0x1A293D)))
                     .padding(.top, 8)
             }
             if let measure = variant.measure,
@@ -360,7 +360,7 @@ private struct ProductPage: View {
     private var availability: some View {
         if let variant = model.variant {
             if !variant.availableForSale {
-                Label(l.t("product.outOfStock"), systemImage: "xmark.circle").foregroundStyle(Color(red: 179 / 255, green: 38 / 255, blue: 30 / 255))
+                Label(l.t("product.outOfStock"), systemImage: "xmark.circle").foregroundStyle(Color(light: 0xB3261E, dark: 0xE9A9A5))
                     .font(.inter(14, .bold))
             } else if let preorder = variant.preorder {
                 // The release date is the promise; one already past is no date at all (`preorder.ts`).
@@ -372,7 +372,7 @@ private struct ProductPage: View {
                     .font(.inter(14, .bold))
             }
         } else if !product.isAvailable {
-            Label(l.t("product.soldOut"), systemImage: "xmark.circle").foregroundStyle(Color(red: 179 / 255, green: 38 / 255, blue: 30 / 255))
+            Label(l.t("product.soldOut"), systemImage: "xmark.circle").foregroundStyle(Color(light: 0xB3261E, dark: 0xE9A9A5))
                 .font(.inter(14, .bold))
         }
     }
@@ -736,7 +736,7 @@ private struct ProductPage: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
-                        .background(index % 2 == 0 ? Brand.photo : Color.white)
+                        .background(index % 2 == 0 ? Brand.well : Brand.surface)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1028,7 +1028,7 @@ private struct ShareAndEarn: View {
             .simultaneousGesture(TapGesture().onEnded { Haptics.tap() })
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 1, green: 0.969, blue: 0.945)))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(red: 0.957, green: 0.843, blue: 0.769), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(light: 0xFFF7F1, dark: 0x3D291A)))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color(light: 0xF4D7C4, dark: 0x564134), lineWidth: 1))
     }
 }

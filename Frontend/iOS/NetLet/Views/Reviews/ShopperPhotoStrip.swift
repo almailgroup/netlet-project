@@ -46,7 +46,7 @@ struct ShopperPhotoStrip: View {
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(Brand.navy)
                                         .frame(width: 26, height: 26)
-                                        .background(Circle().fill(Color.white))
+                                        .background(Circle().fill(Brand.surface))
                                         .overlay(Circle().stroke(Brand.line, lineWidth: 1))
                                 }
                                 .buttonStyle(.tap)

@@ -50,7 +50,7 @@ struct OnwardLink: View {
                     .flipsForRightToLeftLayoutDirection(true)
             }
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
@@ -518,7 +518,7 @@ struct GuideCardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
             }
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -577,7 +577,7 @@ struct GuideView: View {
                             .font(.inter(14, .heavy))
                             .foregroundStyle(.white)
                             .frame(width: 28, height: 28)
-                            .background(Circle().fill(Brand.navy))
+                            .background(Circle().fill(Brand.navyFill))
                             .accessibilityLabel(l.t("guides.stepN", ["n": "\(index + 1)"]))
                         Text(stepTitle.text).font(.inter(17, .heavy)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
                     }

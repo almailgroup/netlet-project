@@ -145,7 +145,7 @@ struct OrderPaymentSheet: View {
             HStack(spacing: 12) {
                 ZStack {
                     Circle().strokeBorder(on ? Brand.navy : Brand.line, lineWidth: on ? 2 : 1.5).frame(width: 20, height: 20)
-                    if on { Circle().fill(Brand.navy).frame(width: 10, height: 10) }
+                    if on { Circle().fill(Brand.navyFill).frame(width: 10, height: 10) }
                 }
                 .accessibilityHidden(true)
                 Group {
@@ -157,7 +157,7 @@ struct OrderPaymentSheet: View {
                 }
                 .foregroundStyle(on ? Color.white : Brand.muted)
                 .frame(width: 40, height: 40)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? Brand.navy : Brand.tint))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(on ? Brand.navyFill : Brand.tint))
                 .accessibilityHidden(true)
                 // The pill sits on the title's line, so a narrow phone gives the words the row's width.
                 VStack(alignment: .leading, spacing: 3) {
@@ -176,7 +176,7 @@ struct OrderPaymentSheet: View {
                 Spacer(minLength: 0)
             }
             .padding(12)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255) : Color.white))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(on ? Color(light: 0xF6F8FB, dark: 0x1B283C) : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(on ? Brand.navy : Brand.cardLine, lineWidth: on ? 2 : 1))
             .contentShape(Rectangle())
         }
@@ -248,7 +248,7 @@ struct TestPaymentPane: View {
                     }
                     .foregroundStyle(.white)
                     .frame(width: 48, height: 48)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.navy))
+                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.navyFill))
                     .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(l.t(OnlineMethodWords.title(payment.method))).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
@@ -277,7 +277,7 @@ struct TestPaymentPane: View {
                 .disabled(busy != nil)
             }
             .padding(16)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine))
             .padding(16)
         }
@@ -369,7 +369,7 @@ struct OrderPaymentLine: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 }
@@ -386,7 +386,7 @@ struct HandoverCard: View {
     var body: some View {
         VStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white)
+                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface)
                 RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine)
                 if let image {
                     Image(uiImage: image)
@@ -421,7 +421,7 @@ struct HandoverCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.line))
         .task(id: handover.token) { image = HandoverCard.qr(handover.url ?? handover.token) }
     }

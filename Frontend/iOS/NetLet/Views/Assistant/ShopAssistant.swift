@@ -114,7 +114,7 @@ struct ShopChatSheet: View {
             AssistantMark(size: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(l.t("shopChat.title")).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
-                Text(l.t("shopChat.note")).font(.inter(12)).foregroundStyle(Color(red: 43 / 255, green: 58 / 255, blue: 85 / 255)).lineLimit(2)
+                Text(l.t("shopChat.note")).font(.inter(12)).foregroundStyle(Color(light: 0x2B3A55, dark: 0xB4C2D9)).lineLimit(2)
             }
             Spacer(minLength: 8)
             if !chat.messages.isEmpty {
@@ -152,7 +152,7 @@ struct ShopChatSheet: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(Capsule().fill(Color.white.opacity(0.9)))
+        .background(Capsule().fill(Brand.surface.opacity(0.9)))
     }
 
     @ViewBuilder
@@ -165,7 +165,7 @@ struct ShopChatSheet: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Brand.navy))
+                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Brand.navyFill))
                     .accessibilityLabel(l.t("shopChat.you") + " " + message.text)
             }
             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -192,7 +192,7 @@ struct ShopChatSheet: View {
                     }
                 }
                 .padding(12)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.92)))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface.opacity(0.92)))
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel(l.t("shopChat.them"))
             }

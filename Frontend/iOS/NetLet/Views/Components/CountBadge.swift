@@ -26,7 +26,7 @@ struct CountBadge: View {
             Text(text)
                 .font(.inter(11, .heavy))
                 .monospacedDigit()
-                .foregroundStyle(Brand.navy)
+                .foregroundStyle(Brand.deepNavy)
                 .lineLimit(1)
                 .padding(.horizontal, text.count > 1 ? 5 : 0)
                 .frame(minWidth: 18, minHeight: 18)
@@ -50,12 +50,13 @@ struct NoticeDot: View {
 }
 
 /// The badge's body: flat orange in a navy ink line, a white sticker edge and
-/// a hard navy drop — the web's `.count-badge`.
+/// a hard navy drop — the web's `.count-badge`. The same sticker in dark mode:
+/// the deep navy and the white, never the dark mode's light navy.
 private struct BadgeSurface: View {
     var body: some View {
         Capsule()
             .fill(Brand.orange)
-            .overlay(Capsule().strokeBorder(Brand.navy, lineWidth: 1.5))
+            .overlay(Capsule().strokeBorder(Brand.deepNavy, lineWidth: 1.5))
             .background(Capsule().fill(Color.white).padding(-1.5))
     }
 }

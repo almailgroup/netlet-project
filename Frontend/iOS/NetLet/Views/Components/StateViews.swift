@@ -277,7 +277,7 @@ struct FloatingField: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .frame(minHeight: 64)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(disabled ? Brand.ground : Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(disabled ? Brand.ground : Brand.surface))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .strokeBorder(problem != nil ? Brand.danger : focused ? Brand.navy : Brand.line, lineWidth: problem != nil || focused ? 1.5 : 1)

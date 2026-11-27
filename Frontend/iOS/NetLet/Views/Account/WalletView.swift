@@ -50,7 +50,7 @@ struct WalletView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Brand.accentInk)
                             .frame(width: 44, height: 44)
-                            .background(Circle().fill(Color(red: 1, green: 0.945, blue: 0.91)))
+                            .background(Circle().fill(Color(light: 0xFFF1E8, dark: 0x3D281A)))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(l.t("affiliate.section")).font(.inter(15, .bold)).foregroundStyle(Brand.navy)
                             Text(l.t(joined ? "rewards.earnAffiliateMember" : "rewards.earnAffiliate"))
@@ -143,8 +143,8 @@ struct PointsWallet: View {
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
 
-    private static let soft = Color(red: 201 / 255, green: 211 / 255, blue: 227 / 255)
-    private static let bright = Color(red: 227 / 255, green: 232 / 255, blue: 240 / 255)
+    private static let soft = Color(light: 0xC9D3E3, dark: 0x1E2839)
+    private static let bright = Color(light: 0xE3E8F0, dark: 0x1E2838)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -192,7 +192,7 @@ struct PointsWallet: View {
                         .font(.inter(15, .bold))
                         .foregroundStyle(Brand.navy)
                         .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(Capsule().fill(Color.white))
+                        .background(Capsule().fill(Brand.surface))
                 }
                 .buttonStyle(.tap)
             } else {
@@ -211,8 +211,8 @@ struct PointsWallet: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Brand.navy)
-                .shadow(color: Brand.navy.opacity(0.35), radius: 14, y: 8)
+                .fill(Brand.navyFill)
+                .shadow(color: Brand.shadow.opacity(0.35), radius: 14, y: 8)
         )
         .confirmationDialog(l.t("rewards.convertTitle"), isPresented: $asking, titleVisibility: .visible) {
             Button(l.t("rewards.convert")) {
@@ -326,7 +326,7 @@ private struct MemberPage: View {
                         .foregroundStyle(active ? Brand.success : Brand.danger)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(active ? Brand.successFill : Color(red: 0.992, green: 0.925, blue: 0.918)))
+                        .background(Capsule().fill(active ? Brand.successFill : Color(light: 0xFDECEA, dark: 0x3D1E1A)))
                 }
                 Text("\(l.t("affiliate.memberSince", ["date": OrderWording.date(view.joinedAt, language: l.current)])) · \(l.t("affiliate.shownAs", ["name": view.displayName]))")
                     .font(.inter(13)).foregroundStyle(Brand.muted).fixedSize(horizontal: false, vertical: true)
@@ -625,7 +625,7 @@ private struct JoinAffiliates: View {
                 }
             }
             .frame(width: 40, height: 40)
-            .background(Circle().fill(Color.white))
+            .background(Circle().fill(Brand.surface))
             VStack(alignment: .leading, spacing: 2) {
                 Text(l.t("affiliate.stepNumber", ["number": "\(number)"])).font(.inter(12, .bold)).foregroundStyle(Brand.muted)
                 Text(l.t(title)).font(.inter(15, .bold)).foregroundStyle(Brand.navy)

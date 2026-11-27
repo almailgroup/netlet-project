@@ -21,7 +21,7 @@ struct ChoiceCircle: View {
             toggle(state != .all)
         } label: {
             ZStack {
-                Circle().fill(state == .none ? Color.white : Brand.navy)
+                Circle().fill(state == .none ? Brand.surface : Brand.navyFill)
                 Circle().strokeBorder(state == .none ? Self.ring : Brand.navy, lineWidth: 2)
                 if state == .all {
                     Image(systemName: "checkmark").font(.system(size: 11, weight: .heavy)).foregroundStyle(.white)
@@ -79,7 +79,7 @@ struct ChoicePill: View {
             .foregroundStyle(filled ? Color.white : Brand.navy)
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
-            .background(Capsule().fill(filled ? Brand.navy : Color.white))
+            .background(Capsule().fill(filled ? Brand.navyFill : Brand.surface))
             .overlay(Capsule().strokeBorder(filled ? Color.clear : Brand.navy.opacity(0.25), lineWidth: 1))
             .contentShape(Capsule())
         }

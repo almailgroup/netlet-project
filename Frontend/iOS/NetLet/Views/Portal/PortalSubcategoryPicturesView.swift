@@ -181,7 +181,7 @@ struct PortalSubcategoryPicturesView: View {
         VStack(alignment: .leading, spacing: 4) {
             content()
                 .frame(width: 88, height: 88)
-                .background(Color.white)
+                .background(Brand.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)

@@ -70,11 +70,11 @@ struct ConfirmOrderSheet: View {
                     .padding(14)
                     .accessibilityElement(children: .combine)
                     Divider().overlay(Brand.cardLine)
-                    row(icon: "mappin.and.ellipse", tint: Brand.orange, fill: Color(red: 253 / 255, green: 243 / 255, blue: 238 / 255),
+                    row(icon: "mappin.and.ellipse", tint: Brand.orange, fill: Color(light: 0xFDF3EE, dark: 0x3D261A),
                         caption: l.t("home.deliverTo"), title: address.label,
                         lines: [address.line(l.current), contact].filter { !$0.isEmpty })
                     Divider().overlay(Brand.cardLine)
-                    row(icon: "banknote", tint: .white, fill: Brand.navy,
+                    row(icon: "banknote", tint: .white, fill: Brand.navyFill,
                         caption: l.t("checkout.paymentMethod"), title: l.t("checkout.payCod"), lines: [])
                     Divider().overlay(Brand.cardLine)
                     HStack(alignment: .firstTextBaseline) {
@@ -85,7 +85,7 @@ struct ConfirmOrderSheet: View {
                     .padding(14)
                     .accessibilityElement(children: .combine)
                 }
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                 VStack(spacing: 10) {
                     Button(action: onConfirm) {
@@ -110,7 +110,7 @@ struct ConfirmOrderSheet: View {
             .padding(.top, 24)
             .padding(.bottom, 16)
         }
-        .background(Color(red: 1, green: 253 / 255, blue: 249 / 255).ignoresSafeArea())
+        .background(Color(light: 0xFFFDF9, dark: 0x121722).ignoresSafeArea())
         .environment(\.layoutDirection, l.layoutDirection)
         .interactiveDismissDisabled(placing)
         .onAppear { OrderChime.shared.prepare() }
@@ -220,7 +220,7 @@ struct OrderPlacedView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .frame(maxWidth: .infinity)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                 .accessibilityElement(children: .combine)
                 .padding(.top, 20)
@@ -270,9 +270,9 @@ struct OrderPlacedView: View {
                 .scaleEffect(burst ? 1.9 : 0.75)
                 .opacity(burst ? 0 : (shown && !reduceMotion ? 0.6 : 0))
             Circle()
-                .fill(Brand.navy)
+                .fill(Brand.navyFill)
                 .frame(width: 96, height: 96)
-                .shadow(color: Brand.navy.opacity(0.35), radius: 14, y: 10)
+                .shadow(color: Brand.shadow.opacity(0.35), radius: 14, y: 10)
                 .overlay {
                     Tick()
                         .trim(from: 0, to: ticked ? 1 : 0)

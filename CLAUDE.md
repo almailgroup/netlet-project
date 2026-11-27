@@ -9071,8 +9071,9 @@ refusal red for an error, the amber ink for a warning. `toaster.test.ts`
 fails on either cause coming back. Walked with the browser in dark mode at
 320, 390 and 1440 and in light mode at 1440, in both languages
 (`.scratch/toast-walk.mjs`): Save for later's toast white with navy words, a
-navy tick and a navy Undo, axe clean. The app is held to light mode
-(`UIUserInterfaceStyle`), and its toast was already white glass with navy.
+navy tick and a navy Undo, axe clean. The app's toast was already white
+glass with navy (its dark mode is a choice in Preferences, see "The app has a
+dark mode").
 
 **Run it against a catalog with products in it, and with some of
 them on offer** — an empty shop never renders a product card, and a shop where
@@ -13051,6 +13052,41 @@ followed, the snapshot through JSON and every link; `HomeWidgetUITests` reads
 the faces in both languages off the probe (`-NetLetOpen widgetProbe`, Debug
 only, `WidgetProbe`), which the CI photographs (`122-widgets`), the dark face
 included. Not yet seen on a phone's home screen from this sandbox.
+
+**The app has a dark mode, chosen in Preferences, on the owner's word**
+(option 9 of the list; `Appearance` and `AppearanceCard` in
+`Utilities/Appearance.swift`): Light, Dark or "Same as the phone", kept on the
+phone (`netlet.appearance`). **It starts Light until the dark pictures have
+been looked at** (`Appearance.fallback`), so a phone set to dark is not handed
+a dark shop before anybody has seen one; "Same as the phone" is the default to
+move to after. The choice is applied twice, since neither reaches everything
+alone: `preferredColorScheme` on the root (from the first frame, every sheet)
+and `overrideUserInterfaceStyle` on every window (the system's alerts, the
+keyboard). `Info.plist` no longer holds the app to light
+(`UIUserInterfaceStyle` is gone); the launch screen stays the navy it was.
+**Every colour is a token with a dark value** (`Color(light:dark:)` in
+`NetLetShared/BrandColors.swift`, a dynamic `UIColor`, so SwiftUI resolves it
+by the view's own scheme), and the screens were moved onto them by what each
+colour does, not by its hex: `Brand.navy` is navy *words and marks*
+(periwinkle in the dark), `Brand.navyFill` a navy *fill* under white words,
+`Brand.deepNavy` navy that never changes — words on the orange (Checkout's,
+the badges' count) and on a white plate over a photo; `Brand.surface` a card,
+`Brand.ground` the page, `Brand.well` a grey panel inside a card,
+`Brand.shadow` every shadow, and `Brand.glassFace` and `glassRim` the glass's
+tint and light, the blur turning `.dark` in a dark scheme (`GlassBlur.style`).
+**What stays light whatever the choice**: a product photo's frame
+(`Brand.photoFrame`, white — photographs are shot on white), the invoice and
+the receipt (pinned `.light`, on screen and in the PDF, being paper), the
+drawings with colours of their own (the launch, the Deals burst, the points
+coin, the journey, Apple's and Google's buttons), the chart series and status
+marks, and the Lock Screen card and the widgets, which draw their own dark
+faces. A UI test or a screenshot launch forgets the choice (`NetLetApp`), so a
+test that presses Dark changes only its own launch; `AppearanceUITests` presses
+Dark in Preferences and reads the page's ground off the screenshot, dark, then
+Light and light again. The CI photographs a screen of each kind in the dark
+(`dark-*`, `-NetLetAppearance dark`, Debug only), every one in English and the
+busiest in Arabic, which is what decides when "Same as the phone" becomes the
+default. Not yet seen on a phone from this sandbox.
 
 **TestFlight uploads by itself after every green iOS run on a push to
 `main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was

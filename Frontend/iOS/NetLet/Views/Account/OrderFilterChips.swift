@@ -42,7 +42,7 @@ struct OrderFilterButton: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Brand.navy)
                 .frame(width: 48, height: 48)
-                .background(Circle().fill(count > 0 ? Brand.tint : Color.white))
+                .background(Circle().fill(count > 0 ? Brand.tint : Brand.surface))
                 .overlay(Circle().strokeBorder(count > 0 ? Brand.navy : Brand.line, lineWidth: count > 0 ? 1.5 : 1))
                 .overlay(alignment: .topTrailing) {
                     if count > 0 {
@@ -50,7 +50,7 @@ struct OrderFilterButton: View {
                             .font(.inter(11, .bold))
                             .foregroundStyle(.white)
                             .frame(minWidth: 20, minHeight: 20)
-                            .background(Circle().fill(Brand.navy))
+                            .background(Circle().fill(Brand.navyFill))
                             .overlay(Circle().strokeBorder(.white, lineWidth: 2))
                             .offset(x: 4, y: -4)
                             .accessibilityHidden(true)
@@ -114,7 +114,7 @@ struct OrderFilterTokens: View {
                                 .padding(.leading, 12)
                                 .padding(.trailing, 10)
                                 .frame(minHeight: 36)
-                                .background(Capsule().fill(Brand.navy))
+                                .background(Capsule().fill(Brand.navyFill))
                                 .contentShape(Capsule())
                             }
                             .buttonStyle(SpringPressStyle(cornerRadius: 18))
@@ -320,7 +320,7 @@ private struct OrderFilterPage: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(Brand.surface.ignoresSafeArea())
     }
 
     private var whenChoices: some View {
@@ -461,7 +461,7 @@ private struct OrderFilterPage: View {
             .foregroundStyle(Brand.navy)
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
-            .background(Capsule().fill(chosen ? Brand.tint : Color.white))
+            .background(Capsule().fill(chosen ? Brand.tint : Brand.surface))
             .overlay(Capsule().strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 1.5 : 1))
             .contentShape(Capsule())
         }
@@ -527,7 +527,7 @@ private struct OrderCustomDays: View {
                 .kuwaitDays()
         }
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(red: 247 / 255, green: 249 / 255, blue: 252 / 255)))
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(light: 0xF7F9FC, dark: 0x1A283D)))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .environment(\.locale, l.current.locale)
     }

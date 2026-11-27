@@ -38,7 +38,7 @@ struct SavedCardsCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(red: 251 / 255, green: 252 / 255, blue: 254 / 255)))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(light: 0xFBFCFE, dark: 0x1A263D)))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.line, style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
             .accessibilityElement(children: .combine)
             Button {} label: {
@@ -49,12 +49,12 @@ struct SavedCardsCard: View {
                         .font(.inter(12, .bold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Capsule().fill(Brand.photo))
+                        .background(Capsule().fill(Brand.well))
                 }
                 .font(.inter(15, .bold))
                 .foregroundStyle(Brand.muted)
                 .frame(maxWidth: .infinity, minHeight: 50)
-                .background(Capsule().fill(Color.white))
+                .background(Capsule().fill(Brand.surface))
                 .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
             }
             .buttonStyle(.tap)

@@ -98,7 +98,7 @@ struct HelpItemPicker: View {
                 } label: {
                     HStack(spacing: 12) {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.white)
+                            .fill(Brand.surface)
                             .frame(width: 44, height: 44)
                             .overlay { RemoteImage(reference: item.photo, label: item.title) }
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -111,7 +111,7 @@ struct HelpItemPicker: View {
                         Spacer(minLength: 0)
                     }
                     .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                 }
                 .buttonStyle(.tap)
@@ -147,7 +147,7 @@ struct HelpAnswerView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 }
@@ -253,7 +253,7 @@ struct HelpActCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
         .task {
             if kind.isEmpty { kind = offer.returnKinds?.first ?? "refund" }
@@ -458,7 +458,7 @@ struct IssueCentre: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity, minHeight: 84, maxHeight: .infinity, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(chosen ? Brand.tint : Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(chosen ? Brand.tint : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.cardLine, lineWidth: chosen ? 1.5 : 1))
         }
         .buttonStyle(.tap)
@@ -487,7 +487,7 @@ struct IssueCentre: View {
                     } label: {
                         HStack(spacing: 12) {
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(Color.white)
+                                .fill(Brand.surface)
                                 .frame(width: 44, height: 44)
                                 .overlay { RemoteImage(reference: order.summary.photos.first, label: order.summary.first?.title ?? order.reference) }
                                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -498,7 +498,7 @@ struct IssueCentre: View {
                             Spacer(minLength: 0)
                         }
                         .padding(10)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
                         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                     }
                     .buttonStyle(.tap)

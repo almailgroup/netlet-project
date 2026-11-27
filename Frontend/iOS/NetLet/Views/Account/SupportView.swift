@@ -24,7 +24,7 @@ struct Bubble: View {
                 Text(stamp).font(.inter(11)).foregroundStyle(mine ? Color.white.opacity(0.75) : Brand.muted)
             }
             .padding(12)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(mine ? Brand.navy : Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(mine ? Brand.navyFill : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(mine ? Color.clear : Brand.cardLine, lineWidth: 1))
             if !mine { Spacer(minLength: 40) }
         }
@@ -141,7 +141,7 @@ struct SupportView: View {
                 if row.unread {
                     Text(l.t("support.newReply"))
                         .font(.inter(11, .bold))
-                        .foregroundStyle(Brand.navy)
+                        .foregroundStyle(Brand.deepNavy)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(Capsule().fill(Brand.orange))
@@ -152,7 +152,7 @@ struct SupportView: View {
                 Image(systemName: "chevron.forward").font(.system(size: 13, weight: .semibold)).foregroundStyle(Brand.chevron)
             }
             .padding(16)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }

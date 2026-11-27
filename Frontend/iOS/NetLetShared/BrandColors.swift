@@ -72,6 +72,18 @@ enum Brand {
     /// Behind a product photograph (#f4f6f9), in either mode: the photo is
     /// on white, and what stands in for it while it comes is nearly white.
     static let photo = Color(red: 244 / 255, green: 246 / 255, blue: 249 / 255)
+    /// A grey well a panel or a chip sits in (#f4f6f9) — `photo`'s grey, which
+    /// stays nearly white for a photograph, made dark in dark mode.
+    static let well = Color(light: 0xF4F6F9, dark: 0x202736)
+    /// The glass's face over its blur: white, and in dark mode a deep slate
+    /// over the dark blur, so the words on it keep their contrast either way.
+    static let glassFace = Color(light: 0xFFFFFF, dark: 0x141925)
+    /// The light along the glass's edges: white, and a muted slate line in
+    /// dark mode, where white would draw a bright hairline.
+    static let glassRim = Color(light: 0xFFFFFF, dark: 0x56627A)
+    /// What a raised thing casts: navy in the light, black in the dark, where a
+    /// navy shadow would be a glow.
+    static let shadow = Color(light: 0x0A285A, dark: 0x000000)
     /// The hover and press fill on white (#f0f2f5).
     static let pressFill = Color(light: 0xF0F2F5, dark: 0x232C3D)
     static let star = Color(red: 255 / 255, green: 184 / 255, blue: 0 / 255)

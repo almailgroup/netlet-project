@@ -89,7 +89,7 @@ private struct SponsorSteps: View {
                     Text(verbatim: "\(index + 1)")
                         .font(.inter(12, .bold)).foregroundStyle(.white)
                         .frame(width: 22, height: 22)
-                        .background(Circle().fill(Brand.navy))
+                        .background(Circle().fill(Brand.navyFill))
                         .accessibilityHidden(true)
                     Text(l.t(key)).font(.inter(13)).foregroundStyle(Brand.navy).fixedSize(horizontal: false, vertical: true)
                 }

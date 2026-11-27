@@ -710,7 +710,7 @@ private struct NoteField: View {
                 .submitLabel(.done)
                 .padding(.horizontal, 12)
                 .frame(minHeight: 44)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
                 .onSubmit(commit)
                 .onChange(of: focused) { _, now in if !now { commit() } }

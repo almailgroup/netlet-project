@@ -250,7 +250,7 @@ private struct SearchSheet: View {
                     // A hairline, so the pair reads as other ways in rather
                     // than two more things the search disc might mean.
                     Rectangle()
-                        .fill(Color(red: 201 / 255, green: 214 / 255, blue: 230 / 255))
+                        .fill(Brand.line)
                         .frame(width: 1, height: 20)
                         .padding(.horizontal, 2)
                         .accessibilityHidden(true)
@@ -277,7 +277,7 @@ private struct SearchSheet: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Brand.muted)
                         .frame(width: 28, height: 28)
-                        .background(Circle().fill(Color.white))
+                        .background(Circle().fill(Brand.surface))
                         .overlay(Circle().strokeBorder(Brand.line, lineWidth: 1))
                         .frame(width: 36, height: 36)
                         .contentShape(Rectangle())
@@ -372,7 +372,7 @@ private struct SearchSheet: View {
             }
             .padding(6)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.9)))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface.opacity(0.9)))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(SpringPressStyle(cornerRadius: 14))
@@ -387,7 +387,7 @@ private struct SearchSheet: View {
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 44)
-            .background(Capsule().fill(Color.white.opacity(0.9)))
+            .background(Capsule().fill(Brand.surface.opacity(0.9)))
             .contentShape(Capsule())
         }
         .buttonStyle(SpringPressStyle(cornerRadius: 22))
@@ -496,7 +496,7 @@ private struct SearchSheet: View {
                 Text(l.t("search.kindStore")).font(.inter(12)).foregroundStyle(Brand.muted)
             }
             .padding(8)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.85)))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface.opacity(0.85)))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(SpringPressStyle(cornerRadius: 14))
@@ -532,7 +532,7 @@ private struct SearchSheet: View {
                 Text(kind).font(.inter(12)).foregroundStyle(Brand.muted)
             }
             .padding(8)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.85)))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface.opacity(0.85)))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(SpringPressStyle(cornerRadius: 14))
@@ -571,7 +571,7 @@ private struct SearchSheet: View {
                 Spacer(minLength: 0)
             }
             .padding(8)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.85)))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface.opacity(0.85)))
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(SpringPressStyle(cornerRadius: 14))
@@ -752,7 +752,7 @@ private struct SubmitDisc: View {
 
     var body: some View {
         ZStack {
-            Circle().fill(Brand.navy)
+            Circle().fill(Brand.navyFill)
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
@@ -829,7 +829,7 @@ private struct SkeletonRows: View {
                     Spacer(minLength: 0)
                 }
                 .padding(8)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white.opacity(0.85)))
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface.opacity(0.85)))
             }
         }
         .accessibilityElement(children: .ignore)

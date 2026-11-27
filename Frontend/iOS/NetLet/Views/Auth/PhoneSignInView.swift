@@ -52,7 +52,7 @@ struct PhoneSignInSteps: View {
                         .foregroundStyle(Brand.navy)
                         .padding(.horizontal, 14)
                         .frame(height: 50)
-                        .background(Color(red: 243 / 255, green: 245 / 255, blue: 249 / 255))
+                        .background(Color(light: 0xF3F5F9, dark: 0x1D273A))
                         .accessibilityHidden(true)
                     Divider().frame(height: 50)
                     TextField("5XXX XXXX", text: $model.typed)
@@ -66,7 +66,7 @@ struct PhoneSignInSteps: View {
                         .accessibilityIdentifier("phoneNumber")
                 }
                 .environment(\.layoutDirection, .leftToRight)
-                .background(Color.white)
+                .background(Brand.surface)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -197,7 +197,7 @@ struct PhoneSignInSteps: View {
             .font(.system(size: 22, weight: .medium))
             .foregroundStyle(Brand.navy)
             .frame(width: 48, height: 48)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(red: 238 / 255, green: 242 / 255, blue: 248 / 255)))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(light: 0xEEF2F8, dark: 0x1A283D)))
             .accessibilityHidden(true)
     }
 

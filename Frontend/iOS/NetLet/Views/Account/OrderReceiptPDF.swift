@@ -292,7 +292,9 @@ struct ReceiptPage: View {
 @MainActor
 enum OrderReceiptPDF {
     static func write(_ words: ReceiptWords) -> URL? {
-        let renderer = ImageRenderer(content: ReceiptPage(words: words))
+        /* Paper whatever the app's appearance: the receipt's inks are the
+           shop's dynamic colours, which a dark scheme would turn pale. */
+        let renderer = ImageRenderer(content: ReceiptPage(words: words).environment(\.colorScheme, .light))
         renderer.proposedSize = ProposedViewSize(width: ReceiptPage.width, height: nil)
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("receipts", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

@@ -314,7 +314,7 @@ private struct HealthPanel: View {
     @Environment(LanguageSettings.self) private var l
 
     private var tone: Color {
-        health.band == "good" ? Brand.success : health.band == "fair" ? Color(red: 107 / 255, green: 79 / 255, blue: 29 / 255) : Brand.danger
+        health.band == "good" ? Brand.success : health.band == "fair" ? Color(light: 0x6B4F1D, dark: 0xE7D0A7) : Brand.danger
     }
 
     var body: some View {

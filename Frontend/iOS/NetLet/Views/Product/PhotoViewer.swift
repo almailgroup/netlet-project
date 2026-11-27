@@ -90,7 +90,7 @@ struct ProductPhotos: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
         .frame(height: 340)
         .frame(maxWidth: .infinity)
-        .background(Color.white)
+        .background(Brand.surface)
         .overlay {
             if media.count > 1 {
                 HStack {
@@ -154,7 +154,7 @@ struct ProductPhotos: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Capsule().fill(Brand.navy.opacity(0.85)))
+                    .background(Capsule().fill(Brand.deepNavy.opacity(0.85)))
                     .padding(12)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
@@ -238,7 +238,7 @@ struct ProductPhotos: View {
                     } label: {
                         thumbnail(item)
                             .frame(width: 62, height: 62)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.photoFrame))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .strokeBorder(index == offset ? Brand.navy : photoLine, lineWidth: 2)
@@ -256,7 +256,7 @@ struct ProductPhotos: View {
                         }
                         .foregroundStyle(.white)
                         .frame(width: 62, height: 62)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.navy))
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.navyFill))
                     }
                     .buttonStyle(.tap)
                     .accessibilityLabel(l.t("product.viewAllImages", ["count": "\(media.count)"]))
@@ -276,7 +276,7 @@ struct ProductPhotos: View {
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white)
                     .frame(width: 24, height: 24)
-                    .background(Circle().fill(Brand.navy.opacity(0.85)))
+                    .background(Circle().fill(Brand.deepNavy.opacity(0.85)))
             }
         } else {
             RemoteImage(reference: item.url, contentMode: .fit).padding(4)
@@ -398,7 +398,7 @@ struct PhotoSheet: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Color.white.ignoresSafeArea(edges: .top))
+        .background(Brand.surface.ignoresSafeArea(edges: .top))
         .overlay(alignment: .bottom) { Rectangle().fill(Brand.cardLine).frame(height: 1) }
     }
 
@@ -437,7 +437,7 @@ struct PhotoSheet: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(Capsule().fill(Brand.navy.opacity(0.85)))
+                        .background(Capsule().fill(Brand.deepNavy.opacity(0.85)))
                         .padding(10)
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -510,7 +510,7 @@ struct ZoomViewer: View {
             .padding(.top, 8)
             .padding(.bottom, 12)
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(Brand.surface.ignoresSafeArea())
         .accessibilityAction(.escape) { close() }
         .onChange(of: index) {
             scale = 1
@@ -793,7 +793,7 @@ struct GalleryVideo: View {
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 64, height: 64)
-                        .background(Circle().fill(Brand.navy.opacity(0.85)))
+                        .background(Circle().fill(Brand.deepNavy.opacity(0.85)))
                 }
                 .buttonStyle(.tap)
                 .accessibilityLabel(playLabel)

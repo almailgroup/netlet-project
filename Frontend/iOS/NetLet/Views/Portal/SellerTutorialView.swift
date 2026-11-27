@@ -103,10 +103,10 @@ struct SellerTutorialSheet: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 210, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Brand.photo))
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Brand.well))
         .accessibilityHidden(true)
         .id("\(index)-\(round)")
     }
@@ -185,7 +185,7 @@ private struct TutorialPartView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, minHeight: part.lines > 1 ? 62 : 34, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(flash > 0 && flash < 1 ? Brand.orange.opacity(0.14 * flash) : Color.white))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(flash > 0 && flash < 1 ? Brand.orange.opacity(0.14 * flash) : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(focused ? Brand.navy : Brand.line, lineWidth: 1))
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Brand.navy.opacity(focused ? 0.12 : 0), lineWidth: 6))
         }
@@ -202,7 +202,7 @@ private struct TutorialPartView: View {
             }
             .padding(.horizontal, 10)
             .frame(minHeight: 34)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             .pressRing(part.at, now, cornerRadius: 10)
         }
@@ -219,7 +219,7 @@ private struct TutorialPartView: View {
         .foregroundStyle(primary ? Color.white : Brand.navy)
         .padding(.horizontal, 14)
         .frame(minHeight: 34)
-        .background(Capsule().fill(primary ? Brand.navy : Color.white))
+        .background(Capsule().fill(primary ? Brand.navyFill : Brand.surface))
         .overlay(Capsule().strokeBorder(primary ? Color.clear : Brand.line, lineWidth: 1))
         .pressRing(part.at, now, cornerRadius: 17)
     }
@@ -239,7 +239,7 @@ private struct TutorialPartView: View {
                                     if slot == 0 {
                                         Text(l.t("admin.newPhotoCover")).font(.inter(9, .semibold)).foregroundStyle(.white)
                                             .padding(.horizontal, 4).padding(.vertical, 1)
-                                            .background(RoundedRectangle(cornerRadius: 4).fill(Brand.navy)).padding(3)
+                                            .background(RoundedRectangle(cornerRadius: 4).fill(Brand.navyFill)).padding(3)
                                     }
                                 }
                                 .opacity(p)
@@ -285,7 +285,7 @@ private struct TutorialPartView: View {
             }
         } else {
             let sheet = part.style == "sheet"
-            let headFill = sheet ? Color(red: 233 / 255, green: 240 / 255, blue: 230 / 255) : Brand.tint
+            let headFill = sheet ? Color(light: 0xE9F0E6, dark: 0x273621) : Brand.tint
             Grid(horizontalSpacing: 0, verticalSpacing: 0) {
                 GridRow {
                     ForEach(Array(part.head.enumerated()), id: \.offset) { _, cell in
@@ -325,7 +325,7 @@ private struct TutorialPartView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.photo))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.well))
     }
 
     private var chips: some View {
@@ -337,7 +337,7 @@ private struct TutorialPartView: View {
                     Text(say(item.words)).font(.inter(12, .semibold))
                         .foregroundStyle(slot == chosen ? Color.white : Brand.navy)
                         .padding(.horizontal, 12).padding(.vertical, 5)
-                        .background(Capsule().fill(slot == chosen ? Brand.navy : Color.white))
+                        .background(Capsule().fill(slot == chosen ? Brand.navyFill : Brand.surface))
                         .overlay(Capsule().strokeBorder(slot == chosen ? Brand.navy : Brand.line, lineWidth: 1))
                         .pressRing(slot == part.pick ? part.at : -10_000, now, cornerRadius: 14)
                 }
@@ -364,17 +364,17 @@ private struct TutorialPartView: View {
     }
 
     private static let statusFill: [String: Color] = [
-        "muted": Brand.tint, "waiting": Color(red: 1, green: 241 / 255, blue: 214 / 255), "live": Brand.successFill,
+        "muted": Brand.tint, "waiting": Color(light: 0xFFF1D6, dark: 0x3D311A), "live": Brand.successFill,
     ]
     private static let statusInk: [String: Color] = [
-        "muted": Brand.body, "waiting": Color(red: 122 / 255, green: 79 / 255, blue: 0), "live": Brand.success,
+        "muted": Brand.body, "waiting": Color(light: 0x7A4F00, dark: 0xE9D1A5), "live": Brand.success,
     ]
 
     private var search: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("netlet.net › products › brass-table-lamp").font(.inter(11)).foregroundStyle(Brand.body)
                 .environment(\.layoutDirection, .leftToRight)
-            Text("\(l.t("howTo.sample.title")) — NetLet").font(.inter(15)).foregroundStyle(Color(red: 26 / 255, green: 13 / 255, blue: 171 / 255))
+            Text("\(l.t("howTo.sample.title")) — NetLet").font(.inter(15)).foregroundStyle(Color(light: 0x1A0DAB, dark: 0xABA5E9))
             Text(l.t("howTo.sample.snippet")).font(.inter(12)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)
@@ -475,7 +475,7 @@ private struct TutorialCard: View {
                 .frame(width: 140, height: 140)
                 .overlay(alignment: .topLeading) {
                     if was {
-                        Text("−17%").font(.inter(11, .bold)).foregroundStyle(Brand.navy)
+                        Text("−17%").font(.inter(11, .bold)).foregroundStyle(Brand.deepNavy)
                             .padding(.horizontal, 5).padding(.vertical, 1)
                             .background(RoundedRectangle(cornerRadius: 5).fill(Brand.orange)).padding(6)
                             .environment(\.layoutDirection, .leftToRight)
@@ -491,7 +491,7 @@ private struct TutorialCard: View {
             .padding(8)
         }
         .frame(width: 140, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }

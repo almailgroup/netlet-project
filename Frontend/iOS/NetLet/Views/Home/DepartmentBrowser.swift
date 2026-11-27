@@ -258,7 +258,7 @@ struct DepartmentBrowser: View {
                     }
                 }
                 .frame(width: 56, height: 56)
-                .background(tileShape.fill(drawn ? Color.white : Color(red: 226 / 255, green: 230 / 255, blue: 237 / 255)))
+                .background(tileShape.fill(drawn ? Brand.surface : Color(light: 0xE2E6ED, dark: 0x212935)))
                 .clipShape(tileShape)
                 .accessibilityHidden(true)
                 Text(title)
@@ -270,7 +270,7 @@ struct DepartmentBrowser: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, minHeight: 76, maxHeight: .infinity, alignment: .leading)
-            .background(rowShape.fill(Color(red: 241 / 255, green: 243 / 255, blue: 246 / 255)))
+            .background(rowShape.fill(Color(light: 0xF1F3F6, dark: 0x222935)))
             .contentShape(rowShape)
         }
         .buttonStyle(SpringPressStyle(cornerRadius: 18))

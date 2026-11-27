@@ -34,7 +34,7 @@ struct ProfileAvatar: View {
 struct DefaultAvatar: View {
     let size: CGFloat
 
-    static let ground = Color(red: 231 / 255, green: 236 / 255, blue: 243 / 255)
+    static let ground = Color(light: 0xE7ECF3, dark: 0x1D293A)
     static let figure = Color(red: 162 / 255, green: 176 / 255, blue: 197 / 255)
 
     var body: some View {
@@ -90,7 +90,7 @@ struct ProfilePhotoControls: View {
                         .overlay(alignment: .bottomTrailing) {
                             // The camera on the picture's corner says the picture is where it changes.
                             ZStack {
-                                Circle().fill(Brand.navy)
+                                Circle().fill(Brand.navyFill)
                                 if preparing {
                                     ProgressView().tint(.white).scaleEffect(0.6)
                                 } else {

@@ -98,7 +98,7 @@ struct DeliverySheet: View {
                     }
                 }
             }
-            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             addButton
             Button {
@@ -211,7 +211,7 @@ struct DeliverySheet: View {
                         .font(.inter(14, chosen ? .bold : .medium))
                         .foregroundStyle(chosen ? .white : Brand.navy)
                         .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(chosen ? Brand.navy : Color.white))
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(chosen ? Brand.navyFill : Brand.surface))
                         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: chosen ? 0 : 1))
                 }
                 .buttonStyle(PressFillStyle(cornerRadius: 14, strength: Haptics.actionStrength))

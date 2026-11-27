@@ -44,7 +44,7 @@ struct PointsCoin: View {
                 .frame(width: 26.2 * unit, height: 26.2 * unit)
                 .offset(y: 0.3 * unit)
             CoinLetter()
-                .fill(Brand.navy)
+                .fill(Brand.deepNavy)
                 .frame(width: 12.4 * unit, height: 12.9 * unit)
                 .offset(y: -0.25 * unit)
             Ellipse()

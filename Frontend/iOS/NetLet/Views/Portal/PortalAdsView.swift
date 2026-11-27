@@ -535,7 +535,7 @@ struct PlacementCalendarView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .task {
             do {
@@ -615,7 +615,7 @@ struct PlacementCalendarView: View {
                         .strikethrough(full)
                         .foregroundStyle(chosen ? Color.white : (full || !startable) ? Brand.muted : Brand.navy)
                         .frame(maxWidth: .infinity, minHeight: 46)
-                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(chosen ? Brand.navy : full ? Brand.photo : Color.white))
+                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(chosen ? Brand.navyFill : full ? Brand.photo : Brand.surface))
                         .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(chosen ? Brand.navy : Brand.cardLine, lineWidth: 1))
                     }
                     .buttonStyle(.tap)

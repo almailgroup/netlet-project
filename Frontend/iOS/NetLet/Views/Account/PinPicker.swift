@@ -33,8 +33,8 @@ struct PinField: View {
                                 .foregroundStyle(Brand.navy)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)
-                                .background(Capsule().fill(Color.white.opacity(0.95)))
-                                .shadow(color: Brand.navy.opacity(0.18), radius: 5, y: 2)
+                                .background(Capsule().fill(Brand.surface.opacity(0.95)))
+                                .shadow(color: Brand.shadow.opacity(0.18), radius: 5, y: 2)
                                 .padding(.top, 8)
                                 .environment(\.layoutDirection, l.layoutDirection)
                         }
@@ -85,7 +85,7 @@ struct PinField: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
         .fullScreenCover(isPresented: $picking) {
             PinPickerSheet(start: pin ?? startingPin, zoomedIn: pin != nil) { picked, read in onChange(picked, read) }
@@ -344,7 +344,7 @@ struct PinPickerSheet: View {
                         .foregroundStyle(satellite == on ? Color.white : Brand.navy)
                         .padding(.horizontal, 14)
                         .frame(minHeight: 34)
-                        .background(Capsule().fill(satellite == on ? Brand.navy : Color.clear))
+                        .background(Capsule().fill(satellite == on ? Brand.navyFill : Color.clear))
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.tap)
@@ -394,12 +394,12 @@ struct PinPickerSheet: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: Brand.navy.opacity(0.18), radius: 9, y: 4)
+                    .fill(Brand.surface)
+                    .shadow(color: Brand.shadow.opacity(0.18), radius: 9, y: 4)
             )
             .overlay(alignment: .bottom) {
                 Rectangle()
-                    .fill(Color.white)
+                    .fill(Brand.surface)
                     .frame(width: 10, height: 10)
                     .rotationEffect(.degrees(45))
                     .offset(y: 5)

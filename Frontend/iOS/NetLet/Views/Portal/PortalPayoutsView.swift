@@ -454,7 +454,7 @@ struct PayoutsDueSection: View {
                         .padding(12)
                     }
                 }
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             }
         }

@@ -130,7 +130,7 @@ struct WishSheet: View {
                 }
             }
             .padding(16)
-            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
@@ -218,7 +218,7 @@ struct WishSheet: View {
                 .multilineTextAlignment(.leading)
             }
             .padding(16)
-            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }

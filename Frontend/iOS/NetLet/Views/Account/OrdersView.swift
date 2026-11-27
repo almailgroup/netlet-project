@@ -115,7 +115,7 @@ struct OrdersView: View {
                                 .padding(.bottom, 14)
                             }
                         }
-                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                     }
                     if model.canLoadMore, model.moreFailed {
@@ -256,7 +256,7 @@ private struct OrdersTop: View {
         .padding(.leading, 14)
         .padding(.trailing, typed.isEmpty ? 14 : 4)
         .frame(minHeight: 48)
-        .background(Capsule().fill(Color.white))
+        .background(Capsule().fill(Brand.surface))
         .overlay(Capsule().strokeBorder(searching ? Brand.navy : Brand.line, lineWidth: searching ? 1.5 : 1))
     }
 }
@@ -345,7 +345,7 @@ struct OrderRow: View {
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 5)
-                            .background(Capsule().fill(Brand.navy))
+                            .background(Capsule().fill(Brand.navyFill))
                             .padding(3)
                     }
                 }
@@ -683,7 +683,7 @@ struct OrderDetailView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(red: 247 / 255, green: 249 / 255, blue: 252 / 255)))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(light: 0xF7F9FC, dark: 0x1A283D)))
             }
             ForEach(detail.lines) { line in
                 VStack(alignment: .leading, spacing: 10) {
@@ -710,7 +710,7 @@ struct OrderDetailView: View {
                             Color.clear
                                 .frame(width: ItemStatusTile.width, height: ItemStatusTile.width)
                                 .overlay { RemoteImage(reference: line.photo) }
-                                .background(Color.white)
+                                .background(Brand.photoFrame)
                                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                                 .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                                 .onTapGesture { pressPhoto(line) }

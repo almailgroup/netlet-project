@@ -109,7 +109,7 @@ struct PortalFinanceView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 100, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 
@@ -229,7 +229,7 @@ struct PortalInvoicesView: View {
             }
             .padding(.leading, 12)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             if let list {
                 if list.rows.isEmpty {
@@ -990,7 +990,7 @@ private struct CodeProductPicker: View {
                     if row.id != rows.last?.id { Divider().overlay(Brand.cardLine) }
                 }
             }
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         }
         .task(id: "\(vendorId)|\(query)") {

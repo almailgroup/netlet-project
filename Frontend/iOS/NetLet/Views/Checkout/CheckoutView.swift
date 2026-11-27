@@ -251,7 +251,7 @@ private struct CheckoutForm: View {
                 .environment(\.layoutDirection, .leftToRight)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 48)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(phoneFocused ? Brand.navy : Brand.line, lineWidth: phoneFocused ? 2 : 1))
                 .accessibilityLabel(l.t("checkout.driverPhone"))
             Text(l.t("checkout.driverPhoneNote"))
@@ -363,7 +363,7 @@ private struct CheckoutItems: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
             }
         }
@@ -406,11 +406,11 @@ private struct StoreParcel: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(red: 250 / 255, green: 251 / 255, blue: 252 / 255))
+            .background(Color(light: 0xFAFBFC, dark: 0x212B36))
             .opacity(app.cart.syncing ? 0.5 : 1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white)
+        .background(Brand.surface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .accessibilityElement(children: .contain)
@@ -552,7 +552,7 @@ private struct PaymentMethods: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 2)
-                                .background(Capsule().fill(Brand.navy))
+                                .background(Capsule().fill(Brand.navyFill))
                         }
                     }
                     Text(l.t("checkout.payCodNote"))
@@ -563,7 +563,7 @@ private struct PaymentMethods: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255)))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(light: 0xF6F8FB, dark: 0x1B283C)))
                 .accessibilityElement(children: .combine)
             }
             if offered.contains(where: { $0 != .cod }) {
@@ -626,7 +626,7 @@ struct MenuField: View {
         }
         .padding(.horizontal, 14)
         .frame(minHeight: 50)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fromPin ? Brand.fromPin : Color.white))
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fromPin ? Brand.fromPin : Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(fromPin ? Brand.fromPinRim : Brand.line, lineWidth: 1))
         .animation(.easeOut(duration: 0.25), value: fromPin)
     }
@@ -639,7 +639,7 @@ struct OrderButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.body.weight(.bold))
-            .foregroundStyle(Brand.navy)
+            .foregroundStyle(Brand.deepNavy)
             .frame(maxWidth: .infinity, minHeight: 56)
             .liquidGlass(.orange, enabled: isEnabled, pressed: configuration.isPressed)
             .pressHaptic(configuration.isPressed, strength: Haptics.actionStrength)

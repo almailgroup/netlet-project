@@ -262,7 +262,7 @@ private struct BrowsePage: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .frame(minWidth: 20, minHeight: 20)
-                        .background(Capsule().fill(Brand.navy))
+                        .background(Capsule().fill(Brand.navyFill))
                 }
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .bold))
@@ -889,7 +889,7 @@ private struct PriceRangeFields: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .frame(minHeight: 44)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.navy))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.navyFill))
                     .buttonStyle(.tap)
             }
         }
@@ -907,7 +907,7 @@ private struct PriceRangeFields: View {
             .foregroundStyle(Brand.navy)
             .padding(.horizontal, 10)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             .accessibilityLabel(label)
     }

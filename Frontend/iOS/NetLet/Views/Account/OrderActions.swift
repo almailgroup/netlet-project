@@ -417,7 +417,7 @@ struct ParcelStepsCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 
@@ -438,7 +438,7 @@ struct ParcelStepsCard: View {
                     .font(.inter(12, .heavy))
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
-                    .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Brand.navy))
+                    .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Brand.navyFill))
                     .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Color.white, lineWidth: 2))
             }
         }
@@ -564,7 +564,7 @@ private struct TrackStepDot: View {
                     .scaleEffect(spread ? 1.6 : 1)
                     .opacity(spread ? 0 : 0.75)
             }
-            Circle().fill(done ? (home ? Brand.success : Brand.navy) : now ? Brand.orange : Brand.photo)
+            Circle().fill(done ? (home ? Brand.success : Brand.navyFill) : now ? Brand.orange : Brand.well)
             if !done && !now { Circle().strokeBorder(Brand.cardLine, lineWidth: 1) }
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .semibold))
@@ -733,7 +733,7 @@ struct RefundSheet: View {
             }
             .padding(10)
             .frame(minHeight: 56)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? Brand.navy : Brand.cardLine, lineWidth: 1))
         }
         .buttonStyle(.tap)
@@ -923,7 +923,7 @@ struct EditOrderButton: View {
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 36)
-                .background(Capsule().fill(editing ? Brand.navy : Color.white))
+                .background(Capsule().fill(editing ? Brand.navyFill : Brand.surface))
                 .overlay(Capsule().strokeBorder(editing ? Brand.navy : Brand.line, lineWidth: 1))
                 .frame(minHeight: 44)
                 .contentShape(Capsule())

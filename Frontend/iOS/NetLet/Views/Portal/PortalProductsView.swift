@@ -83,7 +83,7 @@ struct PortalProductsView: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(red: 1, green: 240 / 255, blue: 171 / 255)))
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color(light: 0xFFF0AB, dark: 0x3D361A)))
             }
             list
         }
@@ -122,7 +122,7 @@ struct PortalProductsView: View {
             }
             .padding(.horizontal, 12)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             .accessibilityElement(children: .combine)
             .accessibilityLabel(l.t("admin.searchProducts"))
@@ -248,7 +248,7 @@ struct PortalProductsView: View {
             }
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 
@@ -302,7 +302,7 @@ struct PortalProductsView: View {
                 .foregroundStyle(Brand.navy)
                 .padding(.horizontal, 12)
                 .frame(minHeight: 36)
-                .background(Capsule().fill(Color.white))
+                .background(Capsule().fill(Brand.surface))
                 .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
         }
         .buttonStyle(.tap)

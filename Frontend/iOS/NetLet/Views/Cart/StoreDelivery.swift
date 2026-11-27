@@ -147,7 +147,7 @@ private struct StoreDeliverySheet: View {
                         .padding(.vertical, 16)
                 }
             }
-            .background(Color.white)
+            .background(Brand.surface)
             .navigationTitle(l.t("storeDelivery.title", ["name": group.store.name(l.current)]))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -227,7 +227,7 @@ private struct StoreDeliverySheet: View {
                         .foregroundStyle(Brand.muted)
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Brand.photo))
+                        .background(RoundedRectangle(cornerRadius: 14).fill(Brand.well))
                 } else {
                     section(l.t("storeDelivery.dayHeading"), symbol: "calendar") {
                         if store.slotGone && ahead.slot == nil {
@@ -361,7 +361,7 @@ private struct StoreDeliverySheet: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .frame(minHeight: 52)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(on ? Brand.tint : Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(on ? Brand.tint : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(on ? Brand.navy : Brand.line, lineWidth: 1))
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
@@ -380,7 +380,7 @@ private struct StoreDeliverySheet: View {
             .padding(.vertical, 6)
             .frame(minHeight: 44)
             .frame(maxWidth: note == nil ? nil : .infinity)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(on ? Brand.navy : Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(on ? Brand.navyFill : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(on ? Brand.navy : Brand.line, lineWidth: 1))
         }
         .buttonStyle(.tap)

@@ -137,7 +137,7 @@ struct ReturnsList: View {
         switch status {
         case "refunded", "exchanged": return (Brand.success, Brand.successFill)
         case "declined": return (Brand.danger, Brand.danger.opacity(0.08))
-        case "cancelled": return (Brand.body, Brand.photo)
+        case "cancelled": return (Brand.body, Brand.well)
         default: return (Brand.navy, Brand.tint)
         }
     }

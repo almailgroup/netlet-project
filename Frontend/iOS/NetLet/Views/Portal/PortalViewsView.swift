@@ -240,7 +240,7 @@ struct ViewsTrend: View {
                             Text(l.t("views.visitorsOn", ["count": "\(day.visitors)"])).font(.inter(11)).foregroundStyle(Brand.muted)
                         }
                         .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white).shadow(color: Brand.navy.opacity(0.12), radius: 6, y: 2))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Brand.surface).shadow(color: Brand.shadow.opacity(0.12), radius: 6, y: 2))
                     }
             }
         }
@@ -400,7 +400,7 @@ struct ViewsProducts: View {
             }
             .padding(.horizontal, 12)
             .frame(minHeight: 44)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.line, lineWidth: 1))
             PortalSegmented(label: l.t("views.sort"), value: $sort, options: [
                 ("views", l.t("views.sortViews")), ("orders", l.t("views.sortOrders")), ("attention", l.t("views.sortAttention")),

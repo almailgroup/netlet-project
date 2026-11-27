@@ -64,7 +64,7 @@ struct FaceIDOfferSheet: View {
             .frame(maxWidth: .infinity)
             .sheetFit(initial: 360)
         }
-        .background(Color.white.ignoresSafeArea())
+        .background(Brand.surface.ignoresSafeArea())
         .presentationDragIndicator(.visible)
         .languageDirection()
         .buttonStyle(HapticDefaultStyle())

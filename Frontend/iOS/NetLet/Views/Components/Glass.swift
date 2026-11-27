@@ -58,16 +58,16 @@ struct GlassSurface: View {
 
     private var tint: some View {
         VStack(spacing: 0) {
-            Color.white.opacity(faceTop).frame(height: reach)
-            LinearGradient(colors: [Color.white.opacity(faceTop), Color.white.opacity(faceFoot)], startPoint: .top, endPoint: .bottom)
+            Brand.glassFace.opacity(faceTop).frame(height: reach)
+            LinearGradient(colors: [Brand.glassFace.opacity(faceTop), Brand.glassFace.opacity(faceFoot)], startPoint: .top, endPoint: .bottom)
         }
         .overlay(alignment: .top) {
             if rim {
                 // The web's face: a glow over the first 10 points and a bright
                 // line along the very top.
-                LinearGradient(colors: [Color.white.opacity(0.35), Color.white.opacity(0)], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [Brand.glassRim.opacity(0.35), Brand.glassRim.opacity(0)], startPoint: .top, endPoint: .bottom)
                     .frame(height: 10)
-                    .overlay(alignment: .top) { Rectangle().fill(Color.white.opacity(0.9)).frame(height: 1) }
+                    .overlay(alignment: .top) { Rectangle().fill(Brand.glassRim.opacity(0.9)).frame(height: 1) }
             }
         }
         .allowsHitTesting(false)
@@ -114,21 +114,35 @@ struct GlassBlur: UIViewRepresentable {
         max(0, min(1, (total - ownWhite) / (1 - ownWhite)))
     }
 
+    /// Light, or in dark mode UIKit's dark blur, which only ever darkens.
+    private static func style(_ context: Context) -> UIBlurEffect.Style {
+        context.environment.colorScheme == .dark ? .dark : .light
+    }
+
     func makeUIView(context: Context) -> RoundedBlurView {
-        let view = RoundedBlurView(effect: UIBlurEffect(style: .light))
+        let style = Self.style(context)
+        let view = RoundedBlurView(effect: UIBlurEffect(style: style))
         view.isUserInteractionEnabled = false
         view.corners = corners
+        view.style = style
         return view
     }
 
     func updateUIView(_ view: RoundedBlurView, context: Context) {
         view.corners = corners
+        let style = Self.style(context)
+        if view.style != style {
+            view.style = style
+            view.effect = UIBlurEffect(style: style)
+        }
     }
 }
 
 /// An effect view that rounds its own corners — the one clip UIKit's blur
 /// keeps rendering under.
 final class RoundedBlurView: UIVisualEffectView {
+    /// The blur it was made with, so a change of scheme makes it again once.
+    var style: UIBlurEffect.Style = .light
     var corners: GlassCorners = .square {
         didSet { setNeedsLayout() }
     }
@@ -189,8 +203,8 @@ struct FloatingGlass<S: InsettableShape>: View {
                         .init(color: Brand.navy.opacity(0), location: 0.82),
                         .init(color: Brand.navy.opacity(0.06), location: 1),
                     ], startPoint: .top, endPoint: .bottom))
-                    shape.inset(by: 1).strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
-                    shape.inset(by: 1).strokeBorder(LinearGradient(colors: [Color.white.opacity(0.95), Color.white.opacity(0)], startPoint: .top, endPoint: .center), lineWidth: 1.5)
+                    shape.inset(by: 1).strokeBorder(Brand.glassRim.opacity(0.5), lineWidth: 1)
+                    shape.inset(by: 1).strokeBorder(LinearGradient(colors: [Brand.glassRim.opacity(0.95), Brand.glassRim.opacity(0)], startPoint: .top, endPoint: .center), lineWidth: 1.5)
                     shape.strokeBorder(Color.black.opacity(0.12), lineWidth: 1)
                 }
                 .allowsHitTesting(false)
@@ -210,8 +224,8 @@ struct OuterShadow<S: InsettableShape>: View {
 
     var body: some View {
         ZStack {
-            shape.fill(Color.black).shadow(color: Brand.navy.opacity(0.12), radius: 14, x: 0, y: 8)
-            shape.fill(Color.black).shadow(color: Brand.navy.opacity(0.06), radius: 1.5, x: 0, y: 1)
+            shape.fill(Color.black).shadow(color: Brand.shadow.opacity(0.12), radius: 14, x: 0, y: 8)
+            shape.fill(Color.black).shadow(color: Brand.shadow.opacity(0.06), radius: 1.5, x: 0, y: 1)
             shape.inset(by: -1).fill(Color.black).blendMode(.destinationOut)
         }
         .compositingGroup()
@@ -304,12 +318,12 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
     private var tint: Color {
         switch tone {
         case .clear: return Brand.navy.opacity(enabled ? 0.07 : 0.03)
-        case .frost: return Color.white.opacity(0.55)
-        case .navy: return Brand.navy.opacity(enabled ? 1 : 0.35)
+        case .frost: return Brand.glassFace.opacity(0.55)
+        case .navy: return Brand.navyFill.opacity(enabled ? 1 : 0.35)
         case .orange: return Brand.orange.opacity(enabled ? 1 : 0.45)
         case .danger: return Brand.danger.opacity(enabled ? 1 : 0.35)
         case .success: return Brand.success
-        case .bright: return Color.white.opacity(0.82)
+        case .bright: return Brand.glassFace.opacity(0.82)
         }
     }
 
@@ -318,19 +332,19 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
     private var earlier: some View {
         switch tone {
         case .clear:
-            shape.fill(pressed ? Brand.pressFill : Color.white)
-                .shadow(color: Brand.navy.opacity(lifted ? 0.16 : 0), radius: 7, y: 3)
+            shape.fill(pressed ? Brand.pressFill : Brand.surface)
+                .shadow(color: Brand.shadow.opacity(lifted ? 0.16 : 0), radius: 7, y: 3)
                 .overlay(shape.strokeBorder(Brand.navy.opacity(0.2), lineWidth: 1))
         case .frost:
             ZStack {
-                shape.fill(Color.white.opacity(0.01)).shadow(color: Brand.navy.opacity(lifted ? 0.2 : 0.14), radius: lifted ? 10 : 6, y: lifted ? 5 : 2)
+                shape.fill(Color.white.opacity(0.01)).shadow(color: Brand.shadow.opacity(lifted ? 0.2 : 0.14), radius: lifted ? 10 : 6, y: lifted ? 5 : 2)
                 shape.fill(.ultraThinMaterial)
-                shape.fill(Color.white.opacity(pressed ? 0.75 : 0.62))
+                shape.fill(Brand.glassFace.opacity(pressed ? 0.75 : 0.62))
                 shape.strokeBorder(Color.black.opacity(0.1), lineWidth: 1)
             }
         case .navy:
-            shape.fill(enabled ? (pressed ? Brand.navyPressed : Brand.navy) : Brand.navy.opacity(0.35))
-                .shadow(color: Brand.navy.opacity(lifted ? 0.28 : 0), radius: 15, y: 10)
+            shape.fill(enabled ? (pressed ? Brand.navyPressed : Brand.navyFill) : Brand.navyFill.opacity(0.35))
+                .shadow(color: Brand.shadow.opacity(lifted ? 0.28 : 0), radius: 15, y: 10)
         case .orange:
             ZStack {
                 shape.fill(Brand.orange.opacity(enabled ? 1 : 0.45))
@@ -341,8 +355,8 @@ struct LiquidGlass<S: InsettableShape>: ViewModifier {
         case .success:
             shape.fill(Brand.success)
         case .bright:
-            shape.fill(Color.white)
-                .shadow(color: Brand.navy.opacity(lifted ? 0.12 : 0), radius: 12, y: 6)
+            shape.fill(Brand.surface)
+                .shadow(color: Brand.shadow.opacity(lifted ? 0.12 : 0), radius: 12, y: 6)
                 .overlay(shape.strokeBorder(Brand.line, lineWidth: 1))
         }
     }

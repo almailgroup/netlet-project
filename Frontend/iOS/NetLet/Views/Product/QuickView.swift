@@ -106,7 +106,7 @@ private struct QuickViewContent: View {
                 actions(proxy)
             }
         }
-        .background(Color.white)
+        .background(Brand.surface)
         .onChange(of: model.imageIndex) { _, index in
             // A colour chosen shows its photo — counted in the gallery, which
             // a video can sit in, so it is found among the stills by address.
@@ -169,7 +169,7 @@ private struct QuickViewContent: View {
         .padding(.trailing, 8)
         .padding(.top, 16)
         .padding(.bottom, 6)
-        .background(Brand.navy)
+        .background(Brand.navyFill)
     }
 
     // MARK: The photographs
@@ -205,7 +205,7 @@ private struct QuickViewContent: View {
                     Text("\(photo + 1) / \(stills.count)")
                         .font(.inter(12, .bold))
                         .monospacedDigit()
-                        .foregroundStyle(Brand.navy)
+                        .foregroundStyle(Brand.deepNavy)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
                         .background(Capsule().fill(Color.white.opacity(0.92)))
@@ -234,7 +234,7 @@ private struct QuickViewContent: View {
                             RemoteImage(reference: image.url, contentMode: .fit)
                                 .padding(4)
                                 .frame(width: 56, height: 56)
-                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.photoFrame))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                                         .strokeBorder(current ? Brand.navy : Brand.cardLine, lineWidth: current ? 2 : 1)
@@ -516,7 +516,7 @@ private struct QuickViewContent: View {
         .padding(.horizontal, 20)
         .padding(.top, 12)
         .padding(.bottom, 12)
-        .background(Color.white.shadow(.drop(color: Brand.navy.opacity(0.08), radius: 10, y: -4)))
+        .background(Brand.surface.shadow(.drop(color: Brand.navy.opacity(0.08), radius: 10, y: -4)))
     }
 
     private func pair(_ proxy: ScrollViewProxy) -> some View {

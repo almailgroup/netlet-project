@@ -501,7 +501,7 @@ enum DealsBurstScene {
         let oval = Path(ellipseIn: CGRect(x: state.centre.x - width / 2, y: rest.y + bagSide * 0.5, width: width, height: 12))
         context.drawLayer { layer in
             layer.addFilter(.blur(radius: 7))
-            layer.fill(oval, with: .color(Brand.navy.opacity(0.22 * near)))
+            layer.fill(oval, with: .color(Brand.shadow.opacity(0.22 * near)))
         }
     }
 

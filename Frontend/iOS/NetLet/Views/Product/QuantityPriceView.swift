@@ -51,10 +51,10 @@ struct QuantityPriceView: View {
                     if let percent = savingPercent, percent > 0 {
                         Text(l.t("product.savePercent", ["percent": "\(percent)"]))
                             .font(.inter(12, .bold))
-                            .foregroundStyle(Color(red: 21 / 255, green: 87 / 255, blue: 36 / 255))
+                            .foregroundStyle(Color(light: 0x155724, dark: 0xA5E9B5))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color(red: 212 / 255, green: 237 / 255, blue: 218 / 255)))
+                            .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color(light: 0xD4EDDA, dark: 0x1A3D22)))
                     }
                 }
             }

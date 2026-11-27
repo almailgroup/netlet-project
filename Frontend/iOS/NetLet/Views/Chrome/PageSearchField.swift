@@ -46,7 +46,7 @@ struct PageSearchField: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Brand.muted)
                         .frame(width: 28, height: 28)
-                        .background(Circle().fill(Color.white))
+                        .background(Circle().fill(Brand.surface))
                         .overlay(Circle().strokeBorder(Brand.line, lineWidth: 1))
                         .frame(width: 36, height: 36)
                         .contentShape(Rectangle())
@@ -61,7 +61,7 @@ struct PageSearchField: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
-                    .background(Circle().fill(Brand.navy))
+                    .background(Circle().fill(Brand.navyFill))
             }
             .buttonStyle(.tap)
             .accessibilityLabel(l.t("search.pageSubmit"))
@@ -98,7 +98,7 @@ struct PageSearchMissed: View {
                         .foregroundStyle(Brand.navy)
                         .padding(.horizontal, 18)
                         .frame(minHeight: 44)
-                        .background(Capsule().fill(Color.white))
+                        .background(Capsule().fill(Brand.surface))
                         .overlay(Capsule().strokeBorder(Brand.cardLine, lineWidth: 1))
                 }
                 .buttonStyle(.tap)
@@ -107,7 +107,7 @@ struct PageSearchMissed: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
         .padding(.horizontal, 16)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .accessibilityElement(children: .contain)
     }

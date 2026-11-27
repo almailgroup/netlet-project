@@ -471,7 +471,7 @@ private struct CartStoreCard: View {
             StorePaysWith(group: group)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .accessibilityElement(children: .contain)
     }
@@ -831,7 +831,7 @@ private struct SpeedChoice: View {
             }
         }
         .padding(2)
-        .background(Capsule().fill(Color.white))
+        .background(Capsule().fill(Brand.surface))
         .overlay(Capsule().strokeBorder(Brand.line, lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(l.t("delivery.choiceFor", ["name": title]))
@@ -849,7 +849,7 @@ private struct SpeedChoice: View {
                 .foregroundStyle(on ? Color.white : Brand.navy)
                 .padding(.horizontal, 10)
                 .frame(minHeight: 32)
-                .background(Capsule().fill(on ? Brand.navy : Color.clear))
+                .background(Capsule().fill(on ? Brand.navyFill : Color.clear))
         }
         .buttonStyle(.tap)
         .disabled(app.cart.busyLine == item.lineId)

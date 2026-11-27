@@ -2,7 +2,8 @@ import SwiftUI
 
 /// The account's preferences — the web's `AccountPreferences`: the delivery
 /// area, which notices the shopper hears in the five groups the web draws
-/// (`NoticeCategoriesList`), and the app's own settings: what it keeps on the
+/// (`NoticeCategoriesList`), and the app's own settings: light or dark
+/// (`AppearanceCard`), what it keeps on the
 /// phone with Clear cache (`StorageCard`), haptic feedback on or off
 /// (`HapticsCard`), orders on the Lock Screen (`LiveTrackingCard`) and Rate
 /// our app (`RateAppCard`). The language and the currency
@@ -19,6 +20,7 @@ struct PreferencesView: View {
                     VStack(spacing: 14) {
                         panel(symbol: "mappin", title: "account.deliveryArea", note: "account.pricingUnconfigured") { area(model) }
                         panel(symbol: "bell", title: "notify.title", note: "notify.intro") { NoticeCategoriesList(model: model) }
+                        panel(symbol: "circle.lefthalf.filled", title: "ios.appearance.title", note: "ios.appearance.note") { AppearanceCard() }
                         panel(symbol: "iphone.radiowaves.left.and.right", title: "haptics.title", note: "haptics.note") { HapticsCard() }
                         panel(symbol: "truck.box", title: "ios.live.cardTitle", note: "ios.live.note") { LiveTrackingCard() }
                         panel(symbol: "internaldrive", title: "storage.title", note: "storage.note") { StorageCard() }

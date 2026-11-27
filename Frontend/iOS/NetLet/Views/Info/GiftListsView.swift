@@ -302,7 +302,7 @@ private struct GiftListCard: View {
                         .font(.inter(16))
                         .padding(.horizontal, 14)
                         .frame(minHeight: 48)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
                         .overlay(
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .strokeBorder(nameProblem != nil ? Brand.danger : Brand.line, lineWidth: nameProblem == nil ? 1 : 1.5)
@@ -339,7 +339,7 @@ private struct GiftListCard: View {
                 Spacer(minLength: 0)
             }
             .padding(12)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(chosen ? Brand.navy : Brand.line, lineWidth: chosen ? 2 : 1)

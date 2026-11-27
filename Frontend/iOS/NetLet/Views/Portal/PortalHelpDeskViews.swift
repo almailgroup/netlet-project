@@ -30,7 +30,7 @@ struct PortalSupportView: View {
                                 .buttonStyle(PressFillStyle(cornerRadius: 0))
                         }
                     }
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     PortalPager(page: inbox.page, pageSize: inbox.pageSize, total: inbox.total) { next in
@@ -617,7 +617,7 @@ private struct GuideStepCard: View {
     var body: some View {
         PortalCard {
             HStack(spacing: 8) {
-                Text("\(index + 1)").font(.inter(13, .bold)).foregroundStyle(.white).frame(width: 24, height: 24).background(Circle().fill(Brand.navy))
+                Text("\(index + 1)").font(.inter(13, .bold)).foregroundStyle(.white).frame(width: 24, height: 24).background(Circle().fill(Brand.navyFill))
                 Text(GuideRules.title(.init(audience: "", title: step.title, titleAr: step.titleAr, summary: "", summaryAr: "", steps: []), arabic: l.current == .ar)
                      ?? l.t("guides.stepN", ["n": "\(index + 1)"]))
                     .font(.inter(16, .bold))

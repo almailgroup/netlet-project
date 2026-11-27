@@ -86,7 +86,7 @@ struct WarrantyClaimsList: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 
@@ -263,7 +263,7 @@ private struct ChoiceRow: View {
             }
             .padding(10)
             .frame(minHeight: 56)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? Brand.navy : Brand.cardLine, lineWidth: 1))
         }
         .buttonStyle(.tap)
@@ -402,7 +402,7 @@ struct OrderModifySheet: View {
             .accessibilityLabel(l.t("orders.modifyQuantity", ["item": line.productTitle]))
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 
@@ -412,7 +412,7 @@ struct OrderModifySheet: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Brand.navy)
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.white))
+                .background(Circle().fill(Brand.surface))
                 .overlay(Circle().strokeBorder(Brand.line, lineWidth: 1))
                 .contentShape(Circle())
         }
@@ -615,7 +615,7 @@ struct OrderAddressSheet: View {
             }
             .padding(12)
             .frame(minHeight: 56)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? Brand.navy : Brand.cardLine, lineWidth: 1))
         }
         .buttonStyle(.tap)
@@ -845,7 +845,7 @@ struct OrderHelpSheet: View {
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(mine ? Brand.navy : Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(mine ? Brand.navyFill : Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(mine ? Color.clear : Brand.cardLine, lineWidth: 1))
             if !mine { Spacer(minLength: 24) }
         }
@@ -861,7 +861,7 @@ struct OrderHelpSheet: View {
                     .focused($boxFocused)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 11)
-                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.white))
+                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Brand.surface))
                     .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(problem == nil ? Brand.line : Brand.danger, lineWidth: 1))
                     .onChange(of: draft) { _, _ in problem = nil }
                     .accessibilityLabel(l.t("orderHelp.ask"))
@@ -872,7 +872,7 @@ struct OrderHelpSheet: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
-                        .background(Circle().fill(Brand.navy))
+                        .background(Circle().fill(Brand.navyFill))
                         .flipsForRightToLeftLayoutDirection(true)
                 }
                 .buttonStyle(.action)

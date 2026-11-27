@@ -51,13 +51,13 @@ struct BagSavingsCard: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(red: 246 / 255, green: 248 / 255, blue: 251 / 255)))
+                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Color(light: 0xF6F8FB, dark: 0x1B283C)))
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
         .clipped()
         .task(id: cart.id) {

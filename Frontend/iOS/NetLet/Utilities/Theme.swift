@@ -38,7 +38,7 @@ struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.inter(15, .bold))
-            .foregroundStyle(Brand.navy)
+            .foregroundStyle(Brand.deepNavy)
             .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, 16)
             .liquidGlass(.orange, enabled: isEnabled, pressed: configuration.isPressed)
@@ -84,7 +84,7 @@ extension View {
     /// A white card on the ground, the web's `CARD`: white, a hairline rim, 16 round.
     func card(padding: CGFloat = 16) -> some View {
         self.padding(padding)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 
@@ -110,15 +110,15 @@ extension View {
 /// form is easy on the eyes and nothing on it is louder than its button.
 enum Calm {
     /// The Sign in | Create account track.
-    static let track = Color(red: 233 / 255, green: 239 / 255, blue: 247 / 255)
+    static let track = Color(light: 0xE9EFF7, dark: 0x1A293D)
     /// A box at rest, and its rim.
-    static let field = Color(red: 245 / 255, green: 248 / 255, blue: 252 / 255)
-    static let rim = Color(red: 214 / 255, green: 223 / 255, blue: 235 / 255)
+    static let field = Color(light: 0xF5F8FC, dark: 0x1A293D)
+    static let rim = Color(light: 0xD6DFEB, dark: 0x344256)
     /// The password's tile and the code's.
-    static let sky = Color(red: 227 / 255, green: 236 / 255, blue: 248 / 255)
-    static let peach = Color(red: 253 / 255, green: 233 / 255, blue: 222 / 255)
-    static let peachInk = Color(red: 164 / 255, green: 74 / 255, blue: 43 / 255)
+    static let sky = Color(light: 0xE3ECF8, dark: 0x1A293D)
+    static let peach = Color(light: 0xFDE9DE, dark: 0x3D261A)
+    static let peachInk = Color(light: 0xA44A2B, dark: 0xE8B7A6)
     /// A chosen tile.
-    static let chosen = Color(red: 243 / 255, green: 247 / 255, blue: 252 / 255)
+    static let chosen = Color(light: 0xF3F7FC, dark: 0x1A293D)
     static let icon = Color(red: 107 / 255, green: 127 / 255, blue: 156 / 255)
 }

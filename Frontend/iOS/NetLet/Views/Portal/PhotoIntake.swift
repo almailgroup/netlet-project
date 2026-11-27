@@ -400,7 +400,7 @@ struct MakerImagesSheet: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white))
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.surface))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
                     }
                     .buttonStyle(PressFillStyle(cornerRadius: 12))
