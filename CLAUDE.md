@@ -13093,7 +13093,22 @@ Dark in Preferences and reads the page's ground off the screenshot, dark, then
 Light and light again. The CI photographs a screen of each kind in the dark
 (`dark-*`, `-NetLetAppearance dark`, Debug only), every one in English and the
 busiest in Arabic, which is what decides when "Same as the phone" becomes the
-default. Not yet seen on a phone from this sandbox.
+default. **The first look at those pictures (iOS run 346) found two things,
+both fixed**: the header's logo kept its navy letters on the dark ground,
+where they all but vanished — a dark page draws the footer's white-lettered
+file (`WebAssets.headerLogo`, the same size and roof); and two of the
+portal's chart colours, indigo and raspberry, were 2.7:1 and 2.8:1 on the
+dark card, under the 3:1 a line needs — `PortalLook.series` is now a light and
+a dark step per hue (`seriesLight`, `seriesDark`), the dark set validated on
+the dark card and ground (every step 3:1 or more, every adjacent pair 9.6
+apart under deuteranopia). `DarkModeTests` reads both: the logo's letters
+light on a dark page and dark on a light one, and every series colour
+resolved in the dark at 3:1. The rest — the home page, a department, a
+product, the cart, checkout, the account, sign-in, the search sheet,
+Preferences, the Wallet, an order, the invoice (white paper), the assistant,
+the preview, the pin map, Deals, Your profile and the portal's products and
+dashboard — read as meant in both languages. Not yet seen on a phone from
+this sandbox.
 
 **TestFlight uploads by itself after every green iOS run on a push to
 `main`** (`testflight.yml`, on `workflow_run`), on the owner's word — it was

@@ -369,7 +369,7 @@ private struct WelcomePicture: View {
                 .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 .overlay(
-                    LinearGradient(colors: [.clear, Brand.navy.opacity(0.55)], startPoint: .center, endPoint: .bottom)
+                    LinearGradient(colors: [.clear, Brand.deepNavy.opacity(0.55)], startPoint: .center, endPoint: .bottom)
                         .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 )
                 .overlay(alignment: .bottomLeading) {

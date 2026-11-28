@@ -59,6 +59,12 @@ enum WebAssets {
 
     static var logo: UIImage? { image(manifest.logo) }
     static var footerLogo: UIImage? { image(manifest.footerLogo) }
+    /// The logo for a header drawn in `scheme`: the navy letters on a light
+    /// page, the footer's white ones on a dark page, where navy on the dark
+    /// ground all but vanished. The orange roof is the same in both files.
+    static func headerLogo(_ scheme: ColorScheme) -> UIImage? {
+        scheme == .dark ? footerLogo : logo
+    }
     /// NetLet's own street — the first of the home page's slides, and the
     /// band at the top of signing in, as on the web.
     static var street: UIImage? { manifest.heroSlides.first.flatMap(image) }

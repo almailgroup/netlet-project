@@ -12,14 +12,14 @@ enum PortalLook {
     static let grid = Color(light: 0xE8ECF2, dark: 0x344156)
     static let shimmer = Color(light: 0xEAEEF5, dark: 0x1C273B)
     /// Indigo, amber, cyan, raspberry, green, violet — every adjacent pair apart for colour-blind eyes.
-    static let series: [Color] = [
-        Color(red: 79 / 255, green: 70 / 255, blue: 229 / 255),
-        Color(red: 217 / 255, green: 119 / 255, blue: 6 / 255),
-        Color(red: 8 / 255, green: 145 / 255, blue: 178 / 255),
-        Color(red: 190 / 255, green: 24 / 255, blue: 93 / 255),
-        Color(red: 22 / 255, green: 163 / 255, blue: 74 / 255),
-        Color(red: 147 / 255, green: 51 / 255, blue: 234 / 255),
-    ]
+    /// The dark steps are the same hues lighter, chosen for the dark card
+    /// (`Brand.surface`, #171C27) and validated there: on it the light set's
+    /// indigo and raspberry were 2.7:1 and 2.8:1, under the 3:1 a line needs.
+    /// Every dark step is 3:1 or more on the dark card and the dark ground,
+    /// every adjacent pair 9.6 apart under deuteranopia (`seriesDark`).
+    static let series: [Color] = zip(seriesLight, seriesDark).map { Color(light: $0, dark: $1) }
+    static let seriesLight: [UInt32] = [0x4F46E5, 0xD97706, 0x0891B2, 0xBE185D, 0x16A34A, 0x9333EA]
+    static let seriesDark: [UInt32] = [0x7173F0, 0xD97706, 0x0891B2, 0xD42A73, 0x18B04F, 0xA24EF0]
     static let previous = Color(red: 148 / 255, green: 163 / 255, blue: 184 / 255)
     static let indigoInk = Color(light: 0x3730A3, dark: 0xACA8E5)
     static let indigoWash = Color(light: 0xEEF0FD, dark: 0x1A1F3D)

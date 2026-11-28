@@ -328,6 +328,7 @@ struct LogoRow: View {
 
     @Environment(AppModel.self) private var app
     @Environment(LanguageSettings.self) private var l
+    @Environment(\.colorScheme) private var scheme
 
     private func areaLabel(_ place: String, chevron: Bool) -> some View {
         HStack(spacing: 6) {
@@ -362,7 +363,7 @@ struct LogoRow: View {
                 // Its own width at 40 tall (the file is 968 × 431), and as
                 // narrow as 64 before the area's name gives way: its box took
                 // 130 first, so "Choose area" read "Choose…" beside empty room.
-                BundledImage(image: WebAssets.logo)
+                BundledImage(image: WebAssets.headerLogo(scheme))
                     .frame(minWidth: 64, maxWidth: 90, maxHeight: 40, alignment: .leading)
                     .frame(height: 40)
             }
