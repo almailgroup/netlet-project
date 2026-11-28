@@ -114,7 +114,7 @@ struct ShopChatSheet: View {
             AssistantMark(size: 36)
             VStack(alignment: .leading, spacing: 2) {
                 Text(l.t("shopChat.title")).font(.inter(16, .bold)).foregroundStyle(Brand.navy).accessibilityAddTraits(.isHeader)
-                Text(l.t("shopChat.note")).font(.inter(12)).foregroundStyle(Color(light: 0x2B3A55, dark: 0xB4C2D9)).lineLimit(2)
+                Text(l.t("shopChat.note")).font(.inter(12)).foregroundStyle(Color(light: 0x2B3A55, dark: 0xD0D4DA)).lineLimit(2)
             }
             Spacer(minLength: 8)
             if !chat.messages.isEmpty {

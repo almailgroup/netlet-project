@@ -241,7 +241,7 @@ struct ProductPhotos: View {
                             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.photoFrame))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .strokeBorder(index == offset ? Brand.navy : photoLine, lineWidth: 2)
+                                    .strokeBorder(index == offset ? Brand.deepNavy : photoLine, lineWidth: 2)
                             )
                     }
                     .buttonStyle(.tap)

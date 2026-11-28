@@ -31,7 +31,7 @@ enum OrderTone {
         switch self {
         case .waiting, .over: return Brand.muted
         case .preparing: return Color(light: 0x705523, dark: 0xE4D0AA)
-        case .shipped: return Color(light: 0x274B86, dark: 0xA8BFE6)
+        case .shipped: return Color(light: 0x274B86, dark: 0xFFFFFF)
         case .done: return Brand.success
         case .stopped: return Brand.danger
         }

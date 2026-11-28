@@ -54,3 +54,46 @@ describe("a date in the app", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/* A calendar's chosen day is white digits on the picker's tint, and the
+   root's tint is `Brand.navy`, which the dark makes white — so a date picker
+   that took it drew today, chosen, as white on white. Every `DatePicker`
+   wears `Brand.control` among its own modifiers (a switch takes it from
+   `NetLetSwitchStyle`, which the root and every sheet set). */
+/** The lines where a `DatePicker(` starts whose own modifiers never name `.tint(Brand.control)`. */
+export function untintedDatePickers(text: string): number[] {
+  const lines = text.split("\n");
+  return lines.flatMap((line, index) => {
+    const at = line.indexOf("DatePicker(");
+    if (at < 0 || /^\s*\/\//.test(line)) return [];
+    const indent = line.length - line.trimStart().length;
+    // The statement runs until a line at or left of the picker's own indent
+    // that is not one of its modifiers or the close of its arguments.
+    for (let next = index + 1; next < lines.length; next++) {
+      const code = lines[next];
+      if (code.includes(".tint(Brand.control)")) return [];
+      const trimmed = code.trimStart();
+      if (trimmed === "") return [index + 1];
+      const left = code.length - trimmed.length;
+      if (left <= indent && !trimmed.startsWith(".") && !trimmed.startsWith(")")) return [index + 1];
+    }
+    return [index + 1];
+  });
+}
+
+describe("a date picker in the app", () => {
+  it("knows a picker with the control's colour from one without", () => {
+    expect(untintedDatePickers(`    DatePicker("x", selection: $d)\n        .labelsHidden()\n        .tint(Brand.control)\n    Text("y")`)).toEqual([]);
+    expect(untintedDatePickers(`    DatePicker("x", selection: $d)\n        .labelsHidden()\n    DatePicker("z", selection: $e)\n        .tint(Brand.control)`)).toEqual([1]);
+    expect(untintedDatePickers(`    DatePicker(\n        "x",\n        selection: $d\n    )\n    .tint(Brand.control)`)).toEqual([]);
+  });
+
+  it("always wears Brand.control, so a chosen day is never white on white", () => {
+    const sources = APP_FOLDERS.flatMap((folder) => swiftSources(folder));
+    const pickers = sources.reduce((count, { text }) => count + (text.match(/DatePicker\(/g)?.length ?? 0), 0);
+    const offenders = sources.flatMap(({ file, text }) => untintedDatePickers(text).map((line) => `${file}:${line}`));
+    // A scan that finds nothing passes: it has read the pickers.
+    expect(pickers).toBeGreaterThanOrEqual(13);
+    expect(offenders).toEqual([]);
+  });
+});

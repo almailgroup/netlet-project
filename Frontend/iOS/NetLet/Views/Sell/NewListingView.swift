@@ -483,7 +483,7 @@ private struct NewListingForm: View {
                     Text("\(host) › products › \(SearchPreview.handle(title))").font(.caption).foregroundStyle(Brand.success).lineLimit(1)
                         .environment(\.layoutDirection, .leftToRight)
                     Text(heading.count > fits.title ? String(heading.prefix(fits.title - 1)).trimmingCharacters(in: .whitespaces) + "…" : heading)
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(Color(light: 0x1A0DAB, dark: 0xABA5E9)).lineLimit(1)
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(Color(light: 0x1A0DAB, dark: 0xFFFFFF)).lineLimit(1)
                     Text(snippet).font(.footnote).foregroundStyle(Brand.body).lineLimit(3)
                 }
                 .padding(12)
@@ -635,7 +635,7 @@ private struct PhotoTile: View {
             Button { Task { guard await RemovalQuestion.formRow(l) else { return }; remove() } } label: {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, Brand.navy)
+                    .foregroundStyle(.white, Brand.navyFill)
                     .font(.title3)
                     .frame(width: 44, height: 44)
             }

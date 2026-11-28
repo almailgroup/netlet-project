@@ -210,6 +210,8 @@ struct LanguageDirection: ViewModifier {
             .environment(\.layoutDirection, l.layoutDirection)
             // No scroll line in a sheet either, the root's rule (`RootView`).
             .scrollIndicators(.hidden, axes: .vertical)
+            // Nor a white switch in the dark (`NetLetSwitchStyle`).
+            .toggleStyle(NetLetSwitchStyle())
     }
 }
 

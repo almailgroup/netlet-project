@@ -1260,6 +1260,7 @@ private struct ProfileForm: View {
                     in: BirthdayDay.date(ReferenceData.shared.rules.profileRules.earliestBirthday)...BirthdayDay.date(StoreRules.kuwaitDay(Date())),
                     displayedComponents: .date
                 )
+                .tint(Brand.control)
                 .datePickerStyle(.wheel)
                 .labelsHidden()
                 .frame(maxWidth: .infinity)

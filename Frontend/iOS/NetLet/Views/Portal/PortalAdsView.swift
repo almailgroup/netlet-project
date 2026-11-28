@@ -243,6 +243,7 @@ private struct AdBookForm: View {
             if isBanner { bannerFields }
             let today = AdWords.todayInKuwait
             DatePicker(l.t("ads.startsOn"), selection: $starts, in: today...today.addingTimeInterval(Double(rules.ads.maxLeadDays) * 86_400), displayedComponents: .date)
+                .tint(Brand.control)
                 .font(.inter(14))
                 .environment(\.timeZone, AdWords.kuwait)
             Stepper(value: $days, in: 1...rules.ads.maxDays) {

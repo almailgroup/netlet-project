@@ -237,7 +237,7 @@ private struct QuickViewContent: View {
                                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.photoFrame))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .strokeBorder(current ? Brand.navy : Brand.cardLine, lineWidth: current ? 2 : 1)
+                                        .strokeBorder(current ? Brand.deepNavy : Brand.cardLine, lineWidth: current ? 2 : 1)
                                 )
                                 .scaleEffect(current || still ? 1 : 0.94)
                                 .animation(still ? nil : .spring(duration: 0.25, bounce: 0.3), value: current)

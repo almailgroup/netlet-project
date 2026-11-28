@@ -1,5 +1,18 @@
 import SwiftUI
 
+/// Every switch in the app: the system's own, its track in `Brand.control`.
+/// The root's tint is `Brand.navy`, which the dark makes white, so a switch
+/// that took it had a white track under its white knob; set at the root and on
+/// every sheet (`languageDirection()`), it reaches every `Toggle` — the colour
+/// set closest to the switch wins over a `.tint` on the `Toggle` itself.
+struct NetLetSwitchStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Toggle(configuration)
+            .toggleStyle(.switch)
+            .tint(Brand.control)
+    }
+}
+
 /// The shop's main action: navy Liquid Glass, full width, a thumb's height.
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled

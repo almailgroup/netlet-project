@@ -587,6 +587,7 @@ private struct DayField: View {
                 .tint(Brand.navy)
             if let chosen = day {
                 DatePicker(label, selection: Binding(get: { chosen }, set: { day = $0 }), displayedComponents: .date)
+                    .tint(Brand.control)
                     .labelsHidden()
                     .kuwaitDays()
             }

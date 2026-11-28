@@ -606,6 +606,7 @@ struct SubscribePanel: View {
                 .tint(Brand.navy)
                 DatePicker(l.t("subscribe.firstDelivery"), selection: $firstRun,
                            in: Date().addingTimeInterval(86_400)...Date().addingTimeInterval(60 * 86_400), displayedComponents: .date)
+                    .tint(Brand.control)
                     .font(.inter(14))
                     .kuwaitDays()
                 if bookFailed, addresses == nil {

@@ -416,6 +416,7 @@ struct PortalOccasionEditorView: View {
             if let value = day.wrappedValue, let date = Self.date(value) {
                 HStack {
                     DatePicker(label, selection: Binding(get: { date }, set: { day.wrappedValue = StoreRules.kuwaitDay($0) }), displayedComponents: .date)
+                        .tint(Brand.control)
                         .labelsHidden()
                         .kuwaitDays()
                     Spacer(minLength: 0)

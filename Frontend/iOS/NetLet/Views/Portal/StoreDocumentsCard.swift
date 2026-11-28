@@ -219,6 +219,7 @@ struct StoreDocumentsCard: View {
             .tint(Brand.navy)
         if let day = expires {
             DatePicker(l.t("storeDocs.expires"), selection: Binding(get: { day }, set: { expires = $0 }), displayedComponents: .date)
+                .tint(Brand.control)
                 .labelsHidden()
                 .kuwaitDays()
         }

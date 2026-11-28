@@ -21,7 +21,9 @@ enum PortalLook {
     static let seriesLight: [UInt32] = [0x4F46E5, 0xD97706, 0x0891B2, 0xBE185D, 0x16A34A, 0x9333EA]
     static let seriesDark: [UInt32] = [0x7173F0, 0xD97706, 0x0891B2, 0xD42A73, 0x18B04F, 0xA24EF0]
     static let previous = Color(red: 148 / 255, green: 163 / 255, blue: 184 / 255)
-    static let indigoInk = Color(light: 0x3730A3, dark: 0xACA8E5)
+    /// Words beside the indigo line: indigo, and white in the dark, where
+    /// words are never blue (the series' own swatch carries the colour).
+    static let indigoInk = Color(light: 0x3730A3, dark: 0xFFFFFF)
     static let indigoWash = Color(light: 0xEEF0FD, dark: 0x1A1F3D)
     static let up = Color(light: 0x006300, dark: 0xA5E9A5)
     static let down = Color(light: 0xB42318, dark: 0xE9AAA5)

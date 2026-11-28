@@ -213,7 +213,8 @@ private struct ProductPage: View {
                     Text(l.t("product.expressTitle"))
                 }
                 .font(.inter(12, .bold))
-                .foregroundStyle(.white)
+                // Navy on the orange, the shop's rule: white is 3.08:1 there.
+                .foregroundStyle(Brand.deepNavy)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
                 .background(Capsule().fill(Brand.orange))

@@ -374,7 +374,7 @@ private struct TutorialPartView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("netlet.net › products › brass-table-lamp").font(.inter(11)).foregroundStyle(Brand.body)
                 .environment(\.layoutDirection, .leftToRight)
-            Text("\(l.t("howTo.sample.title")) — NetLet").font(.inter(15)).foregroundStyle(Color(light: 0x1A0DAB, dark: 0xABA5E9))
+            Text("\(l.t("howTo.sample.title")) — NetLet").font(.inter(15)).foregroundStyle(Color(light: 0x1A0DAB, dark: 0xFFFFFF))
             Text(l.t("howTo.sample.snippet")).font(.inter(12)).foregroundStyle(Brand.body).fixedSize(horizontal: false, vertical: true)
         }
         .padding(10)

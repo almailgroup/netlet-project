@@ -604,6 +604,7 @@ private struct VariantEditor: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(l.t("admin.preorderReleaseAt")).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
                     DatePicker(l.t("admin.preorderReleaseAt"), selection: Binding(get: { releaseOn ?? Date() }, set: { releaseOn = $0 }), displayedComponents: .date)
+                        .tint(Brand.control)
                         .labelsHidden()
                         .kuwaitDays()
                         .disabled(allowance <= 0)

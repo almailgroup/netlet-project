@@ -39,6 +39,28 @@ final class DarkModeTests: XCTestCase {
         }
     }
 
+    /// Words in navy are white in the dark, on the owner's word ("all the
+    /// text should be white color, not blue") — they were a periwinkle,
+    /// #8fb3f4 — and stay the brand's navy in the light. A switch's track and
+    /// a calendar's chosen day are the one place navy stays a blue in the
+    /// dark (`Brand.control`), since they sit under white: white keeps 4.5:1
+    /// on it, and it is never white itself. The quieter words lean no bluer
+    /// than a few steps, so nothing on a dark page reads blue.
+    func testNavyWordsAreWhiteInTheDark() {
+        let darkTraits = UITraitCollection(userInterfaceStyle: .dark)
+        let lightTraits = UITraitCollection(userInterfaceStyle: .light)
+        XCTAssertEqual(hex(UIColor(Brand.navy).resolvedColor(with: darkTraits)), 0xFFFFFF, "Navy words are not white in the dark.")
+        XCTAssertEqual(hex(UIColor(Brand.navy).resolvedColor(with: lightTraits)), 0x0A285A, "Navy words changed in the light.")
+        XCTAssertEqual(hex(UIColor(PortalLook.indigoInk).resolvedColor(with: darkTraits)), 0xFFFFFF, "The indigo series' words are not white in the dark.")
+        let control = UIColor(Brand.control).resolvedColor(with: darkTraits)
+        XCTAssertNotEqual(hex(control), 0xFFFFFF, "A switch's track is white under its white knob.")
+        XCTAssertGreaterThanOrEqual(contrast(.white, control), 4.5, "White is \(contrast(.white, control)):1 on a control in the dark.")
+        XCTAssertEqual(hex(UIColor(Brand.control).resolvedColor(with: lightTraits)), 0x0A285A)
+        let (r, _, b) = components(UIColor(Brand.muted).resolvedColor(with: darkTraits))
+        XCTAssertLessThanOrEqual((b - r) * 255, 16, "Quieter words lean blue in the dark.")
+        XCTAssertGreaterThanOrEqual(contrast(UIColor(Brand.muted).resolvedColor(with: darkTraits), UIColor(hex: 0x171C27)), 4.5)
+    }
+
     // MARK: - Measuring
 
     /// The mean luminance (0…1) of the logo's letters: its opaque pixels

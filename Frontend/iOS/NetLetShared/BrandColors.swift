@@ -14,17 +14,28 @@ import UIKit
 ///
 /// **Every colour has a dark-mode value, on the owner's word** ("dark mode",
 /// option 9 of the list), resolved by the view's own colour scheme. Navy is
-/// two colours in the dark: words in navy (`navy`) turn a light periwinkle
-/// that reads on the dark ground, and a navy *fill* under white words
-/// (`navyFill`) stays a deep blue the white still reads on — light, the two
-/// are the same navy. What must stay navy in either mode — the Lock Screen's
-/// card, words on the orange — is `deepNavy`. A product photograph keeps its
+/// three colours in the dark: words in navy (`navy`) **turn white, on the
+/// owner's word** ("for dark mode, all the text should be white color, not
+/// blue" — they were a light periwinkle, #8fb3f4, for one build); a navy
+/// *fill* under white words (`navyFill`) stays a deep blue the white still
+/// reads on; and a switch's track or a calendar's chosen day (`control`) is a
+/// brighter blue, since a white track under a white knob is no switch at all —
+/// light, all three are the same navy. What must stay navy in either mode —
+/// the Lock Screen's card, words on the orange, words and rims drawn on a
+/// photograph's white frame — is `deepNavy`. A product photograph keeps its
 /// white frame in the dark, the way it was taken (`photoFrame`).
 enum Brand {
-    static let navy = Color(light: 0x0A285A, dark: 0x8FB3F4)
+    /// Navy words and marks: white in the dark, never a blue.
+    static let navy = Color(light: 0x0A285A, dark: 0xFFFFFF)
     /// Navy as a surface under white words: a button, a chosen chip, a band.
     static let navyFill = Color(light: 0x0A285A, dark: 0x2B57AB)
     static let navyPressed = Color(light: 0x0D3372, dark: 0x244A93)
+    /// A system control's colour — a switch's track, the chosen day of a
+    /// calendar — which sits under a white knob or white digits: navy, and a
+    /// blue in the dark that white keeps 5.1:1 on (`navy` would be white on
+    /// white there). Every `Toggle` takes it through `NetLetSwitchStyle`, and
+    /// every `DatePicker` wears it by hand.
+    static let control = Color(light: 0x0A285A, dark: 0x3D6BC4)
     /// The brand's navy in either mode: the Lock Screen's card and widget,
     /// words on the orange (4.65:1).
     static let deepNavy = Color(red: 10 / 255, green: 40 / 255, blue: 90 / 255)
@@ -39,7 +50,9 @@ enum Brand {
     static let ink = Color(light: 0x1F2229, dark: 0xE8ECF3)
     /// Body copy under a heading (#404553).
     static let body = Color(light: 0x404553, dark: 0xC4CBD7)
-    static let muted = Color(light: 0x536B8C, dark: 0x9AA9BF)
+    /// Quieter words: a navy-grey, and in the dark a plain grey with no blue
+    /// in it (#a8aeb8, 7.5:1 on the dark card), the owner's "not blue".
+    static let muted = Color(light: 0x536B8C, dark: 0xA8AEB8)
     static let accentInk = Color(light: 0xA44A2B, dark: 0xFFAA85)
     /// The pale orange an icon in the accent ink sits on (#fdf3ee).
     static let accentWash = Color(light: 0xFDF3EE, dark: 0x3A2219)

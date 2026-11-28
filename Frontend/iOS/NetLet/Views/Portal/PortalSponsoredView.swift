@@ -131,6 +131,7 @@ private struct SponsorAskForm: View {
             .accessibilityLabel(l.t("ads.product"))
             let today = AdWords.todayInKuwait
             DatePicker(l.t("ads.startsOn"), selection: $starts, in: today...today.addingTimeInterval(Double(rules.ads.maxLeadDays) * 86_400), displayedComponents: .date)
+                .tint(Brand.control)
                 .font(.inter(14))
                 .environment(\.timeZone, AdWords.kuwait)
             Stepper(value: $days, in: 1...rules.ads.maxDays) {
@@ -596,6 +597,7 @@ private struct SponsorActSheet: View {
         let first = AdWords.date(today)
         VStack(alignment: .leading, spacing: 6) {
             DatePicker(l.t("sponsor.payBy"), selection: $payBy, in: first...max(first, AdWords.date(latestPayBy)), displayedComponents: .date)
+                .tint(Brand.control)
                 .font(.inter(14))
                 .environment(\.timeZone, AdWords.kuwait)
             FieldProblem(key: rules.payByProblem(payByDay, startsOn: row.startsOn, today: today))
@@ -653,6 +655,7 @@ private struct SponsorActSheet: View {
             VStack(alignment: .leading, spacing: 4) {
                 DatePicker(l.t("sponsor.runsFrom"), selection: $startsFrom,
                            in: first...first.addingTimeInterval(Double(WarehouseRules.shared.ads.maxLeadDays) * 86_400), displayedComponents: .date)
+                    .tint(Brand.control)
                     .font(.inter(14))
                     .environment(\.timeZone, AdWords.kuwait)
                 Text(l.t("sponsor.runsFromHint", ["days": "\(row.days)"])).font(.footnote).foregroundStyle(Brand.muted)

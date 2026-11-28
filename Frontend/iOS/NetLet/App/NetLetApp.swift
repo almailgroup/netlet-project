@@ -92,6 +92,7 @@ struct NetLetApp: App {
             .environment(\.layoutDirection, app.language.layoutDirection)
             .environment(\.locale, app.language.current.locale)
             .tint(Brand.navy)
+            .toggleStyle(NetLetSwitchStyle())
             .buttonStyle(HapticDefaultStyle())
             .preferredColorScheme(appearance.colorScheme)
             .onAppear { Appearance.applyToWindows(appearance) }

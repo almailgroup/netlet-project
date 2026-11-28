@@ -200,8 +200,8 @@ struct FloatingGlass<S: InsettableShape>: View {
             .overlay {
                 ZStack {
                     shape.inset(by: 1).fill(LinearGradient(stops: [
-                        .init(color: Brand.navy.opacity(0), location: 0.82),
-                        .init(color: Brand.navy.opacity(0.06), location: 1),
+                        .init(color: Brand.shadow.opacity(0), location: 0.82),
+                        .init(color: Brand.shadow.opacity(0.06), location: 1),
                     ], startPoint: .top, endPoint: .bottom))
                     shape.inset(by: 1).strokeBorder(Brand.glassRim.opacity(0.5), lineWidth: 1)
                     shape.inset(by: 1).strokeBorder(LinearGradient(colors: [Brand.glassRim.opacity(0.95), Brand.glassRim.opacity(0)], startPoint: .top, endPoint: .center), lineWidth: 1.5)
