@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { journeyStage, maskedCardCode, receiptFileName, receiptMethod, receiptPayment, receiptRows, type ReceiptOrder } from "./orderReceipt.js";
+import { journeyStage, journeyStep, maskedCardCode, receiptFileName, receiptMethod, receiptPayment, receiptRows, type ReceiptOrder } from "./orderReceipt.js";
 
 const plain: ReceiptOrder = {
   status: "pending_payment",
@@ -14,6 +14,18 @@ const plain: ReceiptOrder = {
   giftCardCode: null,
   giftCardValue: "0.000",
 };
+
+describe("journeyStep", () => {
+  it("places an item on the tracker's four steps, and nowhere once it left the road", () => {
+    expect(journeyStep({ kind: "received" })).toBe(0);
+    expect(journeyStep({ kind: "preparing" })).toBe(1);
+    expect(journeyStep({ kind: "onTheWay" })).toBe(2);
+    expect(journeyStep({ kind: "partlyDelivered" })).toBe(2);
+    expect(journeyStep({ kind: "delivered" })).toBe(3);
+    expect(journeyStep({ kind: "cancelled" })).toBeNull();
+    expect(journeyStep({ kind: "returned" })).toBeNull();
+  });
+});
 
 describe("journeyStage", () => {
   it("puts every progress on one of five stages", () => {

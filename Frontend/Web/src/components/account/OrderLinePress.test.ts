@@ -45,10 +45,17 @@ vi.mock("@/components/account/OrderHelp", () => ({ OrderHelp: none }));
 vi.mock("@/components/account/OrderHandover", () => ({ HandoverCard: none, PaidOnlineNote: none }));
 vi.mock("@/components/account/OrderWarranty", () => ({ WarrantyClaims: none, WarrantyForm: none }));
 vi.mock("@/components/account/OrderReceipt", () => ({ ReceiptButton: none }));
-vi.mock("@/components/account/OrderJourney", () => ({ ItemStatus: none }));
+/* The item's status band, drawn as what it was handed: whether it is the press for the tracker. */
+vi.mock("@/components/account/OrderJourney", async () => {
+  const { createElement: draw } = await import("react");
+  return {
+    ItemStatus: (props: { track: { open: boolean; controls: string } | null }) =>
+      draw("i", { "data-track": props.track ? props.track.controls : "none", "data-open": String(props.track?.open ?? false) }),
+  };
+});
 vi.mock("@/components/account/LineReturn", () => ({ LineReturnForm: none, mayRequestReturn: () => false, REASON_LABEL: {} }));
 
-const { OrderAfterSales, OrderLinePhoto, OrderLineTitle } = await import("./OrderActions");
+const { LineStatus, OrderAfterSales, OrderLinePhoto, OrderLineTitle } = await import("./OrderActions");
 
 type Detail = Parameters<typeof OrderAfterSales>[0]["detail"];
 type Line = Detail["lines"][number];
@@ -70,6 +77,7 @@ const line = (over: Partial<Line>): Line => ({
 
 /** An order whose one parcel holds the lines named. */
 const orderWith = (lines: Line[], tracked: number[]): Detail => ({
+  order: { status: "pending_payment" },
   lines,
   steps: {
     placedAt: "2026-11-01T07:00:00.000Z",
@@ -91,16 +99,20 @@ function drawn(item: Line, detail: Detail) {
       createElement(OrderAfterSales, { reference: "NL-1", detail, onRate: () => {} },
         createElement(OrderLinePhoto, { line: item }, createElement("img", { alt: "" })),
         createElement(OrderLineTitle, { line: item }),
+        createElement(LineStatus, { line: item, detail }),
       ),
     ),
   );
 }
 
 describe("an opened order's item", () => {
-  it("opens where it is from its words, and its page from its photo", () => {
+  it("opens where it is from the band under it, its name words, and its page from its photo", () => {
     const item = line({});
     const html = drawn(item, orderWith([item], [1]));
-    expect(html).toMatch(/<button (?=[^>]*aria-expanded="false")(?=[^>]*aria-describedby="([^"]+)")[^>]*>Desk lamp<\/button><span id="\1" class="sr-only">orders\.trackItem<\/span>/);
+    // The band is the press for the tracker the keyboard meets; the name no longer a second one.
+    expect(html).toMatch(/<i data-track="[^"]+-line-1" data-open="false"><\/i>/);
+    expect(html).toMatch(/<p dir="auto" class="[^"]*">Desk lamp<\/p>/);
+    expect(html).not.toMatch(/<button[^>]*>Desk lamp/);
     expect(html).toMatch(/<a (?=[^>]*aria-label="product\.view\(Desk lamp\)")(?=[^>]*href="\/products\/desk-lamp")[^>]*><img/);
     expect(html).not.toMatch(/<a (?=[^>]*dir="auto")[^>]*>Desk lamp/);
   });
@@ -110,13 +122,13 @@ describe("an opened order's item", () => {
     const html = drawn(item, orderWith([item, line({ id: 2 })], [2]));
     expect(html).toMatch(/<a (?=[^>]*href="\/products\/desk-lamp")[^>]*>Desk lamp<\/a>/);
     expect(html).toMatch(/<a (?=[^>]*tabindex="-1")(?=[^>]*aria-hidden="true")[^>]*><img/);
-    expect(html).not.toContain("orders.trackItem");
+    expect(html).toContain('data-track="none"');
   });
 
   it("still tracks an item the shop no longer shows, with no link from its photo", () => {
     const item = line({ productHandle: null });
     const html = drawn(item, orderWith([item], [1]));
-    expect(html).toContain("orders.trackItem");
+    expect(html).toMatch(/data-track="[^"]+-line-1"/);
     expect(html).not.toContain("<a ");
   });
 });

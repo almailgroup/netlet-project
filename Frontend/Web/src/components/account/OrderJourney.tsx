@@ -1,35 +1,37 @@
 /**
- * Where each item of an opened order is, drawn under its photo, on the
- * owner's word ("delivery status should shown here — once it shown
- * delivered, then review icon will appear out here"): **a row the photo's
- * width, the small picture at its start and the word after it**, also on the
- * owner's word ("the delivery details down picture left and status right as
- * my drawing", with the photo made larger) — it was a plate with the word
- * under it.
+ * Where each item of an opened order is, as a band under the item the width
+ * of its row, on the owner's word ("it should be clear, showing status also
+ * track order click to be understandable by clients", over a picture of the
+ * small tile that sat under the photo, circled): **the picture, where it is
+ * in bold, the four steps as a strip, when it comes, and at the band's end a
+ * button saying what a press does** — Track order while a parcel holds it,
+ * Rate once it has arrived and may be rated, Edit your review once it has
+ * been. The
+ * whole band is that button, so a thumb need not find the pill; with nothing
+ * to do (cancelled, returned, an arrival that can be neither tracked nor
+ * rated) it is the status alone.
  *
  * - **Being got ready** (received, being prepared, pre-ordered), NetLet's
- *   store with an amber disc turning on its corner.
+ *   store with an amber disc turning on its corner, on a pale amber band.
  * - **On the way**, NetLet's van with its wheels turning, riding the bumps,
  *   speed lines behind it — facing the page's end, so the left on the Arabic
- *   page.
- * - **Delivered**, a star to press and rate it, once it may be rated; the
- *   stars given and "Edit" once it has been; the house with a green tick when
- *   it can be neither.
- * - **Cancelled** or **returned**, its word on a plate of its own.
+ *   page — on a pale sky band.
+ * - **Delivered**, the house with a green tick, on a pale green band, the
+ *   strip all green; Rate (a gold star) or the stars given and Edit.
+ * - **Cancelled** or **returned**, its word on a pale red or slate band.
  *
- * It was a little street drawn under each order on My orders, then under
- * each item, and the owner moved it here: an order's items arrive on
- * different days, and the row's empty corner under the photo is where a
- * shopper looks. The pictures are still the street's own, drawn for NetLet
- * rather than taken from an icon set, so the van can turn its wheels.
- * Transforms and opacities alone (`.item-status` in `index.css`), still for
- * somebody who asked for less motion. `journeyStage`
- * (`Shared/commerce/orderReceipt.ts`) is the rule, and the app's
- * `ItemStatusTile` the same drawing.
+ * It was a little street under each order on My orders, then a tile the
+ * photo's width under the photo (a 36 by 30 plate and an 11px word), which
+ * the owner found unclear. The strip is the tracker's own four steps, the
+ * one the item is at in the brand's orange. The pictures are NetLet's own
+ * drawing, so the van can turn its wheels. Transforms and opacities alone
+ * (`.item-status` in `index.css`), still for somebody who asked for less
+ * motion. `journeyStage` and `journeyStep` (`Shared/commerce/orderReceipt.ts`)
+ * are the rule, and the app's `ItemStatusBar` the same band.
  */
 import type { OrderProgress } from "@shared/commerce/orderProgress";
-import { journeyStage } from "@shared/commerce/orderReceipt";
-import { Check, CircleX, RotateCcw, Star } from "lucide-react";
+import { journeyStage, journeyStep } from "@shared/commerce/orderReceipt";
+import { Check, ChevronDown, CircleX, RotateCcw, Star } from "lucide-react";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useDateFormat } from "@/hooks/useDateFormat";
 
@@ -50,32 +52,35 @@ export function useProgressPhrase() {
   };
 }
 
-/** What the plate shows: where the item is, or, once it has arrived, its review. */
+/** What the band shows: where the item is, or, once it has arrived, its review. */
 type Look = "processing" | "onTheWay" | "delivered" | "rate" | "rated" | "cancelled" | "returned";
 
 /** The whole stars a rating of one to five fills. */
 const STARS = [1, 2, 3, 4, 5];
+/** The strip's four steps: the order, being got ready, on the way, at the door. */
+const STEPS = [0, 1, 2, 3];
 
-export function ItemStatus({ progress, rating, mayRate, title, onRate }: {
+export function ItemStatus({ progress, expected, rating, mayRate, title, track, onRate }: {
   /** The item's own progress (`orderProgress` over its one line). */
   progress: OrderProgress;
+  /** When it comes, while it is still coming: the store's own words (the tracker's). */
+  expected: { text: string; late: boolean } | null;
   /** The shopper's stars on it, once rated. */
   rating: number | null;
   /** Whether it may be rated now (`reviewEligibility`, the rule `reviews.write` refuses with). */
   mayRate: boolean;
   title: string;
+  /** Where the item is, while a parcel holds it: the panel it opens under the item, and whether it is open. */
+  track: { open: boolean; controls: string; onPress: () => void } | null;
   /** Opens the review: a new one, or the one written to change it. */
   onRate: () => void;
 }) {
   const { t } = useTranslation();
   const phrase = useProgressPhrase()(progress);
   const stage = journeyStage(progress);
+  const step = journeyStep(progress);
   const look: Look = stage === "delivered" ? (rating !== null ? "rated" : mayRate ? "rate" : "delivered") : stage;
-
-  const word = look === "rate" ? t("orders.pickRate")
-    : look === "rated" ? t("profile.edit")
-    : look === "delivered" ? t("orders.journeyDelivered")
-    : phrase;
+  const act = look === "rate" ? "rate" : look === "rated" ? "edit" : track ? "track" : null;
 
   const picture = (() => {
     switch (look) {
@@ -95,51 +100,79 @@ export function ItemStatus({ progress, rating, mayRate, title, onRate }: {
           </span>
         );
       case "delivered":
+      case "rate":
+      case "rated":
         return (
           <span className="item-status-place">
             <HouseArt />
-            <span className="item-status-badge" data-kind="arrived"><Check className="size-2" strokeWidth={3.5} /></span>
-          </span>
-        );
-      case "rate":
-        return <Star className="item-status-star size-4" strokeWidth={2.2} />;
-      case "rated":
-        return (
-          <span className="item-status-stars">
-            {STARS.map(star => (
-              <Star key={star} className="size-[7px]" strokeWidth={2.6} fill={star <= (rating ?? 0) ? "currentColor" : "none"} />
-            ))}
+            <span className="item-status-badge" data-kind="arrived"><Check className="size-2.5" strokeWidth={3.5} /></span>
           </span>
         );
       case "cancelled":
-        return <CircleX className="size-4" strokeWidth={2.2} />;
+        return <CircleX className="size-5" strokeWidth={2.2} />;
       case "returned":
-        return <RotateCcw className="size-3.5 rtl:-scale-x-100" strokeWidth={2.4} />;
+        return <RotateCcw className="size-[18px] rtl:-scale-x-100" strokeWidth={2.4} />;
     }
   })();
 
   const inside = (
     <>
-      <span aria-hidden className="item-status-plate">{picture}</span>
-      <span className="item-status-word">{word}</span>
+      <span className="flex min-w-0 flex-1 basis-40 items-center gap-3">
+        <span aria-hidden className="item-status-plate">{picture}</span>
+        <span className="min-w-0 flex-1">
+          <span className="item-status-word">{phrase}</span>
+          {step !== null ? (
+            <span aria-hidden className="item-status-steps">
+              {STEPS.map(index => (
+                <span
+                  key={index}
+                  data-step={step === 3 ? "arrived" : index < step ? "done" : index === step ? "now" : "ahead"}
+                />
+              ))}
+            </span>
+          ) : null}
+          {look === "rated" ? (
+            <span aria-hidden className="item-status-stars">
+              {STARS.map(star => (
+                <Star key={star} className="size-3" strokeWidth={2.4} fill={star <= (rating ?? 0) ? "currentColor" : "none"} />
+              ))}
+            </span>
+          ) : null}
+          {expected && stage !== "delivered" ? <span className="item-status-when" data-late={expected.late ? "" : undefined}>{expected.text}</span> : null}
+        </span>
+      </span>
+      {act === "track" ? (
+        <span className="item-status-pill">
+          {t("orders.track")}
+          <ChevronDown aria-hidden className="item-status-chevron size-4" strokeWidth={2.6} data-open={track?.open ? "" : undefined} />
+        </span>
+      ) : act === "rate" ? (
+        <span className="item-status-pill">
+          <Star aria-hidden className="item-status-star size-4" strokeWidth={2.4} fill="currentColor" />
+          {t("orders.pickRate")}
+        </span>
+      ) : act === "edit" ? (
+        <span className="item-status-pill" data-quiet="">{t("review.edit")}</span>
+      ) : null}
     </>
   );
 
-  // Delivered: the plate is the review's button, its name starting with the word drawn.
-  if (look === "rate" || look === "rated") {
-    return (
-      <button
-        type="button"
-        onClick={onRate}
-        data-look={look}
-        aria-label={look === "rate" ? t("review.dialogTitle", { name: title }) : t("review.edit")}
-        className="item-status rounded-[10px]"
-      >
-        {inside}
-      </button>
-    );
-  }
-  return <span className="item-status" data-look={look}>{inside}</span>;
+  if (act === null) return <div className="item-status" data-look={look}>{inside}</div>;
+  /* The whole band is the press; its name is what it says, then which item —
+     several items' "Track order" are told apart by it. */
+  return (
+    <button
+      type="button"
+      data-look={look}
+      onClick={act === "track" ? track?.onPress : onRate}
+      aria-expanded={act === "track" ? track?.open ?? false : undefined}
+      aria-controls={act === "track" ? track?.controls : undefined}
+      className="item-status tint-on-hover"
+    >
+      {inside}
+      <span className="sr-only">: {title}</span>
+    </button>
+  );
 }
 
 /*

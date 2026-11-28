@@ -2370,75 +2370,165 @@ html[data-page-arriving] .assistant-launcher {
 }
 
 /*
- * Each item's status under its photo on the opened order (`ItemStatus`), on
- * the owner's word ("delivery status should shown here; once it shown
- * delivered, then review icon will appear out here"): a row the photo's
- * width, a small plate drawn from the street's own pictures at its start and
- * the item's word after it (the owner's drawing: "picture left and status
- * right"; it was the word under the plate). Being got ready,
- * NetLet's store with an amber disc turning on its corner; on the way, the
- * van with its wheels turning, riding the bumps, speed lines behind it —
- * facing the page's end, so it is mirrored on the Arabic page; delivered, a
- * star that pops in to be pressed, the stars given once rated, or the house
- * with a green tick. Transforms and opacities alone; still for somebody who
- * asked for less motion.
+ * Each item's status on the opened order (`ItemStatus`), a band under the
+ * item the width of its row, on the owner's word ("it should be clear,
+ * showing status also track order click to be understandable by clients"):
+ * the picture on a plate at its start — NetLet's store with an amber disc
+ * turning while it is got ready, the van with its wheels turning on the way
+ * (facing the page's end, so mirrored on the Arabic page), the house with a
+ * green tick once it has arrived — where it is in bold, the tracker's four
+ * steps as a strip (done in navy, the one it is at in the brand's orange,
+ * all green once it has arrived), when it comes, and at its end the pill
+ * that says what the press does: Track order, Rate, or Edit. It was a 36 by
+ * 30 plate and an 11px word under the photo. Transforms and opacities alone;
+ * still for somebody who asked for less motion.
  */
 .item-status {
   display: flex;
   width: 100%;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 6px;
+  gap: 10px 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid #d6e3f5;
+  background: #f1f6fd;
   text-align: start;
+  color: #0a285a;
+}
+.item-status[data-look="processing"] {
+  border-color: #f1dfb3;
+  background: #fff8e9;
+}
+.item-status[data-look="delivered"],
+.item-status[data-look="rate"],
+.item-status[data-look="rated"] {
+  border-color: #cfe7d6;
+  background: #eff8f2;
+}
+.item-status[data-look="cancelled"] {
+  border-color: #f2d2cd;
+  background: #fdf2f1;
+}
+.item-status[data-look="returned"] {
+  border-color: #dde4ee;
+  background: #f3f6fa;
+}
+/* A band that is a press takes the house's hover, the tint over its own fill
+   (`.tint-on-hover`), and gives a pixel under the finger. */
+button.item-status {
+  cursor: pointer;
+  transition: translate 160ms ease;
+}
+button.item-status:active {
+  translate: 0 1px;
+}
+button.item-status:focus-visible {
+  outline: 2px solid #0a285a;
+  outline-offset: 2px;
 }
 .item-status-plate {
   position: relative;
   display: grid;
   flex: none;
   place-items: center;
-  min-width: 2.25rem;
-  height: 1.875rem;
-  border-radius: 10px;
-  background: #e8f0fb;
-}
-.item-status[data-look="processing"] .item-status-plate {
-  background: #fff4dc;
-}
-.item-status[data-look="delivered"] .item-status-plate {
-  background: #e6f4ea;
-}
-.item-status[data-look="rate"] .item-status-plate,
-.item-status[data-look="rated"] .item-status-plate {
-  background: #fff3d1;
-  box-shadow: inset 0 0 0 1px #efd48a;
-  color: #b7791f;
+  width: 2.75rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgb(10 40 90 / 0.06);
 }
 .item-status[data-look="cancelled"] .item-status-plate {
-  background: #fdeceb;
   color: #8c2f22;
 }
 .item-status[data-look="returned"] .item-status-plate {
-  background: #e7edf5;
   color: #3d5170;
 }
 .item-status-word {
-  /* Beside the plate while a word of its fits (the photo's 96px leaves 54),
-     under it on the narrowest phones rather than broken mid-word. */
-  flex: 1 1 0;
-  min-width: 2.75rem;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 13px;
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 18px;
   color: #0a285a;
   overflow-wrap: break-word;
+}
+.item-status[data-look="delivered"] .item-status-word,
+.item-status[data-look="rate"] .item-status-word,
+.item-status[data-look="rated"] .item-status-word {
+  color: #1f6a35;
 }
 .item-status[data-look="cancelled"] .item-status-word {
   color: #8c2f22;
 }
+.item-status[data-look="returned"] .item-status-word {
+  color: #3d5170;
+}
+/* The tracker's four steps, in the page's direction. */
+.item-status-steps {
+  display: flex;
+  gap: 3px;
+  max-width: 8.5rem;
+  margin-top: 6px;
+}
+.item-status-steps > span {
+  height: 4px;
+  flex: 1 1 0;
+  border-radius: 9999px;
+  background: #dbe3ee;
+}
+.item-status-steps > [data-step="done"] {
+  background: #0a285a;
+}
+.item-status-steps > [data-step="now"] {
+  background: #f2683a;
+}
+.item-status-steps > [data-step="arrived"] {
+  background: #2f7d43;
+}
+.item-status-when {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: #2f5d33;
+}
+.item-status-when[data-late] {
+  color: #a44a2b;
+}
+/* What the press does, at the band's end — under the words on a narrow row. */
+.item-status-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+  min-height: 2.25rem;
+  padding: 0 14px;
+  border-radius: 9999px;
+  background: #0a285a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+}
+.item-status-pill[data-quiet] {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgb(10 40 90 / 0.25);
+  color: #0a285a;
+}
+.item-status-pill .item-status-star {
+  color: #ffd66b;
+}
+.item-status-chevron[data-open] {
+  rotate: 180deg;
+}
 .item-status-place {
   position: relative;
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
 }
 .item-status-place > svg,
 .item-status-van > svg {
@@ -2450,12 +2540,12 @@ html[data-page-arriving] .assistant-launcher {
 /* The tick or the turning disc on a place's corner — never mirrored. */
 .item-status-badge {
   position: absolute;
-  top: -3px;
-  inset-inline-end: -6px;
+  top: -4px;
+  inset-inline-end: -7px;
   display: grid;
   place-items: center;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 9999px;
   color: #fff;
   box-shadow: 0 0 0 1.5px #fff;
@@ -2467,16 +2557,16 @@ html[data-page-arriving] .assistant-launcher {
   background: #2f7d3a;
 }
 .item-status-spinner {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border: 1.5px solid rgb(255 255 255 / 0.4);
   border-top-color: #fff;
   border-radius: 9999px;
 }
 .item-status-van {
   position: relative;
-  width: 26px;
-  height: 15px;
+  width: 34px;
+  height: 20px;
 }
 [dir="rtl"] .item-status-van {
   scale: -1 1;
@@ -2487,23 +2577,24 @@ html[data-page-arriving] .assistant-launcher {
 }
 .item-status-speed {
   position: absolute;
-  bottom: 9px;
-  left: -6px;
-  width: 5px;
+  bottom: 12px;
+  left: -7px;
+  width: 6px;
   height: 1.5px;
   border-radius: 2px;
   background: #9fb0c8;
   opacity: 0;
 }
 .item-status-speed-late {
-  bottom: 5px;
-  left: -5px;
-  width: 4px;
+  bottom: 7px;
+  left: -6px;
+  width: 5px;
 }
 .item-status-stars {
   display: flex;
-  gap: 1px;
-  padding-inline: 5px;
+  gap: 2px;
+  margin-top: 5px;
+  color: #b7791f;
 }
 @media (prefers-reduced-motion: no-preference) {
   .item-status[data-look="processing"] .item-status-spinner {
@@ -2521,11 +2612,16 @@ html[data-page-arriving] .assistant-launcher {
   .item-status[data-look="onTheWay"] .item-status-speed-late {
     animation-delay: -0.3s;
   }
-  .item-status[data-look="delivered"] .item-status-badge {
+  .item-status[data-look="delivered"] .item-status-badge,
+  .item-status[data-look="rate"] .item-status-badge,
+  .item-status[data-look="rated"] .item-status-badge {
     animation: item-status-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) 0.15s both;
   }
   .item-status[data-look="rate"] .item-status-star {
     animation: item-status-star 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) 0.15s both;
+  }
+  .item-status-chevron {
+    transition: rotate 200ms ease;
   }
 }
 @keyframes item-status-spin {

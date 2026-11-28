@@ -56,7 +56,7 @@ import { isCalendarDay, isOrderPeriod, isOrderTab, isOrderView, ORDER_SEARCH_MAX
 import { OrderSearchAndFilter, filtersOn, type OrderFacets, type OrderFilterChange, type OrderFilterState } from "@/components/account/OrderFilters";
 import { ReviewDialog, type MyReview, type ReviewTarget } from "@/components/reviews/ReviewDialog";
 import { ReviewStatePill } from "@/components/reviews/ReviewStatePill";
-import { LineExpected, LineStatus, OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLinePhoto, OrderLineRow, OrderLineTitle } from "@/components/account/OrderActions";
+import { LineStatus, OrderAfterSales, OrderLineChoice, OrderLinePanel, OrderLinePhoto, OrderLineRow, OrderLineTitle } from "@/components/account/OrderActions";
 
 /**
  * The words for each state, and its colour.
@@ -497,14 +497,11 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, dated 
                   {/* Chosen for the bar's acts, the cart's own circle (on the owner's word). */}
                   <OrderLineChoice line={line} />
                   {/* The photo, the size the owner drew it ("I prefer the item
-                      picture this size"), and under it where the item is — once
-                      it has arrived, its review — the picture at the row's start
-                      and the word after it (on the owner's word). */}
-                  <div className="flex w-[76px] shrink-0 flex-col items-stretch gap-2 min-[360px]:w-24">
+                      picture this size"). */}
+                  <div className="w-[76px] shrink-0 min-[360px]:w-24">
                     <OrderLinePhoto line={line}>
                       <Thumb src={line.photo ?? null} alt="" className="size-[76px] rounded-2xl border border-[#e7edf5] bg-white object-contain min-[360px]:size-24" icon={<PackageSearch className="size-6" />} />
                     </OrderLinePhoto>
-                    <LineStatus line={line} detail={data} />
                   </div>
                   <div className="min-w-0 flex-1">
                     {/* What can be done with it is the bar's, once its circle is
@@ -528,8 +525,6 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, dated 
                         {t("orders.lineCode", { code: line.discountCode, amount: formatMoney(line.discountAmount, { currencyCode: data.order.currency, locale }) })}
                       </p>
                     ) : null}
-                    {/* When this item is expected, while it is still coming. */}
-                    <LineExpected line={line} detail={data} />
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {/*
                         The return affordance draws only where a return is
@@ -554,6 +549,11 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, dated 
                     <LineReturnStatus reference={reference} currency={data.order.currency} line={line} requests={data.returns} />
                   </div>
                   </OrderLineRow>
+                  {/* Where it is, said clearly, with what a press does — Track
+                      order, or once it has arrived its review — the item's full
+                      width (on the owner's word: "it should be clear, showing
+                      status also track order click"). */}
+                  <LineStatus line={line} detail={data} />
                   {/* What the bar opened for this item, the item's full width. */}
                   <OrderLinePanel line={line} />
                 </li>

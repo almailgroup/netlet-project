@@ -7,7 +7,7 @@
  * what it came to, line by line.
  *
  * Pure and shared, so the website's item status and receipt and the app's
- * (`ItemStatusTile`, `ReceiptRules` in Swift, tested on these cases)
+ * (its item status and `ReceiptRules` in Swift, tested on these cases)
  * cannot say different things. Nothing here is computed afresh: every figure
  * is the one the order froze.
  */
@@ -36,6 +36,29 @@ export function journeyStage(progress: Pick<OrderProgress, "kind">): JourneyStag
       return "cancelled";
     case "returned":
       return "returned";
+  }
+}
+
+/**
+ * Which of the tracker's four steps an item is at — the order, being got
+ * ready, on the way, at the door — as the band under an opened order's item
+ * draws them (0 to 3), or null for an item that left the road. Received and
+ * a pre-order are the first; being prepared the second.
+ */
+export function journeyStep(progress: Pick<OrderProgress, "kind">): 0 | 1 | 2 | 3 | null {
+  switch (progress.kind) {
+    case "received":
+      return 0;
+    case "preparing":
+      return 1;
+    case "onTheWay":
+    case "partlyDelivered":
+      return 2;
+    case "delivered":
+      return 3;
+    case "cancelled":
+    case "returned":
+      return null;
   }
 }
 

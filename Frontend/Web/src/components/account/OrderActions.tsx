@@ -457,11 +457,11 @@ const OWN_PRESS = "a, button, input, select, textarea, label, summary, [role='bu
  * and a press on its photo opens its page on the shop**, on the owner's word
  * ("when you tap on the product text it should show you the product
  * tracking … when you tap on the product image, it should take you to the
- * product page"). Its name is the button the keyboard and a screen reader
- * meet for the tracker (`OrderLineTitle`), drawn under the item, and its
- * photo the link to its page (`OrderLinePhoto`); the rest of the row — the
- * price, the expected day, the status under the photo — is the pointer's and
- * the finger's larger target for the tracker. An item no parcel holds (one
+ * product page"). The band under it is the press the keyboard and a screen
+ * reader meet for the tracker, said as "Track order" (`LineStatus`), drawn
+ * under the item, and its photo the link to its page (`OrderLinePhoto`); the
+ * rest of the row — the name, the price — is the pointer's and the finger's
+ * larger target for the tracker. An item no parcel holds (one
  * cancelled, an order cancelled) has nothing to track, and its words open
  * its page instead; a product the shop no longer shows has no page.
  *
@@ -510,38 +510,18 @@ function productHref(line: Line): string | null {
 }
 
 /**
- * An item's name: outside editing, the button that opens where the item is,
- * under it — pressed again, it closes — or, for an item with nothing to
- * track, a link to its page on the shop; while editing, words, since a press
- * there chooses the item. The tracker's name is the words drawn (WCAG
- * 2.5.3), and "Track this item" its description.
+ * An item's name: words while a parcel holds it — the band under the item is
+ * the press for its tracker that the keyboard and a screen reader meet, said
+ * as "Track order", and a pointer's or a finger's press on the words opens
+ * it too (`OrderLineRow`) — or, for an item with nothing to track, a link to
+ * its page on the shop; while editing, words, since a press there chooses
+ * the item.
  */
 export function OrderLineTitle({ line }: { line: Line }) {
-  const { t } = useTranslation();
-  const { editing, detail, panel, open, panelId } = useControls();
+  const { editing, detail } = useControls();
   const href = productHref(line);
   const className = "type-product line-clamp-2 pt-1.5 text-sm text-[#0a285a]";
-  if (editing) return <p dir="auto" className={className}>{line.productTitle}</p>;
-  if (tracksItem(detail.steps, line.id)) {
-    const opened = panel?.kind === "track" && panel.lineId === line.id;
-    return (
-      <p dir="auto" className={className}>
-        <button
-          type="button"
-          dir="auto"
-          aria-expanded={opened}
-          aria-controls={panelId(line.id)}
-          onClick={() => { pressHaptic(); open({ kind: "track", lineId: line.id }); }}
-          aria-describedby={`${panelId(line.id)}-hint`}
-          className="text-start hover:underline"
-        >
-          {line.productTitle}
-        </button>
-        <span id={`${panelId(line.id)}-hint`} className="sr-only">{t("orders.trackItem")}</span>
-      </p>
-    );
-  }
-  if (!href) return <p dir="auto" className={className}>{line.productTitle}</p>;
+  if (editing || tracksItem(detail.steps, line.id) || !href) return <p dir="auto" className={className}>{line.productTitle}</p>;
   return (
     <p dir="auto" className={className}>
       <Link href={href} dir="auto" className="hover:underline">{line.productTitle}</Link>
@@ -887,45 +867,34 @@ function usePromiseText() {
 }
 
 /**
- * Where one item is, drawn under it in the opened order, on the owner's word
- * ("inside, each item has a different delivery time … once you click in it,
- * each item will show this one"): the road My orders drew under the whole
- * order, read off this item alone (`orderProgress` over its one line), with
- * when its parcel's store says it comes. The list shows the order's main
- * facts only.
- */
-/**
- * Where one item is, under its photo (on the owner's word: "delivery status
- * should shown here; once it shown delivered, then review icon will appear
- * out here"), read off that item alone; once delivered, the plate is its
- * review — Rate, or the stars given and Edit.
+ * Where one item is, as a band under it (on the owner's word: "it should be
+ * clear, showing status also track order click to be understandable by
+ * clients"), read off that item alone, with when its parcel's store says it
+ * comes — an order's items arrive on different days. While a parcel holds it
+ * the band is the press for its tracker, said as "Track order"; once it has
+ * arrived it is its review — Rate, or the stars given and Edit.
  */
 export function LineStatus({ line, detail }: { line: Line; detail: Detail }) {
-  const { rate } = useControls();
+  const { rate, panel, open, panelId } = useControls();
+  const promiseText = usePromiseText();
+  const progress = orderProgress(detail.order, [line]);
+  const parcel = detail.steps.parcels.find(entry => entry.lineIds.includes(line.id));
+  const tracked = tracksItem(detail.steps, line.id);
   return (
     <ItemStatus
-      progress={orderProgress(detail.order, [line])}
+      progress={progress}
+      expected={promiseText(parcel?.promise ?? null)}
       rating={line.review?.rating ?? null}
       mayRate={!line.review && line.reviewEligibility.allowed}
       title={line.productTitle}
+      track={tracked ? {
+        open: panel?.kind === "track" && panel.lineId === line.id,
+        controls: panelId(line.id),
+        onPress: () => { pressHaptic(); open({ kind: "track", lineId: line.id }); },
+      } : null}
       onRate={() => rate(line.id)}
     />
   );
-}
-
-/**
- * When one item still coming is expected — its parcel's day, the store's own
- * estimate or that it is later (the tracker's words): an order's items arrive
- * on different days.
- */
-export function LineExpected({ line, detail }: { line: Line; detail: Detail }) {
-  const promiseText = usePromiseText();
-  const progress = orderProgress(detail.order, [line]);
-  if (progress.kind === "delivered" || progress.kind === "cancelled" || progress.kind === "returned") return null;
-  const parcel = detail.steps.parcels.find(entry => entry.lineIds.includes(line.id));
-  const promise = promiseText(parcel?.promise ?? null);
-  if (!promise) return null;
-  return <p className={`mt-1 text-[12px] font-semibold leading-5 ${promise.late ? "ink-accent" : "text-[#2f5d33]"}`}>{promise.text}</p>;
 }
 
 /** How many of a parcel's items are drawn by their photos before a "+N". */
