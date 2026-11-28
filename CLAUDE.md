@@ -3521,39 +3521,55 @@ Orders is the first tile, ahead of the settings: somebody
 opening their account on a shop is usually asking where a parcel is, not
 changing a display name.
 
-**Where each item is, is drawn under its photo in the opened order, and once
-it has arrived that place is its review — on the owner's word, the third
-time it moved** ("delivery status should shown here; once it shown
-delivered, then review icon will appear out here", a picture with the empty
-corner under an item's photo circled). It was a road under each order on
-My orders ("a design for their status of delivery below them … simple for
-the user to understand"), then a road under each item of an opened order
-("in this page will show you only the main info … each item has different
-deliver time"), and is now a tile under the photo (`ItemStatus` on the web,
-`ItemStatusTile` in the app): **a row the photo's width, a 36 by 30 plate at
-its start and the item's word after it, under a photo 96 square (76 on a
-phone under 360px wide) — both on the owner's word** (a drawing over the
-item: "I prefer the item picture this size, and the delivery details down,
-picture left and status right"); it was a 56 by 40 plate with the word under
-it beside a 56px photo. On a 320 phone the word drops under the plate rather
-than break mid-word. It is read off that item alone (`orderProgress` over its one line,
-`ReceiptRules.progress` in the app). **Being got ready** (received, being
-prepared, pre-ordered): NetLet's store on pale amber, an amber disc turning
-on its corner. **On the way**: NetLet's navy van on pale sky, wheels turning
+**Where each item is, is a band under it in the opened order, with a press
+saying what it does — on the owner's word, the fourth time it moved** ("it
+should be clear, showing status also track order click to be understandable
+by clients", over a picture of the small tile under an item's photo,
+circled). It was a road under each order on My orders, then a road under
+each item of an opened order, then a tile the photo's width under the photo
+(a 36 by 30 plate and an 11px word, `ItemStatusTile` in the app), which the
+owner found unclear. Now it is **a band the item's full width under its row**
+(`ItemStatus` on the web, `ItemStatusBar` in the app): the picture on a white
+plate at its start (44 by 40), **where it is in bold** (14, "Order received",
+"Being prepared", "On the way", "Delivered on …"), **the tracker's four steps
+as a strip** under it (`journeyStep` in `Shared/commerce/orderReceipt.ts`,
+the app's `ReceiptRules.journeyStep`, on the same cases: done in navy, the
+one it is at in the brand's orange, still ahead pale, all green at the
+door), **when it comes** while it is still coming (its parcel's own day, the
+store's estimate or that it is later: `usePromiseText`, the app's
+`ParcelStepsCard.promiseText`, the tracker's words — it was a line in the
+item's text, `LineExpected`, gone), and **at its end the pill that says what a
+press does**: "Track order" (navy, a chevron) while a parcel holds the item,
+"Rate" (a gold star) once it has arrived and `reviewEligibility` allows it,
+"Edit your review" (white, a navy rim) over the five stars once rated. **The whole band
+is that press**, so a thumb need not find the pill; on a row too narrow for
+both the pill drops under the words at the band's end. Track order opens the
+item's tracker (under the item on the web, `aria-expanded` and the chevron
+turned while it is open; the app's `TrackOrderSheet` with its `lineId`), Rate
+and Edit the review. Its name is what it says and then which item ("Order
+received Track order: Desk lamp" in Chromium's reading, "Order received,
+Track order: Desk lamp" to VoiceOver), so several items' presses are told apart. **With
+nothing to do — cancelled, returned, an arrival that can be neither tracked
+nor rated — it is the status alone**, its word on a pale red or slate band.
+Each look has its own band: pale amber while it is got ready, pale sky on the
+way, pale green once delivered (the word in green), with dark values in the
+app's dark mode; the plate stays white in both, the art being drawn with
+white walls. **The item's name is words while a parcel holds it**: it was the
+tracker's button for the keyboard and VoiceOver, and with the band that was a
+second press for the same thing; a pointer's or a finger's press on the words
+still opens the tracker (`OrderLineRow`, the app's row gesture), and with
+nothing to track the name is the product's link, as before. The band is
+outside the row, so while the order is edited a press on it is its own and
+never chooses the item. It is read off that item alone (`orderProgress` over
+its one line, `ReceiptRules.progress` in the app). **Being got ready**
+(received, being prepared, pre-ordered): NetLet's store, an amber disc
+turning on its corner. **On the way**: NetLet's navy van, wheels turning
 every 0.42s, its body riding the bumps, two speed lines behind it, facing the
-page's end (mirrored on the Arabic page). **Delivered**: a star on pale gold
-that pops in, "Rate", a button named "Rate {item}" opening the review
-dialog (`rate` on the web, the app's `ReviewSheet`) — only where
-`reviewEligibility` allows it; once rated, the five stars given and "Edit"
-("Edit your review"), the same dialog; and where it can be neither, the house
-with a green tick. **Cancelled** and **returned** are their word on a pale
-plate. A press on the tile is its own and never chooses the item (the row's
-`OWN_PRESS`; a SwiftUI `Button` in the app). The review line in the item's
-text keeps only its state (Published, Waiting for a quick check, Removed),
-the stars being under the photo. **The item's expected day is in its text**
-while it is still coming (`LineExpected` on both): its parcel's own day, the
-store's estimate or that it is later (`usePromiseText`, the app's
-`ParcelStepsCard.promiseText`, the tracker's words). **My orders' row is the
+page's end (mirrored on the Arabic page). **Delivered**: the house with a
+green tick that pops in. The review line in the item's text keeps only its
+state (Published, Waiting for a quick check, Removed). The photo is 96
+square (76 on a phone under 360px wide) and the band no longer sits under
+it. **My orders' row is the
 order's pictures, its number, its date, what it comes to and how it is paid,
 and Track order — nothing else, on the owner's word** ("show more than one
 picture of the orders, also order number and date and the amount and payment
@@ -3576,17 +3592,20 @@ hopping into the van and the van driving to the house, went with the road.
 **The web's motion is transforms and opacities alone** (`.item-status` in
 `index.css`) and the app's a pure function of the clock (`JourneyMotion`,
 tested at the web's keyframes) drawn by a timeline that runs only while
-something moves; nothing moves under reduced motion. `journeyStage`
-(`Shared/commerce/orderReceipt.ts`) is the rule; the app's
-`ReceiptRules.journeyStage`, on the same cases. `OrderItemJourneyUITests`
-holds the list with none, two on the recorded pending order, Rate on a
-delivered item opening the review and Edit on two rated ones; the CI
-photographs every look in both languages (`-NetLetOpen journeyProbe`,
-`JourneyProbe`, Debug only, `112-order-journey`). Walked on a production
-build against a local Postgres at 320, 390 and 1440 in both languages: each
-tile under its own photo and centred on it, the van on the shipped item and
-Rate on the delivered one, Rate opening the review without choosing the item,
-the expected day beside each item still coming, axe clean, no sideways scroll.
+something moves; nothing moves under reduced motion. `journeyStage` and
+`journeyStep` (`Shared/commerce/orderReceipt.ts`) are the rule; the app's
+`ReceiptRules`, on the same cases. `ItemStatus.test.ts` holds the web's band
+(it failed on the old tile) and `OrderLinePress.test.ts` the name as words
+beside it; `OrderItemJourneyUITests` holds the list with none, two Track order
+presses on the recorded pending order, each the item's width under its photo,
+the first opening its tracker, Rate on a delivered item opening the review
+and Edit on two rated ones; the CI photographs every look in both languages
+(`-NetLetOpen journeyProbe`, `JourneyProbe`, Debug only, `112-order-journey`).
+Walked on a production build against a local Postgres at 320, 390 and 1440 in
+both languages (`.scratch/item-band-walk.mjs`): Track order on a pending, a
+prepared and a shipped item opening and closing its tracker, Rate on the
+delivered one, the cancelled one the status alone, the pill under the words
+at 320, nothing cut, axe clean, no sideways scroll.
 
 **An opened order's receipt can be saved as a PDF, on the owner's word**
 ("an export to PDF option that will show all the details of your order in

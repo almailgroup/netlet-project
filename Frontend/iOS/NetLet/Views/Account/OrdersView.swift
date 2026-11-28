@@ -317,7 +317,7 @@ struct OrderRow: View {
         // amount and payment method and track order only"): its pictures, its
         // number, when it was ordered, what it comes to and how it is paid.
         // Where each item is, and rating or returning it, are the opened
-        // order's (`ItemStatusTile`, the chosen items' bar).
+        // order's (`ItemStatusBar`, the chosen items' bar).
         VStack(alignment: .leading, spacing: 12) {
             OrderPhotoStrip(photos: order.summary.photos, count: order.summary.lineCount)
             VStack(alignment: .leading, spacing: 3) {
@@ -701,43 +701,30 @@ struct OrderDetailView: View {
                             .transition(still ? .identity : .scale(scale: 0.6).combined(with: .opacity))
                         }
                         // The photo, the size the owner drew it ("I prefer the
-                        // item picture this size"), and under it where the item
-                        // is — once it has arrived, its review — the picture at
-                        // the row's start and the word after it (on the owner's word).
-                        VStack(alignment: .leading, spacing: 8) {
-                            // The photo is the way to the product (on the
-                            // owner's word), the words beside it the tracker.
-                            let linksToProduct = !editing && line.productHandle != nil
-                            Color.clear
-                                .frame(width: ItemStatusTile.width, height: ItemStatusTile.width)
-                                .overlay { RemoteImage(reference: line.photo) }
-                                .background(Brand.photoFrame)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .onTapGesture { pressPhoto(line) }
-                                .accessibilityElement()
-                                .accessibilityLabel(l.t("product.view", ["name": line.productTitle]))
-                                .accessibilityAddTraits(.isLink)
-                                .accessibilityHidden(!linksToProduct)
-                                .accessibilityIdentifier("order-item-photo")
-                            ItemStatusTile(
-                                progress: ReceiptRules.progress(status: detail.order.status, lines: [(fulfilment: line.fulfilment, deliveredAt: line.deliveredAt, preordered: line.preordered ?? false)]),
-                                rating: line.review?.rating,
-                                mayRate: line.mayRate,
-                                title: line.productTitle
-                            ) {
-                                rating = target(line)
-                            }
-                        }
+                        // item picture this size"), the way to the product (on
+                        // the owner's word); the words beside it the tracker.
+                        Color.clear
+                            .frame(width: ItemStatusBar.photoSide, height: ItemStatusBar.photoSide)
+                            .overlay { RemoteImage(reference: line.photo) }
+                            .background(Brand.photoFrame)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .onTapGesture { pressPhoto(line) }
+                            .accessibilityElement()
+                            .accessibilityLabel(l.t("product.view", ["name": line.productTitle]))
+                            .accessibilityAddTraits(.isLink)
+                            .accessibilityHidden(editing || line.productHandle == nil)
+                            .accessibilityIdentifier("order-item-photo")
                         VStack(alignment: .leading, spacing: 4) {
-                            let tracked = !editing && detail.steps?.tracks(line.id) == true
+                            let tracked = detail.steps?.tracks(line.id) == true
+                            let toProduct = !editing && !tracked && line.productHandle != nil
                             Text(line.productTitle).font(.subheadline.weight(.semibold)).foregroundStyle(Brand.ink)
                                 .fixedSize(horizontal: false, vertical: true)
-                                // Outside editing, the name is how VoiceOver
-                                // reaches where the item is — or, with nothing
-                                // to track, its product.
-                                .accessibilityAddTraits(tracked ? .isButton : !editing && line.productHandle != nil ? .isLink : [])
-                                .accessibilityHint(tracked ? l.t("orders.trackItem") : !editing && line.productHandle != nil ? l.t("orders.pickView") : "")
+                                // With nothing to track, the name is how
+                                // VoiceOver reaches its product; otherwise the
+                                // band under the item is its tracker's press.
+                                .accessibilityAddTraits(toProduct ? .isLink : [])
+                                .accessibilityHint(toProduct ? l.t("orders.pickView") : "")
                                 .accessibilityIdentifier("order-item-name")
                             if let variant = line.variantLabel {
                                 Text(variant).font(.caption).foregroundStyle(Brand.muted)
@@ -758,8 +745,6 @@ struct OrderDetailView: View {
                                     .foregroundStyle(Brand.success)
                             }
                             Text(line.lineTotal.formatted(l.current)).font(.subheadline.weight(.bold)).foregroundStyle(Brand.navy)
-                            // When this item is expected, while it is still coming.
-                            LineExpected(line: line, detail: detail)
                             returnWindow(line)
                         }
                         // What can be done with it is the bar's, once its circle
@@ -781,6 +766,20 @@ struct OrderDetailView: View {
                             .padding(-6)
                     )
                     .animation(.easeOut(duration: 0.15), value: chosen.contains(line.id))
+                    // Where it is, said clearly, with what a press does — Track
+                    // order, or once it has arrived its review — the item's full
+                    // width (on the owner's word: "it should be clear, showing
+                    // status also track order click").
+                    ItemStatusBar(
+                        progress: ReceiptRules.progress(status: detail.order.status, lines: [(fulfilment: line.fulfilment, deliveredAt: line.deliveredAt, preordered: line.preordered ?? false)]),
+                        expected: ParcelStepsCard.promiseText(detail.steps?.parcels.first { $0.lineIds.contains(line.id) }?.promise, l),
+                        rating: line.review?.rating,
+                        mayRate: line.mayRate,
+                        title: line.productTitle,
+                        tracked: detail.steps?.tracks(line.id) == true,
+                        onTrack: { sheet = OrderSheet(kind: .track, lineId: line.id) },
+                        onRate: { rating = target(line) }
+                    )
                     LineReviewRow(line: line)
                     LineReturnPanel(reference: reference, line: line, detail: detail, reload: reload, open: Binding(
                         get: { returning == line.id },

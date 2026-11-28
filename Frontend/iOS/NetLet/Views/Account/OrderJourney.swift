@@ -1,34 +1,44 @@
 import SwiftUI
 
-/// Where one item of an opened order is, drawn under its photo, on the
-/// owner's word ("delivery status should shown here — once it shown
-/// delivered, then review icon will appear out here"): **a row the photo's
-/// width, the small picture at its start and the word after it**, also on the
-/// owner's word ("the delivery details down picture left and status right as
-/// my drawing", with the photo made larger) — it was a plate with the word
-/// under it. The web's `ItemStatus`, drawn the same.
+/// Where one item of an opened order is, as a band under the item the width
+/// of its row, on the owner's word ("it should be clear, showing status also
+/// track order click to be understandable by clients", over a picture of the
+/// small tile that sat under the photo, circled): **the picture, where it is
+/// in bold, the four steps as a strip, when it comes, and at the band's end a
+/// pill saying what a press does** — Track order while a parcel holds it,
+/// Rate once it has arrived and may be rated, Edit once it has been. The
+/// whole band is that press; with nothing to do (cancelled, returned, an
+/// arrival that can be neither tracked nor rated) it is the status alone.
+/// The web's `ItemStatus`, drawn the same.
 ///
-/// - **Being got ready**, NetLet's store with an amber disc turning on its corner.
+/// - **Being got ready**, NetLet's store with an amber disc turning on its
+///   corner, on a pale amber band.
 /// - **On the way**, NetLet's van with its wheels turning, riding the bumps,
 ///   speed lines behind it — facing the page's end, so it is mirrored on the
-///   Arabic page.
-/// - **Delivered**, a star to press and rate it, once it may be rated; the
-///   stars given and "Edit" once it has been; the house with a green tick
-///   when it can be neither.
-/// - **Cancelled** or **returned**, its word on a plate of its own.
+///   Arabic page — on a pale sky band.
+/// - **Delivered**, the house with a green tick, on a pale green band, the
+///   strip all green; Rate (a gold star) or the stars given and Edit.
+/// - **Cancelled** or **returned**, its word on a pale red or slate band.
 ///
-/// It was a street drawn under each order on My orders, then under each
-/// item, and the owner moved it here, an order's items arriving on different
-/// days. The pictures are still the street's own (`JourneyArt`), drawn from
-/// `JourneyMotion`, a pure function of the clock, by a timeline that runs only
-/// while something moves and never under Reduce Motion.
-struct ItemStatusTile: View {
+/// It was a tile the photo's width under the photo (a 36 by 30 plate and an
+/// 11-point word), which the owner found unclear. The strip is the tracker's
+/// own four steps (`ReceiptRules.journeyStep`), the one the item is at in the
+/// brand's orange. The pictures are still NetLet's own (`JourneyArt`), drawn
+/// from `JourneyMotion`, a pure function of the clock, by a timeline that runs
+/// only while something moves and never under Reduce Motion.
+struct ItemStatusBar: View {
     let progress: OrderProgress
+    /// When it comes, while it is still coming: the store's own words (the tracker's).
+    let expected: (text: String, late: Bool)?
     /// The shopper's stars on it, once rated.
     let rating: Int?
     /// Whether it may be rated now (`reviewEligibility`).
     let mayRate: Bool
     let title: String
+    /// Whether a parcel holds it, so there is somewhere to track it.
+    let tracked: Bool
+    /// Opens where it is: its parcel's tracker.
+    let onTrack: () -> Void
     /// Opens the review: a new one, or the one written to change it.
     let onRate: () -> Void
     @Environment(LanguageSettings.self) private var l
@@ -37,15 +47,15 @@ struct ItemStatusTile: View {
     @State private var shown = false
 
     enum Look { case processing, onTheWay, delivered, rate, rated, cancelled, returned }
+    enum Act { case track, rate, edit }
 
-    /// The photo's width above it, which the row spans.
-    static let width: CGFloat = 96
-    /// The picture's plate, at the row's start.
-    static let plateWidth: CGFloat = 36
-    static let plateHeight: CGFloat = 30
+    /// The item's photo beside its words, the size the owner drew it.
+    static let photoSide: CGFloat = 96
+    /// The picture's plate, at the band's start.
+    static let plateWidth: CGFloat = 44
+    static let plateHeight: CGFloat = 40
     static let gold = Color(red: 183 / 255, green: 121 / 255, blue: 31 / 255)
-    static let goldFill = Color(red: 1, green: 243 / 255, blue: 209 / 255)
-    static let goldLine = Color(red: 239 / 255, green: 212 / 255, blue: 138 / 255)
+    static let starOnNavy = Color(red: 1, green: 214 / 255, blue: 107 / 255)
 
     var look: Look {
         switch ReceiptRules.journeyStage(progress.kind) {
@@ -57,70 +67,199 @@ struct ItemStatusTile: View {
         }
     }
 
-    private func word(_ look: Look) -> String {
+    var act: Act? {
         switch look {
-        case .rate: return l.t("orders.pickRate")
-        case .rated: return l.t("profile.edit")
-        case .delivered: return l.t("orders.journeyDelivered")
-        default: return OrderWording.progress(progress, language: l)
+        case .rate: return .rate
+        case .rated: return .edit
+        default: return tracked ? .track : nil
         }
     }
 
     var body: some View {
         let look = self.look
-        let tile = HStack(spacing: 6) {
-            plate(look)
-            Text(word(look))
-                .font(.inter(11, .bold))
-                .foregroundStyle(look == .cancelled ? JourneyStreet.stoppedInk : Brand.navy)
-                .multilineTextAlignment(.leading)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        let act = self.act
+        let band = ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                status(look)
+                if let act { pill(act).layoutPriority(1) }
+            }
+            VStack(alignment: .trailing, spacing: 10) {
+                status(look).frame(maxWidth: .infinity, alignment: .leading)
+                if let act { pill(act) }
+            }
         }
-        .frame(width: Self.width, alignment: .leading)
-        .contentShape(Rectangle())
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(fill(look)))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(edge(look), lineWidth: 1))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .onAppear {
             guard !shown else { return }
             if reduceMotion { shown = true } else { withAnimation(.spring(response: 0.45, dampingFraction: 0.55).delay(0.15)) { shown = true } }
         }
         Group {
-            if look == .rate || look == .rated {
-                Button(action: onRate) { tile }
-                    .buttonStyle(SpringPressStyle(cornerRadius: 10))
-                    .accessibilityLabel(look == .rate ? l.t("review.dialogTitle", ["name": title]) : l.t("review.edit"))
+            if let act {
+                Button {
+                    Haptics.tap()
+                    if act == .track { onTrack() } else { onRate() }
+                } label: { band }
+                .buttonStyle(SpringPressStyle(cornerRadius: 16))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(spoken(act))
+                .accessibilityAddTraits(.isButton)
+                .accessibilityInputLabels([actionWord(act), phrase])
             } else {
-                tile.accessibilityElement(children: .combine)
+                band
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(phrase)
             }
         }
         .accessibilityIdentifier("item-status")
     }
 
-    private func fill(_ look: Look) -> Color {
-        switch look {
-        case .processing: return Color(red: 1, green: 244 / 255, blue: 220 / 255)
-        case .onTheWay: return Color(red: 232 / 255, green: 240 / 255, blue: 251 / 255)
-        case .delivered: return Color(red: 230 / 255, green: 244 / 255, blue: 234 / 255)
-        case .rate, .rated: return Self.goldFill
-        case .cancelled: return JourneyStreet.stoppedFill
-        case .returned: return JourneyStreet.overFill
+    private var phrase: String { OrderWording.progress(progress, language: l) }
+
+    private func actionWord(_ act: Act) -> String {
+        switch act {
+        case .track: return l.t("orders.track")
+        case .rate: return l.t("orders.pickRate")
+        case .edit: return l.t("review.edit")
         }
     }
 
-    private func plate(_ look: Look) -> some View {
-        let rated = look == .rated
-        return picture(look)
-            // The stars given are wider than the plate; it grows round them.
-            .padding(.horizontal, rated ? 5 : 0)
-            .frame(width: rated ? nil : Self.plateWidth, height: Self.plateHeight)
-            .frame(minWidth: Self.plateWidth)
-            .layoutPriority(1)
-            .background {
-                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(fill(look))
-                if look == .rate || look == .rated {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Self.goldLine, lineWidth: 1)
+    /// What VoiceOver says: where it is, then what the press does and to
+    /// which item — several items' "Track order" are told apart by it.
+    private func spoken(_ act: Act) -> String {
+        let press: String
+        switch act {
+        case .track: press = "\(l.t("orders.track")): \(title)"
+        case .rate: press = l.t("review.dialogTitle", ["name": title])
+        case .edit: press = "\(l.t("review.edit")): \(title)"
+        }
+        var words = [phrase]
+        if let expected, look != .delivered, look != .rate, look != .rated { words.append(expected.text) }
+        words.append(press)
+        return words.joined(separator: ", ")
+    }
+
+    private func status(_ look: Look) -> some View {
+        HStack(spacing: 12) {
+            plate(look)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(phrase)
+                    .font(.inter(14, .heavy))
+                    .foregroundStyle(ink(look))
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let step = ReceiptRules.journeyStep(progress.kind) {
+                    steps(at: step).padding(.top, 6)
+                }
+                if look == .rated {
+                    HStack(spacing: 2) {
+                        ForEach(1...5, id: \.self) { star in
+                            Image(systemName: star <= (rating ?? 0) ? "star.fill" : "star")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                    }
+                    .foregroundStyle(Self.gold)
+                    .padding(.top, 5)
+                }
+                if let expected, look == .processing || look == .onTheWay {
+                    Text(expected.text)
+                        .font(.inter(12, .semibold))
+                        .foregroundStyle(expected.late ? Brand.accentInk : Brand.success)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 4)
                 }
             }
+        }
+    }
+
+    /// The tracker's four steps, in the page's direction: done in navy, the
+    /// one it is at in the brand's orange, still ahead pale; all green at the door.
+    private func steps(at step: Int) -> some View {
+        HStack(spacing: 3) {
+            ForEach(0..<4, id: \.self) { index in
+                Capsule()
+                    .fill(step == 3 ? Self.arrived : index < step ? Brand.navy : index == step ? Brand.orange : Self.ahead)
+                    .frame(height: 4)
+            }
+        }
+        .frame(maxWidth: 136)
+    }
+
+    static let arrived = Color(light: 0x2F7D43, dark: 0x5DBB72)
+    static let ahead = Color(light: 0xDBE3EE, dark: 0x3A4458)
+
+    private func pill(_ act: Act) -> some View {
+        HStack(spacing: 4) {
+            if act == .rate {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Self.starOnNavy)
+                    .scaleEffect(shown ? 1 : 0.4)
+                    .rotationEffect(.degrees(shown ? 0 : -25))
+            }
+            Text(actionWord(act))
+                .font(.inter(13, .bold))
+                .lineLimit(1)
+                .fixedSize()
+            if act == .track {
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 11, weight: .heavy))
+            }
+        }
+        .foregroundStyle(act == .edit ? Brand.navy : .white)
+        .padding(.horizontal, 14)
+        .frame(minHeight: 36)
+        .background {
+            if act == .edit {
+                Capsule().fill(Brand.surface)
+                Capsule().strokeBorder(Brand.line, lineWidth: 1)
+            } else {
+                Capsule().fill(Brand.navyFill)
+            }
+        }
+        .fixedSize()
+    }
+
+    private func fill(_ look: Look) -> Color {
+        switch look {
+        case .processing: return Color(light: 0xFFF8E9, dark: 0x2E2614)
+        case .onTheWay: return Color(light: 0xF1F6FD, dark: 0x172338)
+        case .delivered, .rate, .rated: return Color(light: 0xEFF8F2, dark: 0x15281C)
+        case .cancelled: return Color(light: 0xFDF2F1, dark: 0x2E1816)
+        case .returned: return Color(light: 0xF3F6FA, dark: 0x1C222D)
+        }
+    }
+
+    private func edge(_ look: Look) -> Color {
+        switch look {
+        case .processing: return Color(light: 0xF1DFB3, dark: 0x4A3D1E)
+        case .onTheWay: return Color(light: 0xD6E3F5, dark: 0x2A3A55)
+        case .delivered, .rate, .rated: return Color(light: 0xCFE7D6, dark: 0x24412D)
+        case .cancelled: return Color(light: 0xF2D2CD, dark: 0x4D2622)
+        case .returned: return Color(light: 0xDDE4EE, dark: 0x323B4B)
+        }
+    }
+
+    private func ink(_ look: Look) -> Color {
+        switch look {
+        case .delivered, .rate, .rated: return Brand.success
+        case .cancelled: return Color(light: 0x8C2F22, dark: 0xF2A79C)
+        case .returned: return Color(light: 0x3D5170, dark: 0xC4CBD7)
+        default: return Brand.navy
+        }
+    }
+
+    /// The picture on a white plate — white in either scheme, since the art
+    /// is drawn with white walls and navy lines.
+    private func plate(_ look: Look) -> some View {
+        picture(look)
+            .frame(width: Self.plateWidth, height: Self.plateHeight)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.white))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(JourneyArt.navy.opacity(0.06), lineWidth: 1))
             .accessibilityHidden(true)
     }
 
@@ -134,9 +273,9 @@ struct ItemStatusTile: View {
                     rightToLeft: l.current.isRightToLeft
                 )
             }
-        case .delivered:
+        case .delivered, .rate, .rated:
             Canvas { c, size in
-                let side: CGFloat = 20
+                let side: CGFloat = 26
                 var house = c
                 house.translateBy(x: (size.width - side) / 2, y: (size.height - side) / 2)
                 house.scaleBy(x: side / JourneyArt.place, y: side / JourneyArt.place)
@@ -144,37 +283,22 @@ struct ItemStatusTile: View {
             }
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 6, weight: .black))
+                    .font(.system(size: 7, weight: .black))
                     .foregroundStyle(.white)
-                    .frame(width: 12, height: 12)
+                    .frame(width: 14, height: 14)
                     .background(Circle().fill(JourneyArt.green))
                     .overlay(Circle().strokeBorder(.white, lineWidth: 1.25))
                     .scaleEffect(shown ? 1 : 0)
-                    .padding(.top, 1)
-                    .padding(.trailing, 2)
+                    .padding(.top, 2)
+                    .padding(.trailing, 3)
             }
-        case .rate:
-            Image(systemName: "star")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(Self.gold)
-                .scaleEffect(shown ? 1 : 0.4)
-                .rotationEffect(.degrees(shown ? 0 : -25))
-                .opacity(shown ? 1 : 0)
-        case .rated:
-            HStack(spacing: 1) {
-                ForEach(1...5, id: \.self) { star in
-                    Image(systemName: star <= (rating ?? 0) ? "star.fill" : "star")
-                        .font(.system(size: 6.5, weight: .bold))
-                }
-            }
-            .foregroundStyle(Self.gold)
         case .cancelled:
             Image(systemName: "xmark.circle")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(JourneyStreet.stoppedInk)
         case .returned:
             Image(systemName: "arrow.uturn.backward")
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(JourneyStreet.passed)
         }
     }

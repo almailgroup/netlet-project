@@ -30,6 +30,20 @@ enum ReceiptRules {
         }
     }
 
+    /// Which of the tracker's four steps an item is at — the order, being
+    /// got ready, on the way, at the door — as the band under an opened
+    /// order's item draws them (0 to 3), or nil once it left the road:
+    /// `journeyStep` in `orderReceipt.ts`.
+    static func journeyStep(_ kind: String) -> Int? {
+        switch kind {
+        case "received": return 0
+        case "preparing": return 1
+        case "onTheWay", "partlyDelivered": return 2
+        case "delivered": return 3
+        default: return nil
+        }
+    }
+
     /// Where an order has got to, read off its lines — `orderProgress` in
     /// Swift: the furthest-behind line still coming decides; a cancelled line
     /// holds nothing back and a returned one arrived and went back.

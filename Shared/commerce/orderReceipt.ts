@@ -7,7 +7,7 @@
  * what it came to, line by line.
  *
  * Pure and shared, so the website's item status and receipt and the app's
- * (its item status and `ReceiptRules` in Swift, tested on these cases)
+ * (`ItemStatusBar`, `ReceiptRules` in Swift, tested on these cases)
  * cannot say different things. Nothing here is computed afresh: every figure
  * is the one the order froze.
  */

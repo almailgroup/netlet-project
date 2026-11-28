@@ -934,23 +934,3 @@ struct EditOrderButton: View {
     }
 }
 
-/// When one item still coming is expected — its parcel's day, the store's own
-/// estimate or that it is later, the tracker's own words — since an order's
-/// items arrive on different days (on the owner's word).
-struct LineExpected: View {
-    let line: OrderLine
-    let detail: OrderDetail
-    @Environment(LanguageSettings.self) private var l
-
-    var body: some View {
-        let progress = ReceiptRules.progress(status: detail.order.status, lines: [(fulfilment: line.fulfilment, deliveredAt: line.deliveredAt, preordered: line.preordered ?? false)])
-        let coming = !["delivered", "cancelled", "returned"].contains(progress.kind)
-        let parcel = detail.steps?.parcels.first { $0.lineIds.contains(line.id) }
-        if coming, let promise = ParcelStepsCard.promiseText(parcel?.promise, l) {
-            Text(promise.text)
-                .font(.inter(12, .semibold))
-                .foregroundStyle(promise.late ? Brand.accentInk : Brand.success)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}

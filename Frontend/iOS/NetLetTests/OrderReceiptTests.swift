@@ -31,6 +31,17 @@ final class OrderReceiptTests: XCTestCase {
         XCTAssertNil(JourneyStage.cancelled.step)
     }
 
+    /// The band's strip: `journeyStep`'s cases in `orderReceipt.test.ts`.
+    func testAnItemSitsOnOneOfTheTrackersFourSteps() {
+        XCTAssertEqual(ReceiptRules.journeyStep("received"), 0)
+        XCTAssertEqual(ReceiptRules.journeyStep("preparing"), 1)
+        XCTAssertEqual(ReceiptRules.journeyStep("onTheWay"), 2)
+        XCTAssertEqual(ReceiptRules.journeyStep("partlyDelivered"), 2)
+        XCTAssertEqual(ReceiptRules.journeyStep("delivered"), 3)
+        XCTAssertNil(ReceiptRules.journeyStep("cancelled"))
+        XCTAssertNil(ReceiptRules.journeyStep("returned"))
+    }
+
     func testTheVanDrivesTheRoadAndFadesAtTheHouse() {
         let start = JourneyMotion.drive(at: 0)
         XCTAssertEqual(start.distance, 0, accuracy: 0.0001)
