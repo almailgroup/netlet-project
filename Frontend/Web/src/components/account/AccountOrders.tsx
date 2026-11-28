@@ -46,10 +46,10 @@ import { useDateFormat } from "@/hooks/useDateFormat";
 import { useReturnWindow } from "@/hooks/useReturnWindow";
 import type { MessageKey } from "@shared/i18n/dictionary";
 import { rateLabel } from "@shared/commerce/tax";
-import { CalendarDays, ChevronDown, ChevronLeft, FileText, PackageSearch, RotateCcw, Search, Star, type LucideIcon } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, FileText, PackageSearch, RotateCcw, Search, Truck, type LucideIcon } from "lucide-react";
 import { cameFrom, goBack } from "@/lib/inAppBack";
 import { Link, useLocation, useSearch } from "wouter";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AccountReturns } from "@/components/account/AccountReturns";
 import { AccountReviews } from "@/components/account/AccountReviews";
 import { isCalendarDay, isOrderPeriod, isOrderTab, isOrderView, ORDER_SEARCH_MAX, type OrderTab } from "@shared/commerce/orderFilters";
@@ -95,16 +95,119 @@ export function Pill({ label, className, icon: Icon }: { label: string; classNam
  * how many more things are in it. Decorative to a screen reader, which hears
  * the names beside it.
  */
-function OrderPhoto({ photo, more }: { photo: string | null; more: number }) {
+/**
+ * What is in the order, by its pictures — several, on the owner's word ("show
+ * more than one picture of the orders"): up to four of its items' photos side
+ * by side (`summary.photos`, the server's, one per product), and a tile saying
+ * how many more there are. For the eye alone: the order's number names it.
+ */
+function OrderPhotos({ photos, count }: { photos: string[]; count: number }) {
+  const shown = photos.slice(0, 4);
+  const more = Math.max(0, count - Math.max(shown.length, 1));
+  /* Five columns of at most 56px that narrow together on a small phone, so
+     the count never wraps under the pictures (it did at 390). */
+  const tile = "aspect-square w-full rounded-2xl border border-[#e7edf5] bg-white object-contain";
   return (
-    <span className="relative shrink-0" aria-hidden>
-      <Thumb src={photo} alt="" className="size-16 rounded-2xl border border-[#e7edf5] bg-white object-contain" icon={<PackageSearch className="size-6" />} />
+    <span className="grid grid-cols-[repeat(5,minmax(0,3.5rem))] gap-2" aria-hidden>
+      {shown.length === 0 ? (
+        <Thumb src={null} alt="" className={tile} icon={<PackageSearch className="size-6" />} />
+      ) : shown.map(photo => (
+        <Thumb key={photo} src={photo} alt="" className={tile} icon={<PackageSearch className="size-6" />} />
+      ))}
       {more > 0 ? (
-        <span className="absolute -bottom-1.5 -end-1.5 rounded-full bg-[#0a285a] px-1.5 py-0.5 text-[12px] font-bold leading-none text-white ring-2 ring-white">
-          +{more}
+        <span className="grid aspect-square w-full place-items-center rounded-2xl bg-[#eef2f8] text-[14px] font-extrabold text-[#0a285a]">
+          <bdi dir="ltr">+{more}</bdi>
         </span>
       ) : null}
     </span>
+  );
+}
+
+/** One order's row on My orders. */
+type OrderRowData = {
+  id: number;
+  reference: string;
+  status: string;
+  currency: string;
+  grandTotal: string;
+  paymentMethod?: string | null;
+  placedAt: string | Date;
+  owed?: { owed: string; reduced: boolean } | null;
+  summary?: { lineCount: number; photos: string[]; progress: { kind: string } } | null;
+};
+
+/**
+ * One order on My orders: its pictures, its number, the day it was ordered,
+ * what it comes to and how it is paid, and Track order — the owner's list of
+ * what the row carries, nothing more. The opened order is `children`.
+ */
+export function OrderListRow({ order, open, onToggle, onTrack, children }: {
+  order: OrderRowData;
+  open: boolean;
+  onToggle: () => void;
+  onTrack: () => void;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
+  const payment = PAYMENT[order.status] ?? PAYMENT.pending_payment;
+  const summary = order.summary;
+  return (
+    <li className="rounded-[1.35rem] border border-[#d5dfeb] bg-white">
+      <h3 className="sr-only">
+        {t("orders.orderHeading", { reference: order.reference })}
+      </h3>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={`order-${order.id}-lines`}
+        className="pressable block w-full rounded-[1.35rem] p-4 text-start sm:p-5"
+      >
+        {/* The order's main facts and nothing else, on the owner's word
+            ("more than one picture of the orders, also order number and date
+            and the amount and payment method and track order only"): its
+            pictures, the card's whole width, then its number, when it was
+            ordered, and what it comes to and how it is paid. Where each item
+            is, and rating or returning it, are the opened order's
+            (`ItemStatus`, the chosen items' bar). */}
+        <OrderPhotos photos={summary?.photos ?? []} count={summary?.lineCount ?? 1} />
+        <span className="mt-3 flex items-start gap-3">
+          <span className="min-w-0 flex-1">
+            {/* A server older than the summary says how it is paid. */}
+            {summary ? null : <Pill label={t(payment.label)} className={payment.className} />}
+            {/* The number stays on one line: it is read down a phone, and
+                "NL-20261012-" over "3NJA9" is two numbers. */}
+            <span className="block whitespace-nowrap text-[15px] font-extrabold text-[#0a285a]">
+              <span className="sr-only">{t("orders.reference")} </span><bdi dir="ltr">{order.reference}</bdi>
+            </span>
+            <span className="mt-0.5 block text-[13px] font-semibold text-[#3d5170]">{t("orders.orderedOn", { date: formatDate(order.placedAt) })}</span>
+            <span className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <OrderTotal order={order} />
+            </span>
+          </span>
+          <ChevronDown className={`mt-0.5 size-5 shrink-0 ink-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+        </span>
+      </button>
+
+      {/* Track order, the one press on the list, on the owner's
+          word: it opens the order on where its parcels are. An
+          order cancelled whole has nothing to follow. */}
+      {!open && summary?.progress.kind !== "cancelled" ? (
+        <div className="border-t border-[#e7edf5] px-2 py-1.5">
+          <button
+            type="button"
+            onClick={onTrack}
+            className="pressable inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-3 text-[14px] font-bold text-[#0a285a] hover:bg-[#f0f2f5]"
+          >
+            <Truck className="size-[18px] rtl:-scale-x-100" aria-hidden />
+            {t("orders.track")}
+            <span className="sr-only">: <bdi dir="ltr">{order.reference}</bdi></span>
+          </button>
+        </div>
+      ) : null}
+      {children}
+    </li>
   );
 }
 
@@ -197,14 +300,10 @@ export function AccountOrders() {
   const [openRef, setOpenRef] = useState<string | null>(() => new URLSearchParams(search).get("order"));
   /* `&track=1` opens the order on its tracking — where a link about a parcel
      on its way should land. */
-  const [trackRef] = useState<string | null>(() => (new URLSearchParams(search).get("track") === "1" ? new URLSearchParams(search).get("order") : null));
-  const formatDate = useDateFormat();
+  const [trackRef, setTrackRef] = useState<string | null>(() => (new URLSearchParams(search).get("track") === "1" ? new URLSearchParams(search).get("order") : null));
 
-  /* `&refund=1`, or the row's "Request a refund": the order opens on its refund form. */
+  /* `&refund=1` (a notice, the help centre): the order opens on its refund form. */
   const [refundRef, setRefundRef] = useState<string | null>(() => (new URLSearchParams(search).get("refund") === "1" ? new URLSearchParams(search).get("order") : null));
-  const returnsOn = useFeature("returns");
-  /* The row's "Rate your items": the order opens with its first "Rate this item" focused. */
-  const [rateRef, setRateRef] = useState<string | null>(null);
 
   const viewing = isOrderView(tab);
   const list = trpc.orders.list.useQuery(
@@ -275,105 +374,26 @@ export function AccountOrders() {
             */}
             <ul className="space-y-3">
               {data.rows.map(order => {
-                const payment = PAYMENT[order.status] ?? PAYMENT.pending_payment;
                 const open = openRef === order.reference;
-                const summary = order.summary;
                 return (
-                  <li key={order.id} className="rounded-[1.35rem] border border-[#d5dfeb] bg-white">
-                    <h3 className="sr-only">
-                      {t("orders.orderHeading", { reference: order.reference })}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => { setRefundRef(null); setRateRef(null); setOpenRef(open ? null : order.reference); }}
-                      aria-expanded={open}
-                      aria-controls={`order-${order.id}-lines`}
-                      className="pressable flex w-full items-start gap-4 rounded-[1.35rem] p-4 text-start sm:p-5"
-                    >
-                      <OrderPhoto photo={summary?.photos[0] ?? null} more={Math.max(0, (summary?.lineCount ?? 1) - 1)} />
-                      <span className="min-w-0 flex-1">
-                        {/* The order's main facts alone, on the owner's word: its
-                            items have their own delivery times, so where each is
-                            is drawn under it once the order is opened
-                            (`LineJourney`). A server older than the summary says
-                            only how it is paid. */}
-                        {summary ? null : <Pill label={t(payment.label)} className={payment.className} />}
-                        {/* What it is, by the first thing in it — nobody knows
-                            their own order by its number. The title is the
-                            seller's words, isolated so a Latin name sits
-                            right on the Arabic page. */}
-                        {summary?.first ? (
-                          <span className="block truncate text-[15px] font-bold text-[#0a285a]">
-                            <bdi>{summary.first.title}</bdi>
-                            {summary.lineCount > 1 ? <span className="font-semibold text-[#3d5170]"> {t("orders.andMore", { count: summary.lineCount - 1 })}</span> : null}
-                          </span>
-                        ) : null}
-                        {/* When it was ordered, on every order and in words of
-                            its own, on the owner's word ("the order date should
-                            be shown on all orders") — the list is newest first. */}
-                        <span className="mt-1 block text-[13px] font-semibold text-[#3d5170]">{t("orders.orderedOn", { date: formatDate(order.placedAt) })}</span>
-                        {/* The reference stays on one line: it is read down a
-                            phone, and "NL-20261012-" over "3NJA9" is two numbers. */}
-                        <span className="mt-0.5 block whitespace-nowrap text-[12px] ink-muted"><span className="sr-only">{t("orders.reference")} </span><bdi dir="ltr">{order.reference}</bdi></span>
-                        <span className="mt-2 flex flex-wrap items-baseline gap-x-2 sm:hidden">
-                          <OrderTotal order={order} />
-                        </span>
-                      </span>
-                      <span className="hidden shrink-0 flex-col items-end gap-1 pt-0.5 sm:flex">
-                        <OrderTotal order={order} />
-                      </span>
-                      <ChevronDown className={`mt-1 size-5 shrink-0 ink-muted transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
-                    </button>
-
-                    {/* Request a refund from the list, on the owner's word: on an
-                        order with something that can still go back — delivered,
-                        in the window, nothing asked on it (`summary.refundable`,
-                        the server's count by the opened order's own rule). It
-                        opens the order on its refund form; open, the order's
-                        own button is the one. */}
-                    {/* Rate what arrived, from the list (the owner's "rate and
-                        review from My Orders"): drawn while the order has an
-                        item delivered, paid for and not yet rated
-                        (`summary.reviewable`, `eligibilityFor`'s count). */}
-                    {!open && ((returnsOn && (summary?.refundable ?? 0) > 0) || (summary?.reviewable ?? 0) > 0) ? (
-                      <div className="-mt-1 flex flex-wrap justify-end gap-2 px-4 pb-4 sm:px-5">
-                        {(summary?.reviewable ?? 0) > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => { setRefundRef(null); setRateRef(order.reference); setOpenRef(order.reference); }}
-                            className="glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
-                          >
-                            <Star className="size-4" aria-hidden />
-                            {t("orders.rateItems")}
-                            <span className="sr-only">: <bdi>{summary?.first?.title ?? order.reference}</bdi></span>
-                          </button>
-                        ) : null}
-                        {returnsOn && (summary?.refundable ?? 0) > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => { setRateRef(null); setRefundRef(order.reference); setOpenRef(order.reference); }}
-                            className="glass type-control pressable inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-1.5 pointer-fine:min-h-9"
-                          >
-                            <RotateCcw className="size-4 rtl:-scale-x-100" aria-hidden />
-                            {t("orders.requestRefund")}
-                            <span className="sr-only">: <bdi>{summary?.first?.title ?? order.reference}</bdi></span>
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-
+                  <OrderListRow
+                    key={order.id}
+                    order={order}
+                    open={open}
+                    onToggle={() => { setRefundRef(null); setTrackRef(null); setOpenRef(open ? null : order.reference); }}
+                    onTrack={() => { setRefundRef(null); setTrackRef(order.reference); setOpenRef(order.reference); }}
+                  >
                     <div id={`order-${order.id}-lines`} hidden={!open} className="border-t border-[#e7edf5] px-4 py-4 sm:px-5">
                       {open ? (
                         <OrderLines
-                          key={refundRef === order.reference ? "refund" : rateRef === order.reference ? "rate" : "plain"}
+                          key={refundRef === order.reference ? "refund" : trackRef === order.reference ? "track" : "plain"}
                           reference={order.reference}
                           trackFirst={trackRef === order.reference}
                           refundFirst={refundRef === order.reference}
-                          rateFirst={rateRef === order.reference}
                         />
                       ) : null}
                     </div>
-                  </li>
+                  </OrderListRow>
                 );
               })}
             </ul>
@@ -427,7 +447,7 @@ function OrderTotal({ order }: {
  * per line against the server's clock and a list of fifty orders would resolve
  * fifty windows nobody has asked to see.
  */
-function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFirst = false, dated = false }: { reference: string; trackFirst?: boolean; refundFirst?: boolean; rateFirst?: boolean; dated?: boolean }) {
+function OrderLines({ reference, trackFirst = false, refundFirst = false, dated = false }: { reference: string; trackFirst?: boolean; refundFirst?: boolean; dated?: boolean }) {
   const { t, locale } = useTranslation();
   const returnsOn = useFeature("returns");
   const detail = trpc.orders.get.useQuery({ reference });
@@ -439,16 +459,6 @@ function OrderLines({ reference, trackFirst = false, refundFirst = false, rateFi
     const line = detail.data?.lines.find(entry => entry.id === lineId);
     if (line) setRating({ orderItemId: line.id, productTitle: line.productTitle, photo: line.photo ?? null, review: line.review });
   };
-  /* Opened from the row's "Rate your items": the first item to rate, its
-     review form open — the press that asked for it is on the list above. */
-  const rated = useRef(false);
-  useEffect(() => {
-    if (!rateFirst || rated.current || !detail.data) return;
-    rated.current = true;
-    const first = detail.data.lines.find(line => !line.review && line.reviewEligibility.allowed);
-    if (first) rate(first.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rateFirst, detail.data]);
 
   return (
     <QueryGate audience="shopper" queries={[detail]}>

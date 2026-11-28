@@ -79,40 +79,25 @@ struct OrdersView: View {
                                     .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
                             .buttonStyle(PressFillStyle(cornerRadius: 16))
-                            // Request a refund from the list, on the owner's word:
-                            // on an order with something that can still go back,
-                            // opening it with its refund sheet up — the web's row.
-                            // Rate what arrived, from the list too (the owner's "rate
-                            // and review … from the My Orders section"): opening it with
-                            // the first item to rate in its sheet.
-                            let refundable = app.features.isOn("returns") && (order.summary.refundable ?? 0) > 0
-                            let rateable = (order.summary.reviewable ?? 0) > 0
-                            if refundable || rateable {
-                                HStack(spacing: 8) {
-                                    Spacer(minLength: 0)
-                                    if rateable {
-                                        Button {
-                                            app.orderSheet = "rate"
-                                            app.push(.order(reference: order.reference))
-                                        } label: {
-                                            Label(l.t("orders.rateItems"), systemImage: "star")
-                                        }
-                                        .buttonStyle(OrderActionStyle())
-                                        .accessibilityLabel(l.t("orders.rateItems") + ": " + (order.summary.first?.title ?? order.reference))
-                                    }
-                                    if refundable {
-                                        Button {
-                                            app.orderSheet = "refund"
-                                            app.push(.order(reference: order.reference))
-                                        } label: {
-                                            Label(l.t("orders.requestRefund"), systemImage: "arrow.uturn.backward")
-                                        }
-                                        .buttonStyle(OrderActionStyle())
-                                        .accessibilityLabel(l.t("orders.requestRefund") + ": " + (order.summary.first?.title ?? order.reference))
-                                    }
+                            // Track order, the one press on the list, on the
+                            // owner's word: the order opened on where its parcels
+                            // are (`TrackOrderSheet`). An order cancelled whole
+                            // has nothing to follow.
+                            if order.summary.progress.kind != "cancelled" {
+                                Rectangle().fill(Brand.cardLine).frame(height: 1)
+                                Button {
+                                    app.orderSheet = "track"
+                                    app.push(.order(reference: order.reference))
+                                } label: {
+                                    Label(l.t("orders.track"), systemImage: "truck.box")
+                                        .font(.inter(14, .bold))
+                                        .foregroundStyle(Brand.navy)
+                                        .frame(maxWidth: .infinity, minHeight: 46)
+                                        .contentShape(Rectangle())
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.bottom, 14)
+                                .buttonStyle(PressFillStyle(cornerRadius: 16))
+                                .accessibilityLabel(l.t("orders.track") + ": " + order.reference)
+                                .accessibilityIdentifier("orders-track")
                             }
                         }
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Brand.surface))
@@ -327,60 +312,38 @@ struct OrderRow: View {
     @Environment(LanguageSettings.self) private var l
 
     var body: some View {
-        // The order's main facts alone, on the owner's word: its items have
-        // their own delivery times, so where each is is drawn under it once
-        // the order is opened (`ItemStatusTile`).
-        summaryRow
-    }
-
-    private var summaryRow: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Color.clear
-                .frame(width: 64, height: 64)
-                .overlay { RemoteImage(reference: order.summary.photos.first) }
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .overlay(alignment: .bottomTrailing) {
-                    if order.summary.lineCount > 1 {
-                        Text("+\(order.summary.lineCount - 1)")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 5)
-                            .background(Capsule().fill(Brand.navyFill))
-                            .padding(3)
-                    }
-                }
-            VStack(alignment: .leading, spacing: 5) {
-                if let first = order.summary.first {
-                    let more = order.summary.lineCount - 1
-                    Text(first.title + (more > 0 ? " " + l.t("orders.andMore", ["count": "\(more)"]) : ""))
-                        .font(.subheadline)
-                        .foregroundStyle(Brand.ink)
-                        .lineLimit(2)
-                }
-                HStack(spacing: 6) {
-                    Text(order.shownTotal.formatted(l.current)).font(.subheadline.weight(.semibold))
-                    if let how = payment {
-                        Text("·").foregroundStyle(Brand.muted)
-                        Text(how).font(.footnote).foregroundStyle(order.status == "paid" || paidOnline ? Brand.success : Brand.muted)
-                    }
-                }
-                if !order.isOver, order.owed?.reduced == true {
-                    Text(l.t("orders.cancelledNotCharged")).font(.caption).foregroundStyle(Brand.muted)
-                }
-                // When it was ordered, on every order and in words of its own,
-                // on the owner's word ("the order date should be shown on all
-                // orders") — the list is newest first. The reference under it
-                // reads left to right on either page.
+        // The order's main facts and nothing else, on the owner's word ("more
+        // than one picture of the orders, also order number and date and the
+        // amount and payment method and track order only"): its pictures, its
+        // number, when it was ordered, what it comes to and how it is paid.
+        // Where each item is, and rating or returning it, are the opened
+        // order's (`ItemStatusTile`, the chosen items' bar).
+        VStack(alignment: .leading, spacing: 12) {
+            OrderPhotoStrip(photos: order.summary.photos, count: order.summary.lineCount)
+            VStack(alignment: .leading, spacing: 3) {
+                // The number stays on one line and reads left to right on either page.
+                Text(order.reference)
+                    .font(.inter(15, .bold))
+                    .foregroundStyle(Brand.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .environment(\.layoutDirection, .leftToRight)
+                    .accessibilityLabel(l.t("orders.reference") + " " + order.reference)
                 Text(l.t("orders.orderedOn", ["date": OrderWording.date(order.placedAt, language: l.current)]))
                     .font(.inter(13, .semibold))
-                    .foregroundStyle(JourneyStreet.passed)
-                Text(order.reference)
-                    .font(.caption.monospaced())
                     .foregroundStyle(Brand.muted)
-                    .environment(\.layoutDirection, .leftToRight)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(order.shownTotal.formatted(l.current)).font(.inter(16, .bold)).foregroundStyle(Brand.ink)
+                if let how = payment {
+                    Text("·").foregroundStyle(Brand.muted)
+                    Text(how).font(.inter(13, .semibold)).foregroundStyle(order.status == "paid" || paidOnline ? Brand.success : Brand.muted)
+                }
+            }
+            if !order.isOver, order.owed?.reduced == true {
+                Text(l.t("orders.cancelledNotCharged")).font(.caption).foregroundStyle(Brand.muted)
             }
         }
-        .padding(.top, 6)
     }
 
     /// How it is paid, said only where it tells somebody something (`OrderTotal`).
@@ -396,6 +359,44 @@ struct OrderRow: View {
         case "pending_payment" where order.shownTotal.fils > 0: return l.t("orders.payOnDelivery")
         default: return nil
         }
+    }
+}
+
+/// What is in an order, by its pictures — several, on the owner's word: up to
+/// four of its items' photos side by side (the server's, one per product), and
+/// a tile counting the rest. For the eye alone: the number names the order.
+struct OrderPhotoStrip: View {
+    let photos: [String]
+    let count: Int
+
+    var body: some View {
+        let shown = Array(photos.prefix(4))
+        let more = max(0, count - max(shown.count, 1))
+        HStack(spacing: 8) {
+            if shown.isEmpty {
+                tile { Image(systemName: "shippingbox").font(.system(size: 20)).foregroundStyle(Brand.chevron) }
+            }
+            ForEach(shown, id: \.self) { photo in
+                tile { RemoteImage(reference: photo, contentMode: .fit).padding(3) }
+            }
+            if more > 0 {
+                Text("+\(more)")
+                    .font(.inter(14, .bold))
+                    .foregroundStyle(Brand.navy)
+                    .frame(width: 52, height: 52)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.tint))
+                    .environment(\.layoutDirection, .leftToRight)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func tile<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .frame(width: 52, height: 52)
+            .background(Brand.photoFrame)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.cardLine, lineWidth: 1))
     }
 }
 

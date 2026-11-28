@@ -1170,7 +1170,9 @@ export async function shownHandles(db: Db, productIds: (number | null)[]): Promi
   return new Map(rows.map(row => [row.id, row.handle]));
 }
 
-const PREVIEW_PHOTOS = 3;
+/** How many of an order's pictures its row on My orders draws side by side
+    (the owner's "more than one picture"); a tile counts the rest. */
+const PREVIEW_PHOTOS = 4;
 
 async function summariesFor(db: Db, rows: (typeof orders.$inferSelect)[]): Promise<Map<number, OrderSummary>> {
   if (rows.length === 0) return new Map();

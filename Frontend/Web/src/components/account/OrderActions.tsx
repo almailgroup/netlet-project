@@ -187,12 +187,17 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
   const changeable = detail.change.changeable && detail.lines.some(line => line.changeable);
 
   /* Opened for the refund: the form is brought into view with its first box
-     focused, since the press that asked for it is on the list above. */
+     focused, since the press that asked for it is on the list above. Opened
+     by the list's Track order the same: the tracker is brought into view and
+     focus goes to it, the button pressed having gone with the row's foot. */
   useEffect(() => {
-    if (!refundFirst) return;
+    if (!refundFirst && !trackFirst) return;
     const region = document.getElementById(`${ids}-panel`);
     region?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-    region?.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
+    if (refundFirst) region?.querySelector<HTMLElement>("input, button")?.focus({ preventScroll: true });
+    else region?.focus({ preventScroll: true });
+    // Once, as the order opens: a later change of panel is the shopper's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refundFirst, ids]);
 
   const refresh = () => {
@@ -348,7 +353,7 @@ export function OrderAfterSales({ reference, detail, trackFirst = false, refundF
 
       <WarrantyClaims detail={detail} onChanged={refresh} />
 
-      <div id={`${ids}-panel`} className="mb-3 scroll-mt-4 empty:hidden">
+      <div id={`${ids}-panel`} tabIndex={-1} className="mb-3 scroll-mt-4 outline-none empty:hidden">
         {orderPanel?.kind === "track" ? <OrderTracking reference={reference} detail={detail} lineIds={orderPanel.lineIds} /> : null}
         {orderPanel?.kind === "refund" && refundable.length > 0 ? (
           <RefundForm

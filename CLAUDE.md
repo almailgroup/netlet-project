@@ -3553,9 +3553,21 @@ text keeps only its state (Published, Waiting for a quick check, Removed),
 the stars being under the photo. **The item's expected day is in its text**
 while it is still coming (`LineExpected` on both): its parcel's own day, the
 store's estimate or that it is later (`usePromiseText`, the app's
-`ParcelStepsCard.promiseText`, the tracker's words). My orders' row is the
-order's photo, name, date, reference, total and how it is paid, and no
-status. **The pictures are NetLet's own drawing**, not an icon set's, so the
+`ParcelStepsCard.promiseText`, the tracker's words). **My orders' row is the
+order's pictures, its number, its date, what it comes to and how it is paid,
+and Track order — nothing else, on the owner's word** ("show more than one
+picture of the orders, also order number and date and the amount and payment
+method and track order only"): up to four of its items' photos side by side
+and a tile counting the rest (`OrderPhotos` on the web, `OrderPhotoStrip` in
+the app; the server's `PREVIEW_PHOTOS` is 4, one per product), then the
+number in bold, "Ordered on …", the total with how it is paid, and across the
+card's foot "Track order", which opens the order on its tracker (`trackFirst`,
+brought into view with focus on it; the app's `orderSheet` "track") and is not
+drawn on an order cancelled whole. It led with the first item's name ("… and
+7 more") beside one photo, and carried Request a refund and Rate your items
+under it (below); those two are the opened order's, and the server still
+counts `summary.refundable` and `reviewable` for an installed app.
+`OrderListRow.test.ts` and `OrdersListUITests` hold the row. **The pictures are NetLet's own drawing**, not an icon set's, so the
 van can turn its wheels — the store with its orange-and-white awning, the
 house under the logo's orange roof, the navy van with the orange stripe and
 spoked wheels (SVG on the web, `JourneyArt` in a `Canvas` in the app, in the
@@ -3888,8 +3900,10 @@ the server asks too), asks which, why and a note, and sends one
 per-item form's is. "Choose at least one item." comes with the press and goes
 with the tick. The per-item "Return or exchange" stays for an exchange.
 
-**It is on the My orders list too, on the owner's word** ("add request for
-refund for the products that you ordered in the my orders page"): an order
+**It was on the My orders list too for a while, on the owner's word** ("add request for
+refund for the products that you ordered in the my orders page"), **and left it
+with the owner's later list of what a row carries** (above, "My orders' row is
+the order's pictures"); `&refund=1` still opens an order on the form. An order
 with something that can still go back carries "Request a refund" under its
 row, and the press opens the order on its refund form, in view with its first
 box focused (`refundFirst`, or `&refund=1` in the address). The list knows
@@ -13075,7 +13089,15 @@ keyboard). `Info.plist` no longer holds the app to light
 `NetLetShared/BrandColors.swift`, a dynamic `UIColor`, so SwiftUI resolves it
 by the view's own scheme), and the screens were moved onto them by what each
 colour does, not by its hex: `Brand.navy` is navy *words and marks*
-(periwinkle in the dark), `Brand.navyFill` a navy *fill* under white words,
+(**white in the dark, on the owner's word**: "for dark mode, all the text
+should be white color, not blue" — it was a periwinkle, #8fb3f4, for one
+build), `Brand.navyFill` a navy *fill* under white words, `Brand.control` a
+system control's colour — a switch's track, a calendar's chosen day — which
+sits under white and so stays a blue in the dark (#3d6bc4, white 5.1:1 on
+it): every `Toggle` takes it from `NetLetSwitchStyle`, set at the root and on
+every sheet by `languageDirection()`, and every `DatePicker` wears it by hand
+(`swiftDates.test.ts` fails on one that does not, since the root's tint is
+navy and so white, and today chosen was white on white),
 `Brand.deepNavy` navy that never changes — words on the orange (Checkout's,
 the badges' count) and on a white plate over a photo; `Brand.surface` a card,
 `Brand.ground` the page, `Brand.well` a grey panel inside a card,
@@ -13103,7 +13125,13 @@ a dark step per hue (`seriesLight`, `seriesDark`), the dark set validated on
 the dark card and ground (every step 3:1 or more, every adjacent pair 9.6
 apart under deuteranopia). `DarkModeTests` reads both: the logo's letters
 light on a dark page and dark on a light one, and every series colour
-resolved in the dark at 3:1. The rest — the home page, a department, a
+resolved in the dark at 3:1. **Then no words are blue in the dark**:
+`Brand.navy`, the indigo series' words (`PortalLook.indigoInk`), the search
+preview's link-blue title, the shipped status and the assistant's note are
+white or a plain grey there, `Brand.muted` a grey with no blue in it
+(#a8aeb8), rims drawn on a photo's white frame `deepNavy`, and the one
+two-colour symbol with a white mark in a navy circle `navyFill`;
+`testNavyWordsAreWhiteInTheDark` fails on the periwinkle. The rest — the home page, a department, a
 product, the cart, checkout, the account, sign-in, the search sheet,
 Preferences, the Wallet, an order, the invoice (white paper), the assistant,
 the preview, the pin map, Deals, Your profile and the portal's products and

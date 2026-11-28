@@ -321,10 +321,6 @@ export const PLURAL_FORMS: Partial<Record<MessageKey, PluralEntry>> = {
       other: "{count} شخص ينتظرون هذا المنتج",
     },
   },
-  "orders.andMore": {
-    param: "count",
-    ar: { one: "ومنتج آخر", two: "ومنتجان آخران", few: "و{count} منتجات أخرى", many: "و{count} منتجاً آخر" },
-  },
   "cart.recoveryTitle": {
     param: "count",
     ar: { two: "تركت منتجين هنا", many: "تركت {count} منتجاً هنا", other: "تركت {count} منتج هنا" },
